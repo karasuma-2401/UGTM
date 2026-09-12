@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Application\UGTM.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\Domain\UGTM.BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

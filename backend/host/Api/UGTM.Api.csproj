@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Modules\AcademicPeriods\Infrastructure\UGTM.Modules.AcademicPeriods.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\FinalReportEvaluation\Infrastructure\UGTM.Modules.FinalReportEvaluation.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\GradingConsolidation\Infrastructure\UGTM.Modules.GradingConsolidation.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Infrastructure\UGTM.Modules.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\MidtermProgress\Infrastructure\UGTM.Modules.MidtermProgress.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Notifications\Infrastructure\UGTM.Modules.Notifications.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\ThesisManagement\Infrastructure\UGTM.Modules.ThesisManagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\TopicCatalog\Infrastructure\UGTM.Modules.TopicCatalog.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

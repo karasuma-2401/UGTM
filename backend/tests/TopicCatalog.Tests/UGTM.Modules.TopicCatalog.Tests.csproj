@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Modules\TopicCatalog\Application\UGTM.Modules.TopicCatalog.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\TopicCatalog\Domain\UGTM.Modules.TopicCatalog.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\TopicCatalog\Infrastructure\UGTM.Modules.TopicCatalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\BuildingBlocks.Testing\UGTM.BuildingBlocks.Testing.csproj" />
+  </ItemGroup>
+
+</Project>

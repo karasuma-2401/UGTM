@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\UGTM.Modules.DefenseCouncil.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Application\UGTM.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+
+</Project>

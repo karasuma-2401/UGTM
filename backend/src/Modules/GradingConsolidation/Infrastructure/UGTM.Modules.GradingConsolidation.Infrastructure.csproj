@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Application\UGTM.Modules.GradingConsolidation.Application.csproj" />
+    <ProjectReference Include="..\Domain\UGTM.Modules.GradingConsolidation.Domain.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\Infrastructure\UGTM.BuildingBlocks.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
