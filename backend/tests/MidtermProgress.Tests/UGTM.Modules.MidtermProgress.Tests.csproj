@@ -16,9 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\MidtermProgress\Application\UGTM.Modules.MidtermProgress.Application.csproj" />
-    <ProjectReference Include="..\..\src\Modules\MidtermProgress\Domain\UGTM.Modules.MidtermProgress.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Modules\MidtermProgress\Infrastructure\UGTM.Modules.MidtermProgress.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\MidtermProgress\Application\UGTM.Modules.MidtermProgress.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\MidtermProgress\Domain\UGTM.Modules.MidtermProgress.Domain.csproj" />
+    <ProjectReference Include="..\..\Modules\MidtermProgress\Infrastructure\UGTM.Modules.MidtermProgress.Infrastructure.csproj" />
     <ProjectReference Include="..\BuildingBlocks.Testing\UGTM.BuildingBlocks.Testing.csproj" />
   </ItemGroup>
 

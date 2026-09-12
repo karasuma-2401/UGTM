@@ -16,9 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\Notifications\Application\UGTM.Modules.Notifications.Application.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Notifications\Domain\UGTM.Modules.Notifications.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Notifications\Infrastructure\UGTM.Modules.Notifications.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\Application\UGTM.Modules.Notifications.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\Domain\UGTM.Modules.Notifications.Domain.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\Infrastructure\UGTM.Modules.Notifications.Infrastructure.csproj" />
     <ProjectReference Include="..\BuildingBlocks.Testing\UGTM.BuildingBlocks.Testing.csproj" />
   </ItemGroup>
 

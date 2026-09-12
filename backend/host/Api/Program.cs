@@ -26,6 +26,15 @@ IModule[] modules =
 
 builder.Services.AddOpenApi();
 
+const string FrontendCorsPolicy = "Frontend";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendCorsPolicy, policy =>
+        policy.WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+});
+
 foreach (var module in modules)
 {
     module.RegisterModule(builder.Services, builder.Configuration);
@@ -39,6 +48,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors(FrontendCorsPolicy);
 
 foreach (var module in modules)
 {

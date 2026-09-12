@@ -16,9 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\FinalReportEvaluation\Application\UGTM.Modules.FinalReportEvaluation.Application.csproj" />
-    <ProjectReference Include="..\..\src\Modules\FinalReportEvaluation\Domain\UGTM.Modules.FinalReportEvaluation.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Modules\FinalReportEvaluation\Infrastructure\UGTM.Modules.FinalReportEvaluation.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\FinalReportEvaluation\Application\UGTM.Modules.FinalReportEvaluation.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\FinalReportEvaluation\Domain\UGTM.Modules.FinalReportEvaluation.Domain.csproj" />
+    <ProjectReference Include="..\..\Modules\FinalReportEvaluation\Infrastructure\UGTM.Modules.FinalReportEvaluation.Infrastructure.csproj" />
     <ProjectReference Include="..\BuildingBlocks.Testing\UGTM.BuildingBlocks.Testing.csproj" />
   </ItemGroup>
 

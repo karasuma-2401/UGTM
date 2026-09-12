@@ -16,9 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\DefenseCouncil\Application\UGTM.Modules.DefenseCouncil.Application.csproj" />
-    <ProjectReference Include="..\..\src\Modules\DefenseCouncil\Domain\UGTM.Modules.DefenseCouncil.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\DefenseCouncil\Application\UGTM.Modules.DefenseCouncil.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\DefenseCouncil\Domain\UGTM.Modules.DefenseCouncil.Domain.csproj" />
+    <ProjectReference Include="..\..\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj" />
     <ProjectReference Include="..\BuildingBlocks.Testing\UGTM.BuildingBlocks.Testing.csproj" />
   </ItemGroup>
 

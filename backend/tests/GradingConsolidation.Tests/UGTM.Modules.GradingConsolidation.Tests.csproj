@@ -16,9 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\GradingConsolidation\Application\UGTM.Modules.GradingConsolidation.Application.csproj" />
-    <ProjectReference Include="..\..\src\Modules\GradingConsolidation\Domain\UGTM.Modules.GradingConsolidation.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Modules\GradingConsolidation\Infrastructure\UGTM.Modules.GradingConsolidation.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\GradingConsolidation\Application\UGTM.Modules.GradingConsolidation.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\GradingConsolidation\Domain\UGTM.Modules.GradingConsolidation.Domain.csproj" />
+    <ProjectReference Include="..\..\Modules\GradingConsolidation\Infrastructure\UGTM.Modules.GradingConsolidation.Infrastructure.csproj" />
     <ProjectReference Include="..\BuildingBlocks.Testing\UGTM.BuildingBlocks.Testing.csproj" />
   </ItemGroup>
 

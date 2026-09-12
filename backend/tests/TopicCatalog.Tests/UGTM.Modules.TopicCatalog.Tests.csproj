@@ -16,9 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\TopicCatalog\Application\UGTM.Modules.TopicCatalog.Application.csproj" />
-    <ProjectReference Include="..\..\src\Modules\TopicCatalog\Domain\UGTM.Modules.TopicCatalog.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Modules\TopicCatalog\Infrastructure\UGTM.Modules.TopicCatalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\TopicCatalog\Application\UGTM.Modules.TopicCatalog.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\TopicCatalog\Domain\UGTM.Modules.TopicCatalog.Domain.csproj" />
+    <ProjectReference Include="..\..\Modules\TopicCatalog\Infrastructure\UGTM.Modules.TopicCatalog.Infrastructure.csproj" />
     <ProjectReference Include="..\BuildingBlocks.Testing\UGTM.BuildingBlocks.Testing.csproj" />
   </ItemGroup>
 

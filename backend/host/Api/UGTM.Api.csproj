@@ -6,15 +6,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\AcademicPeriods\Infrastructure\UGTM.Modules.AcademicPeriods.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Modules\FinalReportEvaluation\Infrastructure\UGTM.Modules.FinalReportEvaluation.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Modules\GradingConsolidation\Infrastructure\UGTM.Modules.GradingConsolidation.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Identity\Infrastructure\UGTM.Modules.Identity.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Modules\MidtermProgress\Infrastructure\UGTM.Modules.MidtermProgress.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Notifications\Infrastructure\UGTM.Modules.Notifications.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Modules\ThesisManagement\Infrastructure\UGTM.Modules.ThesisManagement.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Modules\TopicCatalog\Infrastructure\UGTM.Modules.TopicCatalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\AcademicPeriods\Infrastructure\UGTM.Modules.AcademicPeriods.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\FinalReportEvaluation\Infrastructure\UGTM.Modules.FinalReportEvaluation.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\GradingConsolidation\Infrastructure\UGTM.Modules.GradingConsolidation.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\Infrastructure\UGTM.Modules.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\MidtermProgress\Infrastructure\UGTM.Modules.MidtermProgress.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\Infrastructure\UGTM.Modules.Notifications.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\ThesisManagement\Infrastructure\UGTM.Modules.ThesisManagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\TopicCatalog\Infrastructure\UGTM.Modules.TopicCatalog.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

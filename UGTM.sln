@@ -6,107 +6,105 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "host", "host", "{32EDBA42-B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Api", "backend\host\Api\UGTM.Api.csproj", "{4B3D0D37-DB5C-4666-8F1C-B369F6AA06C1}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0F9113EE-888A-26D2-68B0-4A7D0A2A8745}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "BuildingBlocks", "BuildingBlocks", "{3518C6FE-7C6C-C575-CC03-E8DAA010DCAF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.BuildingBlocks.Application", "backend\src\BuildingBlocks\Application\UGTM.BuildingBlocks.Application.csproj", "{72CFE6E2-25B8-4EE5-B204-D4BA8799FD19}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.BuildingBlocks.Application", "backend\BuildingBlocks\Application\UGTM.BuildingBlocks.Application.csproj", "{72CFE6E2-25B8-4EE5-B204-D4BA8799FD19}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.BuildingBlocks.Domain", "backend\src\BuildingBlocks\Domain\UGTM.BuildingBlocks.Domain.csproj", "{1FA6AE9E-509F-4A6E-9E84-1C6E3465CA22}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.BuildingBlocks.Domain", "backend\BuildingBlocks\Domain\UGTM.BuildingBlocks.Domain.csproj", "{1FA6AE9E-509F-4A6E-9E84-1C6E3465CA22}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.BuildingBlocks.Infrastructure", "backend\src\BuildingBlocks\Infrastructure\UGTM.BuildingBlocks.Infrastructure.csproj", "{2274FBE9-70B2-4461-A930-713670A6F0A3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.BuildingBlocks.Infrastructure", "backend\BuildingBlocks\Infrastructure\UGTM.BuildingBlocks.Infrastructure.csproj", "{2274FBE9-70B2-4461-A930-713670A6F0A3}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Modules", "Modules", "{E67A9407-3F77-8E1E-44C0-D60C1E808A95}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AcademicPeriods", "AcademicPeriods", "{221F626D-EB9E-0EB5-057F-EE336E35FAF0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.AcademicPeriods.Application", "backend\src\Modules\AcademicPeriods\Application\UGTM.Modules.AcademicPeriods.Application.csproj", "{7F5CFFAE-ED12-4D95-987E-DC53D936A8B6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.AcademicPeriods.Application", "backend\Modules\AcademicPeriods\Application\UGTM.Modules.AcademicPeriods.Application.csproj", "{7F5CFFAE-ED12-4D95-987E-DC53D936A8B6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.AcademicPeriods.Contracts", "backend\src\Modules\AcademicPeriods\Contracts\UGTM.Modules.AcademicPeriods.Contracts.csproj", "{41A97572-70DE-4651-B92F-404AD4AF7A19}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.AcademicPeriods.Contracts", "backend\Modules\AcademicPeriods\Contracts\UGTM.Modules.AcademicPeriods.Contracts.csproj", "{41A97572-70DE-4651-B92F-404AD4AF7A19}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.AcademicPeriods.Domain", "backend\src\Modules\AcademicPeriods\Domain\UGTM.Modules.AcademicPeriods.Domain.csproj", "{47CB3695-C9AC-461D-BE2C-FE9E8FCF2689}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.AcademicPeriods.Domain", "backend\Modules\AcademicPeriods\Domain\UGTM.Modules.AcademicPeriods.Domain.csproj", "{47CB3695-C9AC-461D-BE2C-FE9E8FCF2689}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.AcademicPeriods.Infrastructure", "backend\src\Modules\AcademicPeriods\Infrastructure\UGTM.Modules.AcademicPeriods.Infrastructure.csproj", "{4FA4D735-461C-434C-8FCD-A14590AB6B60}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.AcademicPeriods.Infrastructure", "backend\Modules\AcademicPeriods\Infrastructure\UGTM.Modules.AcademicPeriods.Infrastructure.csproj", "{4FA4D735-461C-434C-8FCD-A14590AB6B60}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DefenseCouncil", "DefenseCouncil", "{6F67A1EE-4599-3E1C-C2D8-4949B1C42A19}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.DefenseCouncil.Application", "backend\src\Modules\DefenseCouncil\Application\UGTM.Modules.DefenseCouncil.Application.csproj", "{A9762225-8CCC-472A-8950-7CD67A22B1E0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.DefenseCouncil.Application", "backend\Modules\DefenseCouncil\Application\UGTM.Modules.DefenseCouncil.Application.csproj", "{A9762225-8CCC-472A-8950-7CD67A22B1E0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.DefenseCouncil.Contracts", "backend\src\Modules\DefenseCouncil\Contracts\UGTM.Modules.DefenseCouncil.Contracts.csproj", "{6817B5DF-0F4C-44C5-9235-B3B518C2B499}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.DefenseCouncil.Contracts", "backend\Modules\DefenseCouncil\Contracts\UGTM.Modules.DefenseCouncil.Contracts.csproj", "{6817B5DF-0F4C-44C5-9235-B3B518C2B499}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.DefenseCouncil.Domain", "backend\src\Modules\DefenseCouncil\Domain\UGTM.Modules.DefenseCouncil.Domain.csproj", "{62B85034-178C-4B29-9530-7AD5A3258FF3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.DefenseCouncil.Domain", "backend\Modules\DefenseCouncil\Domain\UGTM.Modules.DefenseCouncil.Domain.csproj", "{62B85034-178C-4B29-9530-7AD5A3258FF3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.DefenseCouncil.Infrastructure", "backend\src\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj", "{1E0F0998-CB9C-4C1D-B420-FB4BCE4772CF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.DefenseCouncil.Infrastructure", "backend\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj", "{1E0F0998-CB9C-4C1D-B420-FB4BCE4772CF}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "FinalReportEvaluation", "FinalReportEvaluation", "{49DF0C93-3280-4F21-2431-D07FF3022DD4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.FinalReportEvaluation.Application", "backend\src\Modules\FinalReportEvaluation\Application\UGTM.Modules.FinalReportEvaluation.Application.csproj", "{DCC5F146-0D8C-4586-A371-711110A49D87}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.FinalReportEvaluation.Application", "backend\Modules\FinalReportEvaluation\Application\UGTM.Modules.FinalReportEvaluation.Application.csproj", "{DCC5F146-0D8C-4586-A371-711110A49D87}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.FinalReportEvaluation.Contracts", "backend\src\Modules\FinalReportEvaluation\Contracts\UGTM.Modules.FinalReportEvaluation.Contracts.csproj", "{02D7156A-93BF-4600-97C9-A57C0EECAD99}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.FinalReportEvaluation.Contracts", "backend\Modules\FinalReportEvaluation\Contracts\UGTM.Modules.FinalReportEvaluation.Contracts.csproj", "{02D7156A-93BF-4600-97C9-A57C0EECAD99}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.FinalReportEvaluation.Domain", "backend\src\Modules\FinalReportEvaluation\Domain\UGTM.Modules.FinalReportEvaluation.Domain.csproj", "{6FC15BB7-9795-4BED-8126-C83BD5C963FD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.FinalReportEvaluation.Domain", "backend\Modules\FinalReportEvaluation\Domain\UGTM.Modules.FinalReportEvaluation.Domain.csproj", "{6FC15BB7-9795-4BED-8126-C83BD5C963FD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.FinalReportEvaluation.Infrastructure", "backend\src\Modules\FinalReportEvaluation\Infrastructure\UGTM.Modules.FinalReportEvaluation.Infrastructure.csproj", "{A92F270A-935F-485D-B597-07C2E0BA8253}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.FinalReportEvaluation.Infrastructure", "backend\Modules\FinalReportEvaluation\Infrastructure\UGTM.Modules.FinalReportEvaluation.Infrastructure.csproj", "{A92F270A-935F-485D-B597-07C2E0BA8253}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "GradingConsolidation", "GradingConsolidation", "{28E652CF-92DF-A3E7-248D-D814DBBB9B56}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.GradingConsolidation.Application", "backend\src\Modules\GradingConsolidation\Application\UGTM.Modules.GradingConsolidation.Application.csproj", "{58CE16C3-5151-4C36-9541-D748A9A35DD8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.GradingConsolidation.Application", "backend\Modules\GradingConsolidation\Application\UGTM.Modules.GradingConsolidation.Application.csproj", "{58CE16C3-5151-4C36-9541-D748A9A35DD8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.GradingConsolidation.Contracts", "backend\src\Modules\GradingConsolidation\Contracts\UGTM.Modules.GradingConsolidation.Contracts.csproj", "{27ED2B92-9C54-4D61-9BEC-1BFCC504BE61}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.GradingConsolidation.Contracts", "backend\Modules\GradingConsolidation\Contracts\UGTM.Modules.GradingConsolidation.Contracts.csproj", "{27ED2B92-9C54-4D61-9BEC-1BFCC504BE61}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.GradingConsolidation.Domain", "backend\src\Modules\GradingConsolidation\Domain\UGTM.Modules.GradingConsolidation.Domain.csproj", "{8D17FB5C-8F6A-474D-9887-69F6A316ED4D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.GradingConsolidation.Domain", "backend\Modules\GradingConsolidation\Domain\UGTM.Modules.GradingConsolidation.Domain.csproj", "{8D17FB5C-8F6A-474D-9887-69F6A316ED4D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.GradingConsolidation.Infrastructure", "backend\src\Modules\GradingConsolidation\Infrastructure\UGTM.Modules.GradingConsolidation.Infrastructure.csproj", "{869DEB17-8532-4497-BFCC-3479A79104D7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.GradingConsolidation.Infrastructure", "backend\Modules\GradingConsolidation\Infrastructure\UGTM.Modules.GradingConsolidation.Infrastructure.csproj", "{869DEB17-8532-4497-BFCC-3479A79104D7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Identity", "Identity", "{E7ACF62A-4792-2521-47ED-6ECBF18731BB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Identity.Application", "backend\src\Modules\Identity\Application\UGTM.Modules.Identity.Application.csproj", "{3C69EFF6-6CF5-43C1-AFE2-72C047C34E95}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Identity.Application", "backend\Modules\Identity\Application\UGTM.Modules.Identity.Application.csproj", "{3C69EFF6-6CF5-43C1-AFE2-72C047C34E95}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Identity.Contracts", "backend\src\Modules\Identity\Contracts\UGTM.Modules.Identity.Contracts.csproj", "{AF1C6AAF-57A9-4244-9811-4551D4FAD906}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Identity.Contracts", "backend\Modules\Identity\Contracts\UGTM.Modules.Identity.Contracts.csproj", "{AF1C6AAF-57A9-4244-9811-4551D4FAD906}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Identity.Domain", "backend\src\Modules\Identity\Domain\UGTM.Modules.Identity.Domain.csproj", "{6B14E62B-B794-4424-91DD-868C80585AC5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Identity.Domain", "backend\Modules\Identity\Domain\UGTM.Modules.Identity.Domain.csproj", "{6B14E62B-B794-4424-91DD-868C80585AC5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Identity.Infrastructure", "backend\src\Modules\Identity\Infrastructure\UGTM.Modules.Identity.Infrastructure.csproj", "{9B2A7DD8-8C84-4C4A-8048-E6A8B27F021F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Identity.Infrastructure", "backend\Modules\Identity\Infrastructure\UGTM.Modules.Identity.Infrastructure.csproj", "{9B2A7DD8-8C84-4C4A-8048-E6A8B27F021F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MidtermProgress", "MidtermProgress", "{C26DA815-2D32-E701-6217-EB4425796011}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.MidtermProgress.Application", "backend\src\Modules\MidtermProgress\Application\UGTM.Modules.MidtermProgress.Application.csproj", "{3FFA3A6D-261C-4F76-9409-934F58F4DB04}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.MidtermProgress.Application", "backend\Modules\MidtermProgress\Application\UGTM.Modules.MidtermProgress.Application.csproj", "{3FFA3A6D-261C-4F76-9409-934F58F4DB04}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.MidtermProgress.Contracts", "backend\src\Modules\MidtermProgress\Contracts\UGTM.Modules.MidtermProgress.Contracts.csproj", "{06B3C104-4514-4D2B-855A-5629AD4B3F74}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.MidtermProgress.Contracts", "backend\Modules\MidtermProgress\Contracts\UGTM.Modules.MidtermProgress.Contracts.csproj", "{06B3C104-4514-4D2B-855A-5629AD4B3F74}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.MidtermProgress.Domain", "backend\src\Modules\MidtermProgress\Domain\UGTM.Modules.MidtermProgress.Domain.csproj", "{ECFE6BA6-102E-4C9B-983A-F4BAF93589F7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.MidtermProgress.Domain", "backend\Modules\MidtermProgress\Domain\UGTM.Modules.MidtermProgress.Domain.csproj", "{ECFE6BA6-102E-4C9B-983A-F4BAF93589F7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.MidtermProgress.Infrastructure", "backend\src\Modules\MidtermProgress\Infrastructure\UGTM.Modules.MidtermProgress.Infrastructure.csproj", "{D79822DF-E59D-4209-847E-3522FBB7C2D2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.MidtermProgress.Infrastructure", "backend\Modules\MidtermProgress\Infrastructure\UGTM.Modules.MidtermProgress.Infrastructure.csproj", "{D79822DF-E59D-4209-847E-3522FBB7C2D2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Notifications", "Notifications", "{52B05117-6A7F-820F-ADA7-D2303DEA3C3C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Notifications.Application", "backend\src\Modules\Notifications\Application\UGTM.Modules.Notifications.Application.csproj", "{897BE978-BB08-4768-9214-EC022B054A47}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Notifications.Application", "backend\Modules\Notifications\Application\UGTM.Modules.Notifications.Application.csproj", "{897BE978-BB08-4768-9214-EC022B054A47}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Notifications.Contracts", "backend\src\Modules\Notifications\Contracts\UGTM.Modules.Notifications.Contracts.csproj", "{117B48B9-1BC1-4541-B2E5-67EA32BA1576}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Notifications.Contracts", "backend\Modules\Notifications\Contracts\UGTM.Modules.Notifications.Contracts.csproj", "{117B48B9-1BC1-4541-B2E5-67EA32BA1576}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Notifications.Domain", "backend\src\Modules\Notifications\Domain\UGTM.Modules.Notifications.Domain.csproj", "{46F37753-C52D-4286-92C0-18453B7FF25B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Notifications.Domain", "backend\Modules\Notifications\Domain\UGTM.Modules.Notifications.Domain.csproj", "{46F37753-C52D-4286-92C0-18453B7FF25B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Notifications.Infrastructure", "backend\src\Modules\Notifications\Infrastructure\UGTM.Modules.Notifications.Infrastructure.csproj", "{C7408B50-DC2A-44E5-A028-38B78C397DD0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.Notifications.Infrastructure", "backend\Modules\Notifications\Infrastructure\UGTM.Modules.Notifications.Infrastructure.csproj", "{C7408B50-DC2A-44E5-A028-38B78C397DD0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ThesisManagement", "ThesisManagement", "{DCAB5AAC-2A25-B6FA-FB6C-470922E24455}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.ThesisManagement.Application", "backend\src\Modules\ThesisManagement\Application\UGTM.Modules.ThesisManagement.Application.csproj", "{11C32931-B985-470A-901A-163AFA276ACF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.ThesisManagement.Application", "backend\Modules\ThesisManagement\Application\UGTM.Modules.ThesisManagement.Application.csproj", "{11C32931-B985-470A-901A-163AFA276ACF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.ThesisManagement.Contracts", "backend\src\Modules\ThesisManagement\Contracts\UGTM.Modules.ThesisManagement.Contracts.csproj", "{36634659-BBBD-43FC-8126-54C09F7F4915}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.ThesisManagement.Contracts", "backend\Modules\ThesisManagement\Contracts\UGTM.Modules.ThesisManagement.Contracts.csproj", "{36634659-BBBD-43FC-8126-54C09F7F4915}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.ThesisManagement.Domain", "backend\src\Modules\ThesisManagement\Domain\UGTM.Modules.ThesisManagement.Domain.csproj", "{1A868B10-EC62-4890-99A4-FFFF51B60503}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.ThesisManagement.Domain", "backend\Modules\ThesisManagement\Domain\UGTM.Modules.ThesisManagement.Domain.csproj", "{1A868B10-EC62-4890-99A4-FFFF51B60503}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.ThesisManagement.Infrastructure", "backend\src\Modules\ThesisManagement\Infrastructure\UGTM.Modules.ThesisManagement.Infrastructure.csproj", "{B6235E0F-018A-4626-9274-B1E1A8091C14}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.ThesisManagement.Infrastructure", "backend\Modules\ThesisManagement\Infrastructure\UGTM.Modules.ThesisManagement.Infrastructure.csproj", "{B6235E0F-018A-4626-9274-B1E1A8091C14}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TopicCatalog", "TopicCatalog", "{621FAF4A-8C91-FB60-855F-87B8919DC463}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.TopicCatalog.Application", "backend\src\Modules\TopicCatalog\Application\UGTM.Modules.TopicCatalog.Application.csproj", "{EBC7B674-458E-4123-ACB1-17EC3022044F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.TopicCatalog.Application", "backend\Modules\TopicCatalog\Application\UGTM.Modules.TopicCatalog.Application.csproj", "{EBC7B674-458E-4123-ACB1-17EC3022044F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.TopicCatalog.Contracts", "backend\src\Modules\TopicCatalog\Contracts\UGTM.Modules.TopicCatalog.Contracts.csproj", "{A9CDE37F-32EC-4AF8-B11E-B4BB0857C9E1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.TopicCatalog.Contracts", "backend\Modules\TopicCatalog\Contracts\UGTM.Modules.TopicCatalog.Contracts.csproj", "{A9CDE37F-32EC-4AF8-B11E-B4BB0857C9E1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.TopicCatalog.Domain", "backend\src\Modules\TopicCatalog\Domain\UGTM.Modules.TopicCatalog.Domain.csproj", "{214962A6-1BA1-4446-9F4B-54A70117EC96}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.TopicCatalog.Domain", "backend\Modules\TopicCatalog\Domain\UGTM.Modules.TopicCatalog.Domain.csproj", "{214962A6-1BA1-4446-9F4B-54A70117EC96}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.TopicCatalog.Infrastructure", "backend\src\Modules\TopicCatalog\Infrastructure\UGTM.Modules.TopicCatalog.Infrastructure.csproj", "{66DB7B7F-D83E-4168-8DF9-0F522E7EC92E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UGTM.Modules.TopicCatalog.Infrastructure", "backend\Modules\TopicCatalog\Infrastructure\UGTM.Modules.TopicCatalog.Infrastructure.csproj", "{66DB7B7F-D83E-4168-8DF9-0F522E7EC92E}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{F57642F3-C37C-D174-720E-6A6AAD5BEE22}"
 EndProject
@@ -761,12 +759,11 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{32EDBA42-B012-A9E3-D6BD-B1FED8C0BF1D} = {1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}
 		{4B3D0D37-DB5C-4666-8F1C-B369F6AA06C1} = {32EDBA42-B012-A9E3-D6BD-B1FED8C0BF1D}
-		{0F9113EE-888A-26D2-68B0-4A7D0A2A8745} = {1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}
-		{3518C6FE-7C6C-C575-CC03-E8DAA010DCAF} = {0F9113EE-888A-26D2-68B0-4A7D0A2A8745}
+		{3518C6FE-7C6C-C575-CC03-E8DAA010DCAF} = {1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}
 		{72CFE6E2-25B8-4EE5-B204-D4BA8799FD19} = {3518C6FE-7C6C-C575-CC03-E8DAA010DCAF}
 		{1FA6AE9E-509F-4A6E-9E84-1C6E3465CA22} = {3518C6FE-7C6C-C575-CC03-E8DAA010DCAF}
 		{2274FBE9-70B2-4461-A930-713670A6F0A3} = {3518C6FE-7C6C-C575-CC03-E8DAA010DCAF}
-		{E67A9407-3F77-8E1E-44C0-D60C1E808A95} = {0F9113EE-888A-26D2-68B0-4A7D0A2A8745}
+		{E67A9407-3F77-8E1E-44C0-D60C1E808A95} = {1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}
 		{221F626D-EB9E-0EB5-057F-EE336E35FAF0} = {E67A9407-3F77-8E1E-44C0-D60C1E808A95}
 		{7F5CFFAE-ED12-4D95-987E-DC53D936A8B6} = {221F626D-EB9E-0EB5-057F-EE336E35FAF0}
 		{41A97572-70DE-4651-B92F-404AD4AF7A19} = {221F626D-EB9E-0EB5-057F-EE336E35FAF0}
