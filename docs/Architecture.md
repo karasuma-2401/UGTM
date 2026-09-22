@@ -374,69 +374,43 @@ flowchart TD
 Biểu đồ lớp mã nguồn mô tả mô hình Thực thể Miền (Domain Aggregate) đại diện cho đề tài khóa luận trong phân hệ đăng ký & đề cương:
 
 ```mermaid
-classDiagram
-    class AggregateRoot {
-        <<abstract>>
-        +Guid Id
-        +IDomainEvent[] DomainEvents
-        #AddDomainEvent(IDomainEvent domainEvent)
-        +ClearDomainEvents()
-    }
+flowchart TB
+    subgraph AggregateRoot["AggregateRoot &lt;&lt;abstract&gt;&gt;"]
+        AR_Content["+ Guid Id<br/>+ List~IDomainEvent~ DomainEvents<br/># AddDomainEvent(domainEvent)<br/>+ ClearDomainEvents()"]
+    end
 
-    class Entity {
-        <<abstract>>
-        +Guid Id
-        +bool Equals(object obj)
-        +int GetHashCode()
-    }
+    subgraph Entity["Entity &lt;&lt;abstract&gt;&gt;"]
+        E_Content["+ Guid Id<br/>+ bool Equals(obj)<br/>+ int GetHashCode()"]
+    end
 
-    class Thesis {
-        -Guid _topicId
-        -Guid _periodId
-        -Guid _supervisorId
-        -StudentMember[] _members
-        -ThesisOutline _outline
-        -ThesisStatus _status
-        +Thesis(Guid topicId, Guid periodId, Guid supervisorId, Guid creatorStudentId)
-        +Result AddMember(Guid studentId, string fullName)
-        +Result SubmitOutline(string fileUrl, string fileName, long fileSizeBytes)
-        +Result ReviewOutline(bool isApproved, string remarks, Guid reviewerId)
-        +Result ChangeStatus(ThesisStatus newStatus)
-    }
+    subgraph Thesis["Thesis (Aggregate Root)"]
+        T_Content["- Guid _topicId<br/>- Guid _academicPeriodId<br/>- Guid _supervisorId<br/>- List~StudentMember~ _members<br/>- ThesisOutline _outline<br/>- ThesisStatus _status<br/>------------------------------------------------<br/>+ AddMember(studentId, fullName): Result<br/>+ SubmitOutline(fileUrl, fileName, fileSize): Result<br/>+ ReviewOutline(isApproved, remarks, reviewerId): Result<br/>+ ChangeStatus(newStatus): Result"]
+    end
 
-    class StudentMember {
-        +Guid StudentId
-        +string FullName
-        +bool IsLeader
-        +DateTime JoinedAt
-    }
+    subgraph StudentMember["StudentMember (Entity)"]
+        SM_Content["+ Guid StudentId<br/>+ string FullName<br/>+ bool IsLeader<br/>+ DateTime JoinedAt"]
+    end
 
-    class ThesisOutline {
-        +string FileUrl
-        +string FileName
-        +int Version
-        +DateTime SubmittedAt
-        +string ReviewStatus
-        +string Remarks
-    }
+    subgraph ThesisOutline["ThesisOutline (Value Object)"]
+        TO_Content["+ string FileUrl<br/>+ string FileName<br/>+ int Version<br/>+ DateTime SubmittedAt<br/>+ string ReviewStatus<br/>+ string Remarks"]
+    end
 
-    class ThesisStatus {
-        <<enumeration>>
-        Registered
-        OutlinePendingReview
-        OutlineNeedRevision
-        OutlineApproved
-        InProgress
-        StoppedAtMidterm
-        ReadyForDefense
-        Completed
-    }
+    subgraph ThesisStatus["ThesisStatus (Enum)"]
+        TS_Content["• Registered<br/>• OutlinePendingReview<br/>• OutlineNeedRevision<br/>• OutlineApproved<br/>• InProgress<br/>• StoppedAtMidterm<br/>• ReadyForDefense<br/>• Completed"]
+    end
 
-    AggregateRoot <|-- Thesis
-    Entity <|-- StudentMember
-    Thesis *-- "1..3" StudentMember : members
-    Thesis *-- "0..1" ThesisOutline : outline
-    Thesis --> ThesisStatus : status
+    AggregateRoot -->|kế thừa| Thesis
+    Entity -->|kế thừa| StudentMember
+    Thesis -->|sở hữu 1..3 thành viên| StudentMember
+    Thesis -->|chứa 0..1 đề cương| ThesisOutline
+    Thesis -->|trạng thái| ThesisStatus
+
+    style AggregateRoot fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+    style Entity fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+    style Thesis fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
+    style StudentMember fill:#e8f5e9,stroke:#388e3c,stroke-width:1px
+    style ThesisOutline fill:#fff9c4,stroke:#fbc02d,stroke-width:1px
+    style ThesisStatus fill:#fff3e0,stroke:#f57c00,stroke-width:1px
 ```
 
 ---
