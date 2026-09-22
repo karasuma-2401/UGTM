@@ -67,24 +67,24 @@ flowchart TB
     end
 
     subgraph Academic["Academic Periods"]
-        Period["Academic Period"] -->|has| PeriodStatus["Period Status\n(Draft, Active, Completed)"]
+        Period["Academic Period"] -->|has| PeriodStatus["Period Status<br/>Draft, Active, Completed"]
     end
 
     subgraph Topics["Topic Catalog"]
         Proposal["Topic Proposal"] -->|for| Period
-        Proposal -->|has| ProposalStatus["Proposal Status\n(Draft, Submitted, Approved, Rejected)"]
+        Proposal -->|has| ProposalStatus["Proposal Status<br/>Draft, Submitted, Approved, Rejected"]
     end
 
     subgraph Thesis["Thesis Management"]
         Reg["Thesis Registration"] -->|registers| Proposal
-        Reg *--|consists of| Member["Student Member (1..3)"]
-        Reg *--|contains| Outline["Thesis Outline (0..1)"]
-        Outline -->|has| OutlineStatus["Outline Status\n(PendingReview, Approved, NeedRevision)"]
+        Reg -->|consists of| Member["Student Member (1..3)"]
+        Reg -->|contains| Outline["Thesis Outline (0..1)"]
+        Outline -->|has| OutlineStatus["Outline Status<br/>PendingReview, Approved, NeedRevision"]
     end
 
     subgraph Progress["Midterm Progress"]
         MidReport["Midterm Report"] -->|for| Reg
-        MidReport -->|evaluated by GVHD| MidDecision["Gatekeeper 2 Decision\n(AllowedToContinue, Stopped)"]
+        MidReport -->|evaluated by GVHD| MidDecision["Gatekeeper 2 Decision<br/>AllowedToContinue, Stopped"]
         TitleChange["Topic Change Request"] -->|modifies title for| Reg
     end
 
@@ -92,12 +92,12 @@ flowchart TB
         Final["Final Thesis Report"] -->|for| Reg
         SupEval["Supervisor Assessment"] -->|evaluates| Final
         RevEval["Reviewer Assessment"] -->|reviews| Final
-        RevEval -->|concludes| RevDecision["Reviewer Conclusion\n(AllowedForDefense, NotAllowed)"]
+        RevEval -->|concludes| RevDecision["Reviewer Conclusion<br/>AllowedForDefense, NotAllowed"]
     end
 
     subgraph Council["Defense Council"]
-        CouncilGroup["Defense Council"] *--|schedules| Session["Council Session"]
-        Session *--|evaluated by (3..5)| MemberEval["Council Member Evaluation"]
+        CouncilGroup["Defense Council"] -->|schedules| Session["Council Session"]
+        Session -->|evaluated by 3..5 members| MemberEval["Council Member Evaluation"]
         Session -->|defense of| Final
     end
 
