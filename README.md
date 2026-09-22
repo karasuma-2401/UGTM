@@ -1,6 +1,6 @@
 # UGTM — Hệ thống Quản lý Khóa luận Tốt nghiệp
 
-Ứng dụng web hỗ trợ quy trình quản lý Khóa luận Tốt nghiệp (KLTN): đăng ký/duyệt đề tài, đề cương, báo cáo giữa kỳ/cuối kỳ, hội đồng chấm, tổng hợp điểm. Xem đặc tả chi tiết tại [`docs/Requirements.md`](docs/Requirements.md) và [`docs/Modules.md`](docs/Modules.md).
+Ứng dụng web hỗ trợ quy trình quản lý Khóa luận Tốt nghiệp (KLTN): đăng ký/duyệt đề tài, đề cương, báo cáo giữa kỳ/cuối kỳ, hội đồng chấm, tổng hợp điểm. Xem đặc tả chi tiết tại [`docs/Requirements.md`](docs/Requirements.md), [`docs/Modules.md`](docs/Modules.md) và thiết kế kiến trúc tại [`docs/Architecture.md`](docs/Architecture.md).
 
 ## Tech stack
 
@@ -8,8 +8,8 @@
 |---|---|
 | Backend | ASP.NET Core (.NET 10), kiến trúc **Modular Monolith + DDD** (tham khảo [kgrzybek/modular-monolith-with-ddd](https://github.com/kgrzybek/modular-monolith-with-ddd)) |
 | Frontend | React 19 + TypeScript + Vite + Ant Design + React Router + TanStack Query |
-| Database | SQL Server (dự kiến — chưa cấu hình, xem mục [Trạng thái hiện tại](#trạng-thái-hiện-tại)) |
-| Auth | ASP.NET Core Identity + JWT (dự kiến) |
+| Database | SQL Server |
+| Auth | ASP.NET Core Identity + JWT |
 
 ## Yêu cầu môi trường
 
@@ -134,19 +134,3 @@ Chạy song song backend (bước 2) và frontend (bước 3), sau đó mở `ht
 - `Domain` chỉ được phụ thuộc `BuildingBlocks.Domain` và `Contracts` của chính module đó.
 - Một module **không được** tham chiếu trực tiếp `Domain`/`Application`/`Infrastructure` của module khác — chỉ được giao tiếp qua `Contracts`. Ranh giới này được enforce tự động bởi `backend/tests/Architecture.Tests` (dựa trên `Assembly.GetReferencedAssemblies()`), build/test sẽ đỏ ngay nếu vi phạm.
 - Host (`UGTM.Api`) là composition root: mỗi module implement interface `IModule` (`RegisterModule` để đăng ký DI, `MapEndpoints` để khai báo route), được liệt kê tường minh trong `Program.cs` — không dùng reflection scan.
-
-## Trạng thái hiện tại
-
-Dự án đang ở giai đoạn khung sườn (scaffolding):
-- ✅ Cấu trúc project, dependency graph giữa các layer/module, composition root, Architecture Tests.
-- ✅ Frontend SPA cơ bản với routing + gọi API thật.
-- ⏳ Chưa có: EF Core/database thật, MediatR/CQRS, ASP.NET Core Identity + JWT, docker-compose, CI.
-
-## Troubleshooting
-
-| Vấn đề | Cách xử lý |
-|---|---|
-| `dotnet build` báo lỗi version SDK | Kiểm tra `dotnet --version` ≥ 10.0. Cài lại từ trang chủ .NET nếu thiếu. |
-| Frontend gọi API bị lỗi CORS | Backend phải chạy đúng port `5287` (http). Nếu đổi port, sửa `WithOrigins(...)` trong `Program.cs`. |
-| Port `5287`/`5173` đã bị chiếm | Dừng process đang dùng port, hoặc đổi port khi chạy (`dotnet run --urls ...`, `npm run dev -- --port ...`) và cập nhật `VITE_API_BASE_URL`/CORS tương ứng. |
-| `npm install` lỗi trên Windows | Dùng PowerShell hoặc Git Bash (khuyến nghị), tránh `cmd.exe` thuần. |

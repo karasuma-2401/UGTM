@@ -1,0 +1,109 @@
+@startuml Gatekeeper_Workflow
+skinparam backgroundColor #FFFFFF
+skinparam state {
+    BackgroundColor #F8F9FA
+    BorderColor #1168BD
+    ArrowColor #08427B
+}
+
+title Biểu đồ Luồng Nghiệp vụ 7 Giai đoạn & 2 Cổng Kiểm soát KLTN 21 Tuần (UIT)
+
+[*] --> GiaiDoan1 : Tuần 0 - 1
+
+state "Giai đoạn 1: Đề xuất & Duyệt đề tài (Tuần 0 - 1)" as GiaiDoan1 {
+    state "GVHD Soạn đề tài" as S1
+    state "Khoa Thẩm định đề tài" as S2
+    state "Khoa Công bố danh mục đề tài" as S3
+    S1 --> S2 : Nộp đề tài
+    S2 --> S1 : Yêu cầu chỉnh sửa
+    S2 --> S3 : Duyệt Đạt
+}
+
+GiaiDoan1 --> GiaiDoan2 : Tuần 2 (Mở cổng đăng ký)
+
+state "Giai đoạn 2: Đăng ký nhóm & Nộp đề cương (Tuần 2)" as GiaiDoan2 {
+    state "Sinh viên đăng ký đề tài & ghép nhóm" as R1
+    state "Nộp file Đề cương chi tiết (<= 20MB)" as R2
+    state "CỔNG KIỂM SOÁT 1: Khoa thẩm định đề cương" as Gate1
+    R1 --> R2 : GVHD xác nhận nhóm
+    R2 --> Gate1
+    Gate1 --> R2 : Không đạt / Cần sửa (Nộp lại)
+}
+
+Gate1 --> GiaiDoan3 : Duyệt Đạt -> Kích hoạt thực hiện KLTN
+
+state "Giai đoạn 3: Thực hiện KLTN & Xử lý ĐTĐT (Tuần 3 - 10)" as GiaiDoan3 {
+    state "Sinh viên thực hiện đề tài dưới hướng dẫn của GVHD" as T1
+    state "Luồng Đơn Đổi Tên Đề Tài (ĐTĐT) online 3 bên" as ChangeTitle {
+        state "SV tạo đơn ĐTĐT" as CT1
+        state "GVHD xác nhận" as CT2
+        state "Khoa phê duyệt" as CT3
+        state "PĐT duyệt quyết định" as CT4
+        state "Mở quyền nộp lại Đề cương mới" as CT5
+        CT1 --> CT2
+        CT2 --> CT3
+        CT3 --> CT4
+        CT4 --> CT5
+    }
+    state "Nộp Báo cáo giữa kỳ" as T2
+    T1 --> ChangeTitle : Nếu có điều chỉnh hướng
+    T1 --> T2 : Hạn chót Tuần 10
+}
+
+GiaiDoan3 --> GiaiDoan4 : Tuần 10 (Cổng kiểm soát 2)
+
+state "Giai đoạn 4: Đánh giá tiến độ giữa kỳ (Tuần 10)" as GiaiDoan4 {
+    state "CỔNG KIỂM SOÁT 2: GVHD đánh giá tiến độ" as Gate2
+    state "Dừng thực hiện KLTN (Khóa quyền)" as StopThesis
+    state "Được phép tiếp tục thực hiện KLTN" as ContinueThesis
+    Gate2 --> StopThesis : Không đồng ý cho tiếp tục
+    Gate2 --> ContinueThesis : Đồng ý cho tiếp tục
+}
+
+StopThesis --> [*] : Chấm dứt quy trình KLTN
+
+ContinueThesis --> GiaiDoan5 : Tuần 11 - 18
+
+state "Giai đoạn 5: Báo cáo cuối kỳ & Chấm phản biện (Tuần 11 - 18)" as GiaiDoan5 {
+    state "SV nộp Báo cáo cuối kỳ toàn văn" as F1
+    state "GVHD nhập nhận xét & điểm thành phần" as F2
+    state "Khoa phân công GVPB" as F3
+    state "GVPB nhận xét, chấm điểm & kết luận điều kiện" as F4
+    state "SV chỉnh sửa báo cáo theo góp ý GVPB" as F5
+    F1 --> F2
+    F2 --> F3
+    F3 --> F4
+    F4 --> F5 : Đồng ý cho ra bảo vệ
+}
+
+F4 --> [*] : Không đồng ý -> Không đủ điều kiện bảo vệ
+
+GiaiDoan5 --> GiaiDoan6 : Tuần 19 - 20
+
+state "Giai đoạn 6: Tổ chức Hội đồng & Lưu chiểu (Tuần 19 - 20)" as GiaiDoan6 {
+    state "Khoa lập dự thảo & PĐT ban hành QĐ Hội đồng" as C1
+    state "Buổi bảo vệ trực tiếp: Hội đồng chấm điểm" as C2
+    state "Thư ký bấm KHÓA BIÊN BẢN ĐIỂM (Read-only)" as C3
+    state "SV nộp Báo cáo hoàn thiện sau Hội đồng" as C4
+    state "Khoa xác nhận hoàn thành Lưu chiểu" as C5
+    C1 --> C2
+    C2 --> C3
+    C3 --> C4
+    C4 --> C5 : Mở điều kiện công bố điểm
+}
+
+GiaiDoan6 --> GiaiDoan7 : Tuần 21
+
+state "Giai đoạn 7: Tổng hợp & Công bố kết quả (Tuần 21)" as GiaiDoan7 {
+    state "Tự động tổng hợp 3 đầu điểm (GVHD, GVPB, HĐ)" as G1
+    state "Áp dụng công thức trọng số Strategy linh hoạt" as G2
+    state "Khoa công bố điểm chính thức cho Sinh viên" as G3
+    state "Xuất bảng điểm Excel/PDF & PĐT xét tốt nghiệp" as G4
+    G1 --> G2
+    G2 --> G3
+    G3 --> G4
+}
+
+GiaiDoan7 --> [*] : Hoàn tất chu kỳ KLTN thành công
+
+@enduml

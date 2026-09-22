@@ -1,0 +1,127 @@
+@startuml MultiSchema_Database
+skinparam linetype ortho
+skinparam packageStyle rectangle
+hide circle
+
+title Thiết kế CSDL Đa Schema (Multi-Schema Database) trong UGTM
+
+package "schema: identity" #E1F5FE {
+    entity "identity.Users" as Users {
+        * id : uniqueidentifier <<PK>>
+        --
+        * email : nvarchar(256) <<UK>>
+        * password_hash : nvarchar(max)
+        * role : nvarchar(50)
+        * is_active : bit
+        created_at : datetime2
+    }
+}
+
+package "schema: academic_periods" #F3E5F5 {
+    entity "academic_periods.Periods" as Periods {
+        * id : uniqueidentifier <<PK>>
+        --
+        * academic_year : nvarchar(20)
+        * semester : int
+        * start_date : datetime2
+        * end_date : datetime2
+        * status : nvarchar(50)
+    }
+}
+
+package "schema: topic_catalog" #E8F5E9 {
+    entity "topic_catalog.Topics" as Topics {
+        * id : uniqueidentifier <<PK>>
+        --
+        academic_period_id : uniqueidentifier <<Logic FK>>
+        supervisor_id : uniqueidentifier <<Logic FK>>
+        * title_vn : nvarchar(500)
+        * title_en : nvarchar(500)
+        * max_students : int
+        * status : nvarchar(50)
+    }
+}
+
+package "schema: thesis_management" #FFFDE7 {
+    entity "thesis_management.Theses" as Theses {
+        * id : uniqueidentifier <<PK>>
+        --
+        topic_id : uniqueidentifier <<Logic FK>>
+        academic_period_id : uniqueidentifier <<Logic FK>>
+        supervisor_id : uniqueidentifier <<Logic FK>>
+        * current_status : nvarchar(50)
+        registered_at : datetime2
+    }
+
+    entity "thesis_management.ThesisOutlines" as Outlines {
+        * id : uniqueidentifier <<PK>>
+        --
+        * thesis_id : uniqueidentifier <<FK>>
+        * file_url : nvarchar(1000)
+        * version : int
+        * review_status : nvarchar(50)
+        remarks : nvarchar(max)
+    }
+    Theses ||--o{ Outlines
+}
+
+package "schema: midterm_progress" #FBE9E7 {
+    entity "midterm_progress.MidtermReports" as MidtermReports {
+        * id : uniqueidentifier <<PK>>
+        --
+        thesis_id : uniqueidentifier <<Logic FK>>
+        file_url : nvarchar(1000)
+        supervisor_decision : nvarchar(50)
+        feedback : nvarchar(max)
+    }
+
+    entity "midterm_progress.TopicChangeRequests" as TopicChange {
+        * id : uniqueidentifier <<PK>>
+        --
+        thesis_id : uniqueidentifier <<Logic FK>>
+        new_title : nvarchar(500)
+        supervisor_status : nvarchar(50)
+        faculty_status : nvarchar(50)
+        academic_affairs_status : nvarchar(50)
+    }
+}
+
+package "schema: defense_councils" #EDE7F6 {
+    entity "defense_councils.Councils" as Councils {
+        * id : uniqueidentifier <<PK>>
+        --
+        academic_period_id : uniqueidentifier <<Logic FK>>
+        * council_name : nvarchar(200)
+        * room : nvarchar(100)
+        * defense_date : datetime2
+        * is_locked : bit
+    }
+}
+
+package "schema: grading_consolidation" #E0F2F1 {
+    entity "grading_consolidation.GradingResults" as GradingResults {
+        * id : uniqueidentifier <<PK>>
+        --
+        thesis_id : uniqueidentifier <<Logic FK>>
+        supervisor_score : decimal(4,2)
+        reviewer_score : decimal(4,2)
+        council_score : decimal(4,2)
+        final_score : decimal(4,2)
+        * is_published : bit
+    }
+}
+
+Topics ..> Periods : Logic FK (period_id)
+Theses ..> Topics : Logic FK (topic_id)
+MidtermReports ..> Theses : Logic FK (thesis_id)
+TopicChange ..> Theses : Logic FK (thesis_id)
+GradingResults ..> Theses : Logic FK (thesis_id)
+
+note right of Theses
+  <b>Quy tắc DDD:</b>
+  Tuyệt đối không tạo Foreign Key
+  vật lý liên schema để đảm bảo
+  tính đóng gói của từng Module.
+end note
+
+@enduml
