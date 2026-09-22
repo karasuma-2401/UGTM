@@ -67,24 +67,24 @@ flowchart TB
     end
 
     subgraph Academic["Academic Periods"]
-        Period["Academic Period"] -->|has| PeriodStatus["Period Status\n(Draft, Active, Completed)"]
+        Period["Academic Period"] -->|has| PeriodStatus["Period Status<br/>Draft, Active, Completed"]
     end
 
     subgraph Topics["Topic Catalog"]
         Proposal["Topic Proposal"] -->|for| Period
-        Proposal -->|has| ProposalStatus["Proposal Status\n(Draft, Submitted, Approved, Rejected)"]
+        Proposal -->|has| ProposalStatus["Proposal Status<br/>Draft, Submitted, Approved, Rejected"]
     end
 
     subgraph Thesis["Thesis Management"]
         Reg["Thesis Registration"] -->|registers| Proposal
-        Reg *--|consists of| Member["Student Member (1..3)"]
-        Reg *--|contains| Outline["Thesis Outline (0..1)"]
-        Outline -->|has| OutlineStatus["Outline Status\n(PendingReview, Approved, NeedRevision)"]
+        Reg -->|consists of| Member["Student Member (1..3)"]
+        Reg -->|contains| Outline["Thesis Outline (0..1)"]
+        Outline -->|has| OutlineStatus["Outline Status<br/>PendingReview, Approved, NeedRevision"]
     end
 
     subgraph Progress["Midterm Progress"]
         MidReport["Midterm Report"] -->|for| Reg
-        MidReport -->|evaluated by GVHD| MidDecision["Gatekeeper 2 Decision\n(AllowedToContinue, Stopped)"]
+        MidReport -->|evaluated by GVHD| MidDecision["Gatekeeper 2 Decision<br/>AllowedToContinue, Stopped"]
         TitleChange["Topic Change Request"] -->|modifies title for| Reg
     end
 
@@ -92,12 +92,12 @@ flowchart TB
         Final["Final Thesis Report"] -->|for| Reg
         SupEval["Supervisor Assessment"] -->|evaluates| Final
         RevEval["Reviewer Assessment"] -->|reviews| Final
-        RevEval -->|concludes| RevDecision["Reviewer Conclusion\n(AllowedForDefense, NotAllowed)"]
+        RevEval -->|concludes| RevDecision["Reviewer Conclusion<br/>AllowedForDefense, NotAllowed"]
     end
 
     subgraph Council["Defense Council"]
-        CouncilGroup["Defense Council"] *--|schedules| Session["Council Session"]
-        Session *--|evaluated by (3..5)| MemberEval["Council Member Evaluation"]
+        CouncilGroup["Defense Council"] -->|schedules| Session["Council Session"]
+        Session -->|evaluated by 3..5 members| MemberEval["Council Member Evaluation"]
         Session -->|defense of| Final
     end
 
@@ -162,7 +162,7 @@ flowchart TB
     ADMIN -->|HTTPS / Web Browser| UGTM
 
     UGTM -->|SMTP / Background Task| EMAIL
-    UGTM -->|Lưu & tải tệp tin bản mềm| STORAGE
+    UGTM -->|Lưu và tải tệp tin bản mềm| STORAGE
 
     style UGTM fill:#1168bd,stroke:#0b4884,color:#ffffff,stroke-width:2px
     style SV fill:#08427b,stroke:#052e56,color:#ffffff
@@ -210,12 +210,12 @@ flowchart TB
     end
 
     USER -->|HTTPS / Trình duyệt| SPA
-    SPA -->|HTTPS / REST API (JWT Bearer Token)| API
+    SPA -->|HTTPS / REST API - JWT Bearer Token| API
     API -->|Publish / Subscribe Integration Events| BUS
-    BG -->|Quét định kỳ & Dispatch| BUS
+    BG -->|Quét định kỳ và Dispatch| BUS
     API -->|EF Core / Dapper / TCP 1433| SQL
     BG -->|Đọc Outbox / Cập nhật trạng thái| SQL
-    API -->|Lưu & đọc file Stream I/O| FILES
+    API -->|Lưu và đọc file Stream I/O| FILES
 
     style USER fill:#08427b,stroke:#052e56,color:#ffffff
     style SPA fill:#438dd5,stroke:#2e6295,color:#ffffff,stroke-width:2px
@@ -274,7 +274,7 @@ flowchart TB
     end
 
     Program -->|Khởi tạo qua IModule| Modules
-    Modules -.->|Kế thừa & Triển khai| BuildingBlocks
+    Modules -.->|Kế thừa và Triển khai| BuildingBlocks
     
     M1 --- DB1
     M2 --- DB2
@@ -374,69 +374,43 @@ flowchart TD
 Biểu đồ lớp mã nguồn mô tả mô hình Thực thể Miền (Domain Aggregate) đại diện cho đề tài khóa luận trong phân hệ đăng ký & đề cương:
 
 ```mermaid
-classDiagram
-    class AggregateRoot {
-        <<abstract>>
-        +Guid Id
-        +IDomainEvent[] DomainEvents
-        #AddDomainEvent(IDomainEvent domainEvent)
-        +ClearDomainEvents()
-    }
+flowchart TB
+    subgraph AggregateRoot["AggregateRoot &lt;&lt;abstract&gt;&gt;"]
+        AR_Content["+ Guid Id<br/>+ List~IDomainEvent~ DomainEvents<br/># AddDomainEvent(domainEvent)<br/>+ ClearDomainEvents()"]
+    end
 
-    class Entity {
-        <<abstract>>
-        +Guid Id
-        +bool Equals(object obj)
-        +int GetHashCode()
-    }
+    subgraph Entity["Entity &lt;&lt;abstract&gt;&gt;"]
+        E_Content["+ Guid Id<br/>+ bool Equals(obj)<br/>+ int GetHashCode()"]
+    end
 
-    class Thesis {
-        -Guid _topicId
-        -Guid _periodId
-        -Guid _supervisorId
-        -StudentMember[] _members
-        -ThesisOutline _outline
-        -ThesisStatus _status
-        +Thesis(Guid topicId, Guid periodId, Guid supervisorId, Guid creatorStudentId)
-        +Result AddMember(Guid studentId, string fullName)
-        +Result SubmitOutline(string fileUrl, string fileName, long fileSizeBytes)
-        +Result ReviewOutline(bool isApproved, string remarks, Guid reviewerId)
-        +Result ChangeStatus(ThesisStatus newStatus)
-    }
+    subgraph Thesis["Thesis (Aggregate Root)"]
+        T_Content["- Guid _topicId<br/>- Guid _academicPeriodId<br/>- Guid _supervisorId<br/>- List~StudentMember~ _members<br/>- ThesisOutline _outline<br/>- ThesisStatus _status<br/>------------------------------------------------<br/>+ AddMember(studentId, fullName): Result<br/>+ SubmitOutline(fileUrl, fileName, fileSize): Result<br/>+ ReviewOutline(isApproved, remarks, reviewerId): Result<br/>+ ChangeStatus(newStatus): Result"]
+    end
 
-    class StudentMember {
-        +Guid StudentId
-        +string FullName
-        +bool IsLeader
-        +DateTime JoinedAt
-    }
+    subgraph StudentMember["StudentMember (Entity)"]
+        SM_Content["+ Guid StudentId<br/>+ string FullName<br/>+ bool IsLeader<br/>+ DateTime JoinedAt"]
+    end
 
-    class ThesisOutline {
-        +string FileUrl
-        +string FileName
-        +int Version
-        +DateTime SubmittedAt
-        +string ReviewStatus
-        +string Remarks
-    }
+    subgraph ThesisOutline["ThesisOutline (Value Object)"]
+        TO_Content["+ string FileUrl<br/>+ string FileName<br/>+ int Version<br/>+ DateTime SubmittedAt<br/>+ string ReviewStatus<br/>+ string Remarks"]
+    end
 
-    class ThesisStatus {
-        <<enumeration>>
-        Registered
-        OutlinePendingReview
-        OutlineNeedRevision
-        OutlineApproved
-        InProgress
-        StoppedAtMidterm
-        ReadyForDefense
-        Completed
-    }
+    subgraph ThesisStatus["ThesisStatus (Enum)"]
+        TS_Content["• Registered<br/>• OutlinePendingReview<br/>• OutlineNeedRevision<br/>• OutlineApproved<br/>• InProgress<br/>• StoppedAtMidterm<br/>• ReadyForDefense<br/>• Completed"]
+    end
 
-    AggregateRoot <|-- Thesis
-    Entity <|-- StudentMember
-    Thesis *-- "1..3" StudentMember : members
-    Thesis *-- "0..1" ThesisOutline : outline
-    Thesis --> ThesisStatus : status
+    AggregateRoot -->|kế thừa| Thesis
+    Entity -->|kế thừa| StudentMember
+    Thesis -->|sở hữu 1..3 thành viên| StudentMember
+    Thesis -->|chứa 0..1 đề cương| ThesisOutline
+    Thesis -->|trạng thái| ThesisStatus
+
+    style AggregateRoot fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+    style Entity fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+    style Thesis fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
+    style StudentMember fill:#e8f5e9,stroke:#388e3c,stroke-width:1px
+    style ThesisOutline fill:#fff9c4,stroke:#fbc02d,stroke-width:1px
+    style ThesisStatus fill:#fff3e0,stroke:#f57c00,stroke-width:1px
 ```
 
 ---
@@ -586,7 +560,7 @@ flowchart LR
 
     subgraph Infra["Hạ tầng Event Bus & Dispatcher"]
         Job["Quartz Job / Background Worker"] -->|Quét định kỳ mỗi 2s| OutboxA
-        Job -->|Đánh dấu Đã xử lý & Publish| Bus["In-Memory Event Bus\n(MediatR / Channels)"]
+        Job -->|Đánh dấu Đã xử lý và Publish| Bus["In-Memory Event Bus\n(MediatR / Channels)"]
     end
 
     subgraph ModuleB["Module B (Đích sự kiện - Ví dụ: Notifications)"]
@@ -658,89 +632,50 @@ Nhằm đảm bảo quy tắc DDD và tính sẵn sàng tách thành Microservic
 - **Ràng buộc khóa ngoại**: Không dùng Foreign Key vật lý qua lại giữa các schema. Quan hệ liên module được duy trì qua các khóa logic định danh (GUIDs).
 
 ```mermaid
-erDiagram
-    %% Schema identity
-    IDENTITY_USERS {
-        guid Id PK
-        string Email UK
-        string PasswordHash
-        string Role
-        bool IsActive
-    }
+flowchart TB
+    subgraph S_Identity["Schema: identity"]
+        T_Users["<b>identity.Users</b><br/>• Id: guid [PK]<br/>• Email: string [UK]<br/>• PasswordHash: string<br/>• Role: string<br/>• IsActive: bool"]
+    end
 
-    %% Schema academic
-    ACADEMIC_PERIODS {
-        guid Id PK
-        string AcademicYear
-        int Semester
-        datetime StartDate
-        datetime EndDate
-        string Status
-    }
+    subgraph S_Academic["Schema: academic"]
+        T_Periods["<b>academic.AcademicPeriods</b><br/>• Id: guid [PK]<br/>• AcademicYear: string<br/>• Semester: int<br/>• StartDate: datetime<br/>• EndDate: datetime<br/>• Status: string"]
+    end
 
-    %% Schema topics
-    TOPICS_PROPOSALS {
-        guid Id PK
-        guid AcademicPeriodId "Logic FK"
-        guid SupervisorId "Logic FK"
-        string TitleVietnamese
-        string TitleEnglish
-        int MaxStudents
-        string Status
-    }
+    subgraph S_Topics["Schema: topics"]
+        T_Topics["<b>topics.TopicProposals</b><br/>• Id: guid [PK]<br/>• AcademicPeriodId: guid [Logic Ref]<br/>• SupervisorId: guid [Logic Ref]<br/>• TitleVietnamese: string<br/>• TitleEnglish: string<br/>• MaxStudents: int<br/>• Status: string"]
+    end
 
-    %% Schema thesis
-    THESIS_REGISTRATIONS {
-        guid Id PK
-        guid TopicId "Logic FK"
-        guid AcademicPeriodId "Logic FK"
-        guid SupervisorId "Logic FK"
-        string CurrentStatus
-    }
+    subgraph S_Thesis["Schema: thesis"]
+        T_Thesis["<b>thesis.ThesisRegistrations</b><br/>• Id: guid [PK]<br/>• TopicId: guid [Logic Ref]<br/>• AcademicPeriodId: guid [Logic Ref]<br/>• SupervisorId: guid [Logic Ref]<br/>• CurrentStatus: string"]
+    end
 
-    %% Schema progress
-    MIDTERM_REPORTS {
-        guid Id PK
-        guid ThesisId "Logic FK"
-        string ReportFileUrl
-        string SupervisorDecision "Decision"
-    }
+    subgraph S_Progress["Schema: progress"]
+        T_Midterm["<b>progress.MidtermReports</b><br/>• Id: guid [PK]<br/>• ThesisId: guid [Logic Ref]<br/>• ReportFileUrl: string<br/>• SupervisorDecision: string"]
+        T_Change["<b>progress.TopicChangeRequests</b><br/>• Id: guid [PK]<br/>• ThesisId: guid [Logic Ref]<br/>• NewTitle: string<br/>• SupervisorStatus: string<br/>• FacultyStatus: string<br/>• AcademicAffairsStatus: string"]
+    end
 
-    TOPIC_CHANGE_REQUESTS {
-        guid Id PK
-        guid ThesisId "Logic FK"
-        string NewTitle
-        string SupervisorStatus
-        string FacultyStatus
-        string AcademicAffairsStatus
-    }
+    subgraph S_Councils["Schema: councils"]
+        T_Councils["<b>councils.DefenseCouncils</b><br/>• Id: guid [PK]<br/>• AcademicPeriodId: guid [Logic Ref]<br/>• CouncilName: string<br/>• Room: string<br/>• DefenseDate: datetime<br/>• IsLocked: bool"]
+    end
 
-    %% Schema councils
-    DEFENSE_COUNCILS {
-        guid Id PK
-        guid AcademicPeriodId "Logic FK"
-        string CouncilName
-        string Room
-        datetime DefenseDate
-        bool IsLocked
-    }
+    subgraph S_Grading["Schema: grading"]
+        T_Grading["<b>grading.GradingResults</b><br/>• Id: guid [PK]<br/>• ThesisId: guid [Logic Ref]<br/>• SupervisorScore: decimal<br/>• ReviewerScore: decimal<br/>• CouncilScore: decimal<br/>• FinalScore: decimal<br/>• IsPublished: bool"]
+    end
 
-    %% Schema grading
-    GRADING_RESULTS {
-        guid Id PK
-        guid ThesisId "Logic FK"
-        decimal SupervisorScore
-        decimal ReviewerScore
-        decimal CouncilScore
-        decimal FinalScore
-        bool IsPublished
-    }
+    T_Topics -.->|Logic Ref: PeriodId| T_Periods
+    T_Thesis -.->|Logic Ref: TopicId| T_Topics
+    T_Midterm -.->|Logic Ref: ThesisId| T_Thesis
+    T_Change -.->|Logic Ref: ThesisId| T_Thesis
+    T_Grading -.->|Logic Ref: ThesisId| T_Thesis
+    T_Councils -.->|Logic Ref: PeriodId| T_Periods
 
-    TOPICS_PROPOSALS }o--|| ACADEMIC_PERIODS : references_period
-    THESIS_REGISTRATIONS }o--|| TOPICS_PROPOSALS : references_topic
-    MIDTERM_REPORTS }o--|| THESIS_REGISTRATIONS : references_thesis
-    TOPIC_CHANGE_REQUESTS }o--|| THESIS_REGISTRATIONS : references_thesis
-    GRADING_RESULTS }o--|| THESIS_REGISTRATIONS : references_thesis
+    style S_Identity fill:#f3e8f8,stroke:#ab47bc,stroke-width:1px
+    style S_Academic fill:#ffeddb,stroke:#ffa726,stroke-width:1px
+    style S_Topics fill:#e8f5e9,stroke:#66bb6a,stroke-width:1px
+    style S_Thesis fill:#e1f5fe,stroke:#42a5f5,stroke-width:1px
+    style S_Progress fill:#fbe9e7,stroke:#ff7043,stroke-width:1px
+    style S_Councils fill:#ede7f6,stroke:#7e57c2,stroke-width:1px
+    style S_Grading fill:#e0f2f1,stroke:#26a69a,stroke-width:1px
 ```
 
 ---
