@@ -1,0 +1,47 @@
+@startuml UC_Reviewer
+left to right direction
+skinparam packageStyle rectangle
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 60
+
+skinparam actor {
+    BackgroundColor #E0F2F1
+    BorderColor #00695C
+    FontName Arial
+    FontSize 13
+}
+
+skinparam usecase {
+    BackgroundColor #FFFFFF
+    BorderColor #00796B
+    ArrowColor #00695C
+    FontName Arial
+    FontSize 12
+}
+
+title Sơ đồ Use Case Phân hệ Giảng viên phản biện (Reviewer Subsystem)\n(Tham chiếu Bảng 2.3 Báo cáo Phân tích Yêu cầu)
+
+actor "Giảng viên phản biện\n(GVPB)" as Reviewer
+
+rectangle "Phân hệ Giảng viên phản biện - UGTM" {
+    usecase "UC-REV01: Tiếp nhận đề tài phản biện\n(Xem danh sách Khoa phân công, tải báo cáo)" as UC01
+    usecase "UC-REV02: Nhập nhận xét & Chấm điểm GVPB\n(Phiếu nhận xét và điểm số trực tuyến)" as UC02
+    usecase "UC-REV03: Đánh giá điều kiện ra Hội đồng\n(Đồng ý / Không đồng ý cho bảo vệ)" as UC03
+    
+    usecase "Yêu cầu chỉnh sửa báo cáo\n(Gửi phản hồi cho sinh viên hoàn thiện)" as UC_RequestFix #E0F2F1
+    usecase "Bảo mật điểm phản biện\n(Tự động ẩn đến khi Khoa công bố)" as UC_SecretScore #FFF9C4
+}
+
+' Liên kết từ GVPB đến các Use Case
+Reviewer --> UC01
+Reviewer --> UC02
+Reviewer --> UC03
+
+' Quan hệ Include & Extend
+UC02 .right.> UC_SecretScore : <<include>>
+UC_RequestFix .left.> UC03 : <<extend>>
+
+@enduml

@@ -1,0 +1,82 @@
+@startuml UC_Student
+left to right direction
+skinparam packageStyle rectangle
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 60
+
+skinparam actor {
+    BackgroundColor #E8F5E9
+    BorderColor #2E7D32
+    FontName Arial
+    FontSize 13
+}
+
+skinparam usecase {
+    BackgroundColor #FFFFFF
+    BorderColor #388E3C
+    ArrowColor #2E7D32
+    FontName Arial
+    FontSize 12
+}
+
+title Sơ đồ Use Case Phân hệ Sinh viên (Student Subsystem)\n(Tham chiếu Bảng 2.1 Báo cáo Phân tích Yêu cầu)
+
+actor "Sinh viên\n(Student)" as Student
+
+rectangle "Phân hệ Sinh viên - UGTM" {
+    
+    package "1. Khởi tạo & Đăng ký (Tuần 0 - 2)" {
+        usecase "UC-STU01: Tra cứu & Tìm kiếm đề tài" as UC01
+        usecase "UC-STU02: Đăng ký đề tài & Ghép nhóm" as UC02
+    }
+
+    package "2. Đề cương & Tiến độ giữa kỳ (Tuần 2 - 10)" {
+        usecase "UC-STU03: Nộp & Chỉnh sửa Đề cương chi tiết\n(Cổng kiểm soát 1 - Tuần 2)" as UC03
+        usecase "UC-STU04: Theo dõi tiến độ cả quá trình\n(Dashboard 7 giai đoạn)" as UC04
+        usecase "UC-STU05: Nộp Báo cáo giữa kỳ\n(Cổng kiểm soát 2 - Tuần 10)" as UC05
+        usecase "UC-STU06: Tạo Đơn xin Đổi tên đề tài (ĐTĐT)\n(Giai đoạn Tuần 3 - 10)" as UC06
+        usecase "UC-STU07: Cập nhật Đề cương mới\n(Sau khi ĐTĐT được phê duyệt)" as UC07
+        
+        usecase "Nộp lại bản Đề cương chỉnh sửa\n(Khi Khoa yêu cầu sửa đổi)" as UC_ResubmitOutline #FFF3E0
+    }
+
+    package "3. Báo cáo cuối kỳ & Bảo vệ (Tuần 11 - 20)" {
+        usecase "UC-STU08: Nộp Báo cáo cuối kỳ\n(Tuần 11 - 18)" as UC08
+        usecase "UC-STU09: Tra cứu Lịch bảo vệ Hội đồng\n(Thời gian, phòng, ca, thành viên HĐ)" as UC09
+        usecase "UC-STU10: Nộp Báo cáo Lưu chiểu\n(Bản hoàn thiện sau bảo vệ)" as UC10
+        
+        usecase "Nộp bản Báo cáo sửa đổi\n(Theo nhận xét của GVPB)" as UC_ResubmitFinal #FFF3E0
+    }
+
+    package "4. Tổng kết & Điểm số (Tuần 21)" {
+        usecase "UC-STU11: Tra cứu Điểm số KLTN\n(Sau khi Khoa công bố chính thức)" as UC11
+    }
+}
+
+' Liên kết từ Sinh viên đến các Use Case
+Student --> UC01
+Student --> UC02
+Student --> UC03
+Student --> UC04
+Student --> UC05
+Student --> UC06
+Student --> UC07
+Student --> UC08
+Student --> UC09
+Student --> UC10
+Student --> UC11
+
+' Quan hệ mở rộng (Extend)
+UC_ResubmitOutline .left.> UC03 : <<extend>>
+UC_ResubmitFinal .left.> UC08 : <<extend>>
+
+note right of UC03
+  **Ràng buộc tệp tải lên:**
+  - Định dạng: .pdf, .doc, .docx
+  - Dung lượng: <= 20 MB
+end note
+
+@enduml
