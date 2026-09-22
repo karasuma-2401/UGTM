@@ -1,0 +1,86 @@
+@startuml SD2_ThamDinhDeCuong
+autonumber
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+skinparam actor {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+    FontName Arial
+    FontSize 13
+}
+
+skinparam participant {
+    BackgroundColor #FFFFFF
+    BorderColor #1E88E5
+    FontName Arial
+    FontSize 12
+}
+
+skinparam database {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+    FontName Arial
+    FontSize 12
+}
+
+title Sơ đồ Tuần tự: Thẩm định Đề cương Chi tiết - Cổng Kiểm soát 1\n(Tham chiếu Thuật toán SĐ2 & Mục 2.4.2 Báo cáo Nghiệp vụ)
+
+actor "Văn phòng Khoa\n[Faculty Staff]" as Faculty
+actor "Nhóm Sinh viên & GVHD\n[Student & Supervisor]" as Users #E8F5E9
+boundary "Giao diện Web SPA\n[React 19 / AntD]" as SPA
+control "Host API Gateway\n[UGTM.Api]" as API
+control "Xử lý Command\n[ReviewOutlineHandler]" as Handler
+entity "Mô hình Đề tài\n[ThesisAggregate]" as Domain
+database "Cơ sở dữ liệu\n[SQL Server (schema: thesis)]" as DB
+control "Dịch vụ Thông báo\n[Notification Module]" as Noti
+
+== BƯỚC 1: TIẾP NHẬN PHIẾU ĐÁNH GIÁ (D1) ==
+Faculty -> SPA: Nhập kết luận (Đạt / Yêu cầu sửa / Không đạt) & Ý kiến nhận xét
+Faculty -> SPA: Bấm "Lưu kết quả Thẩm định Đề cương"
+SPA -> API: POST /api/theses/{id}/review-outline (Payload D1 + JWT Token)
+
+== BƯỚC 2 & 3: TRUY VẤN THÔNG TIN ĐỀ CƯƠNG HIỆN TẠI ==
+API -> Handler: MediatR.Send(ReviewOutlineCommand)
+activate Handler
+Handler -> DB: Bắt đầu kết nối, đọc thông tin đề tài & phiên bản file nộp (D3)
+activate DB
+DB --> Handler: Dữ liệu Đề cương hiện tại
+
+Handler -> Handler: B4: Kiểm tra đề tài có đang ở trạng thái chờ duyệt đề cương?
+
+== BƯỚC 4: PHÂN LOẠI KẾT LUẬN & CẬP NHẬT TRẠNG THÁI (B5) ==
+alt Kết luận: ĐẠT (Approved)
+    Handler -> Domain: thesis.ApproveOutline(remarks, facultyId)
+    Domain -> Domain: Chuyển trạng thái sang "Đang thực hiện KLTN"
+    Handler -> DB: Cập nhật thesis.Registrations & Lưu lịch sử thẩm định (D4)
+    Handler -> Noti: Publish(OutlineApprovedIntegrationEvent)
+    
+else Kết luận: YÊU CẦU SỬA (NeedRevision)
+    Handler -> Domain: thesis.RequestOutlineRevision(remarks, facultyId)
+    Domain -> Domain: Chuyển trạng thái sang "Cần chỉnh sửa đề cương"
+    Domain -> Domain: Mở cờ cho phép sinh viên upload phiên bản mới
+    Handler -> DB: Cập nhật trạng thái & Mở hạn nộp lại bổ sung (D4)
+    Handler -> Noti: Publish(OutlineRevisionRequestedIntegrationEvent)
+    
+else Kết luận: KHÔNG ĐẠT (Rejected)
+    Handler -> Domain: thesis.RejectOutline(remarks, facultyId)
+    Domain -> Domain: Chuyển trạng thái sang "Dừng KLTN"
+    Domain -> Domain: Khóa quyền truy cập các tính năng làm KLTN trong kỳ
+    Handler -> DB: Cập nhật trạng thái Dừng & Khóa quyền (D4)
+    Handler -> Noti: Publish(OutlineRejectedIntegrationEvent)
+end
+
+DB --> Handler: Lưu dữ liệu D4 thành công
+deactivate DB
+
+Handler --> API: Result.Success()
+deactivate Handler
+API --> SPA: 200 OK (Thông báo cập nhật hoàn tất)
+SPA --> Faculty: Hiển thị kết quả thẩm định thành công (D6)
+
+== BƯỚC 5: THÔNG BÁO TỰ ĐỘNG CHO SINH VIÊN VÀ GVHD ==
+Noti -> Users: B6: Gửi thông báo hệ thống và email tự động (D6)
+
+@enduml

@@ -1,0 +1,80 @@
+@startuml SD4_ChamDiemHoiDong_KhoaBienBan
+autonumber
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+skinparam actor {
+    BackgroundColor #EDE7F6
+    BorderColor #512DA8
+    FontName Arial
+    FontSize 13
+}
+
+skinparam participant {
+    BackgroundColor #FFFFFF
+    BorderColor #1E88E5
+    FontName Arial
+    FontSize 12
+}
+
+skinparam database {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+    FontName Arial
+    FontSize 12
+}
+
+title Sơ đồ Tuần tự: Chấm Điểm Hội Đồng & Khóa Biên Bản Điểm\n(Tham chiếu Thuật toán SĐ4 & Mục 2.4.4 Báo cáo Nghiệp vụ)
+
+actor "Thành viên Hội đồng\n[Council Member]" as Member
+actor "Thư ký Hội đồng\n[Council Secretary]" as Secretary
+actor "Lãnh đạo Khoa\n[Dean / Vice Dean]" as Dean #FFF3E0
+boundary "Giao diện Chấm bảo vệ\n[React 19 / AntD]" as SPA
+control "Xử lý Điểm Hội đồng\n[CouncilGradingHandler]" as Handler
+database "Cơ sở dữ liệu\n[SQL Server (councils)]" as DB
+database "Nhật ký Hệ thống\n[identity.AuditLogs]" as Audit
+
+== GIAI ĐOẠN 1: NHẬP ĐIỂM THÀNH PHẦN TRỰC TIẾP TẠI BUỔI BẢO VỆ ==
+Member -> SPA: Nhập điểm thành phần (0.0 - 10.0) và ý kiến nhận xét
+Member -> SPA: Bấm "Lưu điểm cá nhân"
+SPA -> Handler: POST /api/councils/{id}/scores (Payload D1 + JWT)
+
+Handler -> DB: B3: Đọc thông tin đề tài & Trạng thái IsLocked (D3)
+DB --> Handler: Trạng thái biên bản hiện tại
+
+alt Biên bản ĐÃ BỊ KHÓA (IsLocked == True) và không có quyền Override
+    Handler --> SPA: 403 Forbidden (Biên bản điểm đã khóa, không thể chỉnh sửa)
+    SPA --> Member: B4: Báo lỗi "Biên bản đã bị khóa (QĐ4.3)"
+else Biên bản CHƯA KHÓA (Hợp lệ)
+    Handler -> Handler: B5: Kiểm tra tính hợp lệ của điểm số (0.0 <= Điểm <= 10.0)
+    Handler -> Handler: B6: Tự động tính Điểm trung bình HĐ = Trung bình cộng các thành viên
+    Handler -> DB: B8: Lưu điểm thành phần và điểm trung bình HĐ (D4)
+    DB --> Handler: Ghi nhận thành công
+    Handler --> SPA: 200 OK (Điểm đã được lưu và cập nhật trên màn hình)
+    SPA --> Member: B9: Hiển thị thông báo lưu điểm thành công (D6)
+end
+
+== GIAI ĐOẠN 2: THƯ KÝ KHÓA BIÊN BẢN ĐIỂM (CHUYỂN SANG READ-ONLY) ==
+Secretary -> SPA: Kiểm tra đủ các thành viên đã chấm, bấm "Khóa biên bản điểm"
+SPA -> Secretary: Yêu cầu xác thực mật khẩu / OTP xác nhận
+Secretary -> SPA: Xác nhận khóa điểm
+SPA -> Handler: POST /api/councils/{id}/lock-minutes (UserId, AuthConfirm)
+
+Handler -> DB: B7: Cập nhật IsLocked = True, LockTimestamp = Now()
+Handler -> DB: Chuyển toàn bộ điểm Hội đồng của đề tài sang trạng thái Read-only
+Handler -> Audit: B7: Ghi vết người khóa và thời gian vào bảng AuditLogs
+DB --> Handler: Đã khóa biên bản thành công
+Handler --> SPA: 200 OK (Biên bản đã khóa vĩnh viễn)
+SPA --> Secretary: Hiển thị trạng thái "Đã khóa biên bản điểm" (D6)
+
+== GIAI ĐOẠN 3 (NGOẠI LỆ): MỞ KHÓA ĐẶC BIỆT KHI CÓ KHIẾU NẠI ==
+opt Khiếu nại điểm hợp lệ cần chỉnh sửa
+    Dean -> SPA: Sử dụng thẩm quyền Lãnh đạo Khoa, cấp quyền mở khóa đặc biệt
+    SPA -> Handler: POST /api/councils/{id}/override-unlock (DeanToken, Lý do)
+    Handler -> DB: Đặt IsLocked = False (Tạm thời mở khóa)
+    Handler -> Audit: Ghi vết Override mở khóa nghiêm ngặt (Lý do, Lãnh đạo ký duyệt)
+    Handler --> SPA: 200 OK (Cho phép Thư ký hiệu chỉnh lại điểm)
+end
+
+@enduml

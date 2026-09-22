@@ -1,0 +1,85 @@
+@startuml UC_Overview_System
+left to right direction
+skinparam packageStyle rectangle
+skinparam roundcorner 10
+skinparam shadowing false
+skinparam linetype ortho
+
+skinparam actor {
+    BackgroundColor #F5F5F5
+    BorderColor #37474F
+    FontName Arial
+    FontSize 13
+}
+
+skinparam usecase {
+    BackgroundColor #FFFFFF
+    BorderColor #1E88E5
+    ArrowColor #37474F
+    FontName Arial
+    FontSize 12
+}
+
+title Sơ đồ Use Case Tổng quan Toàn Hệ thống UGTM\n(Undergraduate Graduation Thesis Management)
+
+' ==========================================
+' NHÓM TÁC NHÂN BÊN TRÁI (THỰC HIỆN ĐỀ TÀI)
+' ==========================================
+actor "Sinh viên\n(Student)" as Student #E8F5E9
+actor "Giảng viên hướng dẫn\n(GVHD)" as Supervisor #E3F2FD
+actor "Giảng viên phản biện\n(GVPB)" as Reviewer #E0F2F1
+actor "Hội đồng chấm KLTN\n(Council)" as Council #EDE7F6
+
+' ==========================================
+' HỆ THỐNG Ở CHÍNH GIỮA (6 PHÂN HỆ NGHIỆP VỤ)
+' ==========================================
+rectangle "Hệ thống Quản lý Khóa luận Tốt nghiệp (UGTM)" {
+    usecase "UC01: Quản trị Hệ thống, RBAC\n& Cấu hình Đợt KLTN 21 tuần" as UC1 #F3E5F5
+    usecase "UC02: Quản lý & Đăng ký Đề tài\n(Đề xuất, thẩm định & ghép nhóm)" as UC2 #E8F5E9
+    usecase "UC03: Đề cương & Tiến độ Giữa kỳ\n(Cổng 1, Cổng 2 dừng/tiếp tục & Đơn ĐTĐT)" as UC3 #E1F5FE
+    usecase "UC04: Báo cáo Cuối kỳ & Phản biện\n(Nộp bài, chấm GVHD & điều kiện ra HĐ)" as UC4 #E0F2F1
+    usecase "UC05: Tổ chức Bảo vệ Hội đồng & Lưu chiểu\n(Lập lịch, ban hành QĐ, chấm điểm & nộp bài)" as UC5 #EDE7F6
+    usecase "UC06: Tổng hợp Điểm & Công bố Kết quả\n(Trọng số Strategy & báo cáo toàn trường)" as UC6 #FFF3E0
+}
+
+' ==========================================
+' NHÓM TÁC NHÂN BÊN PHẢI (QUẢN LÝ & ĐÀO TẠO)
+' ==========================================
+actor "Văn phòng Khoa\n(Faculty)" as Faculty #FFF3E0
+actor "Phòng Đào Tạo\n(PĐT)" as AcademicAffairs #FCE4EC
+actor "Quản trị viên\n(Admin)" as Admin #F3E5F5
+
+' ==========================================
+' LIÊN KẾT: TÁC NHÂN BÊN TRÁI --> HỆ THỐNG
+' ==========================================
+Student --> UC2
+Student --> UC3
+Student --> UC4
+Student --> UC5
+Student --> UC6
+
+Supervisor --> UC2
+Supervisor --> UC3
+Supervisor --> UC4
+
+Reviewer --> UC4
+
+Council --> UC5
+
+' ==========================================
+' LIÊN KẾT: HỆ THỐNG --> TÁC NHÂN BÊN PHẢI
+' ==========================================
+UC1 --> Admin
+
+UC1 --> Faculty
+UC2 --> Faculty
+UC3 --> Faculty
+UC4 --> Faculty
+UC5 --> Faculty
+UC6 --> Faculty
+
+UC3 --> AcademicAffairs
+UC5 --> AcademicAffairs
+UC6 --> AcademicAffairs
+
+@enduml

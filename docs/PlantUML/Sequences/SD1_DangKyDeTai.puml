@@ -1,0 +1,78 @@
+@startuml SD1_DangKyDeTai
+autonumber
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam sequenceMessageAlign center
+
+skinparam actor {
+    BackgroundColor #E8F5E9
+    BorderColor #2E7D32
+    FontName Arial
+    FontSize 13
+}
+
+skinparam participant {
+    BackgroundColor #FFFFFF
+    BorderColor #1E88E5
+    FontName Arial
+    FontSize 12
+}
+
+skinparam database {
+    BackgroundColor #FFF3E0
+    BorderColor #E65100
+    FontName Arial
+    FontSize 12
+}
+
+title Sơ đồ Tuần tự: Đăng ký Đề tài & Ghép nhóm KLTN\n(Tham chiếu Thuật toán SĐ1 & Mục 2.4.1 Báo cáo Nghiệp vụ)
+
+actor "Sinh viên (Nhóm trưởng)\n[Student Leader]" as Student
+boundary "Giao diện Web SPA\n[React 19 / AntD]" as SPA
+control "Host API Gateway\n[UGTM.Api]" as API
+control "Xử lý Command\n[RegisterThesisHandler]" as Handler
+entity "Miền Đăng ký\n[ThesisRegistration]" as Domain
+database "Cơ sở dữ liệu\n[SQL Server (schema: thesis)]" as DB
+
+== BƯỚC 1: TIẾP NHẬN THÔNG TIN ĐĂNG KÝ (D1) ==
+Student -> SPA: Chọn đề tài, nhập danh sách nhóm (MSSV, Họ tên, SĐT)
+Student -> SPA: Bấm "Xác nhận Đăng ký Đề tài"
+SPA -> API: POST /api/theses/register (Payload D1 + JWT Token)
+
+== BƯỚC 2: KHỞI TẠO GIAO TÁC & KHÓA DỮ LIỆU (LOCKING) ==
+API -> Handler: MediatR.Send(RegisterThesisCommand)
+activate Handler
+Handler -> DB: Bắt đầu Transaction (Khóa bản ghi đề tài - UPDLOCK)
+activate DB
+
+== BƯỚC 3 & 4: KIỂM TRA ĐIỀU KIỆN NGHIỆP VỤ (VALIDATION) ==
+Handler -> DB: Đọc dữ liệu Đề tài, Đợt KLTN & Danh sách đã có đề tài (D3)
+DB --> Handler: Dữ liệu hiện tại
+
+Handler -> Handler: B4: Kiểm tra thời hạn đăng ký có trong Tuần 0 - 2?
+Handler -> Handler: B5: Kiểm tra Đề tài đã công bố & còn chỉ tiêu trống?
+Handler -> Handler: B6: Kiểm tra các thành viên trong nhóm chưa có đề tài khác?
+
+alt Vi phạm một trong các điều kiện trên (Quy định QĐ1.1 - QĐ1.3)
+    Handler -> DB: ROLLBACK TRANSACTION
+    Handler --> API: Result.Failure(Error: Đề tài đã đủ chỉ tiêu / Quá hạn / SV đã đăng ký)
+    API --> SPA: 400 Bad Request (Error Details)
+    SPA --> Student: B7: Hiển thị thông báo lỗi (D6) ra màn hình
+else Thỏa mãn tất cả điều kiện đăng ký
+    == BƯỚC 5: GHI NHẬN ĐĂNG KÝ & CAM KẾT TRANSACTION ==
+    Handler -> Domain: Tạo mới ThesisRegistration (TopicId, PeriodId, Members)
+    Handler -> DB: INSERT vào bảng thesis.Registrations & Members
+    Handler -> DB: Cập nhật giảm chỉ tiêu còn lại của đề tài (D4)
+    Handler -> DB: Cập nhật trạng thái sinh viên: "Chờ GVHD xác nhận"
+    Handler -> DB: COMMIT TRANSACTION
+    deactivate DB
+    
+    Handler --> API: Result.Success(RegistrationDto)
+    deactivate Handler
+    
+    API --> SPA: 200 OK (Thông tin Phiếu Đăng ký)
+    SPA --> Student: B10: Thông báo đăng ký thành công (D6)
+    SPA --> Student: B9: Cho phép tải / in Phiếu tiếp nhận đăng ký (PDF)
+end
+
+@enduml
