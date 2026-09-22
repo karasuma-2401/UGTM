@@ -1,0 +1,27 @@
+@startuml C3_Components_ModuleDeepDive
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title C3 — Component Diagram: Cấu trúc 4 Layer bên trong 1 Module (Ví dụ: ThesisManagement)
+
+Container(apiHost, "Host API Endpoints", "ASP.NET Core Minimal API", "Nhận HTTP Request, xác thực JWT, ủy quyền xử lý cho IThesisManagementModule")
+
+Container_Boundary(module_boundary, "ThesisManagement Module (Clean Architecture + DDD)") {
+    Component(contracts, "1. Contracts Layer", "Assembly: UGTM.Modules.ThesisManagement.Contracts", "IThesisManagementModule API, Integration Events, Public DTOs (Công khai cho toàn Solution)")
+    Component(app, "2. Application Layer", "Assembly: UGTM.Modules.ThesisManagement.Application", "Command Handlers, Query Handlers, Domain Event Handlers, FluentValidation")
+    Component(domain, "3. Domain Layer", "Assembly: UGTM.Modules.ThesisManagement.Domain", "Aggregate Root (Thesis), Entities (StudentMember), Value Objects, Domain Rules, IRepository")
+    Component(infra, "4. Infrastructure Layer", "Assembly: UGTM.Modules.ThesisManagement.Infrastructure", "ThesisManagementDbContext (schema thesis_management), Repository Impl, Outbox Table")
+}
+
+Container(otherModules, "Các Module khác", ".NET Assemblies", "Chỉ được phép tham chiếu tới Contracts Layer")
+ContainerDb(sqlSchema, "SQL Server Schema", "schema: thesis_management", "Chỉ DbContext của module này được phép truy cập")
+
+Rel(apiHost, contracts, "Gửi Command / Query", "Method Call")
+Rel(contracts, app, "Chuyển giao tới MediatR", "In-Process")
+Rel(app, domain, "Thao tác trên Aggregate Root & Rules", "C# Object")
+Rel(app, infra, "Lưu dữ liệu & Outbox qua UnitOfWork", "Method Call")
+Rel(infra, sqlSchema, "Truy vấn / Cập nhật", "EF Core / TCP 1433")
+Rel_Back(otherModules, contracts, "Đăng ký lắng nghe Integration Events", "Contracts Reference")
+
+@enduml

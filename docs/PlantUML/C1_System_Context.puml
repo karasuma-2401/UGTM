@@ -1,0 +1,32 @@
+@startuml C1_System_Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+
+title C1 — System Context Diagram: Hệ thống Quản lý KLTN (UGTM)
+
+Person(sinhVien, "Sinh viên", "Tra cứu đề tài, đăng ký nhóm, nộp đề cương, báo cáo giữa/cuối kỳ, xin ĐTĐT, nộp lưu chiểu, xem điểm")
+Person(gvhd, "Giảng viên hướng dẫn (GVHD)", "Đề xuất đề tài, duyệt nhóm, đánh giá giữa kỳ (Cổng dừng/tiếp tục), duyệt ĐTĐT, chấm điểm cuối kỳ")
+Person(gvpb, "Giảng viên phản biện (GVPB)", "Tiếp nhận phân công, đánh giá báo cáo cuối kỳ, kết luận điều kiện bảo vệ, chấm điểm phản biện")
+Person(khoa, "Văn phòng Khoa", "Thẩm định đề tài, duyệt đề cương, điều phối quy trình, phân công GVPB, lập hội đồng, xác nhận lưu chiểu, công bố điểm")
+Person(pdt, "Phòng Đào Tạo", "Phê duyệt đơn ĐTĐT, ban hành quyết định thành lập Hội đồng, xuất báo cáo toàn trường xét tốt nghiệp")
+Person(hd, "Hội đồng bảo vệ", "Xem hồ sơ, chấm điểm thành phần trực tiếp trong buổi bảo vệ, lập và khóa biên bản điểm")
+Person(admin, "Quản trị viên (Admin)", "Quản lý tài khoản, phân quyền RBAC, cấu hình đợt 21 tuần, tra cứu Audit Log")
+
+System(ugtm, "Hệ thống Quản lý KLTN (UGTM)", "Hệ thống Modular Monolith (.NET 10 & React SPA) hỗ trợ số hóa toàn diện quy trình KLTN 21 tuần")
+
+System_Ext(emailService, "Hệ thống Email / SMTP", "Gửi email thông báo, nhắc hạn nộp báo cáo và cảnh báo trễ hạn")
+System_Ext(fileStorage, "File Storage Service", "Lưu trữ tệp tin bản mềm (PDF, Docx <= 20MB): đề cương, báo cáo tiến độ, quyết định")
+
+Rel(sinhVien, ugtm, "Truy cập, nộp bài, tra cứu", "HTTPS / Web Browser")
+Rel(gvhd, ugtm, "Đề xuất, thẩm định, chấm điểm", "HTTPS / Web Browser")
+Rel(gvpb, ugtm, "Nhận xét, chấm điểm phản biện", "HTTPS / Web Browser")
+Rel(khoa, ugtm, "Quản lý đợt, phân công, tổng hợp điểm", "HTTPS / Web Browser")
+Rel(pdt, ugtm, "Phê duyệt quyết định, xuất báo cáo", "HTTPS / Web Browser")
+Rel(hd, ugtm, "Chấm bảo vệ, khóa biên bản", "HTTPS / Web Browser")
+Rel(admin, ugtm, "Cấu hình hệ thống, phân quyền", "HTTPS / Web Browser")
+
+Rel(ugtm, emailService, "Gửi thông báo & nhắc hạn", "SMTP / Background Task")
+Rel(ugtm, fileStorage, "Lưu trữ và trích xuất tài liệu bản mềm", "Local Disk / S3 Storage API")
+
+@enduml

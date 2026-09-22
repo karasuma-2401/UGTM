@@ -1,0 +1,101 @@
+@startuml Conceptual_Model
+scale max 2000 width
+
+package "Identity (User Access)" #f3e8f8 {
+    object User
+    object "User Role" as UserRole
+    object Permission
+
+    User "1" --> "0..*" UserRole : has
+    UserRole "1..*" --> "1..*" Permission : has
+}
+
+package "Academic Periods" #ffeddb {
+    object "Academic Period" as AcademicPeriod
+    enum "Period Status" as PeriodStatus {
+        Draft
+        Active
+        Completed
+    }
+    AcademicPeriod --> PeriodStatus : is in
+}
+
+package "Topic Catalog" #e8f5e9 {
+    object "Topic Proposal" as TopicProposal
+    enum "Proposal Status" as ProposalStatus {
+        Draft
+        Submitted
+        NeedRevision
+        Approved
+        Rejected
+    }
+    TopicProposal --> ProposalStatus : has
+    TopicProposal --> AcademicPeriod : for
+}
+
+package "Thesis Management" #e1f5fe {
+    object "Thesis Registration" as ThesisRegistration
+    object "Student Member" as StudentMember
+    object "Thesis Outline" as ThesisOutline
+    enum "Outline Status" as OutlineStatus {
+        PendingReview
+        NeedRevision
+        Approved
+    }
+
+    ThesisRegistration "1" *-- "1..3" StudentMember : consists of
+    ThesisRegistration "1" *-- "0..1" ThesisOutline : contains
+    ThesisRegistration --> TopicProposal : registers
+    ThesisOutline --> OutlineStatus : has
+}
+
+package "Midterm Progress" #fbe9e7 {
+    object "Midterm Progress Report" as MidtermReport
+    object "Topic Change Request" as TopicChangeRequest
+    enum "Gatekeeper 2 Decision" as MidtermDecision {
+        AllowedToContinue
+        Stopped
+    }
+
+    MidtermReport --> ThesisRegistration : for
+    MidtermReport --> MidtermDecision : evaluated by GVHD
+    TopicChangeRequest --> ThesisRegistration : modifies title for
+}
+
+package "Final Report & Evaluation" #ede7f6 {
+    object "Final Thesis Report" as FinalReport
+    object "Supervisor Assessment" as SupervisorAssessment
+    object "Reviewer Assessment" as ReviewerAssessment
+    enum "Reviewer Conclusion" as ReviewerConclusion {
+        AllowedForDefense
+        NotAllowedForDefense
+    }
+
+    FinalReport --> ThesisRegistration : for
+    SupervisorAssessment --> FinalReport : evaluates
+    ReviewerAssessment --> FinalReport : reviews
+    ReviewerAssessment --> ReviewerConclusion : concludes
+}
+
+package "Defense Council" #fffde7 {
+    object "Defense Council" as DefenseCouncil
+    object "Council Session" as CouncilSession
+    object "Council Member Evaluation" as CouncilEvaluation
+
+    DefenseCouncil "1" *-- "1..*" CouncilSession : schedules
+    CouncilSession "1" *-- "3..5" CouncilEvaluation : evaluated by members
+    CouncilSession --> FinalReport : defense of
+}
+
+package "Grading Consolidation" #e0f2f1 {
+    object "Consolidated Result" as ConsolidatedResult
+    object "Grading Formula Strategy" as GradingFormula
+
+    ConsolidatedResult --> ThesisRegistration : for
+    ConsolidatedResult --> GradingFormula : calculated using
+    ConsolidatedResult --> SupervisorAssessment : includes score from
+    ConsolidatedResult --> ReviewerAssessment : includes score from
+    ConsolidatedResult --> CouncilEvaluation : includes scores from
+}
+
+@enduml

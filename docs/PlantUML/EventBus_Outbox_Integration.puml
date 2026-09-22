@@ -1,0 +1,49 @@
+@startuml EventBus_Outbox_Integration
+autonumber
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+
+box "Module A (Nguồn - MidtermProgress)" #E8F5E9
+participant "Command Handler" as HandlerA
+participant "Aggregate Root" as DomainA
+database "midterm_progress\n.OutboxMessages" as OutboxA
+end box
+
+box "Hạ tầng Event Bus" #FFF8E1
+participant "Outbox Processor\n(Background Worker)" as Worker
+queue "In-Memory Event Bus\n(MediatR / Channels)" as Bus
+end box
+
+box "Module B (Đích - Notifications)" #E1F5FE
+participant "Integration Event\nHandler" as HandlerB
+database "notifications\n.InboxMessages" as InboxB
+participant "Email Service" as EmailService
+end box
+
+== 1. Phát sinh sự kiện & Ghi vào Outbox ==
+HandlerA -> DomainA: Xử lý nghiệp vụ dừng đề tài
+DomainA -> DomainA: Raise Domain Event:\nThesisStoppedDomainEvent
+DomainA --> HandlerA: OK
+HandlerA -> OutboxA: Lưu Integration Event:\nThesisStoppedIntegrationEvent\n(Cùng 1 Database Transaction)
+HandlerA -->: Hoàn tất Command
+
+== 2. Quét Outbox & Đẩy lên Event Bus ==
+loop Định kỳ mỗi 2 giây
+    Worker -> OutboxA: SELECT TOP 20 * WHERE ProcessedDate IS NULL
+    OutboxA --> Worker: Danh sách Events
+    Worker -> Bus: Publish(ThesisStoppedIntegrationEvent)
+    Worker -> OutboxA: UPDATE OutboxMessages SET ProcessedDate = GETUTCDATE()
+end
+
+== 3. Nhận sự kiện & Xử lý tại Module B ==
+Bus -> HandlerB: Dispatch Event tới Subscriber
+HandlerB -> InboxB: Kiểm tra xem EventId đã xử lý chưa (Idempotency)
+alt Chưa xử lý
+    HandlerB -> InboxB: INSERT InboxMessages(EventId, GETUTCDATE())
+    HandlerB -> EmailService: Gửi email cảnh báo dừng KLTN tới Sinh viên
+    EmailService --> HandlerB: Sent OK
+else Đã xử lý rồi
+    HandlerB -> HandlerB: Bỏ qua (Tránh gửi email trùng lặp)
+end
+
+@enduml

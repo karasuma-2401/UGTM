@@ -1,0 +1,63 @@
+@startuml CQRS_Architecture
+skinparam roundcorner 5
+skinparam componentStyle rectangle
+hide circle
+
+title Kiến trúc CQRS (Command and Query Responsibility Segregation) trong Module
+
+actor "Client (SPA / User)" as Client
+component "Host API Endpoint" as API
+interface "IModule Interface" as IModule
+
+package "Write Model (Commands)" #E8F5E9 {
+    component "Command\n(ICommand<TResult>)" as Command
+    component "MediatR Pipeline\n(Decorators / Behaviors)" as Pipeline
+    component "Command Handler\n(ICommandHandler)" as CmdHandler
+    component "Domain Model\n(Aggregates, Entities, Events)" as Domain
+    interface "IRepository" as Repo
+    database "Outbox Table\n(OutboxMessages)" as Outbox
+}
+
+package "Read Model (Queries)" #E1F5FE {
+    component "Query\n(IQuery<TResult>)" as Query
+    component "Query Handler\n(IQueryHandler)" as QueryHandler
+    component "Direct SQL / Dapper\n(Projection Engine)" as SQL
+    component "Data Transfer Object\n(DTO)" as DTO
+}
+
+database "SQL Server Database\n(Module Schema)" as DB
+
+Client --> API : HTTP Request
+API --> IModule : ExecuteCommand / ExecuteQuery
+
+IModule --> Command : [Write Operations]
+Command --> Pipeline
+Pipeline --> CmdHandler
+CmdHandler --> Domain : Thao tác nghiệp vụ & Invariants
+Domain --> Repo : Cập nhật trạng thái
+Domain ..> Outbox : Ghi Integration Event
+Repo --> DB : Transaction Commit (EF Core)
+
+IModule --> Query : [Read Operations]
+Query --> QueryHandler
+QueryHandler --> SQL : Thực thi câu truy vấn
+SQL --> DB : Read-Only SELECT (No tracking)
+DB --> SQL : Raw data
+SQL --> DTO : Map trực tiếp DTO
+DTO --> Client : Trả về dữ liệu nhanh chóng
+
+note bottom of Domain
+  <b>Write Side:</b>
+  - Tuân thủ nghiêm ngặt tính toàn vẹn nghiệp vụ
+  - Sử dụng UnitOfWork & Transaction
+  - Đẩy sự kiện qua Transactional Outbox
+end note
+
+note bottom of SQL
+  <b>Read Side:</b>
+  - Bỏ qua Aggregate Root overhead
+  - Tối ưu hiệu năng đọc cao nhất
+  - Trả về DTO trực tiếp cho giao diện
+end note
+
+@enduml

@@ -1,0 +1,43 @@
+@startuml C3_Components_HighLevel
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+
+title C3 — Component Diagram (High-Level): Kiến trúc 9 Modules UGTM
+
+Container(apiHost, "Host API (UGTM.Api)", "ASP.NET Core Web API", "Composition Root, nạp các module qua IModule, cấu hình CORS, JWT Middleware")
+
+Container_Boundary(modules_boundary, "9 Business Modules (Modular Monolith)") {
+    Component(m1, "1. Identity Module", "Module Layered DDD", "Tài khoản, Xác thực JWT, RBAC")
+    Component(m2, "2. AcademicPeriods Module", "Module Layered DDD", "Cấu hình đợt 21 tuần, Mốc Deadlines")
+    Component(m3, "3. TopicCatalog Module", "Module Layered DDD", "Đề xuất, Thẩm định & Công bố đề tài")
+    Component(m4, "4. ThesisManagement Module", "Module Layered DDD", "Đăng ký đề tài, Ghép nhóm, Duyệt đề cương")
+    Component(m5, "5. MidtermProgress Module", "Module Layered DDD", "Báo cáo giữa kỳ, Cổng dừng/tiếp tục, Đơn ĐTĐT 3 bên")
+    Component(m6, "6. FinalReportEvaluation Module", "Module Layered DDD", "Báo cáo cuối kỳ, Chấm GVHD, Phân công & Chấm GVPB")
+    Component(m7, "7. DefenseCouncil Module", "Module Layered DDD", "Lập hội đồng, Xếp lịch, Quyết định PĐT, Chấm điểm bảo vệ")
+    Component(m8, "8. GradingConsolidation Module", "Module Layered DDD", "Tổng hợp 3 đầu điểm, Trọng số Strategy, Công bố kết quả")
+    Component(m9, "9. Notifications Module", "Module Layered DDD", "Hệ thống thông báo, Email nhắc hạn")
+}
+
+Container_Boundary(bb_boundary, "BuildingBlocks (Dùng chung)") {
+    Component(bbDomain, "BuildingBlocks.Domain", "C# Library", "Entity, AggregateRoot, Result, Error, IDomainEvent")
+    Component(bbApp, "BuildingBlocks.Application", "C# Library", "IModule, ICommand, IQuery, IExecutionContextAccessor")
+    Component(bbInfra, "BuildingBlocks.Infrastructure", "C# Library", "EventBus, OutboxProcessor, DomainEventsDispatcher")
+}
+
+ContainerDb(database, "SQL Server Database", "Multi-Schema", "identity, academic_periods, topic_catalog, thesis_management, midterm_progress, final_report, defense_councils, grading_consolidation, notifications")
+
+Rel(apiHost, m1, "Nạp qua IModule & định tuyến", "In-Process")
+Rel(apiHost, m2, "Nạp qua IModule & định tuyến", "In-Process")
+Rel(apiHost, m3, "Nạp qua IModule & định tuyến", "In-Process")
+Rel(apiHost, m4, "Nạp qua IModule & định tuyến", "In-Process")
+Rel(apiHost, m5, "Nạp qua IModule & định tuyến", "In-Process")
+Rel(apiHost, m6, "Nạp qua IModule & định tuyến", "In-Process")
+Rel(apiHost, m7, "Nạp qua IModule & định tuyến", "In-Process")
+Rel(apiHost, m8, "Nạp qua IModule & định tuyến", "In-Process")
+Rel(apiHost, m9, "Nạp qua IModule & định tuyến", "In-Process")
+
+Rel(modules_boundary, bb_boundary, "Kế thừa abstractions & tiện ích", "Assembly Reference")
+Rel(modules_boundary, database, "Đọc/Ghi theo từng Schema riêng biệt", "EF Core / Dapper")
+
+@enduml

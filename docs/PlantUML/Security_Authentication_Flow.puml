@@ -1,0 +1,44 @@
+@startuml Security_Authentication_Flow
+autonumber
+skinparam style strictuml
+skinparam sequenceMessageAlign center
+
+title Quy trình Xác thực & Phân quyền (JWT & RBAC) trong UGTM
+
+actor "Người dùng / SPA" as Client
+participant "Host API\n(ASP.NET Core)" as Host
+participant "JWT Middleware\n(Authentication)" as JWT
+participant "Authorization\nPolicy Filter" as AuthFilter
+participant "ExecutionContext\nAccessor" as Context
+participant "Module Application\n(Use Case Handler)" as Module
+database "identity.Users" as DB
+
+== 1. Đăng nhập & Cấp phát JWT ==
+Client -> Host: POST /api/identity/login (Email, Password)
+Host -> DB: Xác thực thông tin & mật khẩu đã mã hóa (BCrypt/Argon2)
+DB --> Host: Hợp lệ (User Roles & Permissions)
+Host -> Host: Sinh Access Token (JWT Bearer) + Refresh Token
+Host --> Client: 200 OK { token, refreshToken, roles, expires }
+
+== 2. Xác thực yêu cầu & Phân quyền tác vụ ==
+Client -> Host: Gửi API Request + Header:\nAuthorization: Bearer <JWT Token>
+
+Host -> JWT: Giải mã & Kiểm tra chữ ký số JWT
+alt Token hết hạn hoặc không hợp lệ
+    JWT --> Client: 401 Unauthorized
+end
+
+JWT -> Host: Trích xuất Claims (UserId, Email, Roles)
+Host -> Context: Nạp User Context (UserId, CorrelationId)
+
+Host -> AuthFilter: Kiểm tra Policy/Role (ví dụ: [Authorize(Roles = "Khoa, Admin")])
+alt Người dùng không đủ quyền hạn
+    AuthFilter --> Client: 403 Forbidden
+end
+
+AuthFilter -> Module: Chuyển giao Command/Query cùng ExecutionContext
+Module -> Module: Xử lý nghiệp vụ với danh tính UserId hiện hành
+Module --> Host: Kết quả xử lý
+Host --> Client: 200 OK (Dữ liệu phản hồi)
+
+@enduml
