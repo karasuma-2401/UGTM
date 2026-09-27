@@ -2,6 +2,8 @@
 
 Tài liệu này hệ thống hóa toàn bộ kiến trúc thông tin, định tuyến và danh mục màn hình của nền tảng UGTM theo 5 không gian làm việc (Portals).
 
+> 📌 **File PlantUML gốc (nét thẳng góc):** [`docs/PlantUML/Sitemap_UGTM.puml`](file:///c:/Projects/UGTM/docs/PlantUML/Sitemap_UGTM.puml)
+
 ---
 
 ## 1. Sơ Đồ Cây Tổng Quan (Mermaid Architecture)

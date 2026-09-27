@@ -1,0 +1,127 @@
+@startuml Sitemap_UGTM
+title SƠ ĐỒ ĐỊNH TUYẾN GIAO DIỆN (SITEMAP) - HỆ THỐNG UGTM
+
+' Cấu hình nét vẽ thẳng góc (ortho)
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 8
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 12
+hide stereotype
+
+' Khoảng cách giữa các phần tử
+skinparam nodesep 25
+skinparam ranksep 40
+
+' Style cho gói (Package)
+skinparam package {
+    BackgroundColor #F8FAFC
+    BorderColor #CBD5E1
+    FontColor #0F172A
+    FontStyle bold
+    FontSize 13
+}
+
+' Style mặc định cho hình chữ nhật (Màn hình)
+skinparam rectangle {
+    BackgroundColor #FFFFFF
+    BorderColor #CBD5E1
+    FontColor #334155
+    ArrowColor #2563EB
+    BorderThickness 1
+}
+
+' Style riêng cho Nút Gốc (Root)
+skinparam rectangle<<Root>> {
+    BackgroundColor #2563EB
+    BorderColor #1D4ED8
+    FontColor #FFFFFF
+    FontStyle bold
+}
+
+' 0. Nút gốc hệ thống
+rectangle "**Hệ Thống Quản Lý KLTN (UGTM)**" as root <<Root>>
+
+' 1. Cổng Xác thực & Tra cứu
+package "Xác Thực & Tra Cứu" as pkg_auth {
+    rectangle "Đăng nhập hệ thống" as p_login
+    rectangle "Tra cứu đề tài công khai" as p_public_topics
+}
+
+' 2. Phân hệ Sinh viên
+package "Phân Hệ Sinh Viên" as pkg_student {
+    rectangle "Tổng quan & Tiến độ đồ án" as s_dash
+    rectangle "Đăng ký & Đề xuất đề tài" as s_topics
+    rectangle "Nộp đề cương chi tiết" as s_proposal
+    rectangle "Đơn đổi tên đề tài / GVHD" as s_change
+    rectangle "Báo cáo tiến độ định kỳ" as s_progress
+    rectangle "Nộp khóa luận tốt nghiệp" as s_final
+    rectangle "Lịch & Điểm bảo vệ" as s_defense
+}
+
+' 3. Phân hệ Giảng viên
+package "Phân Hệ Giảng Viên" as pkg_lecturer {
+    rectangle "Tổng quan giảng viên" as l_dash
+    rectangle "Kho đề tài giảng viên ra" as l_topics
+    rectangle "Theo dõi sinh viên hướng dẫn" as l_supervise
+    rectangle "Chấm phản biện đề tài" as l_reviews
+    rectangle "Hội đồng chấm bảo vệ" as l_councils
+}
+
+' 4. Phân hệ Khoa & Bộ môn
+package "Phân Hệ Khoa & Bộ Môn" as pkg_faculty {
+    rectangle "Thẩm định đề cương" as f_proposals
+    rectangle "Phân công giảng viên phản biện" as f_assign
+    rectangle "Thành lập hội đồng bảo vệ" as f_councils
+    rectangle "Phê duyệt đơn xin thay đổi" as f_change
+    rectangle "Thống kê tiến độ toàn khoa" as f_stats
+}
+
+' 5. Phân hệ Đào tạo & Quản trị
+package "Phân Hệ Đào Tạo & Quản Trị" as pkg_admin {
+    rectangle "Quản lý đợt khóa luận" as a_periods
+    rectangle "Danh sách SV đủ điều kiện" as a_students
+    rectangle "Tổng hợp điểm & Xét tốt nghiệp" as a_grading
+    rectangle "Quản lý người dùng & Phân quyền" as adm_users
+    rectangle "Nhật ký hoạt động hệ thống" as adm_audit
+}
+
+' Cố định thứ tự ngang của 5 cột
+pkg_auth -[hidden]right- pkg_student
+pkg_student -[hidden]right- pkg_lecturer
+pkg_lecturer -[hidden]right- pkg_faculty
+pkg_faculty -[hidden]right- pkg_admin
+
+' Đường nối từ Root tỏa đều xuống đầu 5 cột
+root -down-> p_login
+root -down-> s_dash
+root -down-> l_dash
+root -down-> f_proposals
+root -down-> a_periods
+
+' Luồng dọc bên trong từng cột
+p_login -down-> p_public_topics
+
+s_dash -down-> s_topics
+s_topics -down-> s_proposal
+s_proposal -down-> s_change
+s_change -down-> s_progress
+s_progress -down-> s_final
+s_final -down-> s_defense
+
+l_dash -down-> l_topics
+l_topics -down-> l_supervise
+l_supervise -down-> l_reviews
+l_reviews -down-> l_councils
+
+f_proposals -down-> f_assign
+f_assign -down-> f_councils
+f_councils -down-> f_change
+f_change -down-> f_stats
+
+a_periods -down-> a_students
+a_students -down-> a_grading
+a_grading -down-> adm_users
+adm_users -down-> adm_audit
+
+@enduml
