@@ -74,15 +74,16 @@ Một User Story hoặc Sprint chỉ được coi là hoàn tất khi thỏa mã
   - *QA/Test:* Kiểm thử bảo mật (SQL Injection, brute force, token expiration), kiểm thử phân quyền trái phép (401, 403).
 
 ### Sprint 2: Academic & Batches Management Module
-- **Mục tiêu:** Thiết lập động cơ quản lý đợt KLTN, 7 mốc giai đoạn (Stages) và tỷ lệ trọng số 3 đầu điểm (BR-06).
+- **Mục tiêu:** Thiết lập động cơ quản lý đợt KLTN, 7 mốc giai đoạn (Stages), bộ tiêu chí barem điểm (`GradingCriteria`) và tỷ lệ trọng số 3 đầu điểm (BR-06).
 - **Phạm vi tính năng:**
   - PĐT khởi tạo Đợt KLTN (`KLTNBatches`), thiết lập năm học, học kỳ, ngày bắt đầu và kết thúc.
   - Cấu hình 7 Stage tương ứng 21 tuần kèm `StartDate` và `DeadlineDate`.
   - Cấu hình tỷ lệ trọng số điểm (`ScoreWeightConfigs`: GVHD + GVPB + Hội đồng = 1.00).
+  - Cấu hình bộ tiêu chí barem điểm dùng chung (`GradingCriteria`: Mã tiêu chí, Tên tiêu chí, Thang điểm tối đa).
   - Logic xác định Stage hiện tại của hệ thống để khóa/mở quyền theo ngữ cảnh thời gian.
 - **Phân bổ công việc:**
-  - *Backend:* Triển khai API quản lý Batches/Stages, Business Validation cho tỷ lệ điểm (tổng bằng 1.00), Custom Authorization Policy đối soát Deadline.
-  - *Frontend:* Giao diện quản lý đợt KLTN cho PĐT/Khoa, Timeline trực quan hiển thị 21 tuần và hạn chót nộp bài.
+  - *Backend:* Triển khai API quản lý Batches/Stages/GradingCriteria, Business Validation cho tỷ lệ điểm (tổng bằng 1.00), Custom Authorization Policy đối soát Deadline.
+  - *Frontend:* Giao diện quản lý đợt KLTN cho PĐT/Khoa, màn hình cấu hình tiêu chí barem điểm, Timeline trực quan hiển thị 21 tuần và hạn chót nộp bài.
   - *QA/Test:* Test ràng buộc Check Constraint trọng số điểm, test validation `EndDate > StartDate` và `DeadlineDate >= StartDate`.
 
 ### Sprint 3: Topics Bank & Student Groups Module
@@ -104,32 +105,33 @@ Một User Story hoặc Sprint chỉ được coi là hoàn tất khi thỏa mã
   - Luồng duyệt đơn Đổi tên đề tài (ĐTĐT - BR-02): Sinh viên lập đơn -> GVHD xác nhận -> Khoa phê duyệt -> PĐT duyệt chốt.
   - Quản lý tệp tin tải lên (`SubmissionFiles`: giới hạn dung lượng <= 20MB, định dạng PDF/DOC/DOCX).
 - **Phân bổ công việc:**
-  - *Backend:* Triển khai File Storage Service (lưu trữ local an toàn / MinIO / Cloud Storage), API nộp/duyệt Đề cương & Giữa kỳ, State Machine duyệt đơn ĐTĐT 3 bên.
+  - *Backend:* Triển khai File Storage Service (ưu tiên `LocalFileStorageService` trong thư mục server `uploads/`; MinIO/Cloud Storage là mở rộng), API nộp/duyệt Đề cương & Giữa kỳ, State Machine duyệt đơn ĐTĐT 3 bên.
   - *Frontend:* Giao diện upload tài liệu kéo thả kèm thanh tiến trình, màn hình chấm/phản hồi của Khoa, giao diện theo dõi tiến trình đơn ĐTĐT.
   - *QA/Test:* Kiểm thử tải lên file độc hại, file vượt dung lượng (25MB), file sai định dạng (.exe), kiểm thử chặn sinh viên nộp bài sau Deadline của Stage.
 
-### Sprint 5: Councils, Reviewers & Dynamic Rubrics Grading Module
-- **Mục tiêu:** Tổ chức đánh giá chuyên môn: Phân công GVPB, thành lập Hội đồng, nhập điểm theo barem động và cơ chế khóa biên bản điểm (BR-03, BR-04).
+### Sprint 5: Reviewers & Dynamic Rubrics Grading Module (Phản biện & Chấm điểm)
+- **Mục tiêu:** Tổ chức đánh giá chuyên môn: Phân công GVPB, chấm điểm phản biện & kết luận ra bảo vệ, chấm điểm Hội đồng chi tiết và cơ chế khóa biên bản điểm (BR-03, BR-04).
 - **Phạm vi tính năng:**
-  - Khoa/PĐT cấu hình bộ tiêu chí barem điểm dùng chung (`GradingCriteria`).
   - Khoa phân công GVPB; GVPB nhập nhận xét, điểm số và kết luận đồng ý/không đồng ý ra bảo vệ (`DefenseApproval`).
-  - Thiết lập Hội đồng bảo vệ, phân ca/phòng thi; gán nhóm đề tài vào Hội đồng.
-  - GVHD, GVPB và từng thành viên Hội đồng chấm điểm chi tiết theo tiêu chí (`EvaluationDetails`).
-  - Thư ký Hội đồng thực hiện Khóa biên bản (`LockStatus = 'Locked'`) -> kích hoạt Trigger đóng băng toàn bộ điểm thành viên.
+  - GVHD, GVPB và từng thành viên Hội đồng chấm điểm chi tiết theo tiêu chí barem đã cấu hình (`EvaluationDetails`).
+  - Thư ký Hội đồng thực hiện Khóa biên bản (`LockStatus = 'Locked'`) -> kích hoạt Trigger/Policy đóng băng toàn bộ điểm thành viên.
+  - Cơ chế Mở khóa biên bản điểm (Override Unlock) của Lãnh đạo Khoa khi có khiếu nại (BR-04).
 - **Phân bổ công việc:**
-  - *Backend:* API quản lý barem điểm động, API phân công GVPB/Hội đồng, API chấm điểm và cộng dồn điểm tổng, Triển khai Trigger/Logic bảo vệ điểm đã khóa (BR-04) và cơ chế Override Unlock của Lãnh đạo Khoa.
-  - *Frontend:* Form chấm điểm động render tự động theo danh sách tiêu chí barem, giao diện điều phối Hội đồng & phòng thi, màn hình biên bản Hội đồng của Thư ký có nút bấm Khóa biên bản.
-  - *QA/Test:* Kiểm thử chống can thiệp sửa điểm sau khi biên bản đã khóa (kỳ vọng trả về 403 Forbidden), kiểm thử Unique Index chống xếp trùng phòng/ca thi trong cùng một ngày.
+  - *Backend:* API phân công GVPB, API chấm điểm chi tiết theo barem & cộng dồn điểm, Triển khai Trigger/Policy bảo vệ điểm đã khóa (BR-04) và API Override Unlock của Lãnh đạo Khoa.
+  - *Frontend:* Form chấm điểm động render tự động theo danh sách tiêu chí barem, giao diện phân công GVPB, màn hình biên bản Hội đồng của Thư ký có nút bấm Khóa biên bản và giao diện Yêu cầu/Phê duyệt mở khóa.
+  - *QA/Test:* Kiểm thử chống can thiệp sửa điểm sau khi biên bản đã khóa (kỳ vọng trả về 403 Forbidden), kiểm thử luồng Override Unlock của Lãnh đạo Khoa.
 
-### Sprint 6: Final Submission, Score Publishing, Notifications & Audit
-- **Mục tiêu:** Hoàn thiện giai đoạn kết thúc khóa luận: nộp lưu chiểu, tính điểm tổng kết, công bố điểm và hoàn tất hệ thống giám sát.
+### Sprint 6: Councils Setup, Final Submission, Score Publishing, Notifications & E2E Testing
+- **Mục tiêu:** Thiết lập Hội đồng & lịch bảo vệ, nộp lưu chiểu, tính điểm tổng kết, công bố điểm, thông báo và E2E Testing hoàn tất hệ thống.
 - **Phạm vi tính năng:**
+  - Thiết lập Hội đồng bảo vệ, phân ca/phòng thi; gán nhóm đề tài vào Hội đồng (`DefenseCouncils`, `CouncilAssignments`).
   - Sinh viên nộp báo cáo toàn văn sau chỉnh sửa; Khoa kiểm tra và bấm xác nhận lưu chiểu (`ArchiveConfirmed` - BR-05).
   - Tự động tính toán điểm tổng kết theo công thức trọng số đã cấu hình (`ScoreSummaries` - BR-06).
   - Khoa công bố điểm chính thức cho sinh viên.
   - Cơ chế ghi vết tự động toàn bộ thao tác can thiệp vào bảng `shared.AuditLogs` (đảm bảo tính bất biến).
-  - Hệ thống thông báo nội bộ: Nhắc nhở hạn chót (Deadline reminder) và cập nhật trạng thái hồ sơ.
+  - Hệ thống thông báo nội bộ (Notification Service lưu DB + Email nhắc hạn; mở rộng SignalR nếu đủ thời gian).
+  - **Dành 3 - 5 ngày đệm ở cuối Sprint:** Thực hiện E2E Testing toàn bộ quy trình 21 tuần, khắc phục các tồn đọng kỹ thuật (Tech debt) và hoàn thiện slide/tài liệu demo nghiệm thu.
 - **Phân bổ công việc:**
-  - *Backend:* Service tính toán điểm tổng kết tự động, Interceptor/Trigger tự động ghi Audit Log cho các nghiệp vụ nhạy cảm, Notification Service gửi thông báo qua SignalR / WebSocket.
-  - *Frontend:* Màn hình tra cứu bảng điểm chi tiết của Sinh viên, giao diện quản lý hồ sơ lưu chiểu của Khoa, màn hình xem Audit Logs của Admin, component chuông thông báo trên Header.
-  - *QA/Test:* End-to-End Test toàn bộ vòng đời đề tài từ Tuần 1 đến Tuần 21, Stress test / Performance test cho các API tổng hợp danh sách, kiểm thử tính bất biến của bảng AuditLog.
+  - *Backend:* API quản lý & điều phối Hội đồng / phòng thi, Service tính toán điểm tổng kết tự động, Interceptor/Trigger tự động ghi Audit Log cho các nghiệp vụ nhạy cảm, Notification Service.
+  - *Frontend:* Giao diện điều phối Hội đồng & phòng thi, màn hình tra cứu bảng điểm chi tiết của Sinh viên, giao diện quản lý hồ sơ lưu chiểu của Khoa, màn hình xem Audit Logs của Admin, component chuông thông báo trên Header.
+  - *QA/Test:* Unique Index test chống xếp trùng phòng/ca thi trong cùng một ngày, End-to-End Test toàn bộ vòng đời đề tài từ Tuần 1 đến Tuần 21, Stress test / Performance test cho các API tổng hợp danh sách.
