@@ -1,0 +1,440 @@
+// ========================================================
+// GOM NHÓM MODULE & PHÂN MÀU (TABLEGROUPS)
+// ========================================================
+
+TableGroup Identity [color: #3498DB] {
+  User
+  Role
+  UserRole
+}
+
+TableGroup Academic [color: #2ECC71] {
+  KLTNBatch
+  Stage
+  ScoreWeightConfig
+}
+
+TableGroup Topics [color: #E67E22] {
+  Topic
+  StudentGroup
+  StudentGroupMember
+}
+
+TableGroup Thesis [color: #9B59B6] {
+  Syllabus
+  MidtermReport
+  RenameRequest
+  FinalReport
+  FinalSubmission
+  SubmissionFile
+}
+
+TableGroup Councils [color: #E74C3C] {
+  GradingCriteria
+  AdvisorEvaluation
+  ReviewerAssignment
+  ReviewerEvaluation
+  Council
+  CouncilMember
+  CouncilAssignment
+  CouncilScore
+  CouncilMinute
+  EvaluationDetail
+  ScoreSummary
+}
+
+TableGroup Shared [color: #34495E] {
+  AuditLog
+  Notification
+}
+
+// ========================================================
+// MODULE 1: IDENTITY
+// ========================================================
+
+Table User {
+  id uniqueidentifier [pk]
+  email varchar(150) [unique, not null]
+  password_hash nvarchar(max) [not null]
+  full_name nvarchar(150) [not null]
+  user_code varchar(20) [unique]
+  phone_number varchar(20)
+  status varchar(20) [not null, default: 'Active']
+  created_at datetime2 [not null]
+  updated_at datetime2
+}
+
+Table Role {
+  id int [pk, increment]
+  role_name varchar(50) [unique, not null]
+  description nvarchar(255)
+}
+
+Table UserRole {
+  user_id uniqueidentifier [not null]
+  role_id int [not null]
+  assigned_at datetime2 [not null]
+
+  indexes {
+    (user_id, role_id) [pk]
+  }
+}
+
+// ========================================================
+// MODULE 2: ACADEMIC
+// ========================================================
+
+Table KLTNBatch {
+  id uniqueidentifier [pk]
+  batch_name nvarchar(100) [not null]
+  academic_year varchar(20) [not null]
+  semester int [not null]
+  start_date date [not null]
+  end_date date [not null]
+  status varchar(20) [not null, default: 'Draft']
+  created_at datetime2 [not null]
+}
+
+Table Stage {
+  id uniqueidentifier [pk]
+  batch_id uniqueidentifier [not null]
+  stage_index int [not null]
+  stage_name nvarchar(150) [not null]
+  start_date date [not null]
+  deadline_date datetime2 [not null]
+}
+
+Table ScoreWeightConfig {
+  id uniqueidentifier [pk]
+  batch_id uniqueidentifier [unique, not null]
+  advisor_weight decimal(5,2) [not null]
+  reviewer_weight decimal(5,2) [not null]
+  council_weight decimal(5,2) [not null]
+  updated_at datetime2 [not null]
+  updated_by uniqueidentifier [not null]
+}
+
+// ========================================================
+// MODULE 3: TOPICS
+// ========================================================
+
+Table Topic {
+  id uniqueidentifier [pk]
+  batch_id uniqueidentifier [not null]
+  advisor_id uniqueidentifier [not null]
+  title_vi nvarchar(300) [not null]
+  title_en varchar(350)
+  description nvarchar(max)
+  requirements nvarchar(max)
+  status varchar(30) [not null, default: 'Draft']
+  created_at datetime2 [not null]
+}
+
+Table StudentGroup {
+  id uniqueidentifier [pk]
+  topic_id uniqueidentifier [not null]
+  status varchar(30) [not null, default: 'Registered']
+  created_at datetime2 [not null]
+}
+
+Table StudentGroupMember {
+  id uniqueidentifier [pk]
+  group_id uniqueidentifier [not null]
+  student_id uniqueidentifier [not null]
+  batch_id uniqueidentifier [not null]
+  joined_at datetime2 [not null]
+
+  indexes {
+    (group_id, student_id) [unique]
+    (student_id, batch_id) [unique]
+  }
+}
+
+// ========================================================
+// MODULE 4: THESIS
+// ========================================================
+
+Table Syllabus {
+  id uniqueidentifier [pk]
+  group_id uniqueidentifier [unique, not null]
+  current_version_no int [not null, default: 1]
+  status varchar(30) [not null, default: 'Submitted']
+  faculty_feedback nvarchar(max)
+  reviewed_by uniqueidentifier
+  reviewed_at datetime2
+}
+
+Table MidtermReport {
+  id uniqueidentifier [pk]
+  group_id uniqueidentifier [unique, not null]
+  submission_date datetime2 [not null]
+  advisor_comment nvarchar(max)
+  advisor_decision varchar(20) [not null, default: 'Pending']
+  advisor_evaluated_at datetime2
+  faculty_status varchar(20) [not null, default: 'Pending']
+  faculty_feedback nvarchar(max)
+  faculty_reviewed_by uniqueidentifier
+  faculty_reviewed_at datetime2
+}
+
+Table RenameRequest {
+  id uniqueidentifier [pk]
+  group_id uniqueidentifier [not null]
+  old_title_vi nvarchar(300) [not null]
+  new_title_vi nvarchar(300) [not null]
+  old_title_en varchar(350)
+  new_title_en varchar(350)
+  reason nvarchar(max) [not null]
+  status varchar(30) [not null, default: 'Created']
+  advisor_confirmed_at datetime2
+  faculty_approved_at datetime2
+  aa_approved_at datetime2
+  created_at datetime2 [not null]
+}
+
+Table FinalReport {
+  id uniqueidentifier [pk]
+  group_id uniqueidentifier [not null]
+  version_type varchar(30) [not null]
+  status varchar(20) [not null, default: 'Submitted']
+  submitted_at datetime2 [not null]
+}
+
+Table FinalSubmission {
+  id uniqueidentifier [pk]
+  group_id uniqueidentifier [unique, not null]
+  status varchar(30) [not null, default: 'NotSubmitted']
+  archived_confirmed_by uniqueidentifier
+  archived_confirmed_at datetime2
+}
+
+Table SubmissionFile {
+  id uniqueidentifier [pk]
+  entity_type varchar(50) [not null]
+  entity_id uniqueidentifier [not null]
+  version_no int [not null, default: 1]
+  file_name nvarchar(255) [not null]
+  file_url varchar(500) [not null]
+  file_size bigint [not null]
+  file_extension varchar(10) [not null]
+  uploaded_by uniqueidentifier [not null]
+  uploaded_at datetime2 [not null]
+}
+
+// ========================================================
+// MODULE 5: COUNCILS
+// ========================================================
+
+Table GradingCriteria {
+  id uniqueidentifier [pk]
+  batch_id uniqueidentifier [not null]
+  criteria_code varchar(20) [not null]
+  criteria_name nvarchar(250) [not null]
+  max_score decimal(4,2) [not null]
+  order_index int [not null, default: 1]
+
+  indexes {
+    (batch_id, criteria_code) [unique]
+  }
+}
+
+Table AdvisorEvaluation {
+  id uniqueidentifier [pk]
+  group_id uniqueidentifier [unique, not null]
+  score decimal(4,2) [not null]
+  comment nvarchar(max)
+  evaluated_at datetime2 [not null]
+}
+
+Table ReviewerAssignment {
+  id uniqueidentifier [pk]
+  group_id uniqueidentifier [unique, not null]
+  reviewer_id uniqueidentifier [not null]
+  assigned_by uniqueidentifier [not null]
+  assigned_at datetime2 [not null]
+}
+
+Table ReviewerEvaluation {
+  id uniqueidentifier [pk]
+  assignment_id uniqueidentifier [unique, not null]
+  score decimal(4,2) [not null]
+  comment nvarchar(max)
+  defense_approval varchar(20) [not null]
+  is_visible_to_student boolean [not null, default: false]
+  evaluated_at datetime2 [not null]
+}
+
+Table Council {
+  id uniqueidentifier [pk]
+  batch_id uniqueidentifier [not null]
+  council_code varchar(50) [not null]
+  defense_date date [not null]
+  time_slot varchar(50) [not null]
+  room nvarchar(50) [not null]
+  status varchar(20) [not null, default: 'Draft']
+  decision_number nvarchar(100)
+  signed_date date
+  decision_file_url varchar(500)
+  approved_by uniqueidentifier
+  approved_at datetime2
+}
+
+Table CouncilMember {
+  id uniqueidentifier [pk]
+  council_id uniqueidentifier [not null]
+  user_id uniqueidentifier [not null]
+  role_in_council varchar(30) [not null]
+
+  indexes {
+    (council_id, user_id) [unique]
+  }
+}
+
+Table CouncilAssignment {
+  id uniqueidentifier [pk]
+  council_id uniqueidentifier [not null]
+  group_id uniqueidentifier [unique, not null]
+  order_number int [not null, default: 1]
+}
+
+Table CouncilScore {
+  id uniqueidentifier [pk]
+  council_assignment_id uniqueidentifier [not null]
+  council_member_id uniqueidentifier [not null]
+  score decimal(4,2) [not null]
+  feedback nvarchar(max)
+  evaluated_at datetime2 [not null]
+
+  indexes {
+    (council_assignment_id, council_member_id) [unique]
+  }
+}
+
+Table CouncilMinute {
+  id uniqueidentifier [pk]
+  council_assignment_id uniqueidentifier [unique, not null]
+  general_feedback nvarchar(max)
+  required_revisions nvarchar(max)
+  lock_status varchar(30) [not null, default: 'Open']
+  locked_at datetime2
+  locked_by uniqueidentifier
+  override_reason nvarchar(max)
+  unlocked_at datetime2
+}
+
+Table EvaluationDetail {
+  id uniqueidentifier [pk]
+  criteria_id uniqueidentifier [not null]
+  evaluation_id uniqueidentifier [not null]
+  score decimal(4,2) [not null]
+
+  indexes {
+    (criteria_id, evaluation_id) [unique]
+  }
+}
+
+Table ScoreSummary {
+  id uniqueidentifier [pk]
+  group_id uniqueidentifier [unique, not null]
+  advisor_score decimal(4,2)
+  reviewer_score decimal(4,2)
+  council_score decimal(4,2)
+  final_score decimal(4,2)
+  calculation_formula nvarchar(200)
+  status varchar(20) [not null, default: 'Pending']
+  published_at datetime2
+  published_by uniqueidentifier
+}
+
+// ========================================================
+// MODULE 6: SHARED
+// ========================================================
+
+Table AuditLog {
+  id bigint [pk, increment]
+  user_id uniqueidentifier [not null]
+  action varchar(100) [not null]
+  entity_type varchar(50) [not null]
+  entity_id varchar(100) [not null]
+  old_data nvarchar(max)
+  new_data nvarchar(max)
+  timestamp datetime2 [not null]
+}
+
+Table Notification {
+  id uniqueidentifier [pk]
+  recipient_id uniqueidentifier [not null]
+  title nvarchar(200) [not null]
+  content nvarchar(max) [not null]
+  notification_type varchar(50) [not null]
+  is_read boolean [not null, default: false]
+  created_at datetime2 [not null]
+}
+
+// ========================================================
+// RELATIONSHIPS (KHÓA NGOẠI & DÂY NỐI LIÊN KẾT)
+// ========================================================
+
+Ref: UserRole.user_id > User.id
+Ref: UserRole.role_id > Role.id
+
+Ref: Stage.batch_id > KLTNBatch.id
+Ref: ScoreWeightConfig.batch_id - KLTNBatch.id
+Ref: ScoreWeightConfig.updated_by > User.id
+
+Ref: Topic.batch_id > KLTNBatch.id
+Ref: Topic.advisor_id > User.id
+
+Ref: StudentGroup.topic_id > Topic.id
+
+Ref: StudentGroupMember.group_id > StudentGroup.id
+Ref: StudentGroupMember.student_id > User.id
+Ref: StudentGroupMember.batch_id > KLTNBatch.id
+
+Ref: Syllabus.group_id - StudentGroup.id
+Ref: Syllabus.reviewed_by > User.id
+
+Ref: MidtermReport.group_id - StudentGroup.id
+Ref: MidtermReport.faculty_reviewed_by > User.id
+
+Ref: RenameRequest.group_id > StudentGroup.id
+
+Ref: FinalReport.group_id > StudentGroup.id
+
+Ref: FinalSubmission.group_id - StudentGroup.id
+Ref: FinalSubmission.archived_confirmed_by > User.id
+
+Ref: SubmissionFile.uploaded_by > User.id
+
+Ref: GradingCriteria.batch_id > KLTNBatch.id
+
+Ref: AdvisorEvaluation.group_id - StudentGroup.id
+
+Ref: ReviewerAssignment.group_id - StudentGroup.id
+Ref: ReviewerAssignment.reviewer_id > User.id
+Ref: ReviewerAssignment.assigned_by > User.id
+
+Ref: ReviewerEvaluation.assignment_id - ReviewerAssignment.id
+
+Ref: Council.batch_id > KLTNBatch.id
+Ref: Council.approved_by > User.id
+
+Ref: CouncilMember.council_id > Council.id
+Ref: CouncilMember.user_id > User.id
+
+Ref: CouncilAssignment.council_id > Council.id
+Ref: CouncilAssignment.group_id - StudentGroup.id
+
+Ref: CouncilScore.council_assignment_id > CouncilAssignment.id
+Ref: CouncilScore.council_member_id > CouncilMember.id
+
+Ref: CouncilMinute.council_assignment_id - CouncilAssignment.id
+Ref: CouncilMinute.locked_by > User.id
+
+Ref: EvaluationDetail.criteria_id > GradingCriteria.id
+
+Ref: ScoreSummary.group_id - StudentGroup.id
+Ref: ScoreSummary.published_by > User.id
+
+Ref: AuditLog.user_id > User.id
+Ref: Notification.recipient_id > User.id
