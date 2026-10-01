@@ -18,7 +18,9 @@ on:
         type: choice
         options:
           - dev
-          - main
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   deploy:
