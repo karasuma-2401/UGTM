@@ -1,22 +1,22 @@
 services:
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: ugtm-sqlserver
+  postgres:
+    image: postgres:17-alpine
+    container_name: ugtm-postgres
     restart: unless-stopped
     environment:
-      - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD:-UGTM_SecurePass123!}
-      - MSSQL_PID=Developer
+      - POSTGRES_DB=ugtm_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-UGTM_SecurePass123!}
     ports:
-      - "1433:1433"
+      - "5432:5432"
     volumes:
-      - sqlserver_data:/var/opt/mssql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD:-UGTM_SecurePass123!}\" -C -Q \"SELECT 1\" || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ugtm_db"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 10s
 
   backend:
     build:
@@ -26,12 +26,12 @@ services:
     container_name: ugtm-backend
     restart: unless-stopped
     depends_on:
-      sqlserver:
+      postgres:
         condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
-      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=UGTM_Db;User Id=sa;Password=${MSSQL_SA_PASSWORD:-UGTM_SecurePass123!};TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ugtm_db;Username=postgres;Password=${POSTGRES_PASSWORD:-UGTM_SecurePass123!}
       - Cors__AllowedOrigins__0=http://localhost:5173
       - Cors__AllowedOrigins__1=http://localhost:3000
       - Cors__AllowedOrigins__2=http://localhost:80
@@ -53,4 +53,4 @@ services:
       - "3000:80"
 
 volumes:
-  sqlserver_data:
+  postgres_data:
