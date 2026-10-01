@@ -134,3 +134,34 @@ Chạy song song backend (bước 2) và frontend (bước 3), sau đó mở `ht
 - `Domain` chỉ được phụ thuộc `BuildingBlocks.Domain` và `Contracts` của chính module đó.
 - Một module **không được** tham chiếu trực tiếp `Domain`/`Application`/`Infrastructure` của module khác — chỉ được giao tiếp qua `Contracts`. Ranh giới này được enforce tự động bởi `backend/tests/Architecture.Tests` (dựa trên `Assembly.GetReferencedAssemblies()`), build/test sẽ đỏ ngay nếu vi phạm.
 - Host (`UGTM.Api`) là composition root: mỗi module implement interface `IModule` (`RegisterModule` để đăng ký DI, `MapEndpoints` để khai báo route), được liệt kê tường minh trong `Program.cs` — không dùng reflection scan.
+
+## Chạy nhanh với Docker Compose (Dev)
+
+Khởi chạy toàn bộ hệ thống gồm Backend API, Frontend SPA và SQL Server:
+
+```bash
+docker compose up -d --build
+```
+
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:5287`
+- SQL Server: `localhost:1433` (User: `sa`, Mật khẩu mặc định: `UGTM_SecurePass123!`)
+
+Dừng các container:
+
+```bash
+docker compose down
+```
+
+## CI/CD Pipeline (GitHub Actions)
+
+Dự án thiết lập quy trình tự động hóa:
+
+1. **Continuous Integration (CI)**:
+   - `backend-ci.yml`: Chạy `dotnet format --verify-no-changes`, quét lộ secret `gitleaks`, build Release, chạy toàn bộ Unit & Architecture tests, verify build Docker image API.
+   - `frontend-ci.yml`: Chạy `oxlint`, `tsc -b`, `npm run build`, verify build Docker image Frontend Nginx.
+2. **Publish Image**:
+   - `publish.yml`: Đóng gói Docker image cho API và Frontend, quét an toàn container với **Trivy**, đẩy image lên GitHub Container Registry (`ghcr.io/karasuma-2401/ugtm-*`).
+3. **Continuous Deployment (CD)**:
+   - `deploy.yml`: SSH vào VPS máy chủ, pull image mới nhất và restart container thông qua `docker compose -f docker-compose.prod.yml up -d`.
+
