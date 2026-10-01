@@ -18,9 +18,7 @@ on:
         type: choice
         options:
           - dev
-permissions:
-  contents: read
-  packages: read
+          - main
 
 jobs:
   deploy:
@@ -75,34 +73,34 @@ jobs:
             # Create or update docker-compose.prod.yml
             cat << 'EOF' > docker-compose.prod.yml
             services:
-              sqlserver:
-                image: mcr.microsoft.com/mssql/server:2022-latest
-                container_name: ugtm-sqlserver
+              postgres:
+                image: postgres:17-alpine
+                container_name: ugtm-postgres
                 restart: always
                 environment:
-                  - ACCEPT_EULA=Y
-                  - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD:-UGTM_ProdSecretPass123!}
-                  - MSSQL_PID=Express
+                  - POSTGRES_DB=ugtm_db
+                  - POSTGRES_USER=postgres
+                  - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-UGTM_ProdSecretPass123!}
                 volumes:
-                  - sqlserver_prod_data:/var/opt/mssql
+                  - postgres_prod_data:/var/lib/postgresql/data
                 healthcheck:
-                  test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD:-UGTM_ProdSecretPass123!}\" -C -Q \"SELECT 1\" || exit 1"]
+                  test: ["CMD-SHELL", "pg_isready -U postgres -d ugtm_db"]
                   interval: 10s
                   timeout: 5s
                   retries: 5
-                  start_period: 20s
+                  start_period: 10s
 
               backend:
                 image: ghcr.io/${IMAGE_OWNER}/ugtm-api:${IMAGE_TAG}
                 container_name: ugtm-backend
                 restart: always
                 depends_on:
-                  sqlserver:
+                  postgres:
                     condition: service_healthy
                 environment:
                   - ASPNETCORE_ENVIRONMENT=Production
                   - ASPNETCORE_HTTP_PORTS=8080
-                  - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=UGTM_Db;User Id=sa;Password=${MSSQL_SA_PASSWORD:-UGTM_ProdSecretPass123!};TrustServerCertificate=True;
+                  - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ugtm_db;Username=postgres;Password=${POSTGRES_PASSWORD:-UGTM_ProdSecretPass123!}
                   - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
                 ports:
                   - "5287:8080"
@@ -117,13 +115,13 @@ jobs:
                   - "80:80"
 
             volumes:
-              sqlserver_prod_data:
+              postgres_prod_data:
             EOF
 
             # Export environment variables for Compose
             export IMAGE_OWNER="$OWNER"
             export IMAGE_TAG="$BRANCH"
-            export MSSQL_SA_PASSWORD="${{ secrets.MSSQL_SA_PASSWORD || 'UGTM_ProdSecretPass123!' }}"
+            export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD || 'UGTM_ProdSecretPass123!' }}"
             export APP_URL="${{ secrets.APP_URL || 'http://localhost' }}"
 
             # Login to GHCR to pull images
