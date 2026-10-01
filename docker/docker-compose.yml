@@ -13,8 +13,79 @@ services:
       - Cors__AllowedOrigins__0=http://localhost:5173
       - Cors__AllowedOrigins__1=http://localhost:3000
       - Cors__AllowedOrigins__2=http://localhost:80
+      - Redis__ConnectionString=redis:6379,password=${REDIS_PASSWORD:-ugtm_redis_pass_123}
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__Username=${RABBITMQ_USER:-ugtm_user}
+      - RabbitMQ__Password=${RABBITMQ_PASSWORD:-ugtm_rabbit_pass_123}
+      - S3Storage__Endpoint=http://minio:9000
+      - S3Storage__AccessKey=${MINIO_ROOT_USER:-ugtm_admin}
+      - S3Storage__SecretKey=${MINIO_ROOT_PASSWORD:-ugtm_secret_pass_123}
+      - S3Storage__BucketName=ugtm-storage
+      - Email__SmtpHost=mailpit
+      - Email__SmtpPort=1025
     ports:
       - "5287:8080"
+    depends_on:
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      mailpit:
+        condition: service_started
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ugtm-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: ugtm-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-ugtm_admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-ugtm_secret_pass_123}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: ugtm-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-ugtm_redis_pass_123}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: ugtm-rabbitmq
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-ugtm_user}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-ugtm_rabbit_pass_123}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   frontend:
     build:
@@ -29,3 +100,8 @@ services:
       - backend
     ports:
       - "3000:80"
+
+volumes:
+  minio_data:
+  redis_data:
+  rabbitmq_data:

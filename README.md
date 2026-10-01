@@ -135,29 +135,58 @@ Chạy song song backend (bước 2) và frontend (bước 3), sau đó mở `ht
 - Một module **không được** tham chiếu trực tiếp `Domain`/`Application`/`Infrastructure` của module khác — chỉ được giao tiếp qua `Contracts`. Ranh giới này được enforce tự động bởi `backend/tests/Architecture.Tests` (dựa trên `Assembly.GetReferencedAssemblies()`), build/test sẽ đỏ ngay nếu vi phạm.
 - Host (`UGTM.Api`) là composition root: mỗi module implement interface `IModule` (`RegisterModule` để đăng ký DI, `MapEndpoints` để khai báo route), được liệt kê tường minh trong `Program.cs` — không dùng reflection scan.
 
-## Chạy nhanh với Docker Compose (Dev)
+## Hướng dẫn chạy dự án cho Teammates
 
-Tạo file `.env` từ `.env.example` và điền chuỗi kết nối Neon PostgreSQL:
+### 1. Chuẩn bị file cấu hình môi trường (.env)
+
+Sao chép file mẫu và điền chuỗi kết nối Neon PostgreSQL:
 
 ```bash
 cp .env.example .env
 ```
 
-Khởi chạy hệ thống gồm Backend API và Frontend SPA (kết nối trực tiếp tới Neon PostgreSQL):
+*(Lấy chuỗi kết nối Neon từ trưởng nhóm hoặc Neon Dashboard và dán vào `DATABASE_CONNECTION_STRING` trong file `.env`)*.
+
+### 2. Khởi chạy Backend và cụm dịch vụ hạ tầng (Docker Compose)
+
+Khởi chạy Backend API cùng toàn bộ các dịch vụ phụ trợ (Mailpit, MinIO, Redis, RabbitMQ):
 
 ```bash
-docker compose up -d --build
+# Khởi chạy Backend và toàn bộ hạ tầng
+docker compose up -d backend mailpit minio redis rabbitmq
 ```
 
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:5287`
-- Database: Neon Serverless PostgreSQL Cloud
+*(Hoặc gõ `docker compose up -d` nếu muốn khởi chạy luôn cả container frontend Nginx).*
 
-Dừng các container:
+Dừng các dịch vụ:
 
 ```bash
 docker compose down
 ```
+
+### 3. Khởi chạy Frontend (Vite Dev Server)
+
+Phát triển giao diện React với Vite để tận dụng Hot Module Replacement (HMR) tức thì:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Truy cập giao diện: `http://localhost:5173`.
+
+### 4. Bảng điều khiển các dịch vụ (Dashboard Ports)
+
+| Dịch vụ | Địa chỉ Web / Port | Tài khoản mặc định | Mô tả |
+|---|---|---|---|
+| **Frontend SPA (Vite)** | `http://localhost:5173` | — | Giao diện React SPA (Hot Reload) |
+| **Backend API** | `http://localhost:5287` | — | ASP.NET Core Modular Monolith API |
+| **Mailpit Web UI** | `http://localhost:8025` | — | Xem email thông báo KLTN (SMTP: port `1025`) |
+| **MinIO Console** | `http://localhost:9001` | `ugtm_admin` / `ugtm_secret_pass_123` | Quản lý File Storage S3 (API: port `9000`) |
+| **RabbitMQ Management** | `http://localhost:15672` | `ugtm_user` / `ugtm_rabbit_pass_123` | Quản lý Message Broker / Queues (AMQP: port `5672`) |
+| **Redis Cache** | `localhost:6379` | pass: `ugtm_redis_pass_123` | In-memory distributed cache |
+| **PostgreSQL Database** | Neon Cloud | `neondb_owner` | CSDL đám mây Serverless |
 
 ## CI/CD Pipeline (GitHub Actions)
 
