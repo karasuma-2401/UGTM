@@ -1,0 +1,133 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+    paths:
+      - "backend/**"
+      - "UGTM.sln"
+      - ".github/workflows/backend-ci.yml"
+  push:
+    branches:
+      - dev
+      - main
+    paths:
+      - "backend/**"
+      - "UGTM.sln"
+      - ".github/workflows/backend-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  format:
+    name: Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Verify code formatting
+        run: dotnet format UGTM.sln --verify-no-changes --verbosity diagnostic
+
+  gitleaks:
+    name: Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Build Solution
+    needs: format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj', 'UGTM.sln') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore dependencies
+        run: dotnet restore UGTM.sln
+
+      - name: Build solution
+        run: dotnet build UGTM.sln -c Release --no-restore /nr:false
+
+  test:
+    name: Run Tests
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj', 'UGTM.sln') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore dependencies
+        run: dotnet restore UGTM.sln
+
+      - name: Build for testing
+        run: dotnet build UGTM.sln -c Release --no-restore /nr:false
+
+      - name: Execute tests (Architecture + Unit Tests)
+        run: dotnet test UGTM.sln -c Release --no-build --logger "trx;LogFileName=results.trx"
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: "**/TestResults/*.trx"
+
+  docker-verify:
+    name: Docker Build Verification
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build API Docker image
+        run: docker build -f backend/host/Api/Dockerfile backend

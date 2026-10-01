@@ -1,0 +1,44 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ugtm-sqlserver
+    restart: always
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+      - MSSQL_PID=Express
+    volumes:
+      - sqlserver_prod_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  backend:
+    image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-api:${IMAGE_TAG:-latest}
+    container_name: ugtm-backend
+    restart: always
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=UGTM_Db;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;
+      - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
+    ports:
+      - "5287:8080"
+
+  frontend:
+    image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-frontend:${IMAGE_TAG:-latest}
+    container_name: ugtm-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  sqlserver_prod_data:
