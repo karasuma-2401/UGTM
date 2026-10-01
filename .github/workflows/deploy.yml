@@ -1,0 +1,136 @@
+name: Deploy to VPS
+
+on:
+  workflow_run:
+    workflows:
+      - Publish Images
+    types:
+      - completed
+    branches:
+      - dev
+      - main
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "Target Environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - main
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify VPS Secrets
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ] || [ -z "${{ secrets.VPS_SSH_KEY }}" ]; then
+            echo "VPS secrets (VPS_HOST, VPS_SSH_KEY) are not configured yet."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip notification
+        if: steps.check-secrets.outputs.configured == 'false'
+        run: |
+          echo "::warning ::Deployment skipped because VPS_HOST or VPS_SSH_KEY is not set in GitHub Secrets."
+          echo "To enable auto-deployment, go to GitHub Repository -> Settings -> Secrets and variables -> Actions and add: VPS_HOST, VPS_USERNAME, VPS_SSH_KEY."
+
+      - name: Deploy to VPS via SSH
+        if: steps.check-secrets.outputs.configured == 'true'
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME || 'ubuntu' }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            APP_DIR="~/ugtm"
+            mkdir -p "$APP_DIR"
+            cd "$APP_DIR"
+
+            # Determine image tag based on trigger
+            BRANCH="${{ github.event_name == 'workflow_dispatch' && inputs.target_env || github.event.workflow_run.head_branch }}"
+            OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+
+            echo "Deploying UGTM (${BRANCH}) to VPS..."
+
+            # Create or update docker-compose.prod.yml
+            cat << 'EOF' > docker-compose.prod.yml
+            services:
+              sqlserver:
+                image: mcr.microsoft.com/mssql/server:2022-latest
+                container_name: ugtm-sqlserver
+                restart: always
+                environment:
+                  - ACCEPT_EULA=Y
+                  - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD:-UGTM_ProdSecretPass123!}
+                  - MSSQL_PID=Express
+                volumes:
+                  - sqlserver_prod_data:/var/opt/mssql
+                healthcheck:
+                  test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD:-UGTM_ProdSecretPass123!}\" -C -Q \"SELECT 1\" || exit 1"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+                  start_period: 20s
+
+              backend:
+                image: ghcr.io/${IMAGE_OWNER}/ugtm-api:${IMAGE_TAG}
+                container_name: ugtm-backend
+                restart: always
+                depends_on:
+                  sqlserver:
+                    condition: service_healthy
+                environment:
+                  - ASPNETCORE_ENVIRONMENT=Production
+                  - ASPNETCORE_HTTP_PORTS=8080
+                  - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=UGTM_Db;User Id=sa;Password=${MSSQL_SA_PASSWORD:-UGTM_ProdSecretPass123!};TrustServerCertificate=True;
+                  - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
+                ports:
+                  - "5287:8080"
+
+              frontend:
+                image: ghcr.io/${IMAGE_OWNER}/ugtm-frontend:${IMAGE_TAG}
+                container_name: ugtm-frontend
+                restart: always
+                depends_on:
+                  - backend
+                ports:
+                  - "80:80"
+
+            volumes:
+              sqlserver_prod_data:
+            EOF
+
+            # Export environment variables for Compose
+            export IMAGE_OWNER="$OWNER"
+            export IMAGE_TAG="$BRANCH"
+            export MSSQL_SA_PASSWORD="${{ secrets.MSSQL_SA_PASSWORD || 'UGTM_ProdSecretPass123!' }}"
+            export APP_URL="${{ secrets.APP_URL || 'http://localhost' }}"
+
+            # Login to GHCR to pull images
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            # Pull and restart containers
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Clean dangling images
+            docker image prune -f
+            echo "Deployment completed successfully!"

@@ -58,6 +58,10 @@ docker/**/data/
 .DS_Store
 Thumbs.db
 
+# References
+amuse-master/
+amuse-deploy-main/
+
 # Environment files
 .env
 .env.local
