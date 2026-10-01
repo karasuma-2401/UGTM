@@ -73,34 +73,14 @@ jobs:
             # Create or update docker-compose.prod.yml
             cat << 'EOF' > docker-compose.prod.yml
             services:
-              postgres:
-                image: postgres:17-alpine
-                container_name: ugtm-postgres
-                restart: always
-                environment:
-                  - POSTGRES_DB=ugtm_db
-                  - POSTGRES_USER=postgres
-                  - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-UGTM_ProdSecretPass123!}
-                volumes:
-                  - postgres_prod_data:/var/lib/postgresql/data
-                healthcheck:
-                  test: ["CMD-SHELL", "pg_isready -U postgres -d ugtm_db"]
-                  interval: 10s
-                  timeout: 5s
-                  retries: 5
-                  start_period: 10s
-
               backend:
                 image: ghcr.io/${IMAGE_OWNER}/ugtm-api:${IMAGE_TAG}
                 container_name: ugtm-backend
                 restart: always
-                depends_on:
-                  postgres:
-                    condition: service_healthy
                 environment:
                   - ASPNETCORE_ENVIRONMENT=Production
                   - ASPNETCORE_HTTP_PORTS=8080
-                  - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ugtm_db;Username=postgres;Password=${POSTGRES_PASSWORD:-UGTM_ProdSecretPass123!}
+                  - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING}
                   - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
                 ports:
                   - "5287:8080"
@@ -113,15 +93,12 @@ jobs:
                   - backend
                 ports:
                   - "80:80"
-
-            volumes:
-              postgres_prod_data:
             EOF
 
             # Export environment variables for Compose
             export IMAGE_OWNER="$OWNER"
             export IMAGE_TAG="$BRANCH"
-            export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD || 'UGTM_ProdSecretPass123!' }}"
+            export DATABASE_CONNECTION_STRING="${{ secrets.DATABASE_CONNECTION_STRING }}"
             export APP_URL="${{ secrets.APP_URL || 'http://localhost' }}"
 
             # Login to GHCR to pull images

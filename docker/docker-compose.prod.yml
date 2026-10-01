@@ -1,32 +1,12 @@
 services:
-  postgres:
-    image: postgres:17-alpine
-    container_name: ugtm-postgres
-    restart: always
-    environment:
-      - POSTGRES_DB=ugtm_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-UGTM_ProdSecretPass123!}
-    volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ugtm_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
   backend:
     image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-api:${IMAGE_TAG:-latest}
     container_name: ugtm-backend
     restart: always
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_HTTP_PORTS=8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ugtm_db;Username=postgres;Password=${POSTGRES_PASSWORD:-UGTM_ProdSecretPass123!}
+      - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING}
       - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
     ports:
       - "5287:8080"
@@ -39,6 +19,3 @@ services:
       - backend
     ports:
       - "80:80"
-
-volumes:
-  postgres_prod_data:

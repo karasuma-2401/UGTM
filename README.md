@@ -8,7 +8,7 @@
 |---|---|
 | Backend | ASP.NET Core (.NET 10), kiến trúc **Modular Monolith + DDD** (tham khảo [kgrzybek/modular-monolith-with-ddd](https://github.com/kgrzybek/modular-monolith-with-ddd)) |
 | Frontend | React 19 + TypeScript + Vite + Ant Design + React Router + TanStack Query |
-| Database | PostgreSQL 17 |
+| Database | Neon Serverless PostgreSQL 17 (AWS Singapore) |
 | Auth | ASP.NET Core Identity + JWT |
 
 ## Yêu cầu môi trường
@@ -137,7 +137,13 @@ Chạy song song backend (bước 2) và frontend (bước 3), sau đó mở `ht
 
 ## Chạy nhanh với Docker Compose (Dev)
 
-Khởi chạy toàn bộ hệ thống gồm Backend API, Frontend SPA và PostgreSQL 17:
+Tạo file `.env` từ `.env.example` và điền chuỗi kết nối Neon PostgreSQL:
+
+```bash
+cp .env.example .env
+```
+
+Khởi chạy hệ thống gồm Backend API và Frontend SPA (kết nối trực tiếp tới Neon PostgreSQL):
 
 ```bash
 docker compose up -d --build
@@ -145,7 +151,7 @@ docker compose up -d --build
 
 - Frontend: `http://localhost:3000`
 - Backend API: `http://localhost:5287`
-- PostgreSQL 17: `localhost:5432` (User: `postgres`, Password: `UGTM_SecurePass123!`, DB: `ugtm_db`)
+- Database: Neon Serverless PostgreSQL Cloud
 
 Dừng các container:
 

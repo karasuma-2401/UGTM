@@ -1,23 +1,4 @@
 services:
-  postgres:
-    image: postgres:17-alpine
-    container_name: ugtm-postgres
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=ugtm_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-UGTM_SecurePass123!}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ugtm_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
   backend:
     build:
       context: ../backend
@@ -25,13 +6,10 @@ services:
     image: ugtm-api:local
     container_name: ugtm-backend
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=ugtm_db;Username=postgres;Password=${POSTGRES_PASSWORD:-UGTM_SecurePass123!}
+      - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING}
       - Cors__AllowedOrigins__0=http://localhost:5173
       - Cors__AllowedOrigins__1=http://localhost:3000
       - Cors__AllowedOrigins__2=http://localhost:80
@@ -51,6 +29,3 @@ services:
       - backend
     ports:
       - "3000:80"
-
-volumes:
-  postgres_data:
