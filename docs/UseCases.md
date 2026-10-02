@@ -36,6 +36,7 @@
   - `UC-STU02`: Đăng ký đề tài & Ghép nhóm
   - `UC-STU03`: Nộp & Chỉnh sửa Đề cương chi tiết (Cổng kiểm soát 1 - Tuần 2)
   - `UC-STU04`: Theo dõi tiến độ cả quá trình (Dashboard 7 giai đoạn)
+  - `UC-STU04b`: Nộp Báo cáo tiến độ định kỳ theo mốc (`ProgressReport`)
   - `UC-STU05`: Nộp Báo cáo giữa kỳ (Cổng kiểm soát 2 - Tuần 10)
   - `UC-STU06`: Tạo Đơn xin Đổi tên đề tài (ĐTĐT - Tuần 3 đến 10)
   - `UC-STU07`: Cập nhật Đề cương mới (sau khi duyệt ĐTĐT)
@@ -45,14 +46,14 @@
   - `UC-STU11`: Tra cứu Điểm số KLTN
 - **Quan hệ kỹ thuật:**
   - `<<include>>`: *Đăng nhập hệ thống*, *Kiểm tra ràng buộc tệp đính kèm (PDF/Docx <= 20MB)*.
-  - `<<extend>>`: *Nộp lại phiên bản Đề cương mới (khi Khoa yêu cầu sửa)*, *Nộp bản Báo cáo sửa đổi (theo nhận xét GVPB)*.
+  - `<<extend>>`: *Nộp lại phiên bản Đề cương mới (khi Khoa yêu cầu sửa)*, *Nộp lại Báo cáo giữa kỳ (khi Khoa yêu cầu sửa)*, *Nộp bản Báo cáo sửa đổi (theo nhận xét GVPB)*.
 
 ### 2.2. Phân hệ Giảng viên hướng dẫn (Bảng 2.2)
 - **Mã nguồn:** [`docs/PlantUML/UseCases/UC_Supervisor.puml`](PlantUML/UseCases/UC_Supervisor.puml)
 - **Danh mục Use Case:**
   - `UC-ADV01`: Soạn thảo & Đề xuất đề tài (Tên Việt/Anh, số SV tối đa, mục tiêu, yêu cầu)
   - `UC-ADV02`: Xác nhận nhóm sinh viên đăng ký
-  - `UC-ADV03`: Đánh giá Tiến độ giữa kỳ (Cổng kiểm soát 2: Dừng / Tiếp tục KLTN)
+  - `UC-ADV03`: Khởi tạo mốc tiến độ (`ProgressMilestone`) & Đánh giá/Nhận xét Báo cáo tiến độ định kỳ
   - `UC-ADV04`: Xác nhận Đơn xin ĐTĐT (Bước 1 trong luồng liên thông 3 bên)
   - `UC-ADV05`: Nhập nhận xét & Chấm điểm GVHD (Đánh giá Báo cáo cuối kỳ)
 
@@ -60,14 +61,14 @@
 - **Mã nguồn:** [`docs/PlantUML/UseCases/UC_Reviewer.puml`](PlantUML/UseCases/UC_Reviewer.puml)
 - **Danh mục Use Case:**
   - `UC-REV01`: Tiếp nhận đề tài phản biện (Truy cập danh sách Khoa phân công, tải hồ sơ báo cáo)
-  - `UC-REV02`: Nhập nhận xét & Chấm điểm GVPB (Bảo mật điểm cho đến khi Khoa công bố)
-  - `UC-REV03`: Đánh giá điều kiện ra Hội đồng ("Đồng ý cho bảo vệ" / "Không đồng ý")
+  - `UC-REV02`: Nhập nhận xét & Chấm điểm GVPB trước buổi bảo vệ (Bảo mật điểm cho đến khi Khoa công bố)
+  - `UC-REV03`: Đánh giá điều kiện ra Hội đồng trước buổi bảo vệ ("Đồng ý cho bảo vệ" / "Không đồng ý")
 
 ### 2.4. Phân hệ Hội đồng chấm KLTN (Bảng 2.4)
 - **Mã nguồn:** [`docs/PlantUML/UseCases/UC_Council.puml`](PlantUML/UseCases/UC_Council.puml)
 - **Danh mục Use Case:**
   - `UC-COU01`: Xem hồ sơ & Báo cáo KLTN của nhóm sinh viên
-  - `UC-COU02`: Nhập điểm thành phần & Nhận xét trực tiếp tại buổi bảo vệ (Thang điểm 0.0 - 10.0)
+  - `UC-COU02`: Nhập điểm thành phần & Nhận xét trực tiếp tại buổi bảo vệ (Thang điểm 0.0 - 10.0; Tự động vô hiệu hóa nếu thành viên là GVPB kiêm Hội đồng - BR-07 TH1)
   - `UC-COU03`: Khóa biên bản điểm Hội đồng (Chuyển chế độ Read-only)
 - **Phân vai:** Thành viên Hội đồng (Chủ tịch, Thư ký, Ủy viên) và Thư ký/Chủ tịch Hội đồng thực hiện thao tác Khóa biên bản.
 
@@ -78,12 +79,12 @@
   - `UC-FAC02`: Công bố danh mục đề tài ra toàn hệ thống
   - `UC-FAC03`: Thẩm định Đề cương chi tiết (Cổng kiểm soát 1 - Tuần 2)
   - `UC-FAC04`: Phê duyệt Đơn xin ĐTĐT (Bước 2: Ký duyệt chuyển PĐT)
-  - `UC-FAC05`: Xử lý & Tiếp nhận kết quả Báo cáo giữa kỳ (Tổng hợp danh sách Tiếp tục / Dừng)
+  - `UC-FAC05`: Thẩm định Báo cáo giữa kỳ (Cổng kiểm soát 2 duy nhất - Tuần 10: Approved / NeedRevision / Rejected)
   - `UC-FAC06`: Phân công Giảng viên phản biện
   - `UC-FAC07`: Lập dự thảo Hội đồng & Xếp lịch bảo vệ
   - `UC-FAC08`: Xác nhận Hoàn thành Lưu chiểu (Mở điều kiện trả điểm chính thức)
   - `UC-FAC09`: Cấp quyền đặc biệt Mở khóa điểm Hội đồng (Xử lý khiếu nại)
-  - `UC-FAC10`: Tổng hợp điểm 3 nguồn (Công thức trọng số linh hoạt Strategy)
+  - `UC-FAC10`: Tổng hợp điểm 3 nguồn (Công thức trọng số linh hoạt Strategy + Quy tắc BR-07 TH1/TH2)
   - `UC-FAC11`: Công bố kết quả & Xuất báo cáo (Excel/PDF)
 
 ### 2.6. Phân hệ Phòng Đào Tạo (Bảng 2.6)
@@ -96,7 +97,8 @@
 ### 2.7. Phân hệ Quản trị viên hệ thống (Bảng 2.7)
 - **Mã nguồn:** [`docs/PlantUML/UseCases/UC_Admin.puml`](PlantUML/UseCases/UC_Admin.puml)
 - **Danh mục Use Case:**
-  - `UC-SYS01`: Quản trị Người dùng & Phân quyền (RBAC) (Tạo mới, khóa, import Excel)
+  - `UC-SYS01`: Quản trị Người dùng & Phân quyền vai trò (RBAC) (Tạo mới, khóa, import Excel)
   - `UC-SYS02`: Cấu hình Đợt KLTN & Mốc thời gian (Chuẩn 21 tuần, deadline 7 giai đoạn)
   - `UC-SYS03`: Cấu hình Tham số & Trọng số tính điểm (Thay đổi tỷ lệ % linh hoạt)
   - `UC-SYS04`: Theo dõi Nhật ký hệ thống (Audit Log)
+  - `UC-SYS05`: Quản lý Danh mục Quyền (`Permissions`) & Phân quyền Chi tiết cho Vai trò (`RolePermissions`)

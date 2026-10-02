@@ -80,10 +80,11 @@ graph TD
 ### Cổng 3: Khoa & Bộ môn (`/faculty`)
 | Tuyến đường (Route) | Tên màn hình | Mục đích chính |
 | :--- | :--- | :--- |
-| `/faculty/proposals` | Thẩm định Đề cương | Duyệt thông qua / chỉnh sửa / từ chối đề cương đề tài |
+| `/faculty/proposals` | Thẩm định Đề cương | Thẩm định Đề cương chi tiết (Cổng kiểm soát 1: Approved / NeedRevision / Rejected) |
+| `/faculty/midterm-reports` | Thẩm định Báo cáo giữa kỳ | Thẩm định Báo cáo giữa kỳ (Cổng kiểm soát 2 duy nhất: Approved / NeedRevision / Rejected) |
 | `/faculty/assign-reviewers` | Phân công Giảng viên PB | Gán GVPB cho từng đề tài theo đúng chuyên ngành |
 | `/faculty/councils` | Quản lý Hội đồng bảo vệ | Tạo các hội đồng chấm bảo vệ, phân công Chủ tịch, Thư ký, UV |
-| `/faculty/change-requests` | Phê duyệt đơn thay đổi | Duyệt đơn đổi tên đề tài hoặc chuyển đổi GVHD |
+| `/faculty/change-requests` | Phê duyệt đơn thay đổi | Duyệt đơn đổi tên đề tài (bước 2/3 chuyển PĐT) |
 | `/faculty/statistics` | Báo cáo & Thống kê | Xem biểu đồ tiến độ làm đồ án của toàn bộ sinh viên trong khoa |
 
 ### Cổng 4: Phòng Đào tạo & Quản trị Hệ thống (`/academic` & `/admin`)
@@ -93,4 +94,5 @@ graph TD
 | `/academic/eligible-students` | Danh sách SV đủ điều kiện | Import/Export danh sách sinh viên đủ điều kiện làm khóa luận |
 | `/academic/grading` | Tổng hợp điểm | Bảng tổng hợp điểm toàn khóa, xuất file quyết định tốt nghiệp |
 | `/admin/users` | Quản lý tài khoản | Cấp phát tài khoản, phân quyền vai trò (Admin, Khoa, GV, SV) |
+| `/admin/permissions` | Quản lý Quyền & Roles | Khởi tạo danh mục `Permissions` và phân quyền chi tiết cho `RolePermissions` |
 | `/admin/audit-logs` | Nhật ký hệ thống | Theo dõi lịch sử thao tác dữ liệu của người dùng |

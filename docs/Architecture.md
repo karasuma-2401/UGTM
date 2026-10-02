@@ -724,18 +724,22 @@ stateDiagram-v2
         ThucHienKLTN --> NopBaoCaoGiuaKy : Tuần 10
     }
 
-    GiaiDoan3 --> GiaiDoan4 : Tuần 10 (Cổng kiểm soát 2)
+    GiaiDoan3 --> GiaiDoan4 : Tuần 10 (Cổng kiểm soát 2 - Khoa thẩm định)
 
     state GiaiDoan4 {
-        [*] --> CongKiemSoat2_GVHD_DanhGia
-        state CongKiemSoat2_GVHD_DanhGia <<choice>>
-        CongKiemSoat2_GVHD_DanhGia --> DungKLTN : Không đồng ý tiếp tục
-        CongKiemSoat2_GVHD_DanhGia --> TiepTucKLTN : Đồng ý tiếp tục
+        [*] --> NopBaoCaoGiuaKy
+        NopBaoCaoGiuaKy --> CongKiemSoat2_KhoaDuyetGiuaKy
+        
+        state CongKiemSoat2_KhoaDuyetGiuaKy <<choice>>
+        CongKiemSoat2_KhoaDuyetGiuaKy --> NeedRevision_GiuaKy : Cần sửa / Nộp lại
+        NeedRevision_GiuaKy --> NopBaoCaoGiuaKy : Nộp lại trước deadline
+        CongKiemSoat2_KhoaDuyetGiuaKy --> Rejected_GiuaKy : Không đạt / Dừng KLTN
+        CongKiemSoat2_KhoaDuyetGiuaKy --> Approved_GiuaKy : Đạt / Tiếp tục
     }
 
-    DungKLTN --> [*] : Chấm dứt quy trình KLTN
+    Rejected_GiuaKy --> [*] : Chấm dứt quy trình KLTN (Dừng KLTN)
 
-    TiepTucKLTN --> GiaiDoan5 : Tuần 11 - 18
+    Approved_GiuaKy --> GiaiDoan5 : Tuần 11 - 18
 
     state GiaiDoan5 {
         [*] --> NopBaoCaoCuoiKy
@@ -776,3 +780,19 @@ stateDiagram-v2
 
     GiaiDoan7 --> [*] : Kết thúc kỳ KLTN thành công
 ```
+
+---
+
+### 8.1. Quy tắc Nghiệp vụ Chấm điểm & Xử lý Vai trò Kép (BR-07)
+
+1. **Phân định Trình tự Chấm điểm theo Giai đoạn**:
+   - **Giai đoạn 5 (Tuần 11 - 18 - Trước buổi bảo vệ)**: GVHD và GVPB tiến hành chấm điểm độc lập trên hệ thống. GVPB đưa ra kết luận điều kiện ra bảo vệ (`AllowedForDefense` / `NotAllowed`).
+   - **Giai đoạn 6 (Tuần 19 - 20 - Buổi bảo vệ trực tiếp)**: Các thành viên Hội đồng thực hiện chấm điểm trực tiếp tại phòng bảo vệ.
+
+2. **Cơ chế Xử lý Vai trò Kép (GVPB kiêm Thành viên Hội đồng)**:
+   - **TH1 (GVPB được phân công thuộc Hội đồng của cùng nhóm KLTN)**: Trong buổi bảo vệ trực tiếp, thành viên Hội đồng này (đã chấm GVPB trước đó) **không chấm điểm Hội đồng lần 2**. Hệ thống ẩn/loại trừ form chấm điểm Hội đồng của thành viên này. Điểm trung bình Hội đồng `Score_Council_Avg` được tính bằng **trung bình cộng điểm của các thành viên Hội đồng còn lại** (không tính GVPB).
+   - **TH2 (GVPB không thuộc Hội đồng của nhóm KLTN đó)**: Tất cả thành viên Hội đồng tiến hành chấm điểm độc lập bình thường. Điểm trung bình Hội đồng `Score_Council_Avg` tính bằng trung bình cộng tất cả thành viên trong Hội đồng.
+
+3. **Tổng hợp Điểm Tổng kết (Strategy Pattern)**:
+   $$\text{FinalScore} = \text{Score\_GVHD} \times W_{\text{GVHD}} + \text{Score\_GVPB} \times W_{\text{GVPB}} + \text{Score\_Council\_Avg} \times W_{\text{Council}}$$
+   *(Công thức tự động kích hoạt sau khi Khoa xác nhận nộp lưu chiểu `ArchiveConfirmed` - BR-05 và áp dụng trọng số $W$ theo cấu hình `ScoreWeightConfig` - BR-06).*

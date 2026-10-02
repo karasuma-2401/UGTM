@@ -62,16 +62,17 @@ Một User Story hoặc Sprint chỉ được coi là hoàn tất khi thỏa mã
 ## III. Kế hoạch Lộ trình Scrum (Roadmap 6 Sprints - 2 tuần/Sprint)
 
 ### Sprint 1: Identity & Authentication Module
-- **Mục tiêu:** Xây dựng hệ thống xác thực tập trung, bảo mật và cơ chế phân quyền RBAC kết hợp quản trị thông tin tài khoản.
+- **Mục tiêu:** Xây dựng hệ thống xác thực tập trung, bảo mật và cơ chế phân quyền RBAC Granular (Vai trò & Danh mục Quyền `Permissions`) kết hợp quản trị thông tin tài khoản.
 - **Phạm vi tính năng:**
   - Đăng nhập (Email trường / Mật khẩu), cấp phát JWT Access Token & Refresh Token, đổi mật khẩu.
   - Quản trị tài khoản người dùng: Tạo mới, cập nhật, kích hoạt/khóa tài khoản (`Active`, `Disabled`, `Locked`).
-  - Gán vai trò (`Admin`, `Faculty`, `AcademicAffairs`, `Lecturer`, `Student`).
+  - Gán vai trò (`Admin`, `Faculty`, `AcademicAffairs`, `Lecturer`, `Student`, `CouncilMember`).
+  - Quản lý danh mục quyền (`Permissions`) và phân quyền chi tiết cho vai trò (`RolePermissions`).
   - Quản lý thông tin hồ sơ cá nhân (Profile).
 - **Phân bổ công việc:**
-  - *Backend:* Triển khai Auth Service (JWT, hashing BCrypt/Argon2), CRUD User API, phân quyền `[Authorize(Roles = "...")]`.
-  - *Frontend:* Xây dựng giao diện Login, đổi mật khẩu, Profile cá nhân, màn hình quản trị danh sách người dùng.
-  - *QA/Test:* Kiểm thử bảo mật (SQL Injection, brute force, token expiration), kiểm thử phân quyền trái phép (401, 403).
+  - *Backend:* Triển khai Auth Service (JWT, hashing BCrypt/Argon2), CRUD User API, CRUD Permission & RolePermission API, phân quyền custom Policy/Requirement `[Authorize(Permission = "...")]`.
+  - *Frontend:* Xây dựng giao diện Login, đổi mật khẩu, Profile cá nhân, màn hình quản trị danh sách người dùng và màn hình Quản lý Quyền & Phân quyền Role.
+  - *QA/Test:* Kiểm thử bảo mật (SQL Injection, brute force, token expiration), kiểm thử phân quyền trái phép theo vai trò và permission (401, 403).
 
 ### Sprint 2: Academic & Batches Management Module
 - **Mục tiêu:** Thiết lập động cơ quản lý đợt KLTN, 7 mốc giai đoạn (Stages), bộ tiêu chí barem điểm (`GradingCriteria`) và tỷ lệ trọng số 3 đầu điểm (BR-06).
@@ -97,36 +98,38 @@ Một User Story hoặc Sprint chỉ được coi là hoàn tất khi thỏa mã
   - *Frontend:* Danh mục đề tài (tìm kiếm, lọc theo chuyên ngành), form nộp đề xuất đề tài cho GVHD, màn hình quản lý nhóm sinh viên.
   - *QA/Test:* Kiểm thử race condition khi nhiều nhóm bấm đăng ký đồng thời cùng 1 đề tài, kiểm thử Trigger chặn thêm sinh viên thứ 3 vào nhóm.
 
-### Sprint 4: Thesis Milestone Tracking Module (Đề cương, Giữa kỳ, ĐTĐT)
-- **Mục tiêu:** Vận hành toàn diện quy trình nộp hồ sơ, upload tài liệu, vòng lặp sửa đề cương và luồng duyệt đơn ĐTĐT 3 bên.
+### Sprint 4: Thesis Milestone Tracking Module (Đề cương, Giữa kỳ, ĐTĐT & Tiến độ)
+- **Mục tiêu:** Vận hành toàn diện quy trình nộp hồ sơ, upload tài liệu, mốc tiến độ định kỳ, thẩm định đề cương/giữa kỳ (Cổng kiểm soát 2 do Khoa thẩm định 1 cổng duy nhất) và luồng duyệt đơn ĐTĐT 3 bên.
 - **Phạm vi tính năng:**
-  - Sinh viên nộp đề cương chi tiết (Tuần 2); Khoa thẩm định (`NeedRevision` -> Sinh viên nộp Version mới -> `Approved`).
-  - Sinh viên nộp báo cáo giữa kỳ (Tuần 10); Khoa thẩm định tiến độ.
-  - Luồng duyệt đơn Đổi tên đề tài (ĐTĐT - BR-02): Sinh viên lập đơn -> GVHD xác nhận -> Khoa phê duyệt -> PĐT duyệt chốt.
+  - Sinh viên nộp đề cương chi tiết (Tuần 2); Khoa thẩm định (`NeedRevision` ➡️ Sinh viên nộp Version mới ➡️ `Approved` / `Rejected`).
+  - GVHD/Khoa tạo mốc tiến độ (`ProgressMilestone`); Sinh viên nộp Báo cáo tiến độ định kỳ (`ProgressReport`) và GVHD nhận xét.
+  - Sinh viên nộp báo cáo giữa kỳ (Tuần 10); **Khoa thẩm định giữa kỳ 1 cổng duy nhất** (`NeedRevision` ➡️ Nộp lại ➡️ `Approved` / `Rejected` ➡️ Dừng KLTN).
+  - Luồng duyệt đơn Đổi tên đề tài (ĐTĐT - BR-02): Sinh viên lập đơn ➡️ GVHD xác nhận ➡️ Khoa phê duyệt ➡️ PĐT duyệt chốt.
   - Quản lý tệp tin tải lên (`SubmissionFiles`: giới hạn dung lượng <= 20MB, định dạng PDF/DOC/DOCX).
 - **Phân bổ công việc:**
-  - *Backend:* Triển khai File Storage Service (ưu tiên `LocalFileStorageService` trong thư mục server `uploads/`; MinIO/Cloud Storage là mở rộng), API nộp/duyệt Đề cương & Giữa kỳ, State Machine duyệt đơn ĐTĐT 3 bên.
-  - *Frontend:* Giao diện upload tài liệu kéo thả kèm thanh tiến trình, màn hình chấm/phản hồi của Khoa, giao diện theo dõi tiến trình đơn ĐTĐT.
+  - *Backend:* Triển khai File Storage Service (ưu tiên `LocalFileStorageService` trong thư mục server `uploads/`; MinIO/Cloud Storage là mở rộng), API mốc tiến độ & báo cáo tiến độ, API nộp/duyệt Đề cương & Giữa kỳ 1 cổng của Khoa, State Machine duyệt đơn ĐTĐT 3 bên.
+  - *Frontend:* Giao diện upload tài liệu kéo thả kèm thanh tiến trình, màn hình theo dõi mốc tiến độ & nộp báo cáo định kỳ, màn hình thẩm định giữa kỳ của Khoa, giao diện theo dõi tiến trình đơn ĐTĐT.
   - *QA/Test:* Kiểm thử tải lên file độc hại, file vượt dung lượng (25MB), file sai định dạng (.exe), kiểm thử chặn sinh viên nộp bài sau Deadline của Stage.
 
 ### Sprint 5: Reviewers & Dynamic Rubrics Grading Module (Phản biện & Chấm điểm)
-- **Mục tiêu:** Tổ chức đánh giá chuyên môn: Phân công GVPB, chấm điểm phản biện & kết luận ra bảo vệ, chấm điểm Hội đồng chi tiết và cơ chế khóa biên bản điểm (BR-03, BR-04).
+- **Mục tiêu:** Tổ chức đánh giá chuyên môn: Phân công GVPB, GVHD & GVPB chấm điểm trước buổi bảo vệ, chấm điểm Hội đồng tại buổi bảo vệ trực tiếp và kiểm soát vai trò kép GVPB kiêm Hội đồng (BR-03, BR-04, BR-07).
 - **Phạm vi tính năng:**
-  - Khoa phân công GVPB; GVPB nhập nhận xét, điểm số và kết luận đồng ý/không đồng ý ra bảo vệ (`DefenseApproval`).
-  - GVHD, GVPB và từng thành viên Hội đồng chấm điểm chi tiết theo tiêu chí barem đã cấu hình (`EvaluationDetails`).
+  - Khoa phân công GVPB; GVHD & GVPB nhập nhận xét và chấm điểm độc lập **trước buổi bảo vệ**. GVPB ra kết luận đồng ý/không đồng ý ra bảo vệ (`DefenseApproval`).
+  - Trong buổi bảo vệ trực tiếp, từng thành viên Hội đồng chấm điểm chi tiết theo barem (`EvaluationDetails`).
+  - **Kiểm soát vai trò kép (BR-07):** Nếu thành viên Hội đồng là GVPB của nhóm KLTN đó (TH1), hệ thống ẩn/vô hiệu hóa form chấm điểm Hội đồng của thành viên này (không chấm 2 lần). Điểm trung bình Hội đồng `Score_Council_Avg` tính trên các thành viên Hội đồng còn lại.
   - Thư ký Hội đồng thực hiện Khóa biên bản (`LockStatus = 'Locked'`) -> kích hoạt Trigger/Policy đóng băng toàn bộ điểm thành viên.
   - Cơ chế Mở khóa biên bản điểm (Override Unlock) của Lãnh đạo Khoa khi có khiếu nại (BR-04).
 - **Phân bổ công việc:**
-  - *Backend:* API phân công GVPB, API chấm điểm chi tiết theo barem & cộng dồn điểm, Triển khai Trigger/Policy bảo vệ điểm đã khóa (BR-04) và API Override Unlock của Lãnh đạo Khoa.
-  - *Frontend:* Form chấm điểm động render tự động theo danh sách tiêu chí barem, giao diện phân công GVPB, màn hình biên bản Hội đồng của Thư ký có nút bấm Khóa biên bản và giao diện Yêu cầu/Phê duyệt mở khóa.
-  - *QA/Test:* Kiểm thử chống can thiệp sửa điểm sau khi biên bản đã khóa (kỳ vọng trả về 403 Forbidden), kiểm thử luồng Override Unlock của Lãnh đạo Khoa.
+  - *Backend:* API phân công GVPB, API chấm điểm chi tiết trước bảo vệ (GVHD/GVPB) & tại buổi bảo vệ (Hội đồng), logic kiểm soát TH1/TH2 cho GVPB kiêm Hội đồng (BR-07), Trigger/Policy bảo vệ điểm đã khóa (BR-04) và API Override Unlock.
+  - *Frontend:* Form chấm điểm động render tự động theo barem (kèm logic disable/omit cho TH1 đối với thành viên Hội đồng là GVPB), giao diện phân công GVPB, màn hình biên bản Hội đồng của Thư ký có nút bấm Khóa biên bản và giao diện Yêu cầu/Phê duyệt mở khóa.
+  - *QA/Test:* Kiểm thử chống can thiệp sửa điểm sau khi biên bản đã khóa (kỳ vọng trả về 403 Forbidden), kiểm thử luồng TH1/TH2 tính đúng trung bình cộng Hội đồng, kiểm thử luồng Override Unlock của Lãnh đạo Khoa.
 
 ### Sprint 6: Councils Setup, Final Submission, Score Publishing, Notifications & E2E Testing
 - **Mục tiêu:** Thiết lập Hội đồng & lịch bảo vệ, nộp lưu chiểu, tính điểm tổng kết, công bố điểm, thông báo và E2E Testing hoàn tất hệ thống.
 - **Phạm vi tính năng:**
   - Thiết lập Hội đồng bảo vệ, phân ca/phòng thi; gán nhóm đề tài vào Hội đồng (`DefenseCouncils`, `CouncilAssignments`).
   - Sinh viên nộp báo cáo toàn văn sau chỉnh sửa; Khoa kiểm tra và bấm xác nhận lưu chiểu (`ArchiveConfirmed` - BR-05).
-  - Tự động tính toán điểm tổng kết theo công thức trọng số đã cấu hình (`ScoreSummaries` - BR-06).
+  - Tự động tính toán điểm tổng kết theo công thức trọng số đã cấu hình (`ScoreSummaries` - BR-06 & BR-07).
   - Khoa công bố điểm chính thức cho sinh viên.
   - Cơ chế ghi vết tự động toàn bộ thao tác can thiệp vào bảng `shared.AuditLogs` (đảm bảo tính bất biến).
   - Hệ thống thông báo nội bộ (Notification Service lưu DB + Email nhắc hạn; mở rộng SignalR nếu đủ thời gian).
