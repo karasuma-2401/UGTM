@@ -1,2 +1,3 @@
-export * from './AuthContext';
-export * from './useAuth';
+export * from "./AuthContext";
+export * from "./ProtectedRoute";
+export * from "./useAuth";
