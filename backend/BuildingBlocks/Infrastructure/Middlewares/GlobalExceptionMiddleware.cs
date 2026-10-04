@@ -28,7 +28,7 @@ namespace UGTM.BuildingBlocks.Infrastructure.Middlewares
         {
             try
             {
-                await _next(context);  
+                await _next(context);
             }
             catch (Exception ex)
             {

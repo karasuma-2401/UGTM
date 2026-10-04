@@ -15,7 +15,7 @@
         /// </summary>
         /// <param name="data"></param>
         /// <returns></returns>
-        public static ApiResponse<T> Ok(T data) 
+        public static ApiResponse<T> Ok(T data)
             => new() { Success = true, Data = data };
 
 
