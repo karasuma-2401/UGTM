@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.AcademicPeriods.Infrastructure;
 using UGTM.Modules.DefenseCouncil.Infrastructure;
@@ -35,6 +37,28 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod());
 });
 
+// swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new() { Title = "UGTM API", Version = "v1" });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Nhập chuỗi JWT Token thu được từ API đăng nhập."
+    });
+
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+    });
+});
+
 foreach (var module in modules)
 {
     module.RegisterModule(builder.Services, builder.Configuration);
@@ -45,6 +69,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "UGTM API v1");
+    });
 }
 
 app.UseHttpsRedirection();
