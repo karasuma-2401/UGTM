@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UGTM.Persistence.Entities.Academic;
+using UGTM.Persistence.Entities.Councils;
 using UGTM.Persistence.Entities.Identity;
 using UGTM.Persistence.Entities.Thesis;
 using UGTM.Persistence.Entities.Topics;
@@ -43,6 +44,21 @@ public class UGTMDbContext(DbContextOptions<UGTMDbContext> options) : DbContext(
     public DbSet<FinalReport> FinalReports => Set<FinalReport>();
     public DbSet<FinalSubmission> FinalSubmissions => Set<FinalSubmission>();
     public DbSet<SubmissionFile> SubmissionFiles => Set<SubmissionFile>();
+
+    // ========================================================
+    // MODULE 5: COUNCILS
+    // ========================================================
+    public DbSet<GradingCriteria> GradingCriterias => Set<GradingCriteria>();
+    public DbSet<AdvisorEvaluation> AdvisorEvaluations => Set<AdvisorEvaluation>();
+    public DbSet<ReviewerAssignment> ReviewerAssignments => Set<ReviewerAssignment>();
+    public DbSet<ReviewerEvaluation> ReviewerEvaluations => Set<ReviewerEvaluation>();
+    public DbSet<Council> Councils => Set<Council>();
+    public DbSet<CouncilMember> CouncilMembers => Set<CouncilMember>();
+    public DbSet<CouncilAssignment> CouncilAssignments => Set<CouncilAssignment>();
+    public DbSet<CouncilScore> CouncilScores => Set<CouncilScore>();
+    public DbSet<CouncilMinute> CouncilMinutes => Set<CouncilMinute>();
+    public DbSet<EvaluationDetail> EvaluationDetails => Set<EvaluationDetail>();
+    public DbSet<ScoreSummary> ScoreSummaries => Set<ScoreSummary>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
