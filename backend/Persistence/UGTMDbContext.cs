@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using UGTM.Persistence.Entities.Academic;
 using UGTM.Persistence.Entities.Identity;
 
 namespace UGTM.Persistence;
@@ -13,6 +14,14 @@ public class UGTMDbContext(DbContextOptions<UGTMDbContext> options) : DbContext(
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
+    // ========================================================
+    // MODULE 2: ACADEMIC
+    // ========================================================
+    public DbSet<KltnBatch> KltnBatches => Set<KltnBatch>();
+    public DbSet<Stage> Stages => Set<Stage>();
+    public DbSet<ScoreWeightConfig> ScoreWeightConfigs => Set<ScoreWeightConfig>();
+    public DbSet<RoleScoreWeight> RoleScoreWeights => Set<RoleScoreWeight>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
