@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using UGTM.Persistence.Entities.Academic;
 using UGTM.Persistence.Entities.Identity;
+using UGTM.Persistence.Entities.Topics;
 
 namespace UGTM.Persistence;
 
@@ -22,6 +23,13 @@ public class UGTMDbContext(DbContextOptions<UGTMDbContext> options) : DbContext(
     public DbSet<Stage> Stages => Set<Stage>();
     public DbSet<ScoreWeightConfig> ScoreWeightConfigs => Set<ScoreWeightConfig>();
     public DbSet<RoleScoreWeight> RoleScoreWeights => Set<RoleScoreWeight>();
+
+    // ========================================================
+    // MODULE 3: TOPICS
+    // ========================================================
+    public DbSet<Topic> Topics => Set<Topic>();
+    public DbSet<StudentGroup> StudentGroups => Set<StudentGroup>();
+    public DbSet<StudentGroupMember> StudentGroupMembers => Set<StudentGroupMember>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
