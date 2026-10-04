@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using UGTM.Persistence.Entities.Academic;
 using UGTM.Persistence.Entities.Councils;
 using UGTM.Persistence.Entities.Identity;
+using UGTM.Persistence.Entities.Shared;
 using UGTM.Persistence.Entities.Thesis;
 using UGTM.Persistence.Entities.Topics;
 
@@ -59,6 +60,12 @@ public class UGTMDbContext(DbContextOptions<UGTMDbContext> options) : DbContext(
     public DbSet<CouncilMinute> CouncilMinutes => Set<CouncilMinute>();
     public DbSet<EvaluationDetail> EvaluationDetails => Set<EvaluationDetail>();
     public DbSet<ScoreSummary> ScoreSummaries => Set<ScoreSummary>();
+
+    // ========================================================
+    // MODULE 6: SHARED
+    // ========================================================
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
