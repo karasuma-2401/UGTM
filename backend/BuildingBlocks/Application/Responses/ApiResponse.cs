@@ -1,4 +1,4 @@
-﻿namespace UGTM.Api
+﻿namespace UGTM.BuildingBlocks.Application.Responses
 {
     /// <summary>
     /// Generic endpoint

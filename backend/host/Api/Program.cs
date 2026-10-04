@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using UGTM.BuildingBlocks.Application;
+using UGTM.BuildingBlocks.Application.Responses;
+using UGTM.BuildingBlocks.Infrastructure.Middlewares;
 using UGTM.Modules.AcademicPeriods.Infrastructure;
 using UGTM.Modules.DefenseCouncil.Infrastructure;
 using UGTM.Modules.FinalReportEvaluation.Infrastructure;
@@ -65,6 +67,8 @@ foreach (var module in modules)
 }
 
 var app = builder.Build();
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
