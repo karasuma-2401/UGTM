@@ -1,5 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.5.11723.231 stable
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "host", "host", "{32EDBA42-B012-A9E3-D6BD-B1FED8C0BF1D}"
@@ -821,5 +824,8 @@ Global
 		{60DF4084-459B-44FB-B766-FC0E1BFA2430} = {F57642F3-C37C-D174-720E-6A6AAD5BEE22}
 		{52D702F0-7BDE-4442-8C04-E3E535C413F9} = {F57642F3-C37C-D174-720E-6A6AAD5BEE22}
 		{66701162-4B96-4C20-8F78-24067F115662} = {F57642F3-C37C-D174-720E-6A6AAD5BEE22}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {626FAA4B-B8E0-4BEB-A176-16DB1931C7A6}
 	EndGlobalSection
 EndGlobal
