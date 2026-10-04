@@ -8,6 +8,7 @@ using UGTM.Modules.MidtermProgress.Infrastructure;
 using UGTM.Modules.Notifications.Infrastructure;
 using UGTM.Modules.ThesisManagement.Infrastructure;
 using UGTM.Modules.TopicCatalog.Infrastructure;
+using UGTM.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ IModule[] modules =
 ];
 
 builder.Services.AddOpenApi();
+builder.Services.AddUgtmPersistence(builder.Configuration);
 
 const string FrontendCorsPolicy = "Frontend";
 builder.Services.AddCors(options =>

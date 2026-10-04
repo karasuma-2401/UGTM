@@ -1,0 +1,32 @@
+using Microsoft.EntityFrameworkCore;
+using UGTM.Persistence.Entities.Identity;
+
+namespace UGTM.Persistence;
+
+public class UGTMDbContext(DbContextOptions<UGTMDbContext> options) : DbContext(options)
+{
+    // ========================================================
+    // MODULE 1: IDENTITY
+    // ========================================================
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(UGTMDbContext).Assembly);
+    }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        base.ConfigureConventions(configurationBuilder);
+
+        // Store all Enums as varchar(50) strings as decided in Q3
+        configurationBuilder.Properties<Enum>()
+            .HaveConversion<string>()
+            .HaveMaxLength(50);
+    }
+}
