@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using UGTM.Persistence.Entities.Academic;
 using UGTM.Persistence.Entities.Identity;
+using UGTM.Persistence.Entities.Thesis;
 using UGTM.Persistence.Entities.Topics;
 
 namespace UGTM.Persistence;
@@ -30,6 +31,18 @@ public class UGTMDbContext(DbContextOptions<UGTMDbContext> options) : DbContext(
     public DbSet<Topic> Topics => Set<Topic>();
     public DbSet<StudentGroup> StudentGroups => Set<StudentGroup>();
     public DbSet<StudentGroupMember> StudentGroupMembers => Set<StudentGroupMember>();
+
+    // ========================================================
+    // MODULE 4: THESIS
+    // ========================================================
+    public DbSet<ProgressMilestone> ProgressMilestones => Set<ProgressMilestone>();
+    public DbSet<ProgressReport> ProgressReports => Set<ProgressReport>();
+    public DbSet<Syllabus> Syllabuses => Set<Syllabus>();
+    public DbSet<MidtermReport> MidtermReports => Set<MidtermReport>();
+    public DbSet<RenameRequest> RenameRequests => Set<RenameRequest>();
+    public DbSet<FinalReport> FinalReports => Set<FinalReport>();
+    public DbSet<FinalSubmission> FinalSubmissions => Set<FinalSubmission>();
+    public DbSet<SubmissionFile> SubmissionFiles => Set<SubmissionFile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
