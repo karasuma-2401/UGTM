@@ -1,98 +1,120 @@
-# SITEMAP GIAO DIỆN HỆ THỐNG UGTM (University Graduation Thesis Management)
+# Sitemap và danh mục màn hình UGTM
 
-Tài liệu này hệ thống hóa toàn bộ kiến trúc thông tin, định tuyến và danh mục màn hình của nền tảng UGTM theo 5 không gian làm việc (Portals).
+Nguồn nghiệp vụ: [Requirements.md](Requirements.md). Chương 5 Word chưa có danh sách màn hình cụ thể; sitemap dưới đây là đề xuất triển khai từ FR/ma trận quyền, không phải route đã được code.
 
-> 📌 **File PlantUML gốc (nét thẳng góc):** [`docs/PlantUML/Sitemap_UGTM.puml`](file:///c:/Projects/UGTM/docs/PlantUML/Sitemap_UGTM.puml)
+## 1. Route đang có
 
----
+Nguồn: [router.tsx](../frontend/src/app/router.tsx), [modules.ts](../frontend/src/shared/config/modules.ts).
 
-## 1. Sơ Đồ Cây Tổng Quan (Mermaid Architecture)
+| Route thực tế | Nội dung |
+| --- | --- |
+| `/` | Dashboard nền tảng |
+| `/modules/:modulePath` | Trang gọi ping cho 6 module; các path identity, academic-periods, topic-catalog, thesis-management, defense-council, notifications |
 
-```mermaid
-graph TD
-    Root["UGTM Portal (/)"] --> Auth["Xác thực & Công khai"]
-    Root --> AppLayout["Khung App Shell (/portal)"]
+Chưa có login/403 hoặc các portal nghiệp vụ; AuthProvider/ProtectedRoute chưa được router sử dụng.
 
-    Auth --> Login["Đăng nhập SSO / Tài khoản trường (/login)"]
-    Auth --> PublicTopics["Tra cứu Đề tài Công khai (/topics/public)"]
+## 2. Màn hình dự kiến theo vai trò
 
-    AppLayout --> Student["Sinh viên (/student)"]
-    AppLayout --> Lecturer["Giảng viên (GVHD / GVPB) (/lecturer)"]
-    AppLayout --> Faculty["Khoa & Bộ môn (/faculty)"]
-    AppLayout --> Academic["Phòng Đào tạo (/academic)"]
-    AppLayout --> Admin["Quản trị Hệ thống (/admin)"]
+Tên route là đề xuất, có thể đổi khi xây UI. Các nhóm nghiệp vụ dùng chung một SPA; người nhiều vai trò chỉ thấy chức năng được cấp trong đúng phạm vi phân công. GVPB xem/chấm cuối kỳ, không thẩm định đề cương. Sinh viên chọn đề tài GVHD đề xuất, không thêm chức năng đổi GVHD/đề xuất đề tài hoặc kiểm tra đạo văn ngoài phạm vi final.
 
-    %% Student Sub-routes
-    Student --> S_Dash["Dashboard Tiến độ (/student/dashboard)"]
-    Student --> S_Topic["Đăng ký & Đề xuất Đề tài (/student/topics)"]
-    Student --> S_Proposal["Nộp Đề cương Chi tiết (/student/proposal)"]
-    Student --> S_Midterm["Báo cáo Tiến độ Định kỳ (/student/progress)"]
-    Student --> S_Final["Nộp Khóa luận Cuối kỳ (/student/final-report)"]
-    Student --> S_Defense["Lịch & Điểm Bảo vệ (/student/defense)"]
-    Student --> S_ChangeReq["Đơn Đổi tên ĐT / GVHD (/student/change-request)"]
+[Sơ đồ sitemap](PlantUML/Sitemap_UGTM.puml) chứa cả route hiện tại và các màn hình dự kiến, có ghi trạng thái.
 
-    %% Lecturer Sub-routes
-    Lecturer --> L_Dash["Dashboard Giảng viên (/lecturer/dashboard)"]
-    Lecturer --> L_MyTopics["Kho Đề tài Giảng viên ra (/lecturer/my-topics)"]
-    Lecturer --> L_Guidance["Theo dõi & Đánh giá SV Hướng dẫn (/lecturer/supervising)"]
-    Lecturer --> L_Review["Chấm Phản biện Đề cương & Đồ án (/lecturer/reviews)"]
-    Lecturer --> L_Council["Hội đồng Chấm Bảo vệ (/lecturer/councils)"]
+### Chung
 
-    %% Faculty Sub-routes
-    Faculty --> F_ReviewProposal["Thẩm định Đề cương Khoa/Bộ môn (/faculty/proposals)"]
-    Faculty --> F_AssignReviewer["Phân công Giảng viên Phản biện (/faculty/assign-reviewers)"]
-    Faculty --> F_ManageCouncil["Thành lập Hội đồng Bảo vệ (/faculty/councils)"]
-    Faculty --> F_ChangeApprove["Duyệt Đơn Đổi tên / Đổi GVHD (/faculty/change-requests)"]
-    Faculty --> F_Stats["Thống kê Tiến độ Toàn khoa (/faculty/statistics)"]
+| Route đề xuất | Màn hình/đặc quyền | FR |
+| --- | --- | --- |
+| `/login` | Đăng nhập email trường/mật khẩu nội bộ | FR-SYS-01 |
+| `/profile` | Hồ sơ cá nhân và đổi mật khẩu | FR-SYS-01 |
+| `/notifications` | Thông báo trong ứng dụng | FR-NOTI-01 |
+| `/periods` | Tra cứu đợt/giai đoạn/thời hạn theo quyền | FR-SYS-13 |
+| `/403` | Không có quyền truy cập | FR-SYS-11 |
 
-    %% Academic & Admin Sub-routes
-    Academic --> A_Periods["Quản lý Đợt KLTN & Deadline (/academic/periods)"]
-    Academic --> A_Eligible["Danh sách SV Đủ điều kiện làm ĐA (/academic/eligible-students)"]
-    Academic --> A_Consolidation["Tổng hợp Điểm & Xét Tốt nghiệp (/academic/grading)"]
-    Admin --> Adm_Users["Tài khoản & Phân quyền RBAC (/admin/users)"]
-    Admin --> Adm_Audit["Nhật ký Hệ thống (/admin/audit-logs)"]
-```
+### Sinh viên
 
----
+| Route đề xuất | Màn hình/đặc quyền | FR |
+| --- | --- | --- |
+| `/student/dashboard` | Tiến độ 7 giai đoạn, milestones và cảnh báo | FR-STU-01 |
+| `/student/topics` | Tra cứu đề tài công bố và đăng ký | FR-TOPIC-02, 05–07 |
+| `/student/group` | Nhóm tối đa 2 người và trạng thái GVHD tiếp nhận | FR-TOPIC-04, 08 |
+| `/student/syllabus` | Nộp đề cương, kết luận của Khoa, bản sửa | FR-REG-01–04 |
+| `/student/progress` | Nộp sản phẩm milestone, theo dõi phản hồi | FR-MILE-02–05 |
+| `/student/midterm` | Nộp giữa kỳ, xem quyết định GVHD | FR-MID-01, 04–05 |
+| `/student/rename-requests` | Đổi tên tuần 3–10, trạng thái duyệt ba cấp | FR-MID-02, 06–09 |
+| `/student/final-report` | Báo cáo cuối kỳ và bản sửa theo góp ý GVPB | FR-FIN-01, 08 |
+| `/student/defense` | Lịch đã được duyệt, góp ý sau bảo vệ | FR-COU-05, 11 |
+| `/student/archive` | PDF/DOCX, tóm tắt/từ khóa Việt/Anh và kết quả lưu chiểu | FR-COU-03, 12–14 |
+| `/student/results` | Điểm sau Khoa công bố và xác nhận lưu chiểu | FR-RES-07 |
+| `/student/documents` | Lịch sử phiên bản hồ sơ thuộc nhóm | FR-DOC-01 |
 
-## 2. Danh Mục Chi Tiết Màn Hình Theo Vai Trò (Screen Matrix)
+### Giảng viên — GVHD/GVPB theo phân công
 
-### Cổng 1: Sinh viên (`/student`)
-| Tuyến đường (Route) | Tên màn hình | Mục đích chính |
-| :--- | :--- | :--- |
-| `/student/dashboard` | Trang tổng quan | Xem tiến độ đề tài theo Stepper, các mốc deadline sắp tới |
-| `/student/topics` | Đăng ký & Đề xuất đề tài | Xem kho đề tài của trường/khoa, đăng ký hoặc đề xuất đề tài mới |
-| `/student/proposal` | Nộp Đề cương chi tiết | Tải file đề cương, xem kết quả thẩm định và nhận xét của Hội đồng |
-| `/student/progress` | Báo cáo tiến độ | Gửi link mã nguồn, file báo cáo định kỳ theo tuần/tháng |
-| `/student/final-report` | Nộp Khóa luận cuối kỳ | Nộp báo cáo hoàn chỉnh (PDF) và kết quả kiểm tra đạo văn |
-| `/student/defense` | Lịch & Điểm bảo vệ | Xem ngày giờ, phòng bảo vệ, hội đồng và điểm số chính thức |
-| `/student/change-request`| Đơn xin đổi tên ĐT / GVHD | Tạo đơn thay đổi 3 bên (Sinh viên -> GVHD -> Khoa duyệt) |
+| Route đề xuất | Màn hình/đặc quyền | FR |
+| --- | --- | --- |
+| `/lecturer/topics` | GVHD soạn và đề xuất đề tài | FR-TOPIC-01 |
+| `/lecturer/registrations` | GVHD xác nhận tiếp nhận nhóm | FR-TOPIC-08 |
+| `/lecturer/supervising` | GVHD xem đề cương, milestones, dashboard và lịch sử | FR-REG-01, FR-MILE-01, 03, FR-STU-01 |
+| `/lecturer/midterm` | GVHD quyết định Tiếp tục/Dừng tại Cổng 2 | FR-MID-01, 04 |
+| `/lecturer/rename-requests` | GVHD xét đơn đổi tên cấp 1 | FR-MID-06, 07 |
+| `/lecturer/advisor-evaluations` | GVHD chấm cuối kỳ và quyết định chuyển phản biện | FR-FIN-01, 03 |
+| `/lecturer/reviews` | GVPB nhận hồ sơ, chấm/kết luận bảo vệ và góp ý riêng | FR-FIN-02, 05, 08 |
+| `/lecturer/archive-reviews` | GVHD kiểm tra/xác nhận báo cáo sửa sau bảo vệ | FR-COU-12 |
 
-### Cổng 2: Giảng viên Hướng dẫn & Phản biện (`/lecturer`)
-| Tuyến đường (Route) | Tên màn hình | Mục đích chính |
-| :--- | :--- | :--- |
-| `/lecturer/dashboard` | Dashboard Giảng viên | Thống kê số lượng SV đang hướng dẫn, lịch chấm phản biện |
-| `/lecturer/my-topics` | Quản lý đề tài ra đợt này | Tạo đề tài mới, duyệt sinh viên xin vào nhóm đề tài |
-| `/lecturer/supervising` | Theo dõi SV hướng dẫn | Đánh giá báo cáo tiến độ, cho phép hoặc từ chối sinh viên bảo vệ |
-| `/lecturer/reviews` | Chấm phản biện | Phiếu chấm điểm phản biện kèm nhận xét chi tiết |
-| `/lecturer/councils` | Hội đồng bảo vệ | Chấm điểm bảo vệ trực tiếp tại phòng hội đồng |
+### Hội đồng — theo phân công cá nhân
 
-### Cổng 3: Khoa & Bộ môn (`/faculty`)
-| Tuyến đường (Route) | Tên màn hình | Mục đích chính |
-| :--- | :--- | :--- |
-| `/faculty/proposals` | Thẩm định Đề cương | Thẩm định Đề cương chi tiết (Cổng kiểm soát 1: Approved / NeedRevision / Rejected) |
-| `/faculty/midterm-reports` | Thẩm định Báo cáo giữa kỳ | Thẩm định Báo cáo giữa kỳ (Cổng kiểm soát 2 duy nhất: Approved / NeedRevision / Rejected) |
-| `/faculty/assign-reviewers` | Phân công Giảng viên PB | Gán GVPB cho từng đề tài theo đúng chuyên ngành |
-| `/faculty/councils` | Quản lý Hội đồng bảo vệ | Tạo các hội đồng chấm bảo vệ, phân công Chủ tịch, Thư ký, UV |
-| `/faculty/change-requests` | Phê duyệt đơn thay đổi | Duyệt đơn đổi tên đề tài (bước 2/3 chuyển PĐT) |
-| `/faculty/statistics` | Báo cáo & Thống kê | Xem biểu đồ tiến độ làm đồ án của toàn bộ sinh viên trong khoa |
+| Route đề xuất | Màn hình/đặc quyền | FR |
+| --- | --- | --- |
+| `/council/assignments` | Hồ sơ và lịch được phân công | FR-COU-01, 05 |
+| `/council/grading` | Điểm/nhận xét cá nhân theo tiêu chí | FR-COU-02 |
+| `/council/discrepancies` | Chủ tịch điều phối, xác nhận kết luận sai biệt | FR-COU-07, 08 |
+| `/council/minutes` | Thư ký ghi biên bản/góp ý và khóa sau xác thực | FR-COU-02, 08, 11 |
+| `/council/score-corrections` | Người chấm sửa điểm mình sau cấp mở khóa | FR-COU-10 |
 
-### Cổng 4: Phòng Đào tạo & Quản trị Hệ thống (`/academic` & `/admin`)
-| Tuyến đường (Route) | Tên màn hình | Mục đích chính |
-| :--- | :--- | :--- |
-| `/academic/periods` | Quản lý Đợt KLTN | Tạo đợt học kỳ mới, thiết lập các mốc thời gian deadline |
-| `/academic/eligible-students` | Danh sách SV đủ điều kiện | Import/Export danh sách sinh viên đủ điều kiện làm khóa luận |
-| `/academic/grading` | Tổng hợp điểm | Bảng tổng hợp điểm toàn khóa, xuất file quyết định tốt nghiệp |
-| `/admin/users` | Quản lý tài khoản | Cấp phát tài khoản, phân quyền vai trò (Admin, Khoa, GV, SV) |
-| `/admin/permissions` | Quản lý Quyền & Roles | Khởi tạo danh mục `Permissions` và phân quyền chi tiết cho `RolePermissions` |
-| `/admin/audit-logs` | Nhật ký hệ thống | Theo dõi lịch sử thao tác dữ liệu của người dùng |
+### Văn phòng Khoa
+
+| Route đề xuất | Màn hình/đặc quyền | FR |
+| --- | --- | --- |
+| `/faculty/topics` | Thẩm định và công bố đề tài | FR-TOPIC-03 |
+| `/faculty/syllabuses` | Thẩm định đề cương Cổng 1 | FR-REG-02, 04 |
+| `/faculty/midterm-summary` | Tổng hợp quyết định GVHD, chuyển PĐT | FR-MID-03 |
+| `/faculty/rename-requests` | Thẩm định đổi tên cấp 2 | FR-MID-06, 07 |
+| `/faculty/grading-config` | Cách tính, đầu điểm, trọng số/hệ số, điều kiện tiên quyết | FR-SYS-03, 07–10 |
+| `/faculty/reviewer-assignments` | Phân công GVPB khác GVHD | FR-FIN-02, 04 |
+| `/faculty/review-disagreements` | Xử lý không đồng thuận phản biện | FR-FIN-06 |
+| `/faculty/councils` | Dự thảo Hội đồng, phòng/ca và chuyển PĐT | FR-COU-01, 04 |
+| `/faculty/score-unlocks` | Lãnh đạo Khoa cấp mở khóa đặc biệt có lý do | FR-COU-09 |
+| `/faculty/archive` | Nghiệm thu lưu chiểu sau GVHD xác nhận | FR-COU-13 |
+| `/faculty/results` | Tổng hợp, rà soát Dự thảo, công bố | FR-RES-01–06 |
+| `/faculty/reports` | Xuất báo cáo Excel/PDF | FR-AA-01 |
+
+### Phòng Đào tạo
+
+| Route đề xuất | Màn hình/đặc quyền | FR |
+| --- | --- | --- |
+| `/academic/periods` | Khởi tạo đợt và cấu hình 7 Stage/deadline | FR-SYS-02 |
+| `/academic/imports` | Import SV đủ điều kiện và giảng viên từ Excel | FR-SYS-06 |
+| `/academic/midterm-summary` | Theo dõi kết quả Khoa tổng hợp | FR-MID-03 |
+| `/academic/rename-requests` | Phê duyệt đổi tên cấp 3 | FR-MID-06, 07 |
+| `/academic/council-decisions` | Thẩm định/phê duyệt và upload quyết định Hội đồng | FR-COU-01 |
+| `/academic/reports` | Xuất kết quả Excel/PDF phục vụ xét tốt nghiệp | FR-AA-01 |
+
+### Admin
+
+| Route đề xuất | Màn hình/đặc quyền | FR |
+| --- | --- | --- |
+| `/admin/users` | Quản lý tài khoản và vai trò | FR-SYS-05 |
+| `/admin/permissions` | Danh mục quyền và gán quyền vai trò | FR-SYS-11 |
+| `/admin/periods` | Khởi tạo đợt và cấu hình deadline | FR-SYS-02 |
+| `/admin/imports` | Import SV và giảng viên Excel | FR-SYS-06 |
+| `/admin/grading-config` | Cấu hình cách tính và điều kiện điểm | FR-SYS-03, 07–10 |
+| `/admin/audit-logs` | Tra cứu AuditLog; chỉ Admin | FR-SYS-04 |
+
+## 3. Điều kiện hiển thị và quyền
+
+- Cổng 1: Khoa thẩm định. Cổng 2: GVHD quyết định; màn hình Khoa chỉ tổng hợp, PĐT theo dõi.
+- Điểm/phiếu GVHD, GVPB bảo mật trước công bố; góp ý sửa GVPB/Hội đồng được cung cấp riêng. Lịch và điểm là hai nội dung có điều kiện truy cập khác nhau.
+- GVPB kiêm ủy viên chỉ tham dự, không thấy form nhập điểm Hội đồng của chính đề tài đã phản biện; điểm GVPB trước bảo vệ vẫn tính hệ số 2.
+- Thư ký xem phiếu điểm cần thiết, ghi biên bản và khóa; Chủ tịch xác nhận kết luận sai biệt; Lãnh đạo Khoa cấp quyền mở khóa. Thành viên chỉ sửa điểm mình sau khi có quyền hợp lệ.
+- Lưu chiểu: SV nộp → GVHD xác nhận bản sửa → Khoa nghiệm thu. Điểm chính thức cần cả công bố và hoàn tất lưu chiểu.
+- Khoa/Admin cấu hình điểm; PĐT/Admin khởi tạo đợt/import; Khoa công bố; Khoa/PĐT xuất báo cáo; chỉ Admin xem AuditLog.
+
+Ẩn nút/route ở UI phải đi cùng kiểm tra permission, tài nguyên, deadline và trạng thái phía API.

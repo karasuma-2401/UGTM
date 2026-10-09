@@ -1,29 +1,25 @@
 @startuml C2_Containers
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
-
-LAYOUT_WITH_LEGEND()
-
-title C2 — Container Diagram: Hệ thống Quản lý KLTN (UGTM)
-
-Person(user, "Người dùng hệ thống", "Sinh viên, Giảng viên, Khoa, PĐT, Admin")
-
-Container(spa, "Single Page Application (SPA)", "React 19, TypeScript, Vite, Ant Design", "Giao diện web trực quan, responsive, tra cứu đề tài, nộp tài liệu, theo dõi tiến độ, nhập điểm")
-
-System_Boundary(backend_boundary, "UGTM Backend Monolith (.NET 10 Runtime)") {
-    Container(apiHost, "Host API (UGTM.Api)", "ASP.NET Core Web API", "Composition Root: Routing, JWT Auth, CORS, chuyển giao Commands/Queries tới 9 module")
-    Container(eventBus, "In-Memory Event Bus", "MediatR / Channels / Outbox", "Vận chuyển Integration Events bất đồng bộ giữa các module nội bộ")
-    Container(bgWorker, "Background Worker Service", "IHostedService / Quartz.NET", "Quét bảng Outbox định kỳ, gửi Email nhắc hạn, kiểm tra quá hạn deadline")
+skinparam shadowing false
+title UGTM — Containers theo source hiện tại
+actor "Người dùng" as User
+rectangle "Frontend SPA\nReact 19 / TypeScript / Vite 8\nTailwind, shadcn/Radix, AntD ConfigProvider\nDev :5173 / Nginx container :3000" as FE
+rectangle "Backend API\nASP.NET Core .NET 10\n6 module ping + service tính điểm + middleware/CORS/Swagger\nHost :5287 / container :8080" as API
+database "PostgreSQL ngoài Compose / Neon\nEF Core / Npgsql\n6 DbContext runtime / 6 schema" as DB
+rectangle "EF CLI / UGTM.Database.Migrations\nUGTMDbContext chỉ điều phối migrations" as Migration
+package "Dịch vụ trong docker-compose.yml — chưa có code tích hợp" #FFF3E0 {
+ rectangle "Mailpit\nSMTP :1025 / Web :8025" as Mail
+ rectangle "MinIO\nS3 :9000 / Console :9001" as Storage
+ rectangle "Redis :6379" as Cache
+ rectangle "RabbitMQ\nAMQP :5672 / Web :15672" as MQ
 }
-
-ContainerDb(database, "Database", "Microsoft SQL Server", "9 Schemas riêng biệt: identity, academic, topics, thesis, progress, evaluation, councils, grading, notifications")
-ContainerDb(files, "Tài liệu lưu trữ (File Storage)", "Local Disk / Volume Mount", "Lưu trữ tệp đính kèm bản mềm (PDF, Docx <= 20MB)")
-
-Rel(user, spa, "Tương tác giao diện", "HTTPS")
-Rel(spa, apiHost, "Gọi REST API", "HTTPS / JSON (JWT Bearer)")
-Rel(apiHost, eventBus, "Publish / Subscribe Events", "Internal In-Memory")
-Rel(bgWorker, eventBus, "Dispatch scheduled jobs", "Internal")
-Rel(apiHost, database, "Đọc/Ghi dữ liệu theo từng Schema của Module", "EF Core / Dapper / TCP 1433")
-Rel(bgWorker, database, "Đọc Outbox / Cập nhật trạng thái", "EF Core")
-Rel(apiHost, files, "Lưu & đọc file", "Stream I/O")
-
+User --> FE : Trình duyệt
+FE --> API : HTTP / GET module ping
+API --> DB : EF Core / cấu hình kết nối
+Migration --> DB : Một lịch sử migration ở public
+note bottom of API
+CORS đọc Cors:AllowedOrigins, fallback http://localhost:5173.
+Chưa có JWT/Identity, worker, CQRS hoặc event bus.
+Đăng ký DbContext không đồng nghĩa ping đọc DB.
+Compose cấu hình origin :5173 và :3000.
+end note
 @enduml

@@ -1,78 +1,41 @@
 @startuml SD1_DangKyDeTai
-autonumber
-skinparam roundcorner 8
 skinparam shadowing false
-skinparam sequenceMessageAlign center
-
-skinparam actor {
-    BackgroundColor #E8F5E9
-    BorderColor #2E7D32
-    FontName Arial
-    FontSize 13
-}
-
-skinparam participant {
-    BackgroundColor #FFFFFF
-    BorderColor #1E88E5
-    FontName Arial
-    FontSize 12
-}
-
-skinparam database {
-    BackgroundColor #FFF3E0
-    BorderColor #E65100
-    FontName Arial
-    FontSize 12
-}
-
-title Sơ đồ Tuần tự: Đăng ký Đề tài & Ghép nhóm KLTN\n(Tham chiếu Thuật toán SĐ1 & Mục 2.4.1 Báo cáo Nghiệp vụ)
-
-actor "Sinh viên (Nhóm trưởng)\n[Student Leader]" as Student
-boundary "Giao diện Web SPA\n[React 19 / AntD]" as SPA
-control "Host API Gateway\n[UGTM.Api]" as API
-control "Xử lý Command\n[RegisterThesisHandler]" as Handler
-entity "Miền Đăng ký\n[ThesisRegistration]" as Domain
-database "Cơ sở dữ liệu\n[SQL Server (schema: thesis)]" as DB
-
-== BƯỚC 1: TIẾP NHẬN THÔNG TIN ĐĂNG KÝ (D1) ==
-Student -> SPA: Chọn đề tài, nhập danh sách nhóm (MSSV, Họ tên, SĐT)
-Student -> SPA: Bấm "Xác nhận Đăng ký Đề tài"
-SPA -> API: POST /api/theses/register (Payload D1 + JWT Token)
-
-== BƯỚC 2: KHỞI TẠO GIAO TÁC & KHÓA DỮ LIỆU (LOCKING) ==
-API -> Handler: MediatR.Send(RegisterThesisCommand)
-activate Handler
-Handler -> DB: Bắt đầu Transaction (Khóa bản ghi đề tài - UPDLOCK)
-activate DB
-
-== BƯỚC 3 & 4: KIỂM TRA ĐIỀU KIỆN NGHIỆP VỤ (VALIDATION) ==
-Handler -> DB: Đọc dữ liệu Đề tài, Đợt KLTN & Danh sách đã có đề tài (D3)
-DB --> Handler: Dữ liệu hiện tại
-
-Handler -> Handler: B4: Kiểm tra thời hạn đăng ký có trong Tuần 0 - 2?
-Handler -> Handler: B5: Kiểm tra Đề tài đã công bố & còn chỉ tiêu trống?
-Handler -> Handler: B6: Kiểm tra các thành viên trong nhóm chưa có đề tài khác?
-
-alt Vi phạm một trong các điều kiện trên (Quy định QĐ1.1 - QĐ1.3)
-    Handler -> DB: ROLLBACK TRANSACTION
-    Handler --> API: Result.Failure(Error: Đề tài đã đủ chỉ tiêu / Quá hạn / SV đã đăng ký)
-    API --> SPA: 400 Bad Request (Error Details)
-    SPA --> Student: B7: Hiển thị thông báo lỗi (D6) ra màn hình
-else Thỏa mãn tất cả điều kiện đăng ký
-    == BƯỚC 5: GHI NHẬN ĐĂNG KÝ & CAM KẾT TRANSACTION ==
-    Handler -> Domain: Tạo mới ThesisRegistration (TopicId, PeriodId, Members)
-    Handler -> DB: INSERT vào bảng thesis.Registrations & Members
-    Handler -> DB: Cập nhật giảm chỉ tiêu còn lại của đề tài (D4)
-    Handler -> DB: Cập nhật trạng thái sinh viên: "Chờ GVHD xác nhận"
-    Handler -> DB: COMMIT TRANSACTION
-    deactivate DB
-    
-    Handler --> API: Result.Success(RegistrationDto)
-    deactivate Handler
-    
-    API --> SPA: 200 OK (Thông tin Phiếu Đăng ký)
-    SPA --> Student: B10: Thông báo đăng ký thành công (D6)
-    SPA --> Student: B9: Cho phép tải / in Phiếu tiếp nhận đăng ký (PDF)
+autonumber
+title UGTM — Đăng ký/ghép nhóm (thiết kế nghiệp vụ cần triển khai; mục 2.4.1)
+actor "Sinh viên" as SV
+actor "GVHD" as Advisor
+boundary "Giao diện" as UI
+control "API nghiệp vụ cần triển khai" as API
+database "PostgreSQL\ntopics / academic / identity" as DB
+control "PDF / thông báo\nCần triển khai" as Service
+SV -> UI : Chọn đề tài và nhóm 1–2 người
+UI -> API : Gửi yêu cầu đăng ký
+API -> DB : BEGIN; khóa dữ liệu chỉ tiêu
+DB --> API : Đề tài công bố, chỉ tiêu, đợt/deadline, đăng ký hiện có
+API -> API : Kiểm tra đủ điều kiện, thời hạn, giới hạn nhóm/đề tài
+alt Không hợp lệ / hết chỉ tiêu / trùng đăng ký
+ API -> DB : ROLLBACK
+ API --> UI : Đăng ký thất bại, lý do
+ UI --> SV : Thông báo
+else Hợp lệ
+ API -> DB : Ghi nhóm/thành viên và đăng ký chờ GVHD; cập nhật chỉ tiêu
+ API -> DB : COMMIT
+ API -> Service : Tạo phiếu tiếp nhận PDF
+ Service --> API : Phiếu tiếp nhận
+ API --> UI : Thành công + phiếu PDF
+ UI --> SV : Kết quả đăng ký
+ API -> Service : Thông báo yêu cầu tiếp nhận
+ Service --> Advisor : Có nhóm đăng ký cần xác nhận
+ Advisor -> UI : Xác nhận tiếp nhận nhóm
+ UI -> API : Gửi xác nhận
+ API -> API : Kiểm tra GVHD phụ trách đề tài và trạng thái
+ API -> DB : Ghi nhận xác nhận và lịch sử
+ API --> UI : Kết quả tiếp nhận
 end
-
+note over API,DB
+Cơ chế khóa chọn theo PostgreSQL khi triển khai.
+Không dùng UPDLOCK của SQL Server cho source hiện tại.
+Phiếu tiếp nhận PDF không đồng nghĩa GVHD đã tiếp nhận.
+Source hiện chưa có API đăng ký/xác nhận, chỉ có ping.
+end note
 @enduml

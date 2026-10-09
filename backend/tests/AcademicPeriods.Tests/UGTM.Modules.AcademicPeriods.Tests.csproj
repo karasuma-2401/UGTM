@@ -19,7 +19,6 @@
     <ProjectReference Include="..\..\Modules\AcademicPeriods\Application\UGTM.Modules.AcademicPeriods.Application.csproj" />
     <ProjectReference Include="..\..\Modules\AcademicPeriods\Domain\UGTM.Modules.AcademicPeriods.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\AcademicPeriods\Infrastructure\UGTM.Modules.AcademicPeriods.Infrastructure.csproj" />
-    <ProjectReference Include="..\BuildingBlocks.Testing\UGTM.BuildingBlocks.Testing.csproj" />
   </ItemGroup>
 
 </Project>

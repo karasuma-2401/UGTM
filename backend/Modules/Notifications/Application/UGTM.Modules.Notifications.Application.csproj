@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\Contracts\UGTM.Modules.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Domain\UGTM.Modules.Notifications.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Application\UGTM.BuildingBlocks.Application.csproj" />
   </ItemGroup>

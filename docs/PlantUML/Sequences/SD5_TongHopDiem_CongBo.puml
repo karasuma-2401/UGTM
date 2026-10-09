@@ -1,83 +1,63 @@
 @startuml SD5_TongHopDiem_CongBo
-autonumber
-skinparam roundcorner 8
 skinparam shadowing false
-skinparam sequenceMessageAlign center
-
-skinparam actor {
-    BackgroundColor #FFF3E0
-    BorderColor #E65100
-    FontName Arial
-    FontSize 13
-}
-
-skinparam participant {
-    BackgroundColor #FFFFFF
-    BorderColor #1E88E5
-    FontName Arial
-    FontSize 12
-}
-
-skinparam database {
-    BackgroundColor #FFF3E0
-    BorderColor #E65100
-    FontName Arial
-    FontSize 12
-}
-
-title Sơ đồ Tuần tự: Tổng Hợp Điểm 3 Nguồn & Công Bố Kết Quả\n(Tham chiếu Thuật toán SĐ5 & Mục 2.4.5 Báo cáo Nghiệp vụ)
-
-actor "Văn phòng Khoa\n[Faculty Staff]" as Faculty
-actor "Sinh viên\n[Student]" as Student #E8F5E9
-boundary "Giao diện Quản trị Điểm\n[React 19 / AntD]" as SPA
-control "Host API Gateway\n[UGTM.Api]" as API
-control "Xử lý Tổng hợp Điểm\n[ConsolidateGradesHandler]" as Handler
-control "Chiến lược Tính điểm\n[GradingStrategy]" as Strategy #E0F2F1
-database "Cơ sở dữ liệu\n[SQL Server (grading)]" as DB
-control "Dịch vụ Xuất File & Mail\n[Export & Noti Service]" as Service #E1F5FE
-
-== BƯỚC 1: KÍCH HOẠT LỆNH TỔNG HỢP ĐIỂM (B1) ==
-Faculty -> SPA: Chọn đợt KLTN, bấm "Tổng hợp điểm 3 nguồn"
-SPA -> API: POST /api/grading/consolidate (AcademicPeriodId)
-API -> Handler: MediatR.Send(ConsolidateGradesCommand)
-activate Handler
-
-== BƯỚC 2 & 3: ĐỌC DỮ LIỆU ĐIỂM VÀ BỘ TRỌNG SỐ TỪ CSDL ==
-Handler -> DB: Đọc 3 đầu điểm (GVHD, GVPB, HĐ), trạng thái lưu chiểu & Trọng số (W_HD, W_PB, W_HĐ)
-activate DB
-DB --> Handler: Bộ dữ liệu D3 của toàn bộ đề tài trong đợt
-
-== BƯỚC 4: QUÉT VÀ TÍNH ĐIỂM THEO CHIẾN LƯỢC STRATEGY (B4) ==
-loop Quét qua từng nhóm đề tài trong đợt
-    Handler -> Handler: Kiểm tra đề tài đã có đủ 3 đầu điểm?
-    Handler -> Handler: Kiểm tra xác nhận "Đã hoàn thành nộp lưu chiểu" (QĐ5.1)?
-    
-    alt Chưa hoàn thành nộp lưu chiểu
-        Handler -> Handler: Giữ trạng thái điểm tạm thời (Chưa đủ điều kiện trả điểm)
-    else Đã hoàn tất đủ điều kiện
-        Handler -> Strategy: Calculate(ĐiểmGVHD, ĐiểmGVPB, ĐiểmHĐ, Trọng số)
-        activate Strategy
-        Strategy --> Handler: Điểm tổng kết = (Đ_GVHD*W_HD + Đ_GVPB*W_PB + Đ_HĐ*W_HĐ)
-        deactivate Strategy
-        Handler -> DB: B5: INSERT/UPDATE vào bảng grading.GradingResults (D4)
-    end
+autonumber
+title UGTM — Tổng hợp theo cấu hình và công bố (cần triển khai; mục 2.4.5)
+actor "Văn phòng Khoa" as Faculty
+actor "Phòng Đào tạo" as AA
+actor "Sinh viên" as SV
+control "API nghiệp vụ cần triển khai" as API
+database "PostgreSQL\nacademic / thesis / councils" as DB
+control "Tính điểm theo cấu hình\nCần triển khai" as Calc
+control "Thông báo / Export\nCần triển khai" as Service
+Faculty -> API : Tổng hợp điểm đợt KLTN
+API -> DB : Đọc cách tính/đầu điểm/hệ số/ngưỡng, điểm, lưu chiểu và kết luận loại
+loop Từng nhóm đề tài
+ API -> API : Đủ đầu điểm bắt buộc và Khoa xác nhận lưu chiểu?
+ alt Chưa đủ điều kiện
+  API -> API : Bỏ qua tổng hợp chính thức; ghi thông tin thiếu
+ else Đủ điều kiện
+  API -> Calc : Các điểm được công nhận + cấu hình + trường hợp GVPB
+  Calc -> Calc : Chọn %/hệ số; áp dụng quy tắc GVPB thuộc/ngoài HĐ
+  alt GVPB kiêm ủy viên (bộ hệ số đã chốt)
+   Calc -> Calc : (2×GVHD + 2×GVPB + Chủ tịch + Thư ký) / 6
+  else GVPB ngoài Hội đồng (bộ hệ số đã chốt)
+   Calc -> Calc : (2×GVHD + 2×GVPB + Chủ tịch + Thư ký + Ủy viên) / 7
+  end
+  Calc -> Calc : Loại điểm có kết luận không công nhận và hệ số tương ứng
+  alt Tổng hệ số hợp lệ còn lại > 0
+   Calc -> Calc : Tổng (điểm×hệ số) hợp lệ / tổng hệ số hợp lệ
+   Calc --> API : Tổng kết + dữ liệu/cấu hình tính
+   API -> DB : Ghi bảng điểm Dự thảo
+  else Không còn hệ số hợp lệ
+   Calc --> API : Không có kết quả hợp lệ để tổng hợp; không chia cho 0
+  end
+ end
 end
-deactivate DB
-
-Handler --> API: Result.Success(Tổng hợp hoàn tất)
-deactivate Handler
-API --> SPA: 200 OK (Hiển thị Bảng điểm tổng hợp trên giao diện)
-SPA --> Faculty: Hiển thị bảng điểm dự thảo 3 nguồn
-
-== BƯỚC 5: KHOA PHÊ DUYỆT CÔNG BỐ KẾT QUẢ CHÍNH THỨC ==
-Faculty -> SPA: Kiểm tra tính hợp lệ, bấm "Công bố điểm chính thức" (QĐ5.3)
-SPA -> API: POST /api/grading/publish
-API -> DB: B6: Cập nhật trạng thái IsPublished = True cho toàn bộ bảng điểm
-API -> Service: Kích hoạt xuất báo cáo toàn trường & gửi thông báo
-
-== BƯỚC 6: XUẤT BÁO CÁO & THÔNG BÁO CHO SINH VIÊN ==
-Service -> Service: B7: Xuất tệp bảng điểm hoàn chỉnh D5 (.xlsx / .pdf) gửi PĐT
-Service -> Student: B8: Gửi email thông báo điểm và kích hoạt quyền tra cứu trên Dashboard (D6)
-SPA --> Faculty: Báo cáo công bố điểm thành công
-
+API --> Faculty : Bảng điểm Dự thảo và các trường hợp thiếu
+Faculty -> API : Rà soát rồi yêu cầu Công bố
+API -> API : Kiểm tra quyền Khoa và điều kiện công bố từng nhóm
+API -> DB : Ghi trạng thái công bố, thời điểm và người công bố
+API -> Service : Thông báo kết quả đến SV đủ điều kiện
+Service --> SV : Email thông báo
+SV -> API : Tra cứu điểm chính thức
+API -> DB : Kiểm tra đúng nhóm + đã công bố + lưu chiểu hoàn tất
+alt Chưa đủ điều kiện tra cứu
+ API --> SV : Không trả điểm chính thức
+else Đủ điều kiện
+ API --> SV : Điểm chi tiết và tổng kết của nhóm
+end
+Faculty -> API : Yêu cầu xuất báo cáo Excel/PDF
+AA -> API : Yêu cầu xuất báo cáo Excel/PDF
+API -> Service : Kết xuất dữ liệu trong phạm vi được phép
+Service --> API : Tệp báo cáo
+API --> Faculty : Báo cáo theo yêu cầu
+API --> AA : Báo cáo theo yêu cầu
+note over API,Calc
+Không cố định chỉ 3 đầu điểm hoặc công thức trọng số HĐ trung bình.
+Nhóm xác nhận công thức 6/7 ngày 10/10/2026.
+GVPB kiêm ủy viên chỉ tham dự, không chấm Hội đồng;
+không coi điểm ủy viên không phát sinh là thiếu điểm.
+PĐT được xuất báo cáo; quyền công bố thuộc Khoa.
+Các endpoint/lớp tính điểm trên sơ đồ chưa có trong source.
+end note
 @enduml

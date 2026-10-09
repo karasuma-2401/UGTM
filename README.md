@@ -1,202 +1,110 @@
 # UGTM — Hệ thống Quản lý Khóa luận Tốt nghiệp
 
-Ứng dụng web hỗ trợ quy trình quản lý Khóa luận Tốt nghiệp (KLTN): đăng ký/duyệt đề tài, đề cương, báo cáo giữa kỳ/cuối kỳ, hội đồng chấm, tổng hợp điểm. Xem đặc tả chi tiết tại [`docs/Requirements.md`](docs/Requirements.md), [`docs/Modules.md`](docs/Modules.md) và thiết kế kiến trúc tại [`docs/Architecture.md`](docs/Architecture.md).
+Đồ án Công nghệ .NET, SE310.R11, Nhóm 1, UIT. Phạm vi nghiệp vụ đã chốt theo Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp vụ nhóm quản lý ngoài repo): quy trình 21 tuần, 7 giai đoạn, 2 cổng kiểm soát, từ đăng ký đề tài đến lưu chiểu và công bố điểm.
 
-## Tech stack
+Source hiện ở giai đoạn nền tảng: 6 module có endpoint ping, EF Core có 34 bảng/6 schema và migrations, DefenseCouncil có service tính điểm đã kiểm thử, frontend có dashboard và trang kiểm tra module. Các API nghiệp vụ trong tài liệu chưa được triển khai đầy đủ.
 
-| | |
-|---|---|
-| Backend | ASP.NET Core (.NET 10), kiến trúc **Modular Monolith + DDD** (tham khảo [kgrzybek/modular-monolith-with-ddd](https://github.com/kgrzybek/modular-monolith-with-ddd)) |
-| Frontend | React 19 + TypeScript + Vite + Ant Design + React Router + TanStack Query |
-| Database | Neon Serverless PostgreSQL 17 (AWS Singapore) |
-| Auth | ASP.NET Core Identity + JWT |
+## Tài liệu
 
-## Yêu cầu môi trường
+Bắt đầu tại [mục lục docs](docs/README.md). Các tài liệu chính: [yêu cầu](docs/Requirements.md), [đặc tả Use Case](docs/UseCases.md), [kiến trúc hiện tại](docs/Architecture.md), [mô hình dữ liệu](docs/DataModel.md), [đề xuất module/DDD và setup Neon](docs/Architecture.md#6-migrations-và-neon). Đã bỏ toàn bộ Use Case diagram theo yêu cầu nhóm.
 
-- [.NET SDK 10](https://dotnet.microsoft.com/download) trở lên (đang phát triển với `10.0.303`)
-- [Node.js](https://nodejs.org/) 20+ và npm 10+ (đang phát triển với Node `24.x` / npm `11.x`)
-- Git
+## Công nghệ hiện tại
 
-Kiểm tra nhanh:
+| Phần | Source đang dùng |
+| --- | --- |
+| Backend | ASP.NET Core .NET 10; 6 module, mỗi module có Domain/Application/Infrastructure/Contracts |
+| Dữ liệu | EF Core 10 + Npgsql PostgreSQL; 6 DbContext runtime, 1 context migration; 6 schema nghiệp vụ; history ở public |
+| Frontend | React 19, TypeScript, Vite 8, React Router, TanStack Query, Axios |
+| Giao diện | Tailwind CSS + các component shadcn/Radix trong layout đang chạy; có Ant Design và `ConfigProvider` |
+| Xác thực | Có lớp hỗ trợ token/route guard phía frontend; backend chưa triển khai Identity/JWT/RBAC |
+| Hạ tầng | Docker Compose có Mailpit, MinIO, Redis, RabbitMQ; chưa có code tích hợp các dịch vụ này |
 
-```bash
-dotnet --version
-node --version
-npm --version
-```
+Khác biệt với thiết kế kỹ thuật trong Word được ghi tại [Architecture.md](docs/Architecture.md). Docs lấy kiến trúc source hiện tại làm chuẩn theo quyết định của nhóm ngày 10/10/2026.
 
-## Cấu trúc thư mục
+## Môi trường
 
-```
-UGTM/
-├── UGTM.sln                   # Solution .NET (mở bằng Visual Studio/Rider nếu muốn)
-├── backend/
-│   ├── host/Api/               # ASP.NET Core host — composition root, chạy ứng dụng
-│   ├── BuildingBlocks/          # Domain/Application/Infrastructure dùng chung mọi module
-│   ├── Modules/                 # 9 module nghiệp vụ, mỗi module có 4 layer:
-│   │                            #   Domain / Application / Infrastructure / Contracts
-│   └── tests/
-│       ├── Architecture.Tests/ # Test enforce ranh giới module (bắt buộc phải xanh)
-│       └── {Module}.Tests/     # Unit test theo từng module
-├── frontend/                   # React SPA
-├── docs/                       # Đặc tả nghiệp vụ (Requirements.md, Modules.md)
-└── docker/                     # (đang trống — sẽ bổ sung docker-compose sau)
-```
+- .NET SDK 10.x; Node.js 24.x và npm tương ứng để đồng nhất Docker/CI. Mốc Node 20+ trong Word không phải cấu hình runtime của repo hiện tại.
+- Git; Docker Compose nếu chạy container.
+- PostgreSQL riêng hoặc Neon với chuỗi kết nối hợp lệ. Compose không tạo container database.
 
-9 module nghiệp vụ hiện có: `AcademicPeriods`, `Identity`, `TopicCatalog`, `ThesisManagement`, `MidtermProgress`, `FinalReportEvaluation`, `DefenseCouncil`, `GradingConsolidation`, `Notifications`.
+## Chạy backend
 
-## Setup lần đầu
+Từ thư mục gốc, PowerShell:
 
-### 1. Clone
-
-```bash
-git clone <repo-url>
-cd UGTM
-```
-
-### 2. Backend
-
-Chạy từ thư mục gốc repo:
-
-```bash
+```powershell
 dotnet restore UGTM.sln
 dotnet build UGTM.sln
+$env:ConnectionStrings__DefaultConnection = '<chuỗi kết nối PostgreSQL>'
+dotnet run --project backend/host/Api/UGTM.Api.csproj --launch-profile http
 ```
 
-Chạy API:
+API: `http://localhost:5287`. Swagger trong Development: `http://localhost:5287/swagger`; OpenAPI: `/openapi/v1.json`. Profile `https` sử dụng thêm `https://localhost:7289`.
 
-```bash
-dotnet run --project backend/host/Api/UGTM.Api.csproj
-```
-
-Mặc định lắng nghe tại:
-- HTTP: `http://localhost:5287`
-- HTTPS: `https://localhost:7289`
-
-Kiểm tra API đã chạy đúng (mỗi module có sẵn endpoint `ping` để verify wiring):
-
-```bash
-curl http://localhost:5287/api/modules/Identity/ping
-# => {"module":"Identity","status":"ok"}
-```
-
-Chạy toàn bộ test:
-
-```bash
+```powershell
+Invoke-RestMethod http://localhost:5287/api/modules/Identity/ping
 dotnet test UGTM.sln
 ```
 
-> Hiện tại chỉ `Architecture.Tests` có test thật (enforce ranh giới giữa các module/layer). Các project `*.Tests` khác đang trống, sẽ có nội dung khi từng module được code nghiệp vụ.
+Ping trả `{"module":"Identity","status":"ok"}` trực tiếp. `Architecture.Tests` kiểm tra ranh giới module/layer, DI và cấu hình database; AcademicPeriods/DefenseCouncil có kiểm thử trọng số và công thức tính điểm; ThesisManagement kiểm thử aggregate nhóm sinh viên. API không tự migrate khi khởi động. API đọc cấu hình môi trường, không tự nạp `.env`; script database bên dưới có nạp các biến kết nối từ `.env`.
 
-### 3. Frontend
+### Áp dụng migration trên database phát triển
 
-```bash
-cd frontend
-npm install
-```
-
-Tạo file môi trường từ mẫu:
-
-```bash
-# bash / git bash
-cp .env.example .env
-```
+Dùng công cụ EF cục bộ pin 10.0.12 và chuỗi kết nối của database được chọn (hoặc điền DATABASE_CONNECTION_STRING trong `.env`):
 
 ```powershell
-# PowerShell
-Copy-Item .env.example .env
+$env:DATABASE_CONNECTION_STRING = '<chuỗi kết nối PostgreSQL của database phát triển>'
+./scripts/Database.ps1 -Action List
+./scripts/Database.ps1 -Action Check
+./scripts/Database.ps1 -Action Script
+./scripts/Database.ps1 -Action Update
 ```
 
-Mặc định `.env` trỏ `VITE_API_BASE_URL=http://localhost:5287` — chỉnh lại nếu backend chạy ở port khác.
+Xem [Architecture.md](docs/Architecture.md#6-migrations-và-neon) để biết thứ tự cấu hình, lệnh `Update-Database` và những phần cần triển khai tiếp. Giữ migration InitialCreate; AlignFinalReportFoundation bổ sung dữ liệu final; AssignSchemaOwnership chuyển bảng về module và bỏ shared; EncapsulateModulePersistence loại bảng trọng số theo role cũ. Database đã chạy bản cũ cần bước chuyển history sang public một lần trước List/Update; Neon hiện tại đã chuyển. [DatabaseScript.txt](docs/DatabaseScript.txt) là DBML để xem cấu trúc, không phải SQL chạy trên Neon.
 
-Chạy dev server:
+## Chạy frontend
 
-```bash
+```powershell
+Set-Location frontend
+npm ci
+Copy-Item .env.example .env
 npm run dev
 ```
 
-Mở trình duyệt tại `http://localhost:5173`.
+Mở `http://localhost:5173`. `VITE_API_BASE_URL` mặc định là `http://localhost:5287`. Router hiện có `/` và `/modules/:modulePath`; chưa có màn hình đăng nhập hay các màn hình KLTN. `npm run lint` kiểm tra Oxlint; `npm run build` chạy TypeScript rồi Vite.
 
-Các lệnh khác:
+## Chạy Docker Compose
 
-```bash
-npm run build     # build production
-npm run lint      # oxlint
-```
+Từ thư mục gốc:
 
-### 4. Kiểm tra end-to-end
-
-Chạy song song backend (bước 2) và frontend (bước 3), sau đó mở `http://localhost:5173`, vào menu bất kỳ module nào — trang sẽ gọi `GET /api/modules/{module}/ping` và hiển thị phản hồi từ backend. Nếu thấy lỗi CORS trong console, kiểm tra backend đang chạy đúng port `5287` (policy CORS trong `backend/host/Api/Program.cs` đang chỉ cho phép origin `http://localhost:5173`).
-
-## Kiến trúc backend (Modular Monolith + DDD)
-
-- Mỗi module gồm 4 project: `Domain`, `Application`, `Infrastructure`, `Contracts`.
-- `Domain` chỉ được phụ thuộc `BuildingBlocks.Domain` và `Contracts` của chính module đó.
-- Một module **không được** tham chiếu trực tiếp `Domain`/`Application`/`Infrastructure` của module khác — chỉ được giao tiếp qua `Contracts`. Ranh giới này được enforce tự động bởi `backend/tests/Architecture.Tests` (dựa trên `Assembly.GetReferencedAssemblies()`), build/test sẽ đỏ ngay nếu vi phạm.
-- Host (`UGTM.Api`) là composition root: mỗi module implement interface `IModule` (`RegisterModule` để đăng ký DI, `MapEndpoints` để khai báo route), được liệt kê tường minh trong `Program.cs` — không dùng reflection scan.
-
-## Hướng dẫn chạy dự án cho Teammates
-
-### 1. Chuẩn bị file cấu hình môi trường (.env)
-
-Sao chép file mẫu và điền chuỗi kết nối Neon PostgreSQL:
-
-```bash
-cp .env.example .env
-```
-
-*(Lấy chuỗi kết nối Neon từ trưởng nhóm hoặc Neon Dashboard và dán vào `DATABASE_CONNECTION_STRING` trong file `.env`)*.
-
-### 2. Khởi chạy Backend và cụm dịch vụ hạ tầng (Docker Compose)
-
-Khởi chạy Backend API cùng toàn bộ các dịch vụ phụ trợ (Mailpit, MinIO, Redis, RabbitMQ):
-
-```bash
-# Khởi chạy Backend và toàn bộ hạ tầng
+```powershell
+Copy-Item .env.example .env
+# Điền DATABASE_CONNECTION_STRING trong .env.
 docker compose up -d backend mailpit minio redis rabbitmq
 ```
 
-*(Hoặc gõ `docker compose up -d` nếu muốn khởi chạy luôn cả container frontend Nginx).*
+Chạy frontend bằng Vite như trên. `docker compose up -d` cũng khởi chạy frontend Nginx tại `http://localhost:3000`.
 
-Dừng các dịch vụ:
+| Dịch vụ | Địa chỉ |
+| --- | --- |
+| Backend | `http://localhost:5287` |
+| Frontend Vite / container | `http://localhost:5173` / `http://localhost:3000` |
+| Mailpit web / SMTP | `http://localhost:8025` / `localhost:1025` |
+| MinIO console / S3 API | `http://localhost:9001` / `http://localhost:9000` |
+| RabbitMQ management / AMQP | `http://localhost:15672` / `localhost:5672` |
+| Redis | `localhost:6379` |
 
-```bash
-docker compose down
-```
+Backend đọc `Cors:AllowedOrigins`; Compose cấu hình origin 5173 và 3000. Chạy bằng Vite ngoài Compose có fallback origin 5173. Các dịch vụ phụ trợ khởi chạy không đồng nghĩa email/upload/event bus/cache đã hoạt động. Cấu hình tài khoản dịch vụ xem `.env.example`; không đưa credentials thật vào tài liệu.
 
-### 3. Khởi chạy Frontend (Vite Dev Server)
+Dừng môi trường bằng `docker compose down`. File cấu hình production: [docker/docker-compose.prod.yml](docker/docker-compose.prod.yml).
 
-Phát triển giao diện React với Vite để tận dụng Hot Module Replacement (HMR) tức thì:
+## Cấu trúc và CI
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+- `backend/host/Api`: composition root, DI, CORS, middleware, Swagger, nạp module qua `IModule`.
+- `backend/Modules`: Identity, AcademicPeriods, TopicCatalog, ThesisManagement, DefenseCouncil, Notifications.
+- `backend/BuildingBlocks`: Entity/AggregateRoot/Result/Error/IDomainEvent, IModule, ApiResponse/ApiError, middleware.
+- `backend/Database.Migrations`: context migration tổng hợp, FK liên module và migrations; entity/configuration thuộc module tương ứng.
+- `backend/tests`: kiểm thử kiến trúc và ba module đang có logic miền: AcademicPeriods, DefenseCouncil, ThesisManagement. Thêm project test cho module khác khi có nghiệp vụ cần kiểm thử.
+- `frontend`: SPA; [hướng dẫn frontend](frontend/README.md).
+- `docs/PlantUML`: sơ đồ kiến trúc, nghiệp vụ, tuần tự, sitemap.
 
-Truy cập giao diện: `http://localhost:5173`.
-
-### 4. Bảng điều khiển các dịch vụ (Dashboard Ports)
-
-| Dịch vụ | Địa chỉ Web / Port | Tài khoản mặc định | Mô tả |
-|---|---|---|---|
-| **Frontend SPA (Vite)** | `http://localhost:5173` | — | Giao diện React SPA (Hot Reload) |
-| **Backend API** | `http://localhost:5287` | — | ASP.NET Core Modular Monolith API |
-| **Mailpit Web UI** | `http://localhost:8025` | — | Xem email thông báo KLTN (SMTP: port `1025`) |
-| **MinIO Console** | `http://localhost:9001` | `ugtm_admin` / `ugtm_secret_pass_123` | Quản lý File Storage S3 (API: port `9000`) |
-| **RabbitMQ Management** | `http://localhost:15672` | `ugtm_user` / `ugtm_rabbit_pass_123` | Quản lý Message Broker / Queues (AMQP: port `5672`) |
-| **Redis Cache** | `localhost:6379` | pass: `ugtm_redis_pass_123` | In-memory distributed cache |
-| **PostgreSQL Database** | Neon Cloud | `neondb_owner` | CSDL đám mây Serverless |
-
-## CI/CD Pipeline (GitHub Actions)
-
-Dự án thiết lập quy trình tự động hóa:
-
-1. **Continuous Integration (CI)**:
-   - `backend-ci.yml`: Chạy `dotnet format --verify-no-changes`, quét lộ secret `gitleaks`, build Release, chạy toàn bộ Unit & Architecture tests, verify build Docker image API.
-   - `frontend-ci.yml`: Chạy `oxlint`, `tsc -b`, `npm run build`, verify build Docker image Frontend Nginx.
-2. **Publish Image**:
-   - `publish.yml`: Đóng gói Docker image đa kiến trúc (`linux/amd64,linux/arm64`) cho API và Frontend, quét an toàn container với **Trivy**, đẩy image lên GitHub Container Registry (`ghcr.io/karasuma-2401/ugtm-*`).
-3. **Continuous Deployment (CD)**:
-   - `deploy.yml`: SSH vào VPS máy chủ, pull image mới nhất và restart container thông qua `docker compose -f docker-compose.prod.yml up -d`.
-
+GitHub Actions chạy trên `dev`/`main`: backend format, Gitleaks, build/test, Docker build; frontend lint/typecheck/build và Docker build. Workflow publish đóng gói image, quét Trivy và đẩy GHCR; deploy SSH được bỏ qua khi chưa có secrets VPS. File workflow thể hiện cấu hình tự động hóa, không chứng minh dịch vụ đã được triển khai.

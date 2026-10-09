@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Modules\AcademicPeriods\Application\UGTM.Modules.AcademicPeriods.Application.csproj" />
+    <ProjectReference Include="..\..\host\Api\UGTM.Api.csproj" />
     <ProjectReference Include="..\..\Modules\AcademicPeriods\Contracts\UGTM.Modules.AcademicPeriods.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\AcademicPeriods\Domain\UGTM.Modules.AcademicPeriods.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\AcademicPeriods\Infrastructure\UGTM.Modules.AcademicPeriods.Infrastructure.csproj" />
@@ -24,22 +25,10 @@
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Contracts\UGTM.Modules.DefenseCouncil.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Domain\UGTM.Modules.DefenseCouncil.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Modules\FinalReportEvaluation\Application\UGTM.Modules.FinalReportEvaluation.Application.csproj" />
-    <ProjectReference Include="..\..\Modules\FinalReportEvaluation\Contracts\UGTM.Modules.FinalReportEvaluation.Contracts.csproj" />
-    <ProjectReference Include="..\..\Modules\FinalReportEvaluation\Domain\UGTM.Modules.FinalReportEvaluation.Domain.csproj" />
-    <ProjectReference Include="..\..\Modules\FinalReportEvaluation\Infrastructure\UGTM.Modules.FinalReportEvaluation.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Modules\GradingConsolidation\Application\UGTM.Modules.GradingConsolidation.Application.csproj" />
-    <ProjectReference Include="..\..\Modules\GradingConsolidation\Contracts\UGTM.Modules.GradingConsolidation.Contracts.csproj" />
-    <ProjectReference Include="..\..\Modules\GradingConsolidation\Domain\UGTM.Modules.GradingConsolidation.Domain.csproj" />
-    <ProjectReference Include="..\..\Modules\GradingConsolidation\Infrastructure\UGTM.Modules.GradingConsolidation.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Application\UGTM.Modules.Identity.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Contracts\UGTM.Modules.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Domain\UGTM.Modules.Identity.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Infrastructure\UGTM.Modules.Identity.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Modules\MidtermProgress\Application\UGTM.Modules.MidtermProgress.Application.csproj" />
-    <ProjectReference Include="..\..\Modules\MidtermProgress\Contracts\UGTM.Modules.MidtermProgress.Contracts.csproj" />
-    <ProjectReference Include="..\..\Modules\MidtermProgress\Domain\UGTM.Modules.MidtermProgress.Domain.csproj" />
-    <ProjectReference Include="..\..\Modules\MidtermProgress\Infrastructure\UGTM.Modules.MidtermProgress.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Notifications\Application\UGTM.Modules.Notifications.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Notifications\Contracts\UGTM.Modules.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Notifications\Domain\UGTM.Modules.Notifications.Domain.csproj" />

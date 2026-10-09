@@ -1,32 +1,37 @@
-# React + TypeScript + Vite
+# UGTM frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + TypeScript + Vite 8. Router hiện có dashboard `/` và trang kiểm tra 6 module `/modules/:modulePath`. Layout đang chạy dùng Tailwind/shadcn/Radix; `App.tsx` vẫn dùng Ant Design ConfigProvider.
 
-Currently, two official plugins are available:
+## Chạy phát triển
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Dùng Node.js 24.x như Docker và CI:
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```powershell
+Set-Location frontend
+npm ci
+Copy-Item .env.example .env
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Mở `http://localhost:5173`. API mặc định `http://localhost:5287`, cấu hình bằng `VITE_API_BASE_URL` trong `.env`. Backend đọc Cors:AllowedOrigins, fallback 5173; Compose có cả 5173/3000. Xem [README dự án](../README.md) để chạy API/Docker.
+
+```powershell
+npm run lint
+npm run build
+npm run preview
+```
+
+`build` chạy `tsc -b` và Vite. Biến `VITE_*` được đưa vào bundle khi build, không đổi bằng biến môi trường runtime của container Nginx.
+
+## Các phần hiện có
+
+- `src/app/router.tsx`: route thực tế; `queryClient.ts`: TanStack Query.
+- `src/shared/config/modules.ts`: danh mục 6 module để kiểm tra endpoint ping.
+- `src/shared/layout/AppLayout.tsx`: layout được sử dụng.
+- `src/shared/api`: Axios, token storage, event 401 và kiểu dữ liệu.
+- `src/shared/auth`: AuthContext/useAuth/ProtectedRoute; chưa tích hợp vào router/app.
+- `src/components/ui`: component giao diện dùng chung.
+
+API refresh `/api/identity/auth/refresh` mà interceptor dự kiến gọi chưa được backend triển khai. Chưa có route đăng nhập, trang 403 hoặc màn hình nghiệp vụ. Kiểu response frontend hiện khác `ApiResponse` backend; cần thống nhất trước khi ghép tính năng. Trang ping xử lý object `module/status` trực tiếp.
+
+Danh mục màn hình cần xây dựng tại [SITEMAP.md](../docs/SITEMAP.md); nghiệp vụ final tại [Requirements.md](../docs/Requirements.md). Quyền giao diện cần đi cùng policy kiểm tra phía API.

@@ -1,82 +1,50 @@
 @startuml SD3_DoiTenDeTai_3Ben
-autonumber
-skinparam roundcorner 8
 skinparam shadowing false
-skinparam sequenceMessageAlign center
-
-skinparam actor {
-    BackgroundColor #F5F5F5
-    BorderColor #37474F
-    FontName Arial
-    FontSize 13
-}
-
-skinparam participant {
-    BackgroundColor #FFFFFF
-    BorderColor #1E88E5
-    FontName Arial
-    FontSize 12
-}
-
-skinparam database {
-    BackgroundColor #FFF3E0
-    BorderColor #E65100
-    FontName Arial
-    FontSize 12
-}
-
-title Sơ đồ Tuần tự: Xử lý Đơn Đổi Tên Đề Tài (ĐTĐT) Online Liên Thông 3 Bên\n(Tham chiếu Thuật toán SĐ3 & Mục 2.4.3 Báo cáo Nghiệp vụ)
-
-actor "Sinh viên\n[Student]" as Student #E8F5E9
-actor "GVHD\n[Supervisor]" as Supervisor #E3F2FD
-actor "Văn phòng Khoa\n[Faculty]" as Faculty #FFF3E0
-actor "Phòng Đào Tạo\n[Academic Affairs]" as PDT #FCE4EC
-boundary "Giao diện Web SPA\n[React 19 / AntD]" as SPA
-control "Xử lý Nghiệp vụ ĐTĐT\n[TopicChangeHandler]" as Handler
-database "Cơ sở dữ liệu\n[SQL Server]" as DB
-database "Nhật ký Hệ thống\n[identity.AuditLogs]" as Audit
-
-== GIAI ĐOẠN 1: SINH VIÊN KHỞI TẠO ĐƠN (TUẦN 3 - 10) ==
-Student -> SPA: Điền tên đề tài mới đề xuất (Việt/Anh) & Lý do điều chỉnh
-Student -> SPA: Gửi Đơn xin Đổi tên đề tài (Bản mềm online)
-SPA -> Handler: POST /api/progress/topic-change-requests
-Handler -> DB: Kiểm tra thời hạn Tuần 3 - 10 & Tạo bản ghi đơn (Trạng thái: "Chờ GVHD xác nhận")
-DB --> Handler: Đã tạo đơn thành công
-Handler -> Audit: Ghi vết khởi tạo đơn ĐTĐT (UserId, Timestamp)
-Handler --> SPA: 200 OK (Gửi đơn thành công)
-
-== GIAI ĐOẠN 2: CẤP 1 - GVHD XÁC NHẬN ĐỒNG Ý ==
-Supervisor -> SPA: Mở danh sách đơn ĐTĐT chờ duyệt, bấm "Đồng ý"
-SPA -> Handler: PUT /api/progress/topic-change-requests/{id}/supervisor-approve
-Handler -> DB: B5: Cập nhật trạng thái đơn → "Chờ Khoa duyệt"
-Handler -> Audit: Ghi nhận chữ ký điện tử / xác nhận của GVHD
-Handler --> SPA: 200 OK (Đã duyệt chuyển lên Khoa)
-
-== GIAI ĐOẠN 3: CẤP 2 - VĂN PHÒNG KHOA PHÊ DUYỆT ==
-Faculty -> SPA: Kiểm tra tính hợp lệ đề xuất của Khoa, bấm "Ký duyệt"
-SPA -> Handler: PUT /api/progress/topic-change-requests/{id}/faculty-approve
-Handler -> DB: B6: Cập nhật trạng thái đơn → "Chờ PĐT phê duyệt"
-Handler -> Audit: Ghi nhận phê duyệt của Văn phòng Khoa
-Handler --> SPA: 200 OK (Đã ký chuyển Phòng Đào Tạo)
-
-== GIAI ĐOẠN 4: CẤP 3 - PHÒNG ĐÀO TẠO PHÊ DUYỆT (BƯỚC CUỐI CÙNG) ==
-PDT -> SPA: Thẩm định hồ sơ bản mềm liên thông, bấm "Phê duyệt chính thức"
-SPA -> Handler: PUT /api/progress/topic-change-requests/{id}/pdt-approve
-activate Handler
-
-Handler -> DB: B7: Cập nhật tên đề tài chính thức vào schema: topics
-Handler -> DB: Mở quyền cho sinh viên nộp lại bản Đề cương cập nhật
-Handler -> DB: Đặt trạng thái đơn ĐTĐT = "Hoàn tất" (QĐ3.3)
-Handler -> Audit: B8: Ghi vết quyết định hành chính của PĐT vào AuditLogs
-DB --> Handler: Cam kết giao tác thành công
-deactivate Handler
-
-Handler --> SPA: 200 OK (Phê duyệt thành công)
-SPA --> PDT: Hiển thị trạng thái hoàn tất
-
-== GIAI ĐOẠN 5: THÔNG BÁO TỰ ĐỘNG CHO 3 BÊN ==
-Handler -> Student: B9: Gửi Email & Thông báo tên đề tài mới đã được duyệt
-Handler -> Supervisor: Gửi thông báo kết quả luồng liên thông
-Handler -> Faculty: Gửi thông báo hoàn tất quyết định ĐTĐT
-
+autonumber
+title UGTM — Đổi tên đề tài ba cấp (cần triển khai; mục 2.4.3)
+actor "Sinh viên" as SV
+actor "GVHD" as Advisor
+actor "Văn phòng Khoa" as Faculty
+actor "Phòng Đào tạo" as AA
+control "API nghiệp vụ cần triển khai" as API
+database "PostgreSQL\nthesis / topics / identity" as DB
+control "Thông báo cần triển khai" as Noti
+SV -> API : Tạo đơn: tên Việt/Anh, lý do
+API -> API : Kiểm tra nhóm đang thực hiện và thời gian tuần 3–10
+alt Ngoài thời gian / không có quyền
+ API --> SV : Từ chối tạo đơn
+else Hợp lệ
+ API -> DB : Lưu đơn chờ GVHD
+ Advisor -> API : Đồng ý hoặc từ chối cấp 1
+ API -> API : Kiểm tra GVHD phụ trách, cấp duyệt/trạng thái
+ alt GVHD từ chối
+  API -> DB : Ghi lý do; dừng đơn; giữ tên hiện tại
+  API -> Noti : Thông báo từ chối SV
+ else GVHD đồng ý
+  API -> DB : Chờ Khoa duyệt
+  Faculty -> API : Duyệt hoặc từ chối cấp 2
+  API -> API : Kiểm tra quyền/cấp xử lý
+  alt Khoa từ chối
+   API -> DB : Ghi lý do; dừng đơn; giữ tên hiện tại
+   API -> Noti : Thông báo từ chối SV
+  else Khoa duyệt
+   API -> DB : Chờ PĐT phê duyệt
+   AA -> API : Phê duyệt chính thức hoặc từ chối cấp 3
+   API -> API : Kiểm tra quyền/cấp xử lý
+   alt PĐT từ chối
+    API -> DB : Ghi lý do; dừng đơn; giữ tên hiện tại
+    API -> Noti : Thông báo từ chối SV
+   else PĐT duyệt
+    API -> DB : BEGIN; cập nhật tên, Completed và mở nộp lại đề cương
+    API -> DB : Ghi lịch sử / identity.audit_log; COMMIT
+    API -> Noti : Email/in-app đến SV, GVHD, Khoa
+   end
+  end
+ end
+end
+note over API,DB
+Tên chỉ đổi sau PĐT phê duyệt; không mặc định chữ ký số.
+Các quyết định mỗi cấp cần ghi vết.
+Chỉ Admin tra cứu AuditLog; không có API nghiệp vụ hiện tại.
+end note
 @enduml

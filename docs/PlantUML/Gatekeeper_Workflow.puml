@@ -1,109 +1,88 @@
 @startuml Gatekeeper_Workflow
-skinparam backgroundColor #FFFFFF
-skinparam state {
-    BackgroundColor #F8F9FA
-    BorderColor #1168BD
-    ArrowColor #08427B
-}
-
-title Biểu đồ Luồng Nghiệp vụ 7 Giai đoạn & 2 Cổng Kiểm soát KLTN 21 Tuần (UIT)
-
-[*] --> GiaiDoan1 : Tuần 0 - 1
-
-state "Giai đoạn 1: Đề xuất & Duyệt đề tài (Tuần 0 - 1)" as GiaiDoan1 {
-    state "GVHD Soạn đề tài" as S1
-    state "Khoa Thẩm định đề tài" as S2
-    state "Khoa Công bố danh mục đề tài" as S3
-    S1 --> S2 : Nộp đề tài
-    S2 --> S1 : Yêu cầu chỉnh sửa
-    S2 --> S3 : Duyệt Đạt
-}
-
-GiaiDoan1 --> GiaiDoan2 : Tuần 2 (Mở cổng đăng ký)
-
-state "Giai đoạn 2: Đăng ký nhóm & Nộp đề cương (Tuần 2)" as GiaiDoan2 {
-    state "Sinh viên đăng ký đề tài & ghép nhóm" as R1
-    state "Nộp file Đề cương chi tiết (<= 20MB)" as R2
-    state "CỔNG KIỂM SOÁT 1: Khoa thẩm định đề cương" as Gate1
-    R1 --> R2 : GVHD xác nhận nhóm
-    R2 --> Gate1
-    Gate1 --> R2 : Không đạt / Cần sửa (Nộp lại)
-}
-
-Gate1 --> GiaiDoan3 : Duyệt Đạt -> Kích hoạt thực hiện KLTN
-
-state "Giai đoạn 3: Thực hiện KLTN & Xử lý ĐTĐT (Tuần 3 - 10)" as GiaiDoan3 {
-    state "Sinh viên thực hiện đề tài dưới hướng dẫn của GVHD" as T1
-    state "Luồng Đơn Đổi Tên Đề Tài (ĐTĐT) online 3 bên" as ChangeTitle {
-        state "SV tạo đơn ĐTĐT" as CT1
-        state "GVHD xác nhận" as CT2
-        state "Khoa phê duyệt" as CT3
-        state "PĐT duyệt quyết định" as CT4
-        state "Mở quyền nộp lại Đề cương mới" as CT5
-        CT1 --> CT2
-        CT2 --> CT3
-        CT3 --> CT4
-        CT4 --> CT5
-    }
-    state "Nộp Báo cáo giữa kỳ" as T2
-    T1 --> ChangeTitle : Nếu có điều chỉnh hướng
-    T1 --> T2 : Hạn chót Tuần 10
-}
-
-GiaiDoan3 --> GiaiDoan4 : Tuần 10 (Cổng kiểm soát 2)
-
-state "Giai đoạn 4: Đánh giá tiến độ giữa kỳ (Tuần 10)" as GiaiDoan4 {
-    state "CỔNG KIỂM SOÁT 2: GVHD đánh giá tiến độ" as Gate2
-    state "Dừng thực hiện KLTN (Khóa quyền)" as StopThesis
-    state "Được phép tiếp tục thực hiện KLTN" as ContinueThesis
-    Gate2 --> StopThesis : Không đồng ý cho tiếp tục
-    Gate2 --> ContinueThesis : Đồng ý cho tiếp tục
-}
-
-StopThesis --> [*] : Chấm dứt quy trình KLTN
-
-ContinueThesis --> GiaiDoan5 : Tuần 11 - 18
-
-state "Giai đoạn 5: Báo cáo cuối kỳ & Chấm phản biện (Tuần 11 - 18)" as GiaiDoan5 {
-    state "SV nộp Báo cáo cuối kỳ toàn văn" as F1
-    state "GVHD nhập nhận xét & điểm thành phần" as F2
-    state "Khoa phân công GVPB" as F3
-    state "GVPB nhận xét, chấm điểm & kết luận điều kiện" as F4
-    state "SV chỉnh sửa báo cáo theo góp ý GVPB" as F5
-    F1 --> F2
-    F2 --> F3
-    F3 --> F4
-    F4 --> F5 : Đồng ý cho ra bảo vệ
-}
-
-F4 --> [*] : Không đồng ý -> Không đủ điều kiện bảo vệ
-
-GiaiDoan5 --> GiaiDoan6 : Tuần 19 - 20
-
-state "Giai đoạn 6: Tổ chức Hội đồng & Lưu chiểu (Tuần 19 - 20)" as GiaiDoan6 {
-    state "Khoa lập dự thảo & PĐT ban hành QĐ Hội đồng" as C1
-    state "Buổi bảo vệ trực tiếp: Hội đồng chấm điểm" as C2
-    state "Thư ký bấm KHÓA BIÊN BẢN ĐIỂM (Read-only)" as C3
-    state "SV nộp Báo cáo hoàn thiện sau Hội đồng" as C4
-    state "Khoa xác nhận hoàn thành Lưu chiểu" as C5
-    C1 --> C2
-    C2 --> C3
-    C3 --> C4
-    C4 --> C5 : Mở điều kiện công bố điểm
-}
-
-GiaiDoan6 --> GiaiDoan7 : Tuần 21
-
-state "Giai đoạn 7: Tổng hợp & Công bố kết quả (Tuần 21)" as GiaiDoan7 {
-    state "Tự động tổng hợp 3 đầu điểm (GVHD, GVPB, HĐ)" as G1
-    state "Áp dụng công thức trọng số Strategy linh hoạt" as G2
-    state "Khoa công bố điểm chính thức cho Sinh viên" as G3
-    state "Xuất bảng điểm Excel/PDF & PĐT xét tốt nghiệp" as G4
-    G1 --> G2
-    G2 --> G3
-    G3 --> G4
-}
-
-GiaiDoan7 --> [*] : Hoàn tất chu kỳ KLTN thành công
-
+skinparam shadowing false
+title UGTM — Quy trình nghiệp vụ final 21 tuần (cần triển khai)
+start
+:Admin/PĐT khởi tạo đợt, 7 Stage và import Excel;
+:Khoa/Admin cấu hình cách tính, đầu điểm, trọng số/hệ số và ngưỡng;
+:Tuần 0–1: GVHD đề xuất; Khoa thẩm định, công bố;
+:Tuần 2: SV tạo nhóm 1–2 người, đăng ký có transaction/khóa;
+:GVHD xác nhận tiếp nhận;
+:SV nộp đề cương;
+:Khoa thẩm định Cổng 1;
+while (Khoa yêu cầu chỉnh sửa?) is (Có)
+ :SV sửa và nộp lại trong hạn bổ sung;
+ :Khoa thẩm định phiên bản mới;
+endwhile (Không)
+if (Cổng 1: Khoa kết luận Đạt?) then (Có)
+ :Mở trạng thái thực hiện KLTN;
+else (Không đạt)
+ :Dừng KLTN, khóa nghiệp vụ tiếp theo;
+ stop
+endif
+:Tuần 3–10: GVHD lập Milestones;
+:SV nộp sản phẩm, GVHD đánh giá/cho sửa;
+if (Có đơn đổi tên trong tuần 3–10?) then (Có)
+ :SV gửi đơn → GVHD → Khoa → PĐT;
+ if (Cả ba cấp duyệt?) then (Có)
+  :Cập nhật tên, AuditLog, mở nộp lại đề cương;
+ else (Từ chối)
+  :Giữ tên cũ, ghi lý do, thông báo;
+ endif
+endif
+if (Nộp giữa kỳ đúng hạn tuần 10?) then (Có)
+ :Cổng 2: GVHD nhận xét và quyết định;
+else (Quá hạn)
+ :Khóa upload; ghi nhận để xem xét dừng;
+ :Xử lý trường hợp chưa nộp theo quy chế;
+endif
+if (Được tiếp tục KLTN?) then (Có)
+ :Khoa tổng hợp kết quả gửi PĐT theo dõi;
+else (Dừng)
+ :Ghi quyết định/lý do; khóa giai đoạn sau;
+ :Điểm 0 theo quyết định dừng và quy chế;
+ :Khoa tổng hợp kết quả gửi PĐT;
+ stop
+endif
+:Tuần 11–18: SV nộp cuối kỳ; GVHD nhận xét/chấm;
+if (GVHD cho chuyển phản biện?) then (Có)
+ :Khoa phân GVPB khác GVHD;
+ :GVPB nhận xét, chấm và kết luận;
+else (Không)
+ :Chặn chuyển phản biện/bảo vệ;
+ stop
+endif
+if (Điểm GVPB đạt ngưỡng và đồng ý bảo vệ?) then (Có)
+ :SV xem riêng góp ý sửa, nộp bản sửa;
+else (Không)
+ :Chặn xếp lịch; Khoa xử lý không đồng thuận;
+ :Trao đổi / GVPB thứ hai / Trưởng Khoa quyết định;
+ stop
+endif
+:Tuần 19–20: Khoa lập Hội đồng, GVHD không chấm đề tài mình;
+:PĐT duyệt quyết định; công bố lịch;
+:Hội đồng chấm cá nhân, xử lý sai biệt theo kết luận;
+note right
+GVPB kiêm ủy viên chỉ tham dự, không chấm lại.
+Giữ điểm GVPB trước bảo vệ hệ số 2.
+Chỉ loại điểm khi Hội đồng không công nhận;
+loại cả hệ số và chia theo tổng hệ số còn lại.
+end note
+:Thư ký ghi biên bản, xác thực mật khẩu/OTP rồi khóa;
+:Tuần 20–21: SV sửa và nộp lưu chiểu PDF/DOCX, tóm tắt/từ khóa Việt/Anh;
+:GVHD xác nhận bản sửa;
+:Khoa nghiệm thu lưu chiểu;
+if (Lưu chiểu hoàn thành và đủ đầu điểm bắt buộc?) then (Có)
+ :Tuần 21: tính theo cấu hình %/hệ số và trường hợp GVPB;
+ note right
+ Bộ hệ số đã chốt:
+ GVPB kiêm ủy viên: (2×HD + 2×PB + CT + TK)/6.
+ GVPB ngoài Hội đồng: (2×HD + 2×PB + CT + TK + UV)/7.
+ end note
+ :Khoa rà soát Dự thảo → Công bố;
+ :SV xem điểm; gửi thông báo; Khoa/PĐT xuất Excel/PDF;
+ stop
+else (Chưa)
+ :Yêu cầu bổ sung/chỉnh sửa; chưa tổng hợp chính thức hoặc mở điểm;
+ stop
+endif
 @enduml

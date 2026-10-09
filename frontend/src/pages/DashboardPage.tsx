@@ -92,7 +92,7 @@ export function DashboardPage() {
         })}
       </div>
 
-      {/* Danh sách 9 Phân hệ nghiệp vụ */}
+      {/* Danh sách các module */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
@@ -100,7 +100,7 @@ export function DashboardPage() {
               Phân Hệ Nghiệp Vụ Cốt Lõi
             </h2>
             <p className="text-xs text-slate-500">
-              {modules.length} phân hệ vi mô sẵn sàng kết nối API
+              {modules.length} module trong backend Modular Monolith
             </p>
           </div>
         </div>
