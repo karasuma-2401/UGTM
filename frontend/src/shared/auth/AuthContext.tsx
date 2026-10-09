@@ -1,7 +1,8 @@
-import React, { createContext, useEffect, useState, useCallback } from "react";
-import { authEvents, tokenStorage, type UserProfile } from "../api";
+import React, { createContext, useEffect, useState, useCallback } from 'react';
+import { authEvents, tokenStorage } from '../api';
+import type { UserProfile } from '@/features/auth/types/auth.types';
 
-const USER_PROFILE_KEY = "ugtm_user_profile";
+const USER_PROFILE_KEY = 'ugtm_user_profile';
 
 export interface AuthContextType {
   user: UserProfile | null;
@@ -25,11 +26,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   }, []);
 
-  const login = useCallback((accessToken: string, refreshToken: string, userProfile: UserProfile) => {
-    tokenStorage.setTokens(accessToken, refreshToken);
-    localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(userProfile));
-    setUser(userProfile);
-  }, []);
+  const login = useCallback(
+    (accessToken: string, refreshToken: string, userProfile: UserProfile) => {
+      tokenStorage.setTokens(accessToken, refreshToken);
+      localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(userProfile));
+      setUser(userProfile);
+    },
+    [],
+  );
 
   const hasRole = useCallback(
     (roles: string | string[]): boolean => {
@@ -37,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const roleArray = Array.isArray(roles) ? roles : [roles];
       return roleArray.some((role) => user.roles.includes(role));
     },
-    [user]
+    [user],
   );
 
   const hasPermission = useCallback(
@@ -46,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const permArray = Array.isArray(permissions) ? permissions : [permissions];
       return permArray.some((perm) => user.permissions.includes(perm));
     },
-    [user]
+    [user],
   );
 
   useEffect(() => {
