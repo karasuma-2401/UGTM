@@ -1,27 +1,38 @@
 @startuml C3_Components_ModuleDeepDive
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
-
-LAYOUT_WITH_LEGEND()
-
-title C3 — Component Diagram: Cấu trúc 4 Layer bên trong 1 Module (Ví dụ: ThesisManagement)
-
-Container(apiHost, "Host API Endpoints", "ASP.NET Core Minimal API", "Nhận HTTP Request, xác thực JWT, ủy quyền xử lý cho IThesisManagementModule")
-
-Container_Boundary(module_boundary, "ThesisManagement Module (Clean Architecture + DDD)") {
-    Component(contracts, "1. Contracts Layer", "Assembly: UGTM.Modules.ThesisManagement.Contracts", "IThesisManagementModule API, Integration Events, Public DTOs (Công khai cho toàn Solution)")
-    Component(app, "2. Application Layer", "Assembly: UGTM.Modules.ThesisManagement.Application", "Command Handlers, Query Handlers, Domain Event Handlers, FluentValidation")
-    Component(domain, "3. Domain Layer", "Assembly: UGTM.Modules.ThesisManagement.Domain", "Aggregate Root (Thesis), Entities (StudentMember), Value Objects, Domain Rules, IRepository")
-    Component(infra, "4. Infrastructure Layer", "Assembly: UGTM.Modules.ThesisManagement.Infrastructure", "ThesisManagementDbContext (schema thesis_management), Repository Impl, Outbox Table")
+skinparam shadowing false
+title UGTM — ThesisManagement: aggregate và persistence của module
+component "UGTM.Api\nComposition root" as Host
+package "UGTM.Modules.ThesisManagement" {
+ component "Infrastructure\nThesisManagementModule\nStudentGroupRepository\nThesisManagementDbContext / EF configurations" as Infra
+ component "Application\nIThesisUnitOfWork\nUse case đăng ký chưa triển khai" as App
+ component "Domain\nStudentGroup aggregate / StudentGroupMember\nIStudentGroupRepository / Enums" as Domain
+ component "Contracts\nHợp đồng công khai khi xây API" as Contracts
 }
-
-Container(otherModules, "Các Module khác", ".NET Assemblies", "Chỉ được phép tham chiếu tới Contracts Layer")
-ContainerDb(sqlSchema, "SQL Server Schema", "schema: thesis_management", "Chỉ DbContext của module này được phép truy cập")
-
-Rel(apiHost, contracts, "Gửi Command / Query", "Method Call")
-Rel(contracts, app, "Chuyển giao tới MediatR", "In-Process")
-Rel(app, domain, "Thao tác trên Aggregate Root & Rules", "C# Object")
-Rel(app, infra, "Lưu dữ liệu & Outbox qua UnitOfWork", "Method Call")
-Rel(infra, sqlSchema, "Truy vấn / Cập nhật", "EF Core / TCP 1433")
-Rel_Back(otherModules, contracts, "Đăng ký lắng nghe Integration Events", "Contracts Reference")
-
+package "BuildingBlocks" {
+ component "Infrastructure\nModuleDbContext / Npgsql / conventions" as BBI
+ component "Application" as BBA
+ component "Domain\nAggregateRoot / Entity / IDomainEvent" as BBD
+}
+database "thesis schema" as DB
+Host --> Infra
+Infra --> App
+Infra --> Domain
+Infra --> BBI
+App --> Domain
+App --> Contracts
+App --> BBA
+Domain --> BBD
+BBI --> BBA
+BBI --> BBD
+Infra --> DB : Model riêng / SaveChanges
+note bottom of Domain
+AddMember: tối đa 2, không trùng, cùng đợt, Registered.
+Domain độc lập EF; collection chỉ đọc, mapping dùng backing field.
+TopicId và StudentId là ID; không có navigation liên module.
+end note
+note bottom of Infra
+Repository và unit of work dùng cùng DbContext scoped.
+Không tham chiếu UGTM.Database.Migrations.
+Mũi tên giữa component thể hiện ProjectReference.
+end note
 @enduml

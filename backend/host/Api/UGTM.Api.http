@@ -1,6 +1,19 @@
 @UGTM.Api_HostAddress = http://localhost:5287
 
-GET {{UGTM.Api_HostAddress}}/weatherforecast/
+GET {{UGTM.Api_HostAddress}}/api/modules/Identity/ping
 Accept: application/json
 
 ###
+GET {{UGTM.Api_HostAddress}}/api/modules/AcademicPeriods/ping
+
+###
+GET {{UGTM.Api_HostAddress}}/api/modules/TopicCatalog/ping
+
+###
+GET {{UGTM.Api_HostAddress}}/api/modules/ThesisManagement/ping
+
+###
+GET {{UGTM.Api_HostAddress}}/api/modules/DefenseCouncil/ping
+
+###
+GET {{UGTM.Api_HostAddress}}/api/modules/Notifications/ping

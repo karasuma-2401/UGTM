@@ -19,7 +19,6 @@
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Application\UGTM.Modules.DefenseCouncil.Application.csproj" />
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Domain\UGTM.Modules.DefenseCouncil.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj" />
-    <ProjectReference Include="..\BuildingBlocks.Testing\UGTM.BuildingBlocks.Testing.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,44 +1,45 @@
 @startuml Security_Authentication_Flow
+skinparam shadowing false
 autonumber
-skinparam style strictuml
-skinparam sequenceMessageAlign center
-
-title Quy trình Xác thực & Phân quyền (JWT & RBAC) trong UGTM
-
-actor "Người dùng / SPA" as Client
-participant "Host API\n(ASP.NET Core)" as Host
-participant "JWT Middleware\n(Authentication)" as JWT
-participant "Authorization\nPolicy Filter" as AuthFilter
-participant "ExecutionContext\nAccessor" as Context
-participant "Module Application\n(Use Case Handler)" as Module
-database "identity.Users" as DB
-
-== 1. Đăng nhập & Cấp phát JWT ==
-Client -> Host: POST /api/identity/login (Email, Password)
-Host -> DB: Xác thực thông tin & mật khẩu đã mã hóa (BCrypt/Argon2)
-DB --> Host: Hợp lệ (User Roles & Permissions)
-Host -> Host: Sinh Access Token (JWT Bearer) + Refresh Token
-Host --> Client: 200 OK { token, refreshToken, roles, expires }
-
-== 2. Xác thực yêu cầu & Phân quyền tác vụ ==
-Client -> Host: Gửi API Request + Header:\nAuthorization: Bearer <JWT Token>
-
-Host -> JWT: Giải mã & Kiểm tra chữ ký số JWT
-alt Token hết hạn hoặc không hợp lệ
-    JWT --> Client: 401 Unauthorized
+title UGTM — Luồng xác thực/phân quyền yêu cầu xây dựng (chưa có backend auth)
+actor "Người dùng" as User
+boundary "Frontend" as FE
+control "Backend auth / Identity\nCần triển khai" as Auth
+control "Policy theo quyền + tài nguyên\nCần triển khai" as Policy
+database "Dữ liệu tài khoản và phân công" as DB
+User -> FE : Đăng nhập
+FE -> Auth : Gửi thông tin đăng nhập
+Auth -> DB : Kiểm tra tài khoản/password hash
+alt Không hợp lệ
+ Auth --> FE : Từ chối đăng nhập
+else Hợp lệ
+ Auth --> FE : JWT và thông tin quyền theo hợp đồng được thống nhất
+ FE -> Auth : Yêu cầu nghiệp vụ + Bearer token
+ Auth -> Auth : Kiểm tra token
+ alt Token không hợp lệ
+  Auth --> FE : 401
+ else Token hợp lệ
+  Auth -> Policy : Kiểm tra permission + phân công + deadline + trạng thái
+  Policy -> DB : Đọc dữ liệu ngữ cảnh
+  alt Không có quyền
+   Policy --> Auth : Từ chối
+   Auth --> FE : 403
+  else Có quyền
+   Policy --> Auth : Cho phép thao tác/phạm vi dữ liệu
+   Auth --> FE : Kết quả đã lọc dữ liệu bảo mật
+  end
+ end
 end
-
-JWT -> Host: Trích xuất Claims (UserId, Email, Roles)
-Host -> Context: Nạp User Context (UserId, CorrelationId)
-
-Host -> AuthFilter: Kiểm tra Policy/Role (ví dụ: [Authorize(Roles = "Khoa, Admin")])
-alt Người dùng không đủ quyền hạn
-    AuthFilter --> Client: 403 Forbidden
-end
-
-AuthFilter -> Module: Chuyển giao Command/Query cùng ExecutionContext
-Module -> Module: Xử lý nghiệp vụ với danh tính UserId hiện hành
-Module --> Host: Kết quả xử lý
-Host --> Client: 200 OK (Dữ liệu phản hồi)
-
+note over FE,Auth
+Source hiện có helper token/Axios/AuthContext/ProtectedRoute.
+Router chưa nối AuthProvider/ProtectedRoute; /login và /403 chưa có.
+Backend chưa có đăng nhập/refresh, JWT validation hoặc policy.
+Swagger Bearer chỉ mô tả tài liệu, không thực thi xác thực.
+end note
+note over Policy,DB
+Sinh viên xem điểm chỉ khi đã công bố và lưu chiểu hoàn tất.
+Góp ý sửa được cung cấp riêng trước công bố.
+Chỉ Admin xem AuditLog; chỉ Thư ký khóa biên bản;
+Lãnh đạo Khoa cấp quyền mở khóa, người chấm chỉ sửa điểm mình.
+end note
 @enduml

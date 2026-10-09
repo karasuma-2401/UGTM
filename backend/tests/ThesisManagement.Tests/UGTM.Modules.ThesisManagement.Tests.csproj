@@ -19,7 +19,6 @@
     <ProjectReference Include="..\..\Modules\ThesisManagement\Application\UGTM.Modules.ThesisManagement.Application.csproj" />
     <ProjectReference Include="..\..\Modules\ThesisManagement\Domain\UGTM.Modules.ThesisManagement.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\ThesisManagement\Infrastructure\UGTM.Modules.ThesisManagement.Infrastructure.csproj" />
-    <ProjectReference Include="..\BuildingBlocks.Testing\UGTM.BuildingBlocks.Testing.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,3 +1,5 @@
+using UGTM.BuildingBlocks.Infrastructure.Persistence;
+using UGTM.Modules.Identity.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -13,10 +15,14 @@ public sealed class IdentityModule : IModule
 
     public void RegisterModule(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddModuleDbContext<IdentityDbContext>(configuration);
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet($"/api/modules/{Name}/ping", () => Results.Ok(new { module = Name, status = "ok" }));
+        endpoints.MapGroup($"/api/modules/{Name}")
+            .WithTags(Name)
+            .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
+            .WithName($"{Name}.Ping");
     }
 }

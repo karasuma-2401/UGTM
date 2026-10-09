@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\Domain\UGTM.BuildingBlocks.Domain.csproj" />
-    <ProjectReference Include="..\Contracts\UGTM.Modules.Notifications.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

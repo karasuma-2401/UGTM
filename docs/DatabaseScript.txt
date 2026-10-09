@@ -1,587 +1,600 @@
-// ========================================================
-// ĐỊNH NGHĨA TẤT CẢ ENUMS CHO CÁC TRƯỜNG STATE & ROLE
-// ========================================================
-
-Enum SystemRoleName {
-  Admin
-  Faculty
-  AcademicAffairs
-  Lecturer
-  Student
-  CouncilMember
+Project UGTM {
+  database_type: 'PostgreSQL'
 }
 
-Enum BatchStatus {
-  Draft
-  Open
-  Closed
-  Archived
-}
+Table academic.kltn_batch {
+  id uuid [pk, not null]
+  academic_year "character varying(20)" [not null]
+  batch_name "character varying(100)" [not null]
+  created_at "timestamp with time zone" [not null]
+  end_date date [not null]
+  semester integer [not null]
+  start_date date [not null]
+  status "character varying(50)" [not null, default: 'Draft']
 
-Enum TopicStatus {
-  Draft
-  Submitted
-  NeedRevision
-  Approved
-  Rejected
-  Published
-  Closed
-  Archived
-}
-
-Enum StudentGroupStatus {
-  Registered
-  SyllabusSubmitted
-  SyllabusApproved
-  InProgress
-  MidtermSubmitted
-  Stopped
-  FinalReportSubmitted
-  Defended
-  ScoreLocked
-  Completed
-}
-
-Enum SyllabusStatus {
-  Draft
-  Submitted
-  NeedRevision
-  Approved
-  Rejected
-}
-
-Enum MidtermReportStatus {
-  Draft
-  Submitted
-  NeedRevision
-  Approved
-  Rejected
-}
-
-Enum RenameRequestStatus {
-  Created
-  AdvisorConfirmed
-  FacultyApproved
-  AcademicAffairsApproved
-  RejectedByAdvisor
-  RejectedByFaculty
-  RejectedByAA
-  Completed
-  Closed
-}
-
-Enum FinalReportVersionType {
-  InitialFinal
-  RevisedAfterReviewer
-}
-
-Enum FinalReportStatus {
-  Submitted
-  UnderEvaluation
-}
-
-Enum FinalSubmissionStatus {
-  NotSubmitted
-  Submitted
-  ArchiveConfirmed
-}
-
-Enum ProgressReportStatus {
-  NotSubmitted
-  Submitted
-  NeedRevision
-  Accepted
-  Rejected
-}
-
-Enum SubmissionEntityType {
-  Syllabus
-  MidtermReport
-  ProgressReport
-  RenameRequest
-  FinalReport
-  FinalSubmission
-}
-
-Enum DefenseApprovalStatus {
-  Approved
-  Rejected
-}
-
-Enum CouncilStatus {
-  Draft
-  Active
-  Completed
-}
-
-Enum CouncilMemberRole {
-  Chairman
-  Secretary
-  Member
-}
-
-Enum CouncilMinuteLockStatus {
-  Open
-  AllScoresEntered
-  Locked
-  UnlockedByOverride
-}
-
-Enum ScoreSummaryStatus {
-  Pending
-  Calculated
-  PublishedToStudent
-}
-
-// ========================================================
-// MODULE 1: IDENTITY
-// ========================================================
-
-Table User {
-  id uniqueidentifier [pk]
-  email varchar(150) [unique, not null]
-  password_hash nvarchar(max) [not null]
-  full_name nvarchar(150) [not null]
-  user_code varchar(20) [unique]
-  phone_number varchar(20)
-  is_active boolean
-  created_at datetime2 [not null]
-  updated_at datetime2
-}
-
-Table Role {
-  id int [pk, increment]
-  role_name SystemRoleName [unique, not null]
-  description nvarchar(255)
-}
-
-Table UserRole {
-  user_id uniqueidentifier [not null]
-  role_id int [not null]
-  assigned_at datetime2 [not null]
-
-  indexes {
-    (user_id, role_id) [pk]
+  checks {
+    `end_date > start_date` [name: 'ck_batch_dates']
+    `semester > 0` [name: 'ck_batch_semester']
   }
 }
 
-Table Permission {
-  id int [pk, increment]
-  permission_code varchar(100) [unique, not null]
-  permission_name nvarchar(150)
-  module varchar(50)
+Table academic.score_component_config {
+  id uuid [pk, not null]
+  applicability "character varying(50)" [not null]
+  component_code "character varying(100)" [not null]
+  component_name "character varying(200)" [not null]
+  config_id uuid [not null]
+  is_required boolean [not null]
+  minimum_score numeric(4,2) [null]
+  order_index integer [not null]
+  requires_approval boolean [not null]
+  source "character varying(50)" [not null]
+  weight numeric(9,4) [not null]
+
+  indexes {
+    (config_id, component_code) [unique, name: 'ix_score_component_config_config_id_component_code']
+  }
+
+  checks {
+    `minimum_score IS NULL OR minimum_score BETWEEN 0 AND 10` [name: 'ck_score_component_minimum']
+    `weight >= 0` [name: 'ck_score_component_weight']
+  }
 }
 
-Table RolePermission {
-  role_id int [not null]
-  permission_id int [not null]
-  assigned_at datetime2 [not null]
+Table academic.score_weight_config {
+  id uuid [pk, not null]
+  batch_id uuid [not null]
+  calculation_method "character varying(50)" [not null, default: 'IntegerCoefficient']
+  created_at "timestamp with time zone" [not null]
+  is_active boolean [not null, default: true]
+  version_no integer [not null, default: 1]
+
+  indexes {
+    batch_id [unique, name: 'ix_score_weight_config_batch_id']
+  }
+}
+
+Table academic.stage {
+  id uuid [pk, not null]
+  batch_id uuid [not null]
+  deadline_date "timestamp with time zone" [not null]
+  stage_index integer [not null]
+  stage_name "character varying(150)" [not null]
+  start_date date [not null]
+
+  indexes {
+    (batch_id, stage_index) [unique, name: 'ix_stage_batch_id_stage_index']
+  }
+
+  checks {
+    `stage_index BETWEEN 1 AND 7` [name: 'ck_stage_index']
+  }
+}
+
+Table councils.advisor_evaluation {
+  id uuid [pk, not null]
+  allows_reviewer_assignment boolean [null]
+  comment text [null]
+  evaluated_at "timestamp with time zone" [not null]
+  exclusion_reason text [null]
+  group_id uuid [not null]
+  is_ignored_in_calculation boolean [not null, default: false]
+  score numeric(4,2) [not null]
+
+  indexes {
+    group_id [unique, name: 'ix_advisor_evaluation_group_id']
+  }
+
+  checks {
+    `score BETWEEN 0 AND 10` [name: 'ck_advisor_evaluation_score']
+  }
+}
+
+Table councils.council {
+  id uuid [pk, not null]
+  approved_at "timestamp with time zone" [null]
+  approved_by uuid [null]
+  batch_id uuid [not null]
+  council_code "character varying(50)" [not null]
+  decision_file_url "character varying(500)" [null]
+  decision_number "character varying(100)" [null]
+  defense_date date [not null]
+  room "character varying(50)" [not null]
+  signed_date date [null]
+  status "character varying(50)" [not null, default: 'Draft']
+  time_slot "character varying(50)" [not null]
+
+  indexes {
+    approved_by [name: 'ix_council_approved_by']
+    batch_id [name: 'ix_council_batch_id']
+  }
+}
+
+Table councils.council_assignment {
+  id uuid [pk, not null]
+  council_id uuid [not null]
+  group_id uuid [not null]
+  order_number integer [not null, default: 1]
+
+  indexes {
+    council_id [name: 'ix_council_assignment_council_id']
+    group_id [unique, name: 'ix_council_assignment_group_id']
+  }
+}
+
+Table councils.council_member {
+  id uuid [pk, not null]
+  council_id uuid [not null]
+  role_in_council "character varying(50)" [not null]
+  user_id uuid [not null]
+
+  indexes {
+    user_id [name: 'ix_council_member_user_id']
+    (council_id, user_id) [unique, name: 'ix_council_member_council_id_user_id']
+  }
+}
+
+Table councils.council_minute {
+  id uuid [pk, not null]
+  council_assignment_id uuid [not null]
+  general_feedback text [null]
+  lock_status "character varying(50)" [not null, default: 'Open']
+  locked_at "timestamp with time zone" [null]
+  locked_by uuid [null]
+  override_reason text [null]
+  required_revisions text [null]
+  unlocked_at "timestamp with time zone" [null]
+  unlocked_by uuid [null]
+
+  indexes {
+    council_assignment_id [unique, name: 'ix_council_minute_council_assignment_id']
+    locked_by [name: 'ix_council_minute_locked_by']
+    unlocked_by [name: 'ix_council_minute_unlocked_by']
+  }
+}
+
+Table councils.council_score {
+  id uuid [pk, not null]
+  council_assignment_id uuid [not null]
+  council_member_id uuid [not null]
+  evaluated_at "timestamp with time zone" [not null]
+  exclusion_reason text [null]
+  feedback text [null]
+  is_ignored_in_calculation boolean [not null, default: false]
+  score numeric(4,2) [not null]
+
+  indexes {
+    council_member_id [name: 'ix_council_score_council_member_id']
+    (council_assignment_id, council_member_id) [unique, name: 'ix_council_score_council_assignment_id_council_member_id']
+  }
+
+  checks {
+    `score BETWEEN 0 AND 10` [name: 'ck_council_score_score']
+  }
+}
+
+Table councils.evaluation_detail {
+  id uuid [pk, not null]
+  criteria_id uuid [not null]
+  evaluation_id uuid [not null]
+  score numeric(4,2) [not null]
+
+  indexes {
+    (criteria_id, evaluation_id) [unique, name: 'ix_evaluation_detail_criteria_id_evaluation_id']
+  }
+}
+
+Table councils.grading_criteria {
+  id uuid [pk, not null]
+  batch_id uuid [not null]
+  criteria_code "character varying(20)" [not null]
+  criteria_name "character varying(250)" [not null]
+  max_score numeric(4,2) [not null]
+  order_index integer [not null, default: 1]
+
+  indexes {
+    (batch_id, criteria_code) [unique, name: 'ix_grading_criteria_batch_id_criteria_code']
+  }
+}
+
+Table councils.reviewer_assignment {
+  id uuid [pk, not null]
+  assigned_at "timestamp with time zone" [not null]
+  assigned_by uuid [not null]
+  assignment_order integer [not null, default: 1]
+  group_id uuid [not null]
+  is_active boolean [not null, default: true]
+  reviewer_id uuid [not null]
+
+  indexes {
+    assigned_by [name: 'ix_reviewer_assignment_assigned_by']
+    reviewer_id [name: 'ix_reviewer_assignment_reviewer_id']
+    (group_id, assignment_order) [unique, name: 'ix_reviewer_assignment_group_id_assignment_order']
+    (group_id, reviewer_id) [unique, name: 'ix_reviewer_assignment_group_id_reviewer_id']
+  }
+}
+
+Table councils.reviewer_evaluation {
+  id uuid [pk, not null]
+  assignment_id uuid [not null]
+  comment text [null]
+  defense_approval "character varying(50)" [not null]
+  evaluated_at "timestamp with time zone" [not null]
+  exclusion_reason text [null]
+  is_ignored_in_calculation boolean [not null, default: false]
+  is_visible_to_student boolean [not null, default: false]
+  revision_feedback text [null]
+  score numeric(4,2) [not null]
+
+  indexes {
+    assignment_id [unique, name: 'ix_reviewer_evaluation_assignment_id']
+  }
+
+  checks {
+    `score BETWEEN 0 AND 10` [name: 'ck_reviewer_evaluation_score']
+  }
+}
+
+Table councils.score_summary {
+  id uuid [pk, not null]
+  advisor_score numeric(4,2) [null]
+  calculated_at "timestamp with time zone" [null]
+  calculation_config_snapshot jsonb [null]
+  calculation_formula "character varying(200)" [null]
+  config_version_no integer [null]
+  council_score numeric(4,2) [null]
+  final_score numeric(4,2) [null]
+  group_id uuid [not null]
+  published_at "timestamp with time zone" [null]
+  published_by uuid [null]
+  reviewer_score numeric(4,2) [null]
+  status "character varying(50)" [not null, default: 'Pending']
+  total_weight numeric(12,4) [null]
+
+  indexes {
+    group_id [unique, name: 'ix_score_summary_group_id']
+    published_by [name: 'ix_score_summary_published_by']
+  }
+}
+
+Table councils.score_summary_component {
+  id uuid [pk, not null]
+  component_code "character varying(100)" [not null]
+  exclusion_reason text [null]
+  is_ignored_in_calculation boolean [not null]
+  score numeric(6,4) [not null]
+  source_key "character varying(150)" [not null]
+  summary_id uuid [not null]
+  weight numeric(9,4) [not null]
+
+  indexes {
+    (summary_id, component_code, source_key) [unique, name: 'ix_score_summary_component_summary_id_component_code_source_key']
+  }
+
+  checks {
+    `score BETWEEN 0 AND 10` [name: 'ck_summary_component_score']
+    `weight >= 0` [name: 'ck_summary_component_weight']
+  }
+}
+
+Table identity.audit_log {
+  id bigint [pk, not null, increment]
+  action "character varying(100)" [not null]
+  entity_id "character varying(100)" [not null]
+  entity_type "character varying(50)" [not null]
+  new_data text [null]
+  old_data text [null]
+  timestamp "timestamp with time zone" [not null]
+  user_id uuid [not null]
+
+  indexes {
+    user_id [name: 'ix_audit_log_user_id']
+  }
+}
+
+Table identity.permission {
+  id integer [pk, not null, increment]
+  module "character varying(50)" [null]
+  permission_code "character varying(100)" [not null]
+  permission_name "character varying(150)" [null]
+
+  indexes {
+    permission_code [unique, name: 'ix_permission_permission_code']
+  }
+}
+
+Table identity.role {
+  id integer [pk, not null, increment]
+  description "character varying(255)" [null]
+  role_name "character varying(50)" [not null]
+
+  indexes {
+    role_name [unique, name: 'ix_role_role_name']
+  }
+}
+
+Table identity.role_permission {
+  role_id integer [not null]
+  permission_id integer [not null]
+  assigned_at "timestamp with time zone" [not null]
 
   indexes {
     (role_id, permission_id) [pk]
+    permission_id [name: 'ix_role_permission_permission_id']
   }
 }
 
-// ========================================================
-// MODULE 2: ACADEMIC
-// ========================================================
-
-Table KLTNBatch {
-  id uniqueidentifier [pk]
-  batch_name nvarchar(100) [not null]
-  academic_year varchar(20) [not null]
-  semester int [not null]
-  start_date date [not null]
-  end_date date [not null]
-  status BatchStatus [not null, default: 'Draft']
-  created_at datetime2 [not null]
-}
-
-Table Stage {
-  id uniqueidentifier [pk]
-  batch_id uniqueidentifier [not null]
-  stage_index int [not null]
-  stage_name nvarchar(150) [not null]
-  start_date date [not null]
-  deadline_date datetime2 [not null]
-}
-
-Table ScoreWeightConfig {
-  id uniqueidentifier [pk]
-  batch_id uniqueidentifier [unique, not null]
-  is_active boolean [not null, default: true]
-  created_at datetime2 [not null]
-}
-
-Table RoleScoreWeight {
-  id uniqueidentifier [pk]
-  config_id uniqueidentifier [not null]
-  role_id int [not null]
-  weight decimal(5,2) [not null]
-  updated_at datetime2 [not null]
-  updated_by uniqueidentifier [not null]
+Table identity.user {
+  id uuid [pk, not null]
+  created_at "timestamp with time zone" [not null]
+  email "character varying(150)" [not null]
+  full_name "character varying(150)" [not null]
+  is_active boolean [null]
+  password_hash text [not null]
+  phone_number "character varying(20)" [null]
+  updated_at "timestamp with time zone" [null]
+  user_code "character varying(20)" [null]
 
   indexes {
-    (config_id, role_id) [unique]
+    email [unique, name: 'ix_user_email']
+    user_code [unique, name: 'ix_user_user_code']
   }
 }
 
-// ========================================================
-// MODULE 3: TOPICS
-// ========================================================
-
-Table Topic {
-  id uniqueidentifier [pk]
-  batch_id uniqueidentifier [not null]
-  advisor_id uniqueidentifier [not null]
-  title_vi nvarchar(300) [not null]
-  title_en varchar(350)
-  description nvarchar(max)
-  requirements nvarchar(max)
-  status TopicStatus [not null, default: 'Draft']
-  student_number int
-  created_at datetime2 [not null]
-}
-
-Table StudentGroup {
-  id uniqueidentifier [pk]
-  topic_id uniqueidentifier [not null]
-  status StudentGroupStatus [not null, default: 'Registered']
-  created_at datetime2 [not null]
-}
-
-Table StudentGroupMember {
-  id uniqueidentifier [pk]
-  group_id uniqueidentifier [not null]
-  student_id uniqueidentifier [not null]
-  batch_id uniqueidentifier [not null]
-  joined_at datetime2 [not null]
+Table identity.user_role {
+  user_id uuid [not null]
+  role_id integer [not null]
+  assigned_at "timestamp with time zone" [not null]
 
   indexes {
-    (group_id, student_id) [unique]
-    (student_id, batch_id) [unique]
+    (user_id, role_id) [pk]
+    role_id [name: 'ix_user_role_role_id']
   }
 }
 
-// ========================================================
-// MODULE 4: THESIS
-// ========================================================
-
-Table ProgressMilestone {
-  id uniqueidentifier [pk]
-  group_id uniqueidentifier [not null]
-  title nvarchar(250) [not null]
-  description nvarchar(max)
-  deadline datetime2 [not null]
-  created_by uniqueidentifier [not null]
-  created_at datetime2 [not null]
-}
-
-Table ProgressReport {
-  id uniqueidentifier [pk]
-  milestone_id uniqueidentifier [not null]
-  group_id uniqueidentifier [not null]
-  current_version_no int [not null, default: 1]
-  status ProgressReportStatus [not null, default: 'Submitted']
-  student_note nvarchar(max)
-  submitted_at datetime2 [not null]
-  advisor_feedback nvarchar(max)
-  reviewed_at datetime2
-
-  indexes {
-    (milestone_id, group_id) [unique]
-  }
-}
-
-Table Syllabus {
-  id uniqueidentifier [pk]
-  group_id uniqueidentifier [unique, not null]
-  current_version_no int [not null, default: 1]
-  status SyllabusStatus [not null, default: 'Submitted']
-  faculty_feedback nvarchar(max)
-  reviewed_by uniqueidentifier
-  reviewed_at datetime2
-}
-
-Table MidtermReport {
-  id uniqueidentifier [pk]
-  group_id uniqueidentifier [unique, not null]
-  current_version_no int [not null, default: 1]
-  status MidtermReportStatus [not null, default: 'Submitted']
-  faculty_feedback nvarchar(max)
-  reviewed_by uniqueidentifier
-  reviewed_at datetime2
-}
-
-Table RenameRequest {
-  id uniqueidentifier [pk]
-  group_id uniqueidentifier [not null]
-  old_title_vi nvarchar(300) [not null]
-  new_title_vi nvarchar(300) [not null]
-  old_title_en varchar(350)
-  new_title_en varchar(350)
-  reason nvarchar(max) [not null]
-  status RenameRequestStatus [not null, default: 'Created']
-  advisor_confirmed_at datetime2
-  faculty_approved_at datetime2
-  aa_approved_at datetime2
-  created_at datetime2 [not null]
-}
-
-Table FinalReport {
-  id uniqueidentifier [pk]
-  group_id uniqueidentifier [not null]
-  version_type FinalReportVersionType [not null]
-  status FinalReportStatus [not null, default: 'Submitted']
-  submitted_at datetime2 [not null]
-}
-
-Table FinalSubmission {
-  id uniqueidentifier [pk]
-  group_id uniqueidentifier [unique, not null]
-  status FinalSubmissionStatus [not null, default: 'NotSubmitted']
-  archived_confirmed_by uniqueidentifier
-  archived_confirmed_at datetime2
-}
-
-Table SubmissionFile {
-  id uniqueidentifier [pk]
-  entity_type SubmissionEntityType [not null]
-  entity_id uniqueidentifier [not null]
-  version_no int [not null, default: 1]
-  file_name nvarchar(255) [not null]
-  file_url varchar(500) [not null]
-  file_size bigint [not null]
-  file_extension varchar(10) [not null] 
-  uploaded_by uniqueidentifier [not null]
-  uploaded_at datetime2 [not null]
-}
-
-// ========================================================
-// MODULE 5: COUNCILS
-// ========================================================
-
-Table GradingCriteria {
-  id uniqueidentifier [pk]
-  batch_id uniqueidentifier [not null]
-  criteria_code varchar(20) [not null]
-  criteria_name nvarchar(250) [not null]
-  max_score decimal(4,2) [not null]
-  order_index int [not null, default: 1]
-
-  indexes {
-    (batch_id, criteria_code) [unique]
-  }
-}
-
-Table AdvisorEvaluation {
-  id uniqueidentifier [pk]
-  group_id uniqueidentifier [unique, not null]
-  score decimal(4,2) [not null]
-  comment nvarchar(max)
-  evaluated_at datetime2 [not null]
-}
-
-Table ReviewerAssignment {
-  id uniqueidentifier [pk]
-  group_id uniqueidentifier [unique, not null]
-  reviewer_id uniqueidentifier [not null]
-  assigned_by uniqueidentifier [not null]
-  assigned_at datetime2 [not null]
-}
-
-Table ReviewerEvaluation {
-  id uniqueidentifier [pk]
-  assignment_id uniqueidentifier [unique, not null]
-  score decimal(4,2) [not null]
-  comment nvarchar(max)
-  defense_approval DefenseApprovalStatus [not null]
-  is_visible_to_student boolean [not null, default: false]
-  evaluated_at datetime2 [not null]
-}
-
-Table Council {
-  id uniqueidentifier [pk]
-  batch_id uniqueidentifier [not null]
-  council_code varchar(50) [not null]
-  defense_date date [not null]
-  time_slot varchar(50) [not null]
-  room nvarchar(50) [not null]
-  status CouncilStatus [not null, default: 'Draft']
-  decision_number nvarchar(100)
-  signed_date date
-  decision_file_url varchar(500)
-  approved_by uniqueidentifier
-  approved_at datetime2
-}
-
-Table CouncilMember {
-  id uniqueidentifier [pk]
-  council_id uniqueidentifier [not null]
-  user_id uniqueidentifier [not null]
-  role_in_council CouncilMemberRole [not null]
-
-  indexes {
-    (council_id, user_id) [unique]
-  }
-}
-
-Table CouncilAssignment {
-  id uniqueidentifier [pk]
-  council_id uniqueidentifier [not null]
-  group_id uniqueidentifier [unique, not null]
-  order_number int [not null, default: 1]
-}
-
-Table CouncilScore {
-  id uniqueidentifier [pk]
-  council_assignment_id uniqueidentifier [not null]
-  council_member_id uniqueidentifier [not null]
-  score decimal(4,2) [not null]
-  feedback nvarchar(max)
-  evaluated_at datetime2 [not null]
-
-  indexes {
-    (council_assignment_id, council_member_id) [unique]
-  }
-}
-
-Table CouncilMinute {
-  id uniqueidentifier [pk]
-  council_assignment_id uniqueidentifier [unique, not null]
-  general_feedback nvarchar(max)
-  required_revisions nvarchar(max)
-  lock_status CouncilMinuteLockStatus [not null, default: 'Open']
-  locked_at datetime2
-  locked_by uniqueidentifier
-  override_reason nvarchar(max)
-  unlocked_at datetime2
-}
-
-Table EvaluationDetail {
-  id uniqueidentifier [pk]
-  criteria_id uniqueidentifier [not null]
-  evaluation_id uniqueidentifier [not null]
-  score decimal(4,2) [not null]
-
-  indexes {
-    (criteria_id, evaluation_id) [unique]
-  }
-}
-
-Table ScoreSummary {
-  id uniqueidentifier [pk]
-  group_id uniqueidentifier [unique, not null]
-  advisor_score decimal(4,2)
-  reviewer_score decimal(4,2)
-  council_score decimal(4,2)
-  final_score decimal(4,2)
-  calculation_formula nvarchar(200)
-  status ScoreSummaryStatus [not null, default: 'Pending']
-  published_at datetime2
-  published_by uniqueidentifier
-}
-
-// ========================================================
-// MODULE 6: SHARED
-// ========================================================
-
-Table AuditLog {
-  id bigint [pk, increment]
-  user_id uniqueidentifier [not null]
-  action varchar(100) [not null]
-  entity_type varchar(50) [not null]
-  entity_id varchar(100) [not null]
-  old_data nvarchar(max)
-  new_data nvarchar(max)
-  timestamp datetime2 [not null]
-}
-
-Table Notification {
-  id uniqueidentifier [pk]
-  recipient_id uniqueidentifier [not null]
-  title nvarchar(200) [not null]
-  content nvarchar(max) [not null]
-  notification_type varchar(50) [not null]
+Table notifications.notification {
+  id uuid [pk, not null]
+  content text [not null]
+  created_at "timestamp with time zone" [not null]
   is_read boolean [not null, default: false]
-  created_at datetime2 [not null]
+  notification_type "character varying(50)" [not null]
+  recipient_id uuid [not null]
+  title "character varying(200)" [not null]
+
+  indexes {
+    recipient_id [name: 'ix_notification_recipient_id']
+  }
 }
 
-// ========================================================
-// RELATIONSHIPS (KHÓA NGOẠI & DÂY NỐI LIÊN KẾT)
-// ========================================================
+Table thesis.final_report {
+  id uuid [pk, not null]
+  group_id uuid [not null]
+  status "character varying(50)" [not null, default: 'Submitted']
+  submitted_at "timestamp with time zone" [not null]
+  version_type "character varying(50)" [not null]
 
-Ref: UserRole.user_id > User.id
-Ref: UserRole.role_id > Role.id
+  indexes {
+    group_id [name: 'ix_final_report_group_id']
+  }
+}
 
-Ref: Stage.batch_id > KLTNBatch.id
-Ref: ScoreWeightConfig.batch_id - KLTNBatch.id
-Ref: RoleScoreWeight.config_id > ScoreWeightConfig.id
-Ref: RoleScoreWeight.role_id > Role.id
-Ref: RoleScoreWeight.updated_by > User.id
+Table thesis.final_submission {
+  id uuid [pk, not null]
+  abstract_en text [null]
+  abstract_vi text [null]
+  advisor_confirmed_at "timestamp with time zone" [null]
+  advisor_confirmed_by uuid [null]
+  archived_confirmed_at "timestamp with time zone" [null]
+  archived_confirmed_by uuid [null]
+  current_version_no integer [not null, default: 1]
+  faculty_feedback text [null]
+  group_id uuid [not null]
+  keywords_en "character varying(1000)" [null]
+  keywords_vi "character varying(1000)" [null]
+  status "character varying(50)" [not null, default: 'NotSubmitted']
 
-Ref: Topic.batch_id > KLTNBatch.id
-Ref: Topic.advisor_id > User.id
+  indexes {
+    advisor_confirmed_by [name: 'ix_final_submission_advisor_confirmed_by']
+    archived_confirmed_by [name: 'ix_final_submission_archived_confirmed_by']
+    group_id [unique, name: 'ix_final_submission_group_id']
+  }
+}
 
-Ref: StudentGroup.topic_id > Topic.id
+Table thesis.midterm_report {
+  id uuid [pk, not null]
+  advisor_feedback text [null]
+  allowed_to_continue boolean [null]
+  current_version_no integer [not null, default: 1]
+  group_id uuid [not null]
+  reviewed_at "timestamp with time zone" [null]
+  reviewed_by uuid [null]
+  status "character varying(50)" [not null, default: 'Submitted']
+  stop_reason text [null]
 
-Ref: StudentGroupMember.group_id > StudentGroup.id
-Ref: StudentGroupMember.student_id > User.id
-Ref: StudentGroupMember.batch_id > KLTNBatch.id
+  indexes {
+    group_id [unique, name: 'ix_midterm_report_group_id']
+    reviewed_by [name: 'ix_midterm_report_reviewed_by']
+  }
+}
 
-Ref: ProgressMilestone.group_id > StudentGroup.id
-Ref: ProgressMilestone.created_by > User.id
+Table thesis.progress_milestone {
+  id uuid [pk, not null]
+  created_at "timestamp with time zone" [not null]
+  created_by uuid [not null]
+  deadline "timestamp with time zone" [not null]
+  description text [null]
+  group_id uuid [not null]
+  title "character varying(250)" [not null]
 
-Ref: ProgressReport.milestone_id > ProgressMilestone.id
-Ref: ProgressReport.group_id > StudentGroup.id
+  indexes {
+    created_by [name: 'ix_progress_milestone_created_by']
+    group_id [name: 'ix_progress_milestone_group_id']
+  }
+}
 
-Ref: Syllabus.group_id - StudentGroup.id
-Ref: Syllabus.reviewed_by >? User.id
+Table thesis.progress_report {
+  id uuid [pk, not null]
+  advisor_feedback text [null]
+  current_version_no integer [not null, default: 1]
+  group_id uuid [not null]
+  milestone_id uuid [not null]
+  reviewed_at "timestamp with time zone" [null]
+  status "character varying(50)" [not null, default: 'Submitted']
+  student_note text [null]
+  submitted_at "timestamp with time zone" [not null]
 
-Ref: MidtermReport.group_id - StudentGroup.id
-Ref: MidtermReport.reviewed_by >? User.id
+  indexes {
+    group_id [name: 'ix_progress_report_group_id']
+    (milestone_id, group_id) [unique, name: 'ix_progress_report_milestone_id_group_id']
+  }
+}
 
-Ref: RenameRequest.group_id > StudentGroup.id
+Table thesis.rename_request {
+  id uuid [pk, not null]
+  aa_approved_at "timestamp with time zone" [null]
+  advisor_confirmed_at "timestamp with time zone" [null]
+  created_at "timestamp with time zone" [not null]
+  faculty_approved_at "timestamp with time zone" [null]
+  group_id uuid [not null]
+  new_title_en "character varying(350)" [null]
+  new_title_vi "character varying(300)" [not null]
+  old_title_en "character varying(350)" [null]
+  old_title_vi "character varying(300)" [not null]
+  reason text [not null]
+  status "character varying(50)" [not null, default: 'Created']
 
-Ref: FinalReport.group_id > StudentGroup.id
+  indexes {
+    group_id [name: 'ix_rename_request_group_id']
+  }
+}
 
-Ref: FinalSubmission.group_id - StudentGroup.id
-Ref: FinalSubmission.archived_confirmed_by >? User.id
+Table thesis.student_group {
+  id uuid [pk, not null]
+  created_at "timestamp with time zone" [not null]
+  status "character varying(50)" [not null, default: 'Registered']
+  topic_id uuid [not null]
 
-Ref: SubmissionFile.uploaded_by > User.id
+  indexes {
+    topic_id [name: 'ix_student_group_topic_id']
+  }
+}
 
-Ref: GradingCriteria.batch_id > KLTNBatch.id
+Table thesis.student_group_member {
+  id uuid [pk, not null]
+  batch_id uuid [not null]
+  group_id uuid [not null]
+  joined_at "timestamp with time zone" [not null]
+  student_id uuid [not null]
 
-Ref: AdvisorEvaluation.group_id - StudentGroup.id
+  indexes {
+    batch_id [name: 'ix_student_group_member_batch_id']
+    (group_id, student_id) [unique, name: 'ix_student_group_member_group_id_student_id']
+    (student_id, batch_id) [unique, name: 'ix_student_group_member_student_id_batch_id']
+  }
+}
 
-Ref: ReviewerAssignment.group_id - StudentGroup.id
-Ref: ReviewerAssignment.reviewer_id > User.id
-Ref: ReviewerAssignment.assigned_by > User.id
+Table thesis.submission_file {
+  id uuid [pk, not null]
+  entity_id uuid [not null]
+  entity_type "character varying(50)" [not null]
+  file_extension "character varying(10)" [not null]
+  file_name "character varying(255)" [not null]
+  file_size bigint [not null]
+  file_url "character varying(500)" [not null]
+  uploaded_at "timestamp with time zone" [not null]
+  uploaded_by uuid [not null]
+  version_no integer [not null, default: 1]
 
-Ref: ReviewerEvaluation.assignment_id - ReviewerAssignment.id
+  indexes {
+    uploaded_by [name: 'ix_submission_file_uploaded_by']
+    (entity_type, entity_id, version_no) [name: 'ix_submission_file_entity_type_entity_id_version_no']
+  }
+}
 
-Ref: Council.batch_id > KLTNBatch.id
-Ref: Council.approved_by >? User.id
+Table thesis.syllabus {
+  id uuid [pk, not null]
+  current_version_no integer [not null, default: 1]
+  faculty_feedback text [null]
+  group_id uuid [not null]
+  reviewed_at "timestamp with time zone" [null]
+  reviewed_by uuid [null]
+  status "character varying(50)" [not null, default: 'Submitted']
 
-Ref: CouncilMember.council_id > Council.id
-Ref: CouncilMember.user_id > User.id
+  indexes {
+    group_id [unique, name: 'ix_syllabus_group_id']
+    reviewed_by [name: 'ix_syllabus_reviewed_by']
+  }
+}
 
-Ref: CouncilAssignment.council_id > Council.id
-Ref: CouncilAssignment.group_id - StudentGroup.id
+Table topics.topic {
+  id uuid [pk, not null]
+  advisor_id uuid [not null]
+  batch_id uuid [not null]
+  created_at "timestamp with time zone" [not null]
+  description text [null]
+  requirements text [null]
+  status "character varying(50)" [not null, default: 'Draft']
+  student_number integer [null]
+  title_en "character varying(350)" [null]
+  title_vi "character varying(300)" [not null]
 
-Ref: CouncilScore.council_assignment_id > CouncilAssignment.id
-Ref: CouncilScore.council_member_id > CouncilMember.id
+  indexes {
+    advisor_id [name: 'ix_topic_advisor_id']
+    batch_id [name: 'ix_topic_batch_id']
+  }
 
-Ref: CouncilMinute.council_assignment_id - CouncilAssignment.id
-Ref: CouncilMinute.locked_by >? User.id
+  checks {
+    `student_number IS NULL OR student_number BETWEEN 1 AND 2` [name: 'ck_topic_student_number']
+  }
+}
 
-Ref: EvaluationDetail.criteria_id > GradingCriteria.id
-
-Ref: ScoreSummary.group_id - StudentGroup.id
-Ref: ScoreSummary.published_by >? User.id
-
-Ref: AuditLog.user_id > User.id
-Ref: Notification.recipient_id > User.id
-
-Ref: RolePermission.role_id > Role.id
-Ref: RolePermission.permission_id > Permission.id
+Ref fk_score_component_config_score_weight_configs_config_id: academic.score_component_config.config_id > academic.score_weight_config.id [delete: cascade]
+Ref fk_score_weight_config_kltn_batch_batch_id: academic.kltn_batch.id - academic.score_weight_config.batch_id [delete: restrict]
+Ref fk_stage_kltn_batch_batch_id: academic.stage.batch_id > academic.kltn_batch.id [delete: cascade]
+Ref fk_advisor_evaluation_student_groups_group_id: thesis.student_group.id - councils.advisor_evaluation.group_id [delete: cascade]
+Ref fk_council_users_approved_by: councils.council.approved_by > identity.user.id [delete: set null]
+Ref fk_council_kltn_batch_batch_id: councils.council.batch_id > academic.kltn_batch.id [delete: restrict]
+Ref fk_council_assignment_councils_council_id: councils.council_assignment.council_id > councils.council.id [delete: cascade]
+Ref fk_council_assignment_student_groups_group_id: thesis.student_group.id - councils.council_assignment.group_id [delete: cascade]
+Ref fk_council_member_council_council_id: councils.council_member.council_id > councils.council.id [delete: cascade]
+Ref fk_council_member_users_user_id: councils.council_member.user_id > identity.user.id [delete: restrict]
+Ref fk_council_minute_council_assignment_council_assignment_id: councils.council_assignment.id - councils.council_minute.council_assignment_id [delete: cascade]
+Ref fk_council_minute_users_locked_by: councils.council_minute.locked_by > identity.user.id [delete: set null]
+Ref fk_council_minute_users_unlocked_by: councils.council_minute.unlocked_by > identity.user.id [delete: set null]
+Ref fk_council_score_council_assignment_council_assignment_id: councils.council_score.council_assignment_id > councils.council_assignment.id [delete: cascade]
+Ref fk_council_score_council_member_council_member_id: councils.council_score.council_member_id > councils.council_member.id [delete: cascade]
+Ref fk_evaluation_detail_grading_criterias_criteria_id: councils.evaluation_detail.criteria_id > councils.grading_criteria.id [delete: restrict]
+Ref fk_grading_criteria_kltn_batch_batch_id: councils.grading_criteria.batch_id > academic.kltn_batch.id [delete: restrict]
+Ref fk_reviewer_assignment_users_assigned_by: councils.reviewer_assignment.assigned_by > identity.user.id [delete: restrict]
+Ref fk_reviewer_assignment_student_groups_group_id: councils.reviewer_assignment.group_id > thesis.student_group.id [delete: cascade]
+Ref fk_reviewer_assignment_users_reviewer_id: councils.reviewer_assignment.reviewer_id > identity.user.id [delete: restrict]
+Ref fk_reviewer_evaluation_reviewer_assignment_assignment_id: councils.reviewer_assignment.id - councils.reviewer_evaluation.assignment_id [delete: cascade]
+Ref fk_score_summary_student_groups_group_id: thesis.student_group.id - councils.score_summary.group_id [delete: cascade]
+Ref fk_score_summary_users_published_by: councils.score_summary.published_by > identity.user.id [delete: set null]
+Ref fk_score_summary_component_score_summaries_summary_id: councils.score_summary_component.summary_id > councils.score_summary.id [delete: cascade]
+Ref fk_audit_log_users_user_id: identity.audit_log.user_id > identity.user.id [delete: restrict]
+Ref fk_role_permission_permission_permission_id: identity.role_permission.permission_id > identity.permission.id [delete: cascade]
+Ref fk_role_permission_role_role_id: identity.role_permission.role_id > identity.role.id [delete: cascade]
+Ref fk_user_role_role_role_id: identity.user_role.role_id > identity.role.id [delete: cascade]
+Ref fk_user_role_user_user_id: identity.user_role.user_id > identity.user.id [delete: cascade]
+Ref fk_notification_user_recipient_id: notifications.notification.recipient_id > identity.user.id [delete: cascade]
+Ref fk_final_report_student_groups_group_id: thesis.final_report.group_id > thesis.student_group.id [delete: cascade]
+Ref fk_final_submission_user_advisor_confirmed_by: thesis.final_submission.advisor_confirmed_by > identity.user.id [delete: set null]
+Ref fk_final_submission_user_archived_confirmed_by: thesis.final_submission.archived_confirmed_by > identity.user.id [delete: set null]
+Ref fk_final_submission_student_groups_group_id: thesis.student_group.id - thesis.final_submission.group_id [delete: cascade]
+Ref fk_midterm_report_student_groups_group_id: thesis.student_group.id - thesis.midterm_report.group_id [delete: cascade]
+Ref fk_midterm_report_user_reviewed_by: thesis.midterm_report.reviewed_by > identity.user.id [delete: set null]
+Ref fk_progress_milestone_user_created_by: thesis.progress_milestone.created_by > identity.user.id [delete: restrict]
+Ref fk_progress_milestone_student_groups_group_id: thesis.progress_milestone.group_id > thesis.student_group.id [delete: cascade]
+Ref fk_progress_report_student_groups_group_id: thesis.progress_report.group_id > thesis.student_group.id [delete: cascade]
+Ref fk_progress_report_progress_milestone_milestone_id: thesis.progress_report.milestone_id > thesis.progress_milestone.id [delete: cascade]
+Ref fk_rename_request_student_groups_group_id: thesis.rename_request.group_id > thesis.student_group.id [delete: cascade]
+Ref fk_student_group_topics_topic_id: thesis.student_group.topic_id > topics.topic.id [delete: restrict]
+Ref fk_student_group_member_kltn_batch_batch_id: thesis.student_group_member.batch_id > academic.kltn_batch.id [delete: restrict]
+Ref fk_student_group_member_student_group_group_id: thesis.student_group_member.group_id > thesis.student_group.id [delete: cascade]
+Ref fk_student_group_member_user_student_id: thesis.student_group_member.student_id > identity.user.id [delete: restrict]
+Ref fk_submission_file_user_uploaded_by: thesis.submission_file.uploaded_by > identity.user.id [delete: restrict]
+Ref fk_syllabus_student_group_group_id: thesis.student_group.id - thesis.syllabus.group_id [delete: cascade]
+Ref fk_syllabus_user_reviewed_by: thesis.syllabus.reviewed_by > identity.user.id [delete: set null]
+Ref fk_topic_user_advisor_id: topics.topic.advisor_id > identity.user.id [delete: restrict]
+Ref fk_topic_kltn_batch_batch_id: topics.topic.batch_id > academic.kltn_batch.id [delete: restrict]

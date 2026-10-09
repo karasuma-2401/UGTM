@@ -1,7 +1,2 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\BuildingBlocks\Application\UGTM.BuildingBlocks.Application.csproj" />
-  </ItemGroup>
-
 </Project>

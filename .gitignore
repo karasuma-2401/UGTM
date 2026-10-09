@@ -65,3 +65,6 @@ amuse-deploy-main/
 # Environment files
 .env
 .env.local
+
+# Generated migration review artifacts
+artifacts/
