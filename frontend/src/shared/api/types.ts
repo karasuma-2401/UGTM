@@ -1,27 +1,8 @@
-export interface ApiResponse<T> {
-  isSuccess: boolean;
-  data: T;
-  error?: {
-    code: string;
-    message: string;
-    details?: string[];
-  };
-  timestamp: string;
+export interface ApiError {
+  code: string;
+  message: string;
+  errors: Record<string, string[]> | null;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-}
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
-}
-
-export interface UserProfile {
-  id: string;
-  email: string;
-  fullName: string;
-  roles: string[];
-  permissions: string[];
-}
+export type ApiResponse<T> =
+  { success: true; data: T; error: null } | { success: false; data: null; error: ApiError };

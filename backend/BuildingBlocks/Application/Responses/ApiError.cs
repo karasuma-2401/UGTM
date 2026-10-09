@@ -19,7 +19,7 @@
 
         // Helper create validation error
         public static ApiError Validation(IDictionary<string, string[]> errors, string message = "Invalid data!")
-            => new() { Code = "INVALIDATION_ERROR", Message = message, Errors = errors };
+            => new() { Code = "VALIDATION_ERROR", Message = message, Errors = errors };
 
     }
 }

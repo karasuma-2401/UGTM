@@ -1,7 +1,8 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { authEvents } from './authEvents';
 import { tokenStorage } from './tokenStorage';
-import type { ApiResponse, AuthTokens } from './types';
+import type { ApiResponse } from './types';
+import type { AuthTokens } from '@/features/auth/types/auth.types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5287';
 const REFRESH_TOKEN_URL = '/api/identity/auth/refresh';
@@ -44,14 +45,15 @@ httpClient.interceptors.request.use(
 
     return config;
   },
-  (error: unknown) => Promise.reject(error)
+  (error: unknown) => Promise.reject(error),
 );
 
 // RESPONSE INTERCEPTOR: Handle 401 & Refresh Token Queue
 httpClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const originalRequest = error.config as
+      (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
 
     if (!originalRequest || !error.response || error.response.status !== 401) {
       return Promise.reject(error);
@@ -97,14 +99,17 @@ httpClient.interceptors.response.use(
     }
 
     try {
-      const response = await axios.post<ApiResponse<AuthTokens> | AuthTokens>(
+      const response = await axios.post<ApiResponse<AuthTokens>>(
         `${API_BASE_URL}${REFRESH_TOKEN_URL}`,
         { refreshToken },
-        { headers: { 'Content-Type': 'application/json' } }
+        { headers: { 'Content-Type': 'application/json' } },
       );
 
       const data = response.data;
-      const tokens: AuthTokens = 'data' in data && data.data ? data.data : (data as AuthTokens);
+      if (!data.success) {
+        throw new Error(data.error.message);
+      }
+      const tokens = data.data;
 
       if (!tokens.accessToken || !tokens.refreshToken) {
         throw new Error('Invalid token response during refresh');
@@ -127,5 +132,5 @@ httpClient.interceptors.response.use(
     } finally {
       isRefreshing = false;
     }
-  }
+  },
 );

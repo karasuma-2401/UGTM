@@ -2,8 +2,24 @@ import { createBrowserRouter } from 'react-router-dom';
 import { ModulePingPage } from '../features/modules/ModulePingPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { AppLayout } from '../shared/layout/AppLayout';
+import { AuthLayout } from '../features/auth/layouts/AuthLayout';
+import { ActivatePage } from '../features/auth/pages/ActivatePage';
+import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
+import { LoginPage } from '../features/auth/pages/LoginPage';
+import { OtpPage } from '../features/auth/pages/OtpPage';
+import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 
 export const router = createBrowserRouter([
+  {
+    element: <AuthLayout />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/activate', element: <ActivatePage /> },
+      { path: '/forgot-password', element: <ForgotPasswordPage /> },
+      { path: '/verify-otp', element: <OtpPage /> },
+      { path: '/reset-password', element: <ResetPasswordPage /> },
+    ],
+  },
   {
     path: '/',
     element: <AppLayout />,
