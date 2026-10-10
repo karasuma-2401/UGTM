@@ -1,9 +1,8 @@
-import { CircleCheck, Mail, Shield, Smartphone } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CircleCheck, Mail, Shield, Smartphone } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthErrorMessage } from '../components/AuthErrorMessage';
-import { AuthSubmitButton } from '../components/AuthSubmitButton';
-import { BackToLoginLink } from '../components/BackToLoginLink';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { DEMO_PROFILE } from '../mocks/authFixtures';
 import { matchesProfile, startChallenge } from '../mocks/authMock';
 import type { OtpMethod } from '../types/auth.types';
@@ -14,6 +13,7 @@ export function ForgotPasswordPage() {
   const [method, setMethod] = useState<OtpMethod>('email');
   const [error, setError] = useState('');
   const hasProfile = matchesProfile(identifier);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
@@ -26,9 +26,13 @@ export function ForgotPasswordPage() {
     startChallenge('reset', method);
     navigate('/verify-otp');
   }
+
   return (
     <section className="auth-card auth-forgot">
-      <BackToLoginLink />
+      <Link className="auth-back" to="/login">
+        <ArrowLeft size={14} />
+        Quay lại Đăng nhập
+      </Link>
       <h1>Quên mật khẩu truy cập?</h1>
       <p className="auth-subtitle">
         Nhập Email trường hoặc MSSV để nhận mã OTP xác thực khôi phục mật khẩu tài khoản Khóa luận.
@@ -36,16 +40,16 @@ export function ForgotPasswordPage() {
       <form onSubmit={handleSubmit}>
         <div className="auth-field">
           <label htmlFor="recovery-id">MSSV HOẶC EMAIL ĐỊNH DANH TRƯỜNG (SIS)</label>
-          <div className="auth-input-wrap">
-            <Mail size={16} />
-            <input
-              id="recovery-id"
-              required
-              value={identifier}
-              onChange={(event) => setIdentifier(event.target.value)}
-            />
-            {hasProfile && <CircleCheck size={16} className="auth-green" />}
-          </div>
+          <Input
+            id="recovery-id"
+            required
+            placeholder="Nhập MSSV hoặc Email trường..."
+            leftIcon={<Mail size={16} />}
+            rightIcon={hasProfile ? <CircleCheck size={16} className="auth-green" /> : undefined}
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
+            className="bg-white border-[#cbd7e8] h-[39px]"
+          />
           {hasProfile && (
             <p className="auth-hint">
               <span className="auth-green">✓</span> Tìm thấy hồ sơ sinh viên:{' '}
@@ -84,8 +88,14 @@ export function ForgotPasswordPage() {
             bộ quản trị hệ thống. Mã chỉ có hiệu lực trong vòng 5 phút.
           </p>
         </div>
-        <AuthErrorMessage message={error} />
-        <AuthSubmitButton>Gửi mã xác thực & Tiếp tục</AuthSubmitButton>
+        {error && (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        )}
+        <Button type="submit" className="auth-submit" rightIcon={<ArrowRight size={16} />}>
+          Gửi mã xác thực & Tiếp tục
+        </Button>
       </form>
       <p className="auth-bottom">
         Bạn đã nhớ lại mật khẩu truy cập? <Link to="/login">Quay lại Đăng nhập ngay</Link>

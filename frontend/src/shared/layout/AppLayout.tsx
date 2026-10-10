@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 interface NavItem {
   label: string;
@@ -91,7 +92,7 @@ export function AppLayout() {
           </div>
           <div className="text-xs font-semibold text-slate-800 flex items-center justify-between">
             <span>Đợt 1 - HK2 (2025-2026)</span>
-            <Badge variant="success" className="text-[10px] px-1.5 py-0">
+            <Badge variant="success" dot className="text-[10px] px-1.5 py-0">
               Đang mở
             </Badge>
           </div>
@@ -171,12 +172,12 @@ export function AppLayout() {
             >
               <Menu className="size-5" />
             </button>
-            <div className="relative w-full hidden sm:block">
-              <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
+            <div className="w-full hidden sm:block">
+              <Input
                 type="text"
                 placeholder="Tìm nhanh sinh viên, đề tài, giảng viên... (⌘K)"
-                className="w-full h-9 pl-9 pr-3 text-sm rounded-lg border border-slate-200 bg-slate-50/60 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary"
+                leftIcon={<Search className="size-4 text-slate-400" />}
+                className="bg-slate-50/60 focus:bg-white border-slate-200"
               />
             </div>
           </div>
@@ -195,9 +196,7 @@ export function AppLayout() {
                 A
               </div>
               <div className="hidden md:block text-left">
-                <div className="text-xs font-semibold text-slate-800">
-                  TS. Nguyễn Văn A
-                </div>
+                <div className="text-xs font-semibold text-slate-800">TS. Nguyễn Văn A</div>
                 <div className="text-[11px] text-slate-400">Khoa CNTT</div>
               </div>
               <ChevronDown className="size-3.5 text-slate-400 hidden sm:block" />

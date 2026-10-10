@@ -1,9 +1,7 @@
-import { Check, Clock, LockKeyhole, Mail, Shield } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Clock, LockKeyhole, Mail, Shield } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { AuthErrorMessage } from '../components/AuthErrorMessage';
-import { AuthSubmitButton } from '../components/AuthSubmitButton';
-import { BackToLoginLink } from '../components/BackToLoginLink';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { OTP_LENGTH, MAX_OTP_ATTEMPTS } from '../constants/auth.constants';
 import { DEMO_OTP, DEMO_PROFILE } from '../mocks/authFixtures';
 import { getChallenge, resendChallenge, startChallenge, verifyOtp } from '../mocks/authMock';
@@ -16,16 +14,20 @@ export function OtpPage() {
   const [notice, setNotice] = useState('');
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const challenge = getChallenge();
+
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
+
   if (!challenge) {
     return <Navigate to="/forgot-password" replace />;
   }
+
   const seconds = Math.max(0, Math.ceil((challenge.expires - now) / 1000));
   const resendSeconds = Math.max(0, Math.ceil((challenge.resendAt - now) / 1000));
   const isLocked = challenge.attempts >= MAX_OTP_ATTEMPTS;
+
   function handleDigitChange(value: string, index: number) {
     const numbers = value.replace(/\D/g, '').slice(0, OTP_LENGTH - index);
     setDigits((current) => {
@@ -43,6 +45,7 @@ export function OtpPage() {
       inputs.current[Math.min(index + numbers.length, OTP_LENGTH - 1)]?.focus();
     }
   }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
@@ -62,13 +65,16 @@ export function OtpPage() {
       setError((err as Error).message);
     }
   }
+
   function handleResend() {
-    if (resendChallenge()) {
+    try {
+      resendChallenge();
       setNow(Date.now());
       setDigits(Array<string>(OTP_LENGTH).fill(''));
       setError('');
-      setNotice('Đã tạo lại mã OTP demo.');
-      inputs.current[0]?.focus();
+      setNotice('Đã gửi lại mã OTP demo thành công.');
+    } catch (err) {
+      setError((err as Error).message);
     }
   }
 
@@ -76,25 +82,20 @@ export function OtpPage() {
     if (!challenge) {
       return;
     }
-
-    if (resendSeconds > 0) {
-      setNotice(`Vui lòng chờ ${resendSeconds}s trước khi đổi phương thức.`);
-      return;
-    }
-
-    startChallenge(
-      challenge.purpose,
-      challenge.method === 'email' ? 'sms' : 'email',
-      challenge.pendingPassword,
-    );
+    const nextMethod = challenge.method === 'email' ? 'sms' : 'email';
+    startChallenge(challenge.purpose, nextMethod, challenge.pendingPassword);
     setNow(Date.now());
     setDigits(Array<string>(OTP_LENGTH).fill(''));
     setError('');
     setNotice('Đã đổi phương thức nhận OTP demo.');
   }
+
   return (
     <section className="auth-card auth-otp">
-      <BackToLoginLink />
+      <Link className="auth-back" to="/login">
+        <ArrowLeft size={14} />
+        Quay lại Đăng nhập
+      </Link>
       <div className="auth-shield">
         <Shield size={24} fill="currentColor" />
       </div>
@@ -156,15 +157,24 @@ export function OtpPage() {
             Gửi lại mã OTP {resendSeconds > 0 && `(${resendSeconds}s)`}
           </button>
         </p>
-        <AuthErrorMessage message={error} />
+        {error && (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        )}
         {notice && (
           <p className="auth-success" role="status">
             {notice}
           </p>
         )}
-        <AuthSubmitButton disabled={digits.some((digit) => !digit) || seconds === 0 || isLocked}>
+        <Button
+          type="submit"
+          className="auth-submit"
+          disabled={digits.some((digit) => !digit) || seconds === 0 || isLocked}
+          rightIcon={<ArrowRight size={16} />}
+        >
           Xác nhận mã OTP
-        </AuthSubmitButton>
+        </Button>
       </form>
       <p className="auth-hint">
         <LockKeyhole size={14} />

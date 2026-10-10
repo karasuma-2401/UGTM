@@ -1,10 +1,10 @@
-import { IdCard } from 'lucide-react';
+import { ArrowRight, IdCard } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import google from '../../../../assets/logo_google.png';
 import sso from '../../../../assets/logo_sso.png';
-import { AuthErrorMessage } from '../components/AuthErrorMessage';
-import { AuthSubmitButton } from '../components/AuthSubmitButton';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { PasswordField } from '../components/PasswordField';
 import { REMEMBERED_IDENTIFIER_KEY } from '../constants/auth.constants';
 import { DEMO_PASSWORD, DEMO_PROFILE } from '../mocks/authFixtures';
@@ -22,6 +22,7 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState('');
   const success = location.state?.success as string | undefined;
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
@@ -40,6 +41,7 @@ export function LoginPage() {
       setIsSubmitting(false);
     }
   }
+
   return (
     <section className="auth-card auth-login">
       <h1>Chào mừng trở lại!</h1>
@@ -76,16 +78,16 @@ export function LoginPage() {
       <form onSubmit={handleSubmit}>
         <div className="auth-field">
           <label htmlFor="identifier">MSSV HOẶC EMAIL CÁN BỘ</label>
-          <div className="auth-input-wrap">
-            <IdCard size={16} />
-            <input
-              id="identifier"
-              autoComplete="username"
-              required
-              value={identifier}
-              onChange={(event) => setIdentifier(event.target.value)}
-            />
-          </div>
+          <Input
+            id="identifier"
+            autoComplete="username"
+            required
+            placeholder="Nhập MSSV hoặc Email..."
+            leftIcon={<IdCard size={16} />}
+            value={identifier}
+            onChange={(event) => setIdentifier(event.target.value)}
+            className="bg-[#f1f3f6] border-[#eef0f4] text-[13px] h-[34px]"
+          />
         </div>
         <PasswordField
           id="login-password"
@@ -104,10 +106,20 @@ export function LoginPage() {
           />
           Ghi nhớ MSSV/email trên thiết bị này
         </label>
-        <AuthErrorMessage message={error} />
-        <AuthSubmitButton disabled={isSubmitting}>
-          {isSubmitting ? 'Đang đăng nhập…' : 'Đăng nhập vào Không gian Khóa luận'}
-        </AuthSubmitButton>
+        {error && (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        )}
+        <Button
+          type="submit"
+          className="auth-submit"
+          isLoading={isSubmitting}
+          loadingText="Đang đăng nhập…"
+          rightIcon={<ArrowRight size={16} />}
+        >
+          Đăng nhập vào Không gian Khóa luận
+        </Button>
       </form>
       <p className="auth-bottom">
         Sinh viên đủ điều kiện chưa kích hoạt tài khoản?{' '}
