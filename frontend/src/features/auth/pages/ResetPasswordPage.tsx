@@ -1,9 +1,7 @@
-import { LockKeyhole } from 'lucide-react';
+import { ArrowLeft, ArrowRight, LockKeyhole } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { AuthErrorMessage } from '../components/AuthErrorMessage';
-import { AuthSubmitButton } from '../components/AuthSubmitButton';
-import { BackToLoginLink } from '../components/BackToLoginLink';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { PasswordFields } from '../components/PasswordFields';
 import { getChallenge, resetPasswordMock } from '../mocks/authMock';
 import { validatePasswords } from '../utils/passwordValidation';
@@ -14,8 +12,10 @@ export function ResetPasswordPage() {
   const [confirmationPassword, setConfirmationPassword] = useState('');
   const [error, setError] = useState('');
   const challenge = getChallenge();
+
   if (!challenge?.verified || challenge.purpose !== 'reset')
     return <Navigate to="/forgot-password" replace />;
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
@@ -30,9 +30,13 @@ export function ResetPasswordPage() {
       setError((err as Error).message);
     }
   }
+
   return (
     <section className="auth-card auth-reset">
-      <BackToLoginLink />
+      <Link className="auth-back" to="/login">
+        <ArrowLeft size={14} />
+        Quay lại Đăng nhập
+      </Link>
       <div className="auth-shield">
         <LockKeyhole size={24} />
       </div>
@@ -47,8 +51,14 @@ export function ResetPasswordPage() {
           onPasswordChange={setPassword}
           onConfirmationChange={setConfirmationPassword}
         />
-        <AuthErrorMessage message={error} />
-        <AuthSubmitButton>Lưu mật khẩu mới</AuthSubmitButton>
+        {error && (
+          <p className="auth-error" role="alert">
+            {error}
+          </p>
+        )}
+        <Button type="submit" className="auth-submit" rightIcon={<ArrowRight size={16} />}>
+          Lưu mật khẩu mới
+        </Button>
       </form>
     </section>
   );

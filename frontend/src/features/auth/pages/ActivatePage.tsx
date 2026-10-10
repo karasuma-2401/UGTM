@@ -1,8 +1,8 @@
-import { CircleCheck, IdCard, Mail, Phone } from 'lucide-react';
+import { ArrowRight, CircleCheck, IdCard, Mail, Phone } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthErrorMessage } from '../components/AuthErrorMessage';
-import { AuthSubmitButton } from '../components/AuthSubmitButton';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { PasswordFields } from '../components/PasswordFields';
 import { DEMO_PROFILE } from '../mocks/authFixtures';
 import { findEligibleStudentMock, startChallenge } from '../mocks/authMock';
@@ -19,6 +19,7 @@ export function ActivatePage() {
   const [confirmationPassword, setConfirmationPassword] = useState('');
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
+
   function handleStudentIdChange(value: string) {
     setStudentId(value);
     setProfile(null);
@@ -61,6 +62,7 @@ export function ActivatePage() {
       setError((err as Error).message);
     }
   }
+
   return (
     <section className="auth-card auth-activate">
       <p className="auth-top-link">
@@ -72,26 +74,34 @@ export function ActivatePage() {
         <form onSubmit={handleLookup}>
           <div className="auth-field">
             <label htmlFor="student-id">Mã số sinh viên</label>
-            <div className="auth-input-wrap">
-              <IdCard size={16} />
-              <input
-                id="student-id"
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="Nhập MSSV để kiểm tra hồ sơ"
-                required
-                value={studentId}
-                onChange={(event) => handleStudentIdChange(event.target.value)}
-                aria-invalid={Boolean(lookupError)}
-                aria-describedby="student-lookup-hint"
-              />
-            </div>
+            <Input
+              id="student-id"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="Nhập MSSV để kiểm tra hồ sơ"
+              required
+              value={studentId}
+              onChange={(event) => handleStudentIdChange(event.target.value)}
+              leftIcon={<IdCard size={16} />}
+              className="bg-white border-[#cbd7e8] h-[39px]"
+            />
             <p id="student-lookup-hint" className="auth-hint">
               Nhập MSSV và bấm kiểm tra để đối soát điều kiện tham gia khóa luận.
             </p>
           </div>
-          <AuthErrorMessage message={lookupError} />
-          <AuthSubmitButton disabled={!studentId.trim()}>Kiểm tra MSSV</AuthSubmitButton>
+          {lookupError && (
+            <p className="auth-error" role="alert">
+              {lookupError}
+            </p>
+          )}
+          <Button
+            type="submit"
+            className="auth-submit"
+            disabled={!studentId.trim()}
+            rightIcon={<ArrowRight size={16} />}
+          >
+            Kiểm tra MSSV
+          </Button>
         </form>
       )}
       {profile && (
@@ -170,8 +180,14 @@ export function ActivatePage() {
                 ĐHQG-HCM.
               </span>
             </label>
-            <AuthErrorMessage message={error} />
-            <AuthSubmitButton>Kích hoạt Tài khoản & Nhận mã OTP</AuthSubmitButton>
+            {error && (
+              <p className="auth-error" role="alert">
+                {error}
+              </p>
+            )}
+            <Button type="submit" className="auth-submit" rightIcon={<ArrowRight size={16} />}>
+              Kích hoạt Tài khoản & Nhận mã OTP
+            </Button>
           </form>
         </>
       )}
