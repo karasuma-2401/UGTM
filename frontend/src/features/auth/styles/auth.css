@@ -58,9 +58,9 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 220px;
+  width: 110px;
   max-width: none;
-  height: 140px;
+  height: 80px;
   object-fit: contain;
   transform: translate(-50%, -50%);
 }
