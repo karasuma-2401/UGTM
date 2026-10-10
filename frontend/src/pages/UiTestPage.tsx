@@ -20,19 +20,28 @@ import {
   RefreshCw,
   Info,
   Check,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { PasswordField } from '@/features/auth/components/PasswordField';
+import { PasswordFields } from '@/features/auth/components/PasswordFields';
+import { PasswordStrength } from '@/features/auth/components/PasswordStrength';
 
 export function UiTestPage() {
-  // Interactive test states
   const [globalLoading, setGlobalLoading] = useState(false);
   const [btnLoading, setBtnLoading] = useState(false);
   const [testPassword, setTestPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [interactiveInput, setInteractiveInput] = useState('');
   const [simulateError, setSimulateError] = useState(false);
+
+  const [pwdSingle, setPwdSingle] = useState('MatKhau@2026!');
+  const [pwdPair1, setPwdPair1] = useState('');
+  const [pwdPair2, setPwdPair2] = useState('');
+  const [pwdDisabled, setPwdDisabled] = useState(false);
+  const [pwdShowRules, setPwdShowRules] = useState(true);
 
   const handleSimulateSubmit = () => {
     setBtnLoading(true);
@@ -378,6 +387,147 @@ export function UiTestPage() {
             <Badge variant="default" leftIcon={<Check />}>
               Đã hoàn tất 100%
             </Badge>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 4. PASSWORD COMPONENTS TESTS (PasswordField, PasswordStrength, PasswordFields) */}
+      {/* ========================================================================= */}
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>4. Bộ ba Password Components</span>
+              <Badge variant="success">Phase 2: Hoàn thiện</Badge>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Kiểm tra PasswordField (toggle mắt, icons, disabled), PasswordStrength (live rules
+              checklist), và PasswordFields (cặp mật khẩu đồng bộ).
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={pwdDisabled ? 'destructive' : 'outline'}
+              onClick={() => setPwdDisabled((prev) => !prev)}
+            >
+              {pwdDisabled ? 'Mở khóa (Enable)' : 'Khóa ô nhập (Disabled)'}
+            </Button>
+            <Button
+              size="sm"
+              variant={pwdShowRules ? 'default' : 'outline'}
+              onClick={() => setPwdShowRules((prev) => !prev)}
+            >
+              {pwdShowRules ? 'Ẩn Checklist Rules' : 'Hiện Checklist Rules'}
+            </Button>
+          </div>
+        </div>
+
+        {/* 4.1 PasswordField Standalone Variations */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            A. Các biến thể PasswordField Đơn lẻ
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Standard with toggle */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <span className="text-xs font-semibold text-slate-700 block">
+                1. Mặc định (Toggle Eye + Icon Khóa)
+              </span>
+              <PasswordField
+                id="test-pwd-1"
+                label="Mật khẩu tài khoản"
+                value={pwdSingle}
+                onChange={setPwdSingle}
+                disabled={pwdDisabled}
+                helperText="Bấm vào biểu tượng mắt để bật/tắt hiển thị."
+              />
+            </div>
+
+            {/* Custom Icon & Right Action */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <span className="text-xs font-semibold text-slate-700 block">
+                2. Custom Icon & Right Action
+              </span>
+              <PasswordField
+                id="test-pwd-2"
+                label="Mã bảo mật cấp 2"
+                value={pwdSingle}
+                onChange={setPwdSingle}
+                disabled={pwdDisabled}
+                leftIcon={<ShieldCheck size={16} className="text-emerald-500" />}
+                rightAction={
+                  <button
+                    type="button"
+                    onClick={() => setPwdSingle('Reset@2026!')}
+                    className="text-xs text-primary hover:underline font-medium cursor-pointer"
+                  >
+                    Tạo ngẫu nhiên
+                  </button>
+                }
+                placeholder="Nhập mã bảo mật..."
+              />
+            </div>
+
+            {/* Error & No Left Icon */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <span className="text-xs font-semibold text-slate-700 block">
+                3. Không có Left Icon & Báo Lỗi
+              </span>
+              <PasswordField
+                id="test-pwd-3"
+                label="Mật khẩu cũ"
+                value="123"
+                onChange={() => {}}
+                disabled={pwdDisabled}
+                leftIcon={null}
+                error="Mật khẩu cũ không chính xác."
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 4.2 PasswordStrength Live Testing */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            B. Đánh giá độ mạnh mật khẩu (PasswordStrength)
+          </h3>
+          <div className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 max-w-2xl">
+            <div className="flex items-center justify-between text-xs text-slate-600">
+              <span>
+                Đang đánh giá chuỗi:{' '}
+                <code className="bg-white px-2 py-0.5 rounded border border-slate-200 font-mono text-primary font-semibold">
+                  {pwdSingle || '(trống)'}
+                </code>
+              </span>
+            </div>
+            <PasswordStrength password={pwdSingle} showRules={pwdShowRules} />
+          </div>
+        </div>
+
+        {/* 4.3 PasswordFields Synchronized Pair */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            C. Bộ đôi thiết lập & xác nhận mật khẩu (PasswordFields)
+          </h3>
+          <div className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4 max-w-xl">
+            <p className="text-xs text-slate-500">
+              Bao gồm tự động kiểm tra trùng khớp (autoValidateMismatch), đồng bộ trạng thái
+              disabled, và tích hợp PasswordStrength ở giữa.
+            </p>
+            <PasswordFields
+              password={pwdPair1}
+              confirmationPassword={pwdPair2}
+              onPasswordChange={setPwdPair1}
+              onConfirmationChange={setPwdPair2}
+              disabled={pwdDisabled}
+              showRules={pwdShowRules}
+              autoValidateMismatch={true}
+              passwordPlaceholder="Thiết lập mật khẩu từ 12 ký tự..."
+              confirmationPlaceholder="Nhập lại chính xác mật khẩu trên..."
+            />
           </div>
         </div>
       </section>
