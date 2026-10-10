@@ -21,10 +21,15 @@ import {
   Info,
   Check,
   ShieldCheck,
+  GraduationCap,
+  UserCheck,
+  Layers,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, Combobox } from '@/components/ui/select';
+import { ProgressBar } from '@/components/ui/progress';
 import { PasswordField } from '@/features/auth/components/PasswordField';
 import { PasswordFields } from '@/features/auth/components/PasswordFields';
 import { PasswordStrength } from '@/features/auth/components/PasswordStrength';
@@ -42,6 +47,16 @@ export function UiTestPage() {
   const [pwdPair2, setPwdPair2] = useState('');
   const [pwdDisabled, setPwdDisabled] = useState(false);
   const [pwdShowRules, setPwdShowRules] = useState(true);
+
+  // Select / Combobox states
+  const [selectedMajor, setSelectedMajor] = useState<string>('se');
+  const [selectedAdvisor, setSelectedAdvisor] = useState<string>('');
+  const [selectedTechs, setSelectedTechs] = useState<string[]>(['react', 'dotnet']);
+  const [selectDisabled, setSelectDisabled] = useState(false);
+  const [selectError, setSelectError] = useState(false);
+
+  // Progress Bar state
+  const [progressValue, setProgressValue] = useState<number>(88);
 
   const handleSimulateSubmit = () => {
     setBtnLoading(true);
@@ -528,6 +543,369 @@ export function UiTestPage() {
               passwordPlaceholder="Thiết lập mật khẩu từ 12 ký tự..."
               confirmationPlaceholder="Nhập lại chính xác mật khẩu trên..."
             />
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 5. DROPDOWN BOX & COMBOBOX (Select, Combobox) */}
+      {/* ========================================================================= */}
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>5. Dropdown Box & Combo Box</span>
+              <Badge variant="info">Mới hoàn thành</Badge>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Hỗ trợ Select cơ bản, Combobox tìm kiếm (Searchable), Multi-select nhiều mục,
+              Clearable, Icon slot và các trạng thái động.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={selectDisabled ? 'destructive' : 'outline'}
+              onClick={() => setSelectDisabled((prev) => !prev)}
+            >
+              {selectDisabled ? 'Mở khóa (Enable)' : 'Khóa ô chọn (Disabled)'}
+            </Button>
+            <Button
+              size="sm"
+              variant={selectError ? 'destructive' : 'outline'}
+              onClick={() => setSelectError((prev) => !prev)}
+            >
+              {selectError ? 'Tắt báo lỗi' : 'Bật mô phỏng lỗi'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* 5.1 Basic Select with Icon & Description */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+            <div>
+              <span className="text-xs font-semibold text-slate-700 block">
+                1. Dropdown Chọn Ngành (Select cơ bản)
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Kèm mô tả mã ngành, leftIcon và nút xóa lựa chọn (clearable).
+              </span>
+            </div>
+
+            <Select
+              placeholder="Chọn chuyên ngành..."
+              value={selectedMajor}
+              onChange={(val) => setSelectedMajor(val)}
+              disabled={selectDisabled}
+              error={selectError ? 'Vui lòng chọn chuyên ngành phù hợp.' : undefined}
+              helperText={!selectError ? 'Chuyên ngành đăng ký thực hiện KLTN' : undefined}
+              leftIcon={<GraduationCap className="text-primary" />}
+              clearable
+              options={[
+                { value: 'cs', label: 'Khoa học Máy tính', description: 'Mã ngành: 7480101' },
+                { value: 'se', label: 'Kỹ thuật Phần mềm', description: 'Mã ngành: 7480103' },
+                { value: 'is', label: 'Hệ thống Thông tin', description: 'Mã ngành: 7480104' },
+                {
+                  value: 'cn',
+                  label: 'Mạng máy tính & An toàn TT',
+                  description: 'Mã ngành: 7480102',
+                },
+                { value: 'ce', label: 'Kỹ thuật Máy tính', description: 'Mã ngành: 7480106' },
+              ]}
+            />
+
+            <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200 font-mono">
+              Giá trị đã chọn:{' '}
+              <strong className="text-primary">{selectedMajor || '(chưa chọn)'}</strong>
+            </div>
+          </div>
+
+          {/* 5.2 Searchable Combobox with Badges & Slots */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+            <div>
+              <span className="text-xs font-semibold text-slate-700 block">
+                2. Searchable Combobox (Tìm kiếm GVHD)
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Có ô tìm kiếm trực tiếp, phụ đề bộ môn, badge số slot, lọc nhanh.
+              </span>
+            </div>
+
+            <Combobox
+              placeholder="Tìm và chọn Giảng viên..."
+              searchPlaceholder="Gõ tên giảng viên hoặc bộ môn..."
+              value={selectedAdvisor}
+              onChange={(val) => setSelectedAdvisor(val)}
+              disabled={selectDisabled}
+              leftIcon={<UserCheck className="text-primary" />}
+              clearable
+              options={[
+                {
+                  value: 'gv01',
+                  label: 'PGS. TS. Trần Minh Nam',
+                  description: 'Bộ môn Kỹ thuật Phần mềm',
+                  badge: <Badge variant="info">Trưởng BM</Badge>,
+                },
+                {
+                  value: 'gv02',
+                  label: 'TS. Nguyễn Thị Bích Loan',
+                  description: 'Bộ môn Hệ thống Thông tin',
+                  badge: <Badge variant="secondary">12 đề tài</Badge>,
+                },
+                {
+                  value: 'gv03',
+                  label: 'TS. Lê Hoàng Khang',
+                  description: 'Khoa học Dữ liệu & AI',
+                  badge: <Badge variant="success">Còn slot</Badge>,
+                },
+                {
+                  value: 'gv04',
+                  label: 'ThS. Đỗ Thanh Bình',
+                  description: 'Bộ môn Mạng & Bảo mật',
+                  badge: <Badge variant="warning">Đầy slot</Badge>,
+                  disabled: true,
+                },
+                {
+                  value: 'gv05',
+                  label: 'TS. Phạm Quốc Hùng',
+                  description: 'Hệ thống Nhúng & IoT',
+                  badge: <Badge variant="success">Còn slot</Badge>,
+                },
+              ]}
+            />
+
+            <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200 font-mono">
+              GVHD: <strong className="text-primary">{selectedAdvisor || '(chưa chọn)'}</strong>
+            </div>
+          </div>
+
+          {/* 5.3 Multi-Select with Tags count */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+            <div>
+              <span className="text-xs font-semibold text-slate-700 block">
+                3. Multi-Select (Chọn nhiều công nghệ)
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Chọn nhiều mục cùng lúc, hiển thị tag đếm số lượng (+N).
+              </span>
+            </div>
+
+            <Select
+              placeholder="Chọn các công nghệ sử dụng..."
+              multiple
+              clearable
+              value={selectedTechs}
+              onChange={(val) => setSelectedTechs(val)}
+              disabled={selectDisabled}
+              leftIcon={<Layers className="text-primary" />}
+              options={[
+                { value: 'react', label: 'React 19 / TypeScript' },
+                { value: 'dotnet', label: '.NET 9 / C#' },
+                { value: 'python', label: 'Python / FastAPI' },
+                { value: 'postgres', label: 'PostgreSQL' },
+                { value: 'docker', label: 'Docker / Kubernetes' },
+                { value: 'tailwind', label: 'Tailwind CSS' },
+              ]}
+            />
+
+            <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200 font-mono">
+              Đã chọn:{' '}
+              <strong className="text-primary">{selectedTechs.join(', ') || '(trống)'}</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* 5.4 Size Variations & Custom Styling */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            B. Các kích thước (Size: sm / default / lg)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div>
+              <span className="text-xs text-slate-500 block mb-1">Small (h-8, text-xs):</span>
+              <Select
+                size="sm"
+                placeholder="Chọn đợt bảo vệ (sm)..."
+                options={['Đợt 1 - Tháng 6/2026', 'Đợt 2 - Tháng 12/2026']}
+              />
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 block mb-1">Default (h-9, text-sm):</span>
+              <Select
+                size="default"
+                placeholder="Chọn đợt bảo vệ (default)..."
+                options={['Đợt 1 - Tháng 6/2026', 'Đợt 2 - Tháng 12/2026']}
+              />
+            </div>
+            <div>
+              <span className="text-xs text-slate-500 block mb-1">Large (h-10, text-base):</span>
+              <Select
+                size="lg"
+                placeholder="Chọn đợt bảo vệ (lg)..."
+                options={['Đợt 1 - Tháng 6/2026', 'Đợt 2 - Tháng 12/2026']}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 6. PROGRESS BAR COMPONENT */}
+      {/* ========================================================================= */}
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>6. Progress Bar (Thanh tiến trình)</span>
+              <Badge variant="success">Khớp 100% Mockup</Badge>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Tiêu đề bên trái, phần trăm bên phải, thanh bo tròn pill-shape bên dưới. Hỗ trợ tùy
+              chỉnh màu sắc, kích thước và định dạng số.
+            </p>
+          </div>
+
+          {/* Quick preset percentage buttons */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {[0, 25, 50, 75, 88, 100].map((val) => (
+              <Button
+                key={val}
+                size="sm"
+                variant={progressValue === val ? 'default' : 'outline'}
+                onClick={() => setProgressValue(val)}
+                className="h-8 px-2.5 text-xs font-mono"
+              >
+                {val}%
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* 6.1 Exact Mockup Implementation */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            A. Giao diện mẫu theo thiết kế yêu cầu (Ảnh minh họa)
+          </h3>
+          <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50/50 max-w-xl space-y-4">
+            <ProgressBar label="Tiến độ thẩm định" value={progressValue} />
+
+            <div className="pt-2 flex items-center gap-3">
+              <span className="text-xs text-slate-500 shrink-0">Kéo trượt thử nghiệm:</span>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="0.5"
+                value={progressValue}
+                onChange={(e) => setProgressValue(parseFloat(e.target.value))}
+                className="w-full accent-primary cursor-pointer"
+              />
+              <span className="text-xs font-mono font-semibold text-primary w-12 text-right shrink-0">
+                {progressValue}%
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 6.2 Color Variants */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            B. Các biến thể màu sắc (Color Variants)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <ProgressBar
+                label="Primary (Mặc định - Màu thương hiệu)"
+                value={progressValue}
+                variant="default"
+              />
+            </div>
+
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <ProgressBar
+                label="Success (Hoàn thành điều kiện)"
+                value={progressValue}
+                variant="success"
+              />
+            </div>
+
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <ProgressBar
+                label="Warning (Sắp hết hạn thẩm định)"
+                value={progressValue}
+                variant="warning"
+              />
+            </div>
+
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <ProgressBar
+                label="Destructive (Cảnh báo đạo văn / vi phạm)"
+                value={progressValue}
+                variant="destructive"
+              />
+            </div>
+
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <ProgressBar
+                label="Gradient (Dải màu hiện đại)"
+                value={progressValue}
+                variant="gradient"
+              />
+            </div>
+
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <ProgressBar
+                label="Custom Hex Color (#8b5cf6 - Tím)"
+                value={progressValue}
+                indicatorColor="#8b5cf6"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 6.3 Size Variations */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            C. Các kích thước độ dày (Sizes: xs, sm, default, lg, xl)
+          </h3>
+          <div className="space-y-4 max-w-2xl bg-slate-50/50 p-5 rounded-2xl border border-slate-200">
+            <ProgressBar label="Extra Small (size='xs' - 4px)" size="xs" value={progressValue} />
+            <ProgressBar label="Small (size='sm' - 6px)" size="sm" value={progressValue} />
+            <ProgressBar
+              label="Default (size='default' - 8px)"
+              size="default"
+              value={progressValue}
+            />
+            <ProgressBar label="Large (size='lg' - 12px)" size="lg" value={progressValue} />
+            <ProgressBar label="Extra Large (size='xl' - 16px)" size="xl" value={progressValue} />
+          </div>
+        </div>
+
+        {/* 6.4 Custom Text Formats & Subtitle */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            D. Tùy biến định dạng text & mô tả phụ đề
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+              <ProgressBar
+                label="Chỉ tiêu đề tài đã duyệt"
+                value={progressValue}
+                valueText={`${Math.round((progressValue / 100) * 50)} / 50 đề tài`}
+                description="Tổng số đề tài đã thông qua thẩm định Hội đồng đợt 1."
+              />
+            </div>
+
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+              <ProgressBar
+                label="Điểm tích lũy rèn luyện"
+                value={progressValue}
+                valueFormat={(_, val) => `${val.toFixed(1)} / 100 đ`}
+                variant="info"
+                description="Điểm đánh giá chuẩn đầu ra sinh viên tốt nghiệp."
+              />
+            </div>
           </div>
         </div>
       </section>
