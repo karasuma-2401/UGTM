@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, Combobox } from '@/components/ui/select';
 import { ProgressBar } from '@/components/ui/progress';
+import { RadioGroup, RadioButton } from '@/components/ui/radio';
 import { PasswordField } from '@/features/auth/components/PasswordField';
 import { PasswordFields } from '@/features/auth/components/PasswordFields';
 import { PasswordStrength } from '@/features/auth/components/PasswordStrength';
@@ -57,6 +58,11 @@ export function UiTestPage() {
 
   // Progress Bar state
   const [progressValue, setProgressValue] = useState<number>(88);
+
+  // Radio Button states
+  const [defenseDecision, setDefenseDecision] = useState<string>('approve');
+  const [roleOption, setRoleOption] = useState<string>('student');
+  const [radioDisabled, setRadioDisabled] = useState(false);
 
   const handleSimulateSubmit = () => {
     setBtnLoading(true);
@@ -904,6 +910,143 @@ export function UiTestPage() {
                 valueFormat={(_, val) => `${val.toFixed(1)} / 100 đ`}
                 variant="info"
                 description="Điểm đánh giá chuẩn đầu ra sinh viên tốt nghiệp."
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* 7. RADIO BUTTON & RADIO GROUP */}
+      {/* ========================================================================= */}
+      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <span>7. Radio Button & Radio Group</span>
+              <Badge variant="success">Khớp 100% Mockup</Badge>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Logic gom nhóm ràng buộc (chọn 1 trong nhiều), viền đổi màu xanh khi được chọn (mặc
+              định --color-success), hỗ trợ icon và subtitle tùy chọn bên phải.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={radioDisabled ? 'destructive' : 'outline'}
+              onClick={() => setRadioDisabled((prev) => !prev)}
+            >
+              {radioDisabled ? 'Mở khóa (Enable)' : 'Khóa nhóm (Disabled)'}
+            </Button>
+          </div>
+        </div>
+
+        {/* 7.1 Exact Mockup Implementation */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            A. Giao diện mẫu theo ảnh minh họa (Thẩm định Khóa luận)
+          </h3>
+          <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50/50 max-w-2xl space-y-4">
+            <p className="text-xs text-slate-500">
+              Khi được chọn, ô sẽ được tô viền màu{' '}
+              <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 text-emerald-600 font-mono">
+                --color-success
+              </code>{' '}
+              (mặc định), nền nhạt và nút tròn màu primary.
+            </p>
+
+            <RadioGroup
+              value={defenseDecision}
+              onChange={setDefenseDecision}
+              disabled={radioDisabled}
+            >
+              <RadioButton
+                value="approve"
+                label="Đồng ý cho bảo vệ trước Hội đồng"
+                icon={<span className="size-2 rounded-full bg-emerald-500 shrink-0" />}
+                rightText="Đạt yêu cầu"
+              />
+              <RadioButton
+                value="conditional"
+                label="Bảo vệ có điều kiện (Yêu cầu chỉnh sửa)"
+                icon={<span className="size-2 rounded-full bg-amber-500 shrink-0" />}
+                rightText="Bổ sung báo cáo"
+              />
+              <RadioButton
+                value="reject"
+                label="Không đồng ý cho bảo vệ"
+                icon={<span className="size-2 rounded-full bg-rose-500 shrink-0" />}
+                rightText="Không đạt"
+              />
+            </RadioGroup>
+
+            <div className="text-xs text-slate-500 bg-white p-2.5 rounded-lg border border-slate-200 font-mono">
+              Quyết định đang chọn:{' '}
+              <strong className="text-emerald-700 font-semibold">{defenseDecision}</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* 7.2 Minimal / No Subtitle & Horizontal Layout */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            B. Không có subtitle phải (Chỉ nút tròn + title) & Hàng ngang
+          </h3>
+          <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 max-w-2xl space-y-3">
+            <span className="text-xs font-medium text-slate-600 block">Chọn vai trò tham gia:</span>
+            <RadioGroup
+              orientation="horizontal"
+              value={roleOption}
+              onChange={setRoleOption}
+              disabled={radioDisabled}
+            >
+              <RadioButton value="student" label="Sinh viên thực hiện" />
+              <RadioButton value="advisor" label="Giảng viên hướng dẫn" />
+              <RadioButton value="reviewer" label="Cán bộ phản biện" />
+            </RadioGroup>
+
+            <div className="text-xs text-slate-500 bg-white p-2.5 rounded-lg border border-slate-200 font-mono">
+              Vai trò: <strong className="text-primary font-semibold">{roleOption}</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* 7.3 Shorthand Options Array & Custom Colors */}
+        <div className="space-y-3 pt-2">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            C. Khởi tạo qua mảng `options=[...]` & Tùy biến màu viền
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
+            {/* Blue primary border variant */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <span className="text-xs font-medium text-slate-600 block">
+                Variant Primary (Viền xanh dương):
+              </span>
+              <RadioGroup
+                variant="primary"
+                defaultValue="opt1"
+                options={[
+                  { value: 'opt1', label: 'Phương thức nộp trực tuyến', rightText: 'Khuyên dùng' },
+                  { value: 'opt2', label: 'Nộp trực tiếp tại Văn phòng Khoa' },
+                ]}
+              />
+            </div>
+
+            {/* Custom purple border */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+              <span className="text-xs font-medium text-slate-600 block">
+                Custom Border Color (#8b5cf6 - Viền tím):
+              </span>
+              <RadioGroup
+                selectedBorderColor="#8b5cf6"
+                selectedBgColor="#f5f3ff"
+                defaultValue="thesis"
+                options={[
+                  { value: 'thesis', label: 'Khóa luận Tốt nghiệp (10 TC)' },
+                  { value: 'project', label: 'Chuyên đề Tốt nghiệp (6 TC)' },
+                ]}
               />
             </div>
           </div>
