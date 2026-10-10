@@ -1,6 +1,6 @@
 import { Link, Outlet } from 'react-router-dom';
 
-import logo from '../../../../assets/logo_ugtm.svg';
+import logo from '../../../../assets/logo_UGTM.svg';
 
 import '../styles/auth.css';
 

@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { ModulePingPage } from '../features/modules/ModulePingPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { UiTestPage } from '../pages/UiTestPage';
 import { AppLayout } from '../shared/layout/AppLayout';
 import { AuthLayout } from '../features/auth/layouts/AuthLayout';
 import { ActivatePage } from '../features/auth/pages/ActivatePage';
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'ui-test', element: <UiTestPage /> },
       { path: 'modules/:modulePath', element: <ModulePingPage /> },
     ],
   },
