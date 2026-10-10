@@ -191,7 +191,6 @@ export const RadioButton = React.forwardRef<HTMLLabelElement, RadioButtonProps>(
       onChange?.(true);
     };
 
-    // Styling based on variant
     const getVariantStyles = () => {
       if (!isChecked) {
         return 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900';
@@ -237,14 +236,12 @@ export const RadioButton = React.forwardRef<HTMLLabelElement, RadioButtonProps>(
           value={String(value)}
           checked={isChecked}
           disabled={isDisabled}
-          onChange={() => {}} // handled by label click
+          onChange={() => {}} 
           className="sr-only"
           tabIndex={-1}
         />
 
-        {/* Left side: Radio circle + optional icon + label */}
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          {/* Custom Radio Button Indicator */}
           <span
             className={cn(
               'size-4 rounded-full flex items-center justify-center shrink-0 transition-colors',
@@ -257,12 +254,10 @@ export const RadioButton = React.forwardRef<HTMLLabelElement, RadioButtonProps>(
             {isChecked && <span className="size-1.5 rounded-full bg-white shrink-0" />}
           </span>
 
-          {/* Optional Icon slot */}
           {icon && (
             <span className="flex items-center justify-center shrink-0 [&_svg]:size-4">{icon}</span>
           )}
 
-          {/* Title and optional description below */}
           <div className="min-w-0 truncate">
             {label && (
               <span
@@ -284,7 +279,6 @@ export const RadioButton = React.forwardRef<HTMLLabelElement, RadioButtonProps>(
           </div>
         </div>
 
-        {/* Right side: Optional subtitle / right text */}
         {rightText && (
           <span
             className={cn(
