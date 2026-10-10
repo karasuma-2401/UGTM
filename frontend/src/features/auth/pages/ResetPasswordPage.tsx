@@ -11,14 +11,16 @@ export function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirmationPassword, setConfirmationPassword] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const challenge = getChallenge();
 
   if (!challenge?.verified || challenge.purpose !== 'reset')
     return <Navigate to="/forgot-password" replace />;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
+    setIsSubmitting(true);
     try {
       validatePasswords(password, confirmationPassword);
       resetPasswordMock(password);
@@ -28,6 +30,8 @@ export function ResetPasswordPage() {
       });
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -50,13 +54,22 @@ export function ResetPasswordPage() {
           confirmationPassword={confirmationPassword}
           onPasswordChange={setPassword}
           onConfirmationChange={setConfirmationPassword}
+          disabled={isSubmitting}
+          showRules
+          autoValidateMismatch
         />
         {error && (
           <p className="auth-error" role="alert">
             {error}
           </p>
         )}
-        <Button type="submit" className="auth-submit" rightIcon={<ArrowRight size={16} />}>
+        <Button
+          type="submit"
+          className="auth-submit"
+          isLoading={isSubmitting}
+          loadingText="Đang lưu mật khẩu…"
+          rightIcon={<ArrowRight size={16} />}
+        >
           Lưu mật khẩu mới
         </Button>
       </form>

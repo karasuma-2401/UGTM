@@ -19,6 +19,7 @@ export function ActivatePage() {
   const [confirmationPassword, setConfirmationPassword] = useState('');
   const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleStudentIdChange(value: string) {
     setStudentId(value);
@@ -45,9 +46,10 @@ export function ActivatePage() {
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');
+    setIsSubmitting(true);
     try {
       if (!profile || profile.id !== studentId.trim()) {
         throw new Error('Vui lòng kiểm tra MSSV hợp lệ trước khi kích hoạt.');
@@ -60,6 +62,8 @@ export function ActivatePage() {
       navigate('/verify-otp');
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -167,10 +171,14 @@ export function ActivatePage() {
               confirmationPassword={confirmationPassword}
               onPasswordChange={setPassword}
               onConfirmationChange={setConfirmationPassword}
+              disabled={isSubmitting}
+              showRules
+              autoValidateMismatch
             />
             <label className="auth-checkbox auth-terms">
               <input
                 type="checkbox"
+                disabled={isSubmitting}
                 checked={hasAgreedToTerms}
                 onChange={(event) => setHasAgreedToTerms(event.target.checked)}
               />
@@ -185,7 +193,13 @@ export function ActivatePage() {
                 {error}
               </p>
             )}
-            <Button type="submit" className="auth-submit" rightIcon={<ArrowRight size={16} />}>
+            <Button
+              type="submit"
+              className="auth-submit"
+              isLoading={isSubmitting}
+              loadingText="Đang kích hoạt tài khoản…"
+              rightIcon={<ArrowRight size={16} />}
+            >
               Kích hoạt Tài khoản & Nhận mã OTP
             </Button>
           </form>

@@ -82,6 +82,7 @@ export function LoginPage() {
             id="identifier"
             autoComplete="username"
             required
+            disabled={isSubmitting}
             placeholder="Nhập MSSV hoặc Email..."
             leftIcon={<IdCard size={16} />}
             value={identifier}
@@ -95,12 +96,15 @@ export function LoginPage() {
           value={password}
           onChange={setPassword}
           autoComplete="current-password"
+          disabled={isSubmitting}
+          className="bg-[#f1f3f6] border-[#eef0f4] text-[13px] h-[34px]"
         >
           <Link to="/forgot-password">Quên mật khẩu?</Link>
         </PasswordField>
         <label className="auth-checkbox">
           <input
             type="checkbox"
+            disabled={isSubmitting}
             checked={shouldRememberIdentifier}
             onChange={(event) => setShouldRememberIdentifier(event.target.checked)}
           />
