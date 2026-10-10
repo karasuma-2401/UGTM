@@ -1,10 +1,11 @@
 import { ArrowRight, IdCard } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import google from '../../../../assets/logo_google.png';
 import sso from '../../../../assets/logo_sso.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/shared/auth';
 import { PasswordField } from '../components/PasswordField';
 import { REMEMBERED_IDENTIFIER_KEY } from '../constants/auth.constants';
 import { DEMO_PASSWORD, DEMO_PROFILE } from '../mocks/authFixtures';
@@ -13,6 +14,7 @@ import { loginMock } from '../mocks/authMock';
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login, isAuthenticated } = useAuth();
   const [identifier, setIdentifier] = useState(
     () => localStorage.getItem(REMEMBERED_IDENTIFIER_KEY) || '',
   );
@@ -22,6 +24,14 @@ export function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState('');
   const success = location.state?.success as string | undefined;
+
+  const redirectFrom = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(redirectFrom, { replace: true });
+    }
+  }, [isAuthenticated, navigate, redirectFrom]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,7 +44,16 @@ export function LoginPage() {
       } else {
         localStorage.removeItem(REMEMBERED_IDENTIFIER_KEY);
       }
-      navigate('/');
+
+      login('mock-access-token-demo', 'mock-refresh-token-demo', {
+        id: DEMO_PROFILE.id,
+        email: DEMO_PROFILE.email,
+        fullName: DEMO_PROFILE.name,
+        roles: ['STUDENT'],
+        permissions: ['thesis:read', 'thesis:submit'],
+      });
+
+      navigate(redirectFrom, { replace: true });
     } catch (err) {
       setError((err as Error).message);
     } finally {

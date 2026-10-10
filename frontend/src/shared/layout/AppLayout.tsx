@@ -12,12 +12,14 @@ import {
   Search,
   Menu,
   X,
-  ChevronDown,
+  LogOut,
+  Palette,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/shared/auth';
 
 interface NavItem {
   label: string;
@@ -39,11 +41,17 @@ const navItems: NavItem[] = [
   { label: 'Đánh giá & Kết quả', path: '/modules/defense-council', icon: Users2 },
   { label: 'Tài khoản & Quyền', path: '/modules/identity', icon: ShieldCheck },
   { label: 'Thông báo', path: '/modules/notifications', icon: Bell },
+  { label: 'UI Components (Dev)', path: '/ui-test', icon: Palette, badge: 'Dev' },
 ];
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { user, logout } = useAuth();
+
+  const userInitial = user?.fullName
+    ? user.fullName.trim().charAt(0).toUpperCase()
+    : 'U';
 
   return (
     <div className="min-h-screen bg-slate-50/60 flex">
@@ -147,16 +155,24 @@ export function AppLayout() {
         <div className="p-3 border-t border-slate-150 bg-slate-50/50">
           <div className="flex items-center gap-3 px-2 py-1.5 rounded-md">
             <div className="size-8 rounded-full bg-primary/10 text-primary font-semibold text-xs flex items-center justify-center">
-              GV
+              {userInitial}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-semibold text-slate-900 truncate">
-                TS. Nguyễn Văn A
+                {user?.fullName || 'Người dùng'}
               </div>
               <div className="text-[11px] text-slate-500 truncate">
-                Khoa CNTT - Trưởng BM
+                {user?.roles?.join(', ') || user?.email || 'Thành viên'}
               </div>
             </div>
+            <button
+              type="button"
+              onClick={logout}
+              title="Đăng xuất khỏi hệ thống"
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+            >
+              <LogOut className="size-4" />
+            </button>
           </div>
         </div>
       </aside>
@@ -191,15 +207,28 @@ export function AppLayout() {
 
             <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
 
-            <div className="flex items-center gap-2 pl-1 cursor-pointer">
+            <div className="flex items-center gap-2 pl-1">
               <div className="size-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center ring-1 ring-primary/20">
-                A
+                {userInitial}
               </div>
               <div className="hidden md:block text-left">
-                <div className="text-xs font-semibold text-slate-800">TS. Nguyễn Văn A</div>
-                <div className="text-[11px] text-slate-400">Khoa CNTT</div>
+                <div className="text-xs font-semibold text-slate-800">
+                  {user?.fullName || 'Người dùng'}
+                </div>
+                <div className="text-[11px] text-slate-400">
+                  {user?.roles?.join(', ') || 'Thành viên'}
+                </div>
               </div>
-              <ChevronDown className="size-3.5 text-slate-400 hidden sm:block" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={logout}
+                className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 gap-1.5 text-xs font-medium ml-1"
+                title="Đăng xuất"
+              >
+                <LogOut className="size-3.5" />
+                <span className="hidden sm:inline">Đăng xuất</span>
+              </Button>
             </div>
           </div>
         </header>

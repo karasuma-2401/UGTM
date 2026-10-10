@@ -10,6 +10,8 @@ import { LoginPage } from '../features/auth/pages/LoginPage';
 import { OtpPage } from '../features/auth/pages/OtpPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 
+import { ProtectedRoute } from '../shared/auth';
+
 export const router = createBrowserRouter([
   {
     element: <AuthLayout />,
@@ -23,7 +25,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'ui-test', element: <UiTestPage /> },
