@@ -7,7 +7,7 @@ using UGTM.Modules.Identity.Domain.Repositories;
 
 namespace UGTM.Modules.Identity.Application.Activation;
 
-public sealed class CompleteActivationHandler( 
+public sealed class CompleteActivationHandler(
     IOneTimeChallengeRepository challenges,
     IUserRepository users,
     IOpaqueTokenService tokens,

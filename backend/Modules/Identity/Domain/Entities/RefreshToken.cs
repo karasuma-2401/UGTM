@@ -37,7 +37,7 @@ public sealed class RefreshToken : Entity<Guid>
         CreatedAt = createdAt;
         ExpiresAt = expiresAt;
     }
-    
+
     public Guid SessionId { get; private set; }
     // Random Id shorter, save planinttext to lookup by unique index
     public string Selector { get; private set; } = null!;
@@ -102,5 +102,5 @@ public sealed class RefreshToken : Entity<Guid>
         {
             throw new ArgumentException("Time mus be UTC", parameterName);
         }
-    } 
+    }
 }

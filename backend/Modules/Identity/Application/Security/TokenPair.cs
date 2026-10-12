@@ -1,7 +1,7 @@
 namespace UGTM.Modules.Identity.Application.Security;
 
-public sealed record TokenPair( 
+public sealed record TokenPair(
     string AccessToken,
-    DateTime AccessTokenExpiresAt, 
+    DateTime AccessTokenExpiresAt,
     string RefreshToken,
     DateTime RefreshTokenExpiresAt);

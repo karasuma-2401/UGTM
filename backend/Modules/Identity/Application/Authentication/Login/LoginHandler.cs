@@ -95,7 +95,7 @@ public sealed class LoginHandler(
                 rawRefresh.SecretHash,
                 now,
                 session.IdleExpiresAt);
-            
+
             sessions.AddSession(session);
             sessions.AddRefreshToken(refreshToken);
             await unitOfWork.SaveChangesAsync(ct);

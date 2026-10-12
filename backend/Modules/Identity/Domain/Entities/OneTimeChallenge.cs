@@ -16,7 +16,7 @@ public sealed class OneTimeChallenge : AggregateRoot<Guid>
         string destinationSnapshot,
         int maxAttempts,
         DateTime createdAt,
-        DateTime expiresAt): base(id)
+        DateTime expiresAt) : base(id)
     {
         if (id == Guid.Empty || userId == Guid.Empty)
         {
@@ -44,23 +44,23 @@ public sealed class OneTimeChallenge : AggregateRoot<Guid>
         CreatedAt = createdAt;
         ExpiresAt = expiresAt;
     }
-    
+
     public Guid UserId { get; private set; }
     public ChallengePurpose Purpose { get; private set; }
-    public string Selector  { get; private set; } = null!;
+    public string Selector { get; private set; } = null!;
     public byte[] SecretHash { get; private set; } = [];
     public string DestinationSnapshot { get; private set; } = null!;
-    
+
     public DateTime CreatedAt { get; private set; }
     public DateTime ExpiresAt { get; private set; }
     public DateTime? ConsumedAt { get; private set; }
     public DateTime? InvalidatedAt { get; private set; }
-    
-    public int AttemptCount {  get; private set; }
+
+    public int AttemptCount { get; private set; }
     public int MaxAttempts { get; private set; }
     public DateTime? LastSentAt { get; private set; }
-    public int SendCount { get;  private set; }
-    
+    public int SendCount { get; private set; }
+
     public User User { get; private set; } = null!;
 
     public static OneTimeChallenge Create(

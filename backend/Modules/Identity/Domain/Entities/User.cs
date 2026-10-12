@@ -7,9 +7,9 @@ namespace UGTM.Modules.Identity.Domain.Entities;
 // when I write code in this moment, only God and me know what I do
 // After that only God know what I did
 
-public sealed class User: AggregateRoot<Guid>
+public sealed class User : AggregateRoot<Guid>
 {
-    private User() {}
+    private User() { }
 
     private User(
         Guid id,
@@ -45,28 +45,28 @@ public sealed class User: AggregateRoot<Guid>
     public string Email { get; private set; } = null!;
     public string NormalizedEmail { get; private set; } = null!;
     public string? PasswordHash { get; private set; }
-    
+
     public string FullName { get; private set; } = null!;
     public string? UserCode { get; private set; }
     public string? PhoneNumber { get; private set; }
-    
+
     public AccountStatus Status { get; private set; }
-    
+
     public DateTime? EmailVerifiedAt { get; private set; }
     public DateTime? ActivatedAt { get; private set; }
-    
+
     public int AccessFailedCount { get; private set; }
     public DateTime? LockoutEndAt { get; private set; }
-    
-    public DateTime? LastLoginAt { get; private set;  }
+
+    public DateTime? LastLoginAt { get; private set; }
     public DateTime? PasswordChangedAt { get; private set; }
-    
+
     public Guid SecurityStamp { get; private set; }
-    public Guid ConcurrencyStamp  { get; private set; }
-    
+    public Guid ConcurrencyStamp { get; private set; }
+
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
-    
+
     public ICollection<UserRole> UserRoles { get; private set; } = [];
 
     public static User ProvisionStudent(
@@ -113,14 +113,14 @@ public sealed class User: AggregateRoot<Guid>
         RotateSecurityStamp();
         Touch(now);
     }
-    
+
     // lock account if login failed to much
     public bool RecordFailedLogin(
         DateTime now,
         int maxFailedAttempts,
         TimeSpan lockoutDuration)
     {
-        EnsureUtc(now,  nameof(now));
+        EnsureUtc(now, nameof(now));
         if (Status != AccountStatus.Active)
         {
             throw new InvalidOperationException("Login attempts can only be recorded for an active account");
@@ -142,7 +142,7 @@ public sealed class User: AggregateRoot<Guid>
         }
 
         AccessFailedCount++;
-        var shouldLock = AccessFailedCount >=  maxFailedAttempts;
+        var shouldLock = AccessFailedCount >= maxFailedAttempts;
         if (shouldLock)
         {
             LockoutEndAt = now.Add(lockoutDuration);
@@ -225,14 +225,14 @@ public sealed class User: AggregateRoot<Guid>
     {
         SecurityStamp = Guid.NewGuid();
     }
-    
+
     // 1. Update DateTime Editing
     // 2. Create a new version 
     private void Touch(DateTime now)
     {
         UpdatedAt = now;
         // -> Optimistic Concurrency Control - control conflict many request update 1 record
-        ConcurrencyStamp = Guid.NewGuid(); 
+        ConcurrencyStamp = Guid.NewGuid();
     }
 
     // check a DateTime value is using Utc ?

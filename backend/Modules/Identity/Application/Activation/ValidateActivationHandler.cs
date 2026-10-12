@@ -10,7 +10,7 @@ public sealed class ValidateActivationHandler(
     IOneTimeChallengeRepository challenges,
     IUserRepository users,
     IOpaqueTokenService tokens,
-    IClock clock) 
+    IClock clock)
 {
     public async Task<Result<ValidateActivationResult>> HandleAsync(
         ValidateActivationCommand command,

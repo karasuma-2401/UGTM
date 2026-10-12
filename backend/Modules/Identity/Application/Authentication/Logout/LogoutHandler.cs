@@ -7,7 +7,7 @@ using UGTM.Modules.Identity.Domain.Repositories;
 
 namespace UGTM.Modules.Identity.Application.Authentication.Logout;
 
-public sealed class LogoutHandler( 
+public sealed class LogoutHandler(
     IAuthenticationSessionRepository sessions,
     IOpaqueTokenService tokens,
     IIdentityUnitOfWork unitOfWork,
@@ -35,5 +35,5 @@ public sealed class LogoutHandler(
             return Result.Success();
         }, cancellationToken);
     }
-    
+
 }

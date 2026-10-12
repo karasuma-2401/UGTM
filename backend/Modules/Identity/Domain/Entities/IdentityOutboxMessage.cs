@@ -18,8 +18,8 @@ public sealed class IdentityOutboxMessage : Entity<Guid>
         ArgumentException.ThrowIfNullOrWhiteSpace(type);
         ArgumentException.ThrowIfNullOrWhiteSpace(protectedPayload);
         ArgumentException.ThrowIfNullOrWhiteSpace(protectionPurpose);
-        
-        Type  = type;
+
+        Type = type;
         ProtectedPayload = protectedPayload;
         ProtectionPurpose = protectionPurpose;
         SchemaVersion = schemaVersion;
@@ -35,7 +35,7 @@ public sealed class IdentityOutboxMessage : Entity<Guid>
     public int AttemptCount { get; private set; }
     public DateTime NextAttemptAt { get; private set; }
     public string? LastError { get; private set; }
-    
+
     public static IdentityOutboxMessage Create(
         string type,
         string protectedPayload,
@@ -65,5 +65,5 @@ public sealed class IdentityOutboxMessage : Entity<Guid>
         var delayMinutes = Math.Min(Math.Pow(2, AttemptCount), 60);
         NextAttemptAt = now.AddMinutes(delayMinutes);
     }
-    
+
 }

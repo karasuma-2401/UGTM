@@ -13,7 +13,7 @@ public sealed class JwtSigningKeyProvider : IDisposable
         _rsa.ImportFromPem(File.ReadAllText(options.PrivateKeyPath));
         Key = new RsaSecurityKey(_rsa) { KeyId = options.KeyId };
     }
-    
+
     public RsaSecurityKey Key { get; }
     public SigningCredentials SigningCredentials => new SigningCredentials(Key, SecurityAlgorithms.RsaSha256);
 

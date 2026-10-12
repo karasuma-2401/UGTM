@@ -7,7 +7,7 @@ public static class IdentityErrors
     public static readonly Error InvalidCredentials = Error.Unauthorized(
         "Identity.InvalidCredentials",
         "Email, mã sinh viên hoặc mật khẩu không đúng.");
-    
+
     public static readonly Error AccountPendingActivation = Error.Forbidden(
         "Identity.AccountPendingActivation",
         "Tài khoản chưa được kích hoạt.");

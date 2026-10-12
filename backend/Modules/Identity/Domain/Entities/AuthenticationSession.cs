@@ -5,7 +5,7 @@ namespace UGTM.Modules.Identity.Domain.Entities;
 
 public sealed class AuthenticationSession : AggregateRoot<Guid>
 {
-    private AuthenticationSession() {}
+    private AuthenticationSession() { }
 
     private AuthenticationSession(
         Guid id,
@@ -41,7 +41,7 @@ public sealed class AuthenticationSession : AggregateRoot<Guid>
         IpAddressHash = ipAddressHash;
         ConcurrencyStamp = Guid.NewGuid();
     }
-    
+
     public Guid UserId { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime AuthenticatedAt { get; private set; }
@@ -85,11 +85,11 @@ public sealed class AuthenticationSession : AggregateRoot<Guid>
 
     public bool CanRefresh(Guid currentSecurityStamp, DateTime now)
     {
-        EnsureUtc(now,  nameof(now));
-        return RevokedAt is null 
+        EnsureUtc(now, nameof(now));
+        return RevokedAt is null
             && currentSecurityStamp == SecurityStampSnapshot
             && now < IdleExpiresAt
-            && now <  AbsoluteExpiresAt;
+            && now < AbsoluteExpiresAt;
     }
 
     public void Touch(DateTime now, TimeSpan idleLifetime)
@@ -112,7 +112,7 @@ public sealed class AuthenticationSession : AggregateRoot<Guid>
             : AbsoluteExpiresAt;
         ConcurrencyStamp = Guid.NewGuid();
     }
-    
+
     public void Revoke(SessionRevocationReason reason, DateTime now)
     {
         EnsureUtc(now, nameof(now));

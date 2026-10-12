@@ -5,7 +5,7 @@ using UGTM.Modules.Identity.Contracts.Authorization;
 
 namespace UGTM.Modules.Identity.Application.Authentication.GetCurrentUser;
 
-public sealed class GetCurrentUserHandler( 
+public sealed class GetCurrentUserHandler(
     ICurrentUser currentUser,
     IUserProfileReader profiles)
 {
@@ -22,5 +22,5 @@ public sealed class GetCurrentUserHandler(
             ? Result.Failure<UserProfileDto>(IdentityErrors.InvalidSession)
             : Result.Success(profile);
     }
-    
+
 }
