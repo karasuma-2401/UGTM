@@ -1,6 +1,8 @@
 namespace UGTM.Modules.Identity.Application.Profiles;
 
-public class IUserProfileReader
+public interface IUserProfileReader
 {
-    
+    Task<UserProfileDto?> GeAsync( 
+        Guid userId,
+        CancellationToken cancellationToken); 
 }
