@@ -26,9 +26,16 @@ public sealed class LoginHandler(
     {
         return unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
+            if (string.IsNullOrWhiteSpace(command.Identifier)
+                || string.IsNullOrEmpty(command.Password))
+            {
+                return Result.Failure<AuthenticatedSessionResult>(
+                    IdentityErrors.InvalidCredentials);
+            }
+
             var identifier = command.Identifier.Trim().ToUpperInvariant();
             var user = await users.GetByIdentifierAsync(identifier, identifier, ct);
-            if (user is null || user.PasswordHash is null)
+            if (user is null)
             {
                 return Result.Failure<AuthenticatedSessionResult>(
                     IdentityErrors.InvalidCredentials);
@@ -41,6 +48,16 @@ public sealed class LoginHandler(
                 AccountStatus.Disabled => IdentityErrors.AccountDisabled,
                 _ => Error.None
             };
+            if (statusError != Error.None)
+            {
+                return Result.Failure<AuthenticatedSessionResult>(statusError);
+            }
+
+            if (user.PasswordHash is null)
+            {
+                return Result.Failure<AuthenticatedSessionResult>(
+                    IdentityErrors.InvalidCredentials);
+            }
 
             var now = clock.UtcNow;
             if (user.IsLockedOut(now))
@@ -56,11 +73,11 @@ public sealed class LoginHandler(
                     policy.MaxFailedLoginAttempts,
                     policy.LockoutDuration);
                 await unitOfWork.SaveChangesAsync(ct);
-                
+
                 return Result.Failure<AuthenticatedSessionResult>(
                     locked ? IdentityErrors.AccountLocked : IdentityErrors.InvalidCredentials);
             }
-            
+
             user.RecordSuccessfulLogin(now);
             var session = AuthenticationSession.Create(
                 user.Id,

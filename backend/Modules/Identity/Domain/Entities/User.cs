@@ -28,7 +28,19 @@ public sealed class User: AggregateRoot<Guid>
         ArgumentException.ThrowIfNullOrWhiteSpace(normalizedEmail);
         ArgumentException.ThrowIfNullOrWhiteSpace(fullName);
         ArgumentException.ThrowIfNullOrWhiteSpace(userCode);
-        
+        EnsureUtc(createdAt, nameof(createdAt));
+
+        Email = email.Trim();
+        NormalizedEmail = normalizedEmail.Trim();
+        FullName = fullName.Trim();
+        UserCode = userCode.Trim();
+        PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber)
+            ? null
+            : phoneNumber.Trim();
+        Status = AccountStatus.PendingActivation;
+        SecurityStamp = Guid.NewGuid();
+        ConcurrencyStamp = Guid.NewGuid();
+        CreatedAt = createdAt;
     }
     public string Email { get; private set; } = null!;
     public string NormalizedEmail { get; private set; } = null!;
@@ -38,7 +50,7 @@ public sealed class User: AggregateRoot<Guid>
     public string? UserCode { get; private set; }
     public string? PhoneNumber { get; private set; }
     
-    public AccountStatus? Status { get; private set; }
+    public AccountStatus Status { get; private set; }
     
     public DateTime? EmailVerifiedAt { get; private set; }
     public DateTime? ActivatedAt { get; private set; }
@@ -47,7 +59,7 @@ public sealed class User: AggregateRoot<Guid>
     public DateTime? LockoutEndAt { get; private set; }
     
     public DateTime? LastLoginAt { get; private set;  }
-    public DateTime? PasswordChangeAt { get; private set; }
+    public DateTime? PasswordChangedAt { get; private set; }
     
     public Guid SecurityStamp { get; private set; }
     public Guid ConcurrencyStamp  { get; private set; }
@@ -95,6 +107,7 @@ public sealed class User: AggregateRoot<Guid>
         Status = AccountStatus.Active;
         EmailVerifiedAt = now;
         ActivatedAt = now;
+        PasswordChangedAt = now;
         AccessFailedCount = 0;
         LockoutEndAt = null;
         RotateSecurityStamp();
@@ -116,6 +129,11 @@ public sealed class User: AggregateRoot<Guid>
         if (IsLockedOut(now))
         {
             throw new InvalidOperationException("A failed login cannot be recorded while the account is locked");
+        }
+
+        if (maxFailedAttempts <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxFailedAttempts));
         }
 
         if (lockoutDuration <= TimeSpan.Zero)
@@ -165,7 +183,7 @@ public sealed class User: AggregateRoot<Guid>
         }
 
         PasswordHash = newPasswordHash;
-        PasswordChangeAt = now;
+        PasswordChangedAt = now;
         AccessFailedCount = 0;
         LockoutEndAt = null;
         RotateSecurityStamp();

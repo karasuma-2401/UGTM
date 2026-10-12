@@ -22,6 +22,10 @@ public sealed class AuthenticationSession : AggregateRoot<Guid>
             throw new ArgumentException("Session identifier and security stamp mus be nonempty");
         }
 
+        EnsureUtc(now, nameof(now));
+        EnsureUtc(idleExpiresAt, nameof(idleExpiresAt));
+        EnsureUtc(absoluteExpiresAt, nameof(absoluteExpiresAt));
+
         if (idleExpiresAt <= now || absoluteExpiresAt <= idleExpiresAt)
         {
             throw new ArgumentException("Session expiry values are invalid");
@@ -29,7 +33,7 @@ public sealed class AuthenticationSession : AggregateRoot<Guid>
         UserId = userId;
         SecurityStampSnapshot = securityStampSnapshot;
         CreatedAt = now;
-        AuthenticationAt = now;
+        AuthenticatedAt = now;
         LastSeenAt = now;
         IdleExpiresAt = idleExpiresAt;
         AbsoluteExpiresAt = absoluteExpiresAt;
@@ -40,7 +44,7 @@ public sealed class AuthenticationSession : AggregateRoot<Guid>
     
     public Guid UserId { get; private set; }
     public DateTime CreatedAt { get; private set; }
-    public DateTime AuthenticationAt { get; private set; }
+    public DateTime AuthenticatedAt { get; private set; }
     public DateTime LastSeenAt { get; private set; }
     public DateTime IdleExpiresAt { get; private set; }
     public DateTime AbsoluteExpiresAt { get; private set; }

@@ -46,7 +46,7 @@ public sealed class RefreshToken : Entity<Guid>
     public DateTime CreatedAt { get; private set; }
     public DateTime ExpiresAt { get; private set; }
     public DateTime? ConsumedAt { get; private set; }
-    public Guid? ReplaceByTokenId { get; private set; }
+    public Guid? ReplacedByTokenId { get; private set; }
     public DateTime? RevokedAt { get; private set; }
     public SessionRevocationReason? RevocationReason { get; private set; }
 
@@ -78,8 +78,11 @@ public sealed class RefreshToken : Entity<Guid>
 
         if (!IsUsable(now))
         {
-            throw new InvalidOperationException("Refresh token is usable");
+            throw new InvalidOperationException("Refresh token is not usable");
         }
+
+        ConsumedAt = now;
+        ReplacedByTokenId = replacementId;
     }
     public void Revoke(SessionRevocationReason reason, DateTime now)
     {

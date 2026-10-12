@@ -29,6 +29,13 @@ public sealed class StartPasswordRecoveryHandler(
         {
             var now = clock.UtcNow;
             var expiresAt = now.Add(policy.RecoveryOtpLifetime);
+            if (string.IsNullOrWhiteSpace(command.Email))
+            {
+                return Result.Success(new StartPasswordRecoveryResult(
+                    Guid.NewGuid().ToString("N"),
+                    expiresAt));
+            }
+
             var normalizedEmail = command.Email.Trim().ToUpperInvariant();
             var user = await users.GetByNormalizedEmailAsync(normalizedEmail, ct);
 

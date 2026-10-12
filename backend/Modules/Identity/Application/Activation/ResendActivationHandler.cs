@@ -24,6 +24,11 @@ public sealed class ResendActivationHandler(
     {
         return unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
+            if (string.IsNullOrWhiteSpace(command.Identifier))
+            {
+                return Result.Success();
+            }
+
             var identifier = command.Identifier.Trim().ToUpperInvariant();
             var user = await users.GetByIdentifierAsync(identifier, identifier, ct);
             if (user is null || user.Status != AccountStatus.PendingActivation)

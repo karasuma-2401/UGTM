@@ -9,7 +9,7 @@ public interface IAuthenticationSessionRepository
     void AddRefreshToken(RefreshToken refreshToken);
 
     Task<AuthenticationSession?> GetSessionAsync(
-        string selector,
+        Guid sessionId,
         CancellationToken cancellationToken);
     Task<RefreshToken?> GetRefreshTokenForUpdateAsync(
         string selector,

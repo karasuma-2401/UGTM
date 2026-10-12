@@ -47,7 +47,7 @@ public sealed class OneTimeChallenge : AggregateRoot<Guid>
     
     public Guid UserId { get; private set; }
     public ChallengePurpose Purpose { get; private set; }
-    public string Selector  { get; private set; }
+    public string Selector  { get; private set; } = null!;
     public byte[] SecretHash { get; private set; } = [];
     public string DestinationSnapshot { get; private set; } = null!;
     
@@ -61,7 +61,7 @@ public sealed class OneTimeChallenge : AggregateRoot<Guid>
     public DateTime? LastSentAt { get; private set; }
     public int SendCount { get;  private set; }
     
-    public User User { get; private set; }
+    public User User { get; private set; } = null!;
 
     public static OneTimeChallenge Create(
         Guid userId,

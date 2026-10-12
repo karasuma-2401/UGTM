@@ -43,6 +43,12 @@ public class RefreshSessionHandler(
             }
 
             var session = currentToken.Session;
+            if (!opaqueTokens.Verify(validator, currentToken.ValidatorHash))
+            {
+                return Result.Failure<AuthenticatedSessionResult>(
+                    IdentityErrors.InvalidSession);
+            }
+
             if (currentToken.ConsumedAt is not null)
             {
                 session.Revoke(SessionRevocationReason.RefreshTokenReuse, now);
@@ -52,7 +58,6 @@ public class RefreshSessionHandler(
             }
 
             if (!currentToken.IsUsable(now)
-                || !opaqueTokens.Verify(validator, currentToken.ValidatorHash)
                 || !session.CanRefresh(session.User.SecurityStamp, now))
             {
                 return Result.Failure<AuthenticatedSessionResult>(

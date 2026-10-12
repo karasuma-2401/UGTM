@@ -8,12 +8,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.HasIndex(x => x.UserCode)
-            .HasDatabaseName("ix_user_user_code")
+        builder.HasIndex(x => x.NormalizedEmail)
+            .HasDatabaseName("ux_user_normalized_email")
             .IsUnique();
-
-        builder.HasIndex(x => x.Email)
-            .HasDatabaseName("ix_user_email")
+        builder.HasIndex(x => x.UserCode)
+            .HasDatabaseName("ux_user_user_code")
             .IsUnique();
 
         builder.ToTable("user", "identity");
@@ -25,8 +24,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired();
 
         builder.Property(x => x.PasswordHash)
-            .HasColumnType("text")
-            .IsRequired();
+            .HasColumnType("text");
 
         builder.Property(x => x.FullName)
             .HasMaxLength(150)
@@ -39,6 +37,26 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(20);
 
         builder.Property(x => x.CreatedAt)
+            .IsRequired();
+
+        builder.Property(x => x.NormalizedEmail)
+            .HasMaxLength(150)
+            .IsRequired();
+
+        builder.Property(x => x.Status)
+            .HasConversion<string>()
+            .HasMaxLength(50)
+            .IsRequired();
+
+        builder.Property(x => x.SecurityStamp)
+            .IsRequired();
+
+        builder.Property(x => x.ConcurrencyStamp)
+            .IsConcurrencyToken()
+            .IsRequired();
+
+        builder.Property(x => x.AccessFailedCount)
+            .HasDefaultValue(0)
             .IsRequired();
     }
 }

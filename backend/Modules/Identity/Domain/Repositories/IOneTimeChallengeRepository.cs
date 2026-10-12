@@ -11,7 +11,7 @@ public interface IOneTimeChallengeRepository
         string selector,
         ChallengePurpose purpose,
         CancellationToken cancellationToken);
-    Task<OneTimeChallenge> GetForUpdateAsync(
+    Task<OneTimeChallenge?> GetForUpdateAsync(
         string selector,
         ChallengePurpose purpose,
         CancellationToken cancellationToken);
