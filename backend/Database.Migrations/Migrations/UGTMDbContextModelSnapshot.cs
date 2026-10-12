@@ -891,41 +891,272 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("action");
 
-                    b.Property<string>("EntityId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("entity_id");
+                    b.Property<Guid?>("ActorSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_session_id");
 
-                    b.Property<string>("EntityType")
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata_json");
+
+                    b.Property<string>("Outcome")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasColumnName("entity_type");
+                        .HasColumnName("outcome");
 
-                    b.Property<string>("NewData")
-                        .HasColumnType("text")
-                        .HasColumnName("new_data");
+                    b.Property<string>("ReasonCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("reason_code");
 
-                    b.Property<string>("OldData")
-                        .HasColumnType("text")
-                        .HasColumnName("old_data");
+                    b.Property<string>("RequestId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("request_id");
+
+                    b.Property<string>("TargetId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("target_type");
 
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("timestamp");
+
+                    b.HasKey("Id")
+                        .HasName("pk_audit_log");
+
+                    b.HasIndex("ActorSessionId")
+                        .HasDatabaseName("ix_audit_log_actor_session_id");
+
+                    b.HasIndex("ActorUserId")
+                        .HasDatabaseName("ix_audit_log_actor_user_id");
+
+                    b.HasIndex("RequestId")
+                        .HasDatabaseName("ix_audit_log_request_id");
+
+                    b.HasIndex("Timestamp")
+                        .HasDatabaseName("ix_audit_log_timestamp");
+
+                    b.ToTable("audit_log", "identity");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.AuthenticationSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AbsoluteExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("absolute_expires_at");
+
+                    b.Property<DateTime>("AuthenticatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("authenticated_at");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("IdleExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("idle_expires_at");
+
+                    b.Property<string>("IpAddressHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("ip_address_hash");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<string>("RevocationReason")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("revocation_reason");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid>("SecurityStampSnapshot")
+                        .HasColumnType("uuid")
+                        .HasColumnName("security_stamp_snapshot");
+
+                    b.Property<string>("UserAgentSummary")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("user_agent_summary");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_audit_log");
+                        .HasName("pk_authentication_session");
 
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("ix_audit_log_user_id");
+                    b.HasIndex("UserId", "RevokedAt", "AbsoluteExpiresAt")
+                        .HasDatabaseName("ix_authentication_session_user_id_revoked_at_absolute_expires_");
 
-                    b.ToTable("audit_log", "identity");
+                    b.ToTable("authentication_session", "identity");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.IdentityOutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<string>("ProtectedPayload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("protected_payload");
+
+                    b.Property<string>("ProtectionPurpose")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("protection_purpose");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_outbox_message");
+
+                    b.HasIndex("ProcessedAt", "NextAttemptAt")
+                        .HasDatabaseName("ix_outbox_message_processed_at_next_attempt_at");
+
+                    b.ToTable("outbox_message", "identity");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.OneTimeChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DestinationSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("destination_snapshot");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<DateTime?>("InvalidatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("invalidated_at");
+
+                    b.Property<DateTime?>("LastSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_sent_at");
+
+                    b.Property<int>("MaxAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("max_attempts");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("purpose");
+
+                    b.Property<byte[]>("SecretHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("secret_hash");
+
+                    b.Property<string>("Selector")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("selector");
+
+                    b.Property<int>("SendCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("send_count");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_one_time_challenge");
+
+                    b.HasIndex("Selector")
+                        .IsUnique()
+                        .HasDatabaseName("ix_one_time_challenge_selector");
+
+                    b.HasIndex("UserId", "Purpose", "ExpiresAt")
+                        .HasDatabaseName("ix_one_time_challenge_user_id_purpose_expires_at");
+
+                    b.ToTable("one_time_challenge", "identity");
                 });
 
             modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.Permission", b =>
@@ -961,6 +1192,69 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDatabaseName("ix_permission_permission_code");
 
                     b.ToTable("permission", "identity");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<Guid?>("ReplacedByTokenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replaced_by_token_id");
+
+                    b.Property<string>("RevocationReason")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("revocation_reason");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("Selector")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("selector");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_id");
+
+                    b.Property<byte[]>("ValidatorHash")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("validator_hash");
+
+                    b.HasKey("Id")
+                        .HasName("pk_refresh_token");
+
+                    b.HasIndex("ReplacedByTokenId")
+                        .HasDatabaseName("ix_refresh_token_replaced_by_token_id");
+
+                    b.HasIndex("Selector")
+                        .IsUnique()
+                        .HasDatabaseName("ix_refresh_token_selector");
+
+                    b.HasIndex("SessionId")
+                        .HasDatabaseName("ix_refresh_token_session_id");
+
+                    b.ToTable("refresh_token", "identity");
                 });
 
             modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.Role", b =>
@@ -1061,6 +1355,21 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<int>("AccessFailedCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("access_failed_count");
+
+                    b.Property<DateTime?>("ActivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("activated_at");
+
+                    b.Property<Guid>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrency_stamp");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -1071,18 +1380,35 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(150)")
                         .HasColumnName("email");
 
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_verified_at");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)")
                         .HasColumnName("full_name");
 
-                    b.Property<bool?>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_login_at");
+
+                    b.Property<DateTime?>("LockoutEndAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lockout_end_at");
+
+                    b.Property<string>("NormalizedEmail")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("normalized_email");
+
+                    b.Property<DateTime?>("PasswordChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_changed_at");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("password_hash");
 
@@ -1090,6 +1416,16 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("phone_number");
+
+                    b.Property<Guid>("SecurityStamp")
+                        .HasColumnType("uuid")
+                        .HasColumnName("security_stamp");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -1103,13 +1439,13 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_user");
 
-                    b.HasIndex("Email")
+                    b.HasIndex("NormalizedEmail")
                         .IsUnique()
-                        .HasDatabaseName("ix_user_email");
+                        .HasDatabaseName("ux_user_normalized_email");
 
                     b.HasIndex("UserCode")
                         .IsUnique()
-                        .HasDatabaseName("ix_user_user_code");
+                        .HasDatabaseName("ux_user_user_code");
 
                     b.ToTable("user", "identity");
                 });
@@ -2016,16 +2352,46 @@ namespace UGTM.Database.Migrations.Migrations
                     b.Navigation("Summary");
                 });
 
-            modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.AuditLog", b =>
+            modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.AuthenticationSession", b =>
                 {
                     b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_audit_log_users_user_id");
+                        .HasConstraintName("fk_authentication_session_user_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.OneTimeChallenge", b =>
+                {
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_one_time_challenge_user_user_id");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.RefreshToken", null)
+                        .WithMany()
+                        .HasForeignKey("ReplacedByTokenId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_refresh_token_refresh_token_replaced_by_token_id");
+
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.AuthenticationSession", "Session")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_refresh_token_authentication_session_session_id");
+
+                    b.Navigation("Session");
                 });
 
             modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.RolePermission", b =>
@@ -2306,6 +2672,11 @@ namespace UGTM.Database.Migrations.Migrations
             modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.ScoreSummary", b =>
                 {
                     b.Navigation("Components");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.AuthenticationSession", b =>
+                {
+                    b.Navigation("RefreshTokens");
                 });
 
             modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.Permission", b =>

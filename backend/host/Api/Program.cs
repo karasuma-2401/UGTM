@@ -13,7 +13,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                 ?? ["http://localhost:5173"])
             .AllowAnyHeader()
-            .AllowAnyMethod());
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 // swagger
@@ -43,6 +44,10 @@ builder.Services.AddUgtmModules(builder.Configuration);
 var app = builder.Build();
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseHttpsRedirection();
+app.UseCors(FrontendCorsPolicy);
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
@@ -53,9 +58,6 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "UGTM API v1");
     });
 }
-
-app.UseHttpsRedirection();
-app.UseCors(FrontendCorsPolicy);
 
 app.MapUgtmModules();
 

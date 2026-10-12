@@ -8,9 +8,6 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 {
     public void Configure(EntityTypeBuilder<AuditLog> builder)
     {
-        builder.HasIndex(x => x.UserId)
-            .HasDatabaseName("ix_audit_log_user_id");
-
         builder.ToTable("audit_log", "identity");
 
         builder.HasKey(x => x.Id);
@@ -18,31 +15,51 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.Property(x => x.Id)
             .ValueGeneratedOnAdd();
 
+        builder.Property(x => x.ActorUserId);
+
+        builder.Property(x => x.ActorSessionId);
+
+        builder.Property(x => x.TargetType)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(x => x.TargetId)
+            .HasMaxLength(100)
+            .IsRequired();
+
         builder.Property(x => x.Action)
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.Property(x => x.EntityType)
+        builder.Property(x => x.Outcome)
             .HasMaxLength(50)
             .IsRequired();
 
-        builder.Property(x => x.EntityId)
+        builder.Property(x => x.ReasonCode)
+            .HasMaxLength(100)
+            .IsRequired(false);
+
+        builder.Property(x => x.RequestId)
             .HasMaxLength(100)
             .IsRequired();
 
-        builder.Property(x => x.OldData)
-            .HasColumnType("text");
-
-        builder.Property(x => x.NewData)
-            .HasColumnType("text");
+        builder.Property(x => x.MetadataJson)
+            .HasColumnType("jsonb")
+            .IsRequired(false);
 
         builder.Property(x => x.Timestamp)
             .IsRequired();
 
-        builder.HasOne(x => x.User)
-            .WithMany()
-            .HasForeignKey(x => x.UserId)
-            .HasConstraintName("fk_audit_log_users_user_id")
-            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(x => x.ActorUserId)
+            .HasDatabaseName("ix_audit_log_actor_user_id");
+
+        builder.HasIndex(x => x.ActorSessionId)
+            .HasDatabaseName("ix_audit_log_actor_session_id");
+
+        builder.HasIndex(x => x.Timestamp)
+            .HasDatabaseName("ix_audit_log_timestamp");
+
+        builder.HasIndex(x => x.RequestId)
+            .HasDatabaseName("ix_audit_log_request_id");
     }
 }

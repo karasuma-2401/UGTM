@@ -1,11 +1,31 @@
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Modules.Identity.Infrastructure.Persistence;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using UGTM.BuildingBlocks.Application;
+using UGTM.Modules.Identity.Application.Activation;
+using UGTM.Modules.Identity.Application.Authentication.Login;
+using UGTM.Modules.Identity.Application.Authentication.Logout;
+using UGTM.Modules.Identity.Application.Authentication.RefreshSession;
+using UGTM.Modules.Identity.Application.Common;
+using UGTM.Modules.Identity.Application.Notifications;
+using UGTM.Modules.Identity.Application.Persistence;
+using UGTM.Modules.Identity.Application.Profiles;
+using UGTM.Modules.Identity.Application.Provisioning;
+using UGTM.Modules.Identity.Application.Recovery;
+using UGTM.Modules.Identity.Application.Security;
+using UGTM.Modules.Identity.Domain.Repositories;
+using UGTM.Modules.Identity.Infrastructure.Authentication;
+using UGTM.Modules.Identity.Infrastructure.Endpoints;
+using UGTM.Modules.Identity.Infrastructure.Notifications;
+using UGTM.Modules.Identity.Infrastructure.Persistence.Repositories;
 
 namespace UGTM.Modules.Identity.Infrastructure;
 
@@ -16,10 +36,118 @@ public sealed class IdentityModule : IModule
     public void RegisterModule(IServiceCollection services, IConfiguration configuration)
     {
         services.AddModuleDbContext<IdentityDbContext>(configuration);
+        services.AddLogging();
+        services.AddRouting();
+        services.AddDataProtection();
+        services.AddHttpContextAccessor();
+        services.AddAntiforgery(options =>
+        {
+            options.HeaderName = "X-CSRF-TOKEN";
+            options.Cookie.Name = "__Host-ugtm-csrf";
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.Cookie.SameSite = SameSiteMode.Strict;
+            options.Cookie.Path = "/";
+        });
+
+        services.AddOptions<IdentitySecurityPolicy>()
+            .Bind(configuration.GetSection("Identity:Security"))
+            .Validate(
+                policy => policy.MaxFailedLoginAttempts > 0
+                          && policy.ChallengeMaxAttempts > 0
+                          && policy.LockoutDuration > TimeSpan.Zero
+                          && policy.SessionIdleLifetime > TimeSpan.Zero
+                          && policy.SessionAbsoluteLifetime > policy.SessionIdleLifetime
+                          && policy.ActivationLifetime > TimeSpan.Zero
+                          && policy.RecoveryOtpLifetime > TimeSpan.Zero
+                          && policy.ResetGrantLifetime > TimeSpan.Zero,
+                "Identity security lifetimes and attempt limits must be positive and consistent.")
+            .ValidateOnStart();
+        services.AddSingleton(provider => provider
+            .GetRequiredService<IOptions<IdentitySecurityPolicy>>().Value);
+
+        services.AddOptions<JwtOptions>()
+            .Bind(configuration.GetSection(JwtOptions.SectionName))
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.Issuer)
+                           && !string.IsNullOrWhiteSpace(options.Audience)
+                           && !string.IsNullOrWhiteSpace(options.PrivateKeyPath)
+                           && !string.IsNullOrWhiteSpace(options.KeyId)
+                           && options.AccessTokenMinutes > 0,
+                "JWT issuer, audience, private key path, key ID and lifetime are required.")
+            .ValidateOnStart();
+        services.AddSingleton(provider => provider
+            .GetRequiredService<IOptions<JwtOptions>>().Value);
+        services.AddSingleton<JwtSigningKeyProvider>();
+        services.AddOptions<IdentityEmailOptions>()
+            .Bind(configuration.GetSection(IdentityEmailOptions.SectionName))
+            .Validate(
+                options => options.PublicWebBaseUrl is { IsAbsoluteUri: true }
+                           && options.PublicWebBaseUrl.Scheme is "https" or "http",
+                "Identity email public web base URL must be an absolute HTTP(S) URL.")
+            .ValidateOnStart();
+
+        services.AddScoped<IClock, SystemClock>();
+        services.AddScoped<IPasswordService, AspNetPasswordService>();
+        services.AddScoped<IPasswordPolicy, PasswordPolicy>();
+        services.AddSingleton<IOpaqueTokenService, OpaqueTokenService>();
+        services.AddScoped<IAccessTokenService, JwtAccessTokenService>();
+        services.AddScoped<IIdentityUnitOfWork, IdentityUnitOfWork>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAuthenticationSessionRepository, AuthenticationSessionRepository>();
+        services.AddScoped<IOneTimeChallengeRepository, OneTimeChallengeRepository>();
+        services.AddScoped<IUserProfileReader, UserProfileReader>();
+        services.AddScoped<IIdentityEmailOutbox, IdentityEmailOutbox>();
+        services.AddScoped<RefreshCookieService>();
+        services.AddScoped<SessionValidator>();
+
+        services.AddScoped<ProvisioningStudentAccountHandler>();
+        services.AddScoped<ValidateActivationHandler>();
+        services.AddScoped<CompleteActivationHandler>();
+        services.AddScoped<ResendActivationHandler>();
+        services.AddScoped<LoginHandler>();
+        services.AddScoped<RefreshSessionHandler>();
+        services.AddScoped<LogoutHandler>();
+        services.AddScoped<StartPasswordRecoveryHandler>();
+        services.AddScoped<VerifyRecoveryOtpHandler>();
+        services.AddScoped<ResetPasswordHandler>();
+
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer();
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<JwtSigningKeyProvider, IOptions<JwtOptions>>((options, keys, configured) =>
+            {
+                var jwtOptions = configured.Value;
+                options.MapInboundClaims = false;
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtOptions.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = jwtOptions.Audience,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = keys.Key,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero,
+                    NameClaimType = "sub",
+                    RoleClaimType = ClaimTypes.Role
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = context => context.HttpContext
+                        .RequestServices
+                        .GetRequiredService<SessionValidator>()
+                        .ValidateAsync(context)
+                };
+            });
+        services.AddAuthorization();
+        services.AddHostedService<IdentityOutboxProcessor>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapIdentityAuthEndpoints();
+
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))

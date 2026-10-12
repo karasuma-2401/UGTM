@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
@@ -43,6 +44,7 @@ namespace UGTM.BuildingBlocks.Infrastructure.Middlewares
 
             var (statusCode, title) = exception switch
             {
+                AntiforgeryValidationException => (HttpStatusCode.BadRequest, "Invalid CSRF Token"),
                 KeyNotFoundException => (HttpStatusCode.NotFound, "Resource Not Found"),
                 ArgumentException or InvalidOperationException => (HttpStatusCode.BadRequest, "Bad Request"),
                 UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized"),

@@ -14,6 +14,10 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<User> Users => Set<User>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
+    public DbSet<AuthenticationSession> AuthenticationSessions => Set<AuthenticationSession>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<OneTimeChallenge> OneTimeChallenges => Set<OneTimeChallenge>();
+    public DbSet<IdentityOutboxMessage> IdentityOutboxMessages => Set<IdentityOutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
