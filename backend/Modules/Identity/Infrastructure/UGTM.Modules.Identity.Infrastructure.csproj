@@ -6,4 +6,9 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Infrastructure\UGTM.BuildingBlocks.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.12" />
+  </ItemGroup>
+
 </Project>
