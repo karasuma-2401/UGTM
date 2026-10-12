@@ -4,7 +4,7 @@ public interface IIdentityUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
     
-    Task<TResult> ExecuteInTransaction<TResult>(
+    Task<TResult> ExecuteInTransactionAsync<TResult>(
         Func<CancellationToken, Task<TResult>> operation,
         CancellationToken cancellationToken);
 }

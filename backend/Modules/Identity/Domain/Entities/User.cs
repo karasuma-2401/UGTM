@@ -57,7 +57,7 @@ public sealed class User: AggregateRoot<Guid>
     
     public ICollection<UserRole> UserRoles { get; private set; } = [];
 
-    public static User UserProvisionStudent(
+    public static User ProvisionStudent(
         Guid id,
         string email,
         string normalizedEmail,

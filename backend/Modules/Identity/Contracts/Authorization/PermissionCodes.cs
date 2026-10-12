@@ -1,6 +1,8 @@
 namespace UGTM.Modules.Identity.Contracts.Authorization;
 
-public class PermissionCodes
+public static class PermissionCodes
 {
-    
+    public const string IdentityUsersRead = "identity.users.read";
+    public const string IdentityUsersManage = "identity.users.manage";
+    public const string IdentitySessionsRevoke = "identity.sessions.revoke";
 }
