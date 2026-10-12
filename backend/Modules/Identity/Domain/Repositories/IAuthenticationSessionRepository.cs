@@ -11,6 +11,9 @@ public interface IAuthenticationSessionRepository
     Task<AuthenticationSession?> GetSessionAsync(
         string selector,
         CancellationToken cancellationToken);
+    Task<RefreshToken?> GetRefreshTokenForUpdateAsync(
+        string selector,
+        CancellationToken cancellationToken);
     Task<IReadOnlyList<AuthenticationSession>> GetActiveSessionsAsync(
         Guid userId,
         DateTime now,

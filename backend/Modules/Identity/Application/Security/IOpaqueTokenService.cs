@@ -7,7 +7,7 @@ public sealed record OpaqueToken(
 
 public sealed record NumericCode(
     string Selector,
-    string code,
+    string Code,
     byte[] SecretHash);
 
 public interface IOpaqueTokenService

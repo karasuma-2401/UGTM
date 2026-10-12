@@ -6,12 +6,4 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\Application\UGTM.BuildingBlocks.Application.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Authentication\ChangePassword\" />
-    <Folder Include="Authentication\GetCurrentUser\" />
-    <Folder Include="Authentication\Login\" />
-    <Folder Include="Authentication\Logout\" />
-    <Folder Include="Authentication\RefreshSession\" />
-  </ItemGroup>
-
 </Project>
