@@ -51,6 +51,24 @@ public sealed class AuthorizationTests
     }
 
     [Fact]
+    public async Task Permission_handler_allows_admin_role_without_permission_claim()
+    {
+        var requirement = new PermissionRequirement("identity.users.manage");
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.Role, "Admin")
+        ], "Bearer"));
+        var context = new AuthorizationHandlerContext(
+            [requirement],
+            principal,
+            resource: null);
+
+        await new PermissionAuthorizationHandler().HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+    }
+
+    [Fact]
     public async Task Permission_policy_provider_builds_authenticated_dynamic_policy()
     {
         var provider = new PermissionPolicyProvider(

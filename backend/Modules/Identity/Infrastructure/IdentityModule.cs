@@ -25,6 +25,10 @@ using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Application.Provisioning;
 using UGTM.Modules.Identity.Application.Recovery;
 using UGTM.Modules.Identity.Application.Security;
+using UGTM.Modules.Identity.Application.Users.CreateUser;
+using UGTM.Modules.Identity.Application.Users.GetUsers;
+using UGTM.Modules.Identity.Application.Users.UpdateUser;
+using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Domain.Repositories;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
@@ -119,6 +123,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IAuthenticationSessionRepository, AuthenticationSessionRepository>();
         services.AddScoped<IOneTimeChallengeRepository, OneTimeChallengeRepository>();
         services.AddScoped<IUserProfileReader, UserProfileReader>();
+        services.AddScoped<IUserQueryReader, UserQueryReader>();
         services.AddScoped<IIdentityEmailOutbox, IdentityEmailOutbox>();
         services.AddScoped<RefreshCookieService>();
         services.AddScoped<SessionValidator>();
@@ -136,6 +141,10 @@ public sealed class IdentityModule : IModule
         services.AddScoped<StartPasswordRecoveryHandler>();
         services.AddScoped<VerifyRecoveryOtpHandler>();
         services.AddScoped<ResetPasswordHandler>();
+        services.AddScoped<GetUsersHandler>();
+        services.AddScoped<CreateUserHandler>();
+        services.AddScoped<UpdateUserHandler>();
+        services.AddScoped<UpdateUserStatusHandler>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
@@ -174,6 +183,7 @@ public sealed class IdentityModule : IModule
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapIdentityAuthEndpoints();
+        endpoints.MapIdentityUserEndpoints();
 
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
