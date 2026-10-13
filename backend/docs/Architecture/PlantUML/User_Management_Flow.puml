@@ -1,0 +1,58 @@
+@startuml User_Management_Flow
+skinparam shadowing false
+autonumber
+title UGTM — Luồng Quản lý Người dùng & Thu hồi phiên thời gian thực
+
+actor "Quản trị viên (Admin)" as Admin
+boundary "Frontend (Admin Portal)" as FE
+control "User Management API" as Api
+database "PostgreSQL\n(identity schema)" as DB
+control "Outbox Processor" as Outbox
+boundary "Hệ thống Email (SMTP/Mailpit)" as Mail
+actor "Người dùng / Giảng viên" as TargetUser
+
+== 1. Luồng Tạo người dùng mới và kích hoạt qua Magic Link ==
+
+Admin -> FE : Nhập email, họ tên, vai trò (không nhập mật khẩu)
+FE -> Api : POST /api/users\nAuthorization: Bearer <AdminToken>\n{ email, fullName, roles: ["Lecturer"] }
+Api -> DB : Kiểm tra trùng email, mã người dùng
+Api -> DB : Lưu User (Status: PendingActivation) trong 1 Transaction\n+ Tạo OneTimeChallenge (24h)\n+ Ghi message vào identity.outbox_message
+Api --> FE : 200 OK + UserSummaryDto
+
+Outbox -> DB : Quét outbox bằng FOR UPDATE SKIP LOCKED
+Outbox -> Mail : Gửi email kích hoạt (${PublicWebBaseUrl}/activate#token=...)
+Mail --> TargetUser : Email kèm link kích hoạt
+
+TargetUser -> FE : Nhấn link kích hoạt
+FE -> Api : POST /api/identity/auth/activation/complete\n{ token, password }
+Api -> DB : Băm mật khẩu, chuyển Status -> Active\nĐánh dấu consumed challenge
+Api --> FE : 200 OK (Kích hoạt thành công)
+
+== 2. Luồng Khóa tài khoản & Ngắt phiên thời gian thực (Zero-Trust Session Invalidation) ==
+
+TargetUser -> Api : Gửi request nghiệp vụ có kèm Bearer <JWT>
+Api -> DB : SessionValidator kiểm tra User.SecurityStamp & Status
+DB --> Api : Khớp SecurityStamp & Status = Active
+Api --> TargetUser : 200 OK (Thực thi nghiệp vụ thành công)
+
+... Quản trị viên quyết định khóa tài khoản ...
+
+Admin -> FE : Chọn khóa tài khoản (Suspend / Disable)
+FE -> Api : PATCH /api/users/{id}/status\nAuthorization: Bearer <AdminToken>\n{ status: "Suspended" }
+Api -> DB : user.Suspend() -> Đổi Status sang Suspended\n+ Tự động xoay SecurityStamp = Guid.NewGuid()
+Api --> FE : 200 OK (Đã cập nhật trạng thái)
+
+... Ngay ở request tiếp theo của người dùng bị khóa (dù JWT 10 phút vẫn chưa hết hạn) ...
+
+TargetUser -> Api : Gửi request nghiệp vụ kèm Bearer <JWT> cũ
+Api -> DB : SessionValidator đối chiếu session snapshot với User.SecurityStamp hiện tại
+DB --> Api : LỆCH SecurityStamp và User.Status != Active
+Api --> TargetUser : 401 Unauthorized / 403 Forbidden (Phiên đã bị thu hồi ngay lập tức!)
+
+note over Api,DB
+Mọi thao tác đổi trạng thái (Suspend/Disable) hoặc cập nhật Roles
+đều xoay SecurityStamp trong DB. SessionValidator đảm bảo
+JWT token cũ mất hiệu lực tức thì mà không cần đợi token hết hạn.
+end note
+
+@enduml
