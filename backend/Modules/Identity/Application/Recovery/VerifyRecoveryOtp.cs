@@ -1,10 +1,4 @@
-using UGTM.BuildingBlocks.Domain;
-using UGTM.Modules.Identity.Application.Common;
-using UGTM.Modules.Identity.Application.Persistence;
-using UGTM.Modules.Identity.Application.Security;
 using UGTM.Modules.Identity.Domain.Entities;
-using UGTM.Modules.Identity.Domain.Enums;
-using UGTM.Modules.Identity.Domain.Repositories;
 
 namespace UGTM.Modules.Identity.Application.Recovery;
 

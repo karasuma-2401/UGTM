@@ -1,6 +1,3 @@
-using UGTM.Modules.AcademicPeriods.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using UGTM.Modules.AcademicPeriods.Domain.Enums;
 
 namespace UGTM.Modules.AcademicPeriods.Infrastructure.Persistence.Configurations;

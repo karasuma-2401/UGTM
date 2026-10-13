@@ -1,6 +1,6 @@
 # Use Case UGTM
 
-Nguồn nghiệp vụ: Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp vụ nhóm quản lý ngoài repo), chốt tháng 10/2026. Đây là yêu cầu cần triển khai; trạng thái source xem [Architecture.md](Architecture.md) và [DataModel.md](DataModel.md).
+Nguồn nghiệp vụ: Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp vụ nhóm quản lý ngoài repo), chốt tháng 10/2026. Đây là yêu cầu cần triển khai; trạng thái source xem [Architecture.md](../backend/docs/Architecture/Architecture.md) và [DataModel.md](DataModel.md).
 
 Các đặc tả dưới đây dựa trên mục 2.3.2 của bản final, bổ sung các quy tắc chấm điểm nhóm xác nhận ngày 10/10/2026. Chỉ giữ đặc tả dạng bảng; toàn bộ sơ đồ Use Case được bỏ theo yêu cầu nhóm ngày 10/10/2026. Đăng nhập là điều kiện tiên quyết.
 

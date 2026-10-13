@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence.Repositories;

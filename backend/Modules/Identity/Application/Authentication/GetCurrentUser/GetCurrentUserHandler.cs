@@ -1,5 +1,3 @@
-using UGTM.BuildingBlocks.Domain;
-using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Contracts.Authorization;
 

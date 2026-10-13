@@ -1,7 +1,3 @@
-using UGTM.Modules.DefenseCouncil.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Persistence.Configurations;
 
 public class AdvisorEvaluationConfiguration : IEntityTypeConfiguration<AdvisorEvaluation>

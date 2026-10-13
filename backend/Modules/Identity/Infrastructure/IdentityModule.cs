@@ -178,6 +178,11 @@ public sealed class IdentityModule : IModule
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
+            .WithSummary("Kiểm tra module Identity đang hoạt động")
+            .WithDescription("""
+                Không cần xác thực hoặc body. Trả 200 với module Identity và status ok khi endpoint có thể phục vụ request.
+                Endpoint này không kiểm tra kết nối database, SMTP hoặc các dịch vụ phụ trợ.
+                """)
             .WithName($"{Name}.Ping");
     }
 }

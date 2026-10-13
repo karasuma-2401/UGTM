@@ -1,0 +1,56 @@
+@startuml Security_Authentication_Flow
+skinparam shadowing false
+autonumber
+title UGTM — Luồng đăng nhập và làm mới phiên hiện tại
+
+actor "Người dùng" as User
+boundary "Frontend" as FE
+control "Identity API" as Auth
+database "PostgreSQL\nidentity schema" as DB
+
+User -> FE : Nhập email/MSSV và mật khẩu
+FE -> Auth : GET /api/identity/auth/csrf\n(credentials: include)
+Auth --> FE : CSRF request token + HttpOnly cookie
+FE -> Auth : POST /login\nX-CSRF-TOKEN + credentials
+Auth -> DB : Kiểm tra user, lockout và password hash
+
+alt Không hợp lệ
+  Auth --> FE : 401/403/429 + Identity error code
+else Hợp lệ
+  Auth -> DB : Tạo session + refresh token hash
+  Auth --> FE : JWT + profile + refresh HttpOnly cookie
+
+  FE -> Auth : API được bảo vệ\nAuthorization: Bearer <JWT>
+  Auth -> DB : Kiểm tra session, account status, security stamp
+  alt JWT hoặc session không hợp lệ
+    Auth --> FE : 401
+  else Hợp lệ
+    Auth --> FE : Kết quả nghiệp vụ
+  end
+
+  ... JWT hết hạn hoặc ứng dụng tải lại ...
+  FE -> Auth : GET /csrf
+  Auth --> FE : CSRF request token
+  FE -> Auth : POST /refresh\nX-CSRF-TOKEN + refresh cookie
+  Auth -> DB : Khóa token, kiểm tra phiên, rotate token
+  alt Refresh token không hợp lệ hoặc bị dùng lại
+    Auth -> DB : Revoke session nếu phát hiện reuse
+    Auth --> FE : 401 + xóa refresh cookie
+  else Hợp lệ
+    Auth --> FE : JWT mới + profile + refresh cookie mới
+  end
+end
+
+note over Auth,DB
+Access token ký RSA SHA-256, mặc định 10 phút.
+Session: idle 7 ngày, absolute 30 ngày.
+Raw refresh token chỉ nằm trong HttpOnly cookie;
+database lưu selector và hash của validator.
+end note
+
+note over FE,Auth
+Login, refresh và logout yêu cầu CSRF token.
+Activation/recovery dùng one-time challenge có hạn dùng.
+Google login và SSO chưa được triển khai.
+end note
+@enduml

@@ -1,6 +1,3 @@
-using UGTM.Modules.DefenseCouncil.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Persistence.Configurations;

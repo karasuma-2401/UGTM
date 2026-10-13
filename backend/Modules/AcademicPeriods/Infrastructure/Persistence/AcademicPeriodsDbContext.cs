@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
-using UGTM.Modules.AcademicPeriods.Domain.Entities;
 
 namespace UGTM.Modules.AcademicPeriods.Infrastructure.Persistence;
 

@@ -1,9 +1,9 @@
 @startuml MultiSchema_Database
-title UGTM — Một PostgreSQL database / 34 bảng nghiệp vụ / 6 schema
+title UGTM — Một PostgreSQL database / 38 bảng nghiệp vụ / 6 schema
 left to right direction
 skinparam shadowing false
 skinparam linetype ortho
-database "identity (6 bảng)\naudit_log\npermission\nrole\nrole_permission\nuser\nuser_role" as identity
+database "identity (10 bảng)\naudit_log\nauthentication_session\none_time_challenge\noutbox_message\npermission\nrefresh_token\nrole\nrole_permission\nuser\nuser_role" as identity
 database "academic (4 bảng)\nkltn_batch\nscore_component_config\nscore_weight_config\nstage" as academic
 database "topics (1 bảng)\ntopic" as topics
 database "thesis (10 bảng)\nfinal_report\nfinal_submission\nmidterm_report\nprogress_milestone\nprogress_report\nrename_request\nstudent_group\nstudent_group_member\nsubmission_file\nsyllabus" as thesis
@@ -18,5 +18,5 @@ thesis --> identity : 7 FK
 thesis --> topics : 1 FK
 topics --> academic : 1 FK
 topics --> identity : 1 FK
-note "6 DbContext runtime sở hữu từng schema; UGTMDbContext chỉ điều phối migration.\nCó 50 FK tổng cộng; chi tiết từng bảng/cột xem DataModel.md và DatabaseScript.txt.\nAudit ở identity; notification ở notifications; nhóm sinh viên ở thesis.\nSchema shared đã bỏ. Lịch sử EF nằm ở public, ngoài 6 schema nghiệp vụ.\nEntityId của tệp và EvaluationId của chi tiết phiếu chưa có FK tới hồ sơ/phiếu." as N
+note "6 DbContext runtime sở hữu từng schema; UGTMDbContext chỉ điều phối migration.\nCó 53 FK tổng cộng; chi tiết từng bảng/cột xem DataModel.md và DatabaseScript.txt.\nAuth session/challenge/outbox ở identity; notification nghiệp vụ ở notifications; nhóm sinh viên ở thesis.\nSchema shared đã bỏ. Lịch sử EF nằm ở public, ngoài 6 schema nghiệp vụ.\nEntityId của tệp và EvaluationId của chi tiết phiếu chưa có FK tới hồ sơ/phiếu." as N
 @enduml

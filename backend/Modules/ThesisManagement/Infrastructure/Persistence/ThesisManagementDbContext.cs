@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
-using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence;

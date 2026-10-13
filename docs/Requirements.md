@@ -1,6 +1,6 @@
 # Đặc tả yêu cầu UGTM
 
-Nguồn nghiệp vụ: Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp vụ nhóm quản lý ngoài repo), chốt tháng 10/2026. Đây là yêu cầu cần triển khai; trạng thái source xem [Architecture.md](Architecture.md) và [DataModel.md](DataModel.md).
+Nguồn nghiệp vụ: Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp vụ nhóm quản lý ngoài repo), chốt tháng 10/2026. Đây là yêu cầu cần triển khai; trạng thái source xem [Architecture.md](../backend/docs/Architecture/Architecture.md) và [DataModel.md](DataModel.md).
 
 ## 1. Phạm vi và quy trình 21 tuần
 
@@ -425,7 +425,7 @@ Mã FR được giữ theo báo cáo để truy vết với Use Case và kiểm 
 
 ### Đối chiếu yêu cầu kỹ thuật
 
-Các câu về SQL Server, DbContext riêng mỗi module và không có FK liên module là thiết kế trong báo cáo, chưa phản ánh code. Theo quyết định của nhóm ngày 10/10/2026, docs kiến trúc lấy source hiện tại làm chuẩn: PostgreSQL, một `UGTMDbContext`, 6 schema và FK liên schema. Chi tiết khác biệt ở [Architecture.md](Architecture.md).
+Các câu về SQL Server, DbContext riêng mỗi module và không có FK liên module là thiết kế trong báo cáo, chưa phản ánh code. Theo quyết định của nhóm ngày 10/10/2026, docs kiến trúc lấy source hiện tại làm chuẩn: PostgreSQL, một `UGTMDbContext`, 6 schema và FK liên schema. Chi tiết khác biệt ở [Architecture.md](../backend/docs/Architecture/Architecture.md).
 
 ## 6. Quy tắc diễn giải và giới hạn
 
@@ -476,4 +476,4 @@ Ví dụ không đặt quy tắc làm tròn. Điểm tham chiếu để phát hi
 
 ## 7. Tài liệu liên quan
 
-[Use Case](UseCases.md) · [Luồng dữ liệu](DataFlows.md) · [Tuần tự](Sequences.md) · [Sitemap](SITEMAP.md) · [Kiến trúc](Architecture.md) · [Dữ liệu](DataModel.md).
+[Use Case](UseCases.md) · [Luồng dữ liệu](DataFlows.md) · [Tuần tự](../backend/docs/Architecture/Sequences.md) · [Kiến trúc](../backend/docs/Architecture/Architecture.md) · [Dữ liệu](DataModel.md).

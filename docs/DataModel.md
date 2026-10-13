@@ -1,18 +1,18 @@
 # Mô hình dữ liệu UGTM
 
-Đối chiếu source ngày 10/10/2026. Nghiệp vụ theo [Requirements.md](Requirements.md); cấu trúc dưới đây lấy từ metadata mô hình EF Core, không suy diễn từ sơ đồ kiến trúc cũ trong Word.
+Đối chiếu source ngày 13/10/2026. Nghiệp vụ theo [Requirements.md](Requirements.md); cấu trúc dưới đây lấy từ metadata mô hình EF Core, không suy diễn từ sơ đồ kiến trúc cũ trong Word.
 
 ## 1. Nguồn chuẩn
 
-Sáu DbContext runtime, mỗi context chỉ có entity/schema của module mình; [UGTMDbContext](../backend/Database.Migrations/UGTMDbContext.cs) chỉ tổng hợp mô hình để tạo migration và không được đăng ký DI runtime. Cấu trúc vật lý gồm **34 bảng nghiệp vụ, 6 schema, 50 FK vật lý**. Quy ước snake_case; enum lưu string `varchar(50)`, không phải PostgreSQL enum. Guid dùng cho phần lớn ID; Role/Permission dùng int; UserRole/RolePermission dùng khóa ghép. Bảng lịch sử `public.__ef_migrations_history` không tính trong 34 bảng nghiệp vụ; public là schema kỹ thuật ngoài 6 schema nghiệp vụ.
+Sáu DbContext runtime, mỗi context chỉ có entity/schema của module mình; [UGTMDbContext](../backend/Database.Migrations/UGTMDbContext.cs) chỉ tổng hợp mô hình để tạo migration và không được đăng ký DI runtime. Cấu trúc vật lý gồm **38 bảng nghiệp vụ, 6 schema, 53 FK vật lý**. Quy ước snake_case; enum lưu string `varchar(50)`, không phải PostgreSQL enum. Guid dùng cho phần lớn ID; Role/Permission dùng int; UserRole/RolePermission dùng khóa ghép. Bảng lịch sử `public.__ef_migrations_history` không tính trong 38 bảng nghiệp vụ; public là schema kỹ thuật ngoài 6 schema nghiệp vụ.
 
 Nguồn thực thi: [EF configurations tại từng module](../backend/Modules), [migrations](../backend/Database.Migrations/Migrations), [snapshot](../backend/Database.Migrations/Migrations/UGTMDbContextModelSnapshot.cs). [DatabaseScript.txt](DatabaseScript.txt) là DBML đồng bộ theo mô hình này để xem bằng dbdiagram; không chứa comment dư thừa và không phải SQL để update Neon. PK, nullability, kiểu PostgreSQL, SQL default, index, check và FK đều được lấy từ EF metadata. Seed dữ liệu và chi tiết provider vẫn xem migration. Cú pháp theo [DBML chính thức](https://dbml.dbdiagram.io/docs/).
 
-[Sơ đồ schema](PlantUML/MultiSchema_Database.puml); [quyền sở hữu bảng/module và hướng triển khai](Architecture.md#6-migrations-và-neon). Nhóm sinh viên nằm ở thesis; identity giữ audit quản trị; notification có schema notifications riêng. Schema shared đã được loại bỏ. Sáu schema được tổ chức theo chủ sở hữu dữ liệu, không dùng số lượng schema để chứng minh bounded context DDD.
+[Sơ đồ schema](../backend/docs/Architecture/PlantUML/MultiSchema_Database.puml); [quyền sở hữu bảng/module và hướng triển khai](../backend/docs/Architecture/Architecture.md#6-migrations-và-neon). Nhóm sinh viên nằm ở thesis; identity giữ audit quản trị; notification có schema notifications riêng. Schema shared đã được loại bỏ. Sáu schema được tổ chức theo chủ sở hữu dữ liệu, không dùng số lượng schema để chứng minh bounded context DDD.
 
 | Schema | Số bảng | Entity |
 | --- | --- | --- |
-| identity | 6 | AuditLog, Permission, Role, RolePermission, User, UserRole |
+| identity | 10 | AuditLog, AuthenticationSession, IdentityOutboxMessage, OneTimeChallenge, Permission, RefreshToken, Role, RolePermission, User, UserRole |
 | academic | 4 | KltnBatch, ScoreComponentConfig, ScoreWeightConfig, Stage |
 | topics | 1 | Topic |
 | thesis | 10 | FinalReport, FinalSubmission, MidtermReport, ProgressMilestone, ProgressReport, RenameRequest, StudentGroup, StudentGroupMember, SubmissionFile, Syllabus |
@@ -23,7 +23,7 @@ Nguồn thực thi: [EF configurations tại từng module](../backend/Modules),
 
 - `ScoreComponentConfig` lưu nguồn/đầu điểm, trường hợp áp dụng, trọng số, điểm sàn và điều kiện duyệt; `ScoreWeightConfig` có phương thức tính và phiên bản. Không dùng RoleId để phân biệt GVHD/GVPB. `RoleScoreWeight` cũ đã được loại bằng EncapsulateModulePersistence vì đầu điểm nghiệp vụ được cấu hình qua ScoreComponentConfig, không gắn theo role hệ thống.
 - `ScoreSummaryComponent` lưu điểm/trọng số/nguồn và cờ loại; `ScoreSummary` có tổng trọng số, thời điểm tính và snapshot cấu hình. Snapshot cần được use case ghi cùng kết quả, chưa có API lưu tự động.
-- Các nguồn GVHD/GVPB/Hội đồng có cờ loại điểm và lý do; không tự loại điểm do cảnh báo sai biệt. Công thức chia 6/7 và loại cả hệ số đã được xây dựng trong Domain; xem [Architecture.md#6-migrations-và-neon](Architecture.md#6-migrations-và-neon).
+- Các nguồn GVHD/GVPB/Hội đồng có cờ loại điểm và lý do; không tự loại điểm do cảnh báo sai biệt. Công thức chia 6/7 và loại cả hệ số đã được xây dựng trong Domain; xem [Architecture.md#6-migrations-và-neon](../backend/docs/Architecture/Architecture.md#6-migrations-và-neon).
 - Giữa kỳ dùng AdvisorFeedback, kết luận tiếp tục/dừng, StopReason. `faculty_feedback` cũ được rename sang `advisor_feedback` để giữ dữ liệu; policy GVHD cần triển khai.
 - Phân công nhiều phản biện bằng thứ tự phân công; lưu riêng RevisionFeedback để API có thể công khai góp ý mà bảo mật điểm/phiếu.
 - Lưu chiểu có metadata Việt/Anh, phiên bản, GVHD xác nhận và phản hồi Khoa; biên bản có người cấp mở khóa.
@@ -46,7 +46,7 @@ Những phần phải thiết kế tiếp trước API:
 | Quyết định loại điểm mới có cờ/lý do | Lưu người/thời điểm/bằng chứng kết luận và audit; kiểm tra quyền tại use case |
 | Mở khóa chưa có thời hạn/phạm vi | Chốt quy tắc cấp quyền và khóa lại, rồi bổ sung mô hình/policy phù hợp |
 | Điểm khi có phản biện thứ hai chưa có quy tắc chọn | Nhóm chốt cách kết luận; không mặc định lấy điểm cuối hay trung bình |
-| Auth, deadline, khóa điểm, lưu chiểu/công bố chưa có handler | Thực thi ở Application với transaction và policy; entity/enum không tự bảo đảm |
+| Deadline, khóa điểm, lưu chiểu/công bố chưa có handler | Thực thi ở Application với transaction và policy; entity/enum không tự bảo đảm |
 
 ## 4. Từ điển bảng hiện tại
 
@@ -401,17 +401,92 @@ Navigation: `Summary` → ScoreSummary.
 | Thuộc tính | Cột | Kiểu CLR | Kiểu PostgreSQL | Nullable | SQL default |
 | --- | --- | --- | --- | --- | --- |
 | Id | id | `Int64` | `bigint` | Không | — |
+| ActorSessionId | actor_session_id | `Guid?` | `uuid` | Có | — |
+| ActorUserId | actor_user_id | `Guid?` | `uuid` | Có | — |
 | Action | action | `String` | `character varying(100)` | Không | — |
-| EntityId | entity_id | `String` | `character varying(100)` | Không | — |
-| EntityType | entity_type | `String` | `character varying(50)` | Không | — |
-| NewData | new_data | `String` | `text` | Có | — |
-| OldData | old_data | `String` | `text` | Có | — |
+| MetadataJson | metadata_json | `String` | `jsonb` | Có | — |
+| Outcome | outcome | `String` | `character varying(50)` | Không | — |
+| ReasonCode | reason_code | `String` | `character varying(100)` | Có | — |
+| RequestId | request_id | `String` | `character varying(100)` | Không | — |
+| TargetId | target_id | `String` | `character varying(100)` | Không | — |
+| TargetType | target_type | `String` | `character varying(100)` | Không | — |
 | Timestamp | timestamp | `DateTime` | `timestamp with time zone` | Không | — |
-| UserId | user_id | `Guid` | `uuid` | Không | — |
 
 PK: `id`.
 
-Index: `ix_audit_log_user_id` (user_id).
+Index: `ix_audit_log_actor_session_id` (actor_session_id); `ix_audit_log_actor_user_id` (actor_user_id); `ix_audit_log_request_id` (request_id); `ix_audit_log_timestamp` (timestamp).
+
+### identity.authentication_session — AuthenticationSession
+
+[Entity](../backend/Modules/Identity/Domain/Entities/AuthenticationSession.cs) · [EF configuration](../backend/Modules/Identity/Infrastructure/Persistence/Configurations/AuthenticationSessionConfiguration.cs).
+
+| Thuộc tính | Cột | Kiểu CLR | Kiểu PostgreSQL | Nullable | SQL default |
+| --- | --- | --- | --- | --- | --- |
+| Id | id | `Guid` | `uuid` | Không | — |
+| UserId | user_id | `Guid` | `uuid` | Không | — |
+| CreatedAt | created_at | `DateTime` | `timestamp with time zone` | Không | — |
+| AuthenticatedAt | authenticated_at | `DateTime` | `timestamp with time zone` | Không | — |
+| LastSeenAt | last_seen_at | `DateTime` | `timestamp with time zone` | Không | — |
+| IdleExpiresAt | idle_expires_at | `DateTime` | `timestamp with time zone` | Không | — |
+| AbsoluteExpiresAt | absolute_expires_at | `DateTime` | `timestamp with time zone` | Không | — |
+| SecurityStampSnapshot | security_stamp_snapshot | `Guid` | `uuid` | Không | — |
+| RevokedAt | revoked_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| RevocationReason | revocation_reason | `SessionRevocationReason?` | `character varying(50)` | Có | — |
+| UserAgentSummary | user_agent_summary | `String` | `character varying(300)` | Có | — |
+| IpAddressHash | ip_address_hash | `String` | `character varying(128)` | Có | — |
+| ConcurrencyStamp | concurrency_stamp | `Guid` | `uuid` | Không | — |
+
+PK: `id`.
+
+Index: `ix_authentication_session_user_id_revoked_at_absolute_expires_` (user_id, revoked_at, absolute_expires_at).
+
+Navigation: `User` → User; `RefreshTokens` → RefreshToken[].
+
+### identity.outbox_message — IdentityOutboxMessage
+
+[Entity](../backend/Modules/Identity/Domain/Entities/IdentityOutboxMessage.cs) · [EF configuration](../backend/Modules/Identity/Infrastructure/Persistence/Configurations/IdentityOutboxMessageConfiguration.cs).
+
+| Thuộc tính | Cột | Kiểu CLR | Kiểu PostgreSQL | Nullable | SQL default |
+| --- | --- | --- | --- | --- | --- |
+| Id | id | `Guid` | `uuid` | Không | — |
+| Type | type | `String` | `character varying(100)` | Không | — |
+| ProtectedPayload | protected_payload | `String` | `text` | Không | — |
+| ProtectionPurpose | protection_purpose | `String` | `character varying(200)` | Không | — |
+| SchemaVersion | schema_version | `Int32` | `integer` | Không | — |
+| CreatedAt | created_at | `DateTime` | `timestamp with time zone` | Không | — |
+| ProcessedAt | processed_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| AttemptCount | attempt_count | `Int32` | `integer` | Không | — |
+| NextAttemptAt | next_attempt_at | `DateTime` | `timestamp with time zone` | Không | — |
+| LastError | last_error | `String` | `character varying(1000)` | Có | — |
+
+PK: `id`.
+
+Index: `ix_outbox_message_processed_at_next_attempt_at` (processed_at, next_attempt_at).
+
+### identity.one_time_challenge — OneTimeChallenge
+
+[Entity](../backend/Modules/Identity/Domain/Entities/OneTimeChallenge.cs) · [EF configuration](../backend/Modules/Identity/Infrastructure/Persistence/Configurations/OneTimeChallengeConfiguration.cs).
+
+| Thuộc tính | Cột | Kiểu CLR | Kiểu PostgreSQL | Nullable | SQL default |
+| --- | --- | --- | --- | --- | --- |
+| Id | id | `Guid` | `uuid` | Không | — |
+| UserId | user_id | `Guid` | `uuid` | Không | — |
+| Purpose | purpose | `ChallengePurpose` | `character varying(50)` | Không | — |
+| Selector | selector | `String` | `character varying(64)` | Không | — |
+| SecretHash | secret_hash | `Byte[]` | `bytea` | Không | — |
+| DestinationSnapshot | destination_snapshot | `String` | `character varying(150)` | Không | — |
+| CreatedAt | created_at | `DateTime` | `timestamp with time zone` | Không | — |
+| ExpiresAt | expires_at | `DateTime` | `timestamp with time zone` | Không | — |
+| ConsumedAt | consumed_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| InvalidatedAt | invalidated_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| AttemptCount | attempt_count | `Int32` | `integer` | Không | — |
+| MaxAttempts | max_attempts | `Int32` | `integer` | Không | — |
+| LastSentAt | last_sent_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| SendCount | send_count | `Int32` | `integer` | Không | — |
+
+PK: `id`.
+
+Index: `ix_one_time_challenge_selector` (selector) unique; `ix_one_time_challenge_user_id_purpose_expires_at` (user_id, purpose, expires_at).
 
 Navigation: `User` → User.
 
@@ -431,6 +506,29 @@ PK: `id`.
 Index: `ix_permission_permission_code` (permission_code) unique.
 
 Navigation: `RolePermissions` → RolePermission[].
+
+### identity.refresh_token — RefreshToken
+
+[Entity](../backend/Modules/Identity/Domain/Entities/RefreshToken.cs) · [EF configuration](../backend/Modules/Identity/Infrastructure/Persistence/Configurations/RefreshTokenConfiguration.cs).
+
+| Thuộc tính | Cột | Kiểu CLR | Kiểu PostgreSQL | Nullable | SQL default |
+| --- | --- | --- | --- | --- | --- |
+| Id | id | `Guid` | `uuid` | Không | — |
+| SessionId | session_id | `Guid` | `uuid` | Không | — |
+| Selector | selector | `String` | `character varying(64)` | Không | — |
+| ValidatorHash | validator_hash | `Byte[]` | `bytea` | Không | — |
+| CreatedAt | created_at | `DateTime` | `timestamp with time zone` | Không | — |
+| ExpiresAt | expires_at | `DateTime` | `timestamp with time zone` | Không | — |
+| ConsumedAt | consumed_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| ReplacedByTokenId | replaced_by_token_id | `Guid?` | `uuid` | Có | — |
+| RevokedAt | revoked_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| RevocationReason | revocation_reason | `SessionRevocationReason?` | `character varying(50)` | Có | — |
+
+PK: `id`.
+
+Index: `ix_refresh_token_replaced_by_token_id` (replaced_by_token_id); `ix_refresh_token_selector` (selector) unique; `ix_refresh_token_session_id` (session_id).
+
+Navigation: `Session` → AuthenticationSession.
 
 ### identity.role — Role
 
@@ -471,18 +569,27 @@ Navigation: `Permission` → Permission; `Role` → Role.
 | Thuộc tính | Cột | Kiểu CLR | Kiểu PostgreSQL | Nullable | SQL default |
 | --- | --- | --- | --- | --- | --- |
 | Id | id | `Guid` | `uuid` | Không | — |
+| AccessFailedCount | access_failed_count | `Int32` | `integer` | Không | 0 |
+| ActivatedAt | activated_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| ConcurrencyStamp | concurrency_stamp | `Guid` | `uuid` | Không | — |
 | CreatedAt | created_at | `DateTime` | `timestamp with time zone` | Không | — |
 | Email | email | `String` | `character varying(150)` | Không | — |
+| EmailVerifiedAt | email_verified_at | `DateTime?` | `timestamp with time zone` | Có | — |
 | FullName | full_name | `String` | `character varying(150)` | Không | — |
-| IsActive | is_active | `Boolean?` | `boolean` | Có | — |
-| PasswordHash | password_hash | `String` | `text` | Không | — |
+| LastLoginAt | last_login_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| LockoutEndAt | lockout_end_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| NormalizedEmail | normalized_email | `String` | `character varying(150)` | Không | — |
+| PasswordChangedAt | password_changed_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| PasswordHash | password_hash | `String` | `text` | Có | — |
 | PhoneNumber | phone_number | `String` | `character varying(20)` | Có | — |
+| SecurityStamp | security_stamp | `Guid` | `uuid` | Không | — |
+| Status | status | `AccountStatus` | `character varying(50)` | Không | — |
 | UpdatedAt | updated_at | `DateTime?` | `timestamp with time zone` | Có | — |
 | UserCode | user_code | `String` | `character varying(20)` | Có | — |
 
 PK: `id`.
 
-Index: `ix_user_email` (email) unique; `ix_user_user_code` (user_code) unique.
+Index: `ux_user_normalized_email` (normalized_email) unique; `ux_user_user_code` (user_code) unique.
 
 Navigation: `UserRoles` → UserRole[].
 
@@ -752,7 +859,7 @@ Index: `ix_topic_advisor_id` (advisor_id); `ix_topic_batch_id` (batch_id).
 
 Check: `ck_topic_student_number`: `student_number IS NULL OR student_number BETWEEN 1 AND 2`.
 
-## 5. 50 khóa ngoại vật lý
+## 5. 53 khóa ngoại vật lý
 
 | Bảng/cột nguồn | Bảng/cột đích | Quan hệ | ON DELETE |
 | --- | --- | --- | --- |
@@ -780,7 +887,10 @@ Check: `ck_topic_student_number`: `student_number IS NULL OR student_number BETW
 | councils.score_summary.group_id | thesis.student_group.id | 1–1 | cascade |
 | councils.score_summary.published_by | identity.user.id | N–1 | set null |
 | councils.score_summary_component.summary_id | councils.score_summary.id | N–1 | cascade |
-| identity.audit_log.user_id | identity.user.id | N–1 | restrict |
+| identity.authentication_session.user_id | identity.user.id | N–1 | restrict |
+| identity.one_time_challenge.user_id | identity.user.id | N–1 | cascade |
+| identity.refresh_token.replaced_by_token_id | identity.refresh_token.id | N–1 | restrict |
+| identity.refresh_token.session_id | identity.authentication_session.id | N–1 | cascade |
 | identity.role_permission.permission_id | identity.permission.id | N–1 | cascade |
 | identity.role_permission.role_id | identity.role.id | N–1 | cascade |
 | identity.user_role.role_id | identity.role.id | N–1 | cascade |
@@ -809,4 +919,4 @@ Check: `ck_topic_student_number`: `student_number IS NULL OR student_number BETW
 
 ## 6. Kết nối và migration
 
-Xem [Architecture.md#6-migrations-và-neon](Architecture.md#6-migrations-và-neon) để chạy List/Check/Script/Update bằng công cụ pin trong repo. Giữ InitialCreate đã áp dụng; AlignFinalReportFoundation nâng mô hình từ 33 lên 35 bảng; AssignSchemaOwnership chuyển bảng về chủ sở hữu và loại schema shared; EncapsulateModulePersistence loại role_score_weight, còn 34 bảng/50 FK. Việc chuyển entity/configuration về module không đổi các bảng/cột/FK còn lại. CSDL đã chạy bản cũ cần chuyển history một lần bằng MoveMigrationHistory.sql trước khi update; không cần bước này trên CSDL mới. API không tự migrate khi khởi động. Không chạy DatabaseScript.txt như SQL hoặc tạo schema song song với EF.
+Xem [Architecture.md#6-migrations-và-neon](../backend/docs/Architecture/Architecture.md#6-migrations-và-neon) để chạy List/Check/Script/Update bằng công cụ pin trong repo. Giữ các migration đã áp dụng; `CompleteIdentityAuthentication` nâng mô hình lên 38 bảng/53 FK và bổ sung dữ liệu phiên, token, challenge cùng email outbox. CSDL đã chạy bản cũ cần chuyển history một lần bằng `MoveMigrationHistory.sql` trước khi update; không cần bước này trên CSDL mới. API không tự migrate khi khởi động. Không chạy `DatabaseScript.txt` như SQL hoặc tạo schema song song với EF.
