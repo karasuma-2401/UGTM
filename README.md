@@ -79,6 +79,7 @@ Từ thư mục gốc:
 ```powershell
 Copy-Item .env.example .env
 # Điền DATABASE_CONNECTION_STRING trong .env.
+./scripts/GenerateDevelopmentJwtKey.ps1
 docker compose up -d backend mailpit minio redis rabbitmq
 ```
 
@@ -93,7 +94,7 @@ Chạy frontend bằng Vite như trên. `docker compose up -d` cũng khởi ch�
 | RabbitMQ management / AMQP | `http://localhost:15672` / `localhost:5672` |
 | Redis | `localhost:6379` |
 
-Backend đọc `Cors:AllowedOrigins`; Compose cấu hình origin 5173 và 3000. Chạy bằng Vite ngoài Compose có fallback origin 5173. Các dịch vụ phụ trợ khởi chạy không đồng nghĩa email/upload/event bus/cache đã hoạt động. Cấu hình tài khoản dịch vụ xem `.env.example`; không đưa credentials thật vào tài liệu.
+Backend đọc `Cors:AllowedOrigins`; Compose cấu hình origin 5173 và 3000. Chạy bằng Vite ngoài Compose có fallback origin 5173. Script tạo khóa RSA chỉ dùng cho môi trường phát triển và file PEM trong `secrets` đã được Git bỏ qua. Các dịch vụ phụ trợ khởi chạy không đồng nghĩa email/upload/event bus/cache đã hoạt động. Cấu hình tài khoản dịch vụ xem `.env.example`; không đưa credentials thật vào tài liệu.
 
 Dừng môi trường bằng `docker compose down`. File cấu hình production: [docker/docker-compose.prod.yml](docker/docker-compose.prod.yml).
 

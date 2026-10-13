@@ -2,6 +2,9 @@
 
 # Stage 1: Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+USER root
+RUN mkdir -p /var/lib/ugtm/data-protection-keys \
+    && chown -R $APP_UID:$APP_UID /var/lib/ugtm
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080

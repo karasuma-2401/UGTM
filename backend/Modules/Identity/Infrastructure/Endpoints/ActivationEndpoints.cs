@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using UGTM.Modules.Identity.Application.Activation;
+using UGTM.Modules.Identity.Infrastructure.RateLimiting;
 
 namespace UGTM.Modules.Identity.Infrastructure.Endpoints;
 
@@ -13,9 +14,15 @@ public static class ActivationEndpoints
 
     public static RouteGroupBuilder MapActivationEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("/activation/validate", ValidateAsync);
-        group.MapPost("/activation/complete", CompleteAsync);
-        group.MapPost("/activation/resend", ResendAsync);
+        group.MapPost("/activation/validate", ValidateAsync)
+            .AllowAnonymous()
+            .RequireRateLimiting(IdentityRateLimitPolicies.Activation);
+        group.MapPost("/activation/complete", CompleteAsync)
+            .AllowAnonymous()
+            .RequireRateLimiting(IdentityRateLimitPolicies.Activation);
+        group.MapPost("/activation/resend", ResendAsync)
+            .AllowAnonymous()
+            .RequireRateLimiting(IdentityRateLimitPolicies.Activation);
         return group;
     }
 

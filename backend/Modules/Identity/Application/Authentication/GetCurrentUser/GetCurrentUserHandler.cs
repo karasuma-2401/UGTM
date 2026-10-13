@@ -12,7 +12,8 @@ public sealed class GetCurrentUserHandler(
     public async Task<Result<UserProfileDto>> HandleAsync(
         CancellationToken cancellationToken)
     {
-        if (currentUser.UserId is not Guid userId)
+        if (!currentUser.IsAuthenticated
+            || currentUser.UserId is not Guid userId)
         {
             return Result.Failure<UserProfileDto>(IdentityErrors.InvalidSession);
         }

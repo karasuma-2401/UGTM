@@ -8,8 +8,22 @@ services:
       - ASPNETCORE_HTTP_PORTS=8080
       - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING}
       - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
-    ports:
-      - "5287:8080"
+      - Identity__Email__PublicWebBaseUrl=${APP_URL:-http://localhost}
+      - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
+      - Proxy__KnownProxies__0=172.29.0.10
+      - Proxy__KnownProxies__1=::ffff:172.29.0.10
+      - Notifications__Smtp__Host=${SMTP_HOST}
+      - Notifications__Smtp__Port=${SMTP_PORT:-587}
+      - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS}
+      - Notifications__Smtp__FromName=${SMTP_FROM_NAME:-UGTM}
+      - Notifications__Smtp__Username=${SMTP_USERNAME}
+      - Notifications__Smtp__Password=${SMTP_PASSWORD}
+      - Notifications__Smtp__UseStartTls=${SMTP_USE_START_TLS:-true}
+    expose:
+      - "8080"
+    volumes:
+      - data_protection_keys:/var/lib/ugtm/data-protection-keys
+      - ${JWT_PRIVATE_KEY_FILE:?JWT_PRIVATE_KEY_FILE must point to the RSA private PEM}:/run/secrets/ugtm-jwt-private.pem:ro
 
   frontend:
     image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-frontend:${IMAGE_TAG:-latest}
@@ -17,5 +31,17 @@ services:
     restart: always
     depends_on:
       - backend
+    networks:
+      default:
+        ipv4_address: 172.29.0.10
     ports:
       - "80:80"
+
+volumes:
+  data_protection_keys:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.29.0.0/24

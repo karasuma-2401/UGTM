@@ -21,9 +21,15 @@ public sealed class ChangePasswordHandler(
         ChangePasswordCommand command,
         CancellationToken cancellationToken)
     {
-        if (currentUser.UserId is not Guid userId)
+        if (!currentUser.IsAuthenticated
+            || currentUser.UserId is not Guid userId)
         {
             return Result.Failure(IdentityErrors.InvalidSession);
+        }
+
+        if (string.IsNullOrEmpty(command.CurrentPassword))
+        {
+            return Result.Failure(IdentityErrors.CurrentPasswordIncorrect);
         }
 
         var validation = passwordPolicy.Validate(command.NewPassword);

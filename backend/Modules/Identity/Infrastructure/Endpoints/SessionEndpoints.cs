@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Application.Authentication.Logout;
+using UGTM.Modules.Identity.Application.Authentication.GetCurrentUser;
 using UGTM.Modules.Identity.Application.Authentication.RefreshSession;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
@@ -15,10 +16,19 @@ public static class SessionEndpoints
 {
     public static RouteGroupBuilder MapSessionEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("/refresh", RefreshAsync);
-        group.MapPost("/logout", LogoutAsync);
+        group.MapGet("/me", GetCurrentUserAsync)
+            .RequireAuthorization();
+        group.MapPost("/refresh", RefreshAsync)
+            .AllowAnonymous();
+        group.MapPost("/logout", LogoutAsync)
+            .AllowAnonymous();
         return group;
     }
+
+    private static async Task<IResult> GetCurrentUserAsync(
+        GetCurrentUserHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> RefreshAsync(
         HttpContext context,

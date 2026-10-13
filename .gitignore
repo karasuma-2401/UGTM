@@ -37,6 +37,7 @@ x86/
 appsettings.*.local.json
 appsettings.Production.json
 secrets.json
+secrets/*.pem
 
 # Rider
 *.sln.iml

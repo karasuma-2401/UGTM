@@ -36,9 +36,18 @@ jobs:
 
       - name: Verify VPS Secrets
         id: check-secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
+          JWT_PRIVATE_KEY_PEM_BASE64: ${{ secrets.JWT_PRIVATE_KEY_PEM_BASE64 }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_FROM_ADDRESS: ${{ secrets.SMTP_FROM_ADDRESS }}
         run: |
-          if [ -z "${{ secrets.VPS_HOST }}" ] || [ -z "${{ secrets.VPS_SSH_KEY }}" ]; then
-            echo "VPS secrets (VPS_HOST, VPS_SSH_KEY) are not configured yet."
+          if [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ] || \
+             [ -z "$DATABASE_CONNECTION_STRING" ] || [ -z "$JWT_PRIVATE_KEY_PEM_BASE64" ] || \
+             [ -z "$SMTP_HOST" ] || [ -z "$SMTP_FROM_ADDRESS" ]; then
+            echo "One or more required deployment secrets are not configured."
             echo "configured=false" >> "$GITHUB_OUTPUT"
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
@@ -47,20 +56,33 @@ jobs:
       - name: Skip notification
         if: steps.check-secrets.outputs.configured == 'false'
         run: |
-          echo "::warning ::Deployment skipped because VPS_HOST or VPS_SSH_KEY is not set in GitHub Secrets."
-          echo "To enable auto-deployment, go to GitHub Repository -> Settings -> Secrets and variables -> Actions and add: VPS_HOST, VPS_USERNAME, VPS_SSH_KEY."
+          echo "::warning ::Deployment skipped because required secrets are missing."
+          echo "Configure VPS_HOST, VPS_SSH_KEY, DATABASE_CONNECTION_STRING, JWT_PRIVATE_KEY_PEM_BASE64, SMTP_HOST and SMTP_FROM_ADDRESS in GitHub Actions secrets."
 
       - name: Deploy to VPS via SSH
         if: steps.check-secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
+          APP_URL: ${{ secrets.APP_URL || 'http://localhost' }}
+          JWT_PRIVATE_KEY_PEM_BASE64: ${{ secrets.JWT_PRIVATE_KEY_PEM_BASE64 }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
+          SMTP_FROM_ADDRESS: ${{ secrets.SMTP_FROM_ADDRESS }}
+          SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME || 'UGTM' }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_USE_START_TLS: ${{ secrets.SMTP_USE_START_TLS || 'true' }}
+          DEPLOY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME || 'ubuntu' }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
+          envs: DATABASE_CONNECTION_STRING,APP_URL,JWT_PRIVATE_KEY_PEM_BASE64,SMTP_HOST,SMTP_PORT,SMTP_FROM_ADDRESS,SMTP_FROM_NAME,SMTP_USERNAME,SMTP_PASSWORD,SMTP_USE_START_TLS,DEPLOY_GITHUB_TOKEN
           script: |
             set -e
-            APP_DIR="~/ugtm"
+            APP_DIR="$HOME/ugtm"
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
@@ -82,8 +104,22 @@ jobs:
                   - ASPNETCORE_HTTP_PORTS=8080
                   - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING}
                   - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
-                ports:
-                  - "5287:8080"
+                  - Identity__Email__PublicWebBaseUrl=${APP_URL:-http://localhost}
+                  - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
+                  - Proxy__KnownProxies__0=172.29.0.10
+                  - Proxy__KnownProxies__1=::ffff:172.29.0.10
+                  - Notifications__Smtp__Host=${SMTP_HOST}
+                  - Notifications__Smtp__Port=${SMTP_PORT:-587}
+                  - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS}
+                  - Notifications__Smtp__FromName=${SMTP_FROM_NAME:-UGTM}
+                  - Notifications__Smtp__Username=${SMTP_USERNAME}
+                  - Notifications__Smtp__Password=${SMTP_PASSWORD}
+                  - Notifications__Smtp__UseStartTls=${SMTP_USE_START_TLS:-true}
+                expose:
+                  - "8080"
+                volumes:
+                  - data_protection_keys:/var/lib/ugtm/data-protection-keys
+                  - ${JWT_PRIVATE_KEY_FILE}:/run/secrets/ugtm-jwt-private.pem:ro
 
               frontend:
                 image: ghcr.io/${IMAGE_OWNER}/ugtm-frontend:${IMAGE_TAG}
@@ -91,18 +127,32 @@ jobs:
                 restart: always
                 depends_on:
                   - backend
+                networks:
+                  default:
+                    ipv4_address: 172.29.0.10
                 ports:
                   - "80:80"
+
+            volumes:
+              data_protection_keys:
+
+            networks:
+              default:
+                ipam:
+                  config:
+                    - subnet: 172.29.0.0/24
             EOF
 
-            # Export environment variables for Compose
+            umask 077
+            mkdir -p "$APP_DIR/secrets"
+            printf '%s' "$JWT_PRIVATE_KEY_PEM_BASE64" | base64 --decode > "$APP_DIR/secrets/ugtm-jwt-private.pem"
+
             export IMAGE_OWNER="$OWNER"
             export IMAGE_TAG="$BRANCH"
-            export DATABASE_CONNECTION_STRING="${{ secrets.DATABASE_CONNECTION_STRING }}"
-            export APP_URL="${{ secrets.APP_URL || 'http://localhost' }}"
+            export JWT_PRIVATE_KEY_FILE="$APP_DIR/secrets/ugtm-jwt-private.pem"
 
             # Login to GHCR to pull images
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            printf '%s' "$DEPLOY_GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             # Pull and restart containers
             docker compose -f docker-compose.prod.yml pull

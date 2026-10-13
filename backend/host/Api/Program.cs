@@ -1,3 +1,5 @@
+using System.Net;
+using Microsoft.AspNetCore.HttpOverrides;
 using UGTM.Api.Modules;
 using Microsoft.OpenApi;
 using UGTM.BuildingBlocks.Infrastructure.Middlewares;
@@ -5,6 +7,30 @@ using UGTM.BuildingBlocks.Infrastructure.Middlewares;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+
+var knownProxyAddresses = builder.Configuration
+    .GetSection("Proxy:KnownProxies")
+    .Get<string[]>() ?? [];
+var useForwardedHeaders = knownProxyAddresses.Length > 0;
+if (useForwardedHeaders)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.ForwardLimit = 1;
+        foreach (var address in knownProxyAddresses)
+        {
+            if (!IPAddress.TryParse(address, out var proxyAddress))
+            {
+                throw new InvalidOperationException(
+                    $"Proxy:KnownProxies contains an invalid IP address: {address}");
+            }
+
+            options.KnownProxies.Add(proxyAddress);
+        }
+    });
+}
 
 const string FrontendCorsPolicy = "Frontend";
 builder.Services.AddCors(options =>
@@ -43,9 +69,17 @@ builder.Services.AddUgtmModules(builder.Configuration);
 
 var app = builder.Build();
 
+if (useForwardedHeaders)
+{
+    app.UseForwardedHeaders();
+}
 app.UseMiddleware<GlobalExceptionMiddleware>();
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors(FrontendCorsPolicy);
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

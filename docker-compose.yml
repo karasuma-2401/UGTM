@@ -22,10 +22,17 @@ services:
       - S3Storage__AccessKey=${MINIO_ROOT_USER:-ugtm_admin}
       - S3Storage__SecretKey=${MINIO_ROOT_PASSWORD:-ugtm_secret_pass_123}
       - S3Storage__BucketName=ugtm-storage
-      - Email__SmtpHost=mailpit
-      - Email__SmtpPort=1025
+      - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
+      - Notifications__Smtp__Host=mailpit
+      - Notifications__Smtp__Port=1025
+      - Notifications__Smtp__FromAddress=no-reply@ugtm.local
+      - Notifications__Smtp__FromName=UGTM
+      - Notifications__Smtp__UseStartTls=false
     ports:
       - "5287:8080"
+    volumes:
+      - data_protection_keys:/var/lib/ugtm/data-protection-keys
+      - ${JWT_PRIVATE_KEY_FILE:-./secrets/ugtm-jwt-private.pem}:/run/secrets/ugtm-jwt-private.pem:ro
     depends_on:
       redis:
         condition: service_started
@@ -102,6 +109,7 @@ services:
       - "3000:80"
 
 volumes:
+  data_protection_keys:
   minio_data:
   redis_data:
   rabbitmq_data:
