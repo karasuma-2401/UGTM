@@ -1,10 +1,4 @@
-using UGTM.BuildingBlocks.Domain;
-using UGTM.Modules.Identity.Application.Common;
-using UGTM.Modules.Identity.Application.Persistence;
-using UGTM.Modules.Identity.Application.Security;
 using UGTM.Modules.Identity.Contracts.Authorization;
-using UGTM.Modules.Identity.Domain.Enums;
-using UGTM.Modules.Identity.Domain.Repositories;
 
 namespace UGTM.Modules.Identity.Application.Authentication.ChangePassword;
 
@@ -21,9 +15,15 @@ public sealed class ChangePasswordHandler(
         ChangePasswordCommand command,
         CancellationToken cancellationToken)
     {
-        if (currentUser.UserId is not Guid userId)
+        if (!currentUser.IsAuthenticated
+            || currentUser.UserId is not Guid userId)
         {
             return Result.Failure(IdentityErrors.InvalidSession);
+        }
+
+        if (string.IsNullOrEmpty(command.CurrentPassword))
+        {
+            return Result.Failure(IdentityErrors.CurrentPasswordIncorrect);
         }
 
         var validation = passwordPolicy.Validate(command.NewPassword);

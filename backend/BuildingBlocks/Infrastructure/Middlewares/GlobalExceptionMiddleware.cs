@@ -1,70 +1,74 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+using System.Net;
+using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Text;
-using System.Text.Json;
 
-namespace UGTM.BuildingBlocks.Infrastructure.Middlewares
+namespace UGTM.BuildingBlocks.Infrastructure.Middlewares;
+
+public sealed class GlobalExceptionMiddleware(
+    RequestDelegate next,
+    ILogger<GlobalExceptionMiddleware> logger,
+    IHostEnvironment environment)
 {
-    public sealed class GlobalExceptionMiddleware
+    public async Task InvokeAsync(HttpContext context)
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<GlobalExceptionMiddleware> _logger;
-        private readonly IHostEnvironment _env;
-
-        public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger, IHostEnvironment env)
+        try
         {
-            _next = next;
-            _logger = logger;
-            _env = env;
+            await next(context);
         }
-
-        // 
-        public async Task InvokeAsync(HttpContext context)
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
         {
-            try
+            // The client disconnected; there is no response left to write.
+        }
+        catch (AntiforgeryValidationException exception)
+        {
+            logger.LogWarning(
+                "Rejected request with an invalid CSRF token. RequestId: {RequestId}",
+                context.TraceIdentifier);
+            await HandleExceptionAsync(context, exception);
+        }
+        catch (Exception exception)
+        {
+            if (context.Response.HasStarted)
             {
-                await _next(context);
+                throw;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An unhandled exception occurred: {Message}", ex.Message);
-                await HandleExceptionAsync(context, ex);
-            }
-        }
 
-        private Task HandleExceptionAsync(HttpContext context, Exception exception)
+            logger.LogError(
+                exception,
+                "Unhandled request failure. RequestId: {RequestId}",
+                context.TraceIdentifier);
+            await HandleExceptionAsync(context, exception);
+        }
+    }
+
+    private Task HandleExceptionAsync(HttpContext context, Exception exception)
+    {
+        context.Response.ContentType = "application/problem+json";
+
+        var (statusCode, title) = exception switch
         {
-            context.Response.ContentType = "application/problem+json";
+            AntiforgeryValidationException =>
+                (HttpStatusCode.BadRequest, "Invalid CSRF Token"),
+            _ => (HttpStatusCode.InternalServerError, "Server Error")
+        };
 
-            var (statusCode, title) = exception switch
-            {
-                AntiforgeryValidationException => (HttpStatusCode.BadRequest, "Invalid CSRF Token"),
-                KeyNotFoundException => (HttpStatusCode.NotFound, "Resource Not Found"),
-                ArgumentException or InvalidOperationException => (HttpStatusCode.BadRequest, "Bad Request"),
-                UnauthorizedAccessException => (HttpStatusCode.Unauthorized, "Unauthorized"),
-                _ => (HttpStatusCode.InternalServerError, "Server Error")
-            };
+        context.Response.StatusCode = (int)statusCode;
+        var problemDetails = new ProblemDetails
+        {
+            Status = (int)statusCode,
+            Title = title,
+            Detail = environment.IsDevelopment()
+                ? exception.Message
+                : "An error occurred while processing your request.",
+            Instance = context.Request.Path
+        };
+        problemDetails.Extensions["requestId"] = context.TraceIdentifier;
+        problemDetails.Extensions["timestamp"] = DateTime.UtcNow;
 
-            context.Response.StatusCode = (int)statusCode;
-
-            var problemDetails = new ProblemDetails
-            {
-                Status = (int)statusCode,
-                Title = title,
-                Detail = _env.IsDevelopment() ? exception.Message : "An error occurred while processing your request.",
-                Instance = context.Request.Path
-            };
-
-            problemDetails.Extensions["timestamp"] = DateTime.UtcNow;
-
-            var json = JsonSerializer.Serialize(problemDetails);
-            return context.Response.WriteAsync(json);
-        }
+        return context.Response.WriteAsync(JsonSerializer.Serialize(problemDetails));
     }
 }

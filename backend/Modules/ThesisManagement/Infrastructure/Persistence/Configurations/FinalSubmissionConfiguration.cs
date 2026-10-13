@@ -1,6 +1,3 @@
-using UGTM.Modules.ThesisManagement.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence.Configurations;

@@ -1,7 +1,3 @@
-using UGTM.Modules.AcademicPeriods.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 namespace UGTM.Modules.AcademicPeriods.Infrastructure.Persistence.Configurations;
 
 public class ScoreComponentConfigConfiguration : IEntityTypeConfiguration<ScoreComponentConfig>

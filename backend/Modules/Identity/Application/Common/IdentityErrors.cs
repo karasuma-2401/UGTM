@@ -1,5 +1,3 @@
-using UGTM.BuildingBlocks.Domain;
-
 namespace UGTM.Modules.Identity.Application.Common;
 
 public static class IdentityErrors

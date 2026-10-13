@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-
 namespace UGTM.BuildingBlocks.Infrastructure.Persistence;
 
 public abstract class PostgresDbContext(DbContextOptions options) : DbContext(options)

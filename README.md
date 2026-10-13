@@ -2,11 +2,11 @@
 
 Đồ án Công nghệ .NET, SE310.R11, Nhóm 1, UIT. Phạm vi nghiệp vụ đã chốt theo Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp vụ nhóm quản lý ngoài repo): quy trình 21 tuần, 7 giai đoạn, 2 cổng kiểm soát, từ đăng ký đề tài đến lưu chiểu và công bố điểm.
 
-Source hiện ở giai đoạn nền tảng: 6 module có endpoint ping, EF Core có 34 bảng/6 schema và migrations, DefenseCouncil có service tính điểm đã kiểm thử, frontend có dashboard và trang kiểm tra module. Các API nghiệp vụ trong tài liệu chưa được triển khai đầy đủ.
+Source hiện ở giai đoạn nền tảng: 6 module, EF Core có 38 bảng/6 schema và migrations; backend đã có authentication, authorization nền và email outbox. DefenseCouncil có service tính điểm đã kiểm thử; frontend có dashboard và trang kiểm tra module. Các API nghiệp vụ KLTN chưa được triển khai đầy đủ.
 
 ## Tài liệu
 
-Bắt đầu tại [mục lục docs](docs/README.md). Các tài liệu chính: [yêu cầu](docs/Requirements.md), [đặc tả Use Case](docs/UseCases.md), [kiến trúc hiện tại](docs/Architecture.md), [mô hình dữ liệu](docs/DataModel.md), [đề xuất module/DDD và setup Neon](docs/Architecture.md#6-migrations-và-neon). Đã bỏ toàn bộ Use Case diagram theo yêu cầu nhóm.
+Bắt đầu tại [mục lục docs](docs/README.md). Các tài liệu chính: [yêu cầu](docs/Requirements.md), [đặc tả Use Case](docs/UseCases.md), [kiến trúc backend](backend/docs/Architecture/Architecture.md), [authentication backend](backend/docs/Technical/Authentication.md), [Identity API](docs/ApiContract/IdentityApiContract.md) và [mô hình dữ liệu](docs/DataModel.md).
 
 ## Công nghệ hiện tại
 
@@ -16,10 +16,10 @@ Bắt đầu tại [mục lục docs](docs/README.md). Các tài liệu chính: 
 | Dữ liệu | EF Core 10 + Npgsql PostgreSQL; 6 DbContext runtime, 1 context migration; 6 schema nghiệp vụ; history ở public |
 | Frontend | React 19, TypeScript, Vite 8, React Router, TanStack Query, Axios |
 | Giao diện | Tailwind CSS + các component shadcn/Radix trong layout đang chạy; có Ant Design và `ConfigProvider` |
-| Xác thực | Có lớp hỗ trợ token/route guard phía frontend; backend chưa triển khai Identity/JWT/RBAC |
-| Hạ tầng | Docker Compose có Mailpit, MinIO, Redis, RabbitMQ; chưa có code tích hợp các dịch vụ này |
+| Xác thực | JWT RSA, refresh rotation bằng HttpOnly cookie, activation/recovery, CSRF, permission policy và rate limit |
+| Hạ tầng | Mailpit/SMTP đã nối với Identity outbox; MinIO, Redis và RabbitMQ chưa có code tích hợp |
 
-Khác biệt với thiết kế kỹ thuật trong Word được ghi tại [Architecture.md](docs/Architecture.md). Docs lấy kiến trúc source hiện tại làm chuẩn theo quyết định của nhóm ngày 10/10/2026.
+Khác biệt với thiết kế kỹ thuật trong Word được ghi tại [Architecture.md](backend/docs/Architecture/Architecture.md). Docs lấy kiến trúc source hiện tại làm chuẩn; lần đối chiếu gần nhất là 13/10/2026.
 
 ## Môi trường
 
@@ -34,18 +34,24 @@ Từ thư mục gốc, PowerShell:
 ```powershell
 dotnet restore UGTM.sln
 dotnet build UGTM.sln
-$env:ConnectionStrings__DefaultConnection = '<chuỗi kết nối PostgreSQL>'
+./scripts/GenerateDevelopmentJwtKey.ps1
+# Điền DATABASE_CONNECTION_STRING trong .env (tạo từ .env.example nếu chưa có).
+./scripts/ConfigureDevelopment.ps1
 dotnet run --project backend/host/Api/UGTM.Api.csproj --launch-profile http
 ```
 
-API: `http://localhost:5287`. Swagger trong Development: `http://localhost:5287/swagger`; OpenAPI: `/openapi/v1.json`. Profile `https` sử dụng thêm `https://localhost:7289`.
+API: `http://localhost:5287`. Scalar API Reference trong Development: `http://localhost:5287/scalar`; OpenAPI: `/openapi/v1.json`. Profile `https` sử dụng thêm `https://localhost:7289`.
+
+Trong Rider, mở `UGTM.sln`, chọn cấu hình `.NET Launch Settings Profile` với project `backend/host/Api/UGTM.Api.csproj` và profile `http` hoặc `https`. Nếu gặp `Selected profile was not found` sau khi đổi thư mục project, tạo lại cấu hình chạy để Rider đọc `backend/host/Api/Properties/launchSettings.json`; cấu hình cũ có thể vẫn trỏ tới `backend/host/UGTM.Api`.
+
+`ConfigureDevelopment.ps1` đọc `DATABASE_CONNECTION_STRING` và `JWT_PRIVATE_KEY_FILE` trong `.env` (mặc định khóa ở `secrets/ugtm-jwt-private.pem`), rồi tạo `backend/host/Api/appsettings.Development.local.json`. API chỉ nạp file này trong Development; file được Git bỏ qua và không đưa vào bản publish. Chạy lại script sau khi đổi `.env`. Có thể ghi đè bằng `ConnectionStrings__DefaultConnection` và `Identity__Jwt__PrivateKeyPath` trong Environment variables của Rider; biến môi trường và tham số dòng lệnh có độ ưu tiên cao hơn file local. Biến đặt trong terminal PowerShell không tự truyền vào Rider đang mở.
 
 ```powershell
 Invoke-RestMethod http://localhost:5287/api/modules/Identity/ping
 dotnet test UGTM.sln
 ```
 
-Ping trả `{"module":"Identity","status":"ok"}` trực tiếp. `Architecture.Tests` kiểm tra ranh giới module/layer, DI và cấu hình database; AcademicPeriods/DefenseCouncil có kiểm thử trọng số và công thức tính điểm; ThesisManagement kiểm thử aggregate nhóm sinh viên. API không tự migrate khi khởi động. API đọc cấu hình môi trường, không tự nạp `.env`; script database bên dưới có nạp các biến kết nối từ `.env`.
+Ping trả `{"module":"Identity","status":"ok"}` trực tiếp. `Architecture.Tests` kiểm tra ranh giới module/layer, DI và cấu hình database; Identity có test domain, application, rate limit, authorization và concurrency trên PostgreSQL; các module học vụ kiểm thử các quy tắc miền đã có. API không tự migrate khi khởi động. API đọc cấu hình môi trường và file Development local, không tự nạp `.env`; script database bên dưới có nạp các biến kết nối từ `.env`.
 
 ### Áp dụng migration trên database phát triển
 
@@ -59,7 +65,7 @@ $env:DATABASE_CONNECTION_STRING = '<chuỗi kết nối PostgreSQL của databas
 ./scripts/Database.ps1 -Action Update
 ```
 
-Xem [Architecture.md](docs/Architecture.md#6-migrations-và-neon) để biết thứ tự cấu hình, lệnh `Update-Database` và những phần cần triển khai tiếp. Giữ migration InitialCreate; AlignFinalReportFoundation bổ sung dữ liệu final; AssignSchemaOwnership chuyển bảng về module và bỏ shared; EncapsulateModulePersistence loại bảng trọng số theo role cũ. Database đã chạy bản cũ cần bước chuyển history sang public một lần trước List/Update; Neon hiện tại đã chuyển. [DatabaseScript.txt](docs/DatabaseScript.txt) là DBML để xem cấu trúc, không phải SQL chạy trên Neon.
+Xem [Architecture.md](backend/docs/Architecture/Architecture.md#6-migrations-và-neon) để biết thứ tự cấu hình và lệnh `Update-Database`. Giữ toàn bộ migration đã áp dụng; `CompleteIdentityAuthentication` bổ sung session, refresh token, one-time challenge, email outbox và các cột bảo mật của user. Database đã chạy bản cũ cần bước chuyển history sang public một lần trước List/Update; Neon hiện tại đã chuyển. [DatabaseScript.txt](docs/DatabaseScript.txt) là DBML để xem cấu trúc, không phải SQL chạy trên Neon.
 
 ## Chạy frontend
 
@@ -79,6 +85,7 @@ Từ thư mục gốc:
 ```powershell
 Copy-Item .env.example .env
 # Điền DATABASE_CONNECTION_STRING trong .env.
+./scripts/GenerateDevelopmentJwtKey.ps1
 docker compose up -d backend mailpit minio redis rabbitmq
 ```
 
@@ -93,18 +100,18 @@ Chạy frontend bằng Vite như trên. `docker compose up -d` cũng khởi ch�
 | RabbitMQ management / AMQP | `http://localhost:15672` / `localhost:5672` |
 | Redis | `localhost:6379` |
 
-Backend đọc `Cors:AllowedOrigins`; Compose cấu hình origin 5173 và 3000. Chạy bằng Vite ngoài Compose có fallback origin 5173. Các dịch vụ phụ trợ khởi chạy không đồng nghĩa email/upload/event bus/cache đã hoạt động. Cấu hình tài khoản dịch vụ xem `.env.example`; không đưa credentials thật vào tài liệu.
+Backend đọc `Cors:AllowedOrigins`; Compose cấu hình origin 5173 và 3000. Chạy bằng Vite ngoài Compose có fallback origin 5173. Script tạo khóa RSA chỉ dùng cho môi trường phát triển và file PEM trong `secrets` đã được Git bỏ qua. Các dịch vụ phụ trợ khởi chạy không đồng nghĩa email/upload/event bus/cache đã hoạt động. Cấu hình tài khoản dịch vụ xem `.env.example`; không đưa credentials thật vào tài liệu.
 
 Dừng môi trường bằng `docker compose down`. File cấu hình production: [docker/docker-compose.prod.yml](docker/docker-compose.prod.yml).
 
 ## Cấu trúc và CI
 
-- `backend/host/Api`: composition root, DI, CORS, middleware, Swagger, nạp module qua `IModule`.
+- `backend/host/Api`: composition root, DI, CORS, middleware, Scalar API Reference, nạp module qua `IModule`.
 - `backend/Modules`: Identity, AcademicPeriods, TopicCatalog, ThesisManagement, DefenseCouncil, Notifications.
 - `backend/BuildingBlocks`: Entity/AggregateRoot/Result/Error/IDomainEvent, IModule, ApiResponse/ApiError, middleware.
 - `backend/Database.Migrations`: context migration tổng hợp, FK liên module và migrations; entity/configuration thuộc module tương ứng.
-- `backend/tests`: kiểm thử kiến trúc và ba module đang có logic miền: AcademicPeriods, DefenseCouncil, ThesisManagement. Thêm project test cho module khác khi có nghiệp vụ cần kiểm thử.
+- `backend/tests`: kiểm thử kiến trúc, Identity và các module đang có logic miền: AcademicPeriods, DefenseCouncil, ThesisManagement.
 - `frontend`: SPA; [hướng dẫn frontend](frontend/README.md).
-- `docs/PlantUML`: sơ đồ kiến trúc, nghiệp vụ, tuần tự, sitemap.
+- `backend/docs`: kiến trúc backend, tài liệu kỹ thuật và các sơ đồ PlantUML.
 
 GitHub Actions chạy trên `dev`/`main`: backend format, Gitleaks, build/test, Docker build; frontend lint/typecheck/build và Docker build. Workflow publish đóng gói image, quét Trivy và đẩy GHCR; deploy SSH được bỏ qua khi chưa có secrets VPS. File workflow thể hiện cấu hình tự động hóa, không chứng minh dịch vụ đã được triển khai.

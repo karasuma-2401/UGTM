@@ -12,7 +12,7 @@ package "Sáu module — Domain/Application/Contracts/Infrastructure riêng" {
 }
 component "BuildingBlocks.Infrastructure\nNpgsql, conventions, ModuleDbContext\nGlobalExceptionMiddleware" as BBI
 component "EF CLI / UGTM.Database.Migrations\nUGTMDbContext + Factory + Migrations\nCrossModuleForeignKeys" as Migration
-database "PostgreSQL / Neon\n34 bảng nghiệp vụ / 6 schema\npublic.__ef_migrations_history" as DB
+database "PostgreSQL / Neon\n38 bảng nghiệp vụ / 6 schema\npublic.__ef_migrations_history" as DB
 API --> Identity : DI / endpoints
 API --> AcademicPeriods
 API --> TopicCatalog
@@ -39,7 +39,7 @@ Module không tham chiếu Database.Migrations hoặc internals module khác.
 Domain không có navigation liên module; FK vật lý được ghép tại đây.
 end note
 note bottom of API
-HTTP hiện chỉ có 6 endpoint ping.
-Domain có aggregate nhóm và calculator; API nghiệp vụ chưa triển khai.
+HTTP có 6 endpoint ping và Authentication API của Identity.
+Domain có aggregate nhóm và calculator; API nghiệp vụ KLTN chưa triển khai.
 end note
 @enduml

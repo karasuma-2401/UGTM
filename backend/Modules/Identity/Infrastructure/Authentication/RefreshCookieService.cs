@@ -2,19 +2,17 @@ using Microsoft.AspNetCore.Http;
 
 namespace UGTM.Modules.Identity.Infrastructure.Authentication;
 
-public sealed class RefreshCookieService
+public sealed class RefreshCookieService(IdentityCookiePolicy cookiePolicy)
 {
-    public const string CookieName = "__Host-ugtm-refresh";
-
     public string? Read(HttpRequest request)
-        => request.Cookies[CookieName];
+        => request.Cookies[cookiePolicy.RefreshCookieName];
 
     public void Write(HttpResponse response, string token, DateTime expiresAt)
     {
-        response.Cookies.Append(CookieName, token, new CookieOptions
+        response.Cookies.Append(cookiePolicy.RefreshCookieName, token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = cookiePolicy.RequireHttps,
             SameSite = SameSiteMode.Strict,
             Path = "/",
             Expires = new DateTimeOffset(expiresAt)
@@ -23,10 +21,10 @@ public sealed class RefreshCookieService
 
     public void Delete(HttpResponse response)
     {
-        response.Cookies.Delete(CookieName, new CookieOptions
+        response.Cookies.Delete(cookiePolicy.RefreshCookieName, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = cookiePolicy.RequireHttps,
             SameSite = SameSiteMode.Strict,
             Path = "/"
         });

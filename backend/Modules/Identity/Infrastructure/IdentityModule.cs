@@ -2,7 +2,9 @@ using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Modules.Identity.Infrastructure.Persistence;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -11,6 +13,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.Identity.Application.Activation;
+using UGTM.Modules.Identity.Application.Authentication.ChangePassword;
+using UGTM.Modules.Identity.Application.Authentication.GetCurrentUser;
 using UGTM.Modules.Identity.Application.Authentication.Login;
 using UGTM.Modules.Identity.Application.Authentication.Logout;
 using UGTM.Modules.Identity.Application.Authentication.RefreshSession;
@@ -21,11 +25,14 @@ using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Application.Provisioning;
 using UGTM.Modules.Identity.Application.Recovery;
 using UGTM.Modules.Identity.Application.Security;
+using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Domain.Repositories;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
+using UGTM.Modules.Identity.Infrastructure.Authorization;
 using UGTM.Modules.Identity.Infrastructure.Endpoints;
 using UGTM.Modules.Identity.Infrastructure.Notifications;
 using UGTM.Modules.Identity.Infrastructure.Persistence.Repositories;
+using UGTM.Modules.Identity.Infrastructure.RateLimiting;
 
 namespace UGTM.Modules.Identity.Infrastructure;
 
@@ -38,14 +45,29 @@ public sealed class IdentityModule : IModule
         services.AddModuleDbContext<IdentityDbContext>(configuration);
         services.AddLogging();
         services.AddRouting();
-        services.AddDataProtection();
+        var dataProtection = services.AddDataProtection()
+            .SetApplicationName("UGTM");
+        var keyRingPath = configuration["Identity:DataProtection:KeyRingPath"];
+        if (!string.IsNullOrWhiteSpace(keyRingPath))
+        {
+            dataProtection.PersistKeysToFileSystem(new DirectoryInfo(keyRingPath));
+        }
         services.AddHttpContextAccessor();
+        services.AddIdentityRateLimits();
+        var requireHttpsCookies = !string.Equals(
+            configuration["ASPNETCORE_ENVIRONMENT"],
+            "Development",
+            StringComparison.OrdinalIgnoreCase);
+        var cookiePolicy = new IdentityCookiePolicy(requireHttpsCookies);
+        services.AddSingleton(cookiePolicy);
         services.AddAntiforgery(options =>
         {
             options.HeaderName = "X-CSRF-TOKEN";
-            options.Cookie.Name = "__Host-ugtm-csrf";
+            options.Cookie.Name = cookiePolicy.AntiforgeryCookieName;
             options.Cookie.HttpOnly = true;
-            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.Cookie.SecurePolicy = requireHttpsCookies
+                ? CookieSecurePolicy.Always
+                : CookieSecurePolicy.SameAsRequest;
             options.Cookie.SameSite = SameSiteMode.Strict;
             options.Cookie.Path = "/";
         });
@@ -100,6 +122,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IIdentityEmailOutbox, IdentityEmailOutbox>();
         services.AddScoped<RefreshCookieService>();
         services.AddScoped<SessionValidator>();
+        services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
         services.AddScoped<ProvisioningStudentAccountHandler>();
         services.AddScoped<ValidateActivationHandler>();
@@ -108,6 +131,8 @@ public sealed class IdentityModule : IModule
         services.AddScoped<LoginHandler>();
         services.AddScoped<RefreshSessionHandler>();
         services.AddScoped<LogoutHandler>();
+        services.AddScoped<GetCurrentUserHandler>();
+        services.AddScoped<ChangePasswordHandler>();
         services.AddScoped<StartPasswordRecoveryHandler>();
         services.AddScoped<VerifyRecoveryOtpHandler>();
         services.AddScoped<ResetPasswordHandler>();
@@ -141,6 +166,8 @@ public sealed class IdentityModule : IModule
                 };
             });
         services.AddAuthorization();
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddHostedService<IdentityOutboxProcessor>();
     }
 
@@ -151,6 +178,11 @@ public sealed class IdentityModule : IModule
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
+            .WithSummary("Kiểm tra module Identity đang hoạt động")
+            .WithDescription("""
+                Không cần xác thực hoặc body. Trả 200 với module Identity và status ok khi endpoint có thể phục vụ request.
+                Endpoint này không kiểm tra kết nối database, SMTP hoặc các dịch vụ phụ trợ.
+                """)
             .WithName($"{Name}.Ping");
     }
 }

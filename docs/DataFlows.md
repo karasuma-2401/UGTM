@@ -1,8 +1,8 @@
 # Luồng dữ liệu UGTM
 
-Nguồn nghiệp vụ: Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp vụ nhóm quản lý ngoài repo), chốt tháng 10/2026. Đây là yêu cầu cần triển khai; trạng thái source xem [Architecture.md](Architecture.md) và [DataModel.md](DataModel.md).
+Nguồn nghiệp vụ: Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp vụ nhóm quản lý ngoài repo), chốt tháng 10/2026. Đây là yêu cầu cần triển khai; trạng thái source xem [Architecture.md](../backend/docs/Architecture/Architecture.md) và [DataModel.md](DataModel.md).
 
-Năm tiến trình SĐ1–SĐ5 tương ứng mục 2.4 của Word. Đây là mô tả luồng dữ liệu (DFD), khác với [biểu đồ tuần tự](Sequences.md). Quy ước D2 của báo cáo được giữ nguyên: không phát sinh từ thiết bị nhập độc lập.
+Năm tiến trình SĐ1–SĐ5 tương ứng mục 2.4 của Word. Đây là mô tả luồng dữ liệu (DFD), khác với [biểu đồ tuần tự](../backend/docs/Architecture/Sequences.md). Quy ước D2 của báo cáo được giữ nguyên: không phát sinh từ thiết bị nhập độc lập.
 
 
 ## 2.4.1 Đăng ký đề tài và ghép nhóm

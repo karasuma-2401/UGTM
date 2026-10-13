@@ -1,0 +1,9 @@
+# API contracts
+
+Mỗi module có một contract riêng. Contract chỉ mô tả endpoint đã triển khai hoặc thiết kế đã được chốt rõ ràng; trạng thái phải được ghi ở đầu file.
+
+| Module | Contract | Trạng thái |
+| --- | --- | --- |
+| Identity | [IdentityApiContract.md](IdentityApiContract.md) | Đã triển khai |
+
+Quy ước response, authentication, lỗi và hành vi đặc biệt được ghi trong contract của module đang sở hữu endpoint. Khi thay đổi request, response, status code hoặc error code, cập nhật contract trong cùng pull request.

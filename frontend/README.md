@@ -32,6 +32,6 @@ npm run preview
 - `src/shared/auth`: AuthContext/useAuth/ProtectedRoute; chưa tích hợp vào router/app.
 - `src/components/ui`: component giao diện dùng chung.
 
-API refresh `/api/identity/auth/refresh` mà interceptor dự kiến gọi chưa được backend triển khai. Chưa có route đăng nhập, trang 403 hoặc màn hình nghiệp vụ. Kiểu response frontend hiện khác `ApiResponse` backend; cần thống nhất trước khi ghép tính năng. Trang ping xử lý object `module/status` trực tiếp.
+Backend đã có `/api/identity/auth/refresh` cùng các endpoint auth khác; frontend chưa nối cookie, CSRF và response theo [Identity API](../docs/ApiContract/IdentityApiContract.md). Chưa có route đăng nhập, trang 403 hoặc màn hình nghiệp vụ. Trang ping vẫn xử lý object `module/status` trực tiếp.
 
-Danh mục màn hình cần xây dựng tại [SITEMAP.md](../docs/SITEMAP.md); nghiệp vụ final tại [Requirements.md](../docs/Requirements.md). Quyền giao diện cần đi cùng policy kiểm tra phía API.
+Nghiệp vụ final được mô tả tại [Requirements.md](../docs/Requirements.md). Quyền giao diện cần đi cùng policy kiểm tra phía API.

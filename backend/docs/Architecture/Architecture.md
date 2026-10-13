@@ -1,6 +1,6 @@
 # Kiến trúc backend UGTM
 
-Đối chiếu source ngày 10/10/2026. Nghiệp vụ theo [Requirements.md](Requirements.md), đã chốt từ báo cáo final do nhóm quản lý ngoài repo. Kiến trúc cũ trong Word không dùng làm hiện trạng triển khai.
+Đối chiếu source ngày 13/10/2026. Nghiệp vụ theo [Requirements.md](../../../docs/Requirements.md), đã chốt từ báo cáo final do nhóm quản lý ngoài repo. Kiến trúc cũ trong Word không dùng làm hiện trạng triển khai.
 
 ## 1. Quyết định kiến trúc
 
@@ -14,7 +14,7 @@ UGTM là **Modular Monolith**: một ASP.NET Core .NET 10 host, sáu module, m�
 
 | Module | Context runtime | Schema | Phạm vi |
 | --- | --- | --- | --- |
-| Identity | IdentityDbContext | identity | Tài khoản, role/permission, truy vết quản trị |
+| Identity | IdentityDbContext | identity | Tài khoản, phiên, activation/recovery, role/permission, email outbox và audit model |
 | AcademicPeriods | AcademicPeriodsDbContext | academic | Đợt, 7 giai đoạn/deadline, cấu hình đầu điểm/trọng số/ngưỡng |
 | TopicCatalog | TopicCatalogDbContext | topics | GVHD đề xuất, Khoa thẩm định và công bố danh mục |
 | ThesisManagement | ThesisManagementDbContext | thesis | Nhóm/đăng ký, đề cương, tiến độ/giữa kỳ, đổi tên, báo cáo, lưu chiểu |
@@ -23,7 +23,7 @@ UGTM là **Modular Monolith**: một ASP.NET Core .NET 10 host, sáu module, m�
 
 MidtermProgress được gom vào ThesisManagement; FinalReportEvaluation và GradingConsolidation vào DefenseCouncil. Chúng là các bước trong cùng vòng đời hồ sơ hoặc chuỗi đánh giá; khung cũ chỉ có ping, chưa có API nghiệp vụ cần di chuyển. Sáu module là lựa chọn theo tính gắn kết nghiệp vụ của UGTM, không phải số lượng bắt buộc của DDD. DefenseCouncil có thể tách khi Assessment/Results có nhu cầu độc lập thực tế.
 
-34 bảng nghiệp vụ nằm trong sáu schema trên; `public.__ef_migrations_history` là lịch sử kỹ thuật. Không có schema shared. Audit thuộc Identity, notification thuộc Notifications, nhóm sinh viên thuộc thesis. RoleScoreWeight cũ được loại bằng migration vì RoleId không thể phân biệt GVHD/GVPB cùng là Lecturer; cấu hình mới dùng ScoreComponentConfig.
+38 bảng nghiệp vụ nằm trong sáu schema trên; `public.__ef_migrations_history` là lịch sử kỹ thuật. Không có schema shared. Audit, session và auth challenge thuộc Identity; notification nghiệp vụ thuộc Notifications; nhóm sinh viên thuộc thesis. RoleScoreWeight cũ được loại bằng migration vì RoleId không thể phân biệt GVHD/GVPB cùng là Lecturer; cấu hình mới dùng ScoreComponentConfig.
 
 ## 3. Tổ chức source và phụ thuộc
 
@@ -49,33 +49,33 @@ Domain chỉ tham chiếu BuildingBlocks.Domain; Application tham chiếu Domain
 
 Runtime configuration không nhập entity của module khác. Navigation giữa module đã bỏ; giữ scalar ID, như StudentGroup.TopicId và CouncilAssignment.GroupId. Khi xây dựng API, việc xác minh đề tài/giảng viên/đợt phải đi qua Contracts hoặc use case thích hợp, không nạp trực tiếp entity miền của module khác.
 
-Các FK vật lý liên schema vẫn được giữ tại [CrossModuleForeignKeys.cs](../backend/Database.Migrations/CrossModuleForeignKeys.cs) để bảo đảm dữ liệu trên cùng database. Runtime context chỉ có model nội bộ, còn migration context mô tả các ràng buộc toàn hệ thống. Đây là đánh đổi có chủ ý: có cách ly model/code, chưa có database độc lập để tách deploy từng module.
+Các FK vật lý liên schema vẫn được giữ tại [CrossModuleForeignKeys.cs](../../Database.Migrations/CrossModuleForeignKeys.cs) để bảo đảm dữ liệu trên cùng database. Runtime context chỉ có model nội bộ, còn migration context mô tả các ràng buộc toàn hệ thống. Đây là đánh đổi có chủ ý: có cách ly model/code, chưa có database độc lập để tách deploy từng module.
 
 ModuleDbContext kiểm tra schema của các entity được ghi qua SaveChanges; kiểm thử kiểm tra model chỉ chứa entity của module sở hữu. Đây không phải ranh giới bảo mật cấp database: không dùng raw SQL để ghi schema module khác; nếu cần cách ly mạnh hơn phải bổ sung quyền database. Không gọi Migrate/EnsureCreated trên context runtime.
 
 ## 4. Logic miền và repository hiện có
 
-[StudentGroup](../backend/Modules/ThesisManagement/Domain/Entities/StudentGroup.cs) kiểm soát tối đa hai thành viên, không trùng sinh viên, cùng đợt, chỉ thêm khi Registered và dùng thời gian UTC. Collection chỉ đọc, thay đổi qua AddMember; mapping EF dùng backing field. Unique (StudentId, BatchId) ở database vẫn bảo đảm một sinh viên không vào hai nhóm cùng đợt. Giới hạn chỉ tiêu, đủ điều kiện sinh viên và xử lý tranh chấp cần use case/transaction, chưa tự được bảo đảm bởi aggregate này.
+[StudentGroup](../../Modules/ThesisManagement/Domain/Entities/StudentGroup.cs) kiểm soát tối đa hai thành viên, không trùng sinh viên, cùng đợt, chỉ thêm khi Registered và dùng thời gian UTC. Collection chỉ đọc, thay đổi qua AddMember; mapping EF dùng backing field. Unique (StudentId, BatchId) ở database vẫn bảo đảm một sinh viên không vào hai nhóm cùng đợt. Giới hạn chỉ tiêu, đủ điều kiện sinh viên và xử lý tranh chấp cần use case/transaction, chưa tự được bảo đảm bởi aggregate này.
 
-[IStudentGroupRepository](../backend/Modules/ThesisManagement/Domain/Repositories/IStudentGroupRepository.cs) thuộc Domain; [StudentGroupRepository](../backend/Modules/ThesisManagement/Infrastructure/Persistence/Repositories/StudentGroupRepository.cs) dùng ThesisManagementDbContext, tải cả thành viên. IThesisUnitOfWork của Application dùng cùng context scoped, cho phép use case ghi nhất quán. Chưa có endpoint đăng ký nghiệp vụ.
+[IStudentGroupRepository](../../Modules/ThesisManagement/Domain/Repositories/IStudentGroupRepository.cs) thuộc Domain; [StudentGroupRepository](../../Modules/ThesisManagement/Infrastructure/Persistence/Repositories/StudentGroupRepository.cs) dùng ThesisManagementDbContext, tải cả thành viên. IThesisUnitOfWork của Application dùng cùng context scoped, cho phép use case ghi nhất quán. Chưa có endpoint đăng ký nghiệp vụ.
 
-[ThesisGradeCalculator](../backend/Modules/DefenseCouncil/Domain/Grading/ThesisGradeCalculator.cs) tính công thức chia 6/7 đã chốt, loại cả điểm và hệ số, không tự loại vì sai biệt hoặc tự làm tròn. GVPB kiêm ủy viên không nhập điểm Hội đồng riêng, điểm phản biện giữ hệ số 2. [ScoreWeightRules](../backend/Modules/AcademicPeriods/Domain/Grading/ScoreWeightRules.cs) kiểm tra % tổng 100 và hệ số nguyên không âm có tổng dương. GradeCalculationService/Contracts có DI; chưa có orchestrator lấy phiếu, kiểm tra điểm sàn/lưu chiểu và lưu snapshot kết quả.
+[ThesisGradeCalculator](../../Modules/DefenseCouncil/Domain/Grading/ThesisGradeCalculator.cs) tính công thức chia 6/7 đã chốt, loại cả điểm và hệ số, không tự loại vì sai biệt hoặc tự làm tròn. GVPB kiêm ủy viên không nhập điểm Hội đồng riêng, điểm phản biện giữ hệ số 2. [ScoreWeightRules](../../Modules/AcademicPeriods/Domain/Grading/ScoreWeightRules.cs) kiểm tra % tổng 100 và hệ số nguyên không âm có tổng dương. GradeCalculationService/Contracts có DI; chưa có orchestrator lấy phiếu, kiểm tra điểm sàn/lưu chiểu và lưu snapshot kết quả.
 
-Giao dịch xuyên module phải được thiết kế theo use case; nhiều DbContext không tự tạo transaction chung. Ghi nhóm và thành viên dùng một context/transaction. Các bước cần nhất quán xuyên module phải phối hợp rõ ràng; không tự giả định mọi SaveChanges cùng database là nguyên tử. Thông báo có thể dùng sự kiện khi triển khai; chưa có event bus/Outbox/worker.
+Giao dịch xuyên module phải được thiết kế theo use case; nhiều DbContext không tự tạo transaction chung. Ghi nhóm và thành viên dùng một context/transaction. Các bước cần nhất quán xuyên module phải phối hợp rõ ràng; không tự giả định mọi SaveChanges cùng database là nguyên tử. Identity đã có outbox và worker riêng cho email activation/recovery; chưa có event bus hoặc outbox dùng chung giữa các module.
 
 ## 5. Trạng thái runtime/frontend
 
-[ModuleRegistration.cs](../backend/host/Api/Modules/ModuleRegistration.cs) đăng ký sáu IModule. HTTP hiện chỉ có GET /api/modules/{Name}/ping. Các model/repository/domain services không đồng nghĩa 75 FR đã được triển khai.
+[ModuleRegistration.cs](../../host/Api/Modules/ModuleRegistration.cs) đăng ký sáu IModule. Mỗi module có endpoint ping; Identity có thêm API authentication tại `/api/identity/auth`. Các model/repository/domain services không đồng nghĩa 75 FR đã được triển khai.
 
-Frontend React 19/TypeScript/Vite 8 có dashboard `/` và trang ping `/modules/:modulePath`. Router dùng AppLayout với Tailwind/shadcn/Radix; App/ModulePingPage còn dùng Ant Design. Đã bỏ MainLayout cũ và hai dependency trực tiếp không dùng. AuthContext/ProtectedRoute chưa được tích hợp; interceptor gọi refresh endpoint dự kiến chưa tồn tại.
+Frontend React 19/TypeScript/Vite 8 có dashboard `/` và trang ping `/modules/:modulePath`. Router dùng AppLayout với Tailwind/shadcn/Radix; App/ModulePingPage còn dùng Ant Design. AuthContext/ProtectedRoute và các màn hình auth chưa được tích hợp. Backend đã có refresh endpoint nhưng frontend chưa nối theo contract mới.
 
-Backend chưa có Identity/JWT/policy/login/refresh. Swagger Bearer definition không thực thi bảo mật. Policy phải kiểm tra vai trò, phân công, deadline, trạng thái, điểm bảo mật, quyền sửa điểm của chính mình, khóa/mở biên bản và điều kiện công bố/lưu chiểu. Response frontend/backend còn khác wrapper; cần thống nhất khi xây API nghiệp vụ.
+Backend dùng JWT RSA có session validation, refresh rotation, CSRF, lockout, activation/recovery, rate limit và permission policy động. Chi tiết tại [Authentication.md](../Technical/Authentication.md), contract HTTP tại [IdentityApiContract.md](../../../docs/ApiContract/IdentityApiContract.md). Policy theo phân công, deadline, trạng thái, quyền sửa điểm, khóa/mở biên bản và điều kiện công bố/lưu chiểu vẫn phải được xây tại module nghiệp vụ tương ứng.
 
-CORS đọc Cors:AllowedOrigins, fallback origin 5173; Compose cấu hình 5173/3000. Compose có Redis/RabbitMQ/MinIO/Mailpit nhưng chưa có client tích hợp. HTTPS production, backup, email thực và SLA phải triển khai riêng.
+CORS đọc `Cors:AllowedOrigins`, fallback origin 5173; Compose cấu hình 5173/3000. Identity gửi email qua SMTP/Mailpit bằng transactional outbox. Redis, RabbitMQ và MinIO chưa có client tích hợp. HTTPS production, backup, SMTP production và SLA cần được cấu hình theo môi trường triển khai.
 
 ## 6. Migrations và Neon
 
-Runtime dùng ConnectionStrings:DefaultConnection rồi DATABASE_CONNECTION_STRING. Factory ưu tiên ConnectionStrings:MigrationConnection rồi MIGRATION_CONNECTION_STRING, sau đó các nguồn runtime. [DatabaseOptions](../backend/BuildingBlocks/Infrastructure/Persistence/DatabaseOptions.cs) dùng Npgsql/snake_case, command timeout 60 giây và history public. Factory không tự đọc .env; [Database.ps1](../scripts/Database.ps1) nạp riêng hai biến kết nối từ .env nếu môi trường chưa cung cấp. Không commit credentials.
+Runtime dùng ConnectionStrings:DefaultConnection rồi DATABASE_CONNECTION_STRING. Factory ưu tiên ConnectionStrings:MigrationConnection rồi MIGRATION_CONNECTION_STRING, sau đó các nguồn runtime. [DatabaseOptions](../../BuildingBlocks/Infrastructure/Persistence/DatabaseOptions.cs) dùng Npgsql/snake_case, command timeout 60 giây và history public. Factory không tự đọc .env; [Database.ps1](../../../scripts/Database.ps1) nạp riêng hai biến kết nối từ .env nếu môi trường chưa cung cấp. Không commit credentials.
 
 Từ thư mục gốc, PowerShell:
 
@@ -105,9 +105,9 @@ Visual Studio Package Manager Console, sau khi cung cấp kết nối môi trư�
 Update-Database -Project UGTM.Database.Migrations -StartupProject UGTM.Api -Context UGTMDbContext
 ```
 
-Giữ các migration đã áp dụng và snapshot. Database đã chạy phiên bản dùng history shared cần chuyển một lần bằng [MoveMigrationHistory.sql](../scripts/MoveMigrationHistory.sql) trước khi chạy code mới; Neon hiện tại đã chuyển. Database mới không cần bước đó. Script báo lỗi nếu history đồng thời tồn tại ở shared và public.
+Giữ các migration đã áp dụng và snapshot. Database đã chạy phiên bản dùng history shared cần chuyển một lần bằng [MoveMigrationHistory.sql](../../../scripts/MoveMigrationHistory.sql) trước khi chạy code mới; Neon hiện tại đã chuyển. Database mới không cần bước đó. Script báo lỗi nếu history đồng thời tồn tại ở shared và public.
 
-Không chạy DatabaseScript.txt như SQL: đó là DBML đồng bộ từ EF, dùng xem cấu trúc. Chi tiết bảng/ràng buộc/khoảng thiếu tại [DataModel.md](DataModel.md).
+Không chạy DatabaseScript.txt như SQL: đó là DBML đồng bộ từ EF, dùng xem cấu trúc. Chi tiết bảng/ràng buộc/khoảng thiếu tại [DataModel.md](../../../docs/DataModel.md).
 
 ## 7. Khác biệt với Word và phần còn cần triển khai
 
@@ -118,10 +118,10 @@ Không chạy DatabaseScript.txt như SQL: đó là DBML đồng bộ từ EF, d
 | FK liên module | Mô tả không có FK vật lý | Có FK tại model điều phối migration; Domain/runtime không có navigation liên module |
 | UI | Ant Design | Layout Tailwind/shadcn; App/ping dùng Ant Design |
 | DDD | Mô tả nghiệp vụ đầy đủ | Ranh giới module/model được kiểm thử; aggregate nhóm và calculator có quy tắc; chưa đầy đủ use case |
-| Authentication | Identity + JWT | Chưa triển khai backend |
+| Authentication | Identity + JWT | Đã có JWT/session, activation/recovery, CSRF, permission policy và rate limit; frontend chưa tích hợp |
 
 SubmissionFile.EntityId và EvaluationDetail.EvaluationId vẫn là liên kết đa hình chưa có FK tới hồ sơ/phiếu. Quyết định loại điểm cần người/thời điểm/bằng chứng/audit; mở khóa cần chốt phạm vi/thời hạn/khóa lại; điểm khi có phản biện thứ hai chưa có quy tắc chọn đầy đủ. Không tự suy diễn các nội dung này. Metadata lưu chiểu, snapshot cấu hình, trọng số động đã có model nhưng cần orchestrator/policy.
 
 ## 8. Sơ đồ
 
-[C1](PlantUML/C1_System_Context.puml) · [C2](PlantUML/C2_Containers.puml) · [C3 tổng quan](PlantUML/C3_Components_HighLevel.puml) · [C3 module](PlantUML/C3_Components_ModuleDeepDive.puml) · [Database](PlantUML/MultiSchema_Database.puml) · [Xác thực](PlantUML/Security_Authentication_Flow.puml). Sơ đồ ghi rõ hiện trạng hoặc thiết kế nghiệp vụ chưa triển khai. Use Case diagram đã bỏ; giữ [12 đặc tả](UseCases.md).
+[C1](PlantUML/C1_System_Context.puml) · [C2](PlantUML/C2_Containers.puml) · [C3 tổng quan](PlantUML/C3_Components_HighLevel.puml) · [C3 module](PlantUML/C3_Components_ModuleDeepDive.puml) · [Database](PlantUML/MultiSchema_Database.puml) · [Xác thực](PlantUML/Security_Authentication_Flow.puml). Sơ đồ ghi rõ hiện trạng hoặc thiết kế nghiệp vụ chưa triển khai. Use Case diagram đã bỏ; giữ [12 đặc tả](../../../docs/UseCases.md).

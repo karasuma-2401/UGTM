@@ -17,10 +17,13 @@ Council --> System : Chấm, xử lý sai biệt, biên bản
 Faculty --> System : Cổng 1, điều phối, lưu chiểu, công bố
 AA --> System : Đợt, Excel import, ĐTĐT cấp 3, quyết định Hội đồng, báo cáo
 Admin --> System : Tài khoản, quyền, cấu hình, AuditLog
-rectangle "Email / kho tệp\nYêu cầu nghiệp vụ; chưa có code tích hợp" as Services #FFF3E0
-System ..> Services : Thông báo và hồ sơ số
+rectangle "SMTP email\nĐã tích hợp cho activation/recovery" as Email
+rectangle "Kho tệp\nYêu cầu nghiệp vụ; chưa tích hợp" as Storage #FFF3E0
+System ..> Email : Email tài khoản qua outbox
+System ..> Storage : Hồ sơ số
 note bottom of System
-Hiện tại chỉ có dashboard/ping và nền tảng dữ liệu.
+Backend đã có authentication; frontend auth chưa triển khai.
+Các API nghiệp vụ KLTN phần lớn chưa triển khai.
 Không tích hợp API cổng trường/LDAP.
 7 tác nhân nghiệp vụ; 6 role hệ thống trong source.
 end note

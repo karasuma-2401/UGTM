@@ -25,7 +25,10 @@ public sealed class NotificationsModule : IModule
             .Validate(options => !string.IsNullOrWhiteSpace(options.FromAddress),
                 "SMTP from address is required.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.FromName),
-                "SMTP from name is required.");
+                "SMTP from name is required.")
+            .Validate(options => options.Port is > 0 and <= 65535,
+                "SMTP port must be between 1 and 65535.")
+            .ValidateOnStart();
         services.AddScoped<IEmailSender, SmtpEmailSender>();
     }
 
