@@ -22,8 +22,11 @@ using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Notifications;
 using UGTM.Modules.Identity.Application.Persistence;
 using UGTM.Modules.Identity.Application.Profiles;
+using UGTM.Modules.Identity.Application.Permissions.GetPermissions;
 using UGTM.Modules.Identity.Application.Provisioning;
 using UGTM.Modules.Identity.Application.Recovery;
+using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
+using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
 using UGTM.Modules.Identity.Application.Security;
 using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
@@ -120,6 +123,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IAccessTokenService, JwtAccessTokenService>();
         services.AddScoped<IIdentityUnitOfWork, IdentityUnitOfWork>();
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRolePermissionRepository, RolePermissionRepository>();
         services.AddScoped<IAuthenticationSessionRepository, AuthenticationSessionRepository>();
         services.AddScoped<IOneTimeChallengeRepository, OneTimeChallengeRepository>();
         services.AddScoped<IUserProfileReader, UserProfileReader>();
@@ -145,6 +149,9 @@ public sealed class IdentityModule : IModule
         services.AddScoped<CreateUserHandler>();
         services.AddScoped<UpdateUserHandler>();
         services.AddScoped<UpdateUserStatusHandler>();
+        services.AddScoped<GetPermissionsHandler>();
+        services.AddScoped<GetRolePermissionsHandler>();
+        services.AddScoped<UpdateRolePermissionsHandler>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
