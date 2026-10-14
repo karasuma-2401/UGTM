@@ -107,6 +107,22 @@ public sealed class LoginHandlerTests
             CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
+        public Task<User?> GetByIdWithRolesAsync(Guid id, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public Task<bool> ExistsByUserCodeAsync(string userCode, Guid? excludeUserId, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public Task<bool> ExistsByEmailAsync(string normalizedEmail, Guid? excludeUserId, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public Task UpdateRolesAsync(
+            User value,
+            IEnumerable<SystemRoleName> roles,
+            DateTime assignedAt,
+            CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
         public void Add(User value) => throw new NotSupportedException();
     }
 }

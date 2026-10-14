@@ -77,8 +77,28 @@ if (app.Environment.IsDevelopment())
         .WithTitle("UGTM API")
         .AddPreferredSecuritySchemes("Bearer")
         .DisableAgent());
+
+    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_WATCH"))
+        && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VSAPPIDDIR")))
+    {
+        app.Lifetime.ApplicationStarted.Register(() =>
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "http://localhost:5287/scalar/v1",
+                    UseShellExecute = true
+                });
+            }
+            catch
+            {
+                // Bỏ qua nếu môi trường headless
+            }
+        });
+    }
 }
 
 app.MapUgtmModules();
 
-app.Run();
+await app.RunAsync();

@@ -4,6 +4,8 @@ Mỗi module có một contract riêng. Contract chỉ mô tả endpoint đã tr
 
 | Module | Contract | Trạng thái |
 | --- | --- | --- |
-| Identity | [IdentityApiContract.md](IdentityApiContract.md) | Đã triển khai |
+| Identity (Auth) | [IdentityApiContract.md](IdentityApiContract.md) | Đã triển khai |
+| Identity (Users) | [UserManagementApiContract.md](UserManagementApiContract.md) | Đã triển khai |
+| Identity (Role & Permission) | [RolePermissionApiContract.md](RolePermissionApiContract.md) | Đã triển khai |
 
 Quy ước response, authentication, lỗi và hành vi đặc biệt được ghi trong contract của module đang sở hữu endpoint. Khi thay đổi request, response, status code hoặc error code, cập nhật contract trong cùng pull request.

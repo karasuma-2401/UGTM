@@ -11,6 +11,8 @@ public sealed class User : AggregateRoot<Guid>
 {
     private User() { }
 
+    private User(Guid id) : base(id) { }
+
     private User(
         Guid id,
         string email,
@@ -86,6 +88,50 @@ public sealed class User : AggregateRoot<Guid>
             userCode,
             phoneNumber,
             createdAt);
+    }
+
+    public static User Create(
+        Guid id,
+        string email,
+        string normalizedEmail,
+        string fullName,
+        string? userCode,
+        string? phoneNumber,
+        string? passwordHash,
+        AccountStatus status,
+        DateTime now)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new ArgumentException("User identifier must be nonempty", nameof(id));
+        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        ArgumentException.ThrowIfNullOrWhiteSpace(normalizedEmail);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullName);
+        EnsureUtc(now, nameof(now));
+
+        var user = new User(id)
+        {
+            Email = email.Trim(),
+            NormalizedEmail = normalizedEmail.Trim(),
+            FullName = fullName.Trim(),
+            UserCode = string.IsNullOrWhiteSpace(userCode) ? null : userCode.Trim(),
+            PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim(),
+            PasswordHash = string.IsNullOrWhiteSpace(passwordHash) ? null : passwordHash,
+            Status = status,
+            SecurityStamp = Guid.NewGuid(),
+            ConcurrencyStamp = Guid.NewGuid(),
+            CreatedAt = now
+        };
+
+        if (status == AccountStatus.Active && !string.IsNullOrWhiteSpace(passwordHash))
+        {
+            user.EmailVerifiedAt = now;
+            user.ActivatedAt = now;
+            user.PasswordChangedAt = now;
+        }
+
+        return user;
     }
 
     public bool IsLockedOut(DateTime now)
@@ -220,8 +266,39 @@ public sealed class User : AggregateRoot<Guid>
         Touch(now);
     }
 
+    public void UpdateProfile(string fullName, string? phoneNumber, string? userCode, DateTime now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fullName);
+        EnsureUtc(now, nameof(now));
+
+        FullName = fullName.Trim();
+        PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim();
+        UserCode = string.IsNullOrWhiteSpace(userCode) ? null : userCode.Trim();
+        Touch(now);
+    }
+
+    public void Reactivate(DateTime now)
+    {
+        EnsureUtc(now, nameof(now));
+        if (Status == AccountStatus.Active)
+        {
+            return;
+        }
+
+        if (Status == AccountStatus.PendingActivation)
+        {
+            throw new InvalidOperationException("Pending activation accounts cannot be reactivated without completing activation.");
+        }
+
+        Status = AccountStatus.Active;
+        AccessFailedCount = 0;
+        LockoutEndAt = null;
+        RotateSecurityStamp();
+        Touch(now);
+    }
+
     // Security Stamp show state security version of account
-    private void RotateSecurityStamp()
+    public void RotateSecurityStamp()
     {
         SecurityStamp = Guid.NewGuid();
     }

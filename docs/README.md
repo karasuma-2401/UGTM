@@ -10,7 +10,9 @@ Nguồn nghiệp vụ: Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp 
 | [Sequences.md](../backend/docs/Architecture/Sequences.md) | 5 luồng tuần tự chính; là thiết kế nghiệp vụ cần triển khai |
 | [Architecture.md](../backend/docs/Architecture/Architecture.md) | Cấu trúc code, runtime, dữ liệu, xác thực và khác biệt với Word |
 | [Authentication.md](../backend/docs/Technical/Authentication.md) | Thiết kế và cách vận hành authentication backend đã triển khai |
-| [API contracts](ApiContract/README.md) | Contract theo module; hiện có Identity authentication |
+| [UserManagement.md](../backend/docs/Technical/UserManagement.md) | Thiết kế và cách vận hành phân hệ quản lý người dùng đã triển khai |
+| [RolePermissionManagement.md](../backend/docs/Technical/RolePermissionManagement.md) | Thiết kế và cách vận hành phân hệ quản lý quyền & phân quyền vai trò (RBAC/PBAC) đã triển khai |
+| [API contracts](ApiContract/README.md) | Contract theo module; hiện có Identity authentication, User management và Role & Permission |
 | [DataModel.md](DataModel.md) | 38 bảng/6 schema, 53 FK, nguồn migration và khoảng thiếu so với final |
 | [DatabaseScript.txt](DatabaseScript.txt) | DBML khớp EF, bỏ comment dư thừa; dùng để xem cấu trúc |
 

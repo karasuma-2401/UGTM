@@ -7,6 +7,8 @@ Tài liệu trong thư mục này mô tả kiến trúc và cách vận hành ba
 | [Architecture](Architecture/Architecture.md) | Modular Monolith, ranh giới module, persistence, runtime và migrations |
 | [Sequences](Architecture/Sequences.md) | Năm luồng tuần tự nghiệp vụ cần triển khai |
 | [Authentication](Technical/Authentication.md) | Thiết kế, bảo mật, cấu hình và vận hành authentication backend |
+| [User Management](Technical/UserManagement.md) | Thiết kế, luồng dữ liệu, phân trang và bảo mật quản lý người dùng |
+| [Role & Permission Management](Technical/RolePermissionManagement.md) | Thiết kế, phân quyền PBAC/RBAC, bảo vệ Admin và xoay Security Stamp |
 | [PlantUML](Architecture/PlantUML) | Sơ đồ kiến trúc, database, authentication và luồng nghiệp vụ |
 
 API công khai của từng module được quản lý tại [API contracts](../../docs/ApiContract/README.md).

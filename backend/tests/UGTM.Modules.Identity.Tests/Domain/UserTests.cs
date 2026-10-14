@@ -67,6 +67,72 @@ public sealed class UserTests
         Assert.NotEqual(previousStamp, user.SecurityStamp);
     }
 
+    [Fact]
+    public void Create_with_active_status_and_password_sets_activation_timestamps()
+    {
+        var now = CreatedAt.AddMinutes(2);
+        var user = User.Create(
+            Guid.NewGuid(),
+            "lecturer@ugtm.edu.vn",
+            "LECTURER@UGTM.EDU.VN",
+            "Lecturer Name",
+            "GV001",
+            "0912345678",
+            "initial-hash",
+            AccountStatus.Active,
+            now);
+
+        Assert.Equal(AccountStatus.Active, user.Status);
+        Assert.Equal("initial-hash", user.PasswordHash);
+        Assert.Equal(now, user.EmailVerifiedAt);
+        Assert.Equal(now, user.ActivatedAt);
+        Assert.Equal(now, user.PasswordChangedAt);
+        Assert.Equal("0912345678", user.PhoneNumber);
+        Assert.Equal("GV001", user.UserCode);
+    }
+
+    [Fact]
+    public void UpdateProfile_updates_fields_and_preserves_security_stamp()
+    {
+        var user = CreateActiveUser();
+        var previousStamp = user.SecurityStamp;
+        var now = CreatedAt.AddHours(2);
+
+        user.UpdateProfile("Updated FullName", "0999999999", "NEWCODE", now);
+
+        Assert.Equal("Updated FullName", user.FullName);
+        Assert.Equal("0999999999", user.PhoneNumber);
+        Assert.Equal("NEWCODE", user.UserCode);
+        Assert.Equal(now, user.UpdatedAt);
+        Assert.Equal(previousStamp, user.SecurityStamp);
+    }
+
+    [Fact]
+    public void Reactivate_from_suspended_resets_lockout_and_sets_active()
+    {
+        var user = CreateActiveUser();
+        var now = CreatedAt.AddHours(1);
+        user.Suspend(now);
+        Assert.Equal(AccountStatus.Suspended, user.Status);
+
+        var previousStamp = user.SecurityStamp;
+        var reactivateNow = now.AddHours(1);
+        user.Reactivate(reactivateNow);
+
+        Assert.Equal(AccountStatus.Active, user.Status);
+        Assert.Equal(0, user.AccessFailedCount);
+        Assert.Null(user.LockoutEndAt);
+        Assert.NotEqual(previousStamp, user.SecurityStamp);
+        Assert.Equal(reactivateNow, user.UpdatedAt);
+    }
+
+    [Fact]
+    public void Reactivate_throws_when_account_is_pending_activation()
+    {
+        var user = CreatePendingUser();
+        Assert.Throws<InvalidOperationException>(() => user.Reactivate(CreatedAt.AddMinutes(5)));
+    }
+
     private static User CreatePendingUser()
         => User.ProvisionStudent(
             Guid.NewGuid(),

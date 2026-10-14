@@ -53,4 +53,36 @@ public static class IdentityErrors
     public static readonly Error InvalidSession = Error.Unauthorized(
         "Identity.InvalidSession",
         "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
+
+    public static readonly Error InvalidInput = Error.Validation(
+        "Identity.InvalidInput",
+        "Dữ liệu đầu vào không hợp lệ.");
+
+    public static readonly Error InvalidRole = Error.Validation(
+        "Identity.InvalidRole",
+        "Vai trò người dùng không hợp lệ hoặc không được để trống.");
+
+    public static readonly Error InvalidStatus = Error.Validation(
+        "Identity.InvalidStatus",
+        "Trạng thái tài khoản không hợp lệ.");
+
+    public static readonly Error InvalidStatusTransition = Error.Validation(
+        "Identity.InvalidStatusTransition",
+        "Không thể chuyển đổi trạng thái tài khoản theo yêu cầu.");
+
+    public static readonly Error InvalidPhoneNumber = Error.Validation(
+        "Identity.InvalidPhoneNumber",
+        "Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số, ví dụ: 0901234567 hoặc +84901234567).");
+
+    public static readonly Error RoleNotFound = Error.NotFound(
+        "Identity.RoleNotFound",
+        "Không tìm thấy vai trò người dùng.");
+
+    public static readonly Error InvalidPermission = Error.Validation(
+        "Identity.InvalidPermission",
+        "Một hoặc nhiều quyền được chọn không tồn tại hoặc không hợp lệ.");
+
+    public static readonly Error CannotRevokeAllAdminPermissions = Error.Validation(
+        "Identity.CannotRevokeAllAdminPermissions",
+        "Không thể gỡ bỏ toàn bộ quyền của vai trò Quản trị viên (Admin).");
 }
