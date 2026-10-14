@@ -73,4 +73,16 @@ public static class IdentityErrors
     public static readonly Error InvalidPhoneNumber = Error.Validation(
         "Identity.InvalidPhoneNumber",
         "Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số, ví dụ: 0901234567 hoặc +84901234567).");
+
+    public static readonly Error RoleNotFound = Error.NotFound(
+        "Identity.RoleNotFound",
+        "Không tìm thấy vai trò người dùng.");
+
+    public static readonly Error InvalidPermission = Error.Validation(
+        "Identity.InvalidPermission",
+        "Một hoặc nhiều quyền được chọn không tồn tại hoặc không hợp lệ.");
+
+    public static readonly Error CannotRevokeAllAdminPermissions = Error.Validation(
+        "Identity.CannotRevokeAllAdminPermissions",
+        "Không thể gỡ bỏ toàn bộ quyền của vai trò Quản trị viên (Admin).");
 }
