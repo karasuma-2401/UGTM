@@ -1,0 +1,206 @@
+using UGTM.Modules.Identity.Application.Common;
+using UGTM.Modules.Identity.Application.Persistence;
+using UGTM.Modules.Identity.Application.Permissions.GetPermissions;
+using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
+using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
+using UGTM.Modules.Identity.Domain.Entities;
+using UGTM.Modules.Identity.Domain.Enums;
+using UGTM.Modules.Identity.Domain.Repositories;
+
+namespace UGTM.Modules.Identity.Tests.Application;
+
+public sealed class RolePermissionHandlerTests
+{
+    private static readonly DateTime Now = new(2026, 10, 14, 12, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public async Task GetPermissionsHandler_returns_grouped_modules_and_permissions()
+    {
+        var repo = new FakeRolePermissionRepository();
+        repo.Permissions.AddRange([
+            new Permission { Id = 1, PermissionCode = "identity.users.read", PermissionName = "Xem User", Module = "Identity" },
+            new Permission { Id = 2, PermissionCode = "identity.users.manage", PermissionName = "Sửa User", Module = "Identity" },
+            new Permission { Id = 3, PermissionCode = "thesis.topics.read", PermissionName = "Xem Đề tài", Module = "ThesisManagement" }
+        ]);
+
+        var handler = new GetPermissionsHandler(repo);
+        var result = await handler.HandleAsync(new GetPermissionsQuery(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Count);
+        Assert.Equal("Identity", result.Value[0].Module);
+        Assert.Equal(2, result.Value[0].Permissions.Count);
+        Assert.Equal("ThesisManagement", result.Value[1].Module);
+        Assert.Single(result.Value[1].Permissions);
+    }
+
+    [Fact]
+    public async Task GetRolePermissionsHandler_returns_role_and_its_permissions()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var perm1 = new Permission { Id = 1, PermissionCode = "identity.users.read", PermissionName = "Xem User", Module = "Identity" };
+        var perm2 = new Permission { Id = 2, PermissionCode = "identity.users.manage", PermissionName = "Sửa User", Module = "Identity" };
+        repo.Permissions.AddRange([perm1, perm2]);
+
+        var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
+        repo.Roles.Add(lecturerRole);
+        repo.RolePermissions.Add(new RolePermission { RoleId = 4, PermissionId = 1, Permission = perm1 });
+
+        var handler = new GetRolePermissionsHandler(repo);
+        var result = await handler.HandleAsync(new GetRolePermissionsQuery(4), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(4, result.Value.RoleId);
+        Assert.Equal("Lecturer", result.Value.RoleName);
+        Assert.Single(result.Value.Permissions);
+        Assert.Equal("identity.users.read", result.Value.Permissions[0].PermissionCode);
+    }
+
+    [Fact]
+    public async Task GetRolePermissionsHandler_fails_when_role_not_found()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var handler = new GetRolePermissionsHandler(repo);
+
+        var result = await handler.HandleAsync(new GetRolePermissionsQuery(999), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.RoleNotFound", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateRolePermissionsHandler_updates_permissions_and_rotates_security_stamp()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var perm1 = new Permission { Id = 1, PermissionCode = "identity.users.read", PermissionName = "Xem User", Module = "Identity" };
+        var perm2 = new Permission { Id = 2, PermissionCode = "identity.users.manage", PermissionName = "Sửa User", Module = "Identity" };
+        repo.Permissions.AddRange([perm1, perm2]);
+
+        var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
+        repo.Roles.Add(lecturerRole);
+
+        var user = User.Create(Guid.NewGuid(), "gv@ugtm.edu.vn", "GV@UGTM.EDU.VN", "GV A", "GV01", null, "hash", AccountStatus.Active, Now);
+        var oldStamp = user.SecurityStamp;
+        repo.UsersInRoles.Add(user);
+
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, [1, 2]), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Permissions.Count);
+        Assert.True(repo.SecurityStampRotated);
+        Assert.NotEqual(oldStamp, user.SecurityStamp);
+    }
+
+    [Fact]
+    public async Task UpdateRolePermissionsHandler_fails_when_role_not_found()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(999, [1]), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.RoleNotFound", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateRolePermissionsHandler_fails_when_permission_id_invalid()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
+        repo.Roles.Add(lecturerRole);
+
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, [9999]), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidPermission", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateRolePermissionsHandler_protects_admin_role_from_clearing_all_permissions()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var adminRole = new Role { Id = 1, RoleName = SystemRoleName.Admin, Description = "Quản trị viên" };
+        repo.Roles.Add(adminRole);
+
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(1, []), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.CannotRevokeAllAdminPermissions", result.Error.Code);
+    }
+
+    private sealed class FakeRolePermissionRepository : IRolePermissionRepository
+    {
+        public List<Permission> Permissions { get; } = [];
+        public List<Role> Roles { get; } = [];
+        public List<RolePermission> RolePermissions { get; } = [];
+        public List<User> UsersInRoles { get; } = [];
+        public bool SecurityStampRotated { get; private set; }
+
+        public Task<IReadOnlyList<Permission>> GetAllPermissionsAsync(CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<Permission>>(Permissions);
+
+        public Task<Role?> GetRoleWithPermissionsAsync(int roleId, CancellationToken cancellationToken)
+        {
+            var role = Roles.FirstOrDefault(r => r.Id == roleId);
+            if (role != null)
+            {
+                role.RolePermissions = RolePermissions
+                    .Where(rp => rp.RoleId == roleId)
+                    .Select(rp => new RolePermission
+                    {
+                        RoleId = rp.RoleId,
+                        PermissionId = rp.PermissionId,
+                        Permission = Permissions.First(p => p.Id == rp.PermissionId)
+                    })
+                    .ToList();
+            }
+            return Task.FromResult(role);
+        }
+
+        public Task<bool> RoleExistsAsync(int roleId, CancellationToken cancellationToken)
+            => Task.FromResult(Roles.Any(r => r.Id == roleId));
+
+        public Task<IReadOnlyList<Permission>> GetPermissionsByIdsAsync(IEnumerable<int> permissionIds, CancellationToken cancellationToken)
+        {
+            var idSet = permissionIds.ToHashSet();
+            var list = Permissions.Where(p => idSet.Contains(p.Id)).ToList();
+            return Task.FromResult<IReadOnlyList<Permission>>(list);
+        }
+
+        public Task UpdateRolePermissionsAsync(int roleId, IEnumerable<int> permissionIds, DateTime assignedAt, CancellationToken cancellationToken)
+        {
+            RolePermissions.RemoveAll(rp => rp.RoleId == roleId);
+            foreach (var pid in permissionIds)
+            {
+                RolePermissions.Add(new RolePermission { RoleId = roleId, PermissionId = pid, AssignedAt = assignedAt });
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task RotateSecurityStampForRoleUsersAsync(int roleId, CancellationToken cancellationToken)
+        {
+            SecurityStampRotated = true;
+            foreach (var user in UsersInRoles)
+            {
+                user.RotateSecurityStamp();
+            }
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class DirectUnitOfWork : IIdentityUnitOfWork
+    {
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Task.FromResult(1);
+        public Task<TResult> ExecuteInTransactionAsync<TResult>(Func<CancellationToken, Task<TResult>> operation, CancellationToken cancellationToken = default)
+            => operation(cancellationToken);
+    }
+
+    private sealed class FakeClock(DateTime now) : IClock
+    {
+        public DateTime UtcNow => now;
+    }
+}

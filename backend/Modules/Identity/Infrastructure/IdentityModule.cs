@@ -191,6 +191,7 @@ public sealed class IdentityModule : IModule
     {
         endpoints.MapIdentityAuthEndpoints();
         endpoints.MapIdentityUserEndpoints();
+        endpoints.MapIdentityRolePermissionEndpoints();
 
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
