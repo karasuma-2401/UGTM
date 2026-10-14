@@ -109,7 +109,7 @@ Tài khoản người dùng được đại diện bởi Aggregate Root [`User`]
 Phân hệ sử dụng cơ chế Dynamic Permission Policy kết hợp phân quyền theo vai trò:
 - Endpoint `GET /api/users` yêu cầu: `Permission:identity.users.read`.
 - Các endpoint `POST`, `PUT`, `PATCH` yêu cầu: `Permission:identity.users.manage`.
-- **Cơ chế Admin Bypass:** [`PermissionAuthorizationHandler`](../../Modules/Identity/Infrastructure/Authorization/PermissionAuthorizationHandler.cs) được cấu hình để kiểm tra nếu người dùng sở hữu Role `Admin` (hoặc claim `role: Admin`) thì tự động vượt qua mọi kiểm tra permission mà không cần gán quyền lẻ tẻ trong cơ sở dữ liệu.
+- **Cơ chế Phân quyền (PBAC):** [`PermissionAuthorizationHandler`](../../Modules/Identity/Infrastructure/Authorization/PermissionAuthorizationHandler.cs) kiểm tra claim `permission` được nạp từ cơ sở dữ liệu vào JWT token của người dùng khi đăng nhập. Người dùng có vai trò `Admin` được cấp các quyền tương ứng thông qua bảng liên kết `identity.role_permission` trong cơ sở dữ liệu.
 
 ---
 
