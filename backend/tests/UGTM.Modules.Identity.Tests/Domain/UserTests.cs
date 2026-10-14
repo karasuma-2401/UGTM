@@ -92,7 +92,7 @@ public sealed class UserTests
     }
 
     [Fact]
-    public void UpdateProfile_updates_fields_and_rotates_security_stamp()
+    public void UpdateProfile_updates_fields_and_preserves_security_stamp()
     {
         var user = CreateActiveUser();
         var previousStamp = user.SecurityStamp;
@@ -104,7 +104,7 @@ public sealed class UserTests
         Assert.Equal("0999999999", user.PhoneNumber);
         Assert.Equal("NEWCODE", user.UserCode);
         Assert.Equal(now, user.UpdatedAt);
-        Assert.NotEqual(previousStamp, user.SecurityStamp);
+        Assert.Equal(previousStamp, user.SecurityStamp);
     }
 
     [Fact]
@@ -124,6 +124,13 @@ public sealed class UserTests
         Assert.Null(user.LockoutEndAt);
         Assert.NotEqual(previousStamp, user.SecurityStamp);
         Assert.Equal(reactivateNow, user.UpdatedAt);
+    }
+
+    [Fact]
+    public void Reactivate_throws_when_account_is_pending_activation()
+    {
+        var user = CreatePendingUser();
+        Assert.Throws<InvalidOperationException>(() => user.Reactivate(CreatedAt.AddMinutes(5)));
     }
 
     private static User CreatePendingUser()

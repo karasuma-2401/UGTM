@@ -1,9 +1,4 @@
-using UGTM.BuildingBlocks.Domain;
-using UGTM.Modules.Identity.Application.Common;
-using UGTM.Modules.Identity.Application.Persistence;
 using UGTM.Modules.Identity.Application.Users.Dtos;
-using UGTM.Modules.Identity.Domain.Enums;
-using UGTM.Modules.Identity.Domain.Repositories;
 
 namespace UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 
@@ -20,21 +15,29 @@ public sealed class UpdateUserStatusHandler(
         {
             if (string.IsNullOrWhiteSpace(command.Status))
             {
-                return Result.Failure<UserSummaryDto>(
-                    Error.Validation("Identity.InvalidStatus", "Trạng thái không được để trống."));
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidStatus);
             }
 
             if (!Enum.TryParse<AccountStatus>(command.Status.Trim(), ignoreCase: true, out var newStatus)
                 || newStatus == AccountStatus.PendingActivation)
             {
-                return Result.Failure<UserSummaryDto>(
-                    Error.Validation("Identity.InvalidStatus", $"Trạng thái '{command.Status}' không hợp lệ."));
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidStatus);
             }
 
             var user = await users.GetByIdWithRolesAsync(command.Id, ct);
             if (user is null)
             {
                 return Result.Failure<UserSummaryDto>(IdentityErrors.UserNotFound);
+            }
+
+            if (user.Status == AccountStatus.PendingActivation)
+            {
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidStatusTransition);
+            }
+
+            if (newStatus == AccountStatus.Suspended && user.Status != AccountStatus.Active)
+            {
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidStatusTransition);
             }
 
             var now = clock.UtcNow;

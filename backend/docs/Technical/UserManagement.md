@@ -12,7 +12,7 @@ Backend phân hệ User Management hỗ trợ:
 - Cập nhật thông tin hồ sơ (Họ tên, Số điện thoại, Mã người dùng) và đồng bộ danh sách vai trò hệ thống;
 - Cập nhật trạng thái tài khoản: Khóa (`Disabled`), Tạm ngưng (`Suspended`) hoặc Mở khóa (`Active`);
 - Cơ chế thu hồi phiên tức thời: Mọi thao tác khóa tài khoản hoặc thay đổi vai trò đều kích hoạt xoay `SecurityStamp`, khiến các token JWT đang lưu hành bị `SessionValidator` từ chối ngay lập tức;
-- Phân quyền theo Policy động `Permission:identity.users.read` và `Permission:identity.users.manage`, đồng thời hỗ trợ Role `Admin` tự động bypass quyền.
+- Phân quyền theo Policy động `Permission:identity.users.read` và `Permission:identity.users.manage`.
 
 ---
 
@@ -33,7 +33,7 @@ backend/
       UpdateUser/             # Command và Handler cập nhật hồ sơ và vai trò
       UpdateUserStatus/       # Command và Handler đổi trạng thái tài khoản
     Infrastructure/
-      Authorization/          # PermissionAuthorizationHandler (bổ sung bypass cho Admin)
+      Authorization/          # PermissionPolicyProvider và PermissionAuthorizationHandler
       Endpoints/UserEndpoints.cs # Minimal API tại /api/users
       Persistence/Repositories/
         UserRepository.cs     # Triển khai phương thức GetByIdWithRoles, Exists, UpdateRoles
@@ -78,6 +78,7 @@ Tài khoản người dùng được đại diện bởi Aggregate Root [`User`]
 1. Admin gửi thông tin: Email, Họ tên, Mã người dùng, SĐT, Danh sách vai trò, và tùy chọn `initialPassword`.
 2. `CreateUserHandler` kiểm tra:
    - Tính bắt buộc của Email, Họ tên và tính hợp lệ của các vai trò (`SystemRoleName`).
+   - Tính hợp lệ của Số điện thoại nếu có cung cấp (`PhoneNumberValidator`: 10 chữ số chuẩn Việt Nam bắt đầu bằng `0` hoặc `+84`).
    - Kiểm tra tính duy nhất của Email và Mã người dùng (`ExistsByEmailAsync`, `ExistsByUserCodeAsync`).
 3. **Phân nhánh xử lý:**
    - **Trường hợp có `initialPassword`:** Mật khẩu được kiểm tra qua `IPasswordPolicy` ($\ge 12$ ký tự, chữ hoa, chữ thường, số, ký tự đặc biệt). Mật khẩu được băm bằng `IPasswordService` (sử dụng ASP.NET Core `PasswordHasher<User>`). Tài khoản được kích hoạt `Active` ngay lập tức.
@@ -87,10 +88,11 @@ Tài khoản người dùng được đại diện bởi Aggregate Root [`User`]
 
 ### 3. Luồng Cập nhật hồ sơ & vai trò (`PUT /api/users/{id}`)
 1. `UpdateUserHandler` tìm user theo `id` kèm thông tin vai trò hiện tại. Nếu không tồn tại $\rightarrow$ trả `Identity.UserNotFound` (404).
-2. Nếu `userCode` thay đổi, kiểm tra xem mã mới có trùng với bất kỳ tài khoản nào khác không $\rightarrow$ trả `Identity.DuplicateAccount` (409).
-3. Gọi domain method `user.UpdateProfile(...)` để cập nhật Họ tên, SĐT, Mã người dùng và xoay `SecurityStamp`.
-4. Nếu có danh sách vai trò mới, gọi `UpdateRolesAsync` để thực hiện đồng bộ vi mô: gỡ bỏ các vai trò cũ không còn và thêm vào các vai trò mới.
-5. Commit transaction và trả về thông tin `UserSummaryDto` sau cập nhật.
+2. Kiểm tra tính hợp lệ của SĐT mới nếu có cung cấp (`PhoneNumberValidator`: 10 chữ số).
+3. Nếu `userCode` thay đổi, kiểm tra xem mã mới có trùng với bất kỳ tài khoản nào khác không $\rightarrow$ trả `Identity.DuplicateAccount` (409).
+4. Gọi domain method `user.UpdateProfile(...)` để cập nhật Họ tên, SĐT, Mã người dùng (chỉ xoay `SecurityStamp` khi danh sách vai trò thay đổi).
+5. Nếu có danh sách vai trò mới, gọi `UpdateRolesAsync` để thực hiện đồng bộ vi mô: gỡ bỏ các vai trò cũ không còn và thêm vào các vai trò mới.
+6. Commit transaction và trả về thông tin `UserSummaryDto` sau cập nhật.
 
 ### 4. Luồng Cập nhật trạng thái tài khoản (`PATCH /api/users/{id}/status`)
 1. Nhận trạng thái mục tiêu: `Active`, `Suspended`, hoặc `Disabled`. Không cho phép gán thủ công `PendingActivation`.

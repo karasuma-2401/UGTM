@@ -1,5 +1,4 @@
 using UGTM.BuildingBlocks.Application.Responses;
-using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Application.Users.Dtos;
 
 namespace UGTM.Modules.Identity.Application.Users.GetUsers;

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
@@ -41,7 +40,8 @@ public static class UserEndpoints
                 Lấy danh sách người dùng có hỗ trợ phân trang, tìm kiếm theo từ khóa (Email, Họ tên, Mã người dùng)
                 và lọc theo vai trò (Role), trạng thái tài khoản (Status).
 
-                Yêu cầu Bearer token có quyền `identity.users.read` hoặc vai trò `Admin`.
+                Yêu cầu Bearer token có quyền `identity.users.read`.
+                Thiếu token hoặc token không hợp lệ: 401; không đủ quyền: 403.
                 """)
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersRead}");
 
@@ -53,7 +53,11 @@ public static class UserEndpoints
                   và hệ thống sẽ gửi email Magic Link kích hoạt (thời hạn 24 giờ).
                 - Nếu cung cấp `initialPassword`: mật khẩu được kiểm tra độ mạnh, băm và kích hoạt tài khoản `Active` ngay lập tức.
 
-                Yêu cầu Bearer token có quyền `identity.users.manage` hoặc vai trò `Admin`.
+                Yêu cầu Bearer token có quyền `identity.users.manage`.
+                Thiếu thông tin bắt buộc: 400 `Identity.InvalidInput`; vai trò sai: 400 `Identity.InvalidRole`;
+                số điện thoại không hợp lệ: 400 `Identity.InvalidPhoneNumber`;
+                mật khẩu yếu: 400 `Identity.WeakPassword`; trùng email hoặc mã: 409 `Identity.DuplicateAccount`.
+                Thiếu token: 401; không đủ quyền: 403.
                 """)
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}");
 
@@ -63,7 +67,11 @@ public static class UserEndpoints
                 Cập nhật họ tên, số điện thoại, mã người dùng và danh sách vai trò cho tài khoản.
                 Nếu cập nhật vai trò, Security Stamp sẽ được làm mới để người dùng phải nhận lại claims ở phiên tiếp theo.
 
-                Yêu cầu Bearer token có quyền `identity.users.manage` hoặc vai trò `Admin`.
+                Yêu cầu Bearer token có quyền `identity.users.manage`.
+                Họ tên rỗng: 400 `Identity.InvalidInput`; vai trò sai: 400 `Identity.InvalidRole`;
+                số điện thoại không hợp lệ: 400 `Identity.InvalidPhoneNumber`;
+                không tìm thấy user: 404 `Identity.UserNotFound`; trùng mã người dùng: 409 `Identity.DuplicateAccount`.
+                Thiếu token: 401; không đủ quyền: 403.
                 """)
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}");
 
@@ -74,7 +82,11 @@ public static class UserEndpoints
                 Khi chuyển sang `Suspended` hoặc `Disabled`, Security Stamp tự động thay đổi khiến mọi phiên đăng nhập
                 và Access Token hiện tại của tài khoản này bị vô hiệu hóa ngay lập tức.
 
-                Yêu cầu Bearer token có quyền `identity.users.manage` hoặc vai trò `Admin`.
+                Yêu cầu Bearer token có quyền `identity.users.manage`.
+                Trạng thái rỗng hoặc sai: 400 `Identity.InvalidStatus`;
+                chuyển đổi trạng thái không hợp lệ (ví dụ tài khoản chờ kích hoạt): 400 `Identity.InvalidStatusTransition`;
+                không tìm thấy user: 404 `Identity.UserNotFound`.
+                Thiếu token: 401; không đủ quyền: 403.
                 """)
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}");
 
@@ -82,12 +94,12 @@ public static class UserEndpoints
     }
 
     private static async Task<IResult> GetUsersAsync(
-        [FromQuery] string? keyword,
-        [FromQuery] string? role,
-        [FromQuery] string? status,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
-        [FromServices] GetUsersHandler handler = null!,
+        string? keyword,
+        string? role,
+        string? status,
+        int pageNumber = 1,
+        int pageSize = 10,
+        GetUsersHandler handler = null!,
         CancellationToken cancellationToken = default)
     {
         var query = new GetUsersQuery(keyword, role, status, pageNumber, pageSize);
@@ -96,8 +108,8 @@ public static class UserEndpoints
     }
 
     private static async Task<IResult> CreateUserAsync(
-        [FromBody] CreateUserRequest request,
-        [FromServices] CreateUserHandler handler,
+        CreateUserRequest request,
+        CreateUserHandler handler,
         CancellationToken cancellationToken)
     {
         var command = new CreateUserCommand(
@@ -114,9 +126,9 @@ public static class UserEndpoints
     }
 
     private static async Task<IResult> UpdateUserAsync(
-        [FromRoute] Guid id,
-        [FromBody] UpdateUserRequest request,
-        [FromServices] UpdateUserHandler handler,
+        Guid id,
+        UpdateUserRequest request,
+        UpdateUserHandler handler,
         CancellationToken cancellationToken)
     {
         var command = new UpdateUserCommand(
@@ -131,9 +143,9 @@ public static class UserEndpoints
     }
 
     private static async Task<IResult> UpdateStatusAsync(
-        [FromRoute] Guid id,
-        [FromBody] UpdateUserStatusRequest request,
-        [FromServices] UpdateUserStatusHandler handler,
+        Guid id,
+        UpdateUserStatusRequest request,
+        UpdateUserStatusHandler handler,
         CancellationToken cancellationToken)
     {
         var command = new UpdateUserStatusCommand(id, request.Status);

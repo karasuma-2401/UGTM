@@ -135,6 +135,57 @@ public sealed class UsersHandlerTests
         Assert.True(outbox.Enqueued);
     }
 
+    [Theory]
+    [InlineData("123")]
+    [InlineData("03621201000")]
+    [InlineData("abcdefghij")]
+    public async Task CreateUserHandler_rejects_invalid_phone_number(string invalidPhone)
+    {
+        var repo = new FakeUserRepository();
+        var handler = CreateHandler(repo, out _);
+
+        var result = await handler.HandleAsync(
+            new CreateUserCommand(
+                "student@ugtm.edu.vn",
+                "Student",
+                "SV001",
+                invalidPhone,
+                ["Student"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidPhoneNumber", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_rejects_invalid_phone_number()
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Old Name",
+            "OLD01",
+            "0900000000",
+            null,
+            AccountStatus.Active,
+            Now);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(
+                user.Id,
+                "New Name",
+                "NEW01",
+                "invalid-phone",
+                ["Admin"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidPhoneNumber", result.Error.Code);
+    }
+
     [Fact]
     public async Task UpdateUserHandler_updates_profile_and_roles()
     {
@@ -194,6 +245,80 @@ public sealed class UsersHandlerTests
             CancellationToken.None);
         Assert.True(reactivateResult.IsSuccess);
         Assert.Equal("Active", reactivateResult.Value.Status);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusHandler_fails_when_activating_pending_account()
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Test Name",
+            "T01",
+            null,
+            null,
+            AccountStatus.PendingActivation,
+            Now);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(user.Id, "Active"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidStatusTransition", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusHandler_fails_when_suspending_non_active_account()
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Test Name",
+            "T01",
+            null,
+            null,
+            AccountStatus.Disabled,
+            Now);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(user.Id, "Suspended"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidStatusTransition", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_preserves_security_stamp_when_roles_unchanged()
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Old Name",
+            "OLD01",
+            "0900000000",
+            null,
+            AccountStatus.Active,
+            Now);
+        var oldStamp = user.SecurityStamp;
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Updated Name Only", null, "0911111111", null),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Updated Name Only", result.Value.FullName);
+        Assert.Equal(oldStamp, user.SecurityStamp);
     }
 
     private static CreateUserHandler CreateHandler(

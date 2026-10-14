@@ -147,7 +147,7 @@ Tạo tài khoản người dùng mới và phân vai trò.
 | `email` | `string` | Có | Địa chỉ email của người dùng (tối đa 150 ký tự) |
 | `fullName` | `string` | Có | Họ và tên đầy đủ (tối đa 150 ký tự) |
 | `userCode` | `string` | Không | Mã số sinh viên / Mã cán bộ giảng viên (tối đa 20 ký tự) |
-| `phoneNumber` | `string` | Không | Số điện thoại liên hệ (tối đa 20 ký tự) |
+| `phoneNumber` | `string?` | Không | Số điện thoại liên hệ (định dạng 10 chữ số, ví dụ: 0901234567 hoặc +84901234567) |
 | `roles` | `string[]` | Có | Danh sách ít nhất 1 vai trò hệ thống hợp lệ |
 | `initialPassword` | `string?` | Không | Mật khẩu khởi tạo ban đầu (nếu muốn kích hoạt ngay) |
 | `sendActivationEmail` | `boolean` | Không | Mặc định `true` (chỉ áp dụng khi không truyền initialPassword) |
@@ -178,6 +178,7 @@ Tạo tài khoản người dùng mới và phân vai trò.
 | :--- | :--- | :--- |
 | 400 | `Identity.InvalidInput` | Thiếu Email hoặc Họ tên |
 | 400 | `Identity.InvalidRole` | Danh sách vai trò rỗng hoặc chứa vai trò không tồn tại |
+| 400 | `Identity.InvalidPhoneNumber` | Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số) |
 | 400 | `Identity.WeakPassword` | `initialPassword` không đáp ứng chính sách bảo mật ($\ge 12$ ký tự, hoa, thường, số, ký tự đặc biệt) |
 | 409 | `Identity.DuplicateAccount` | Email hoặc mã người dùng đã tồn tại trong hệ thống |
 
@@ -241,6 +242,7 @@ Cập nhật thông tin cá nhân và thay đổi danh sách vai trò của ngư
 | :--- | :--- | :--- |
 | 400 | `Identity.InvalidInput` | Họ tên bị để trống |
 | 400 | `Identity.InvalidRole` | Danh sách vai trò không hợp lệ |
+| 400 | `Identity.InvalidPhoneNumber` | Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số) |
 | 404 | `Identity.UserNotFound` | Không tìm thấy người dùng với `id` cung cấp |
 | 409 | `Identity.DuplicateAccount` | `userCode` mới bị trùng với một tài khoản khác |
 
@@ -296,6 +298,7 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 | HTTP Status | Mã lỗi | Nguyên nhân |
 | :--- | :--- | :--- |
 | 400 | `Identity.InvalidStatus` | Trạng thái rỗng, không hợp lệ hoặc cố tình đặt `PendingActivation` |
+| 400 | `Identity.InvalidStatusTransition` | Chuyển đổi trạng thái không hợp lệ (ví dụ tài khoản chờ kích hoạt hoặc tạm ngưng tài khoản không Active) |
 | 404 | `Identity.UserNotFound` | Không tìm thấy người dùng với `id` cung cấp |
 
 ---
@@ -308,6 +311,7 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 | `Identity.DuplicateAccount` | 409 | Email hoặc mã người dùng đã tồn tại trong hệ thống |
 | `Identity.InvalidRole` | 400 | Tên vai trò không hợp lệ trong danh mục `SystemRoleName` |
 | `Identity.InvalidStatus` | 400 | Trạng thái tài khoản không hợp lệ |
+| `Identity.InvalidStatusTransition` | 400 | Không thể chuyển đổi trạng thái tài khoản theo yêu cầu |
 | `Identity.WeakPassword` | 400 | Mật khẩu khởi tạo không đạt tiêu chuẩn chính sách bảo mật |
 | `Identity.InvalidInput` | 400 | Dữ liệu đầu vào bị thiếu hoặc không đúng định dạng |
 

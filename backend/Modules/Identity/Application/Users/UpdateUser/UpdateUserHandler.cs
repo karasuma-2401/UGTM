@@ -1,9 +1,5 @@
-using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Application.Common;
-using UGTM.Modules.Identity.Application.Persistence;
 using UGTM.Modules.Identity.Application.Users.Dtos;
-using UGTM.Modules.Identity.Domain.Enums;
-using UGTM.Modules.Identity.Domain.Repositories;
 
 namespace UGTM.Modules.Identity.Application.Users.UpdateUser;
 
@@ -20,8 +16,12 @@ public sealed class UpdateUserHandler(
         {
             if (string.IsNullOrWhiteSpace(command.FullName))
             {
-                return Result.Failure<UserSummaryDto>(
-                    Error.Validation("Identity.InvalidInput", "Họ tên không được để trống."));
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidInput);
+            }
+
+            if (!PhoneNumberValidator.IsValid(command.PhoneNumber))
+            {
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidPhoneNumber);
             }
 
             var user = await users.GetByIdWithRolesAsync(command.Id, ct);
@@ -53,8 +53,7 @@ public sealed class UpdateUserHandler(
                 {
                     if (!Enum.TryParse<SystemRoleName>(roleStr.Trim(), ignoreCase: true, out var role))
                     {
-                        return Result.Failure<UserSummaryDto>(
-                            Error.Validation("Identity.InvalidRole", $"Vai trò '{roleStr}' không hợp lệ."));
+                        return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
                     }
 
                     if (!systemRoles.Contains(role))
@@ -65,11 +64,17 @@ public sealed class UpdateUserHandler(
 
                 if (systemRoles.Count == 0)
                 {
-                    return Result.Failure<UserSummaryDto>(
-                        Error.Validation("Identity.InvalidRole", "Người dùng phải có ít nhất một vai trò."));
+                    return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
                 }
 
-                await users.UpdateRolesAsync(user, systemRoles, now, ct);
+                var currentRoles = user.UserRoles.Select(ur => ur.Role.RoleName).ToHashSet();
+                var rolesChanged = !currentRoles.SetEquals(systemRoles);
+                if (rolesChanged)
+                {
+                    await users.UpdateRolesAsync(user, systemRoles, now, ct);
+                    user.RotateSecurityStamp();
+                }
+
                 resultRoles = systemRoles.Select(r => r.ToString()).ToList();
             }
             else

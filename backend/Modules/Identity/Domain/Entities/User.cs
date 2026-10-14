@@ -274,7 +274,6 @@ public sealed class User : AggregateRoot<Guid>
         FullName = fullName.Trim();
         PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim();
         UserCode = string.IsNullOrWhiteSpace(userCode) ? null : userCode.Trim();
-        RotateSecurityStamp();
         Touch(now);
     }
 
@@ -286,6 +285,11 @@ public sealed class User : AggregateRoot<Guid>
             return;
         }
 
+        if (Status == AccountStatus.PendingActivation)
+        {
+            throw new InvalidOperationException("Pending activation accounts cannot be reactivated without completing activation.");
+        }
+
         Status = AccountStatus.Active;
         AccessFailedCount = 0;
         LockoutEndAt = null;
@@ -294,7 +298,7 @@ public sealed class User : AggregateRoot<Guid>
     }
 
     // Security Stamp show state security version of account
-    private void RotateSecurityStamp()
+    public void RotateSecurityStamp()
     {
         SecurityStamp = Guid.NewGuid();
     }

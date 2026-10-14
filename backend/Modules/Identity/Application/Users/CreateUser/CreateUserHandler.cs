@@ -1,12 +1,7 @@
-using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Notifications;
-using UGTM.Modules.Identity.Application.Persistence;
-using UGTM.Modules.Identity.Application.Security;
 using UGTM.Modules.Identity.Application.Users.Dtos;
 using UGTM.Modules.Identity.Domain.Entities;
-using UGTM.Modules.Identity.Domain.Enums;
-using UGTM.Modules.Identity.Domain.Repositories;
 
 namespace UGTM.Modules.Identity.Application.Users.CreateUser;
 
@@ -29,14 +24,17 @@ public sealed class CreateUserHandler(
         {
             if (string.IsNullOrWhiteSpace(command.Email) || string.IsNullOrWhiteSpace(command.FullName))
             {
-                return Result.Failure<UserSummaryDto>(
-                    Error.Validation("Identity.InvalidInput", "Email và họ tên không được để trống."));
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidInput);
+            }
+
+            if (!PhoneNumberValidator.IsValid(command.PhoneNumber))
+            {
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidPhoneNumber);
             }
 
             if (command.Roles is null || command.Roles.Count == 0)
             {
-                return Result.Failure<UserSummaryDto>(
-                    Error.Validation("Identity.InvalidRole", "Người dùng phải có ít nhất một vai trò."));
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
             }
 
             var systemRoles = new List<SystemRoleName>();
@@ -44,8 +42,7 @@ public sealed class CreateUserHandler(
             {
                 if (!Enum.TryParse<SystemRoleName>(roleStr.Trim(), ignoreCase: true, out var role))
                 {
-                    return Result.Failure<UserSummaryDto>(
-                        Error.Validation("Identity.InvalidRole", $"Vai trò '{roleStr}' không hợp lệ."));
+                    return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
                 }
 
                 if (!systemRoles.Contains(role))
