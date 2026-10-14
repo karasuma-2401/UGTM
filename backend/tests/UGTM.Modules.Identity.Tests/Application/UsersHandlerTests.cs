@@ -142,7 +142,7 @@ public sealed class UsersHandlerTests
     public async Task CreateUserHandler_rejects_invalid_phone_number(string invalidPhone)
     {
         var repo = new FakeUserRepository();
-        var handler = CreateHandler(repo, out _);
+        var handler = CreateHandler(repo);
 
         var result = await handler.HandleAsync(
             new CreateUserCommand(
