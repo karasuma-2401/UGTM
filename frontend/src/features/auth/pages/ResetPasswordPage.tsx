@@ -5,7 +5,6 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import type { ApiResponse } from '@/shared/api/types';
 import { PasswordFields } from '../components/PasswordFields';
-import { getChallenge, resetPasswordMock } from '../mocks/authMock';
 import { resetRecoveryPasswordApi } from '../services/authApi';
 import { validatePasswords } from '../utils/passwordValidation';
 
@@ -19,18 +18,15 @@ export function ResetPasswordPage() {
   const location = useLocation();
   const locationState = (location.state as LocationState) || {};
 
-  // Lấy resetGrant từ location.state hoặc sessionStorage
   const resetGrant =
     locationState.resetGrant || sessionStorage.getItem('ugtm_recovery_reset_grant') || '';
-  const challenge = getChallenge();
 
   const [password, setPassword] = useState('');
   const [confirmationPassword, setConfirmationPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Nếu không có resetGrant và cũng không có mock challenge thì quay lại trang Quên mật khẩu
-  if (!resetGrant && (!challenge?.verified || challenge.purpose !== 'reset')) {
+  if (!resetGrant) {
     return <Navigate to="/forgot-password" replace />;
   }
 
@@ -42,20 +38,16 @@ export function ResetPasswordPage() {
     try {
       validatePasswords(password, confirmationPassword);
 
-      if (resetGrant) {
-        const response = await resetRecoveryPasswordApi(resetGrant, password);
+      const response = await resetRecoveryPasswordApi(resetGrant, password);
 
-        if (!response.success) {
-          throw new Error(response.error?.message || 'Không thể đặt lại mật khẩu.');
-        }
-
-        sessionStorage.removeItem('ugtm_recovery_reset_grant');
-        sessionStorage.removeItem('ugtm_recovery_email');
-        sessionStorage.removeItem('ugtm_recovery_challenge_id');
-        sessionStorage.removeItem('ugtm_recovery_expires_at');
-      } else {
-        resetPasswordMock(password);
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Không thể đặt lại mật khẩu.');
       }
+
+      sessionStorage.removeItem('ugtm_recovery_reset_grant');
+      sessionStorage.removeItem('ugtm_recovery_email');
+      sessionStorage.removeItem('ugtm_recovery_challenge_id');
+      sessionStorage.removeItem('ugtm_recovery_expires_at');
 
       navigate('/login', {
         replace: true,

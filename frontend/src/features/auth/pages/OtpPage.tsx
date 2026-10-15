@@ -5,7 +5,6 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import type { ApiResponse } from '@/shared/api/types';
 import { MAX_OTP_ATTEMPTS, OTP_LENGTH } from '../constants/auth.constants';
-import { getChallenge, resendChallenge, verifyOtp } from '../mocks/authMock';
 import { startRecoveryApi, verifyRecoveryOtpApi } from '../services/authApi';
 
 interface LocationState {
@@ -19,7 +18,6 @@ export function OtpPage() {
   const location = useLocation();
   const locationState = (location.state as LocationState) || {};
 
-  // Lấy thông tin challenge từ location.state hoặc sessionStorage
   const [challengeId, setChallengeId] = useState<string>(
     () => locationState.challengeId || sessionStorage.getItem('ugtm_recovery_challenge_id') || '',
   );
@@ -38,24 +36,19 @@ export function OtpPage() {
   const [resendCooldownUntil, setResendCooldownUntil] = useState(() => Date.now() + 45 * 1000);
 
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
-  const mockChallenge = getChallenge();
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  // Nếu không có challenge thật lẫn mock challenge thì quay lại trang Quên mật khẩu
-  if (!challengeId && !mockChallenge) {
+  if (!challengeId) {
     return <Navigate to="/forgot-password" replace />;
   }
 
-  // Tính thời gian hết hạn OTP (mặc định 10 phút từ expiresAt)
   const expiryTimestamp = expiresAt
     ? new Date(expiresAt).getTime()
-    : mockChallenge
-      ? mockChallenge.expires
-      : now + 10 * 60 * 1000;
+    : now + 10 * 60 * 1000;
   const seconds = Math.max(0, Math.ceil((expiryTimestamp - now) / 1000));
   const resendSeconds = Math.max(0, Math.ceil((resendCooldownUntil - now) / 1000));
   const isLocked = attempts >= MAX_OTP_ATTEMPTS;
@@ -89,39 +82,23 @@ export function OtpPage() {
     const code = digits.join('');
 
     try {
-      if (challengeId) {
-        // Gọi API xác thực OTP thật: POST /api/identity/auth/recovery/verify
-        const response = await verifyRecoveryOtpApi(challengeId, code);
+      const response = await verifyRecoveryOtpApi(challengeId, code);
 
-        if (!response.success || !response.data) {
-          throw new Error(response.error?.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn.');
-        }
-
-        const { resetGrant } = response.data;
-
-        // Lưu resetGrant để trang ResetPasswordPage sử dụng
-        sessionStorage.setItem('ugtm_recovery_reset_grant', resetGrant);
-        sessionStorage.removeItem('ugtm_recovery_challenge_id');
-
-        navigate('/reset-password', {
-          state: {
-            resetGrant,
-            email,
-          },
-        });
-      } else {
-        // Fallback mock nếu đang chạy dữ liệu mẫu
-        const purpose = verifyOtp(code);
-        if (purpose === 'reset') {
-          navigate('/reset-password');
-        } else {
-          navigate('/login', {
-            state: {
-              success: 'Xác thực tài khoản thành công. Bạn có thể đăng nhập.',
-            },
-          });
-        }
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn.');
       }
+
+      const { resetGrant } = response.data;
+
+      sessionStorage.setItem('ugtm_recovery_reset_grant', resetGrant);
+      sessionStorage.removeItem('ugtm_recovery_challenge_id');
+
+      navigate('/reset-password', {
+        state: {
+          resetGrant,
+          email,
+        },
+      });
     } catch (err: unknown) {
       setAttempts((prev) => prev + 1);
       if (axios.isAxiosError(err)) {
@@ -143,32 +120,23 @@ export function OtpPage() {
     setIsResending(true);
 
     try {
-      if (email) {
-        // Gọi API gửi lại OTP: POST /api/identity/auth/recovery/start
-        const response = await startRecoveryApi(email);
-        if (!response.success || !response.data) {
-          throw new Error(response.error?.message || 'Không thể gửi lại mã OTP. Vui lòng thử lại sau.');
-        }
-
-        const newChallengeId = response.data.challengeId;
-        const newExpiresAt = response.data.expiresAt;
-
-        setChallengeId(newChallengeId);
-        setExpiresAt(newExpiresAt);
-        sessionStorage.setItem('ugtm_recovery_challenge_id', newChallengeId);
-        sessionStorage.setItem('ugtm_recovery_expires_at', newExpiresAt);
-
-        setDigits(Array<string>(OTP_LENGTH).fill(''));
-        setResendCooldownUntil(Date.now() + 60 * 1000);
-        setNotice('Đã gửi lại mã OTP mới đến hộp thư của bạn. Vui lòng kiểm tra email.');
-        inputs.current[0]?.focus();
-      } else {
-        // Mock fallback
-        resendChallenge();
-        setDigits(Array<string>(OTP_LENGTH).fill(''));
-        setResendCooldownUntil(Date.now() + 45 * 1000);
-        setNotice('Đã gửi lại mã OTP demo thành công.');
+      const response = await startRecoveryApi(email);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Không thể gửi lại mã OTP. Vui lòng thử lại sau.');
       }
+
+      const newChallengeId = response.data.challengeId;
+      const newExpiresAt = response.data.expiresAt;
+
+      setChallengeId(newChallengeId);
+      setExpiresAt(newExpiresAt);
+      sessionStorage.setItem('ugtm_recovery_challenge_id', newChallengeId);
+      sessionStorage.setItem('ugtm_recovery_expires_at', newExpiresAt);
+
+      setDigits(Array<string>(OTP_LENGTH).fill(''));
+      setResendCooldownUntil(Date.now() + 60 * 1000);
+      setNotice('Đã gửi lại mã OTP mới đến hộp thư của bạn. Vui lòng kiểm tra email.');
+      inputs.current[0]?.focus();
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const apiError = err.response?.data as ApiResponse<unknown> | undefined;
@@ -181,7 +149,7 @@ export function OtpPage() {
     }
   }
 
-  const displayDestination = email || (mockChallenge?.method === 'email' ? 'Địa chỉ email trường' : 'SMS / Zalo');
+  const displayDestination = email || 'Hộp thư định danh trường của bạn';
 
   return (
     <section className="auth-card auth-otp">

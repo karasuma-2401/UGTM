@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ApiResponse } from '@/shared/api/types';
-import { startChallenge } from '../mocks/authMock';
 import { startRecoveryApi } from '../services/authApi';
 import type { OtpMethod } from '../types/auth.types';
 
@@ -48,8 +47,6 @@ export function ForgotPasswordPage() {
       sessionStorage.setItem('ugtm_recovery_challenge_id', challengeId);
       sessionStorage.setItem('ugtm_recovery_email', emailToSend);
       sessionStorage.setItem('ugtm_recovery_expires_at', expiresAt);
-
-      startChallenge('reset', method);
 
       navigate('/verify-otp', {
         state: {
