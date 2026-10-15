@@ -24,7 +24,13 @@ export function ForgotPasswordPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!identifier.trim()) return;
+    const trimmed = identifier.trim();
+    if (!trimmed) return;
+
+    if (/\s/.test(trimmed)) {
+      setError('Vui lòng chỉ nhập địa chỉ Email hoặc MSSV (không nhập họ tên kèm khoảng trắng).');
+      return;
+    }
 
     setError('');
     setIsSubmitting(true);
@@ -76,12 +82,12 @@ export function ForgotPasswordPage() {
       </p>
       <form onSubmit={handleSubmit}>
         <div className="auth-field">
-          <label htmlFor="recovery-id">MSSV HOẶC EMAIL ĐỊNH DANH TRƯỜNG (SIS)</label>
+          <label htmlFor="recovery-id">EMAIL TÀI KHOẢN HOẶC MSSV</label>
           <Input
             id="recovery-id"
             required
             disabled={isSubmitting}
-            placeholder="Nhập MSSV hoặc Email trường (ví dụ: 24521186)..."
+            placeholder="Nhập Email (ví dụ: huynhgiathinhst@gmail.com) hoặc MSSV..."
             leftIcon={<Mail size={16} />}
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
