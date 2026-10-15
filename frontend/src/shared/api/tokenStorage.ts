@@ -10,9 +10,15 @@ export const tokenStorage = {
     return localStorage.getItem(REFRESH_TOKEN_KEY);
   },
 
-  setTokens(accessToken: string, refreshToken: string): void {
+  setAccessToken(accessToken: string): void {
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  },
+
+  setTokens(accessToken: string, refreshToken?: string): void {
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    if (refreshToken) {
+      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+    }
   },
 
   clearTokens(): void {
@@ -21,6 +27,6 @@ export const tokenStorage = {
   },
 
   hasTokens(): boolean {
-    return Boolean(this.getAccessToken() && this.getRefreshToken());
+    return Boolean(this.getAccessToken());
   },
 };

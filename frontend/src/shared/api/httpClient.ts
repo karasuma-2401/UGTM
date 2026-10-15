@@ -1,14 +1,16 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { authEvents } from './authEvents';
+import { clearCsrfToken, CSRF_HEADER_NAME, getCsrfToken } from './csrf';
 import { tokenStorage } from './tokenStorage';
 import type { ApiResponse } from './types';
-import type { AuthTokens } from '@/features/auth/types/auth.types';
+import type { LoginData } from '@/features/auth/types/auth.types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5287';
 const REFRESH_TOKEN_URL = '/api/identity/auth/refresh';
 
 export const httpClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -59,20 +61,22 @@ httpClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // request was to the refresh token but still 401
+    // Request was to the refresh token endpoint but still 401 -> session invalid
     if (originalRequest.url?.includes(REFRESH_TOKEN_URL)) {
       tokenStorage.clearTokens();
+      clearCsrfToken();
       authEvents.emitUnauthenticated();
       return Promise.reject(error);
     }
 
     if (originalRequest._retry) {
       tokenStorage.clearTokens();
+      clearCsrfToken();
       authEvents.emitUnauthenticated();
       return Promise.reject(error);
     }
 
-    // push request into queue (if any)
+    // Push request into queue if refresh is already in progress
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
         failedQueue.push({ resolve, reject });
@@ -89,41 +93,42 @@ httpClient.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    const refreshToken = tokenStorage.getRefreshToken();
-
-    if (!refreshToken) {
-      isRefreshing = false;
-      tokenStorage.clearTokens();
-      authEvents.emitUnauthenticated();
-      return Promise.reject(error);
-    }
-
     try {
-      const response = await axios.post<ApiResponse<AuthTokens>>(
+      // Backend refresh endpoint requires CSRF token and sends HttpOnly refresh cookie automatically
+      const csrfToken = await getCsrfToken(true);
+      const response = await axios.post<ApiResponse<LoginData>>(
         `${API_BASE_URL}${REFRESH_TOKEN_URL}`,
-        { refreshToken },
-        { headers: { 'Content-Type': 'application/json' } },
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            [CSRF_HEADER_NAME]: csrfToken,
+          },
+        },
       );
 
       const data = response.data;
-      if (!data.success) {
-        throw new Error(data.error.message);
-      }
-      const tokens = data.data;
-
-      if (!tokens.accessToken || !tokens.refreshToken) {
-        throw new Error('Invalid token response during refresh');
+      if (!data.success || !data.data?.accessToken) {
+        throw new Error(data.error?.message || 'Phiên đăng nhập đã hết hạn.');
       }
 
-      tokenStorage.setTokens(tokens.accessToken, tokens.refreshToken);
-      processQueue(null, tokens.accessToken);
+      const newAccessToken = data.data.accessToken;
+      tokenStorage.setAccessToken(newAccessToken);
+
+      if (data.data.user) {
+        localStorage.setItem('ugtm_user_profile', JSON.stringify(data.data.user));
+      }
+
+      processQueue(null, newAccessToken);
 
       if (originalRequest.headers) {
-        originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
       }
 
       return httpClient(originalRequest);
     } catch (refreshError: unknown) {
+      clearCsrfToken();
       processQueue(refreshError, null);
       tokenStorage.clearTokens();
       authEvents.emitUnauthenticated();

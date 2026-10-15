@@ -1,5 +1,5 @@
-import React, { createContext, useEffect, useState, useCallback } from 'react';
-import { authEvents, tokenStorage } from '../api';
+import React, { createContext, useCallback, useEffect, useState } from 'react';
+import { authEvents, clearCsrfToken, tokenStorage } from '../api';
 import type { UserProfile } from '@/features/auth/types/auth.types';
 
 const USER_PROFILE_KEY = 'ugtm_user_profile';
@@ -8,7 +8,7 @@ export interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (accessToken: string, refreshToken: string, user: UserProfile) => void;
+  login: (accessToken: string, userOrRefreshToken: UserProfile | string, optionalUser?: UserProfile) => void;
   logout: () => void;
   hasRole: (roles: string | string[]) => boolean;
   hasPermission: (permissions: string | string[]) => boolean;
@@ -22,15 +22,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(() => {
     tokenStorage.clearTokens();
+    clearCsrfToken();
     localStorage.removeItem(USER_PROFILE_KEY);
     setUser(null);
   }, []);
 
   const login = useCallback(
-    (accessToken: string, refreshToken: string, userProfile: UserProfile) => {
+    (accessToken: string, userOrRefreshToken: UserProfile | string, optionalUser?: UserProfile) => {
+      let userProfile: UserProfile;
+      let refreshToken: string | undefined;
+
+      if (typeof userOrRefreshToken === 'string') {
+        refreshToken = userOrRefreshToken;
+        userProfile = optionalUser!;
+      } else {
+        userProfile = userOrRefreshToken;
+      }
+
       tokenStorage.setTokens(accessToken, refreshToken);
-      localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(userProfile));
-      setUser(userProfile);
+      if (userProfile) {
+        localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(userProfile));
+        setUser(userProfile);
+      }
     },
     [],
   );
