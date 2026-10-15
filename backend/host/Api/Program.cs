@@ -78,22 +78,37 @@ if (app.Environment.IsDevelopment())
         .AddPreferredSecuritySchemes("Bearer")
         .DisableAgent());
 
-    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_WATCH"))
-        && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VSAPPIDDIR")))
+    if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_WATCH")))
     {
         app.Lifetime.ApplicationStarted.Register(() =>
         {
             try
             {
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                const string scalarUrl = "http://localhost:5287/scalar/v1";
+                if (OperatingSystem.IsWindows())
                 {
-                    FileName = "http://localhost:5287/scalar/v1",
-                    UseShellExecute = true
-                });
+                    // Chạy qua explorer.exe trên Windows để tách rời tiến trình trình duyệt khỏi Process Tree / Job Object của Terminal
+                    // Giúp trình duyệt không bị tắt khi người dùng tắt terminal hoặc kết thúc ứng dụng.
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"\"{scalarUrl}\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    });
+                }
+                else if (OperatingSystem.IsMacOS())
+                {
+                    System.Diagnostics.Process.Start("open", scalarUrl);
+                }
+                else if (OperatingSystem.IsLinux())
+                {
+                    System.Diagnostics.Process.Start("xdg-open", scalarUrl);
+                }
             }
             catch
             {
-                // Bỏ qua nếu môi trường headless
+                // Bỏ qua nếu môi trường headless hoặc container
             }
         });
     }

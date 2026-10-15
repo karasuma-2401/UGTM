@@ -1,6 +1,6 @@
 # Role & Permission Management Backend (RBAC / PBAC)
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 14/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 15/10/2026
 
 Tài liệu này giải thích phân hệ Quản lý Quyền và Phân quyền Vai trò (Role & Permission Management) trong module Identity: kiến trúc, luồng xử lý, cơ chế bảo mật và thu hồi phiên tức thời. Hợp đồng request/response công khai được đặc tả chi tiết tại [Role & Permission API Contract](../../../docs/ApiContract/RolePermissionApiContract.md).
 
@@ -120,6 +120,10 @@ Bảng trung gian thiết lập quan hệ Nhiều - Nhiều (Many-to-Many):
    - Khi một vai trò bị thay đổi quyền (thêm bớt quyền), việc cập nhật chỉ có ý nghĩa nếu người dùng đang đăng nhập không tiếp tục dùng các đặc quyền cũ.
    - Bằng cách tự động xoay `SecurityStamp` cho toàn bộ người dùng thuộc vai trò bị thay đổi, ở ngay request kế tiếp, `SessionValidator` sẽ phát hiện sự không khớp giữa `SecurityStamp` trong session snapshot với `User.SecurityStamp` hiện tại trong DB.
    - Kết quả: Phiên cũ lập tức bị vô hiệu hóa; client được hướng dẫn gọi `/api/auth/refresh` để nhận Access Token mới chứa danh sách claims quyền đã được cập nhật từ database.
+
+3. **Cơ chế Admin Bypass Tự động:**
+   - Để đảm bảo tính linh hoạt và thuận tiện trong vận hành, [`PermissionAuthorizationHandler`](../../Modules/Identity/Infrastructure/Authorization/PermissionAuthorizationHandler.cs) được cấu hình tự động cấp quyền thành công cho người dùng sở hữu vai trò `Admin` (Role claim: `Admin`).
+   - Nhờ vậy, khi hệ thống bổ sung thêm bất kỳ quyền mới nào trong tương lai, tài khoản Admin luôn có thể truy cập và thực thi ngay lập tức mà không cần phải chạy script can thiệp vào cơ sở dữ liệu để gán quyền thủ công. Các vai trò còn lại vẫn tuân thủ cơ chế kiểm tra claims nghiêm ngặt.
 
 ---
 

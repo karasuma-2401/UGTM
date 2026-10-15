@@ -25,13 +25,17 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
         }
 
         if (!string.IsNullOrWhiteSpace(query.Status)
-            && Enum.TryParse<AccountStatus>(query.Status.Trim(), ignoreCase: true, out var statusEnum))
+            && !int.TryParse(query.Status.Trim(), out _)
+            && Enum.TryParse<AccountStatus>(query.Status.Trim(), ignoreCase: true, out var statusEnum)
+            && Enum.IsDefined(statusEnum))
         {
             usersQuery = usersQuery.Where(u => u.Status == statusEnum);
         }
 
         if (!string.IsNullOrWhiteSpace(query.Role)
-            && Enum.TryParse<SystemRoleName>(query.Role.Trim(), ignoreCase: true, out var roleEnum))
+            && !int.TryParse(query.Role.Trim(), out _)
+            && Enum.TryParse<SystemRoleName>(query.Role.Trim(), ignoreCase: true, out var roleEnum)
+            && Enum.IsDefined(roleEnum))
         {
             usersQuery = usersQuery.Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == roleEnum));
         }

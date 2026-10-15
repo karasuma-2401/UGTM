@@ -1,6 +1,6 @@
 # User Management API
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 13/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 15/10/2026
 **Base path:** `/api/users`
 
 Tài liệu này đặc tả chi tiết các endpoint Quản lý Người dùng (User Management) trong hệ thống UGTM. Tài liệu kỹ thuật kiến trúc đối chiếu nằm tại [User Management Technical](../../backend/docs/Technical/UserManagement.md).
@@ -9,9 +9,12 @@ Tài liệu này đặc tả chi tiết các endpoint Quản lý Người dùng 
 
 - Request và Response dùng định dạng JSON `camelCase`; thời gian dùng chuẩn ISO 8601 UTC.
 - Tất cả các endpoint quản lý người dùng đều yêu cầu gửi kèm header `Authorization: Bearer <access-token>`.
-- Quyền truy cập được kiểm soát thông qua Permission Policies:
-  - Xem danh sách: `identity.users.read` (hoặc vai trò `Admin`).
-  - Quản trị (tạo, sửa, đổi trạng thái): `identity.users.manage` (hoặc vai trò `Admin`).
+- Quyền truy cập được kiểm soát thông qua Permission Policies kết hợp **Admin Role Bypass**:
+  - Xem danh sách: `identity.users.read` hoặc vai trò `Admin`.
+  - Quản trị (tạo, sửa, đổi trạng thái): `identity.users.manage` hoặc vai trò `Admin`.
+  > [!NOTE]
+  > **Cơ chế Admin Role Bypass:** Hệ thống tự động cho phép người dùng có vai trò `Admin` (Role claim: `Admin`) thực thi toàn bộ các API quản lý người dùng mà không phụ thuộc vào việc tài khoản đó có được gán claim permission tương ứng trong cơ sở dữ liệu hay không.
+
 - Phản hồi chuẩn theo mô hình Envelope `ApiResponse<T>`:
 
 ```json
@@ -36,10 +39,13 @@ Phản hồi khi có lỗi nghiệp vụ:
 }
 ```
 
-Các phản hồi từ tầng pipeline ASP.NET Core:
-- Thiếu hoặc token JWT không hợp lệ / phiên đã thu hồi: `401 Unauthorized` (body rỗng).
-- Không đủ quyền hạn (thiếu permission và không phải Admin): `403 Forbidden` (body rỗng).
-- Lỗi chưa xử lý: `500 application/problem+json` kèm `requestId`.
+Các phản hồi từ tầng pipeline ASP.NET Core & OpenApi/Scalar:
+- Thiếu hoặc token JWT không hợp lệ / phiên đã thu hồi: `401 Unauthorized` (schema `ApiResponse<object>`).
+- Không đủ quyền hạn (thiếu permission và không phải Admin): `403 Forbidden` (schema `ApiResponse<object>`).
+- Lỗi nghiệp vụ dữ liệu đầu vào: `400 Bad Request` (schema `ApiResponse<object>`).
+- Lỗi không tìm thấy: `404 Not Found` (schema `ApiResponse<object>`).
+- Lỗi xung đột dữ liệu: `409 Conflict` (schema `ApiResponse<object>`).
+- Lỗi chưa xử lý: `500 InternalServerError`.
 
 ---
 
@@ -47,10 +53,10 @@ Các phản hồi từ tầng pipeline ASP.NET Core:
 
 | Method | Path | Quyền yêu cầu | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/users` | `identity.users.read` hoặc `Admin` | Tra cứu, tìm kiếm và phân trang danh sách người dùng |
-| `POST` | `/api/users` | `identity.users.manage` hoặc `Admin` | Tạo tài khoản người dùng đơn lẻ |
-| `PUT` | `/api/users/{id}` | `identity.users.manage` hoặc `Admin` | Cập nhật thông tin hồ sơ và danh sách vai trò |
-| `PATCH` | `/api/users/{id}/status` | `identity.users.manage` hoặc `Admin` | Khóa / Mở khóa / Tạm ngưng tài khoản người dùng |
+| `GET` | `/api/users` | `identity.users.read` hoặc vai trò `Admin` | Tra cứu, tìm kiếm và phân trang danh sách người dùng |
+| `POST` | `/api/users` | `identity.users.manage` hoặc vai trò `Admin` | Tạo tài khoản người dùng đơn lẻ |
+| `PUT` | `/api/users/{id}` | `identity.users.manage` hoặc vai trò `Admin` | Cập nhật thông tin hồ sơ và danh sách vai trò |
+| `PATCH` | `/api/users/{id}/status` | `identity.users.manage` hoặc vai trò `Admin` | Khóa / Mở khóa / Tạm ngưng tài khoản người dùng |
 
 ---
 
@@ -64,11 +70,11 @@ Hỗ trợ phân trang, tìm kiếm theo từ khóa và lọc theo vai trò, tr�
 
 | Tham số | Kiểu | Mặc định | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `pageNumber` | `integer` | `1` | Số trang cần lấy ($\ge 1$) |
-| `pageSize` | `integer` | `10` | Số lượng người dùng trên một trang ($1 \le pageSize \le 100$) |
-| `keyword` | `string` | — | Từ khóa tìm kiếm không phân biệt hoa thường (so khớp Email, FullName, UserCode) |
-| `role` | `string` | — | Lọc theo vai trò (`Student`, `Lecturer`, `Admin`, `Faculty`, `AcademicAffairs`, `CouncilMember`) |
-| `status` | `string` | — | Lọc theo trạng thái (`PendingActivation`, `Active`, `Suspended`, `Disabled`) |
+| `pageNumber` | `integer` | `1` | Số trang cần lấy ($\ge 1$, nếu nhỏ hơn 1 hệ thống tự căn chỉnh về 1) |
+| `pageSize` | `integer` | `10` | Số lượng người dùng trên một trang ($1 \le pageSize \le 100$, vượt ngưỡng tự căn chỉnh) |
+| `keyword` | `string?` | — | Từ khóa tìm kiếm không phân biệt hoa thường (so khớp `NormalizedEmail`, `FullName`, `UserCode`) |
+| `role` | `string?` | — | Lọc theo vai trò (`Student`, `Lecturer`, `Admin`, `Faculty`, `AcademicAffairs`, `CouncilMember`). Chuỗi số (ví dụ `"999"`, `"0"`, `"-1"`) hoặc tên vai trò không tồn tại sẽ bị từ chối với lỗi 400 |
+| `status` | `string?` | — | Lọc theo trạng thái (`PendingActivation`, `Active`, `Suspended`, `Disabled`). Chuỗi số (ví dụ `"999"`, `"0"`, `"-1"`) hoặc trạng thái không tồn tại sẽ bị từ chối với lỗi 400 |
 
 #### Phản hồi thành công (200 OK)
 
@@ -115,6 +121,13 @@ Hỗ trợ phân trang, tìm kiếm theo từ khóa và lọc theo vai trò, tr�
   "error": null
 }
 ```
+
+| HTTP Status | Mã lỗi | Nguyên nhân |
+| :--- | :--- | :--- |
+| 400 | `Identity.InvalidRole` | Bộ lọc `role` truyền chuỗi số hoặc tên vai trò không có trong hệ thống |
+| 400 | `Identity.InvalidStatus` | Bộ lọc `status` truyền chuỗi số hoặc trạng thái không có trong hệ thống |
+| 401 | — | Thiếu Access Token hoặc token hết hạn / không hợp lệ |
+| 403 | — | Người dùng không có quyền `identity.users.read` và không phải Admin |
 
 ---
 
@@ -177,9 +190,11 @@ Tạo tài khoản người dùng mới và phân vai trò.
 | HTTP Status | Mã lỗi | Nguyên nhân |
 | :--- | :--- | :--- |
 | 400 | `Identity.InvalidInput` | Thiếu Email hoặc Họ tên |
-| 400 | `Identity.InvalidRole` | Danh sách vai trò rỗng hoặc chứa vai trò không tồn tại |
-| 400 | `Identity.InvalidPhoneNumber` | Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số) |
+| 400 | `Identity.InvalidRole` | Danh sách vai trò rỗng, chứa chuỗi số (ví dụ: `["999"]`) hoặc tên vai trò không có trong hệ thống |
+| 400 | `Identity.InvalidPhoneNumber` | Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số chuẩn Việt Nam) |
 | 400 | `Identity.WeakPassword` | `initialPassword` không đáp ứng chính sách bảo mật ($\ge 12$ ký tự, hoa, thường, số, ký tự đặc biệt) |
+| 401 | — | Thiếu Access Token hoặc token hết hạn / không hợp lệ |
+| 403 | — | Người dùng không có quyền `identity.users.manage` và không phải Admin |
 | 409 | `Identity.DuplicateAccount` | Email hoặc mã người dùng đã tồn tại trong hệ thống |
 
 ---
@@ -207,10 +222,10 @@ Cập nhật thông tin cá nhân và thay đổi danh sách vai trò của ngư
 
 | Trường | Kiểu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `fullName` | `string` | Có | Họ và tên mới của người dùng |
-| `userCode` | `string?` | Không | Mã số sinh viên / cán bộ mới |
-| `phoneNumber` | `string?` | Không | Số điện thoại mới |
-| `roles` | `string[]?` | Không | Danh sách vai trò mới (nếu gửi, sẽ thay thế danh sách vai trò cũ) |
+| `fullName` | `string` | Có | Họ và tên mới của người dùng (không được để trống) |
+| `userCode` | `string?` | Không | Mã số sinh viên / cán bộ mới (tối đa 20 ký tự) |
+| `phoneNumber` | `string?` | Không | Số điện thoại mới (chuẩn 10 chữ số) |
+| `roles` | `string[]?` | Không | Danh sách vai trò mới (nếu gửi, sẽ thay thế danh sách vai trò cũ). Không chấp nhận chuỗi số hoặc vai trò không hợp lệ |
 
 > [!NOTE]
 > Khi danh sách vai trò (`roles`) thay đổi, hệ thống sẽ tự động xoay `SecurityStamp` của người dùng. Nhờ đó, người dùng sẽ bắt buộc phải làm mới phiên (refresh token) ở lần gọi tiếp theo để nhận claims và permissions mới từ database.
@@ -241,8 +256,10 @@ Cập nhật thông tin cá nhân và thay đổi danh sách vai trò của ngư
 | HTTP Status | Mã lỗi | Nguyên nhân |
 | :--- | :--- | :--- |
 | 400 | `Identity.InvalidInput` | Họ tên bị để trống |
-| 400 | `Identity.InvalidRole` | Danh sách vai trò không hợp lệ |
+| 400 | `Identity.InvalidRole` | Danh sách vai trò rỗng, chứa chuỗi số (ví dụ: `["999"]`) hoặc tên vai trò không có trong hệ thống |
 | 400 | `Identity.InvalidPhoneNumber` | Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số) |
+| 401 | — | Thiếu Access Token hoặc token không hợp lệ |
+| 403 | — | Người dùng không có quyền `identity.users.manage` và không phải Admin |
 | 404 | `Identity.UserNotFound` | Không tìm thấy người dùng với `id` cung cấp |
 | 409 | `Identity.DuplicateAccount` | `userCode` mới bị trùng với một tài khoản khác |
 
@@ -265,7 +282,7 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 
 | Trường | Kiểu | Giá trị hợp lệ | Mô tả |
 | :--- | :--- | :--- | :--- |
-| `status` | `string` | `Active`, `Suspended`, `Disabled` | Trạng thái mới muốn thiết lập |
+| `status` | `string` | `Active`, `Suspended`, `Disabled` | Trạng thái mới muốn thiết lập (chuỗi số như `"999"`, `"0"` hoặc giá trị không xác định sẽ bị từ chối) |
 
 > [!IMPORTANT]
 > **Cơ chế ngắt phiên làm việc tức thời:**
@@ -297,8 +314,10 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 
 | HTTP Status | Mã lỗi | Nguyên nhân |
 | :--- | :--- | :--- |
-| 400 | `Identity.InvalidStatus` | Trạng thái rỗng, không hợp lệ hoặc cố tình đặt `PendingActivation` |
+| 400 | `Identity.InvalidStatus` | Trạng thái rỗng, chuỗi số (ví dụ `"999"`), không hợp lệ hoặc cố tình đặt `PendingActivation` |
 | 400 | `Identity.InvalidStatusTransition` | Chuyển đổi trạng thái không hợp lệ (ví dụ tài khoản chờ kích hoạt hoặc tạm ngưng tài khoản không Active) |
+| 401 | — | Thiếu Access Token hoặc token không hợp lệ |
+| 403 | — | Người dùng không có quyền `identity.users.manage` và không phải Admin |
 | 404 | `Identity.UserNotFound` | Không tìm thấy người dùng với `id` cung cấp |
 
 ---
@@ -309,9 +328,10 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 | :--- | :---: | :--- |
 | `Identity.UserNotFound` | 404 | Không tìm thấy tài khoản người dùng tương ứng |
 | `Identity.DuplicateAccount` | 409 | Email hoặc mã người dùng đã tồn tại trong hệ thống |
-| `Identity.InvalidRole` | 400 | Tên vai trò không hợp lệ trong danh mục `SystemRoleName` |
-| `Identity.InvalidStatus` | 400 | Trạng thái tài khoản không hợp lệ |
-| `Identity.InvalidStatusTransition` | 400 | Không thể chuyển đổi trạng thái tài khoản theo yêu cầu |
+| `Identity.InvalidRole` | 400 | Tên vai trò không hợp lệ trong danh mục `SystemRoleName` hoặc là chuỗi số |
+| `Identity.InvalidStatus` | 400 | Trạng thái tài khoản không hợp lệ, là chuỗi số, hoặc cố tình gán `PendingActivation` |
+| `Identity.InvalidStatusTransition` | 400 | Không thể chuyển đổi trạng thái tài khoản theo quy tắc nghiệp vụ |
+| `Identity.InvalidPhoneNumber` | 400 | Số điện thoại không đúng định dạng 10 chữ số chuẩn |
 | `Identity.WeakPassword` | 400 | Mật khẩu khởi tạo không đạt tiêu chuẩn chính sách bảo mật |
 | `Identity.InvalidInput` | 400 | Dữ liệu đầu vào bị thiếu hoặc không đúng định dạng |
 

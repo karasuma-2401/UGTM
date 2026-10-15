@@ -18,7 +18,9 @@ public sealed class UpdateUserStatusHandler(
                 return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidStatus);
             }
 
-            if (!Enum.TryParse<AccountStatus>(command.Status.Trim(), ignoreCase: true, out var newStatus)
+            if (int.TryParse(command.Status.Trim(), out _)
+                || !Enum.TryParse<AccountStatus>(command.Status.Trim(), ignoreCase: true, out var newStatus)
+                || !Enum.IsDefined(newStatus)
                 || newStatus == AccountStatus.PendingActivation)
             {
                 return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidStatus);
