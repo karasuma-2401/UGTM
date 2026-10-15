@@ -1,15 +1,33 @@
-import { ArrowRight, IdCard } from 'lucide-react';
+import axios from 'axios';
+import { ArrowRight, Clock, IdCard, Lock } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import google from '../../../../assets/logo_google.png';
 import sso from '../../../../assets/logo_sso.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import type { ApiResponse } from '@/shared/api/types';
 import { useAuth } from '@/shared/auth';
 import { PasswordField } from '../components/PasswordField';
-import { REMEMBERED_IDENTIFIER_KEY } from '../constants/auth.constants';
+import {
+  DEFAULT_ACCOUNT_LOCK_SECONDS,
+  DEFAULT_RATE_LIMIT_SECONDS,
+  LOGIN_LOCK_REASON_KEY,
+  LOGIN_LOCK_UNTIL_KEY,
+  REMEMBERED_IDENTIFIER_KEY,
+} from '../constants/auth.constants';
 import { DEMO_PASSWORD, DEMO_PROFILE } from '../mocks/authFixtures';
-import { loginMock } from '../mocks/authMock';
+import { loginApi } from '../services/authApi';
+
+function formatCountdown(totalSeconds: number): string {
+  if (totalSeconds <= 0) return '00:00';
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -25,6 +43,33 @@ export function LoginPage() {
   const [notice, setNotice] = useState('');
   const success = location.state?.success as string | undefined;
 
+  // 429 Lockout states with local persistence
+  const [lockUntil, setLockUntil] = useState<number | null>(() => {
+    const saved = localStorage.getItem(LOGIN_LOCK_UNTIL_KEY);
+    if (!saved) return null;
+    const timestamp = parseInt(saved, 10);
+    if (isNaN(timestamp) || timestamp <= Date.now()) {
+      localStorage.removeItem(LOGIN_LOCK_UNTIL_KEY);
+      localStorage.removeItem(LOGIN_LOCK_REASON_KEY);
+      return null;
+    }
+    return timestamp;
+  });
+
+  const [lockReason, setLockReason] = useState<string>(() => {
+    return localStorage.getItem(LOGIN_LOCK_REASON_KEY) || '';
+  });
+
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(() => {
+    const saved = localStorage.getItem(LOGIN_LOCK_UNTIL_KEY);
+    if (!saved) return 0;
+    const timestamp = parseInt(saved, 10);
+    if (isNaN(timestamp) || timestamp <= Date.now()) return 0;
+    return Math.ceil((timestamp - Date.now()) / 1000);
+  });
+
+  const isLocked = Boolean(lockUntil && remainingSeconds > 0);
+
   const redirectFrom = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
 
   useEffect(() => {
@@ -33,29 +78,112 @@ export function LoginPage() {
     }
   }, [isAuthenticated, navigate, redirectFrom]);
 
+  // Real-time countdown timer effect for lockout
+  useEffect(() => {
+    if (!lockUntil) return;
+
+    const tick = () => {
+      const diff = Math.ceil((lockUntil - Date.now()) / 1000);
+      if (diff <= 0) {
+        setLockUntil(null);
+        setRemainingSeconds(0);
+        setLockReason('');
+        localStorage.removeItem(LOGIN_LOCK_UNTIL_KEY);
+        localStorage.removeItem(LOGIN_LOCK_REASON_KEY);
+        setNotice('Thời gian tạm khóa đã kết thúc. Bạn có thể tiếp tục đăng nhập.');
+      } else {
+        setRemainingSeconds(diff);
+      }
+    };
+
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [lockUntil]);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isLocked || isSubmitting) return;
+
     setError('');
     setIsSubmitting(true);
     try {
-      await loginMock(identifier, password);
+      const response = await loginApi({
+        identifier: identifier.trim(),
+        password,
+        rememberMe: shouldRememberIdentifier,
+      });
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Đăng nhập không thành công.');
+      }
+
+      // Clear any remaining lock data upon successful login
+      localStorage.removeItem(LOGIN_LOCK_UNTIL_KEY);
+      localStorage.removeItem(LOGIN_LOCK_REASON_KEY);
+
       if (shouldRememberIdentifier) {
         localStorage.setItem(REMEMBERED_IDENTIFIER_KEY, identifier.trim());
       } else {
         localStorage.removeItem(REMEMBERED_IDENTIFIER_KEY);
       }
 
-      login('mock-access-token-demo', 'mock-refresh-token-demo', {
-        id: DEMO_PROFILE.id,
-        email: DEMO_PROFILE.email,
-        fullName: DEMO_PROFILE.name,
-        roles: ['STUDENT'],
-        permissions: ['thesis:read', 'thesis:submit'],
-      });
+      const { accessToken, user } = response.data;
+      login(accessToken, user);
 
       navigate(redirectFrom, { replace: true });
-    } catch (err) {
-      setError((err as Error).message);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const apiError = err.response?.data as ApiResponse<unknown> | undefined;
+        const errorCode = apiError?.error?.code;
+        const errorMessage = apiError?.error?.message;
+
+        // Xử lý response mã 429 hoặc các lỗi lockout từ backend Identity
+        if (
+          status === 429 ||
+          errorCode === 'Identity.AccountLocked' ||
+          errorCode === 'Identity.RateLimitExceeded'
+        ) {
+          // Lấy thời gian chờ từ header Retry-After nếu có
+          const retryHeader = err.response?.headers?.['retry-after'];
+          let lockSeconds = 0;
+          if (retryHeader) {
+            const parsed = parseInt(String(retryHeader), 10);
+            if (!isNaN(parsed) && parsed > 0) {
+              lockSeconds = parsed;
+            }
+          }
+
+          // Nếu không có header Retry-After, dùng mặc định theo API contract
+          if (!lockSeconds) {
+            lockSeconds =
+              errorCode === 'Identity.AccountLocked'
+                ? DEFAULT_ACCOUNT_LOCK_SECONDS
+                : DEFAULT_RATE_LIMIT_SECONDS;
+          }
+
+          const lockUntilTimestamp = Date.now() + lockSeconds * 1000;
+          const reason =
+            errorMessage ||
+            (errorCode === 'Identity.AccountLocked'
+              ? 'Tài khoản đang bị khóa tạm thời do nhập sai mật khẩu 5 lần liên tiếp. Vui lòng thử lại sau.'
+              : 'Có quá nhiều yêu cầu đăng nhập từ thiết bị của bạn. Vui lòng thử lại sau.');
+
+          localStorage.setItem(LOGIN_LOCK_UNTIL_KEY, lockUntilTimestamp.toString());
+          localStorage.setItem(LOGIN_LOCK_REASON_KEY, reason);
+
+          setLockUntil(lockUntilTimestamp);
+          setLockReason(reason);
+          setRemainingSeconds(lockSeconds);
+          setError('');
+          return;
+        }
+
+        setError(errorMessage || err.message || 'Đăng nhập không thành công.');
+      } else {
+        setError((err as Error).message || 'Đã có lỗi xảy ra khi đăng nhập.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -72,27 +200,63 @@ export function LoginPage() {
           {success}
         </p>
       )}
+
+      {/* Thông báo khóa giao diện khi gặp HTTP 429 */}
+      {isLocked && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="my-3 p-3.5 rounded-lg border border-red-200 bg-red-50 text-red-900 shadow-sm transition-all"
+        >
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-red-100 rounded-full text-red-600 shrink-0 mt-0.5">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-semibold text-red-900 uppercase tracking-wide">
+                Giao diện đăng nhập tạm thời bị khóa
+              </h4>
+              <p className="text-xs text-red-700 mt-1 leading-relaxed">
+                {lockReason || 'Hệ thống đã tạm dừng nhận yêu cầu đăng nhập để đảm bảo an toàn.'}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-red-200/80">
+                <div className="flex items-center gap-1.5 text-xs text-red-800 font-medium">
+                  <Clock className="w-3.5 h-3.5 text-red-600" />
+                  <span>Tự động mở khóa sau:</span>
+                  <span className="font-mono font-bold text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded border border-red-200">
+                    {formatCountdown(remainingSeconds)}
+                  </span>
+                </div>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-semibold text-red-700 hover:text-red-900 underline underline-offset-2 hover:no-underline transition-colors ml-auto"
+                >
+                  Quên mật khẩu? Đặt lại ngay &rarr;
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="auth-social">
         <button
           type="button"
+          disabled={isSubmitting || isLocked}
+          className="disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => setNotice('Cổng SSO đang ở chế độ demo. Hãy dùng tài khoản mẫu bên dưới.')}
         >
           <img src={sso} alt="" />
           Cổng SSO Trường
         </button>
-        <button
-          type="button"
-          onClick={() => setNotice('Google đang ở chế độ demo. Hãy dùng tài khoản mẫu bên dưới.')}
-        >
-          <img src={google} alt="" />
-          Google
-        </button>
       </div>
-      {notice && (
+
+      {notice && !isLocked && (
         <p className="auth-hint" role="status">
           {notice}
         </p>
       )}
+
       <div className="auth-divider">HOẶC ĐĂNG NHẬP BẰNG MSSV / EMAIL CÁN BỘ</div>
       <form onSubmit={handleSubmit}>
         <div className="auth-field">
@@ -101,7 +265,7 @@ export function LoginPage() {
             id="identifier"
             autoComplete="username"
             required
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLocked}
             placeholder="Nhập MSSV hoặc Email..."
             leftIcon={<IdCard size={16} />}
             value={identifier}
@@ -115,21 +279,21 @@ export function LoginPage() {
           value={password}
           onChange={setPassword}
           autoComplete="current-password"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isLocked}
           className="bg-[#f1f3f6] border-[#eef0f4] text-[13px] h-[34px]"
         >
           <Link to="/forgot-password">Quên mật khẩu?</Link>
         </PasswordField>
-        <label className="auth-checkbox">
+        <label className={`auth-checkbox ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
           <input
             type="checkbox"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLocked}
             checked={shouldRememberIdentifier}
             onChange={(event) => setShouldRememberIdentifier(event.target.checked)}
           />
           Ghi nhớ MSSV/email trên thiết bị này
         </label>
-        {error && (
+        {error && !isLocked && (
           <p className="auth-error" role="alert">
             {error}
           </p>
@@ -137,11 +301,14 @@ export function LoginPage() {
         <Button
           type="submit"
           className="auth-submit"
+          disabled={isSubmitting || isLocked}
           isLoading={isSubmitting}
           loadingText="Đang đăng nhập…"
-          rightIcon={<ArrowRight size={16} />}
+          rightIcon={isLocked ? <Lock size={16} /> : <ArrowRight size={16} />}
         >
-          Đăng nhập vào Không gian Khóa luận
+          {isLocked
+            ? `Tạm khóa đăng nhập (${formatCountdown(remainingSeconds)})`
+            : 'Đăng nhập vào Không gian Khóa luận'}
         </Button>
       </form>
       <p className="auth-bottom">
