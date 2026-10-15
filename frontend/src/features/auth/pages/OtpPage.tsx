@@ -1,32 +1,57 @@
+import axios from 'axios';
 import { ArrowLeft, ArrowRight, Check, Clock, LockKeyhole, Mail, Shield } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { OTP_LENGTH, MAX_OTP_ATTEMPTS } from '../constants/auth.constants';
-import { DEMO_OTP, DEMO_PROFILE } from '../mocks/authFixtures';
-import { getChallenge, resendChallenge, startChallenge, verifyOtp } from '../mocks/authMock';
+import type { ApiResponse } from '@/shared/api/types';
+import { MAX_OTP_ATTEMPTS, OTP_LENGTH } from '../constants/auth.constants';
+import { startRecoveryApi, verifyRecoveryOtpApi } from '../services/authApi';
+
+interface LocationState {
+  challengeId?: string;
+  email?: string;
+  expiresAt?: string;
+}
 
 export function OtpPage() {
   const navigate = useNavigate();
-  const [digits, setDigits] = useState(Array<string>(OTP_LENGTH).fill(''));
+  const location = useLocation();
+  const locationState = (location.state as LocationState) || {};
+
+  const [challengeId, setChallengeId] = useState<string>(
+    () => locationState.challengeId || sessionStorage.getItem('ugtm_recovery_challenge_id') || '',
+  );
+  const email = locationState.email || sessionStorage.getItem('ugtm_recovery_email') || '';
+  const [expiresAt, setExpiresAt] = useState<string>(
+    () => locationState.expiresAt || sessionStorage.getItem('ugtm_recovery_expires_at') || '',
+  );
+
+  const [digits, setDigits] = useState<string[]>(Array<string>(OTP_LENGTH).fill(''));
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [attempts, setAttempts] = useState(0);
+  const [resendCooldownUntil, setResendCooldownUntil] = useState(() => Date.now() + 45 * 1000);
+
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
-  const challenge = getChallenge();
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  if (!challenge) {
+  if (!challengeId) {
     return <Navigate to="/forgot-password" replace />;
   }
 
-  const seconds = Math.max(0, Math.ceil((challenge.expires - now) / 1000));
-  const resendSeconds = Math.max(0, Math.ceil((challenge.resendAt - now) / 1000));
-  const isLocked = challenge.attempts >= MAX_OTP_ATTEMPTS;
+  const expiryTimestamp = expiresAt
+    ? new Date(expiresAt).getTime()
+    : now + 10 * 60 * 1000;
+  const seconds = Math.max(0, Math.ceil((expiryTimestamp - now) / 1000));
+  const resendSeconds = Math.max(0, Math.ceil((resendCooldownUntil - now) / 1000));
+  const isLocked = attempts >= MAX_OTP_ATTEMPTS;
 
   function handleDigitChange(value: string, index: number) {
     const numbers = value.replace(/\D/g, '').slice(0, OTP_LENGTH - index);
@@ -46,49 +71,85 @@ export function OtpPage() {
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isLocked || isSubmitting || digits.some((d) => !d)) return;
+
     setError('');
+    setNotice('');
+    setIsSubmitting(true);
+
+    const code = digits.join('');
+
     try {
-      const purpose = verifyOtp(digits.join(''));
-      if (purpose === 'reset') {
-        navigate('/reset-password');
-      } else {
-        navigate('/login', {
-          state: {
-            success:
-              'Kích hoạt tài khoản demo thành công. Bạn có thể đăng nhập với mật khẩu vừa tạo.',
-          },
-        });
+      const response = await verifyRecoveryOtpApi(challengeId, code);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn.');
       }
-    } catch (err) {
-      setError((err as Error).message);
+
+      const { resetGrant } = response.data;
+
+      sessionStorage.setItem('ugtm_recovery_reset_grant', resetGrant);
+      sessionStorage.removeItem('ugtm_recovery_challenge_id');
+
+      navigate('/reset-password', {
+        state: {
+          resetGrant,
+          email,
+        },
+      });
+    } catch (err: unknown) {
+      setAttempts((prev) => prev + 1);
+      if (axios.isAxiosError(err)) {
+        const apiError = err.response?.data as ApiResponse<unknown> | undefined;
+        setError(apiError?.error?.message || err.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn.');
+      } else {
+        setError((err as Error).message || 'Đã có lỗi xảy ra khi xác thực OTP.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  function handleResend() {
-    try {
-      resendChallenge();
-      setNow(Date.now());
-      setDigits(Array<string>(OTP_LENGTH).fill(''));
-      setError('');
-      setNotice('Đã gửi lại mã OTP demo thành công.');
-    } catch (err) {
-      setError((err as Error).message);
-    }
-  }
+  async function handleResend() {
+    if (resendSeconds > 0 || isLocked || isResending) return;
 
-  function handleMethodChange() {
-    if (!challenge) {
-      return;
-    }
-    const nextMethod = challenge.method === 'email' ? 'sms' : 'email';
-    startChallenge(challenge.purpose, nextMethod, challenge.pendingPassword);
-    setNow(Date.now());
-    setDigits(Array<string>(OTP_LENGTH).fill(''));
     setError('');
-    setNotice('Đã đổi phương thức nhận OTP demo.');
+    setNotice('');
+    setIsResending(true);
+
+    try {
+      const response = await startRecoveryApi(email);
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Không thể gửi lại mã OTP. Vui lòng thử lại sau.');
+      }
+
+      const newChallengeId = response.data.challengeId;
+      const newExpiresAt = response.data.expiresAt;
+
+      setChallengeId(newChallengeId);
+      setExpiresAt(newExpiresAt);
+      sessionStorage.setItem('ugtm_recovery_challenge_id', newChallengeId);
+      sessionStorage.setItem('ugtm_recovery_expires_at', newExpiresAt);
+
+      setDigits(Array<string>(OTP_LENGTH).fill(''));
+      setResendCooldownUntil(Date.now() + 60 * 1000);
+      setNotice('Đã gửi lại mã OTP mới đến hộp thư của bạn. Vui lòng kiểm tra email.');
+      inputs.current[0]?.focus();
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const apiError = err.response?.data as ApiResponse<unknown> | undefined;
+        setError(apiError?.error?.message || err.message || 'Không thể gửi lại mã OTP.');
+      } else {
+        setError((err as Error).message || 'Đã có lỗi xảy ra khi gửi lại mã OTP.');
+      }
+    } finally {
+      setIsResending(false);
+    }
   }
+
+  const displayDestination = email || 'Hộp thư định danh trường của bạn';
 
   return (
     <section className="auth-card auth-otp">
@@ -101,12 +162,11 @@ export function OtpPage() {
       </div>
       <h1>Xác thực Mã bảo mật OTP</h1>
       <p className="auth-subtitle">
-        Hệ thống đã gửi mã OTP 6 chữ số đến{' '}
-        {challenge.method === 'email' ? 'địa chỉ email' : 'SMS / Zalo'}
+        Hệ thống đã gửi mã OTP 6 chữ số đến hộp thư định danh trường của bạn
       </p>
       <div className="auth-destination">
         <Mail size={14} />
-        {challenge.method === 'email' ? DEMO_PROFILE.email : '0912 ••• 678'}
+        <span>{displayDestination}</span>
         <Check size={14} className="auth-green" />
       </div>
       <form onSubmit={handleSubmit}>
@@ -121,7 +181,7 @@ export function OtpPage() {
               inputMode="numeric"
               autoComplete={index === 0 ? 'one-time-code' : 'off'}
               value={digit}
-              disabled={isLocked}
+              disabled={isLocked || isSubmitting || seconds === 0}
               onChange={(event) => handleDigitChange(event.target.value, index)}
               onPaste={(event) => {
                 event.preventDefault();
@@ -139,7 +199,7 @@ export function OtpPage() {
         </div>
         <p className="auth-countdown">
           <Clock size={14} />
-          {seconds ? (
+          {seconds > 0 ? (
             <>
               Mã có hiệu lực trong{' '}
               <strong>
@@ -148,13 +208,17 @@ export function OtpPage() {
               </strong>
             </>
           ) : (
-            'Mã đã hết hạn'
+            <span className="text-red-600 font-medium">Mã đã hết hạn. Vui lòng bấm gửi lại mã bên dưới.</span>
           )}
         </p>
         <p className="auth-resend">
           Chưa nhận được mã?{' '}
-          <button type="button" disabled={resendSeconds > 0 || isLocked} onClick={handleResend}>
-            Gửi lại mã OTP {resendSeconds > 0 && `(${resendSeconds}s)`}
+          <button
+            type="button"
+            disabled={resendSeconds > 0 || isLocked || isResending}
+            onClick={handleResend}
+          >
+            {isResending ? 'Đang gửi lại…' : `Gửi lại mã OTP ${resendSeconds > 0 ? `(${resendSeconds}s)` : ''}`}
           </button>
         </p>
         {error && (
@@ -170,24 +234,17 @@ export function OtpPage() {
         <Button
           type="submit"
           className="auth-submit"
-          disabled={digits.some((digit) => !digit) || seconds === 0 || isLocked}
+          disabled={digits.some((digit) => !digit) || seconds === 0 || isLocked || isSubmitting}
+          isLoading={isSubmitting}
+          loadingText="Đang xác thực OTP…"
           rightIcon={<ArrowRight size={16} />}
         >
-          Xác nhận mã OTP
+          Xác nhận mã OTP & Tiếp tục
         </Button>
       </form>
       <p className="auth-hint">
         <LockKeyhole size={14} />
-        Bảo mật 2 lớp: luồng demo tạm khóa sau 5 lần nhập sai.
-      </p>
-      <p className="auth-bottom">
-        Đổi phương thức xác thực?{' '}
-        <button type="button" disabled={isLocked} onClick={handleMethodChange}>
-          {challenge.method === 'email' ? 'Nhận mã qua SMS / Zalo' : 'Nhận mã qua Email'}
-        </button>
-      </p>
-      <p className="auth-demo">
-        Mã OTP demo: <strong>{DEMO_OTP}</strong>.
+        Bảo mật 2 lớp: OTP tối đa 5 lần thử. Sau 5 lần nhập sai, mã sẽ bị hủy.
       </p>
     </section>
   );
