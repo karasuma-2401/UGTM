@@ -15,7 +15,6 @@ import {
   LOGIN_LOCK_UNTIL_KEY,
   REMEMBERED_IDENTIFIER_KEY,
 } from '../constants/auth.constants';
-import { DEMO_PASSWORD, DEMO_PROFILE } from '../mocks/authFixtures';
 import { loginApi } from '../services/authApi';
 
 function formatCountdown(totalSeconds: number): string {
@@ -78,7 +77,6 @@ export function LoginPage() {
     }
   }, [isAuthenticated, navigate, redirectFrom]);
 
-  // Real-time countdown timer effect for lockout
   useEffect(() => {
     if (!lockUntil) return;
 
@@ -118,7 +116,6 @@ export function LoginPage() {
         throw new Error(response.error?.message || 'Đăng nhập không thành công.');
       }
 
-      // Clear any remaining lock data upon successful login
       localStorage.removeItem(LOGIN_LOCK_UNTIL_KEY);
       localStorage.removeItem(LOGIN_LOCK_REASON_KEY);
 
@@ -201,7 +198,6 @@ export function LoginPage() {
         </p>
       )}
 
-      {/* Thông báo khóa giao diện khi gặp HTTP 429 */}
       {isLocked && (
         <div
           role="alert"
@@ -315,16 +311,6 @@ export function LoginPage() {
         Sinh viên đủ điều kiện chưa kích hoạt tài khoản?{' '}
         <Link to="/activate">Kích hoạt tài khoản KLTN ngay</Link>
       </p>
-      <details className="auth-demo">
-        <summary>Tài khoản demo để test</summary>
-        <p>
-          MSSV: {DEMO_PROFILE.id}
-          <br />
-          Mật khẩu ban đầu: {DEMO_PASSWORD}
-          <br />
-          Mật khẩu đổi thử chỉ tồn tại đến khi tải lại trang.
-        </p>
-      </details>
     </section>
   );
 }

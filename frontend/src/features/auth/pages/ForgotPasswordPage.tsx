@@ -1,10 +1,12 @@
-import { ArrowLeft, ArrowRight, CircleCheck, Mail, Shield, Smartphone } from 'lucide-react';
+import axios from 'axios';
+import { ArrowLeft, ArrowRight, Mail, Shield, Smartphone } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DEMO_PROFILE } from '../mocks/authFixtures';
-import { matchesProfile, startChallenge } from '../mocks/authMock';
+import type { ApiResponse } from '@/shared/api/types';
+import { startChallenge } from '../mocks/authMock';
+import { startRecoveryApi } from '../services/authApi';
 import type { OtpMethod } from '../types/auth.types';
 
 export function ForgotPasswordPage() {
@@ -12,19 +14,54 @@ export function ForgotPasswordPage() {
   const [identifier, setIdentifier] = useState('');
   const [method, setMethod] = useState<OtpMethod>('email');
   const [error, setError] = useState('');
-  const hasProfile = matchesProfile(identifier);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const normalizedEmail = identifier.trim().includes('@')
+    ? identifier.trim()
+    : identifier.trim()
+      ? `${identifier.trim()}@gm.uit.edu.vn`
+      : '';
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!identifier.trim()) return;
+
     setError('');
-    if (!hasProfile) {
-      setError(
-        `Không tìm thấy hồ sơ mẫu. Dùng MSSV ${DEMO_PROFILE.id} hoặc ${DEMO_PROFILE.email}.`,
-      );
-      return;
+    setIsSubmitting(true);
+
+    try {
+      const emailToSend = normalizedEmail;
+      const response = await startRecoveryApi(emailToSend);
+
+      if (!response.success || !response.data) {
+        throw new Error(response.error?.message || 'Không thể gửi mã xác thực. Vui lòng thử lại sau.');
+      }
+
+      const { challengeId, expiresAt } = response.data;
+
+      sessionStorage.setItem('ugtm_recovery_challenge_id', challengeId);
+      sessionStorage.setItem('ugtm_recovery_email', emailToSend);
+      sessionStorage.setItem('ugtm_recovery_expires_at', expiresAt);
+
+      startChallenge('reset', method);
+
+      navigate('/verify-otp', {
+        state: {
+          challengeId,
+          email: emailToSend,
+          expiresAt,
+        },
+      });
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const apiError = err.response?.data as ApiResponse<unknown> | undefined;
+        setError(apiError?.error?.message || err.message || 'Không thể kết nối đến máy chủ.');
+      } else {
+        setError((err as Error).message || 'Đã có lỗi xảy ra. Vui lòng thử lại.');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-    startChallenge('reset', method);
-    navigate('/verify-otp');
   }
 
   return (
@@ -43,24 +80,26 @@ export function ForgotPasswordPage() {
           <Input
             id="recovery-id"
             required
-            placeholder="Nhập MSSV hoặc Email trường..."
+            disabled={isSubmitting}
+            placeholder="Nhập MSSV hoặc Email trường (ví dụ: 24521186)..."
             leftIcon={<Mail size={16} />}
-            rightIcon={hasProfile ? <CircleCheck size={16} className="auth-green" /> : undefined}
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
             className="bg-white border-[#cbd7e8] h-[39px]"
           />
-          {hasProfile && (
+          {identifier.trim() && (
             <p className="auth-hint">
-              <span className="auth-green">✓</span> Tìm thấy hồ sơ sinh viên:{' '}
-              <strong>{DEMO_PROFILE.name}</strong> (CNTT • K66)
+              Mã OTP sẽ được gửi về hộp thư: <strong>{normalizedEmail}</strong>
             </p>
           )}
         </div>
         <fieldset className="auth-methods">
           <legend>PHƯƠNG THỨC NHẬN MÃ XÁC THỰC OTP</legend>
           {(['email', 'sms'] as const).map((value) => (
-            <label key={value} className={`auth-method ${method === value ? 'selected' : ''}`}>
+            <label
+              key={value}
+              className={`auth-method ${method === value ? 'selected' : ''} ${value === 'sms' ? 'opacity-60 cursor-not-allowed' : ''}`}
+            >
               <span className="auth-method-icon">
                 {value === 'email' ? <Mail size={20} /> : <Smartphone size={20} />}
               </span>
@@ -68,13 +107,22 @@ export function ForgotPasswordPage() {
                 <strong>
                   {value === 'email' ? 'Gửi mã qua Email trường' : 'Gửi mã qua tin nhắn SMS / Zalo'}
                 </strong>
-                {value === 'email' && <small>Khuyên dùng</small>}
-                <p>{value === 'email' ? DEMO_PROFILE.email : '0912 ••• 678'}</p>
+                {value === 'email' ? (
+                  <small>Khuyên dùng</small>
+                ) : (
+                  <small className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded ml-1 font-normal">Sắp hỗ trợ</small>
+                )}
+                <p>
+                  {value === 'email'
+                    ? (normalizedEmail || 'Hộp thư trường (@gm.uit.edu.vn / @uit.edu.vn)')
+                    : 'Đang bảo trì'}
+                </p>
               </span>
               <input
                 type="radio"
                 name="otp-method"
                 value={value}
+                disabled={value === 'sms' || isSubmitting}
                 checked={method === value}
                 onChange={() => setMethod(value)}
               />
@@ -85,7 +133,7 @@ export function ForgotPasswordPage() {
           <Shield size={20} />
           <p>
             <strong>Lưu ý bảo mật:</strong> Tuyệt đối không chia sẻ mã OTP với bất kỳ ai, kể cả cán
-            bộ quản trị hệ thống. Mã chỉ có hiệu lực trong vòng 5 phút.
+            bộ quản trị hệ thống. Mã chỉ có hiệu lực trong vòng 10 phút.
           </p>
         </div>
         {error && (
@@ -93,14 +141,20 @@ export function ForgotPasswordPage() {
             {error}
           </p>
         )}
-        <Button type="submit" className="auth-submit" rightIcon={<ArrowRight size={16} />}>
+        <Button
+          type="submit"
+          className="auth-submit"
+          disabled={isSubmitting}
+          isLoading={isSubmitting}
+          loadingText="Đang gửi mã OTP…"
+          rightIcon={<ArrowRight size={16} />}
+        >
           Gửi mã xác thực & Tiếp tục
         </Button>
       </form>
       <p className="auth-bottom">
         Bạn đã nhớ lại mật khẩu truy cập? <Link to="/login">Quay lại Đăng nhập ngay</Link>
       </p>
-      <p className="auth-demo">Demo: dùng MSSV {DEMO_PROFILE.id}.</p>
     </section>
   );
 }
