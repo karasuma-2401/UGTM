@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.Identity.Application.Users.CreateUser;
+using UGTM.Modules.Identity.Application.Users.Dtos;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
 using UGTM.Modules.Identity.Application.Users.UpdateUser;
 using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
@@ -39,41 +42,77 @@ public static class UserEndpoints
             .WithDescription("""
                 Lấy danh sách người dùng có hỗ trợ phân trang, tìm kiếm theo từ khóa (Email, Họ tên, Mã người dùng)
                 và lọc theo vai trò (Role), trạng thái tài khoản (Status).
+                - `pageNumber`: Số trang (>= 1, mặc định 1).
+                - `pageSize`: Kích thước trang (1 đến 100, mặc định 10).
+                - `keyword`: Tìm kiếm không phân biệt hoa thường theo email, họ tên, mã người dùng.
+                - `role`: Tên vai trò (`Student`, `Lecturer`, `Admin`, `Faculty`, `AcademicAffairs`, `CouncilMember`). Chuỗi số (ví dụ: '999') hoặc vai trò không hợp lệ sẽ trả về lỗi 400.
+                - `status`: Trạng thái (`PendingActivation`, `Active`, `Suspended`, `Disabled`). Chuỗi số (ví dụ: '999') hoặc trạng thái không hợp lệ sẽ trả về lỗi 400.
 
-                Yêu cầu Bearer token có quyền `identity.users.read`.
-                Thiếu token hoặc token không hợp lệ: 401; không đủ quyền: 403.
+                Yêu cầu Bearer token có quyền `identity.users.read` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm `PagedResult<UserSummaryDto>`.
+                - Tham số lọc không hợp lệ: 400 Bad Request (`Identity.InvalidRole` hoặc `Identity.InvalidStatus`).
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền (không có quyền `identity.users.read` và không phải Admin): 403 Forbidden.
                 """)
-            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersRead}");
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersRead}")
+            .Produces<ApiResponse<PagedResult<UserSummaryDto>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden);
 
         group.MapPost("/", CreateUserAsync)
             .WithSummary("Tạo tài khoản người dùng đơn lẻ")
             .WithDescription("""
                 Tạo một tài khoản người dùng mới và gán các vai trò ban đầu.
                 - Nếu không cung cấp `initialPassword` và `sendActivationEmail` = true: tài khoản ở trạng thái `PendingActivation`
-                  và hệ thống sẽ gửi email Magic Link kích hoạt (thời hạn 24 giờ).
-                - Nếu cung cấp `initialPassword`: mật khẩu được kiểm tra độ mạnh, băm và kích hoạt tài khoản `Active` ngay lập tức.
+                  và hệ thống sẽ gửi email Magic Link kích hoạt (thời hạn 24 giờ qua Transactional Outbox).
+                - Nếu cung cấp `initialPassword`: mật khẩu được kiểm tra độ mạnh (tối thiểu 12 ký tự, đủ chữ hoa, thường, số, ký tự đặc biệt),
+                  băm mật khẩu và kích hoạt tài khoản `Active` ngay lập tức.
+                - `roles`: Danh sách tên vai trò hợp lệ. Chuỗi số (ví dụ: '999', '0') hoặc tên vai trò lạ bị từ chối với lỗi 400 `Identity.InvalidRole`.
+                - `phoneNumber`: Nếu cung cấp, phải đúng định dạng số điện thoại Việt Nam (10 chữ số).
 
-                Yêu cầu Bearer token có quyền `identity.users.manage`.
-                Thiếu thông tin bắt buộc: 400 `Identity.InvalidInput`; vai trò sai: 400 `Identity.InvalidRole`;
-                số điện thoại không hợp lệ: 400 `Identity.InvalidPhoneNumber`;
-                mật khẩu yếu: 400 `Identity.WeakPassword`; trùng email hoặc mã: 409 `Identity.DuplicateAccount`.
-                Thiếu token: 401; không đủ quyền: 403.
+                Yêu cầu Bearer token có quyền `identity.users.manage` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm `UserSummaryDto`.
+                - Thiếu thông tin bắt buộc: 400 Bad Request (`Identity.InvalidInput`).
+                - Vai trò không hợp lệ hoặc chuỗi số: 400 Bad Request (`Identity.InvalidRole`).
+                - Số điện thoại sai định dạng: 400 Bad Request (`Identity.InvalidPhoneNumber`).
+                - Mật khẩu yếu: 400 Bad Request (`Identity.WeakPassword`).
+                - Trùng email hoặc mã người dùng: 409 Conflict (`Identity.DuplicateAccount`).
+                - Thiếu token: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
                 """)
-            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}");
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}")
+            .Produces<ApiResponse<UserSummaryDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
 
         group.MapPut("/{id:guid}", UpdateUserAsync)
             .WithSummary("Cập nhật thông tin hồ sơ và vai trò người dùng")
             .WithDescription("""
                 Cập nhật họ tên, số điện thoại, mã người dùng và danh sách vai trò cho tài khoản.
-                Nếu cập nhật vai trò, Security Stamp sẽ được làm mới để người dùng phải nhận lại claims ở phiên tiếp theo.
+                Nếu cập nhật vai trò, Security Stamp sẽ được làm mới tự động để thu hồi token cũ và buộc nhận claims mới ở phiên kế tiếp.
+                - `roles`: Danh sách tên vai trò hợp lệ. Chuỗi số hoặc vai trò không hợp lệ sẽ trả lỗi 400 `Identity.InvalidRole`.
+                - `phoneNumber`: Nếu cung cấp, phải đúng định dạng 10 chữ số.
 
-                Yêu cầu Bearer token có quyền `identity.users.manage`.
-                Họ tên rỗng: 400 `Identity.InvalidInput`; vai trò sai: 400 `Identity.InvalidRole`;
-                số điện thoại không hợp lệ: 400 `Identity.InvalidPhoneNumber`;
-                không tìm thấy user: 404 `Identity.UserNotFound`; trùng mã người dùng: 409 `Identity.DuplicateAccount`.
-                Thiếu token: 401; không đủ quyền: 403.
+                Yêu cầu Bearer token có quyền `identity.users.manage` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm `UserSummaryDto`.
+                - Họ tên rỗng: 400 Bad Request (`Identity.InvalidInput`).
+                - Vai trò không hợp lệ hoặc chuỗi số: 400 Bad Request (`Identity.InvalidRole`).
+                - Số điện thoại sai định dạng: 400 Bad Request (`Identity.InvalidPhoneNumber`).
+                - Không tìm thấy user: 404 Not Found (`Identity.UserNotFound`).
+                - Trùng mã người dùng với tài khoản khác: 409 Conflict (`Identity.DuplicateAccount`).
+                - Thiếu token: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
                 """)
-            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}");
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}")
+            .Produces<ApiResponse<UserSummaryDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
 
         group.MapPatch("/{id:guid}/status", UpdateStatusAsync)
             .WithSummary("Cập nhật trạng thái tài khoản (Khóa / Mở khóa / Tạm ngưng)")
@@ -81,14 +120,22 @@ public static class UserEndpoints
                 Chuyển đổi trạng thái tài khoản sang `Active`, `Suspended` hoặc `Disabled`.
                 Khi chuyển sang `Suspended` hoặc `Disabled`, Security Stamp tự động thay đổi khiến mọi phiên đăng nhập
                 và Access Token hiện tại của tài khoản này bị vô hiệu hóa ngay lập tức.
+                - `status`: Chỉ chấp nhận 'Active', 'Suspended', 'Disabled'. Chuỗi số (ví dụ: '999') hoặc giá trị không xác định sẽ bị từ chối với lỗi 400 `Identity.InvalidStatus`.
 
-                Yêu cầu Bearer token có quyền `identity.users.manage`.
-                Trạng thái rỗng hoặc sai: 400 `Identity.InvalidStatus`;
-                chuyển đổi trạng thái không hợp lệ (ví dụ tài khoản chờ kích hoạt): 400 `Identity.InvalidStatusTransition`;
-                không tìm thấy user: 404 `Identity.UserNotFound`.
-                Thiếu token: 401; không đủ quyền: 403.
+                Yêu cầu Bearer token có quyền `identity.users.manage` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm `UserSummaryDto`.
+                - Trạng thái rỗng, chuỗi số hoặc không hợp lệ: 400 Bad Request (`Identity.InvalidStatus`).
+                - Chuyển đổi trạng thái không hợp lệ (ví dụ tài khoản đang PendingActivation): 400 Bad Request (`Identity.InvalidStatusTransition`).
+                - Không tìm thấy user: 404 Not Found (`Identity.UserNotFound`).
+                - Thiếu token: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
                 """)
-            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}");
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}")
+            .Produces<ApiResponse<UserSummaryDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         return endpoints;
     }

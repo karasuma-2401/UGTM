@@ -40,7 +40,9 @@ public sealed class CreateUserHandler(
             var systemRoles = new List<SystemRoleName>();
             foreach (var roleStr in command.Roles)
             {
-                if (!Enum.TryParse<SystemRoleName>(roleStr.Trim(), ignoreCase: true, out var role))
+                if (int.TryParse(roleStr.Trim(), out _)
+                    || !Enum.TryParse<SystemRoleName>(roleStr.Trim(), ignoreCase: true, out var role)
+                    || !Enum.IsDefined(role))
                 {
                     return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
                 }

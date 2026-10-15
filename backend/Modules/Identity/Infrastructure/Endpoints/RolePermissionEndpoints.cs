@@ -2,7 +2,10 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using UGTM.BuildingBlocks.Application.Responses;
+using UGTM.Modules.Identity.Application.Permissions.Dtos;
 using UGTM.Modules.Identity.Application.Permissions.GetPermissions;
+using UGTM.Modules.Identity.Application.Roles.Dtos;
 using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
 using UGTM.Modules.Identity.Contracts.Authorization;
@@ -25,10 +28,15 @@ public static class RolePermissionEndpoints
                 Trả về danh sách tất cả quyền trong hệ thống được gom nhóm theo từng Module (Identity, ThesisManagement, v.v.).
                 Dùng cho giao diện phân quyền vai trò người dùng (RBAC / PBAC).
 
-                Yêu cầu Bearer token có quyền `identity.permissions.read` hoặc `identity.roles.manage`.
-                Thiếu token hoặc token không hợp lệ: 401; không đủ quyền: 403.
+                Yêu cầu Bearer token có quyền `identity.permissions.read` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm danh mục quyền gom nhóm theo từng Module.
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền (không có quyền `identity.permissions.read` và không phải Admin): 403 Forbidden.
                 """)
-            .RequireAuthorization($"Permission:{PermissionCodes.IdentityPermissionsRead}");
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityPermissionsRead}")
+            .Produces<ApiResponse<IReadOnlyList<ModulePermissionsDto>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden);
 
         // 2. Roles group: /api/roles
         var rolesGroup = endpoints.MapGroup("/api/roles")
@@ -38,27 +46,48 @@ public static class RolePermissionEndpoints
             .WithSummary("Lấy thông tin vai trò và danh sách quyền hiện tại")
             .WithDescription("""
                 Lấy thông tin vai trò (Role) và danh sách các quyền (Permissions) hiện đang được cấp cho vai trò này.
+                Tham số `id` là Role ID tương ứng trong hệ thống:
+                - 1: Admin
+                - 2: Faculty (Ban chủ nhiệm Khoa)
+                - 3: AcademicAffairs (Phòng Đào tạo)
+                - 4: Lecturer (Giảng viên)
+                - 5: Student (Sinh viên)
+                - 6: CouncilMember (Thành viên Hội đồng)
 
-                Yêu cầu Bearer token có quyền `identity.roles.manage` hoặc `identity.permissions.read`.
-                Không tìm thấy vai trò: 404 `Identity.RoleNotFound`.
-                Thiếu token hoặc token không hợp lệ: 401; không đủ quyền: 403.
+                Yêu cầu Bearer token có quyền `identity.roles.manage` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm thông tin vai trò và danh sách quyền.
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
+                - Không tìm thấy vai trò: 404 Not Found (`Identity.RoleNotFound`).
                 """)
-            .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}");
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}")
+            .Produces<ApiResponse<RolePermissionsDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         rolesGroup.MapPut("/{id:int}/permissions", UpdateRolePermissionsAsync)
             .WithSummary("Cập nhật danh sách quyền cho vai trò (Role)")
             .WithDescription("""
-                Cập nhật lại toàn bộ danh sách quyền được cấp cho một vai trò.
+                Cập nhật lại toàn bộ danh sách quyền được cấp cho một vai trò (đối soát và đồng bộ).
+                Hệ thống tự động loại bỏ các ID trùng lặp trong danh sách `permissionIds`.
                 Khi phân quyền thay đổi, hệ thống sẽ tự động xoay Security Stamp cho tất cả người dùng thuộc vai trò này
-                để thu hồi Access Token cũ và cập nhật claims quyền mới ở phiên kế tiếp.
+                để thu hồi phiên đăng nhập hiện tại và cập nhật claims quyền mới ở lần refresh token kế tiếp.
 
-                Yêu cầu Bearer token có quyền `identity.roles.manage`.
-                Danh sách quyền không hợp lệ: 400 `Identity.InvalidPermission`;
-                không thể gỡ sạch quyền của Admin: 400 `Identity.CannotRevokeAllAdminPermissions`;
-                không tìm thấy vai trò: 404 `Identity.RoleNotFound`.
-                Thiếu token hoặc token không hợp lệ: 401; không đủ quyền: 403.
+                Yêu cầu Bearer token có quyền `identity.roles.manage` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm thông tin vai trò và danh sách quyền sau khi cập nhật.
+                - Danh sách quyền chứa ID không tồn tại: 400 Bad Request (`Identity.InvalidPermission`).
+                - Cố tình gỡ sạch quyền của Admin: 400 Bad Request (`Identity.CannotRevokeAllAdminPermissions`).
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
+                - Không tìm thấy vai trò: 404 Not Found (`Identity.RoleNotFound`).
                 """)
-            .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}");
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}")
+            .Produces<ApiResponse<RolePermissionsDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         return endpoints;
     }

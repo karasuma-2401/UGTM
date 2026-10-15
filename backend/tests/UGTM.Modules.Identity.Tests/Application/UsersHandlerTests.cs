@@ -49,14 +49,18 @@ public sealed class UsersHandlerTests
         Assert.Equal(ErrorType.Validation, result.Error.Type);
     }
 
-    [Fact]
-    public async Task CreateUserHandler_fails_when_role_is_invalid()
+    [Theory]
+    [InlineData("SuperAdminUnknown")]
+    [InlineData("999")]
+    [InlineData("0")]
+    [InlineData("-1")]
+    public async Task CreateUserHandler_fails_when_role_is_invalid(string invalidRole)
     {
         var repo = new FakeUserRepository();
         var handler = CreateHandler(repo);
 
         var result = await handler.HandleAsync(
-            new CreateUserCommand("test@ugtm.edu.vn", "Test Name", null, null, ["SuperAdminUnknown"]),
+            new CreateUserCommand("test@ugtm.edu.vn", "Test Name", null, null, [invalidRole]),
             CancellationToken.None);
 
         Assert.False(result.IsSuccess);
@@ -319,6 +323,177 @@ public sealed class UsersHandlerTests
         Assert.True(result.IsSuccess);
         Assert.Equal("Updated Name Only", result.Value.FullName);
         Assert.Equal(oldStamp, user.SecurityStamp);
+    }
+
+    [Theory]
+    [InlineData("999")]
+    [InlineData("0")]
+    [InlineData("1")]
+    [InlineData("-1")]
+    [InlineData("PendingActivation")]
+    [InlineData("RandomStatus")]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task UpdateUserStatusHandler_rejects_invalid_status_inputs(string invalidStatus)
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Test User",
+            "T01",
+            null,
+            null,
+            AccountStatus.Active,
+            Now);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(user.Id, invalidStatus),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidStatus", result.Error.Code);
+    }
+
+    [Theory]
+    [InlineData("999")]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("UnknownRole")]
+    public async Task UpdateUserHandler_rejects_invalid_roles(string invalidRole)
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Test User",
+            "T01",
+            null,
+            null,
+            AccountStatus.Active,
+            Now);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Updated Name", null, null, [invalidRole]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidRole", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_rejects_empty_roles_list()
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Test User",
+            "T01",
+            null,
+            null,
+            AccountStatus.Active,
+            Now);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Updated Name", null, null, []),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidRole", result.Error.Code);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task UpdateUserHandler_rejects_empty_or_whitespace_full_name(string invalidName)
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Test User",
+            "T01",
+            null,
+            null,
+            AccountStatus.Active,
+            Now);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, invalidName, null, null, null),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidInput", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateUserHandler_rejects_empty_or_null_roles()
+    {
+        var repo = new FakeUserRepository();
+        var handler = CreateHandler(repo);
+
+        var nullRolesResult = await handler.HandleAsync(
+            new CreateUserCommand("test@ugtm.edu.vn", "Test Name", null, null, null!),
+            CancellationToken.None);
+        Assert.False(nullRolesResult.IsSuccess);
+        Assert.Equal("Identity.InvalidRole", nullRolesResult.Error.Code);
+
+        var emptyRolesResult = await handler.HandleAsync(
+            new CreateUserCommand("test@ugtm.edu.vn", "Test Name", null, null, []),
+            CancellationToken.None);
+        Assert.False(emptyRolesResult.IsSuccess);
+        Assert.Equal("Identity.InvalidRole", emptyRolesResult.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateUserHandler_deduplicates_duplicate_roles()
+    {
+        var repo = new FakeUserRepository();
+        var handler = CreateHandler(repo);
+
+        var result = await handler.HandleAsync(
+            new CreateUserCommand(
+                "dedup@ugtm.edu.vn",
+                "Dedup User",
+                null,
+                null,
+                ["Lecturer", "Lecturer", "lecturer"],
+                InitialPassword: "ValidPassword123!"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value.Roles);
+        Assert.Equal("Lecturer", result.Value.Roles[0]);
+    }
+
+    [Fact]
+    public async Task GetUsersHandler_sanitizes_pagination_bounds()
+    {
+        var stubReader = new StubUserQueryReader();
+        var handler = new GetUsersHandler(stubReader);
+
+        await handler.HandleAsync(
+            new GetUsersQuery(null, null, null, PageNumber: -10, PageSize: -5),
+            CancellationToken.None);
+        Assert.NotNull(stubReader.LastQuery);
+        Assert.Equal(1, stubReader.LastQuery.PageNumber);
+        Assert.Equal(10, stubReader.LastQuery.PageSize);
+
+        await handler.HandleAsync(
+            new GetUsersQuery(null, null, null, PageNumber: 2, PageSize: 500),
+            CancellationToken.None);
+        Assert.NotNull(stubReader.LastQuery);
+        Assert.Equal(2, stubReader.LastQuery.PageNumber);
+        Assert.Equal(100, stubReader.LastQuery.PageSize);
     }
 
     private static CreateUserHandler CreateHandler(

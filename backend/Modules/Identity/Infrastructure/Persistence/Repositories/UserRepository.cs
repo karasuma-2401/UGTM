@@ -59,7 +59,9 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
         CancellationToken ct)
     {
         var roleId = await db.Roles.Where(x => x.RoleName == role)
-            .Select(x => x.Id).SingleAsync(ct);
+            .Select(x => (int?)x.Id)
+            .SingleOrDefaultAsync(ct)
+            ?? throw new InvalidOperationException($"Vai trò '{role}' chưa được khởi tạo trong bảng identity.role của cơ sở dữ liệu.");
         db.UserRoles.Add(new UserRole
         {
             UserId = user.Id,

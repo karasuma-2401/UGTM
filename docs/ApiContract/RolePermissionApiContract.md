@@ -1,6 +1,6 @@
 # Role & Permission Management API (RBAC/PBAC)
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 14/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 15/10/2026
 **Base path:** `/api/permissions`, `/api/roles`
 
 Tài liệu này đặc tả chi tiết các endpoint quản lý danh mục quyền và phân quyền cho vai trò (Role-Based & Permission-Based Access Control) trong module Identity.
@@ -11,10 +11,13 @@ Tài liệu này đặc tả chi tiết các endpoint quản lý danh mục quy�
 
 - Mọi request và response đều định dạng JSON `camelCase`; thời gian theo chuẩn ISO 8601 UTC.
 - Tất cả endpoint đều yêu cầu xác thực bằng header: `Authorization: Bearer <access-token>`.
-- Quyền truy cập được kiểm soát thông qua Permission Policies:
+- Quyền truy cập được kiểm soát thông qua Permission Policies kết hợp **Admin Role Bypass**:
   - `GET /api/permissions`: yêu cầu quyền `identity.permissions.read` hoặc vai trò `Admin`.
   - `GET /api/roles/{id}/permissions`: yêu cầu quyền `identity.roles.manage` hoặc vai trò `Admin`.
   - `PUT /api/roles/{id}/permissions`: yêu cầu quyền `identity.roles.manage` hoặc vai trò `Admin`.
+  > [!NOTE]
+  > **Cơ chế Admin Role Bypass:** Người dùng sở hữu vai trò `Admin` (Role claim: `Admin`) được tự động cấp quyền thực thi tất cả các API phân quyền mà không phụ thuộc vào claim `permission` được gán trong DB.
+
 - Cấu trúc phản hồi tuân thủ envelope chuẩn `ApiResponse<T>`:
 
 ```json
@@ -33,10 +36,18 @@ Nếu thất bại:
   "data": null,
   "error": {
     "code": "Identity.RoleNotFound",
-    "message": "Không tìm thấy vai trò người dùng."
+    "message": "Không tìm thấy vai trò người dùng.",
+    "errors": null
   }
 }
 ```
+
+Các phản hồi từ tầng pipeline ASP.NET Core & OpenApi/Scalar:
+- Thiếu hoặc token JWT không hợp lệ / phiên đã thu hồi: `401 Unauthorized` (schema `ApiResponse<object>`).
+- Không đủ quyền hạn (thiếu permission và không phải Admin): `403 Forbidden` (schema `ApiResponse<object>`).
+- Lỗi nghiệp vụ dữ liệu đầu vào: `400 Bad Request` (schema `ApiResponse<object>`).
+- Lỗi không tìm thấy: `404 Not Found` (schema `ApiResponse<object>`).
+- Lỗi chưa xử lý: `500 InternalServerError`.
 
 ---
 
@@ -44,9 +55,9 @@ Nếu thất bại:
 
 | Phương thức | Đường dẫn | Quyền yêu cầu | Mô tả |
 | :--- | :--- | :--- | :--- |
-| **GET** | `/api/permissions` | `identity.permissions.read` | Lấy danh mục tất cả quyền trong hệ thống, nhóm theo Module |
-| **GET** | `/api/roles/{id}/permissions` | `identity.roles.manage` | Lấy thông tin vai trò và danh sách quyền đang được cấp |
-| **PUT** | `/api/roles/{id}/permissions` | `identity.roles.manage` | Cập nhật lại toàn bộ danh sách quyền cho vai trò |
+| **GET** | `/api/permissions` | `identity.permissions.read` hoặc vai trò `Admin` | Lấy danh mục tất cả quyền trong hệ thống, nhóm theo Module |
+| **GET** | `/api/roles/{id}/permissions` | `identity.roles.manage` hoặc vai trò `Admin` | Lấy thông tin vai trò và danh sách quyền đang được cấp |
+| **PUT** | `/api/roles/{id}/permissions` | `identity.roles.manage` hoặc vai trò `Admin` | Cập nhật lại toàn bộ danh sách quyền cho vai trò |
 
 ---
 
@@ -162,8 +173,8 @@ Lấy thông tin vai trò cùng danh sách chi tiết các quyền hiện tại 
 
 | HTTP Status | Mã lỗi | Nguyên nhân |
 | :--- | :--- | :--- |
-| 401 | — | Thiếu Access Token hoặc Token không hợp lệ |
-| 403 | — | Không đủ quyền hạn |
+| 401 | — | Thiếu Access Token hoặc Token không hợp lệ / hết hạn |
+| 403 | — | Người dùng không có quyền `identity.roles.manage` và không phải Admin |
 | 404 | `Identity.RoleNotFound` | Không tìm thấy vai trò với `id` cung cấp |
 
 ---
@@ -173,7 +184,8 @@ Lấy thông tin vai trò cùng danh sách chi tiết các quyền hiện tại 
 Cập nhật lại danh sách quyền của một vai trò theo cơ chế đối soát (reconcile).
 
 #### Cơ chế bảo mật & thu hồi phiên tức thời:
-- **Tự động xoay Security Stamp:** Mỗi khi phân quyền của vai trò thay đổi, hệ thống sẽ tự động xoay `SecurityStamp` cho **toàn bộ người dùng** đang mang vai trò đó.
+- **Tự động khử trùng lặp:** Hệ thống tự động loại bỏ các `permissionIds` trùng lặp trong mảng trước khi kiểm tra tính hợp lệ và cập nhật vào cơ sở dữ liệu.
+- **Tự động xoay Security Stamp:** Mỗi khi phân quyền của vai trò thay đổi, hệ thống sẽ tự động xoay `SecurityStamp` cho **toàn bộ người dùng** đang mang vai trò đó trong cùng một Database Transaction.
 - Nhờ đó, tất cả token JWT cũ của những người dùng này sẽ bị `SessionValidator` từ chối ngay lập tức và buộc phải làm mới phiên để nhận claims quyền mới nhất từ database.
 - **Bảo vệ vai trò Admin:** Không cho phép gỡ bỏ sạch toàn bộ quyền của vai trò `Admin` (phải giữ ít nhất 1 quyền) để tránh tình trạng khóa chết quyền quản trị hệ thống.
 
@@ -190,7 +202,7 @@ Cập nhật lại danh sách quyền của một vai trò theo cơ chế đối
 
 | Trường | Kiểu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `permissionIds` | `integer[]` | Có | Danh sách ID các quyền gán cho vai trò (mảng rỗng `[]` nếu gỡ hết quyền, trừ vai trò Admin) |
+| `permissionIds` | `integer[]` | Có | Danh sách ID các quyền gán cho vai trò (mảng rỗng `[]` nếu gỡ hết quyền, trừ vai trò Admin). Các giá trị trùng lặp sẽ tự động được gộp |
 
 #### Phản hồi thành công (200 OK)
 
@@ -225,5 +237,5 @@ Cập nhật lại danh sách quyền của một vai trò theo cơ chế đối
 | 400 | `Identity.InvalidPermission` | Một hoặc nhiều `permissionId` trong danh sách không tồn tại trong hệ thống |
 | 400 | `Identity.CannotRevokeAllAdminPermissions` | Cố tình xóa sạch toàn bộ quyền của vai trò Admin |
 | 401 | — | Thiếu token hoặc token không hợp lệ |
-| 403 | — | Không có quyền `identity.roles.manage` và không phải Admin |
+| 403 | — | Người dùng không có quyền `identity.roles.manage` và không phải Admin |
 | 404 | `Identity.RoleNotFound` | Không tìm thấy vai trò với `id` cung cấp |

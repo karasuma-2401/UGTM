@@ -66,4 +66,40 @@ public sealed class AuthorizationTests
             policy.Requirements.OfType<PermissionRequirement>());
         Assert.Equal("identity.users.manage", requirement.Permission);
     }
+
+    [Fact]
+    public async Task Permission_handler_allows_admin_role_without_specific_permission()
+    {
+        var requirement = new PermissionRequirement("some.brand.new.future.permission");
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.Role, "Admin")
+        ], "Bearer"));
+        var context = new AuthorizationHandlerContext(
+            [requirement],
+            principal,
+            resource: null);
+
+        await new PermissionAuthorizationHandler().HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task Permission_handler_denies_non_admin_without_permission()
+    {
+        var requirement = new PermissionRequirement("identity.users.manage");
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.Role, "Student")
+        ], "Bearer"));
+        var context = new AuthorizationHandlerContext(
+            [requirement],
+            principal,
+            resource: null);
+
+        await new PermissionAuthorizationHandler().HandleAsync(context);
+
+        Assert.False(context.HasSucceeded);
+    }
 }

@@ -1,6 +1,6 @@
 # User Management Backend
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 13/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 15/10/2026
 
 Tài liệu này giải thích phân hệ Quản lý Người dùng (User Management) trong module Identity: cấu trúc mã nguồn, luồng dữ liệu, cơ chế bảo mật và cách vận hành. Hợp đồng request/response công khai được đặc tả chi tiết tại [User Management API Contract](../../../docs/ApiContract/UserManagementApiContract.md).
 
@@ -69,7 +69,7 @@ Tài khoản người dùng được đại diện bởi Aggregate Root [`User`]
 3. `UserQueryReader` thực thi truy vấn EF Core trên bảng `identity.user`:
    - Sử dụng `.AsNoTracking()` để tối ưu hóa bộ nhớ và tốc độ truy vấn.
    - Tìm kiếm không phân biệt hoa thường bằng `EF.Functions.ILike` trên `NormalizedEmail`, `FullName` và `UserCode`.
-   - Lọc theo `status` và `role` (thông qua bảng liên kết `identity.user_role`).
+   - Lọc theo `status` và `role` (thông qua bảng liên kết `identity.user_role`). Nếu bộ lọc chứa chuỗi số (ví dụ: `"999"`, `"0"`, `"-1"`) hoặc giá trị ngoài enum, trả lỗi `400 Bad Request` (`Identity.InvalidRole` / `Identity.InvalidStatus`).
    - Sắp xếp mặc định: `CreatedAt DESC`.
    - Đếm tổng số bản ghi (`CountAsync`) và phân trang (`Skip().Take()`).
 4. Trả về `PagedResult<UserSummaryDto>` bọc trong envelope `ApiResponse<T>`.
@@ -77,7 +77,7 @@ Tài khoản người dùng được đại diện bởi Aggregate Root [`User`]
 ### 2. Luồng Tạo người dùng (`POST /api/users`)
 1. Admin gửi thông tin: Email, Họ tên, Mã người dùng, SĐT, Danh sách vai trò, và tùy chọn `initialPassword`.
 2. `CreateUserHandler` kiểm tra:
-   - Tính bắt buộc của Email, Họ tên và tính hợp lệ của các vai trò (`SystemRoleName`).
+   - Tính bắt buộc của Email, Họ tên và tính hợp lệ của các vai trò (`SystemRoleName`). Chặn đứng chuỗi số (ví dụ: `"999"`, `"0"`, `"-1"`) hoặc tên vai trò ngoài danh mục với lỗi `Identity.InvalidRole` (400).
    - Tính hợp lệ của Số điện thoại nếu có cung cấp (`PhoneNumberValidator`: 10 chữ số chuẩn Việt Nam bắt đầu bằng `0` hoặc `+84`).
    - Kiểm tra tính duy nhất của Email và Mã người dùng (`ExistsByEmailAsync`, `ExistsByUserCodeAsync`).
 3. **Phân nhánh xử lý:**
@@ -91,11 +91,11 @@ Tài khoản người dùng được đại diện bởi Aggregate Root [`User`]
 2. Kiểm tra tính hợp lệ của SĐT mới nếu có cung cấp (`PhoneNumberValidator`: 10 chữ số).
 3. Nếu `userCode` thay đổi, kiểm tra xem mã mới có trùng với bất kỳ tài khoản nào khác không $\rightarrow$ trả `Identity.DuplicateAccount` (409).
 4. Gọi domain method `user.UpdateProfile(...)` để cập nhật Họ tên, SĐT, Mã người dùng (chỉ xoay `SecurityStamp` khi danh sách vai trò thay đổi).
-5. Nếu có danh sách vai trò mới, gọi `UpdateRolesAsync` để thực hiện đồng bộ vi mô: gỡ bỏ các vai trò cũ không còn và thêm vào các vai trò mới.
+5. Nếu có danh sách vai trò mới, kiểm tra tính hợp lệ (chặn chuỗi số hoặc vai trò lạ), sau đó gọi `UpdateRolesAsync` để thực hiện đồng bộ vi mô: gỡ bỏ các vai trò cũ không còn và thêm vào các vai trò mới.
 6. Commit transaction và trả về thông tin `UserSummaryDto` sau cập nhật.
 
 ### 4. Luồng Cập nhật trạng thái tài khoản (`PATCH /api/users/{id}/status`)
-1. Nhận trạng thái mục tiêu: `Active`, `Suspended`, hoặc `Disabled`. Không cho phép gán thủ công `PendingActivation`.
+1. Nhận trạng thái mục tiêu: `Active`, `Suspended`, hoặc `Disabled`. Chặn đứng chuỗi số (ví dụ `"999"`, `"0"`, `"-1"`), giá trị lạ, hoặc cố tình gán thủ công `PendingActivation` với lỗi `Identity.InvalidStatus` (400).
 2. `UpdateUserStatusHandler` tìm user theo `id`:
    - Nếu `Active`: Gọi `user.Reactivate(now)` $\rightarrow$ chuyển trạng thái, xóa lockout, reset số lần đăng nhập sai về 0, xoay `SecurityStamp`.
    - Nếu `Suspended`: Gọi `user.Suspend(now)` $\rightarrow$ chuyển trạng thái, xoay `SecurityStamp`.
@@ -109,7 +109,7 @@ Tài khoản người dùng được đại diện bởi Aggregate Root [`User`]
 Phân hệ sử dụng cơ chế Dynamic Permission Policy kết hợp phân quyền theo vai trò:
 - Endpoint `GET /api/users` yêu cầu: `Permission:identity.users.read`.
 - Các endpoint `POST`, `PUT`, `PATCH` yêu cầu: `Permission:identity.users.manage`.
-- **Cơ chế Phân quyền (PBAC):** [`PermissionAuthorizationHandler`](../../Modules/Identity/Infrastructure/Authorization/PermissionAuthorizationHandler.cs) kiểm tra claim `permission` được nạp từ cơ sở dữ liệu vào JWT token của người dùng khi đăng nhập. Người dùng có vai trò `Admin` được cấp các quyền tương ứng thông qua bảng liên kết `identity.role_permission` trong cơ sở dữ liệu.
+- **Cơ chế Phân quyền (PBAC & Admin Bypass):** [`PermissionAuthorizationHandler`](../../Modules/Identity/Infrastructure/Authorization/PermissionAuthorizationHandler.cs) kiểm tra claim `permission` được nạp từ cơ sở dữ liệu vào JWT token. Đặc biệt, người dùng sở hữu vai trò `Admin` (Role claim: `Admin`) được tự động cấp quyền thực thi tất cả các API mà không cần phải gán quyền thủ công trong cơ sở dữ liệu mỗi khi có quyền mới phát sinh.
 
 ---
 

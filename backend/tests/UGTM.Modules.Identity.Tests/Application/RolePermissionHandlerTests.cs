@@ -132,6 +132,66 @@ public sealed class RolePermissionHandlerTests
         Assert.Equal("Identity.CannotRevokeAllAdminPermissions", result.Error.Code);
     }
 
+    [Fact]
+    public async Task UpdateRolePermissionsHandler_handles_duplicate_permission_ids()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var perm1 = new Permission { Id = 1, PermissionCode = "identity.users.read", PermissionName = "Xem User", Module = "Identity" };
+        repo.Permissions.Add(perm1);
+        var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
+        repo.Roles.Add(lecturerRole);
+
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, [1, 1, 1]), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value.Permissions);
+    }
+
+    [Fact]
+    public async Task UpdateRolePermissionsHandler_allows_clearing_permissions_for_non_admin_role()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
+        repo.Roles.Add(lecturerRole);
+
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, []), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value.Permissions);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    public async Task UpdateRolePermissionsHandler_fails_when_permission_ids_contain_negative_or_zero(int invalidId)
+    {
+        var repo = new FakeRolePermissionRepository();
+        var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
+        repo.Roles.Add(lecturerRole);
+
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, [invalidId]), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidPermission", result.Error.Code);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    public async Task GetRolePermissionsHandler_fails_when_role_id_is_invalid_number(int invalidRoleId)
+    {
+        var repo = new FakeRolePermissionRepository();
+        var handler = new GetRolePermissionsHandler(repo);
+
+        var result = await handler.HandleAsync(new GetRolePermissionsQuery(invalidRoleId), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.RoleNotFound", result.Error.Code);
+    }
+
     private sealed class FakeRolePermissionRepository : IRolePermissionRepository
     {
         public List<Permission> Permissions { get; } = [];
