@@ -661,6 +661,98 @@ public sealed class UsersHandlerTests
         Assert.Equal(oldStamp, user.SecurityStamp);
     }
 
+    [Theory]
+    [InlineData("Admin")]
+    [InlineData("Faculty")]
+    [InlineData("AcademicAffairs")]
+    [InlineData("Lecturer")]
+    [InlineData("CouncilMember")]
+    public async Task CreateUserHandler_rejects_student_combined_with_other_roles(string otherRole)
+    {
+        var repo = new FakeUserRepository();
+        var result = await CreateHandler(repo).HandleAsync(
+            new CreateUserCommand("student@uit.edu.vn", "Student", null, null, [" student ", otherRole]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.StudentRoleConflict.Code, result.Error.Code);
+        Assert.Empty(repo.Users);
+    }
+
+    [Theory]
+    [InlineData(SystemRoleName.Admin)]
+    [InlineData(SystemRoleName.Faculty)]
+    [InlineData(SystemRoleName.AcademicAffairs)]
+    [InlineData(SystemRoleName.Lecturer)]
+    [InlineData(SystemRoleName.CouncilMember)]
+    public async Task UpdateUserHandler_rejects_replacing_non_student_role_with_student(SystemRoleName existingRole)
+    {
+        var user = CreateUserWithRole(existingRole);
+        var oldStamp = user.SecurityStamp;
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Changed Name", null, null, ["Student"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.CannotBecomeStudent.Code, result.Error.Code);
+        Assert.Equal("Original Name", user.FullName);
+        Assert.Equal(oldStamp, user.SecurityStamp);
+        Assert.Equal(existingRole, Assert.Single(user.UserRoles).Role.RoleName);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_rejects_adding_other_role_to_student()
+    {
+        var user = CreateUserWithRole(SystemRoleName.Student);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Changed Name", null, null, ["Student", "Lecturer"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.StudentRoleConflict.Code, result.Error.Code);
+        Assert.Equal("Original Name", user.FullName);
+    }
+
+    [Theory]
+    [InlineData(SystemRoleName.Student, "Student", "student")]
+    [InlineData(SystemRoleName.Lecturer, "Lecturer", "CouncilMember")]
+    public async Task UpdateUserHandler_allows_valid_role_combinations(
+        SystemRoleName existingRole, string firstRole, string secondRole)
+    {
+        var user = CreateUserWithRole(existingRole);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Changed Name", null, null, [firstRole, secondRole]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Changed Name", user.FullName);
+        Assert.Equal(firstRole == "Student" ? 1 : 2, result.Value.Roles.Count);
+    }
+
+    private static User CreateUserWithRole(SystemRoleName role)
+    {
+        var user = User.Create(Guid.NewGuid(), "test@uit.edu.vn", "TEST@UIT.EDU.VN",
+            "Original Name", null, null, null, AccountStatus.Active, Now);
+        user.UserRoles.Add(new UserRole
+        {
+            UserId = user.Id,
+            RoleId = (int)role + 1,
+            Role = new Role { Id = (int)role + 1, RoleName = role },
+            AssignedAt = Now,
+            User = user
+        });
+        return user;
+    }
+
     private static CreateUserHandler CreateHandler(
         FakeUserRepository repo,
         FakeEmailOutbox? outbox = null)

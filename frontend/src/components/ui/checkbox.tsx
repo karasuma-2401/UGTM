@@ -35,8 +35,15 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
     };
 
     return (
-      <div className={cn('inline-flex items-start gap-2.5 select-none', className)}>
-        <div className="relative flex items-center justify-center pt-0.5">
+      <label
+        htmlFor={inputId}
+        className={cn(
+          'inline-flex items-start gap-2.5 select-none',
+          disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+          className,
+        )}
+      >
+        <span className="relative flex shrink-0 items-center justify-center pt-0.5">
           <input
             type="checkbox"
             id={inputId}
@@ -47,10 +54,9 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             className="peer sr-only"
             {...props}
           />
-          <label
-            htmlFor={inputId}
+          <span
             className={cn(
-              'size-4.5 rounded border flex items-center justify-center transition-all cursor-pointer',
+              'h-[18px] w-[18px] shrink-0 rounded border flex items-center justify-center transition-all',
               'border-[var(--color-border-input,#cbd7e8)] bg-[var(--color-bg-white,#ffffff)] shadow-sm',
               'hover:border-[var(--color-primary,#2563eb)]',
               'peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--color-primary-focus,#2663ff)] peer-focus-visible:ring-offset-1',
@@ -62,30 +68,29 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           >
             {isChecked && <Check className="size-3 stroke-[2.5]" />}
             {isIndeterminate && <Minus className="size-3 stroke-[2.5]" />}
-          </label>
-        </div>
+          </span>
+        </span>
 
         {(label || description) && (
-          <div className="flex flex-col text-left">
+          <span className="flex flex-col text-left">
             {label && (
-              <label
-                htmlFor={inputId}
+              <span
                 className={cn(
                   'text-sm font-medium leading-tight cursor-pointer text-[var(--color-text-main,#10182c)]',
                   disabled && 'cursor-not-allowed opacity-60',
                 )}
               >
                 {label}
-              </label>
+              </span>
             )}
             {description && (
               <span className="text-xs text-[var(--color-text-desc,#667b9a)] mt-0.5 leading-normal">
                 {description}
               </span>
             )}
-          </div>
+          </span>
         )}
-      </div>
+      </label>
     );
   },
 );

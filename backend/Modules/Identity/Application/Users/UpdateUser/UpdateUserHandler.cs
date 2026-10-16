@@ -50,7 +50,6 @@ public sealed class UpdateUserHandler(
             }
 
             var now = clock.UtcNow;
-            user.UpdateProfile(fullName, command.PhoneNumber, userCode, now);
 
             List<string> resultRoles;
             if (command.Roles != null)
@@ -83,6 +82,19 @@ public sealed class UpdateUserHandler(
                 }
 
                 var currentRoles = user.UserRoles.Select(ur => ur.Role.RoleName).ToHashSet();
+                if (systemRoles.Contains(SystemRoleName.Student))
+                {
+                    if (systemRoles.Count > 1)
+                    {
+                        return Result.Failure<UserSummaryDto>(IdentityErrors.StudentRoleConflict);
+                    }
+
+                    if (currentRoles.Any(role => role != SystemRoleName.Student))
+                    {
+                        return Result.Failure<UserSummaryDto>(IdentityErrors.CannotBecomeStudent);
+                    }
+                }
+
                 var rolesChanged = !currentRoles.SetEquals(systemRoles);
                 if (rolesChanged)
                 {
@@ -97,6 +109,7 @@ public sealed class UpdateUserHandler(
                 resultRoles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList();
             }
 
+            user.UpdateProfile(fullName, command.PhoneNumber, userCode, now);
             await unitOfWork.SaveChangesAsync(ct);
 
             return Result.Success(new UserSummaryDto(
