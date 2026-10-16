@@ -16,6 +16,11 @@ public sealed class UpdateRolePermissionsHandler(
         UpdateRolePermissionsCommand command,
         CancellationToken cancellationToken)
     {
+        if (command.PermissionIds is null)
+        {
+            return Task.FromResult(Result.Failure<RolePermissionsDto>(IdentityErrors.InvalidPermission));
+        }
+
         return unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
             var role = await repository.GetRoleWithPermissionsAsync(command.RoleId, ct);
@@ -24,7 +29,7 @@ public sealed class UpdateRolePermissionsHandler(
                 return Result.Failure<RolePermissionsDto>(IdentityErrors.RoleNotFound);
             }
 
-            var targetPermissionIds = (command.PermissionIds ?? [])
+            var targetPermissionIds = command.PermissionIds
                 .Distinct()
                 .ToList();
 
@@ -44,17 +49,25 @@ public sealed class UpdateRolePermissionsHandler(
                 }
             }
 
-            var now = clock.UtcNow;
-            await repository.UpdateRolePermissionsAsync(role.Id, targetPermissionIds, now, ct);
+            var currentPermissionIds = role.RolePermissions
+                .Select(rp => rp.PermissionId)
+                .ToHashSet();
+            var permissionsChanged = !currentPermissionIds.SetEquals(targetPermissionIds);
 
-            // Thu hồi phiên tức thời: xoay SecurityStamp cho tất cả user đang giữ role này
-            await repository.RotateSecurityStampForRoleUsersAsync(role.Id, ct);
+            if (permissionsChanged)
+            {
+                var now = clock.UtcNow;
+                await repository.UpdateRolePermissionsAsync(role.Id, targetPermissionIds, now, ct);
 
-            await unitOfWork.SaveChangesAsync(ct);
+                // Thu hồi phiên tức thời: xoay SecurityStamp cho tất cả user đang giữ role này
+                await repository.RotateSecurityStampForRoleUsersAsync(role.Id, ct);
 
-            // Trả về DTO sau khi cập nhật
-            var updatedRole = await repository.GetRoleWithPermissionsAsync(role.Id, ct);
-            var permissions = updatedRole!.RolePermissions
+                await unitOfWork.SaveChangesAsync(ct);
+
+                role = await repository.GetRoleWithPermissionsAsync(role.Id, ct) ?? role;
+            }
+
+            var permissions = role.RolePermissions
                 .Select(rp => new PermissionDto(
                     rp.Permission.Id,
                     rp.Permission.PermissionCode,
@@ -65,9 +78,9 @@ public sealed class UpdateRolePermissionsHandler(
                 .ToList();
 
             return Result.Success(new RolePermissionsDto(
-                updatedRole.Id,
-                updatedRole.RoleName.ToString(),
-                updatedRole.Description,
+                role.Id,
+                role.RoleName.ToString(),
+                role.Description,
                 permissions));
         }, cancellationToken);
     }

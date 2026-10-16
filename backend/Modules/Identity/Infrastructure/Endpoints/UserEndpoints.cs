@@ -57,8 +57,8 @@ public static class UserEndpoints
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersRead}")
             .Produces<ApiResponse<PagedResult<UserSummaryDto>>>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
-            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
-            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPost("/", CreateUserAsync)
             .WithSummary("Tạo tài khoản người dùng đơn lẻ")
@@ -73,7 +73,7 @@ public static class UserEndpoints
 
                 Yêu cầu Bearer token có quyền `identity.users.manage` hoặc người dùng có vai trò `Admin`.
                 - Thành công: 200 OK kèm `UserSummaryDto`.
-                - Thiếu thông tin bắt buộc: 400 Bad Request (`Identity.InvalidInput`).
+                - Thiếu thông tin bắt buộc, sai định dạng email hoặc vượt quá độ dài tối đa: 400 Bad Request (`Identity.InvalidInput`).
                 - Vai trò không hợp lệ hoặc chuỗi số: 400 Bad Request (`Identity.InvalidRole`).
                 - Số điện thoại sai định dạng: 400 Bad Request (`Identity.InvalidPhoneNumber`).
                 - Mật khẩu yếu: 400 Bad Request (`Identity.WeakPassword`).
@@ -84,8 +84,8 @@ public static class UserEndpoints
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}")
             .Produces<ApiResponse<UserSummaryDto>>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
-            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
-            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
 
         group.MapPut("/{id:guid}", UpdateUserAsync)
@@ -98,7 +98,7 @@ public static class UserEndpoints
 
                 Yêu cầu Bearer token có quyền `identity.users.manage` hoặc người dùng có vai trò `Admin`.
                 - Thành công: 200 OK kèm `UserSummaryDto`.
-                - Họ tên rỗng: 400 Bad Request (`Identity.InvalidInput`).
+                - Họ tên rỗng hoặc vượt quá độ dài tối đa: 400 Bad Request (`Identity.InvalidInput`).
                 - Vai trò không hợp lệ hoặc chuỗi số: 400 Bad Request (`Identity.InvalidRole`).
                 - Số điện thoại sai định dạng: 400 Bad Request (`Identity.InvalidPhoneNumber`).
                 - Không tìm thấy user: 404 Not Found (`Identity.UserNotFound`).
@@ -109,8 +109,8 @@ public static class UserEndpoints
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}")
             .Produces<ApiResponse<UserSummaryDto>>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
-            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
-            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
 
@@ -133,8 +133,8 @@ public static class UserEndpoints
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}")
             .Produces<ApiResponse<UserSummaryDto>>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
-            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
-            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         return endpoints;
@@ -155,18 +155,18 @@ public static class UserEndpoints
     }
 
     private static async Task<IResult> CreateUserAsync(
-        CreateUserRequest request,
+        [FromBody] CreateUserRequest? request,
         CreateUserHandler handler,
         CancellationToken cancellationToken)
     {
         var command = new CreateUserCommand(
-            request.Email,
-            request.FullName,
-            request.UserCode,
-            request.PhoneNumber,
-            request.Roles,
-            request.InitialPassword,
-            request.SendActivationEmail);
+            request?.Email ?? string.Empty,
+            request?.FullName ?? string.Empty,
+            request?.UserCode,
+            request?.PhoneNumber,
+            request?.Roles ?? [],
+            request?.InitialPassword,
+            request?.SendActivationEmail ?? true);
 
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
@@ -174,16 +174,16 @@ public static class UserEndpoints
 
     private static async Task<IResult> UpdateUserAsync(
         Guid id,
-        UpdateUserRequest request,
+        [FromBody] UpdateUserRequest? request,
         UpdateUserHandler handler,
         CancellationToken cancellationToken)
     {
         var command = new UpdateUserCommand(
             id,
-            request.FullName,
-            request.UserCode,
-            request.PhoneNumber,
-            request.Roles);
+            request?.FullName ?? string.Empty,
+            request?.UserCode,
+            request?.PhoneNumber,
+            request?.Roles);
 
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
@@ -191,11 +191,11 @@ public static class UserEndpoints
 
     private static async Task<IResult> UpdateStatusAsync(
         Guid id,
-        UpdateUserStatusRequest request,
+        [FromBody] UpdateUserStatusRequest? request,
         UpdateUserStatusHandler handler,
         CancellationToken cancellationToken)
     {
-        var command = new UpdateUserStatusCommand(id, request.Status);
+        var command = new UpdateUserStatusCommand(id, request?.Status ?? string.Empty);
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
     }

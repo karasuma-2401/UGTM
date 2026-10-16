@@ -19,6 +19,17 @@ public sealed class UpdateUserHandler(
                 return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidInput);
             }
 
+            var fullName = command.FullName.Trim();
+            var userCode = string.IsNullOrWhiteSpace(command.UserCode)
+                ? null
+                : command.UserCode.Trim().ToUpperInvariant();
+
+            if (fullName.Length > EmailValidator.MaxFullNameLength
+                || (userCode is not null && userCode.Length > EmailValidator.MaxUserCodeLength))
+            {
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidInput);
+            }
+
             if (!PhoneNumberValidator.IsValid(command.PhoneNumber))
             {
                 return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidPhoneNumber);
@@ -30,10 +41,6 @@ public sealed class UpdateUserHandler(
                 return Result.Failure<UserSummaryDto>(IdentityErrors.UserNotFound);
             }
 
-            var userCode = string.IsNullOrWhiteSpace(command.UserCode)
-                ? null
-                : command.UserCode.Trim().ToUpperInvariant();
-
             if (userCode != null && userCode != user.UserCode)
             {
                 if (await users.ExistsByUserCodeAsync(userCode, user.Id, ct))
@@ -43,7 +50,7 @@ public sealed class UpdateUserHandler(
             }
 
             var now = clock.UtcNow;
-            user.UpdateProfile(command.FullName, command.PhoneNumber, userCode, now);
+            user.UpdateProfile(fullName, command.PhoneNumber, userCode, now);
 
             List<string> resultRoles;
             if (command.Roles != null)
@@ -51,8 +58,14 @@ public sealed class UpdateUserHandler(
                 var systemRoles = new List<SystemRoleName>();
                 foreach (var roleStr in command.Roles)
                 {
-                    if (int.TryParse(roleStr.Trim(), out _)
-                        || !Enum.TryParse<SystemRoleName>(roleStr.Trim(), ignoreCase: true, out var role)
+                    if (string.IsNullOrWhiteSpace(roleStr))
+                    {
+                        return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
+                    }
+
+                    var trimmedRole = roleStr.Trim();
+                    if (int.TryParse(trimmedRole, out _)
+                        || !Enum.TryParse<SystemRoleName>(trimmedRole, ignoreCase: true, out var role)
                         || !Enum.IsDefined(role))
                     {
                         return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);

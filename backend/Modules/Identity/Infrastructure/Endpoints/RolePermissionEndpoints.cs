@@ -14,7 +14,7 @@ namespace UGTM.Modules.Identity.Infrastructure.Endpoints;
 
 public static class RolePermissionEndpoints
 {
-    public sealed record UpdateRolePermissionsRequest(IReadOnlyList<int> PermissionIds);
+    public sealed record UpdateRolePermissionsRequest(IReadOnlyList<int>? PermissionIds);
 
     public static IEndpointRouteBuilder MapIdentityRolePermissionEndpoints(
         this IEndpointRouteBuilder endpoints)
@@ -35,8 +35,8 @@ public static class RolePermissionEndpoints
                 """)
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityPermissionsRead}")
             .Produces<ApiResponse<IReadOnlyList<ModulePermissionsDto>>>(StatusCodes.Status200OK)
-            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
-            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden);
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         // 2. Roles group: /api/roles
         var rolesGroup = endpoints.MapGroup("/api/roles")
@@ -62,8 +62,8 @@ public static class RolePermissionEndpoints
                 """)
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}")
             .Produces<ApiResponse<RolePermissionsDto>>(StatusCodes.Status200OK)
-            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
-            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         rolesGroup.MapPut("/{id:int}/permissions", UpdateRolePermissionsAsync)
@@ -71,12 +71,12 @@ public static class RolePermissionEndpoints
             .WithDescription("""
                 Cập nhật lại toàn bộ danh sách quyền được cấp cho một vai trò (đối soát và đồng bộ).
                 Hệ thống tự động loại bỏ các ID trùng lặp trong danh sách `permissionIds`.
-                Khi phân quyền thay đổi, hệ thống sẽ tự động xoay Security Stamp cho tất cả người dùng thuộc vai trò này
+                Khi phân quyền thực sự thay đổi, hệ thống sẽ tự động xoay Security Stamp cho tất cả người dùng thuộc vai trò này
                 để thu hồi phiên đăng nhập hiện tại và cập nhật claims quyền mới ở lần refresh token kế tiếp.
 
                 Yêu cầu Bearer token có quyền `identity.roles.manage` hoặc người dùng có vai trò `Admin`.
                 - Thành công: 200 OK kèm thông tin vai trò và danh sách quyền sau khi cập nhật.
-                - Danh sách quyền chứa ID không tồn tại: 400 Bad Request (`Identity.InvalidPermission`).
+                - Danh sách quyền là `null` hoặc chứa ID không tồn tại: 400 Bad Request (`Identity.InvalidPermission`).
                 - Cố tình gỡ sạch quyền của Admin: 400 Bad Request (`Identity.CannotRevokeAllAdminPermissions`).
                 - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
                 - Không đủ quyền: 403 Forbidden.
@@ -85,8 +85,8 @@ public static class RolePermissionEndpoints
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}")
             .Produces<ApiResponse<RolePermissionsDto>>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
-            .Produces<ApiResponse<object>>(StatusCodes.Status401Unauthorized)
-            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         return endpoints;
@@ -111,11 +111,11 @@ public static class RolePermissionEndpoints
 
     private static async Task<IResult> UpdateRolePermissionsAsync(
         [FromRoute] int id,
-        [FromBody] UpdateRolePermissionsRequest request,
+        [FromBody] UpdateRolePermissionsRequest? request,
         UpdateRolePermissionsHandler handler,
         CancellationToken cancellationToken)
     {
-        var command = new UpdateRolePermissionsCommand(id, request.PermissionIds);
+        var command = new UpdateRolePermissionsCommand(id, request?.PermissionIds);
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
     }

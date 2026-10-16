@@ -27,6 +27,19 @@ public sealed class CreateUserHandler(
                 return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidInput);
             }
 
+            var email = command.Email.Trim();
+            var fullName = command.FullName.Trim();
+            var userCode = string.IsNullOrWhiteSpace(command.UserCode)
+                ? null
+                : command.UserCode.Trim().ToUpperInvariant();
+
+            if (!EmailValidator.IsValid(email)
+                || fullName.Length > EmailValidator.MaxFullNameLength
+                || (userCode is not null && userCode.Length > EmailValidator.MaxUserCodeLength))
+            {
+                return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidInput);
+            }
+
             if (!PhoneNumberValidator.IsValid(command.PhoneNumber))
             {
                 return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidPhoneNumber);
@@ -40,8 +53,14 @@ public sealed class CreateUserHandler(
             var systemRoles = new List<SystemRoleName>();
             foreach (var roleStr in command.Roles)
             {
-                if (int.TryParse(roleStr.Trim(), out _)
-                    || !Enum.TryParse<SystemRoleName>(roleStr.Trim(), ignoreCase: true, out var role)
+                if (string.IsNullOrWhiteSpace(roleStr))
+                {
+                    return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
+                }
+
+                var trimmedRole = roleStr.Trim();
+                if (int.TryParse(trimmedRole, out _)
+                    || !Enum.TryParse<SystemRoleName>(trimmedRole, ignoreCase: true, out var role)
                     || !Enum.IsDefined(role))
                 {
                     return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
@@ -53,9 +72,7 @@ public sealed class CreateUserHandler(
                 }
             }
 
-            var email = command.Email.Trim();
             var normalizedEmail = email.ToUpperInvariant();
-            var userCode = string.IsNullOrWhiteSpace(command.UserCode) ? null : command.UserCode.Trim().ToUpperInvariant();
 
             if (await users.ExistsByEmailAsync(normalizedEmail, excludeUserId: null, ct))
             {
@@ -84,7 +101,7 @@ public sealed class CreateUserHandler(
                 userId,
                 email,
                 normalizedEmail,
-                command.FullName,
+                fullName,
                 userCode,
                 command.PhoneNumber,
                 passwordHash: null,

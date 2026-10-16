@@ -103,6 +103,11 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
                 .Where(r => rolesToAdd.Contains(r.RoleName))
                 .ToListAsync(ct);
 
+            if (roleEntities.Count != rolesToAdd.Count)
+            {
+                throw new InvalidOperationException("Một hoặc nhiều vai trò chưa được khởi tạo trong bảng identity.role của cơ sở dữ liệu.");
+            }
+
             foreach (var role in roleEntities)
             {
                 db.UserRoles.Add(new UserRole

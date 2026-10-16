@@ -192,6 +192,48 @@ public sealed class RolePermissionHandlerTests
         Assert.Equal("Identity.RoleNotFound", result.Error.Code);
     }
 
+    [Fact]
+    public async Task UpdateRolePermissionsHandler_fails_when_permission_ids_is_null()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
+        repo.Roles.Add(lecturerRole);
+
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, null), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidPermission", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateRolePermissionsHandler_does_not_rotate_security_stamp_when_permissions_unchanged()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var perm1 = new Permission { Id = 1, PermissionCode = "identity.users.read", PermissionName = "Xem User", Module = "Identity" };
+        var perm2 = new Permission { Id = 2, PermissionCode = "identity.users.manage", PermissionName = "Sửa User", Module = "Identity" };
+        repo.Permissions.AddRange([perm1, perm2]);
+
+        var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
+        repo.Roles.Add(lecturerRole);
+        repo.RolePermissions.AddRange([
+            new RolePermission { RoleId = 4, PermissionId = 1, Permission = perm1 },
+            new RolePermission { RoleId = 4, PermissionId = 2, Permission = perm2 }
+        ]);
+
+        var user = User.Create(Guid.NewGuid(), "gv@ugtm.edu.vn", "GV@UGTM.EDU.VN", "GV A", "GV01", null, "hash", AccountStatus.Active, Now);
+        var oldStamp = user.SecurityStamp;
+        repo.UsersInRoles.Add(user);
+
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, [2, 1]), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Permissions.Count);
+        Assert.False(repo.SecurityStampRotated);
+        Assert.Equal(oldStamp, user.SecurityStamp);
+    }
+
     private sealed class FakeRolePermissionRepository : IRolePermissionRepository
     {
         public List<Permission> Permissions { get; } = [];

@@ -37,26 +37,29 @@ public sealed class UpdateUserStatusHandler(
                 return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidStatusTransition);
             }
 
-            if (newStatus == AccountStatus.Suspended && user.Status != AccountStatus.Active)
+            if (newStatus == AccountStatus.Suspended && user.Status == AccountStatus.Disabled)
             {
                 return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidStatusTransition);
             }
 
-            var now = clock.UtcNow;
-            switch (newStatus)
+            if (user.Status != newStatus)
             {
-                case AccountStatus.Active:
-                    user.Reactivate(now);
-                    break;
-                case AccountStatus.Suspended:
-                    user.Suspend(now);
-                    break;
-                case AccountStatus.Disabled:
-                    user.Disable(now);
-                    break;
-            }
+                var now = clock.UtcNow;
+                switch (newStatus)
+                {
+                    case AccountStatus.Active:
+                        user.Reactivate(now);
+                        break;
+                    case AccountStatus.Suspended:
+                        user.Suspend(now);
+                        break;
+                    case AccountStatus.Disabled:
+                        user.Disable(now);
+                        break;
+                }
 
-            await unitOfWork.SaveChangesAsync(ct);
+                await unitOfWork.SaveChangesAsync(ct);
+            }
 
             var roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList();
 
