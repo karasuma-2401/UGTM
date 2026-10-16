@@ -48,7 +48,7 @@ const navItems: NavItem[] = [
     label: 'Tài khoản & Quyền',
     path: '/modules/identity',
     icon: ShieldCheck,
-    permission: 'identity.users.read',
+    permissions: ['identity.roles.manage', 'identity.users.read'],
   },
   { label: 'Thông báo', path: '/modules/notifications', icon: Bell },
   { label: 'UI Components (Dev)', path: '/ui-test', icon: Palette, badge: 'Dev' },

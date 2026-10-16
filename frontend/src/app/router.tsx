@@ -12,6 +12,7 @@ import { OtpPage } from '../features/auth/pages/OtpPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 
 import { ProtectedRoute } from '../shared/auth';
+import { RolePermissionPage } from '../features/admin';
 
 export const router = createBrowserRouter([
   {
@@ -37,8 +38,8 @@ export const router = createBrowserRouter([
       {
         path: 'modules/identity',
         element: (
-          <ProtectedRoute requiredPermissions={['identity.users.read']}>
-            <ModulePingPage />
+          <ProtectedRoute requiredPermissions={['identity.roles.manage', 'identity.permissions.read']}>
+            <RolePermissionPage />
           </ProtectedRoute>
         ),
       },
