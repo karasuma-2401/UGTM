@@ -52,16 +52,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (roles: string | string[]): boolean => {
       if (!user || !user.roles || user.roles.length === 0) return false;
       const roleArray = Array.isArray(roles) ? roles : [roles];
-      return roleArray.some((role) => user.roles.includes(role));
+      return roleArray.some((role) =>
+        user.roles.some((r) => r.toLowerCase() === role.toLowerCase()),
+      );
     },
     [user],
   );
 
   const hasPermission = useCallback(
     (permissions: string | string[]): boolean => {
-      if (!user || !user.permissions || user.permissions.length === 0) return false;
+      if (!user) return false;
+      if (user.roles && user.roles.some((r) => r.toLowerCase() === 'admin')) {
+        return true;
+      }
+      if (!user.permissions || user.permissions.length === 0) return false;
       const permArray = Array.isArray(permissions) ? permissions : [permissions];
-      return permArray.some((perm) => user.permissions.includes(perm));
+      return permArray.some((perm) =>
+        user.permissions.some((p) => p.toLowerCase() === perm.toLowerCase()),
+      );
     },
     [user],
   );
