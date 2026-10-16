@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { UsersRound, UserPlus, Clock3, ShieldOff, Search, SlidersHorizontal } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select } from '@/components/ui/select';
+import { StatisticsBar } from '@/components/ui/statistics-bar';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
 
 import { UserFormDialog } from '../components/UserFormDialog';
@@ -29,7 +32,7 @@ const INITIAL_FILTERS: UserFilters = {
   status: '',
 };
 
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 10;
 
 export function UsersPage() {
   const queryClient = useQueryClient();
@@ -134,25 +137,32 @@ export function UsersPage() {
   const mutationError = saveMutation.error || statusMutation.error;
   const isUpdating = saveMutation.isPending || statusMutation.isPending;
 
-  const firstItem = data && data.totalCount > 0 ? (data.pageNumber - 1) * data.pageSize + 1 : 0;
-
-  const lastItem = data ? Math.min(data.pageNumber * data.pageSize, data.totalCount) : 0;
-
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-800">
-            Tài khoản & quyền truy cập
-          </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Quản lý tài khoản và vai trò người dùng trong hệ thống.
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-start gap-3.5">
+          <div className="hidden size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary sm:flex">
+            <UsersRound className="size-6" aria-hidden="true" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Tài khoản & quyền truy cập
+            </h1>
+            <p className="mt-2 text-sm text-slate-500">
+              Quản lý tài khoản và vai trò người dùng trong hệ thống.
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
           {canManage && (
-            <Button type="button" disabled={isUpdating} onClick={() => handleOpenForm(null)}>
+            <Button
+              type="button"
+              disabled={isUpdating}
+              onClick={() => handleOpenForm(null)}
+              leftIcon={<UserPlus />}
+              className="h-10 rounded-lg px-4 shadow-sm"
+            >
               Tạo tài khoản
             </Button>
           )}
@@ -189,11 +199,13 @@ export function UsersPage() {
 
       <form
         onSubmit={handleApplyFilters}
-        className="grid items-end gap-4 md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_auto]"
+        className="grid items-end gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_auto]"
       >
         <label className="block space-y-2 text-sm text-slate-700">
           <span>Tìm tài khoản</span>
           <Input
+            leftIcon={<Search className="size-4" />}
+            className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
             placeholder="Họ tên, mã người dùng hoặc email"
             value={draftFilters.keyword}
             onChange={(event) =>
@@ -208,6 +220,7 @@ export function UsersPage() {
         <div className="space-y-2 text-sm text-slate-700">
           <span>Vai trò</span>
           <Select<SystemRole | ''>
+            triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
             aria-label="Lọc theo vai trò"
             placeholder="Tất cả vai trò"
             value={draftFilters.role}
@@ -225,6 +238,7 @@ export function UsersPage() {
         <div className="space-y-2 text-sm text-slate-700">
           <span>Trạng thái</span>
           <Select<AccountStatus | ''>
+            triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
             aria-label="Lọc theo trạng thái"
             placeholder="Tất cả trạng thái"
             value={draftFilters.status}
@@ -241,22 +255,52 @@ export function UsersPage() {
           />
         </div>
 
-        <Button type="submit">Áp dụng</Button>
+        <Button
+          type="submit"
+          variant="soft"
+          leftIcon={<SlidersHorizontal />}
+          className="h-10 rounded-lg px-5"
+        >
+          Áp dụng
+        </Button>
       </form>
 
-      <Card className="overflow-hidden">
-        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 px-4 py-5">
-          <CardTitle className="text-base">Danh sách tài khoản</CardTitle>
-          <section aria-label="Thống kê tài khoản" aria-busy={statisticsQuery.isFetching}>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
-              <p className="font-medium text-slate-800">
-                {formatCount(statistics?.total)} tài khoản
-              </p>
-              <p className="font-medium text-amber-700">
-                {formatCount(statistics?.pendingActivation)} chờ kích hoạt
-              </p>
-              <p className="text-slate-500">{formatCount(statistics?.disabled)} vô hiệu hóa</p>
-            </div>
+      <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-4 py-3">
+          <div className="space-y-1">
+            <CardTitle className="text-base text-slate-900">Danh sách tài khoản</CardTitle>
+            <p className="text-xs text-slate-500">Thông tin người dùng và trạng thái truy cập</p>
+          </div>
+          <section
+            className="w-full sm:w-auto"
+            aria-label="Thống kê tài khoản"
+            aria-busy={statisticsQuery.isFetching}
+          >
+            <StatisticsBar
+              items={[
+                {
+                  key: 'total',
+                  label: 'Tổng tài khoản',
+                  value: formatCount(statistics?.total),
+                  icon: <UsersRound />,
+                  tone: 'primary',
+                },
+                {
+                  key: 'pending',
+                  label: 'Chờ kích hoạt',
+                  value: formatCount(statistics?.pendingActivation),
+                  icon: <Clock3 />,
+                  tone: 'warning',
+                },
+                {
+                  key: 'disabled',
+                  label: 'Vô hiệu hóa',
+                  value: formatCount(statistics?.disabled),
+                  icon: <ShieldOff />,
+                  tone: 'muted',
+                },
+              ]}
+            />
             {statisticsQuery.isPending && (
               <p role="status" className="mt-2 text-xs text-muted-foreground">
                 Đang tải thống kê...
@@ -293,6 +337,8 @@ export function UsersPage() {
         ) : data && data.items.length > 0 ? (
           <UsersTable
             users={data.items}
+            pageNumber={data.pageNumber}
+            pageSize={data.pageSize}
             currentUserId={currentUser?.id}
             canManage={canManage}
             isChangingStatus={isUpdating}
@@ -304,37 +350,16 @@ export function UsersPage() {
         )}
 
         {data && !usersQuery.isError && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 p-4">
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              <p className="text-xs text-slate-500">
-                Hiển thị {firstItem}–{lastItem} / {data.totalCount} tài khoản
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!data.hasPreviousPage || usersQuery.isFetching}
-                onClick={() => setPageNumber((page) => page - 1)}
-              >
-                Trước
-              </Button>
-
-              <span className="text-xs text-slate-500">Trang {data.pageNumber}</span>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!data.hasNextPage || usersQuery.isFetching}
-                onClick={() => setPageNumber((page) => page + 1)}
-              >
-                Sau
-              </Button>
-            </div>
-          </div>
+          <TablePagination
+            pageNumber={data.pageNumber}
+            pageSize={data.pageSize}
+            totalCount={data.totalCount}
+            hasPreviousPage={data.hasPreviousPage}
+            hasNextPage={data.hasNextPage}
+            isLoading={usersQuery.isFetching}
+            itemLabel="tài khoản"
+            onPageChange={setPageNumber}
+          />
         )}
       </Card>
     </div>
