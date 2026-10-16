@@ -34,6 +34,14 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'ui-test', element: <UiTestPage /> },
+      {
+        path: 'modules/identity',
+        element: (
+          <ProtectedRoute requiredPermissions={['identity.users.read']}>
+            <ModulePingPage />
+          </ProtectedRoute>
+        ),
+      },
       { path: 'modules/:modulePath', element: <ModulePingPage /> },
       { path: '403', element: <ErrorPage code={403} /> },
       { path: '404', element: <ErrorPage code={404} /> },
