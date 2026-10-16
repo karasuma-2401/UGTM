@@ -1,3 +1,5 @@
+import type { SystemRole } from './user.types';
+
 /**
  * DTO đại diện cho một quyền hạn (Permission) trong hệ thống
  */
@@ -38,7 +40,7 @@ export interface UpdateRolePermissionsRequest {
  */
 export interface SystemRoleInfo {
   id: number;
-  roleName: string;
+  roleName: SystemRole;
   title: string;
   description: string;
   badge?: string;
