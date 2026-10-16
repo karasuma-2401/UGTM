@@ -1,6 +1,6 @@
 # User Management API
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 15/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 16/10/2026
 **Base path:** `/api/users`
 
 Tài liệu này đặc tả chi tiết các endpoint Quản lý Người dùng (User Management) trong hệ thống UGTM. Tài liệu kỹ thuật kiến trúc đối chiếu nằm tại [User Management Technical](../../backend/docs/Technical/UserManagement.md).
@@ -40,8 +40,8 @@ Phản hồi khi có lỗi nghiệp vụ:
 ```
 
 Các phản hồi từ tầng pipeline ASP.NET Core & OpenApi/Scalar:
-- Thiếu hoặc token JWT không hợp lệ / phiên đã thu hồi: `401 Unauthorized` (schema `ApiResponse<object>`).
-- Không đủ quyền hạn (thiếu permission và không phải Admin): `403 Forbidden` (schema `ApiResponse<object>`).
+- Thiếu hoặc token JWT không hợp lệ / phiên đã thu hồi: `401 Unauthorized` (body rỗng).
+- Không đủ quyền hạn (thiếu permission và không phải Admin): `403 Forbidden` (body rỗng).
 - Lỗi nghiệp vụ dữ liệu đầu vào: `400 Bad Request` (schema `ApiResponse<object>`).
 - Lỗi không tìm thấy: `404 Not Found` (schema `ApiResponse<object>`).
 - Lỗi xung đột dữ liệu: `409 Conflict` (schema `ApiResponse<object>`).
@@ -189,8 +189,8 @@ Tạo tài khoản người dùng mới và phân vai trò.
 
 | HTTP Status | Mã lỗi | Nguyên nhân |
 | :--- | :--- | :--- |
-| 400 | `Identity.InvalidInput` | Thiếu Email hoặc Họ tên |
-| 400 | `Identity.InvalidRole` | Danh sách vai trò rỗng, chứa chuỗi số (ví dụ: `["999"]`) hoặc tên vai trò không có trong hệ thống |
+| 400 | `Identity.InvalidInput` | Thiếu Email/Họ tên, sai định dạng Email, hoặc vượt quá giới hạn độ dài (`email` > 150, `fullName` > 150, `userCode` > 20 ký tự) |
+| 400 | `Identity.InvalidRole` | Danh sách vai trò rỗng, chứa phần tử `null`/khoảng trắng, chuỗi số (ví dụ: `["999"]`) hoặc tên vai trò không có trong hệ thống |
 | 400 | `Identity.InvalidPhoneNumber` | Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số chuẩn Việt Nam) |
 | 400 | `Identity.WeakPassword` | `initialPassword` không đáp ứng chính sách bảo mật ($\ge 12$ ký tự, hoa, thường, số, ký tự đặc biệt) |
 | 401 | — | Thiếu Access Token hoặc token hết hạn / không hợp lệ |
@@ -222,10 +222,10 @@ Cập nhật thông tin cá nhân và thay đổi danh sách vai trò của ngư
 
 | Trường | Kiểu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `fullName` | `string` | Có | Họ và tên mới của người dùng (không được để trống) |
+| `fullName` | `string` | Có | Họ và tên mới của người dùng (không được để trống, tối đa 150 ký tự) |
 | `userCode` | `string?` | Không | Mã số sinh viên / cán bộ mới (tối đa 20 ký tự) |
 | `phoneNumber` | `string?` | Không | Số điện thoại mới (chuẩn 10 chữ số) |
-| `roles` | `string[]?` | Không | Danh sách vai trò mới (nếu gửi, sẽ thay thế danh sách vai trò cũ). Không chấp nhận chuỗi số hoặc vai trò không hợp lệ |
+| `roles` | `string[]?` | Không | Danh sách vai trò mới (nếu gửi, sẽ thay thế danh sách vai trò cũ). Không chấp nhận phần tử `null`, chuỗi số hoặc vai trò không hợp lệ |
 
 > [!NOTE]
 > Khi danh sách vai trò (`roles`) thay đổi, hệ thống sẽ tự động xoay `SecurityStamp` của người dùng. Nhờ đó, người dùng sẽ bắt buộc phải làm mới phiên (refresh token) ở lần gọi tiếp theo để nhận claims và permissions mới từ database.
@@ -255,8 +255,8 @@ Cập nhật thông tin cá nhân và thay đổi danh sách vai trò của ngư
 
 | HTTP Status | Mã lỗi | Nguyên nhân |
 | :--- | :--- | :--- |
-| 400 | `Identity.InvalidInput` | Họ tên bị để trống |
-| 400 | `Identity.InvalidRole` | Danh sách vai trò rỗng, chứa chuỗi số (ví dụ: `["999"]`) hoặc tên vai trò không có trong hệ thống |
+| 400 | `Identity.InvalidInput` | Họ tên bị để trống hoặc vượt quá giới hạn độ dài (`fullName` > 150, `userCode` > 20 ký tự) |
+| 400 | `Identity.InvalidRole` | Danh sách vai trò rỗng, chứa phần tử `null`/khoảng trắng, chuỗi số (ví dụ: `["999"]`) hoặc tên vai trò không có trong hệ thống |
 | 400 | `Identity.InvalidPhoneNumber` | Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số) |
 | 401 | — | Thiếu Access Token hoặc token không hợp lệ |
 | 403 | — | Người dùng không có quyền `identity.users.manage` và không phải Admin |

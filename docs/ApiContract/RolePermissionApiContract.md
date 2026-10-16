@@ -1,6 +1,6 @@
 # Role & Permission Management API (RBAC/PBAC)
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 15/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 16/10/2026
 **Base path:** `/api/permissions`, `/api/roles`
 
 Tài liệu này đặc tả chi tiết các endpoint quản lý danh mục quyền và phân quyền cho vai trò (Role-Based & Permission-Based Access Control) trong module Identity.
@@ -43,8 +43,8 @@ Nếu thất bại:
 ```
 
 Các phản hồi từ tầng pipeline ASP.NET Core & OpenApi/Scalar:
-- Thiếu hoặc token JWT không hợp lệ / phiên đã thu hồi: `401 Unauthorized` (schema `ApiResponse<object>`).
-- Không đủ quyền hạn (thiếu permission và không phải Admin): `403 Forbidden` (schema `ApiResponse<object>`).
+- Thiếu hoặc token JWT không hợp lệ / phiên đã thu hồi: `401 Unauthorized` (body rỗng).
+- Không đủ quyền hạn (thiếu permission và không phải Admin): `403 Forbidden` (body rỗng).
 - Lỗi nghiệp vụ dữ liệu đầu vào: `400 Bad Request` (schema `ApiResponse<object>`).
 - Lỗi không tìm thấy: `404 Not Found` (schema `ApiResponse<object>`).
 - Lỗi chưa xử lý: `500 InternalServerError`.
@@ -184,9 +184,10 @@ Lấy thông tin vai trò cùng danh sách chi tiết các quyền hiện tại 
 Cập nhật lại danh sách quyền của một vai trò theo cơ chế đối soát (reconcile).
 
 #### Cơ chế bảo mật & thu hồi phiên tức thời:
+- **Bắt buộc truyền mảng `permissionIds`:** Nếu thiếu trường `permissionIds` hoặc truyền `"permissionIds": null`, hệ thống trả lỗi `400 Bad Request` (`Identity.InvalidPermission`). Chỉ khi truyền mảng rỗng `[]` tường minh mới thực hiện gỡ toàn bộ quyền (đối với vai trò khác Admin).
 - **Tự động khử trùng lặp:** Hệ thống tự động loại bỏ các `permissionIds` trùng lặp trong mảng trước khi kiểm tra tính hợp lệ và cập nhật vào cơ sở dữ liệu.
-- **Tự động xoay Security Stamp:** Mỗi khi phân quyền của vai trò thay đổi, hệ thống sẽ tự động xoay `SecurityStamp` cho **toàn bộ người dùng** đang mang vai trò đó trong cùng một Database Transaction.
-- Nhờ đó, tất cả token JWT cũ của những người dùng này sẽ bị `SessionValidator` từ chối ngay lập tức và buộc phải làm mới phiên để nhận claims quyền mới nhất từ database.
+- **Tự động xoay Security Stamp khi có thay đổi:** Hệ thống chỉ thực hiện ghi DB và xoay `SecurityStamp` cho người dùng thuộc vai trò đó khi tập quyền mới **thực sự khác** với tập quyền hiện tại. Nếu danh sách quyền giữ nguyên (no-op), các phiên đăng nhập hiện tại của người dùng sẽ không bị gián đoạn.
+- Nhờ đó, khi quyền thực sự thay đổi, tất cả token JWT cũ của những người dùng này sẽ bị `SessionValidator` từ chối ngay lập tức và buộc phải làm mới phiên để nhận claims quyền mới nhất từ database.
 - **Bảo vệ vai trò Admin:** Không cho phép gỡ bỏ sạch toàn bộ quyền của vai trò `Admin` (phải giữ ít nhất 1 quyền) để tránh tình trạng khóa chết quyền quản trị hệ thống.
 
 #### Path Parameters
@@ -202,7 +203,7 @@ Cập nhật lại danh sách quyền của một vai trò theo cơ chế đối
 
 | Trường | Kiểu | Bắt buộc | Mô tả |
 | :--- | :--- | :---: | :--- |
-| `permissionIds` | `integer[]` | Có | Danh sách ID các quyền gán cho vai trò (mảng rỗng `[]` nếu gỡ hết quyền, trừ vai trò Admin). Các giá trị trùng lặp sẽ tự động được gộp |
+| `permissionIds` | `integer[]` | Có | Danh sách ID các quyền gán cho vai trò (mảng rỗng `[]` tường minh nếu gỡ hết quyền, trừ vai trò Admin; không chấp nhận `null`). Các giá trị trùng lặp sẽ tự động được gộp |
 
 #### Phản hồi thành công (200 OK)
 
@@ -234,7 +235,7 @@ Cập nhật lại danh sách quyền của một vai trò theo cơ chế đối
 
 | HTTP Status | Mã lỗi | Nguyên nhân |
 | :--- | :--- | :--- |
-| 400 | `Identity.InvalidPermission` | Một hoặc nhiều `permissionId` trong danh sách không tồn tại trong hệ thống |
+| 400 | `Identity.InvalidPermission` | Thiếu trường `permissionIds` (`null`) hoặc một/nhiều `permissionId` trong danh sách không tồn tại trong hệ thống |
 | 400 | `Identity.CannotRevokeAllAdminPermissions` | Cố tình xóa sạch toàn bộ quyền của vai trò Admin |
 | 401 | — | Thiếu token hoặc token không hợp lệ |
 | 403 | — | Người dùng không có quyền `identity.roles.manage` và không phải Admin |

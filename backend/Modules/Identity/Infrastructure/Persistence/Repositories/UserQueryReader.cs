@@ -18,10 +18,14 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
         {
             var keyword = query.Keyword.Trim();
             var normalized = keyword.ToUpperInvariant();
+            var escapedKeyword = keyword
+                .Replace(@"\", @"\\")
+                .Replace("%", @"\%")
+                .Replace("_", @"\_");
             usersQuery = usersQuery.Where(u =>
                 u.NormalizedEmail.Contains(normalized)
-                || EF.Functions.ILike(u.FullName, $"%{keyword}%")
-                || (u.UserCode != null && EF.Functions.ILike(u.UserCode, $"%{keyword}%")));
+                || EF.Functions.ILike(u.FullName, $"%{escapedKeyword}%", @"\")
+                || (u.UserCode != null && EF.Functions.ILike(u.UserCode, $"%{escapedKeyword}%", @"\")));
         }
 
         if (!string.IsNullOrWhiteSpace(query.Status)

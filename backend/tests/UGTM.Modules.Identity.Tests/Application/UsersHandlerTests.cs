@@ -496,6 +496,171 @@ public sealed class UsersHandlerTests
         Assert.Equal(100, stubReader.LastQuery.PageSize);
     }
 
+    [Theory]
+    [InlineData("999")]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("Unknown")]
+    public async Task GetUsersHandler_rejects_invalid_role_filter(string invalidRole)
+    {
+        var stubReader = new StubUserQueryReader();
+        var handler = new GetUsersHandler(stubReader);
+
+        var result = await handler.HandleAsync(
+            new GetUsersQuery(null, Role: invalidRole, Status: null),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidRole", result.Error.Code);
+        Assert.Null(stubReader.LastQuery);
+    }
+
+    [Theory]
+    [InlineData("999")]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("InvalidStatus")]
+    public async Task GetUsersHandler_rejects_invalid_status_filter(string invalidStatus)
+    {
+        var stubReader = new StubUserQueryReader();
+        var handler = new GetUsersHandler(stubReader);
+
+        var result = await handler.HandleAsync(
+            new GetUsersQuery(null, Role: null, Status: invalidStatus),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidStatus", result.Error.Code);
+        Assert.Null(stubReader.LastQuery);
+    }
+
+    [Fact]
+    public async Task CreateUserHandler_and_UpdateUserHandler_reject_null_or_whitespace_role_elements()
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Test User",
+            "T01",
+            null,
+            null,
+            AccountStatus.Active,
+            Now);
+        var repo = new FakeUserRepository([user]);
+        var createHandler = CreateHandler(repo);
+        var updateHandler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var createNullElem = await createHandler.HandleAsync(
+            new CreateUserCommand("new@ugtm.edu.vn", "New User", null, null, [null!]),
+            CancellationToken.None);
+        Assert.False(createNullElem.IsSuccess);
+        Assert.Equal("Identity.InvalidRole", createNullElem.Error.Code);
+
+        var updateNullElem = await updateHandler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Test User", null, null, ["Lecturer", null!]),
+            CancellationToken.None);
+        Assert.False(updateNullElem.IsSuccess);
+        Assert.Equal("Identity.InvalidRole", updateNullElem.Error.Code);
+    }
+
+    [Theory]
+    [InlineData("not-an-email")]
+    [InlineData("missing-at.com")]
+    [InlineData("@missing-local.com")]
+    [InlineData("missing-domain@")]
+    [InlineData("missing-tld@domain")]
+    public async Task CreateUserHandler_rejects_invalid_email_format(string invalidEmail)
+    {
+        var repo = new FakeUserRepository();
+        var handler = CreateHandler(repo);
+
+        var result = await handler.HandleAsync(
+            new CreateUserCommand(invalidEmail, "Valid Name", "SV01", null, ["Student"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidInput", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateUserHandler_and_UpdateUserHandler_reject_fields_exceeding_max_length()
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Test User",
+            "T01",
+            null,
+            null,
+            AccountStatus.Active,
+            Now);
+        var repo = new FakeUserRepository([user]);
+        var createHandler = CreateHandler(repo);
+        var updateHandler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var longEmail = new string('a', 142) + "@uit.edu.vn"; // 153 chars > 150
+        var longName = new string('N', 151); // > 150
+        var longCode = new string('C', 21); // > 20
+
+        var resEmail = await createHandler.HandleAsync(
+            new CreateUserCommand(longEmail, "Valid Name", "SV01", null, ["Student"]),
+            CancellationToken.None);
+        Assert.False(resEmail.IsSuccess);
+        Assert.Equal("Identity.InvalidInput", resEmail.Error.Code);
+
+        var resCreateName = await createHandler.HandleAsync(
+            new CreateUserCommand("valid@ugtm.edu.vn", longName, "SV01", null, ["Student"]),
+            CancellationToken.None);
+        Assert.False(resCreateName.IsSuccess);
+        Assert.Equal("Identity.InvalidInput", resCreateName.Error.Code);
+
+        var resCreateCode = await createHandler.HandleAsync(
+            new CreateUserCommand("valid@ugtm.edu.vn", "Valid Name", longCode, null, ["Student"]),
+            CancellationToken.None);
+        Assert.False(resCreateCode.IsSuccess);
+        Assert.Equal("Identity.InvalidInput", resCreateCode.Error.Code);
+
+        var resUpdateName = await updateHandler.HandleAsync(
+            new UpdateUserCommand(user.Id, longName, "T01", null, null),
+            CancellationToken.None);
+        Assert.False(resUpdateName.IsSuccess);
+        Assert.Equal("Identity.InvalidInput", resUpdateName.Error.Code);
+
+        var resUpdateCode = await updateHandler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Valid Name", longCode, null, null),
+            CancellationToken.None);
+        Assert.False(resUpdateCode.IsSuccess);
+        Assert.Equal("Identity.InvalidInput", resUpdateCode.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusHandler_is_idempotent_and_preserves_security_stamp_when_status_unchanged()
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "test@ugtm.edu.vn",
+            "TEST@UGTM.EDU.VN",
+            "Test User",
+            "T01",
+            null,
+            null,
+            AccountStatus.Suspended,
+            Now);
+        var oldStamp = user.SecurityStamp;
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(user.Id, "Suspended"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Suspended", result.Value.Status);
+        Assert.Equal(oldStamp, user.SecurityStamp);
+    }
+
     private static CreateUserHandler CreateHandler(
         FakeUserRepository repo,
         FakeEmailOutbox? outbox = null)
