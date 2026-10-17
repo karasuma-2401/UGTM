@@ -15,6 +15,8 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.Property(x => x.Id)
             .ValueGeneratedOnAdd();
 
+        builder.Property(x => x.IntegrationEventId);
+
         builder.Property(x => x.ActorUserId);
 
         builder.Property(x => x.ActorSessionId);
@@ -61,5 +63,10 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 
         builder.HasIndex(x => x.RequestId)
             .HasDatabaseName("ix_audit_log_request_id");
+
+        builder.HasIndex(x => x.IntegrationEventId)
+            .IsUnique()
+            .HasFilter("integration_event_id IS NOT NULL")
+            .HasDatabaseName("ux_audit_log_integration_event_id");
     }
 }

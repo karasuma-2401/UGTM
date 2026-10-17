@@ -6,6 +6,7 @@ public sealed class AcademicPeriodsDbContext(DbContextOptions<AcademicPeriodsDbC
 {
     public override string Schema => "academic";
 
+    public DbSet<AuditOutboxMessage> AuditOutboxMessages => Set<AuditOutboxMessage>();
     public DbSet<KltnBatch> KltnBatchs => Set<KltnBatch>();
     public DbSet<ScoreComponentConfig> ScoreComponentConfigs => Set<ScoreComponentConfig>();
     public DbSet<ScoreWeightConfig> ScoreWeightConfigs => Set<ScoreWeightConfig>();

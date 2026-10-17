@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
+using UGTM.Modules.AcademicPeriods.Application.Auditing;
+using UGTM.Modules.AcademicPeriods.Infrastructure.Auditing;
+using UGTM.Modules.Identity.Contracts.Auditing;
 
 namespace UGTM.Modules.AcademicPeriods.Infrastructure;
 
@@ -16,6 +19,8 @@ public sealed class AcademicPeriodsModule : IModule
     public void RegisterModule(IServiceCollection services, IConfiguration configuration)
     {
         services.AddModuleDbContext<AcademicPeriodsDbContext>(configuration);
+        services.AddScoped<IAcademicPeriodsAuditOutbox, AcademicPeriodsAuditOutbox>();
+        services.AddScoped<IAuditIntegrationEventSource, AcademicPeriodsAuditEventSource>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
