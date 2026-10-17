@@ -1,3 +1,4 @@
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Notifications;
 using UGTM.Modules.Identity.Application.Users.Dtos;
@@ -14,7 +15,8 @@ public sealed class CreateUserHandler(
     IPasswordService passwordService,
     IIdentityUnitOfWork unitOfWork,
     IClock clock,
-    IdentitySecurityPolicy policy)
+    IdentitySecurityPolicy policy,
+    IAuditLogWriter auditLogs)
 {
     public Task<Result<UserSummaryDto>> HandleAsync(
         CreateUserCommand command,
@@ -145,6 +147,20 @@ public sealed class CreateUserHandler(
             {
                 await users.AddToRoleAsync(user, role, now, ct);
             }
+
+            auditLogs.Add(new AuditEntry(
+                TargetType: "User",
+                TargetId: user.Id.ToString("D"),
+                Action: AuditActions.UserCreated,
+                Outcome: AuditOutcomes.Success,
+                ReasonCode: null,
+                Metadata: new
+                {
+                    Status = user.Status.ToString(),
+                    Roles = systemRoles.Select(role => role.ToString()).Order().ToArray(),
+                    ActivationEmailRequested = string.IsNullOrWhiteSpace(command.InitialPassword)
+                                               && command.SendActivationEmail
+                }));
 
             await unitOfWork.SaveChangesAsync(ct);
 

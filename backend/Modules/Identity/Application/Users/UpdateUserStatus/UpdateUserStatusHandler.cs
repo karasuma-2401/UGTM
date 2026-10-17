@@ -1,3 +1,4 @@
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Users.Dtos;
 
 namespace UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
@@ -5,7 +6,8 @@ namespace UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 public sealed class UpdateUserStatusHandler(
     IUserRepository users,
     IIdentityUnitOfWork unitOfWork,
-    IClock clock)
+    IClock clock,
+    IAuditLogWriter auditLogs)
 {
     public Task<Result<UserSummaryDto>> HandleAsync(
         UpdateUserStatusCommand command,
@@ -44,6 +46,7 @@ public sealed class UpdateUserStatusHandler(
 
             if (user.Status != newStatus)
             {
+                var previousStatus = user.Status;
                 var now = clock.UtcNow;
                 switch (newStatus)
                 {
@@ -57,6 +60,18 @@ public sealed class UpdateUserStatusHandler(
                         user.Disable(now);
                         break;
                 }
+
+                auditLogs.Add(new AuditEntry(
+                    TargetType: "User",
+                    TargetId: user.Id.ToString("D"),
+                    Action: AuditActions.UserStatusChanged,
+                    Outcome: AuditOutcomes.Success,
+                    ReasonCode: null,
+                    Metadata: new
+                    {
+                        PreviousStatus = previousStatus.ToString(),
+                        NewStatus = user.Status.ToString()
+                    }));
 
                 await unitOfWork.SaveChangesAsync(ct);
             }

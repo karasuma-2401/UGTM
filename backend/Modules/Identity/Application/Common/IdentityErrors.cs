@@ -93,4 +93,8 @@ public static class IdentityErrors
     public static readonly Error CannotRevokeAllAdminPermissions = Error.Validation(
         "Identity.CannotRevokeAllAdminPermissions",
         "Không thể gỡ bỏ toàn bộ quyền của vai trò Quản trị viên (Admin).");
+
+    public static readonly Error InvalidAuditLogFilter = Error.Validation(
+        "Identity.InvalidAuditLogFilter",
+        "Bộ lọc nhật ký hệ thống không hợp lệ.");
 }
