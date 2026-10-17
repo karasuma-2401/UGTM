@@ -128,6 +128,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IOneTimeChallengeRepository, OneTimeChallengeRepository>();
         services.AddScoped<IUserProfileReader, UserProfileReader>();
         services.AddScoped<IUserQueryReader, UserQueryReader>();
+        services.AddScoped<UGTM.Modules.Identity.Contracts.Users.IStudentInfoReader, StudentInfoReader>();
         services.AddScoped<IIdentityEmailOutbox, IdentityEmailOutbox>();
         services.AddScoped<RefreshCookieService>();
         services.AddScoped<SessionValidator>();

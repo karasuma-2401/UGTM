@@ -10,6 +10,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
 
+using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
+
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
 public sealed class ThesisManagementModule : IModule
@@ -21,6 +23,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddModuleDbContext<ThesisManagementDbContext>(configuration);
         services.AddScoped<IStudentGroupRepository, StudentGroupRepository>();
         services.AddScoped<IThesisUnitOfWork>(provider => provider.GetRequiredService<ThesisManagementDbContext>());
+        services.AddScoped<IThesisRegistrationContract, ThesisRegistrationContract>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
