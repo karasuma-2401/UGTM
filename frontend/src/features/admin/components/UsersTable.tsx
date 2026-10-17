@@ -119,7 +119,7 @@ export function UsersTable({
                     description={user.email}
                     trailing={
                       user.id === currentUserId ? (
-                        <Badge variant="info" className="rounded-full px-1.5 py-0 text-[10px]">
+                        <Badge variant="info" className="px-1.5 py-0 text-[10px]">
                           Bạn
                         </Badge>
                       ) : undefined
@@ -164,7 +164,7 @@ export function UsersTable({
                   <Badge
                     variant={statusVariants[user.status]}
                     dot
-                    className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium shadow-none ${statusClasses[user.status]}`}
+                    className={`whitespace-nowrap px-2.5 py-1 text-[11px] font-medium shadow-none ${statusClasses[user.status]}`}
                   >
                     {STATUS_LABELS[user.status]}
                   </Badge>

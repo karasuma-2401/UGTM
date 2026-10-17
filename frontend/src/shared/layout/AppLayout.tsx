@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import ugtmLogo from '../../../assets/logo_UGTM.svg';
 import {
-  GraduationCap,
   LayoutDashboard,
   ShieldCheck,
   CalendarDays,
@@ -107,14 +107,18 @@ export function AppLayout() {
         )}
       >
         {/* Sidebar Header / Brand */}
-        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-100">
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="size-9 rounded-lg bg-primary flex items-center justify-center text-primary-foreground shadow-sm">
-              <GraduationCap className="size-5" />
+        <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100">
+          <Link to="/" className="flex items-center gap-2.5 min-w-0 group">
+            <div className="h-9 px-2 flex items-center justify-center shrink-0 shadow-2xs group-hover:border-slate-300 transition-colors">
+              <img src={ugtmLogo} alt="UGTM Logo" className="h-4.5 w-auto object-contain" />
             </div>
-            <div>
-              <div className="font-bold text-base tracking-tight text-slate-900">UGTM Portal</div>
-              <div className="text-[11px] text-slate-500 font-medium">Quản lý Khóa luận ĐH</div>
+            <div className="min-w-0">
+              <div className="font-bold text-sm tracking-tight text-slate-900 truncate">
+                UGTM Portal
+              </div>
+              <div className="text-[11px] text-slate-500 font-medium truncate">
+                Quản lý Khóa luận ĐH
+              </div>
             </div>
           </Link>
           <button
@@ -132,9 +136,6 @@ export function AppLayout() {
           </div>
           <div className="text-xs font-semibold text-slate-800 flex items-center justify-between">
             <span>Đợt 1 - HK2 (2025-2026)</span>
-            <Badge variant="success" dot className="text-[10px] px-1.5 py-0">
-              Đang mở
-            </Badge>
           </div>
         </div>
 
@@ -161,10 +162,11 @@ export function AppLayout() {
                   key={item.path}
                   to={item.path}
                   onClick={() => setSidebarOpen(false)}
+                  style={isActive ? { background: 'var(--gradient-brand)' } : undefined}
                   className={cn(
                     'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group',
                     isActive
-                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      ? 'text-white shadow-sm'
                       : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
                   )}
                 >
@@ -173,7 +175,7 @@ export function AppLayout() {
                       className={cn(
                         'size-4.5 shrink-0 transition-colors',
                         isActive
-                          ? 'text-primary-foreground'
+                          ? 'text-white'
                           : 'text-slate-400 group-hover:text-slate-700',
                       )}
                     />

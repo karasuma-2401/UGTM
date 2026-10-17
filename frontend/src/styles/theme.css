@@ -96,6 +96,11 @@
   --color-success-gradient-start: #0bb788;
   --color-success-gradient-end: #2cd29b;
 
+  --color-brand-gradient-start: #2054A5;
+  --color-brand-gradient-end: #FA7921;
+  --gradient-brand: linear-gradient(90deg, #2054A5 0%, #FA7921 100%);
+  --gradient-brand-reverse: linear-gradient(90deg, #FA7921 0%, #2054A5 100%);
+
   --color-warning: #a84806;
   --color-warning-text: #8b6b37;
   --color-warning-bg: #fffbee;
