@@ -26,13 +26,19 @@ public sealed class GetTopicTrackingDetailHandler(
             return Result.Failure<TopicTrackingDetailDto>(TopicErrors.AccessDenied);
         }
 
+        var isPrivileged = HasRole(currentUser, "Admin") || HasRole(currentUser, "CouncilMember");
+        var isLecturer = HasRole(currentUser, "Lecturer");
+        if (!isPrivileged && !isLecturer)
+        {
+            return Result.Failure<TopicTrackingDetailDto>(TopicErrors.AccessDenied);
+        }
+
         var topic = await topicRepository.GetByIdAsync(query.TopicId, cancellationToken);
         if (topic is null)
         {
             return Result.Failure<TopicTrackingDetailDto>(TopicErrors.TopicNotFound);
         }
 
-        var isPrivileged = currentUser.Roles.Contains("Admin") || currentUser.Roles.Contains("CouncilMember");
         if (!isPrivileged && topic.AdvisorId != currentUser.UserId.Value)
         {
             return Result.Failure<TopicTrackingDetailDto>(TopicErrors.AccessDenied);
@@ -46,4 +52,7 @@ public sealed class GetTopicTrackingDetailHandler(
 
         return Result.Success(detail);
     }
+
+    private static bool HasRole(ICurrentUser user, string role)
+        => user.Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
 }

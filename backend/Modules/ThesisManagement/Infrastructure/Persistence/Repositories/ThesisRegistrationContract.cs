@@ -1,10 +1,28 @@
 using Microsoft.EntityFrameworkCore;
 using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
+using UGTM.Modules.ThesisManagement.Domain.Entities;
+using UGTM.Modules.ThesisManagement.Domain.Enums;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence.Repositories;
 
-public sealed class ThesisRegistrationContract(ThesisManagementDbContext db) : IThesisRegistrationContract
+public sealed class ThesisRegistrationContract : IThesisRegistrationContract
 {
+    private readonly ThesisManagementDbContext? _db;
+    private readonly IReadOnlyList<StudentGroup>? _inMemoryGroups;
+
+    public ThesisRegistrationContract(ThesisManagementDbContext db)
+    {
+        _db = db;
+    }
+
+    private ThesisRegistrationContract(IReadOnlyList<StudentGroup> inMemoryGroups)
+    {
+        _inMemoryGroups = inMemoryGroups;
+    }
+
+    public static ThesisRegistrationContract CreateInMemory(IEnumerable<StudentGroup> groups)
+        => new(groups.ToList());
+
     public async Task<IReadOnlyDictionary<Guid, TopicRegistrationContractDto>> GetRegistrationsByTopicIdsAsync(
         IEnumerable<Guid> topicIds,
         CancellationToken cancellationToken = default)
@@ -15,16 +33,21 @@ public sealed class ThesisRegistrationContract(ThesisManagementDbContext db) : I
             return new Dictionary<Guid, TopicRegistrationContractDto>();
         }
 
-        var groups = await db.StudentGroups
-            .AsNoTracking()
-            .Include(g => g.Members)
-            .Where(g => topicIdList.Contains(g.TopicId))
-            .ToListAsync(cancellationToken);
+        var query = QueryGroups()
+            .Where(g => topicIdList.Contains(g.TopicId) && g.Status != StudentGroupStatus.Stopped)
+            .OrderBy(g => g.CreatedAt)
+            .ThenBy(g => g.Id);
+
+        var groups = query is IAsyncEnumerable<StudentGroup>
+            ? await query.ToListAsync(cancellationToken)
+            : query.ToList();
 
         var result = new Dictionary<Guid, TopicRegistrationContractDto>();
         foreach (var group in groups)
         {
             var members = group.Members
+                .OrderBy(m => m.JoinedAt)
+                .ThenBy(m => m.StudentId)
                 .Select(m => new TopicMemberContractDto(m.StudentId, m.BatchId, m.JoinedAt))
                 .ToList();
 
@@ -43,10 +66,14 @@ public sealed class ThesisRegistrationContract(ThesisManagementDbContext db) : I
         Guid topicId,
         CancellationToken cancellationToken = default)
     {
-        var group = await db.StudentGroups
-            .AsNoTracking()
-            .Include(g => g.Members)
-            .FirstOrDefaultAsync(g => g.TopicId == topicId, cancellationToken);
+        var query = QueryGroups()
+            .Where(g => g.TopicId == topicId && g.Status != StudentGroupStatus.Stopped)
+            .OrderByDescending(g => g.CreatedAt)
+            .ThenByDescending(g => g.Id);
+
+        var group = query is IAsyncEnumerable<StudentGroup>
+            ? await query.FirstOrDefaultAsync(cancellationToken)
+            : query.FirstOrDefault();
 
         if (group is null)
         {
@@ -54,6 +81,8 @@ public sealed class ThesisRegistrationContract(ThesisManagementDbContext db) : I
         }
 
         var members = group.Members
+            .OrderBy(m => m.JoinedAt)
+            .ThenBy(m => m.StudentId)
             .Select(m => new TopicMemberContractDto(m.StudentId, m.BatchId, m.JoinedAt))
             .ToList();
 
@@ -64,4 +93,9 @@ public sealed class ThesisRegistrationContract(ThesisManagementDbContext db) : I
             group.CreatedAt,
             members);
     }
+
+    private IQueryable<StudentGroup> QueryGroups()
+        => _inMemoryGroups is not null
+            ? _inMemoryGroups.AsQueryable()
+            : _db!.StudentGroups.AsNoTracking().Include(g => g.Members);
 }

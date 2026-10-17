@@ -28,12 +28,12 @@ public sealed class GetMyTopicsHandler(
             return Result.Failure<PagedResult<TopicTrackingSummaryDto>>(TopicErrors.AccessDenied);
         }
 
-        var isPrivileged = currentUser.Roles.Contains("Admin") || currentUser.Roles.Contains("CouncilMember");
+        var isPrivileged = HasRole(currentUser, "Admin") || HasRole(currentUser, "CouncilMember");
         Guid? effectiveAdvisorId;
 
         if (!isPrivileged)
         {
-            if (!currentUser.Roles.Contains("Lecturer"))
+            if (!HasRole(currentUser, "Lecturer"))
             {
                 return Result.Failure<PagedResult<TopicTrackingSummaryDto>>(TopicErrors.AccessDenied);
             }
@@ -88,4 +88,7 @@ public sealed class GetMyTopicsHandler(
 
         return Result.Success(result);
     }
+
+    private static bool HasRole(ICurrentUser user, string role)
+        => user.Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
 }

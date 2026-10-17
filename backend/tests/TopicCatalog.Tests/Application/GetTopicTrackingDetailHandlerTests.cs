@@ -283,4 +283,80 @@ public sealed class GetTopicTrackingDetailHandlerTests
         Assert.Equal(ErrorType.NotFound, result.Error.Type);
         Assert.Equal(TopicErrors.TopicNotFound.Code, result.Error.Code);
     }
+
+    [Theory]
+    [InlineData("Student")]
+    [InlineData("Faculty")]
+    [InlineData("AcademicAffairs")]
+    public async Task GetTopicTrackingDetail_unauthorized_role_returns_forbidden_even_when_topic_does_not_exist_preventing_id_enumeration(string role)
+    {
+        var nonExistentId = Guid.NewGuid();
+        var repo = new FakeTopicRepository(); // Empty DB
+        var reader = new StubTopicQueryReader();
+        var currentUser = FakeCurrentUser.AsRole(role);
+        var handler = new GetTopicTrackingDetailHandler(repo, reader, currentUser);
+
+        var result = await handler.HandleAsync(
+            new GetTopicTrackingDetailQuery(nonExistentId),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Forbidden, result.Error.Type);
+        Assert.Equal(TopicErrors.AccessDenied.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task GetTopicTrackingDetail_fails_when_former_advisor_lost_lecturer_role_even_if_advisor_id_matches()
+    {
+        var topicId = Guid.NewGuid();
+        var formerLecturerId = Guid.NewGuid();
+
+        var repo = new FakeTopicRepository();
+        repo.Add(CreateSampleTopic(topicId, formerLecturerId));
+
+        var reader = new StubTopicQueryReader();
+        // User has the exact AdvisorId of the topic, but their role is now Faculty (not Lecturer/Admin/CouncilMember)
+        var currentUser = FakeCurrentUser.AsRole("Faculty", formerLecturerId);
+        var handler = new GetTopicTrackingDetailHandler(repo, reader, currentUser);
+
+        var result = await handler.HandleAsync(
+            new GetTopicTrackingDetailQuery(topicId),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorType.Forbidden, result.Error.Type);
+        Assert.Equal(TopicErrors.AccessDenied.Code, result.Error.Code);
+    }
+
+    [Theory]
+    [InlineData("lecturer")]
+    [InlineData("ADMIN")]
+    [InlineData("councilmember")]
+    public async Task GetTopicTrackingDetail_matches_roles_case_insensitively_even_with_ordinal_role_set(string roleClaim)
+    {
+        var topicId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        var repo = new FakeTopicRepository();
+        repo.Add(CreateSampleTopic(topicId, userId));
+
+        var reader = new StubTopicQueryReader
+        {
+            GetTopicTrackingDetailResponse = new TopicTrackingDetailDto(
+                topicId, Guid.NewGuid(), userId, "Đề tài", null, null, null, "Approved", 2, DateTime.UtcNow, 0, 2, "Empty", false, true, null)
+        };
+        var currentUser = new FakeCurrentUser
+        {
+            IsAuthenticated = true,
+            UserId = userId,
+            Roles = new HashSet<string>(StringComparer.Ordinal) { roleClaim }
+        };
+        var handler = new GetTopicTrackingDetailHandler(repo, reader, currentUser);
+
+        var result = await handler.HandleAsync(
+            new GetTopicTrackingDetailQuery(topicId),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+    }
 }
