@@ -141,9 +141,6 @@ export function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">
-          <div className="hidden size-12 shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary sm:flex">
-            <UsersRound className="size-6" aria-hidden="true" />
-          </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Tài khoản & quyền truy cập

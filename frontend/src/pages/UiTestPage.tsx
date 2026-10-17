@@ -366,23 +366,26 @@ export function UiTestPage() {
         {/* 3.2 Badges with Status Dot */}
         <div className="space-y-2">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            B. Chấm trạng thái (Status Dot - dot=true)
+            B. Chấm trạng thái chuẩn Mockup (Status Dot - dot=true)
           </h3>
           <div className="flex flex-wrap items-center gap-2.5">
             <Badge variant="success" dot>
-              Đang mở đợt KLTN
+              On track
             </Badge>
             <Badge variant="warning" dot>
-              Chờ thẩm định đề cương
+              Warning
+            </Badge>
+            <Badge variant="error" dot>
+              Error
+            </Badge>
+            <Badge variant="active" dot>
+              Active
             </Badge>
             <Badge variant="info" dot>
-              Đã phân công GVHD
+              Info
             </Badge>
-            <Badge variant="destructive" dot>
-              Quá hạn nộp báo cáo
-            </Badge>
-            <Badge variant="secondary" dot>
-              Đã lưu chiểu thư viện
+            <Badge variant="inactive" dot>
+              Inactive
             </Badge>
           </div>
         </div>
