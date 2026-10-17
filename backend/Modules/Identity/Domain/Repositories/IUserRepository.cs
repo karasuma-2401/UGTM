@@ -17,5 +17,7 @@ public interface IUserRepository
     Task<bool> ExistsByEmailAsync(string normalizedEmail, Guid? excludeUserId, CancellationToken cancellationToken);
     Task AddToRoleAsync(User user, SystemRoleName role, DateTime assignedAt, CancellationToken cancellationToken);
     Task UpdateRolesAsync(User user, IEnumerable<SystemRoleName> roles, DateTime assignedAt, CancellationToken cancellationToken);
+    Task<int> CountActiveAdminsAsync(Guid? excludeUserId, CancellationToken cancellationToken);
+    Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken);
     void Add(User user);
 }

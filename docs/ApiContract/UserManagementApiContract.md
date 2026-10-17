@@ -260,6 +260,7 @@ Cập nhật thông tin cá nhân và thay đổi danh sách vai trò của ngư
 | :--- | :--- | :--- |
 | 400 | `Identity.InvalidInput` | Họ tên bị để trống hoặc vượt quá giới hạn độ dài (`fullName` > 150, `userCode` > 20 ký tự) |
 | 400 | `Identity.InvalidRole` | Danh sách vai trò rỗng, chứa phần tử `null`/khoảng trắng, chuỗi số (ví dụ: `["999"]`) hoặc tên vai trò không có trong hệ thống |
+| 400 | `Identity.CannotRemoveLastAdminRole` | Cố tình gỡ bỏ vai trò Quản trị viên (Admin) khỏi tài khoản Admin cuối cùng của hệ thống |
 | 400 | `Identity.InvalidPhoneNumber` | Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số) |
 | 401 | — | Thiếu Access Token hoặc token không hợp lệ |
 | 403 | — | Người dùng không có quyền `identity.users.manage` và không phải Admin |
@@ -319,6 +320,7 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 | :--- | :--- | :--- |
 | 400 | `Identity.InvalidStatus` | Trạng thái rỗng, chuỗi số (ví dụ `"999"`), không hợp lệ hoặc cố tình đặt `PendingActivation` |
 | 400 | `Identity.InvalidStatusTransition` | Chuyển đổi trạng thái không hợp lệ (ví dụ tài khoản chờ kích hoạt hoặc tạm ngưng tài khoản không Active) |
+| 400 | `Identity.CannotDisableLastAdmin` | Cố tình vô hiệu hóa tài khoản Quản trị viên (Admin) cuối cùng của hệ thống |
 | 401 | — | Thiếu Access Token hoặc token không hợp lệ |
 | 403 | — | Người dùng không có quyền `identity.users.manage` và không phải Admin |
 | 404 | `Identity.UserNotFound` | Không tìm thấy người dùng với `id` cung cấp |
@@ -337,6 +339,9 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 | `Identity.InvalidPhoneNumber` | 400 | Số điện thoại không đúng định dạng 10 chữ số chuẩn |
 | `Identity.WeakPassword` | 400 | Mật khẩu khởi tạo không đạt tiêu chuẩn chính sách bảo mật |
 | `Identity.InvalidInput` | 400 | Dữ liệu đầu vào bị thiếu hoặc không đúng định dạng |
+| `Identity.CannotDisableLastAdmin` | 400 | Không thể vô hiệu hóa tài khoản Quản trị viên (Admin) cuối cùng |
+| `Identity.CannotRemoveLastAdminRole` | 400 | Không thể gỡ bỏ vai trò Quản trị viên (Admin) khỏi tài khoản Admin cuối cùng |
+| `Identity.AdminAlreadyExists` | 409 | Hệ thống đã có tài khoản Quản trị viên (Admin) |
 
 ---
 

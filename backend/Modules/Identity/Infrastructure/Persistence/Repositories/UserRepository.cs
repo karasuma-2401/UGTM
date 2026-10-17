@@ -119,4 +119,20 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
             }
         }
     }
+
+    public Task<int> CountActiveAdminsAsync(Guid? excludeUserId, CancellationToken ct)
+    {
+        var query = db.Users
+            .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin));
+
+        if (excludeUserId.HasValue)
+        {
+            query = query.Where(u => u.Id != excludeUserId.Value);
+        }
+
+        return query.CountAsync(ct);
+    }
+
+    public Task<bool> AnyAdminExistsAsync(CancellationToken ct)
+        => db.UserRoles.AnyAsync(ur => ur.Role.RoleName == SystemRoleName.Admin, ct);
 }

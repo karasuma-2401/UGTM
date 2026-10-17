@@ -739,10 +739,10 @@ public sealed class UsersHandlerTests
         Assert.Equal(firstRole == "Student" ? 1 : 2, result.Value.Roles.Count);
     }
 
-    private static User CreateUserWithRole(SystemRoleName role)
+    private static User CreateUserWithRole(SystemRoleName role, AccountStatus status = AccountStatus.Active)
     {
         var user = User.Create(Guid.NewGuid(), "test@uit.edu.vn", "TEST@UIT.EDU.VN",
-            "Original Name", null, null, null, AccountStatus.Active, Now);
+            "Original Name", null, null, null, status, Now);
         user.UserRoles.Add(new UserRole
         {
             UserId = user.Id,
@@ -826,6 +826,163 @@ public sealed class UsersHandlerTests
         Assert.Empty(auditLogs.Entries);
     }
 
+    [Fact]
+    public async Task UpdateUserStatusHandler_fails_when_disabling_last_admin()
+    {
+        var admin = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin]);
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(admin.Id, "Disabled"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.CannotDisableLastAdmin", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusHandler_allows_disabling_admin_when_another_active_admin_exists()
+    {
+        var admin1 = CreateUserWithRole(SystemRoleName.Admin);
+        var admin2 = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin1, admin2]);
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(admin1.Id, "Disabled"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Disabled", result.Value.Status);
+    }
+
+    [Theory]
+    [InlineData(AccountStatus.Disabled)]
+    [InlineData(AccountStatus.Suspended)]
+    [InlineData(AccountStatus.PendingActivation)]
+    public async Task UpdateUserStatusHandler_fails_when_disabling_last_active_admin_when_other_admin_is_not_active(AccountStatus otherAdminStatus)
+    {
+        var activeAdmin = CreateUserWithRole(SystemRoleName.Admin, AccountStatus.Active);
+        var nonActiveAdmin = CreateUserWithRole(SystemRoleName.Admin, otherAdminStatus);
+        var repo = new FakeUserRepository([activeAdmin, nonActiveAdmin]);
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(activeAdmin.Id, "Disabled"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.CannotDisableLastAdmin", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusHandler_allows_disabling_non_admin_user()
+    {
+        var lecturer = CreateUserWithRole(SystemRoleName.Lecturer);
+        var repo = new FakeUserRepository([lecturer]);
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(lecturer.Id, "Disabled"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Disabled", result.Value.Status);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_fails_when_removing_admin_role_from_last_admin()
+    {
+        var admin = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin]);
+        var handler = new UpdateUserHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(
+                admin.Id,
+                "Updated Admin",
+                admin.UserCode,
+                null,
+                ["Lecturer"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.CannotRemoveLastAdminRole", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_allows_removing_admin_role_when_another_active_admin_exists()
+    {
+        var admin1 = CreateUserWithRole(SystemRoleName.Admin);
+        var admin2 = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin1, admin2]);
+        var handler = new UpdateUserHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(
+                admin1.Id,
+                "Demoted Admin",
+                admin1.UserCode,
+                null,
+                ["Lecturer"]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Contains("Lecturer", result.Value.Roles);
+        Assert.DoesNotContain("Admin", result.Value.Roles);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_allows_admin_to_update_profile_and_keep_admin_role()
+    {
+        var admin = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin]);
+        var handler = new UpdateUserHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(
+                admin.Id,
+                "Updated Admin Name",
+                admin.UserCode,
+                "0987654321",
+                ["Admin", "Faculty"]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Updated Admin Name", result.Value.FullName);
+        Assert.Contains("Admin", result.Value.Roles);
+        Assert.Contains("Faculty", result.Value.Roles);
+    }
+
     private static CreateUserHandler CreateHandler(
         FakeUserRepository repo,
         FakeEmailOutbox? outbox = null,
@@ -886,10 +1043,49 @@ public sealed class UsersHandlerTests
             => Task.FromResult(Users.Any(u => u.NormalizedEmail == normalizedEmail && (!excludeUserId.HasValue || u.Id != excludeUserId.Value)));
 
         public Task AddToRoleAsync(User user, SystemRoleName role, DateTime assignedAt, CancellationToken cancellationToken)
-            => Task.CompletedTask;
+        {
+            user.UserRoles.Add(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = (int)role + 1,
+                Role = new Role { Id = (int)role + 1, RoleName = role },
+                AssignedAt = assignedAt,
+                User = user
+            });
+            return Task.CompletedTask;
+        }
 
         public Task UpdateRolesAsync(User user, IEnumerable<SystemRoleName> roles, DateTime assignedAt, CancellationToken cancellationToken)
-            => Task.CompletedTask;
+        {
+            user.UserRoles.Clear();
+            foreach (var role in roles)
+            {
+                user.UserRoles.Add(new UserRole
+                {
+                    UserId = user.Id,
+                    RoleId = (int)role + 1,
+                    Role = new Role { Id = (int)role + 1, RoleName = role },
+                    AssignedAt = assignedAt,
+                    User = user
+                });
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task<int> CountActiveAdminsAsync(Guid? excludeUserId, CancellationToken cancellationToken)
+        {
+            var count = Users
+                .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin))
+                .Where(u => !excludeUserId.HasValue || u.Id != excludeUserId.Value)
+                .Count();
+            return Task.FromResult(count);
+        }
+
+        public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)
+        {
+            var exists = Users.Any(u => u.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin));
+            return Task.FromResult(exists);
+        }
 
         public void Add(User user) => Users.Add(user);
     }

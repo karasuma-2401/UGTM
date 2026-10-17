@@ -46,6 +46,19 @@ public sealed class UpdateUserStatusHandler(
 
             if (user.Status != newStatus)
             {
+                if (newStatus == AccountStatus.Disabled)
+                {
+                    var isAdmin = user.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin);
+                    if (isAdmin)
+                    {
+                        var otherActiveAdmins = await users.CountActiveAdminsAsync(user.Id, ct);
+                        if (otherActiveAdmins == 0)
+                        {
+                            return Result.Failure<UserSummaryDto>(IdentityErrors.CannotDisableLastAdmin);
+                        }
+                    }
+                }
+
                 var previousStatus = user.Status;
                 var now = clock.UtcNow;
                 switch (newStatus)

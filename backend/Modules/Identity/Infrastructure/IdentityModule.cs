@@ -20,6 +20,7 @@ using UGTM.Modules.Identity.Application.Authentication.GetCurrentUser;
 using UGTM.Modules.Identity.Application.Authentication.Login;
 using UGTM.Modules.Identity.Application.Authentication.Logout;
 using UGTM.Modules.Identity.Application.Authentication.RefreshSession;
+using UGTM.Modules.Identity.Application.Bootstrap;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Notifications;
 using UGTM.Modules.Identity.Application.Persistence;
@@ -39,6 +40,7 @@ using UGTM.Modules.Identity.Domain.Repositories;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
 using UGTM.Modules.Identity.Infrastructure.Auditing;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
+using UGTM.Modules.Identity.Infrastructure.Bootstrap;
 using UGTM.Modules.Identity.Infrastructure.Endpoints;
 using UGTM.Modules.Identity.Infrastructure.Notifications;
 using UGTM.Modules.Identity.Infrastructure.Persistence.Repositories;
@@ -159,6 +161,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<GetRolePermissionsHandler>();
         services.AddScoped<UpdateRolePermissionsHandler>();
         services.AddScoped<GetAuditLogsHandler>();
+        services.AddScoped<IInitialAdminBootstrapper, InitialAdminBootstrapper>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
@@ -200,6 +203,10 @@ public sealed class IdentityModule : IModule
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddHostedService<IdentityOutboxProcessor>();
         services.AddHostedService<AuditIntegrationEventProcessor>();
+        services.AddHostedService(sp => new InitialAdminBootstrapHostedService(
+            sp,
+            configuration,
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<InitialAdminBootstrapHostedService>>()));
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
