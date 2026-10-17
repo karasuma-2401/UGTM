@@ -94,6 +94,18 @@ public static class IdentityErrors
         "Identity.CannotRevokeAllAdminPermissions",
         "Không thể gỡ bỏ toàn bộ quyền của vai trò Quản trị viên (Admin).");
 
+    public static readonly Error CannotDisableLastAdmin = Error.Validation(
+        "Identity.CannotDisableLastAdmin",
+        "Không thể vô hiệu hóa tài khoản Quản trị viên (Admin) cuối cùng của hệ thống.");
+
+    public static readonly Error CannotRemoveLastAdminRole = Error.Validation(
+        "Identity.CannotRemoveLastAdminRole",
+        "Không thể gỡ bỏ vai trò Quản trị viên (Admin) khỏi tài khoản Admin cuối cùng của hệ thống.");
+
+    public static readonly Error AdminAlreadyExists = Error.Conflict(
+        "Identity.AdminAlreadyExists",
+        "Hệ thống đã có tài khoản Quản trị viên (Admin). Không thể khởi tạo thêm bằng cơ chế bootstrap.");
+
     public static readonly Error InvalidAuditLogFilter = Error.Validation(
         "Identity.InvalidAuditLogFilter",
         "Bộ lọc nhật ký hệ thống không hợp lệ.");

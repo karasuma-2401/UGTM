@@ -100,6 +100,7 @@ public static class UserEndpoints
                 - Thành công: 200 OK kèm `UserSummaryDto`.
                 - Họ tên rỗng hoặc vượt quá độ dài tối đa: 400 Bad Request (`Identity.InvalidInput`).
                 - Vai trò không hợp lệ hoặc chuỗi số: 400 Bad Request (`Identity.InvalidRole`).
+                - Cố tình gỡ vai trò Admin của Admin cuối cùng: 400 Bad Request (`Identity.CannotRemoveLastAdminRole`).
                 - Số điện thoại sai định dạng: 400 Bad Request (`Identity.InvalidPhoneNumber`).
                 - Không tìm thấy user: 404 Not Found (`Identity.UserNotFound`).
                 - Trùng mã người dùng với tài khoản khác: 409 Conflict (`Identity.DuplicateAccount`).
@@ -126,6 +127,7 @@ public static class UserEndpoints
                 - Thành công: 200 OK kèm `UserSummaryDto`.
                 - Trạng thái rỗng, chuỗi số hoặc không hợp lệ: 400 Bad Request (`Identity.InvalidStatus`).
                 - Chuyển đổi trạng thái không hợp lệ (ví dụ tài khoản đang PendingActivation): 400 Bad Request (`Identity.InvalidStatusTransition`).
+                - Cố tình vô hiệu hóa Admin cuối cùng: 400 Bad Request (`Identity.CannotDisableLastAdmin`).
                 - Không tìm thấy user: 404 Not Found (`Identity.UserNotFound`).
                 - Thiếu token: 401 Unauthorized.
                 - Không đủ quyền: 403 Forbidden.

@@ -123,6 +123,12 @@ public sealed class LoginHandlerTests
             CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
+        public Task<int> CountActiveAdminsAsync(Guid? excludeUserId, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
         public void Add(User value) => throw new NotSupportedException();
     }
 }

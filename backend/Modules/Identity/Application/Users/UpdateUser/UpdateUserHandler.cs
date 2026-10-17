@@ -119,6 +119,15 @@ public sealed class UpdateUserHandler(
                 var rolesChanged = !currentRoles.SetEquals(systemRoles);
                 if (rolesChanged)
                 {
+                    if (currentRoles.Contains(SystemRoleName.Admin) && !systemRoles.Contains(SystemRoleName.Admin))
+                    {
+                        var otherActiveAdmins = await users.CountActiveAdminsAsync(user.Id, ct);
+                        if (otherActiveAdmins == 0)
+                        {
+                            return Result.Failure<UserSummaryDto>(IdentityErrors.CannotRemoveLastAdminRole);
+                        }
+                    }
+
                     await users.UpdateRolesAsync(user, systemRoles, now, ct);
                     user.RotateSecurityStamp();
 
