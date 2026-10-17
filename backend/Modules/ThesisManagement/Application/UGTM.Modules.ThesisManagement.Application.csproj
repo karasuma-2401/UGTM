@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Contracts\UGTM.Modules.ThesisManagement.Contracts.csproj" />
     <ProjectReference Include="..\Domain\UGTM.Modules.ThesisManagement.Domain.csproj" />
+    <ProjectReference Include="..\..\Identity\Contracts\UGTM.Modules.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Application\UGTM.BuildingBlocks.Application.csproj" />
   </ItemGroup>
 

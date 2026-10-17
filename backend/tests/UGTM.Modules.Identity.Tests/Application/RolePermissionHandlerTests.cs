@@ -1,3 +1,4 @@
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Persistence;
 using UGTM.Modules.Identity.Application.Permissions.GetPermissions;
@@ -83,20 +84,24 @@ public sealed class RolePermissionHandlerTests
         var oldStamp = user.SecurityStamp;
         repo.UsersInRoles.Add(user);
 
-        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var auditLogs = new FakeAuditLogWriter();
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), auditLogs);
         var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, [1, 2]), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(2, result.Value.Permissions.Count);
         Assert.True(repo.SecurityStampRotated);
         Assert.NotEqual(oldStamp, user.SecurityStamp);
+        var auditEntry = Assert.Single(auditLogs.Entries);
+        Assert.Equal(AuditActions.RolePermissionsChanged, auditEntry.Action);
+        Assert.Equal("4", auditEntry.TargetId);
     }
 
     [Fact]
     public async Task UpdateRolePermissionsHandler_fails_when_role_not_found()
     {
         var repo = new FakeRolePermissionRepository();
-        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(999, [1]), CancellationToken.None);
 
@@ -111,7 +116,7 @@ public sealed class RolePermissionHandlerTests
         var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
         repo.Roles.Add(lecturerRole);
 
-        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
         var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, [9999]), CancellationToken.None);
 
         Assert.False(result.IsSuccess);
@@ -125,7 +130,7 @@ public sealed class RolePermissionHandlerTests
         var adminRole = new Role { Id = 1, RoleName = SystemRoleName.Admin, Description = "Quản trị viên" };
         repo.Roles.Add(adminRole);
 
-        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
         var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(1, []), CancellationToken.None);
 
         Assert.False(result.IsSuccess);
@@ -141,7 +146,7 @@ public sealed class RolePermissionHandlerTests
         var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
         repo.Roles.Add(lecturerRole);
 
-        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
         var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, [1, 1, 1]), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -155,7 +160,7 @@ public sealed class RolePermissionHandlerTests
         var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
         repo.Roles.Add(lecturerRole);
 
-        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
         var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, []), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -171,7 +176,7 @@ public sealed class RolePermissionHandlerTests
         var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
         repo.Roles.Add(lecturerRole);
 
-        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
         var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, [invalidId]), CancellationToken.None);
 
         Assert.False(result.IsSuccess);
@@ -199,7 +204,7 @@ public sealed class RolePermissionHandlerTests
         var lecturerRole = new Role { Id = 4, RoleName = SystemRoleName.Lecturer, Description = "Giảng viên" };
         repo.Roles.Add(lecturerRole);
 
-        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
         var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, null), CancellationToken.None);
 
         Assert.False(result.IsSuccess);
@@ -225,13 +230,15 @@ public sealed class RolePermissionHandlerTests
         var oldStamp = user.SecurityStamp;
         repo.UsersInRoles.Add(user);
 
-        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var auditLogs = new FakeAuditLogWriter();
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), auditLogs);
         var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(4, [2, 1]), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(2, result.Value.Permissions.Count);
         Assert.False(repo.SecurityStampRotated);
         Assert.Equal(oldStamp, user.SecurityStamp);
+        Assert.Empty(auditLogs.Entries);
     }
 
     private sealed class FakeRolePermissionRepository : IRolePermissionRepository
@@ -304,5 +311,12 @@ public sealed class RolePermissionHandlerTests
     private sealed class FakeClock(DateTime now) : IClock
     {
         public DateTime UtcNow => now;
+    }
+
+    private sealed class FakeAuditLogWriter : IAuditLogWriter
+    {
+        public List<AuditEntry> Entries { get; } = [];
+
+        public void Add(AuditEntry entry) => Entries.Add(entry);
     }
 }

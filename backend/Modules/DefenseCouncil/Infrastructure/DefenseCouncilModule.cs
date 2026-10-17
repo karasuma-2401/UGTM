@@ -7,8 +7,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.DefenseCouncil.Application.Grading;
+using UGTM.Modules.DefenseCouncil.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Contracts.Grading;
 using UGTM.Modules.DefenseCouncil.Domain.Grading;
+using UGTM.Modules.DefenseCouncil.Infrastructure.Auditing;
+using UGTM.Modules.Identity.Contracts.Auditing;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure;
 
@@ -21,6 +24,8 @@ public sealed class DefenseCouncilModule : IModule
         services.AddModuleDbContext<DefenseCouncilDbContext>(configuration);
         services.AddSingleton<ThesisGradeCalculator>();
         services.AddScoped<IGradeCalculationService, GradeCalculationService>();
+        services.AddScoped<IDefenseCouncilAuditOutbox, DefenseCouncilAuditOutbox>();
+        services.AddScoped<IAuditIntegrationEventSource, DefenseCouncilAuditEventSource>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

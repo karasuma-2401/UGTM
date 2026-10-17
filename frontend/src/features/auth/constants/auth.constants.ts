@@ -1,4 +1,8 @@
 export const REMEMBERED_IDENTIFIER_KEY = 'ugtm_demo_remembered_id';
+export const LOGIN_LOCK_UNTIL_KEY = 'ugtm_login_lock_until';
+export const LOGIN_LOCK_REASON_KEY = 'ugtm_login_lock_reason';
+export const DEFAULT_ACCOUNT_LOCK_SECONDS = 15 * 60;
+export const DEFAULT_RATE_LIMIT_SECONDS = 60;
 export const OTP_LENGTH = 6;
 export const OTP_EXPIRY_MS = 5 * 60 * 1000;
 export const OTP_RESEND_COOLDOWN_MS = 45 * 1000;

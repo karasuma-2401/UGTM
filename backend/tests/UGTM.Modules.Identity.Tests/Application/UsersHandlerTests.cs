@@ -1,5 +1,6 @@
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Notifications;
 using UGTM.Modules.Identity.Application.Persistence;
@@ -175,7 +176,7 @@ public sealed class UsersHandlerTests
             AccountStatus.Active,
             Now);
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(
             new UpdateUserCommand(
@@ -204,7 +205,7 @@ public sealed class UsersHandlerTests
             AccountStatus.Active,
             Now);
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(
             new UpdateUserCommand(
@@ -236,7 +237,7 @@ public sealed class UsersHandlerTests
             AccountStatus.Active,
             Now);
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var suspendResult = await handler.HandleAsync(
             new UpdateUserStatusCommand(user.Id, "Suspended"),
@@ -265,7 +266,7 @@ public sealed class UsersHandlerTests
             AccountStatus.PendingActivation,
             Now);
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(
             new UpdateUserStatusCommand(user.Id, "Active"),
@@ -289,7 +290,7 @@ public sealed class UsersHandlerTests
             AccountStatus.Disabled,
             Now);
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(
             new UpdateUserStatusCommand(user.Id, "Suspended"),
@@ -314,7 +315,7 @@ public sealed class UsersHandlerTests
             Now);
         var oldStamp = user.SecurityStamp;
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(
             new UpdateUserCommand(user.Id, "Updated Name Only", null, "0911111111", null),
@@ -347,7 +348,7 @@ public sealed class UsersHandlerTests
             AccountStatus.Active,
             Now);
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(
             new UpdateUserStatusCommand(user.Id, invalidStatus),
@@ -375,7 +376,7 @@ public sealed class UsersHandlerTests
             AccountStatus.Active,
             Now);
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(
             new UpdateUserCommand(user.Id, "Updated Name", null, null, [invalidRole]),
@@ -399,7 +400,7 @@ public sealed class UsersHandlerTests
             AccountStatus.Active,
             Now);
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(
             new UpdateUserCommand(user.Id, "Updated Name", null, null, []),
@@ -425,7 +426,7 @@ public sealed class UsersHandlerTests
             AccountStatus.Active,
             Now);
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(
             new UpdateUserCommand(user.Id, invalidName, null, null, null),
@@ -549,7 +550,7 @@ public sealed class UsersHandlerTests
             Now);
         var repo = new FakeUserRepository([user]);
         var createHandler = CreateHandler(repo);
-        var updateHandler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var updateHandler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var createNullElem = await createHandler.HandleAsync(
             new CreateUserCommand("new@ugtm.edu.vn", "New User", null, null, [null!]),
@@ -598,7 +599,7 @@ public sealed class UsersHandlerTests
             Now);
         var repo = new FakeUserRepository([user]);
         var createHandler = CreateHandler(repo);
-        var updateHandler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var updateHandler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var longEmail = new string('a', 142) + "@uit.edu.vn"; // 153 chars > 150
         var longName = new string('N', 151); // > 150
@@ -650,7 +651,7 @@ public sealed class UsersHandlerTests
             Now);
         var oldStamp = user.SecurityStamp;
         var repo = new FakeUserRepository([user]);
-        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now));
+        var handler = new UpdateUserStatusHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
 
         var result = await handler.HandleAsync(
             new UpdateUserStatusCommand(user.Id, "Suspended"),
@@ -661,9 +662,174 @@ public sealed class UsersHandlerTests
         Assert.Equal(oldStamp, user.SecurityStamp);
     }
 
+    [Theory]
+    [InlineData("Admin")]
+    [InlineData("Faculty")]
+    [InlineData("AcademicAffairs")]
+    [InlineData("Lecturer")]
+    [InlineData("CouncilMember")]
+    public async Task CreateUserHandler_rejects_student_combined_with_other_roles(string otherRole)
+    {
+        var repo = new FakeUserRepository();
+        var result = await CreateHandler(repo).HandleAsync(
+            new CreateUserCommand("student@uit.edu.vn", "Student", null, null, [" student ", otherRole]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.StudentRoleConflict.Code, result.Error.Code);
+        Assert.Empty(repo.Users);
+    }
+
+    [Theory]
+    [InlineData(SystemRoleName.Admin)]
+    [InlineData(SystemRoleName.Faculty)]
+    [InlineData(SystemRoleName.AcademicAffairs)]
+    [InlineData(SystemRoleName.Lecturer)]
+    [InlineData(SystemRoleName.CouncilMember)]
+    public async Task UpdateUserHandler_rejects_replacing_non_student_role_with_student(SystemRoleName existingRole)
+    {
+        var user = CreateUserWithRole(existingRole);
+        var oldStamp = user.SecurityStamp;
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Changed Name", null, null, ["Student"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.CannotBecomeStudent.Code, result.Error.Code);
+        Assert.Equal("Original Name", user.FullName);
+        Assert.Equal(oldStamp, user.SecurityStamp);
+        Assert.Equal(existingRole, Assert.Single(user.UserRoles).Role.RoleName);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_rejects_adding_other_role_to_student()
+    {
+        var user = CreateUserWithRole(SystemRoleName.Student);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Changed Name", null, null, ["Student", "Lecturer"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.StudentRoleConflict.Code, result.Error.Code);
+        Assert.Equal("Original Name", user.FullName);
+    }
+
+    [Theory]
+    [InlineData(SystemRoleName.Student, "Student", "student")]
+    [InlineData(SystemRoleName.Lecturer, "Lecturer", "CouncilMember")]
+    public async Task UpdateUserHandler_allows_valid_role_combinations(
+        SystemRoleName existingRole, string firstRole, string secondRole)
+    {
+        var user = CreateUserWithRole(existingRole);
+        var repo = new FakeUserRepository([user]);
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Changed Name", null, null, [firstRole, secondRole]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Changed Name", user.FullName);
+        Assert.Equal(firstRole == "Student" ? 1 : 2, result.Value.Roles.Count);
+    }
+
+    private static User CreateUserWithRole(SystemRoleName role)
+    {
+        var user = User.Create(Guid.NewGuid(), "test@uit.edu.vn", "TEST@UIT.EDU.VN",
+            "Original Name", null, null, null, AccountStatus.Active, Now);
+        user.UserRoles.Add(new UserRole
+        {
+            UserId = user.Id,
+            RoleId = (int)role + 1,
+            Role = new Role { Id = (int)role + 1, RoleName = role },
+            AssignedAt = Now,
+            User = user
+        });
+        return user;
+    }
+
+    [Fact]
+    public async Task CreateUserHandler_writes_audit_entry_without_sensitive_password_data()
+    {
+        var repo = new FakeUserRepository();
+        var auditLogs = new FakeAuditLogWriter();
+        var handler = CreateHandler(repo, auditLogs: auditLogs);
+
+        var result = await handler.HandleAsync(
+            new CreateUserCommand(
+                "new.user@ugtm.edu.vn",
+                "New User",
+                "USR001",
+                null,
+                ["Lecturer"],
+                "Secret123!",
+                SendActivationEmail: false),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var entry = Assert.Single(auditLogs.Entries);
+        Assert.Equal(AuditActions.UserCreated, entry.Action);
+        Assert.Equal(result.Value.Id.ToString("D"), entry.TargetId);
+        Assert.DoesNotContain("Secret123!", System.Text.Json.JsonSerializer.Serialize(entry.Metadata));
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_writes_only_the_audits_for_actual_changes()
+    {
+        var user = CreateUserWithRole(SystemRoleName.Lecturer);
+        var repo = new FakeUserRepository([user]);
+        var auditLogs = new FakeAuditLogWriter();
+        var handler = new UpdateUserHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            auditLogs);
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(
+                user.Id,
+                "Changed Name",
+                "GV001",
+                "0901234567",
+                ["Faculty"]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, auditLogs.Entries.Count);
+        Assert.Contains(auditLogs.Entries, entry => entry.Action == AuditActions.UserUpdated);
+        Assert.Contains(auditLogs.Entries, entry => entry.Action == AuditActions.UserRolesChanged);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusHandler_does_not_audit_an_idempotent_request()
+    {
+        var user = CreateUserWithRole(SystemRoleName.Lecturer);
+        var repo = new FakeUserRepository([user]);
+        var auditLogs = new FakeAuditLogWriter();
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            auditLogs);
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(user.Id, "Active"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(auditLogs.Entries);
+    }
+
     private static CreateUserHandler CreateHandler(
         FakeUserRepository repo,
-        FakeEmailOutbox? outbox = null)
+        FakeEmailOutbox? outbox = null,
+        FakeAuditLogWriter? auditLogs = null)
     {
         return new CreateUserHandler(
             repo,
@@ -674,7 +840,8 @@ public sealed class UsersHandlerTests
             new FakePasswordService(),
             new DirectUnitOfWork(),
             new FakeClock(Now),
-            new IdentitySecurityPolicy());
+            new IdentitySecurityPolicy(),
+            auditLogs ?? new FakeAuditLogWriter());
     }
 
     private sealed class StubUserQueryReader : IUserQueryReader
@@ -782,5 +949,12 @@ public sealed class UsersHandlerTests
     private sealed class FakeClock(DateTime now) : IClock
     {
         public DateTime UtcNow => now;
+    }
+
+    private sealed class FakeAuditLogWriter : IAuditLogWriter
+    {
+        public List<AuditEntry> Entries { get; } = [];
+
+        public void Add(AuditEntry entry) => Entries.Add(entry);
     }
 }

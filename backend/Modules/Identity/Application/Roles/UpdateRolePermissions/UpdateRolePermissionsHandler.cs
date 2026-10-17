@@ -1,3 +1,4 @@
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Persistence;
 using UGTM.Modules.Identity.Application.Permissions.Dtos;
@@ -10,7 +11,8 @@ namespace UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
 public sealed class UpdateRolePermissionsHandler(
     IRolePermissionRepository repository,
     IIdentityUnitOfWork unitOfWork,
-    IClock clock)
+    IClock clock,
+    IAuditLogWriter auditLogs)
 {
     public Task<Result<RolePermissionsDto>> HandleAsync(
         UpdateRolePermissionsCommand command,
@@ -61,6 +63,28 @@ public sealed class UpdateRolePermissionsHandler(
 
                 // Thu hồi phiên tức thời: xoay SecurityStamp cho tất cả user đang giữ role này
                 await repository.RotateSecurityStampForRoleUsersAsync(role.Id, ct);
+
+                var requestedPermissionIds = targetPermissionIds.ToHashSet();
+                auditLogs.Add(new AuditEntry(
+                    TargetType: "Role",
+                    TargetId: role.Id.ToString(),
+                    Action: AuditActions.RolePermissionsChanged,
+                    Outcome: AuditOutcomes.Success,
+                    ReasonCode: null,
+                    Metadata: new
+                    {
+                        AddedPermissionIds = requestedPermissionIds
+                            .Except(currentPermissionIds)
+                            .Order()
+                            .ToArray(),
+                        RemovedPermissionIds = currentPermissionIds
+                            .Except(requestedPermissionIds)
+                            .Order()
+                            .ToArray(),
+                        CurrentPermissionIds = requestedPermissionIds
+                            .Order()
+                            .ToArray()
+                    }));
 
                 await unitOfWork.SaveChangesAsync(ct);
 

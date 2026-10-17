@@ -9,6 +9,9 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
+using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.ThesisManagement.Application.Auditing;
+using UGTM.Modules.ThesisManagement.Infrastructure.Auditing;
 
 using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
 
@@ -24,6 +27,8 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IStudentGroupRepository, StudentGroupRepository>();
         services.AddScoped<IThesisUnitOfWork>(provider => provider.GetRequiredService<ThesisManagementDbContext>());
         services.AddScoped<IThesisRegistrationContract, ThesisRegistrationContract>();
+        services.AddScoped<IThesisManagementAuditOutbox, ThesisManagementAuditOutbox>();
+        services.AddScoped<IAuditIntegrationEventSource, ThesisManagementAuditEventSource>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

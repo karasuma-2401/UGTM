@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   GraduationCap,
@@ -20,12 +20,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/shared/auth';
+import { getIdentityAccess } from '@/shared/auth/identityAccess';
 
-interface NavItem {
+export interface NavItem {
   label: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: string;
+  permission?: string | string[];
+  permissions?: string | string[];
+  role?: string | string[];
+  roles?: string | string[];
+  requireAllPermissions?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -39,7 +45,11 @@ const navItems: NavItem[] = [
     badge: 'Mới',
   },
   { label: 'Đánh giá & Kết quả', path: '/modules/defense-council', icon: Users2 },
-  { label: 'Tài khoản & Quyền', path: '/modules/identity', icon: ShieldCheck },
+  {
+    label: 'Tài khoản & Phân quyền',
+    path: '/modules/identity',
+    icon: ShieldCheck,
+  },
   { label: 'Thông báo', path: '/modules/notifications', icon: Bell },
   { label: 'UI Components (Dev)', path: '/ui-test', icon: Palette, badge: 'Dev' },
 ];
@@ -47,11 +57,37 @@ const navItems: NavItem[] = [
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission, hasRole } = useAuth();
 
-  const userInitial = user?.fullName
-    ? user.fullName.trim().charAt(0).toUpperCase()
-    : 'U';
+  const visibleNavItems = useMemo(() => {
+    return navItems.filter((item) => {
+      if (item.path === '/modules/identity') {
+        return getIdentityAccess(hasPermission).canAccess;
+      }
+      const requiredPerms = item.permissions || item.permission;
+      if (requiredPerms) {
+        const perms = Array.isArray(requiredPerms) ? requiredPerms : [requiredPerms];
+        if (perms.length > 0) {
+          const hasPerm = item.requireAllPermissions
+            ? perms.every((p) => hasPermission(p))
+            : hasPermission(perms);
+          if (!hasPerm) return false;
+        }
+      }
+
+      const requiredRoles = item.roles || item.role;
+      if (requiredRoles) {
+        const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
+        if (roles.length > 0 && !hasRole(roles)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [hasPermission, hasRole]);
+
+  const userInitial = user?.fullName ? user.fullName.trim().charAt(0).toUpperCase() : 'U';
 
   return (
     <div className="min-h-screen bg-slate-50/60 flex">
@@ -67,7 +103,7 @@ export function AppLayout() {
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-200 ease-in-out lg:static lg:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         {/* Sidebar Header / Brand */}
@@ -77,12 +113,8 @@ export function AppLayout() {
               <GraduationCap className="size-5" />
             </div>
             <div>
-              <div className="font-bold text-base tracking-tight text-slate-900">
-                UGTM Portal
-              </div>
-              <div className="text-[11px] text-slate-500 font-medium">
-                Quản lý Khóa luận ĐH
-              </div>
+              <div className="font-bold text-base tracking-tight text-slate-900">UGTM Portal</div>
+              <div className="text-[11px] text-slate-500 font-medium">Quản lý Khóa luận ĐH</div>
             </div>
           </Link>
           <button
@@ -111,44 +143,51 @@ export function AppLayout() {
           <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-1">
             Phân hệ nghiệp vụ
           </div>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              item.path === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(item.path);
+          {visibleNavItems.length === 0 ? (
+            <div className="px-3 py-6 text-center text-xs text-slate-400 font-medium">
+              Không có phân hệ nào khả dụng cho tài khoản này
+            </div>
+          ) : (
+            visibleNavItems.map((item) => {
+              const Icon = item.icon;
+              const isActive =
+                item.path === '/'
+                  ? location.pathname === item.path
+                  : location.pathname === item.path ||
+                    location.pathname.startsWith(`${item.path}/`);
 
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group',
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon
-                    className={cn(
-                      'size-4.5 shrink-0 transition-colors',
-                      isActive
-                        ? 'text-primary-foreground'
-                        : 'text-slate-400 group-hover:text-slate-700'
-                    )}
-                  />
-                  <span>{item.label}</span>
-                </div>
-                {item.badge && !isActive && (
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                    {item.badge}
-                  </Badge>
-                )}
-              </NavLink>
-            );
-          })}
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={cn(
+                    'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group',
+                    isActive
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon
+                      className={cn(
+                        'size-4.5 shrink-0 transition-colors',
+                        isActive
+                          ? 'text-primary-foreground'
+                          : 'text-slate-400 group-hover:text-slate-700',
+                      )}
+                    />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.badge && !isActive && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      {item.badge}
+                    </Badge>
+                  )}
+                </NavLink>
+              );
+            })
+          )}
         </div>
 
         {/* Sidebar Footer User profile preview */}

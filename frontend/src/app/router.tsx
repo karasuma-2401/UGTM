@@ -1,6 +1,7 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ModulePingPage } from '../features/modules/ModulePingPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { ErrorPage } from '../pages/ErrorPage';
 import { UiTestPage } from '../pages/UiTestPage';
 import { AppLayout } from '../shared/layout/AppLayout';
 import { AuthLayout } from '../features/auth/layouts/AuthLayout';
@@ -9,8 +10,11 @@ import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { OtpPage } from '../features/auth/pages/OtpPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
+import { UsersPage } from '../features/admin/pages/UsersPage';
+import { IdentityLayout, IdentityIndexRedirect } from '../features/admin/layouts/IdentityLayout';
 
 import { ProtectedRoute } from '../shared/auth';
+import { RolePermissionPage } from '../features/admin';
 
 export const router = createBrowserRouter([
   {
@@ -33,7 +37,40 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'ui-test', element: <UiTestPage /> },
+      {
+        path: 'modules/identity',
+        element: <IdentityLayout />,
+        children: [
+          { index: true, element: <IdentityIndexRedirect /> },
+          {
+            path: 'accounts',
+            element: (
+              <ProtectedRoute requiredPermissions={['identity.users.read']}>
+                <UsersPage />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'permissions',
+            element: (
+              <ProtectedRoute requiredPermissions={['identity.roles.manage']}>
+                <ProtectedRoute requiredPermissions={['identity.permissions.read']}>
+                  <RolePermissionPage />
+                </ProtectedRoute>
+              </ProtectedRoute>
+            ),
+          },
+          { path: '*', element: <Navigate to="/404" replace /> },
+        ],
+      },
       { path: 'modules/:modulePath', element: <ModulePingPage /> },
+      { path: '403', element: <ErrorPage code={403} /> },
+      { path: '404', element: <ErrorPage code={404} /> },
+      { path: '*', element: <ErrorPage code={404} /> },
     ],
+  },
+  {
+    path: '*',
+    element: <ErrorPage code={404} variant="full" />,
   },
 ]);

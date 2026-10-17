@@ -1,3 +1,4 @@
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Users.Dtos;
 
@@ -6,7 +7,8 @@ namespace UGTM.Modules.Identity.Application.Users.UpdateUser;
 public sealed class UpdateUserHandler(
     IUserRepository users,
     IIdentityUnitOfWork unitOfWork,
-    IClock clock)
+    IClock clock,
+    IAuditLogWriter auditLogs)
 {
     public Task<Result<UserSummaryDto>> HandleAsync(
         UpdateUserCommand command,
@@ -50,7 +52,25 @@ public sealed class UpdateUserHandler(
             }
 
             var now = clock.UtcNow;
-            user.UpdateProfile(fullName, command.PhoneNumber, userCode, now);
+            var changedFields = new List<string>();
+            var normalizedPhoneNumber = string.IsNullOrWhiteSpace(command.PhoneNumber)
+                ? null
+                : command.PhoneNumber.Trim();
+
+            if (!string.Equals(user.FullName, fullName, StringComparison.Ordinal))
+            {
+                changedFields.Add("fullName");
+            }
+
+            if (!string.Equals(user.PhoneNumber, normalizedPhoneNumber, StringComparison.Ordinal))
+            {
+                changedFields.Add("phoneNumber");
+            }
+
+            if (!string.Equals(user.UserCode, userCode, StringComparison.Ordinal))
+            {
+                changedFields.Add("userCode");
+            }
 
             List<string> resultRoles;
             if (command.Roles != null)
@@ -83,11 +103,49 @@ public sealed class UpdateUserHandler(
                 }
 
                 var currentRoles = user.UserRoles.Select(ur => ur.Role.RoleName).ToHashSet();
+                if (systemRoles.Contains(SystemRoleName.Student))
+                {
+                    if (systemRoles.Count > 1)
+                    {
+                        return Result.Failure<UserSummaryDto>(IdentityErrors.StudentRoleConflict);
+                    }
+
+                    if (currentRoles.Any(role => role != SystemRoleName.Student))
+                    {
+                        return Result.Failure<UserSummaryDto>(IdentityErrors.CannotBecomeStudent);
+                    }
+                }
+
                 var rolesChanged = !currentRoles.SetEquals(systemRoles);
                 if (rolesChanged)
                 {
                     await users.UpdateRolesAsync(user, systemRoles, now, ct);
                     user.RotateSecurityStamp();
+
+                    var requestedRoles = systemRoles.ToHashSet();
+                    auditLogs.Add(new AuditEntry(
+                        TargetType: "User",
+                        TargetId: user.Id.ToString("D"),
+                        Action: AuditActions.UserRolesChanged,
+                        Outcome: AuditOutcomes.Success,
+                        ReasonCode: null,
+                        Metadata: new
+                        {
+                            AddedRoles = requestedRoles
+                                .Except(currentRoles)
+                                .Select(role => role.ToString())
+                                .Order()
+                                .ToArray(),
+                            RemovedRoles = currentRoles
+                                .Except(requestedRoles)
+                                .Select(role => role.ToString())
+                                .Order()
+                                .ToArray(),
+                            CurrentRoles = requestedRoles
+                                .Select(role => role.ToString())
+                                .Order()
+                                .ToArray()
+                        }));
                 }
 
                 resultRoles = systemRoles.Select(r => r.ToString()).ToList();
@@ -95,6 +153,21 @@ public sealed class UpdateUserHandler(
             else
             {
                 resultRoles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList();
+            }
+
+            if (changedFields.Count > 0)
+            {
+                user.UpdateProfile(fullName, normalizedPhoneNumber, userCode, now);
+                auditLogs.Add(new AuditEntry(
+                    TargetType: "User",
+                    TargetId: user.Id.ToString("D"),
+                    Action: AuditActions.UserUpdated,
+                    Outcome: AuditOutcomes.Success,
+                    ReasonCode: null,
+                    Metadata: new
+                    {
+                        ChangedFields = changedFields.Order().ToArray()
+                    }));
             }
 
             await unitOfWork.SaveChangesAsync(ct);

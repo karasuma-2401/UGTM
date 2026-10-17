@@ -13,6 +13,8 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.Identity.Application.Activation;
+using UGTM.Modules.Identity.Application.AuditLogs;
+using UGTM.Modules.Identity.Application.AuditLogs.GetAuditLogs;
 using UGTM.Modules.Identity.Application.Authentication.ChangePassword;
 using UGTM.Modules.Identity.Application.Authentication.GetCurrentUser;
 using UGTM.Modules.Identity.Application.Authentication.Login;
@@ -35,6 +37,7 @@ using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Domain.Repositories;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
+using UGTM.Modules.Identity.Infrastructure.Auditing;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
 using UGTM.Modules.Identity.Infrastructure.Endpoints;
 using UGTM.Modules.Identity.Infrastructure.Notifications;
@@ -129,6 +132,9 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IUserProfileReader, UserProfileReader>();
         services.AddScoped<IUserQueryReader, UserQueryReader>();
         services.AddScoped<UGTM.Modules.Identity.Contracts.Users.IStudentInfoReader, StudentInfoReader>();
+        services.AddScoped<IAuditLogWriter, AuditLogWriter>();
+        services.AddScoped<IAuditLogQueryReader, AuditLogQueryReader>();
+        services.AddScoped<AuditIntegrationEventConsumer>();
         services.AddScoped<IIdentityEmailOutbox, IdentityEmailOutbox>();
         services.AddScoped<RefreshCookieService>();
         services.AddScoped<SessionValidator>();
@@ -153,6 +159,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<GetPermissionsHandler>();
         services.AddScoped<GetRolePermissionsHandler>();
         services.AddScoped<UpdateRolePermissionsHandler>();
+        services.AddScoped<GetAuditLogsHandler>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
@@ -182,10 +189,18 @@ public sealed class IdentityModule : IModule
                         .ValidateAsync(context)
                 };
             });
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AdminOnly", policy =>
+                policy.RequireAssertion(context =>
+                    context.User.IsInRole("Admin")
+                    || context.User.HasClaim(ClaimTypes.Role, "Admin")
+                    || context.User.HasClaim("role", "Admin")));
+        });
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddHostedService<IdentityOutboxProcessor>();
+        services.AddHostedService<AuditIntegrationEventProcessor>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
@@ -193,6 +208,7 @@ public sealed class IdentityModule : IModule
         endpoints.MapIdentityAuthEndpoints();
         endpoints.MapIdentityUserEndpoints();
         endpoints.MapIdentityRolePermissionEndpoints();
+        endpoints.MapIdentityAuditLogEndpoints();
 
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
