@@ -843,6 +843,27 @@ public sealed class UsersHandlerTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal("Identity.CannotDisableLastAdmin", result.Error.Code);
+        Assert.Equal(1, repo.AdminMutationLockCount);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusHandler_fails_when_suspending_last_active_admin()
+    {
+        var admin = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin]);
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(admin.Id, "Suspended"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.CannotDisableLastAdmin", result.Error.Code);
+        Assert.Equal(1, repo.AdminMutationLockCount);
     }
 
     [Fact]
@@ -929,6 +950,7 @@ public sealed class UsersHandlerTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal("Identity.CannotRemoveLastAdminRole", result.Error.Code);
+        Assert.Equal(1, repo.AdminMutationLockCount);
     }
 
     [Fact]
@@ -1017,6 +1039,7 @@ public sealed class UsersHandlerTests
     private sealed class FakeUserRepository(IEnumerable<User>? initialUsers = null) : IUserRepository
     {
         public List<User> Users { get; } = [.. initialUsers ?? []];
+        public int AdminMutationLockCount { get; private set; }
 
         public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
             => Task.FromResult(Users.FirstOrDefault(u => u.Id == id));
@@ -1079,6 +1102,12 @@ public sealed class UsersHandlerTests
                 .Where(u => !excludeUserId.HasValue || u.Id != excludeUserId.Value)
                 .Count();
             return Task.FromResult(count);
+        }
+
+        public Task AcquireAdminMutationLockAsync(CancellationToken cancellationToken)
+        {
+            AdminMutationLockCount++;
+            return Task.CompletedTask;
         }
 
         public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)

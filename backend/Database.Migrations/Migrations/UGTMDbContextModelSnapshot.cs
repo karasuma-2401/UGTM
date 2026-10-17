@@ -1297,50 +1297,6 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDatabaseName("ix_permission_permission_code");
 
                     b.ToTable("permission", "identity");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Module = "Identity",
-                            PermissionCode = "identity.users.read",
-                            PermissionName = "Xem danh sách người dùng"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Module = "Identity",
-                            PermissionCode = "identity.users.manage",
-                            PermissionName = "Quản lý người dùng"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Module = "Identity",
-                            PermissionCode = "identity.users.import",
-                            PermissionName = "Nhập danh sách người dùng"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Module = "Identity",
-                            PermissionCode = "identity.permissions.read",
-                            PermissionName = "Xem danh mục quyền"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Module = "Identity",
-                            PermissionCode = "identity.roles.manage",
-                            PermissionName = "Quản lý vai trò và phân quyền"
-                        },
-                        new
-                        {
-                            Id = 6,
-                            Module = "Identity",
-                            PermissionCode = "identity.sessions.revoke",
-                            PermissionName = "Thu hồi phiên đăng nhập"
-                        });
                 });
 
             modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.RefreshToken", b =>
@@ -1495,80 +1451,6 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDatabaseName("ix_role_permission_permission_id");
 
                     b.ToTable("role_permission", "identity");
-
-                    b.HasData(
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 1,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 2,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 3,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 4,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 5,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 1,
-                            PermissionId = 6,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 2,
-                            PermissionId = 1,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 2,
-                            PermissionId = 3,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 3,
-                            PermissionId = 1,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 3,
-                            PermissionId = 2,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 3,
-                            PermissionId = 3,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            RoleId = 3,
-                            PermissionId = 4,
-                            AssignedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        });
                 });
 
             modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.User", b =>

@@ -7,6 +7,10 @@ namespace UGTM.Modules.Identity.Infrastructure.Persistence.Repositories;
 
 public sealed class UserRepository(IdentityDbContext db) : IUserRepository
 {
+    // A transaction-scoped PostgreSQL advisory lock serializes bootstrap, demotion,
+    // suspension, and disabling decisions that could otherwise remove the last active Admin.
+    private const long AdminMutationLockKey = 8_127_049_532_100_001;
+
     public Task<User?> GetByIdAsync(Guid id, CancellationToken ct)
         => db.Users.SingleOrDefaultAsync(x => x.Id == id, ct);
 
@@ -132,6 +136,11 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
 
         return query.CountAsync(ct);
     }
+
+    public Task AcquireAdminMutationLockAsync(CancellationToken ct)
+        => db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({AdminMutationLockKey})",
+            ct);
 
     public Task<bool> AnyAdminExistsAsync(CancellationToken ct)
         => db.UserRoles.AnyAsync(ur => ur.Role.RoleName == SystemRoleName.Admin, ct);

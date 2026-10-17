@@ -96,7 +96,7 @@ public static class IdentityErrors
 
     public static readonly Error CannotDisableLastAdmin = Error.Validation(
         "Identity.CannotDisableLastAdmin",
-        "Không thể vô hiệu hóa tài khoản Quản trị viên (Admin) cuối cùng của hệ thống.");
+        "Không thể tạm ngưng hoặc vô hiệu hóa tài khoản Quản trị viên (Admin) đang hoạt động cuối cùng của hệ thống.");
 
     public static readonly Error CannotRemoveLastAdminRole = Error.Validation(
         "Identity.CannotRemoveLastAdminRole",

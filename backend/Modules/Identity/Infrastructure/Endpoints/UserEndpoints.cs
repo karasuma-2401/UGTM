@@ -127,7 +127,7 @@ public static class UserEndpoints
                 - Thành công: 200 OK kèm `UserSummaryDto`.
                 - Trạng thái rỗng, chuỗi số hoặc không hợp lệ: 400 Bad Request (`Identity.InvalidStatus`).
                 - Chuyển đổi trạng thái không hợp lệ (ví dụ tài khoản đang PendingActivation): 400 Bad Request (`Identity.InvalidStatusTransition`).
-                - Cố tình vô hiệu hóa Admin cuối cùng: 400 Bad Request (`Identity.CannotDisableLastAdmin`).
+                - Cố tình tạm ngưng hoặc vô hiệu hóa Admin đang hoạt động cuối cùng: 400 Bad Request (`Identity.CannotDisableLastAdmin`).
                 - Không tìm thấy user: 404 Not Found (`Identity.UserNotFound`).
                 - Thiếu token: 401 Unauthorized.
                 - Không đủ quyền: 403 Forbidden.

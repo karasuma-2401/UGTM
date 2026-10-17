@@ -43,6 +43,7 @@ public sealed class InitialAdminBootstrapperTests
         Assert.Equal(AccountStatus.Active, user.Status);
         Assert.Equal("hashed-StrongAdmin123!", user.PasswordHash);
         Assert.Contains(user.UserRoles, ur => ur.Role.RoleName == SystemRoleName.Admin);
+        Assert.Equal(1, repo.AdminMutationLockCount);
 
         var auditEntry = Assert.Single(auditLogs.Entries);
         Assert.Equal(AuditActions.UserCreated, auditEntry.Action);
@@ -318,6 +319,7 @@ public sealed class InitialAdminBootstrapperTests
     private sealed class FakeUserRepository(IEnumerable<User>? initialUsers = null) : IUserRepository
     {
         public List<User> Users { get; } = [.. initialUsers ?? []];
+        public int AdminMutationLockCount { get; private set; }
 
         public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
             => Task.FromResult(Users.FirstOrDefault(u => u.Id == id));
@@ -380,6 +382,12 @@ public sealed class InitialAdminBootstrapperTests
                 .Where(u => !excludeUserId.HasValue || u.Id != excludeUserId.Value)
                 .Count();
             return Task.FromResult(count);
+        }
+
+        public Task AcquireAdminMutationLockAsync(CancellationToken cancellationToken)
+        {
+            AdminMutationLockCount++;
+            return Task.CompletedTask;
         }
 
         public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)

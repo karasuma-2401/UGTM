@@ -1,7 +1,6 @@
 [CmdletBinding()]
 param(
     [string]$Email,
-    [string]$Password,
     [string]$FullName = 'System Administrator',
     [string]$UserCode
 )
@@ -9,6 +8,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $environmentFile = Join-Path $repositoryRoot '.env'
+$previousBootstrapPassword = [Environment]::GetEnvironmentVariable('BOOTSTRAP_ADMIN_PASSWORD', 'Process')
 
 if (Test-Path -LiteralPath $environmentFile) {
     foreach ($line in Get-Content -LiteralPath $environmentFile) {
@@ -45,9 +45,12 @@ if ([string]::IsNullOrWhiteSpace($Email) -or [string]::IsNullOrWhiteSpace($Passw
 
 Push-Location -LiteralPath $repositoryRoot
 try {
+    # Pass the secret to the child process through its environment, never as a
+    # command-line argument where it could be exposed by process inspection.
+    [Environment]::SetEnvironmentVariable('BOOTSTRAP_ADMIN_PASSWORD', $Password, 'Process')
+
     $cmdArgs = @('run', '--project', 'backend/host/Api/UGTM.Api.csproj', '--', 'bootstrap-admin',
         '--email', $Email,
-        '--password', $Password,
         '--fullname', $FullName)
 
     if (-not [string]::IsNullOrWhiteSpace($UserCode)) {
@@ -60,5 +63,7 @@ try {
     }
 }
 finally {
+    [Environment]::SetEnvironmentVariable('BOOTSTRAP_ADMIN_PASSWORD', $previousBootstrapPassword, 'Process')
+    $Password = $null
     Pop-Location
 }

@@ -28,6 +28,8 @@ public sealed class InitialAdminBootstrapper(
     {
         return unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
+            await users.AcquireAdminMutationLockAsync(ct);
+
             if (await users.AnyAdminExistsAsync(ct))
             {
                 logger.LogInformation("Khởi tạo Admin bị bỏ qua: Hệ thống đã tồn tại tài khoản Quản trị viên (Admin).");
