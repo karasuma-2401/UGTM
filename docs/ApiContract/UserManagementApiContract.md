@@ -7,6 +7,9 @@ Tài liệu này đặc tả chi tiết các endpoint Quản lý Người dùng 
 
 ## Quy ước chung
 
+- Vai trò `Student` không được kết hợp với bất kỳ vai trò khác (`Identity.StudentRoleConflict`, HTTP 400).
+- Khi cập nhật, tài khoản đang có vai trò khác `Student` không được chuyển thành `Student`, kể cả thay thế toàn bộ vai trò cũ (`Identity.CannotBecomeStudent`, HTTP 400). Quy tắc kiểm tra vai trò hiện đang lưu, không truy ngược lịch sử.
+
 - Request và Response dùng định dạng JSON `camelCase`; thời gian dùng chuẩn ISO 8601 UTC.
 - Tất cả các endpoint quản lý người dùng đều yêu cầu gửi kèm header `Authorization: Bearer <access-token>`.
 - Quyền truy cập được kiểm soát thông qua Permission Policies kết hợp **Admin Role Bypass**:

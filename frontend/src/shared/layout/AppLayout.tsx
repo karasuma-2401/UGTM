@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/shared/auth';
+import { getIdentityAccess } from '@/shared/auth/identityAccess';
 
 export interface NavItem {
   label: string;
@@ -45,10 +46,9 @@ const navItems: NavItem[] = [
   },
   { label: 'Đánh giá & Kết quả', path: '/modules/defense-council', icon: Users2 },
   {
-    label: 'Tài khoản & Quyền',
+    label: 'Tài khoản & Phân quyền',
     path: '/modules/identity',
     icon: ShieldCheck,
-    permissions: ['identity.roles.manage', 'identity.users.read'],
   },
   { label: 'Thông báo', path: '/modules/notifications', icon: Bell },
   { label: 'UI Components (Dev)', path: '/ui-test', icon: Palette, badge: 'Dev' },
@@ -61,6 +61,9 @@ export function AppLayout() {
 
   const visibleNavItems = useMemo(() => {
     return navItems.filter((item) => {
+      if (item.path === '/modules/identity') {
+        return getIdentityAccess(hasPermission).canAccess;
+      }
       const requiredPerms = item.permissions || item.permission;
       if (requiredPerms) {
         const perms = Array.isArray(requiredPerms) ? requiredPerms : [requiredPerms];
@@ -84,9 +87,7 @@ export function AppLayout() {
     });
   }, [hasPermission, hasRole]);
 
-  const userInitial = user?.fullName
-    ? user.fullName.trim().charAt(0).toUpperCase()
-    : 'U';
+  const userInitial = user?.fullName ? user.fullName.trim().charAt(0).toUpperCase() : 'U';
 
   return (
     <div className="min-h-screen bg-slate-50/60 flex">
@@ -102,7 +103,7 @@ export function AppLayout() {
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-200 ease-in-out lg:static lg:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
         {/* Sidebar Header / Brand */}
@@ -155,8 +156,9 @@ export function AppLayout() {
               const Icon = item.icon;
               const isActive =
                 item.path === '/'
-                  ? location.pathname === '/'
-                  : location.pathname.startsWith(item.path);
+                  ? location.pathname === item.path
+                  : location.pathname === item.path ||
+                    location.pathname.startsWith(`${item.path}/`);
 
               return (
                 <NavLink

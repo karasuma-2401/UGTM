@@ -72,6 +72,11 @@ public sealed class CreateUserHandler(
                 }
             }
 
+            if (systemRoles.Contains(SystemRoleName.Student) && systemRoles.Count > 1)
+            {
+                return Result.Failure<UserSummaryDto>(IdentityErrors.StudentRoleConflict);
+            }
+
             var normalizedEmail = email.ToUpperInvariant();
 
             if (await users.ExistsByEmailAsync(normalizedEmail, excludeUserId: null, ct))

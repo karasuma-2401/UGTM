@@ -2,6 +2,14 @@ namespace UGTM.Modules.Identity.Application.Common;
 
 public static class IdentityErrors
 {
+    public static readonly Error StudentRoleConflict = Error.Validation(
+        "Identity.StudentRoleConflict",
+        "Vai trò Sinh viên không được kết hợp với vai trò khác.");
+
+    public static readonly Error CannotBecomeStudent = Error.Validation(
+        "Identity.CannotBecomeStudent",
+        "Tài khoản đã có vai trò khác không được chuyển thành Sinh viên.");
+
     public static readonly Error InvalidCredentials = Error.Unauthorized(
         "Identity.InvalidCredentials",
         "Email, mã sinh viên hoặc mật khẩu không đúng.");
