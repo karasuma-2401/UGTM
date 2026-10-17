@@ -22,6 +22,54 @@ namespace UGTM.Database.Migrations.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.AuditOutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("action");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_academic_audit_outbox_message");
+
+                    b.HasIndex("ProcessedAt", "NextAttemptAt")
+                        .HasDatabaseName("ix_academic_audit_outbox_pending");
+
+                    b.ToTable("audit_outbox_message", "academic");
+                });
+
             modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.KltnBatch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -284,6 +332,54 @@ namespace UGTM.Database.Migrations.Migrations
                         {
                             t.HasCheckConstraint("ck_advisor_evaluation_score", "score BETWEEN 0 AND 10");
                         });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.AuditOutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("action");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_councils_audit_outbox_message");
+
+                    b.HasIndex("ProcessedAt", "NextAttemptAt")
+                        .HasDatabaseName("ix_councils_audit_outbox_pending");
+
+                    b.ToTable("audit_outbox_message", "councils");
                 });
 
             modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.Council", b =>
@@ -899,6 +995,10 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("actor_user_id");
 
+                    b.Property<Guid?>("IntegrationEventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("integration_event_id");
+
                     b.Property<string>("MetadataJson")
                         .HasColumnType("jsonb")
                         .HasColumnName("metadata_json");
@@ -944,6 +1044,11 @@ namespace UGTM.Database.Migrations.Migrations
 
                     b.HasIndex("ActorUserId")
                         .HasDatabaseName("ix_audit_log_actor_user_id");
+
+                    b.HasIndex("IntegrationEventId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_audit_log_integration_event_id")
+                        .HasFilter("integration_event_id IS NOT NULL");
 
                     b.HasIndex("RequestId")
                         .HasDatabaseName("ix_audit_log_request_id");
@@ -1518,6 +1623,54 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDatabaseName("ix_notification_recipient_id");
 
                     b.ToTable("notification", "notifications");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.AuditOutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("action");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload_json");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_thesis_audit_outbox_message");
+
+                    b.HasIndex("ProcessedAt", "NextAttemptAt")
+                        .HasDatabaseName("ix_thesis_audit_outbox_pending");
+
+                    b.ToTable("audit_outbox_message", "thesis");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalReport", b =>

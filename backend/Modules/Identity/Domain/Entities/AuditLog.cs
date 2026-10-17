@@ -3,6 +3,7 @@ namespace UGTM.Modules.Identity.Domain.Entities;
 public sealed class AuditLog
 {
     public long Id { get; set; }
+    public Guid? IntegrationEventId { get; private set; }
     public Guid? ActorUserId { get; private set; }
     public Guid? ActorSessionId { get; private set; }
     public string TargetType { get; private set; } = null!;
@@ -24,7 +25,8 @@ public sealed class AuditLog
         string? reasonCode,
         string requestId,
         string? metadataJson,
-        DateTime timestamp)
+        DateTime timestamp,
+        Guid? integrationEventId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(targetType);
         ArgumentException.ThrowIfNullOrWhiteSpace(targetId);
@@ -45,6 +47,7 @@ public sealed class AuditLog
 
         return new AuditLog
         {
+            IntegrationEventId = integrationEventId,
             ActorUserId = actorUserId,
             ActorSessionId = actorSessionId,
             TargetType = targetType.Trim(),

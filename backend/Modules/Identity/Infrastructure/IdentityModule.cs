@@ -37,6 +37,7 @@ using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Domain.Repositories;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
+using UGTM.Modules.Identity.Infrastructure.Auditing;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
 using UGTM.Modules.Identity.Infrastructure.Endpoints;
 using UGTM.Modules.Identity.Infrastructure.Notifications;
@@ -132,6 +133,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IUserQueryReader, UserQueryReader>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
         services.AddScoped<IAuditLogQueryReader, AuditLogQueryReader>();
+        services.AddScoped<AuditIntegrationEventConsumer>();
         services.AddScoped<IIdentityEmailOutbox, IdentityEmailOutbox>();
         services.AddScoped<RefreshCookieService>();
         services.AddScoped<SessionValidator>();
@@ -197,6 +199,7 @@ public sealed class IdentityModule : IModule
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddHostedService<IdentityOutboxProcessor>();
+        services.AddHostedService<AuditIntegrationEventProcessor>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
