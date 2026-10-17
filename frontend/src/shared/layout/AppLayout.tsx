@@ -136,9 +136,6 @@ export function AppLayout() {
           </div>
           <div className="text-xs font-semibold text-slate-800 flex items-center justify-between">
             <span>Đợt 1 - HK2 (2025-2026)</span>
-            <Badge variant="success" dot className="text-[10px] px-1.5 py-0">
-              Đang mở
-            </Badge>
           </div>
         </div>
 

@@ -28,13 +28,20 @@ export function UserForm({ user, isSaving, error, onSave, onCancel }: UserFormPr
 
   const [validationError, setValidationError] = useState('');
 
-  const cannotBecomeStudent = user?.roles.some((role) => role !== 'Student') ?? false;
+  // const cannotBecomeStudent = user?.roles.some((role) => role !== 'Student') ?? false;
+  const cannotBecomeStudent = values.roles.some((role) => role !== 'Student');
 
   function isRoleDisabled(role: SystemRole, roles: SystemRole[]) {
     if (roles.includes(role)) return false;
-    return role === 'Student'
-      ? cannotBecomeStudent || roles.some((item) => item !== 'Student')
-      : roles.includes('Student');
+    // return role === 'Student'
+    //   ? cannotBecomeStudent || roles.some((item) => item !== 'Student')
+    //   : roles.includes('Student');
+
+    if (role === 'Student') {
+      return roles.length > 0;
+    }
+
+    return roles.includes('Student');
   }
 
   function toggleRole(role: SystemRole, checked: boolean) {
