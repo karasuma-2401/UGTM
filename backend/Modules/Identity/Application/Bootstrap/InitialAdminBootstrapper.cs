@@ -29,6 +29,7 @@ public sealed class InitialAdminBootstrapper(
         return unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
             await users.AcquireAdminMutationLockAsync(ct);
+            await users.AcquireAccountProvisioningLockAsync(ct);
 
             if (await users.AnyAdminExistsAsync(ct))
             {

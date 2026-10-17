@@ -3,17 +3,22 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using UGTM.BuildingBlocks.Application.Responses;
+using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.Dtos;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
+using UGTM.Modules.Identity.Application.Users.ImportUsers;
 using UGTM.Modules.Identity.Application.Users.UpdateUser;
 using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Identity.Domain.Enums;
 
 namespace UGTM.Modules.Identity.Infrastructure.Endpoints;
 
 public static class UserEndpoints
 {
+    private const long MaxImportFileBytes = 5 * 1024 * 1024;
+
     public sealed record CreateUserRequest(
         string Email,
         string FullName,
@@ -87,6 +92,42 @@ public static class UserEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
+
+        group.MapPost("/import", ImportUsersAsync)
+            .WithSummary("Import danh sách Sinh viên hoặc Giảng viên từ Excel")
+            .WithDescription("""
+                Nhận `multipart/form-data` gồm tệp `.xlsx` tại trường `file` và `role` là `Student` hoặc `Lecturer`.
+                Dòng đầu tiên phải có các cột: `Email`, `FullName`, `UserCode`, `PhoneNumber`.
+                Tệp tối đa 5 MB và 5.000 dòng dữ liệu. `UserCode` bắt buộc đối với Sinh viên và có thể để trống đối với Giảng viên.
+
+                Import là thao tác all-or-nothing: nếu bất kỳ dòng nào sai hoặc trùng với tệp/database, không tài khoản nào được tạo
+                và response trả lỗi theo số dòng/cột. Tài khoản hợp lệ được tạo ở trạng thái `PendingActivation` và không gửi email ngay.
+                Sau đó người dùng nhập email ở luồng activation để yêu cầu magic link riêng.
+
+                Yêu cầu Bearer token có quyền `identity.users.import` hoặc vai trò `Admin`.
+                """)
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersImport}")
+            .DisableAntiforgery()
+            .WithMetadata(new RequestSizeLimitAttribute(MaxImportFileBytes + 64 * 1024))
+            .Accepts<IFormFile>("multipart/form-data")
+            .Produces<ApiResponse<ImportUsersResult>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<ImportUsersResult>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status413PayloadTooLarge);
+
+        group.MapGet("/import-template", DownloadImportTemplate)
+            .WithSummary("Tải file Excel mẫu để import người dùng")
+            .WithDescription("""
+                Trả file `.xlsx` có đúng bốn cột `Email`, `FullName`, `UserCode`, `PhoneNumber` và sheet hướng dẫn.
+                Query `role` chỉ nhận `Student` hoặc `Lecturer` để tạo hướng dẫn tương ứng.
+                Yêu cầu quyền `identity.users.import` hoặc vai trò `Admin`.
+                """)
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersImport}")
+            .Produces(StatusCodes.Status200OK, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            .Produces<ApiResponse<ImportUsersResult>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         group.MapPut("/{id:guid}", UpdateUserAsync)
             .WithSummary("Cập nhật thông tin hồ sơ và vai trò người dùng")
@@ -189,6 +230,77 @@ public static class UserEndpoints
 
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> ImportUsersAsync(
+        [FromForm(Name = "file")] IFormFile? file,
+        [FromForm(Name = "role")] string? role,
+        ImportUsersHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (file is null
+            || file.Length == 0
+            || file.Length > MaxImportFileBytes
+            || !string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            return ImportFailure(IdentityErrors.InvalidImportFile, null);
+        }
+
+        await using var stream = file.OpenReadStream();
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(stream, file.FileName, role ?? string.Empty),
+            cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return result.ToHttpResult();
+        }
+
+        if (result.Value.Errors.Count > 0)
+        {
+            var validationErrors = result.Value.Errors
+                .GroupBy(error => error.RowNumber == 0
+                    ? error.Field
+                    : $"rows[{error.RowNumber}].{error.Field}")
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(error => error.Message).Distinct().ToArray());
+            return ImportFailure(IdentityErrors.ImportValidationFailed, validationErrors);
+        }
+
+        return result.ToHttpResult();
+    }
+
+    private static IResult ImportFailure(
+        UGTM.BuildingBlocks.Domain.Error error,
+        IDictionary<string, string[]>? validationErrors)
+        => Results.Json(
+            ApiResponse<ImportUsersResult>.Fail(new ApiError
+            {
+                Code = error.Code,
+                Message = error.Message,
+                Errors = validationErrors
+            }),
+            statusCode: StatusCodes.Status400BadRequest);
+
+    private static IResult DownloadImportTemplate(
+        string? role,
+        IUserImportTemplateGenerator generator)
+    {
+        var roleInput = role?.Trim();
+        if (int.TryParse(roleInput, out _)
+            || !Enum.TryParse<SystemRoleName>(roleInput, ignoreCase: true, out var parsedRole)
+            || !Enum.IsDefined(parsedRole)
+            || parsedRole is not (SystemRoleName.Student or SystemRoleName.Lecturer))
+        {
+            return ImportFailure(IdentityErrors.InvalidImportRole, null);
+        }
+
+        var content = generator.Generate(parsedRole);
+        return Results.File(
+            content,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"ugtm-{parsedRole.ToString().ToLowerInvariant()}-import-template.xlsx");
     }
 
     private static async Task<IResult> UpdateStatusAsync(

@@ -345,6 +345,18 @@ public sealed class InitialAdminBootstrapperTests
         public Task<bool> ExistsByEmailAsync(string normalizedEmail, Guid? excludeUserId, CancellationToken cancellationToken)
             => Task.FromResult(Users.Any(u => u.NormalizedEmail == normalizedEmail && (!excludeUserId.HasValue || u.Id != excludeUserId.Value)));
 
+        public Task<IReadOnlySet<string>> GetExistingNormalizedEmailsAsync(IReadOnlyCollection<string> normalizedEmails, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlySet<string>>(Users
+                .Where(user => normalizedEmails.Contains(user.NormalizedEmail))
+                .Select(user => user.NormalizedEmail)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+        public Task<IReadOnlySet<string>> GetExistingUserCodesAsync(IReadOnlyCollection<string> userCodes, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlySet<string>>(Users
+                .Where(user => user.UserCode is not null && userCodes.Contains(user.UserCode))
+                .Select(user => user.UserCode!)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase));
+
         public Task AddToRoleAsync(User user, SystemRoleName role, DateTime assignedAt, CancellationToken cancellationToken)
         {
             user.UserRoles.Add(new UserRole
@@ -356,6 +368,15 @@ public sealed class InitialAdminBootstrapperTests
                 User = user
             });
             return Task.CompletedTask;
+        }
+
+        public async Task AddRangeToRoleAsync(IReadOnlyCollection<User> users, SystemRoleName role, DateTime assignedAt, CancellationToken cancellationToken)
+        {
+            foreach (var user in users)
+            {
+                Users.Add(user);
+                await AddToRoleAsync(user, role, assignedAt, cancellationToken);
+            }
         }
 
         public Task UpdateRolesAsync(User user, IEnumerable<SystemRoleName> roles, DateTime assignedAt, CancellationToken cancellationToken)
@@ -389,6 +410,9 @@ public sealed class InitialAdminBootstrapperTests
             AdminMutationLockCount++;
             return Task.CompletedTask;
         }
+
+        public Task AcquireAccountProvisioningLockAsync(CancellationToken cancellationToken)
+            => Task.CompletedTask;
 
         public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)
         {

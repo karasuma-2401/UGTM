@@ -116,6 +116,15 @@ public sealed class LoginHandlerTests
         public Task<bool> ExistsByEmailAsync(string normalizedEmail, Guid? excludeUserId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
+        public Task<IReadOnlySet<string>> GetExistingNormalizedEmailsAsync(IReadOnlyCollection<string> normalizedEmails, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public Task<IReadOnlySet<string>> GetExistingUserCodesAsync(IReadOnlyCollection<string> userCodes, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public Task AddRangeToRoleAsync(IReadOnlyCollection<User> users, SystemRoleName role, DateTime assignedAt, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
         public Task UpdateRolesAsync(
             User value,
             IEnumerable<SystemRoleName> roles,
@@ -127,6 +136,9 @@ public sealed class LoginHandlerTests
             => throw new NotSupportedException();
 
         public Task AcquireAdminMutationLockAsync(CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
+        public Task AcquireAccountProvisioningLockAsync(CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
         public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)

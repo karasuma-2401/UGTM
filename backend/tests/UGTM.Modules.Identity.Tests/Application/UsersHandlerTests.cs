@@ -8,6 +8,7 @@ using UGTM.Modules.Identity.Application.Security;
 using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.Dtos;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
+using UGTM.Modules.Identity.Application.Users.ImportUsers;
 using UGTM.Modules.Identity.Application.Users.UpdateUser;
 using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 using UGTM.Modules.Identity.Domain.Entities;
@@ -34,6 +35,133 @@ public sealed class UsersHandlerTests
         Assert.NotNull(stubReader.LastQuery);
         Assert.Equal(1, stubReader.LastQuery.PageNumber);
         Assert.Equal(100, stubReader.LastQuery.PageSize);
+    }
+
+    [Fact]
+    public async Task ImportUsersHandler_imports_valid_students_as_pending_without_sending_email()
+    {
+        var repo = new FakeUserRepository();
+        var auditLogs = new FakeAuditLogWriter();
+        var handler = CreateImportHandler(
+            repo,
+            new ImportFileReadResult(
+                [
+                    new ImportUserRow(2, "student1@ugtm.edu.vn", "Student One", "sv001", "0901234567"),
+                    new ImportUserRow(3, "student2@ugtm.edu.vn", "Student Two", "sv002", null)
+                ],
+                []),
+            auditLogs);
+
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(new MemoryStream([1]), "students.xlsx", "Student"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value.Errors);
+        Assert.Equal(2, result.Value.ImportedCount);
+        Assert.All(repo.Users, user =>
+        {
+            Assert.Equal(AccountStatus.PendingActivation, user.Status);
+            Assert.Null(user.PasswordHash);
+            Assert.Contains(user.UserRoles, userRole => userRole.Role.RoleName == SystemRoleName.Student);
+        });
+        Assert.Contains(repo.Users, user => user.UserCode == "SV001");
+        Assert.Equal(AuditActions.UsersImported, Assert.Single(auditLogs.Entries).Action);
+    }
+
+    [Fact]
+    public async Task ImportUsersHandler_rejects_duplicate_rows_without_importing_any_user()
+    {
+        var repo = new FakeUserRepository();
+        var handler = CreateImportHandler(
+            repo,
+            new ImportFileReadResult(
+                [
+                    new ImportUserRow(2, "duplicate@ugtm.edu.vn", "Student One", "SV001", null),
+                    new ImportUserRow(3, "DUPLICATE@ugtm.edu.vn", "Student Two", "SV002", null)
+                ],
+                []));
+
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(new MemoryStream([1]), "students.xlsx", "Student"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0, result.Value.ImportedCount);
+        Assert.Equal(2, result.Value.Errors.Count(error => error.Code == "DuplicateEmailInFile"));
+        Assert.Empty(repo.Users);
+    }
+
+    [Fact]
+    public async Task ImportUsersHandler_rejects_database_conflict_without_importing_valid_rows()
+    {
+        var existing = User.Create(
+            Guid.NewGuid(),
+            "existing@ugtm.edu.vn",
+            "EXISTING@UGTM.EDU.VN",
+            "Existing",
+            "GV001",
+            null,
+            null,
+            AccountStatus.PendingActivation,
+            Now);
+        var repo = new FakeUserRepository([existing]);
+        var handler = CreateImportHandler(
+            repo,
+            new ImportFileReadResult(
+                [
+                    new ImportUserRow(2, "existing@ugtm.edu.vn", "Existing Again", "GV002", null),
+                    new ImportUserRow(3, "new@ugtm.edu.vn", "New Lecturer", "GV003", null)
+                ],
+                []));
+
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(new MemoryStream([1]), "lecturers.xlsx", "Lecturer"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0, result.Value.ImportedCount);
+        Assert.Contains(result.Value.Errors, error => error.RowNumber == 2 && error.Code == "DuplicateEmail");
+        Assert.Single(repo.Users);
+    }
+
+    [Fact]
+    public async Task ImportUsersHandler_allows_lecturer_without_user_code()
+    {
+        var repo = new FakeUserRepository();
+        var handler = CreateImportHandler(
+            repo,
+            new ImportFileReadResult(
+                [new ImportUserRow(2, "lecturer@ugtm.edu.vn", "Lecturer", null, null)],
+                []));
+
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(new MemoryStream([1]), "lecturers.xlsx", "Lecturer"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value.ImportedCount);
+        Assert.Null(Assert.Single(repo.Users).UserCode);
+    }
+
+    [Theory]
+    [InlineData("Admin")]
+    [InlineData("Faculty")]
+    [InlineData("3")]
+    [InlineData("4")]
+    [InlineData("unknown")]
+    public async Task ImportUsersHandler_rejects_unsupported_role(string role)
+    {
+        var handler = CreateImportHandler(
+            new FakeUserRepository(),
+            new ImportFileReadResult([], []));
+
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(new MemoryStream([1]), "users.xlsx", role),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidImportRole", result.Error.Code);
     }
 
     [Fact]
@@ -1023,6 +1151,22 @@ public sealed class UsersHandlerTests
             auditLogs ?? new FakeAuditLogWriter());
     }
 
+    private static ImportUsersHandler CreateImportHandler(
+        FakeUserRepository repo,
+        ImportFileReadResult readResult,
+        FakeAuditLogWriter? auditLogs = null)
+        => new(
+            new StubUserImportFileReader(readResult),
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            auditLogs ?? new FakeAuditLogWriter());
+
+    private sealed class StubUserImportFileReader(ImportFileReadResult result) : IUserImportFileReader
+    {
+        public ImportFileReadResult Read(Stream stream) => result;
+    }
+
     private sealed class StubUserQueryReader : IUserQueryReader
     {
         public GetUsersQuery? LastQuery { get; private set; }
@@ -1065,6 +1209,18 @@ public sealed class UsersHandlerTests
         public Task<bool> ExistsByEmailAsync(string normalizedEmail, Guid? excludeUserId, CancellationToken cancellationToken)
             => Task.FromResult(Users.Any(u => u.NormalizedEmail == normalizedEmail && (!excludeUserId.HasValue || u.Id != excludeUserId.Value)));
 
+        public Task<IReadOnlySet<string>> GetExistingNormalizedEmailsAsync(IReadOnlyCollection<string> normalizedEmails, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlySet<string>>(Users
+                .Where(user => normalizedEmails.Contains(user.NormalizedEmail))
+                .Select(user => user.NormalizedEmail)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+        public Task<IReadOnlySet<string>> GetExistingUserCodesAsync(IReadOnlyCollection<string> userCodes, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlySet<string>>(Users
+                .Where(user => user.UserCode is not null && userCodes.Contains(user.UserCode))
+                .Select(user => user.UserCode!)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase));
+
         public Task AddToRoleAsync(User user, SystemRoleName role, DateTime assignedAt, CancellationToken cancellationToken)
         {
             user.UserRoles.Add(new UserRole
@@ -1076,6 +1232,15 @@ public sealed class UsersHandlerTests
                 User = user
             });
             return Task.CompletedTask;
+        }
+
+        public async Task AddRangeToRoleAsync(IReadOnlyCollection<User> users, SystemRoleName role, DateTime assignedAt, CancellationToken cancellationToken)
+        {
+            foreach (var user in users)
+            {
+                Users.Add(user);
+                await AddToRoleAsync(user, role, assignedAt, cancellationToken);
+            }
         }
 
         public Task UpdateRolesAsync(User user, IEnumerable<SystemRoleName> roles, DateTime assignedAt, CancellationToken cancellationToken)
@@ -1109,6 +1274,9 @@ public sealed class UsersHandlerTests
             AdminMutationLockCount++;
             return Task.CompletedTask;
         }
+
+        public Task AcquireAccountProvisioningLockAsync(CancellationToken cancellationToken)
+            => Task.CompletedTask;
 
         public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)
         {
