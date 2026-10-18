@@ -96,15 +96,24 @@ public static class UserEndpoints
         group.MapPost("/import", ImportUsersAsync)
             .WithSummary("Import danh sách Sinh viên hoặc Giảng viên từ Excel")
             .WithDescription("""
-                Nhận `multipart/form-data` gồm tệp `.xlsx` tại trường `file` và `role` là `Student` hoặc `Lecturer`.
-                Dòng đầu tiên phải có các cột: `Email`, `FullName`, `UserCode`, `PhoneNumber`.
-                Tệp tối đa 5 MB và 5.000 dòng dữ liệu. `UserCode` bắt buộc đối với Sinh viên và có thể để trống đối với Giảng viên.
+                Tạo hàng loạt tài khoản Sinh viên hoặc Giảng viên từ request `multipart/form-data`:
+                - `file`: Tệp `.xlsx`, tối đa 5 MB và 5.000 dòng dữ liệu.
+                - `role`: Chỉ nhận `Student` hoặc `Lecturer`.
+                - Dòng tiêu đề bắt buộc gồm `Email`, `FullName`, `UserCode`, `PhoneNumber`.
+                - `UserCode` bắt buộc đối với Sinh viên và có thể để trống đối với Giảng viên.
 
-                Import là thao tác all-or-nothing: nếu bất kỳ dòng nào sai hoặc trùng với tệp/database, không tài khoản nào được tạo
-                và response trả lỗi theo số dòng/cột. Tài khoản hợp lệ được tạo ở trạng thái `PendingActivation` và không gửi email ngay.
-                Sau đó người dùng nhập email ở luồng activation để yêu cầu magic link riêng.
+                Import tuân theo nguyên tắc all-or-nothing. Nếu bất kỳ dòng nào sai định dạng, trùng trong tệp
+                hoặc trùng với dữ liệu hiện có, toàn bộ thao tác bị hủy và response chỉ rõ lỗi theo dòng/cột.
+                Tài khoản được tạo ở trạng thái `PendingActivation` và không gửi email ngay;
+                người dùng chủ động yêu cầu Magic Link qua endpoint `activation/resend`.
 
-                Yêu cầu Bearer token có quyền `identity.users.import` hoặc vai trò `Admin`.
+                Yêu cầu Bearer token có quyền `identity.users.import` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm tổng số dòng đã xử lý và số tài khoản đã tạo.
+                - Tệp rỗng, sai định dạng, vượt giới hạn hoặc vai trò không hỗ trợ: 400 Bad Request.
+                - Dữ liệu trong tệp không hợp lệ hoặc bị trùng: 400 Bad Request (`Identity.ImportValidationFailed`).
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
+                - Request vượt quá giới hạn kích thước: 413 Payload Too Large.
                 """)
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersImport}")
             .DisableAntiforgery()
@@ -119,9 +128,15 @@ public static class UserEndpoints
         group.MapGet("/import-template", DownloadImportTemplate)
             .WithSummary("Tải file Excel mẫu để import người dùng")
             .WithDescription("""
-                Trả file `.xlsx` có đúng bốn cột `Email`, `FullName`, `UserCode`, `PhoneNumber` và sheet hướng dẫn.
-                Query `role` chỉ nhận `Student` hoặc `Lecturer` để tạo hướng dẫn tương ứng.
-                Yêu cầu quyền `identity.users.import` hoặc vai trò `Admin`.
+                Tải tệp Excel mẫu theo loại tài khoản để chuẩn bị dữ liệu cho endpoint import.
+                Query `role` chỉ nhận `Student` hoặc `Lecturer`. Tệp `.xlsx` trả về gồm bốn cột
+                `Email`, `FullName`, `UserCode`, `PhoneNumber` và sheet hướng dẫn tương ứng với vai trò đã chọn.
+
+                Yêu cầu Bearer token có quyền `identity.users.import` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK với tệp Excel theo đúng cấu trúc import.
+                - Thiếu, sai hoặc không hỗ trợ giá trị `role`: 400 Bad Request (`Identity.InvalidImportRole`).
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
                 """)
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersImport}")
             .Produces(StatusCodes.Status200OK, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

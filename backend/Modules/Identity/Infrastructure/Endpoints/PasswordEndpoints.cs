@@ -20,52 +20,60 @@ public static class PasswordEndpoints
         group.MapPost("/change-password", ChangeAsync)
             .WithSummary("Đổi mật khẩu của người dùng đang đăng nhập")
             .WithDescription("""
-                Gửi Bearer access token hợp lệ cùng `currentPassword` và `newPassword`. Không cần CSRF.
-                Mật khẩu mới cần ít nhất 12 ký tự, có chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
+                Thay đổi mật khẩu cho người dùng hiện đang đăng nhập bằng `currentPassword` và `newPassword`.
+                Mật khẩu mới phải có tối thiểu 12 ký tự, bao gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
 
-                Thành công trả 200 với `data: null`, thu hồi mọi phiên của người dùng và xóa refresh cookie hiện tại.
-                Phải đăng nhập lại bằng mật khẩu mới.
-                Mật khẩu hiện tại sai: 400 `Identity.CurrentPasswordIncorrect`; mật khẩu mới yếu: 400 `Identity.WeakPassword`.
-                Bearer token thiếu hoặc không hợp lệ: 401.
+                Yêu cầu Bearer access token hợp lệ; endpoint không sử dụng CSRF token.
+                Khi thành công, Security Stamp được làm mới, toàn bộ phiên đăng nhập của người dùng bị thu hồi
+                và refresh cookie hiện tại bị xóa. Người dùng phải đăng nhập lại bằng mật khẩu mới.
+                - Thành công: 200 OK với `data: null`.
+                - Mật khẩu hiện tại không đúng: 400 Bad Request (`Identity.CurrentPasswordIncorrect`).
+                - Mật khẩu mới không đáp ứng chính sách bảo mật: 400 Bad Request (`Identity.WeakPassword`).
+                - Thiếu token, token không hợp lệ hoặc phiên đã bị thu hồi: 401 Unauthorized.
                 """)
             .RequireAuthorization();
         group.MapPost("/recovery/start", StartAsync)
             .WithSummary("Gửi OTP khôi phục mật khẩu qua email")
             .WithDescription("""
-                Gửi `email` của tài khoản Active. Không cần Bearer hoặc CSRF token.
+                Khởi tạo yêu cầu khôi phục mật khẩu cho tài khoản `Active` bằng địa chỉ `email`.
+                Endpoint không yêu cầu Bearer token hoặc CSRF token.
 
-                Thành công trả `data.challengeId` và `data.expiresAt`. Lưu challengeId để gọi recovery/verify;
-                OTP 6 chữ số được gửi bất đồng bộ qua email và mặc định sống 10 phút.
-                Email không tồn tại, rỗng hoặc tài khoản không Active vẫn nhận response 200 có challengeId giả;
-                trường hợp đó không gửi email và không thể verify thành công.
-                Các endpoint recovery dùng chung giới hạn 5 request/10 phút/IP.
+                Nếu tài khoản hợp lệ, OTP gồm 6 chữ số được đưa vào Transactional Outbox để gửi email bất đồng bộ
+                và mặc định có hiệu lực 10 phút. Client phải lưu `challengeId` để thực hiện bước xác minh.
+                Để ngăn dò tìm tài khoản, email rỗng, không tồn tại hoặc không thuộc tài khoản Active vẫn nhận
+                `challengeId` giả; challenge này không thể xác minh và không phát sinh email.
+                - Thành công: 200 OK kèm `challengeId` và `expiresAt`.
+                - Vượt quá giới hạn dùng chung 5 request/10 phút/IP của nhóm recovery: 429 Too Many Requests (`Identity.RateLimitExceeded`).
                 """)
             .AllowAnonymous()
             .RequireRateLimiting(IdentityRateLimitPolicies.Recovery);
         group.MapPost("/recovery/verify", VerifyAsync)
             .WithSummary("Xác minh OTP và lấy quyền đặt lại mật khẩu")
             .WithDescription("""
-                Gửi `challengeId` từ recovery/start và `code` là OTP trong email.
-                Code là chuỗi 6 chữ số; giữ số 0 ở đầu nếu có. Không cần Bearer hoặc CSRF token.
+                Xác minh OTP bằng `challengeId` nhận từ bước `recovery/start` và `code` trong email.
+                `code` phải là chuỗi 6 chữ số và cần giữ nguyên số 0 ở đầu nếu có.
+                Endpoint không yêu cầu Bearer token hoặc CSRF token.
 
-                Thành công tiêu thụ OTP và trả `data.resetGrant`, `data.expiresAt` để gọi recovery/reset.
-                Reset grant chỉ dùng một lần, mặc định sống 10 phút.
-                OTP sai, hết hạn, đã dùng hoặc vượt 5 lần thử: 400 `Identity.InvalidOtp`.
-                Các endpoint recovery dùng chung giới hạn 5 request/10 phút/IP.
+                Khi thành công, OTP được tiêu thụ và hệ thống cấp `resetGrant` dùng một lần, mặc định có hiệu lực 10 phút.
+                - Thành công: 200 OK kèm `resetGrant` và `expiresAt`.
+                - OTP sai, hết hạn, đã sử dụng hoặc vượt quá 5 lần thử: 400 Bad Request (`Identity.InvalidOtp`).
+                - Vượt quá giới hạn dùng chung 5 request/10 phút/IP của nhóm recovery: 429 Too Many Requests (`Identity.RateLimitExceeded`).
                 """)
             .AllowAnonymous()
             .RequireRateLimiting(IdentityRateLimitPolicies.Recovery);
         group.MapPost("/recovery/reset", ResetAsync)
             .WithSummary("Đặt lại mật khẩu bằng reset grant")
             .WithDescription("""
-                Gửi `resetGrant` từ recovery/verify và `newPassword`.
-                Mật khẩu mới cần ít nhất 12 ký tự, có chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
-                Không cần Bearer hoặc CSRF token.
+                Đặt mật khẩu mới bằng `resetGrant` nhận từ bước `recovery/verify` và trường `newPassword`.
+                Mật khẩu mới phải có tối thiểu 12 ký tự, bao gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
+                Endpoint không yêu cầu Bearer token hoặc CSRF token.
 
-                Thành công trả 200 với `data: null`, tiêu thụ reset grant, thu hồi mọi phiên và xóa refresh cookie hiện tại.
-                Phải đăng nhập lại bằng mật khẩu mới.
-                Grant sai, hết hạn hoặc đã dùng: 400 `Identity.InvalidResetGrant`; mật khẩu yếu: 400 `Identity.WeakPassword`.
-                Các endpoint recovery dùng chung giới hạn 5 request/10 phút/IP.
+                Khi thành công, reset grant được tiêu thụ, Security Stamp được làm mới, toàn bộ phiên đăng nhập
+                của tài khoản bị thu hồi và refresh cookie hiện tại bị xóa. Người dùng phải đăng nhập lại.
+                - Thành công: 200 OK với `data: null`.
+                - Reset grant sai, hết hạn hoặc đã sử dụng: 400 Bad Request (`Identity.InvalidResetGrant`).
+                - Mật khẩu mới không đáp ứng chính sách bảo mật: 400 Bad Request (`Identity.WeakPassword`).
+                - Vượt quá giới hạn dùng chung 5 request/10 phút/IP của nhóm recovery: 429 Too Many Requests (`Identity.RateLimitExceeded`).
                 """)
             .AllowAnonymous()
             .RequireRateLimiting(IdentityRateLimitPolicies.Recovery);
