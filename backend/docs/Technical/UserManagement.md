@@ -1,6 +1,6 @@
 # User Management Backend
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 15/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 17/10/2026
 
 Tài liệu này giải thích phân hệ Quản lý Người dùng (User Management) trong module Identity: cấu trúc mã nguồn, luồng dữ liệu, cơ chế bảo mật và cách vận hành. Hợp đồng request/response công khai được đặc tả chi tiết tại [User Management API Contract](../../../docs/ApiContract/UserManagementApiContract.md).
 
@@ -9,10 +9,12 @@ Tài liệu này giải thích phân hệ Quản lý Người dùng (User Manage
 Backend phân hệ User Management hỗ trợ:
 - Tra cứu danh sách người dùng có phân trang (`PagedResult<T>`), tìm kiếm đa trường (Email, Họ tên, Mã người dùng) và lọc theo Vai trò (Role), Trạng thái (Status);
 - Tạo tài khoản người dùng đơn lẻ bởi Quản trị viên, hỗ trợ hai phương thức: gửi email kích hoạt tự động qua Transactional Outbox (Magic Link) hoặc kích hoạt ngay bằng mật khẩu ban đầu;
+- Import Excel tối đa 5.000 Sinh viên hoặc Giảng viên theo cơ chế all-or-nothing; tài khoản chờ người dùng chủ động yêu cầu magic link;
 - Cập nhật thông tin hồ sơ (Họ tên, Số điện thoại, Mã người dùng) và đồng bộ danh sách vai trò hệ thống;
 - Cập nhật trạng thái tài khoản: Khóa (`Disabled`), Tạm ngưng (`Suspended`) hoặc Mở khóa (`Active`);
 - Cơ chế thu hồi phiên tức thời: Mọi thao tác khóa tài khoản hoặc thay đổi vai trò đều kích hoạt xoay `SecurityStamp`, khiến các token JWT đang lưu hành bị `SessionValidator` từ chối ngay lập tức;
 - Phân quyền theo Policy động `Permission:identity.users.read` và `Permission:identity.users.manage`.
+- Bảo vệ Admin cuối cùng bằng khóa transaction: không thể đồng thời gỡ vai trò, tạm ngưng hoặc vô hiệu hóa toàn bộ Admin đang hoạt động.
 
 ---
 
@@ -30,11 +32,13 @@ backend/
       Dtos/UserSummaryDto.cs  # DTO kết quả người dùng cho danh sách và chi tiết
       GetUsers/               # Query, Handler và Read Model Interface (IUserQueryReader)
       CreateUser/             # Command và Handler tạo người dùng (gán vai trò, hash password hoặc outbox)
+      ImportUsers/            # Đọc model trung gian, validation toàn file và import atomically
       UpdateUser/             # Command và Handler cập nhật hồ sơ và vai trò
       UpdateUserStatus/       # Command và Handler đổi trạng thái tài khoản
     Infrastructure/
       Authorization/          # PermissionPolicyProvider và PermissionAuthorizationHandler
       Endpoints/UserEndpoints.cs # Minimal API tại /api/users
+      Importing/ClosedXmlUserImportFileReader.cs # Đọc worksheet .xlsx và ánh xạ header
       Persistence/Repositories/
         UserRepository.cs     # Triển khai phương thức GetByIdWithRoles, Exists, UpdateRoles
         UserQueryReader.cs    # Triển khai truy vấn phân trang, tìm kiếm ILike với AsNoTracking
@@ -86,7 +90,16 @@ Tài khoản người dùng được đại diện bởi Aggregate Root [`User`]
 4. Gán vai trò cho người dùng (`AddToRoleAsync`) và lưu tất cả thay đổi trong một Database Transaction duy nhất (`IIdentityUnitOfWork`).
 5. Background Worker `IdentityOutboxProcessor` định kỳ 5 giây quét outbox và gửi email kích hoạt qua SMTP/Mailpit.
 
-### 3. Luồng Cập nhật hồ sơ & vai trò (`PUT /api/users/{id}`)
+### 3. Luồng Import Excel (`POST /api/users/import`)
+
+1. Client tải template động từ `GET /api/users/import-template?role=Student|Lecturer`, sau đó endpoint import nhận multipart file `.xlsx` tối đa 5 MB và vai trò tương ứng; cả hai yêu cầu permission `identity.users.import` hoặc Admin bypass.
+2. `ClosedXmlUserImportFileReader` đọc worksheet đầu, ánh xạ bốn cột Email/FullName/UserCode/PhoneNumber và từ chối ô công thức.
+3. `ImportUsersHandler` chuẩn hóa dữ liệu, kiểm tra định dạng, giới hạn 5.000 dòng, trùng email/code trong file và database.
+4. Nếu có bất kỳ lỗi nào, trả lỗi theo số dòng/cột và không ghi dữ liệu. Nếu hợp lệ, toàn bộ user cùng role được ghi trong một transaction ở trạng thái `PendingActivation`.
+5. Import không tạo `OneTimeChallenge` và không ghi email outbox. Người dùng gọi `/api/identity/auth/activation/resend` bằng email/mã người dùng; magic link chỉ được tạo và gửi ở thời điểm đó.
+6. Các luồng tạo tài khoản đơn lẻ, provisioning và import dùng chung transaction advisory lock để tránh hai request đồng thời vượt qua kiểm tra trùng email/code.
+
+### 4. Luồng Cập nhật hồ sơ & vai trò (`PUT /api/users/{id}`)
 1. `UpdateUserHandler` tìm user theo `id` kèm thông tin vai trò hiện tại. Nếu không tồn tại $\rightarrow$ trả `Identity.UserNotFound` (404).
 2. Kiểm tra tính hợp lệ của SĐT mới nếu có cung cấp (`PhoneNumberValidator`: 10 chữ số).
 3. Nếu `userCode` thay đổi, kiểm tra xem mã mới có trùng với bất kỳ tài khoản nào khác không $\rightarrow$ trả `Identity.DuplicateAccount` (409).
@@ -94,13 +107,15 @@ Tài khoản người dùng được đại diện bởi Aggregate Root [`User`]
 5. Nếu có danh sách vai trò mới, kiểm tra tính hợp lệ (chặn chuỗi số hoặc vai trò lạ), sau đó gọi `UpdateRolesAsync` để thực hiện đồng bộ vi mô: gỡ bỏ các vai trò cũ không còn và thêm vào các vai trò mới.
 6. Commit transaction và trả về thông tin `UserSummaryDto` sau cập nhật.
 
-### 4. Luồng Cập nhật trạng thái tài khoản (`PATCH /api/users/{id}/status`)
+### 5. Luồng Cập nhật trạng thái tài khoản (`PATCH /api/users/{id}/status`)
 1. Nhận trạng thái mục tiêu: `Active`, `Suspended`, hoặc `Disabled`. Chặn đứng chuỗi số (ví dụ `"999"`, `"0"`, `"-1"`), giá trị lạ, hoặc cố tình gán thủ công `PendingActivation` với lỗi `Identity.InvalidStatus` (400).
 2. `UpdateUserStatusHandler` tìm user theo `id`:
    - Nếu `Active`: Gọi `user.Reactivate(now)` $\rightarrow$ chuyển trạng thái, xóa lockout, reset số lần đăng nhập sai về 0, xoay `SecurityStamp`.
    - Nếu `Suspended`: Gọi `user.Suspend(now)` $\rightarrow$ chuyển trạng thái, xoay `SecurityStamp`.
    - Nếu `Disabled`: Gọi `user.Disable(now)` $\rightarrow$ chuyển trạng thái, xoay `SecurityStamp`.
 3. Commit transaction. Mọi phiên đăng nhập của tài khoản này ngay lập tức bị vô hiệu hóa.
+
+Nếu tài khoản mục tiêu là Admin đang hoạt động, thao tác chuyển sang `Suspended` hoặc `Disabled` lấy PostgreSQL transaction advisory lock trước khi đếm các Admin còn lại. Cùng khóa này được dùng khi gỡ vai trò Admin và khi bootstrap Admin đầu tiên, nên các request hoặc replica chạy đồng thời không thể cùng vượt qua kiểm tra “Admin cuối cùng”.
 
 ---
 
@@ -110,6 +125,31 @@ Phân hệ sử dụng cơ chế Dynamic Permission Policy kết hợp phân quy
 - Endpoint `GET /api/users` yêu cầu: `Permission:identity.users.read`.
 - Các endpoint `POST`, `PUT`, `PATCH` yêu cầu: `Permission:identity.users.manage`.
 - **Cơ chế Phân quyền (PBAC & Admin Bypass):** [`PermissionAuthorizationHandler`](../../Modules/Identity/Infrastructure/Authorization/PermissionAuthorizationHandler.cs) kiểm tra claim `permission` được nạp từ cơ sở dữ liệu vào JWT token. Đặc biệt, người dùng sở hữu vai trò `Admin` (Role claim: `Admin`) được tự động cấp quyền thực thi tất cả các API mà không cần phải gán quyền thủ công trong cơ sở dữ liệu mỗi khi có quyền mới phát sinh.
+
+Migration Identity tạo danh mục 6 quyền bằng `permission_code` (không phụ thuộc ID cố định) và chỉ bổ sung các gán mặc định còn thiếu:
+
+| Vai trò | Quyền mặc định |
+| --- | --- |
+| `Admin` | Toàn bộ 6 quyền Identity |
+| `Faculty` | `identity.users.read` |
+| `AcademicAffairs` | `identity.users.read`, `identity.users.import` |
+
+Migration không xóa quyền có sẵn hoặc gán quyền do đơn vị vận hành tùy chỉnh. Migration hardening chỉ dọn ba gán mặc định sai của phiên bản Phase 1 cũ khi chúng còn mang đúng timestamp seed.
+
+---
+
+## Khởi tạo Admin đầu tiên
+
+Áp dụng migration trước, sau đó chạy một lần từ thư mục gốc:
+
+```powershell
+./scripts/Database.ps1 -Action Update
+./scripts/BootstrapAdmin.ps1 -Email admin@ugtm.edu.vn -FullName 'System Administrator'
+```
+
+Script đọc `BOOTSTRAP_ADMIN_PASSWORD` từ environment/`.env`; nếu chưa có thì hỏi bằng secure prompt. Mật khẩu chỉ được chuyển cho API process qua environment và không được đưa vào command line. Không truyền mật khẩu bằng tham số PowerShell hoặc `dotnet --password`.
+
+Có thể chạy trực tiếp trong môi trường deploy bằng cách đặt `BOOTSTRAP_ADMIN_EMAIL` và `BOOTSTRAP_ADMIN_PASSWORD`. Bootstrap tạo ngay một Admin `Active`, chỉ thành công khi hệ thống chưa có bất kỳ tài khoản mang vai trò Admin nào, và an toàn khi nhiều replica khởi động đồng thời. Sau khi có Admin đầu tiên, quản trị viên import/tạo người dùng; người dùng tự yêu cầu/kích hoạt qua magic link theo luồng activation hiện có.
 
 ---
 

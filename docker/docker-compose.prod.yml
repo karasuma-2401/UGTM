@@ -12,13 +12,14 @@ services:
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
       - Proxy__KnownProxies__0=172.29.0.10
       - Proxy__KnownProxies__1=::ffff:172.29.0.10
-      - Notifications__Smtp__Host=${SMTP_HOST}
+      - Notifications__Smtp__Host=${SMTP_HOST:?SMTP_HOST must be configured}
       - Notifications__Smtp__Port=${SMTP_PORT:-587}
-      - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS}
+      - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS:?SMTP_FROM_ADDRESS must be configured}
       - Notifications__Smtp__FromName=${SMTP_FROM_NAME:-UGTM}
       - Notifications__Smtp__Username=${SMTP_USERNAME}
       - Notifications__Smtp__Password=${SMTP_PASSWORD}
-      - Notifications__Smtp__UseStartTls=${SMTP_USE_START_TLS:-true}
+      - Notifications__Smtp__Security=${SMTP_SECURITY:-StartTls}
+      - Notifications__Smtp__TimeoutSeconds=${SMTP_TIMEOUT_SECONDS:-30}
     expose:
       - "8080"
     volumes:

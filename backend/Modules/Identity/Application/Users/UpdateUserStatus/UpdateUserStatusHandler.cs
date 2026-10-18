@@ -46,11 +46,12 @@ public sealed class UpdateUserStatusHandler(
 
             if (user.Status != newStatus)
             {
-                if (newStatus == AccountStatus.Disabled)
+                if (user.Status == AccountStatus.Active && newStatus != AccountStatus.Active)
                 {
                     var isAdmin = user.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin);
                     if (isAdmin)
                     {
+                        await users.AcquireAdminMutationLockAsync(ct);
                         var otherActiveAdmins = await users.CountActiveAdminsAsync(user.Id, ct);
                         if (otherActiveAdmins == 0)
                         {

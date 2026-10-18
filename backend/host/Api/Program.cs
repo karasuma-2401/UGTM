@@ -75,8 +75,6 @@ if (isBootstrapCommand)
     {
         if ((args[i] == "--email" || args[i] == "-e") && i + 1 < args.Length)
             email = args[++i];
-        else if ((args[i] == "--password" || args[i] == "-p") && i + 1 < args.Length)
-            password = args[++i];
         else if ((args[i] == "--fullname" || args[i] == "-n") && i + 1 < args.Length)
             fullName = args[++i];
         else if ((args[i] == "--usercode" || args[i] == "-c") && i + 1 < args.Length)
@@ -90,8 +88,8 @@ if (isBootstrapCommand)
 
     if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
     {
-        Console.Error.WriteLine("Error: Both --email and --password are required to bootstrap the initial admin.");
-        Console.Error.WriteLine("Usage: dotnet run --project backend/host/Api/UGTM.Api.csproj -- bootstrap-admin --email <email> --password <password> [--fullname <name>] [--usercode <code>]");
+        Console.Error.WriteLine("Error: Admin email and password are required. Supply the password through BOOTSTRAP_ADMIN_PASSWORD or UGTM_ADMIN_PASSWORD; command-line passwords are intentionally unsupported.");
+        Console.Error.WriteLine("Usage: dotnet run --project backend/host/Api/UGTM.Api.csproj -- bootstrap-admin --email <email> [--fullname <name>] [--usercode <code>]");
         return 1;
     }
 

@@ -7,6 +7,11 @@ namespace UGTM.Modules.Identity.Infrastructure.Persistence.Repositories;
 
 public sealed class UserRepository(IdentityDbContext db) : IUserRepository
 {
+    // A transaction-scoped PostgreSQL advisory lock serializes bootstrap, demotion,
+    // suspension, and disabling decisions that could otherwise remove the last active Admin.
+    private const long AdminMutationLockKey = 8_127_049_532_100_001;
+    private const long AccountProvisioningLockKey = 8_127_049_532_100_002;
+
     public Task<User?> GetByIdAsync(Guid id, CancellationToken ct)
         => db.Users.SingleOrDefaultAsync(x => x.Id == id, ct);
 
@@ -50,6 +55,24 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
         return query.AnyAsync(ct);
     }
 
+    public async Task<IReadOnlySet<string>> GetExistingNormalizedEmailsAsync(
+        IReadOnlyCollection<string> normalizedEmails,
+        CancellationToken ct)
+        => (await db.Users
+                .Where(user => normalizedEmails.Contains(user.NormalizedEmail))
+                .Select(user => user.NormalizedEmail)
+                .ToListAsync(ct))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    public async Task<IReadOnlySet<string>> GetExistingUserCodesAsync(
+        IReadOnlyCollection<string> userCodes,
+        CancellationToken ct)
+        => (await db.Users
+                .Where(user => user.UserCode != null && userCodes.Contains(user.UserCode))
+                .Select(user => user.UserCode!)
+                .ToListAsync(ct))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     public void Add(User user) => db.Users.Add(user);
 
     public async Task AddToRoleAsync(
@@ -68,6 +91,27 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
             RoleId = roleId,
             AssignedAt = assignedAt
         });
+    }
+
+    public async Task AddRangeToRoleAsync(
+        IReadOnlyCollection<User> users,
+        SystemRoleName role,
+        DateTime assignedAt,
+        CancellationToken ct)
+    {
+        var roleId = await db.Roles
+            .Where(entity => entity.RoleName == role)
+            .Select(entity => (int?)entity.Id)
+            .SingleOrDefaultAsync(ct)
+            ?? throw new InvalidOperationException($"Vai trò '{role}' chưa được khởi tạo trong bảng identity.role của cơ sở dữ liệu.");
+
+        db.Users.AddRange(users);
+        db.UserRoles.AddRange(users.Select(user => new UserRole
+        {
+            UserId = user.Id,
+            RoleId = roleId,
+            AssignedAt = assignedAt
+        }));
     }
 
     public async Task UpdateRolesAsync(
@@ -132,6 +176,16 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
 
         return query.CountAsync(ct);
     }
+
+    public Task AcquireAdminMutationLockAsync(CancellationToken ct)
+        => db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({AdminMutationLockKey})",
+            ct);
+
+    public Task AcquireAccountProvisioningLockAsync(CancellationToken ct)
+        => db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock({AccountProvisioningLockKey})",
+            ct);
 
     public Task<bool> AnyAdminExistsAsync(CancellationToken ct)
         => db.UserRoles.AnyAsync(ur => ur.Role.RoleName == SystemRoleName.Admin, ct);

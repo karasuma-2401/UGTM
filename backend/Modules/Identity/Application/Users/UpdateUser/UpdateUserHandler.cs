@@ -121,6 +121,7 @@ public sealed class UpdateUserHandler(
                 {
                     if (currentRoles.Contains(SystemRoleName.Admin) && !systemRoles.Contains(SystemRoleName.Admin))
                     {
+                        await users.AcquireAdminMutationLockAsync(ct);
                         var otherActiveAdmins = await users.CountActiveAdminsAsync(user.Id, ct);
                         if (otherActiveAdmins == 0)
                         {

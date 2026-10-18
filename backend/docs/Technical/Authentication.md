@@ -187,7 +187,7 @@ Migration [`CompleteIdentityAuthentication`](../../Database.Migrations/Migration
 | `Identity:DataProtection:KeyRingPath` | chưa đặt | thư mục lưu key ring bền vững |
 | `Identity:Email:PublicWebBaseUrl` | `http://localhost:5173` | gốc URL trong activation email |
 | `Identity:Security:*` | xem `appsettings.json` | lockout, session và challenge lifetime |
-| `Notifications:Smtp:*` | xem Development/Compose | SMTP host, port, sender, TLS và credentials |
+| `Notifications:Smtp:*` | xem Development/Compose | SMTP host, port, sender, security mode, timeout và credentials; xem [Email Delivery](EmailDelivery.md) |
 | `Cors:AllowedOrigins` | `http://localhost:5173` | danh sách origin chính xác |
 | `Proxy:KnownProxies` | rỗng | chỉ cấu hình proxy do hệ thống quản lý |
 
@@ -195,19 +195,19 @@ Các option bảo mật và JWT được validate lúc startup. Không lưu priv
 
 ## Chạy local
 
-Cách ít sai khác nhất là chạy backend và Mailpit bằng Compose:
+Có thể chạy backend với SMTP thật hoặc Mailpit bằng Compose. SMTP thật được cấu hình qua các biến `SMTP_*` trong `.env`:
 
 ```powershell
 Copy-Item .env.example .env
-# Điền DATABASE_CONNECTION_STRING trong .env
+# Điền DATABASE_CONNECTION_STRING và SMTP_* trong .env
 ./scripts/GenerateDevelopmentJwtKey.ps1
 ./scripts/Database.ps1 -Action Update
-docker compose up -d backend mailpit
+docker compose up -d backend
 ```
 
 - API: `http://localhost:5287`
 - Scalar API Reference: `http://localhost:5287/scalar`
-- Mailpit: `http://localhost:8025`
+- Mailpit fallback Development: `http://localhost:8025`
 
 Nếu chạy API trực tiếp bằng `dotnet run`, đặt đường dẫn key phù hợp với máy thay cho đường dẫn trong container:
 

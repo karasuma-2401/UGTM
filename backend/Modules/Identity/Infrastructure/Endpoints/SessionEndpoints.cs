@@ -19,32 +19,41 @@ public static class SessionEndpoints
         group.MapGet("/me", GetCurrentUserAsync)
             .WithSummary("Lấy thông tin người dùng đang đăng nhập")
             .WithDescription("""
-                Gửi header `Authorization: Bearer <accessToken>` lấy từ login hoặc refresh. Không có body, không cần CSRF.
+                Trả thông tin hồ sơ và quyền truy cập hiện tại của người dùng đã đăng nhập.
+                Request không có body và không yêu cầu CSRF token.
 
-                Thành công trả profile trong `data`, gồm id, email, fullName, userCode, roles và permissions hiện tại từ database.
-                JWT thiếu, sai, hết hạn hoặc phiên đã bị thu hồi: 401, body có thể rỗng.
-                JWT còn hạn vẫn bị từ chối sau logout, đổi mật khẩu hoặc reset mật khẩu làm phiên mất hiệu lực.
+                Yêu cầu header `Authorization: Bearer <accessToken>` nhận từ endpoint login hoặc refresh.
+                Dữ liệu `roles` và `permissions` được đọc theo trạng thái hiện tại của hệ thống.
+                - Thành công: 200 OK kèm `id`, `email`, `fullName`, `userCode`, `roles` và `permissions` trong `data`.
+                - Thiếu token, token sai hoặc hết hạn: 401 Unauthorized.
+                - Phiên đã bị thu hồi do logout, đổi/reset mật khẩu, đổi quyền hoặc thay đổi trạng thái tài khoản: 401 Unauthorized,
+                  kể cả khi thời hạn JWT chưa kết thúc.
                 """)
             .RequireAuthorization();
         group.MapPost("/refresh", RefreshAsync)
             .WithSummary("Làm mới access token từ refresh cookie")
             .WithDescription("""
-                Không có body và không cần Bearer token. Gửi refresh cookie của phiên đã đăng nhập,
-                cookie CSRF và header `X-CSRF-TOKEN` lấy từ endpoint csrf.
+                Cấp access token mới từ refresh cookie của phiên đăng nhập. Request không có body và không yêu cầu Bearer token.
+                Client phải gửi refresh cookie, CSRF cookie và header `X-CSRF-TOKEN` tương ứng.
 
-                Thành công trả access token, thời hạn và user giống login, đồng thời thay refresh cookie bằng token mới.
-                Refresh token cũ chỉ dùng một lần; dùng lại token đã tiêu thụ sẽ thu hồi phiên.
-                Cookie thiếu hoặc phiên không hợp lệ: 401 `Identity.InvalidSession`; thiếu hoặc sai CSRF: 400.
+                Hệ thống thực hiện refresh token rotation: token cũ bị tiêu thụ và refresh cookie được thay bằng token mới.
+                Việc tái sử dụng refresh token đã tiêu thụ được xem là dấu hiệu replay và làm phiên bị thu hồi.
+                - Thành công: 200 OK kèm `accessToken`, `accessTokenExpiresAt`, `user` và refresh cookie mới.
+                - Thiếu hoặc sai CSRF token: 400 Bad Request.
+                - Thiếu refresh cookie, token sai/hết hạn hoặc phiên đã bị thu hồi: 401 Unauthorized (`Identity.InvalidSession`).
                 """)
             .AllowAnonymous();
         group.MapPost("/logout", LogoutAsync)
             .WithSummary("Đăng xuất khỏi phiên hiện tại")
             .WithDescription("""
-                Không có body và không cần Bearer token. Gửi refresh cookie, cookie CSRF và header `X-CSRF-TOKEN`.
+                Thu hồi phiên gắn với refresh cookie hiện tại và xóa cookie khỏi client.
+                Request không có body, không yêu cầu Bearer token nhưng bắt buộc gửi CSRF cookie
+                cùng header `X-CSRF-TOKEN` tương ứng.
 
-                Backend thu hồi phiên gắn với refresh cookie và xóa refresh cookie; JWT của phiên đó mất hiệu lực.
-                Thành công trả 200 với `data: null`. Gọi lại hoặc không có refresh cookie vẫn trả 200.
-                CSRF vẫn bắt buộc trong mọi trường hợp; thiếu hoặc sai CSRF: 400.
+                Sau khi đăng xuất, access token thuộc phiên này không còn được chấp nhận dù JWT chưa hết hạn.
+                Endpoint có tính idempotent: gọi lại hoặc không có refresh cookie vẫn được xem là thành công.
+                - Thành công: 200 OK với `data: null` và refresh cookie bị xóa.
+                - Thiếu hoặc sai CSRF token: 400 Bad Request.
                 """)
             .AllowAnonymous();
         return group;

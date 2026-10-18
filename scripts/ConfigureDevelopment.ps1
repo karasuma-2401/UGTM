@@ -9,16 +9,39 @@ if ([string]::IsNullOrWhiteSpace($connectionString)) {
     $connectionString = $env:DATABASE_CONNECTION_STRING
 }
 $privateKeyPath = $env:Identity__Jwt__PrivateKeyPath
+$smtpHost = $env:Notifications__Smtp__Host
+if ([string]::IsNullOrWhiteSpace($smtpHost)) { $smtpHost = $env:SMTP_HOST }
+$smtpPort = $env:Notifications__Smtp__Port
+if ([string]::IsNullOrWhiteSpace($smtpPort)) { $smtpPort = $env:SMTP_PORT }
+$smtpFromAddress = $env:Notifications__Smtp__FromAddress
+if ([string]::IsNullOrWhiteSpace($smtpFromAddress)) { $smtpFromAddress = $env:SMTP_FROM_ADDRESS }
+$smtpFromName = $env:Notifications__Smtp__FromName
+if ([string]::IsNullOrWhiteSpace($smtpFromName)) { $smtpFromName = $env:SMTP_FROM_NAME }
+$smtpUsername = $env:Notifications__Smtp__Username
+if ([string]::IsNullOrWhiteSpace($smtpUsername)) { $smtpUsername = $env:SMTP_USERNAME }
+$smtpPassword = $env:Notifications__Smtp__Password
+if ([string]::IsNullOrWhiteSpace($smtpPassword)) { $smtpPassword = $env:SMTP_PASSWORD }
+$smtpSecurity = $env:Notifications__Smtp__Security
+if ([string]::IsNullOrWhiteSpace($smtpSecurity)) { $smtpSecurity = $env:SMTP_SECURITY }
+$smtpTimeoutSeconds = $env:Notifications__Smtp__TimeoutSeconds
+if ([string]::IsNullOrWhiteSpace($smtpTimeoutSeconds)) { $smtpTimeoutSeconds = $env:SMTP_TIMEOUT_SECONDS }
+
 if (Test-Path -LiteralPath $environmentFile) {
     foreach ($line in Get-Content -LiteralPath $environmentFile) {
-        if ($line -match '^\s*(DATABASE_CONNECTION_STRING|JWT_PRIVATE_KEY_FILE)\s*=(.*)$') {
+        if ($line -match '^\s*(DATABASE_CONNECTION_STRING|JWT_PRIVATE_KEY_FILE|SMTP_HOST|SMTP_PORT|SMTP_FROM_ADDRESS|SMTP_FROM_NAME|SMTP_USERNAME|SMTP_PASSWORD|SMTP_SECURITY|SMTP_TIMEOUT_SECONDS)\s*=(.*)$') {
             $variableName = $Matches[1]
             $variableValue = $Matches[2].Trim().Trim('"').Trim("'")
-            if ($variableName -eq 'DATABASE_CONNECTION_STRING' -and [string]::IsNullOrWhiteSpace($connectionString)) {
-                $connectionString = $variableValue
-            }
-            if ($variableName -eq 'JWT_PRIVATE_KEY_FILE' -and [string]::IsNullOrWhiteSpace($privateKeyPath)) {
-                $privateKeyPath = $variableValue
+            switch ($variableName) {
+                'DATABASE_CONNECTION_STRING' { if ([string]::IsNullOrWhiteSpace($connectionString)) { $connectionString = $variableValue } }
+                'JWT_PRIVATE_KEY_FILE' { if ([string]::IsNullOrWhiteSpace($privateKeyPath)) { $privateKeyPath = $variableValue } }
+                'SMTP_HOST' { if ([string]::IsNullOrWhiteSpace($smtpHost)) { $smtpHost = $variableValue } }
+                'SMTP_PORT' { if ([string]::IsNullOrWhiteSpace($smtpPort)) { $smtpPort = $variableValue } }
+                'SMTP_FROM_ADDRESS' { if ([string]::IsNullOrWhiteSpace($smtpFromAddress)) { $smtpFromAddress = $variableValue } }
+                'SMTP_FROM_NAME' { if ([string]::IsNullOrWhiteSpace($smtpFromName)) { $smtpFromName = $variableValue } }
+                'SMTP_USERNAME' { if ([string]::IsNullOrWhiteSpace($smtpUsername)) { $smtpUsername = $variableValue } }
+                'SMTP_PASSWORD' { if ([string]::IsNullOrWhiteSpace($smtpPassword)) { $smtpPassword = $variableValue } }
+                'SMTP_SECURITY' { if ([string]::IsNullOrWhiteSpace($smtpSecurity)) { $smtpSecurity = $variableValue } }
+                'SMTP_TIMEOUT_SECONDS' { if ([string]::IsNullOrWhiteSpace($smtpTimeoutSeconds)) { $smtpTimeoutSeconds = $variableValue } }
             }
         }
     }
@@ -41,7 +64,44 @@ if (-not (Test-Path -LiteralPath $privateKeyPath -PathType Leaf)) {
 $localConfiguration = @{
     ConnectionStrings = @{ DefaultConnection = $connectionString }
     Identity = @{ Jwt = @{ PrivateKeyPath = $privateKeyPath } }
-} | ConvertTo-Json -Depth 4
+}
+
+if (-not [string]::IsNullOrWhiteSpace($smtpHost)) {
+    if ([string]::IsNullOrWhiteSpace($smtpFromAddress)) {
+        throw 'SMTP_FROM_ADDRESS is required when SMTP_HOST is configured.'
+    }
+    if ([string]::IsNullOrWhiteSpace($smtpFromName)) { $smtpFromName = 'UGTM' }
+    if ([string]::IsNullOrWhiteSpace($smtpPort)) { $smtpPort = '587' }
+    if ([string]::IsNullOrWhiteSpace($smtpSecurity)) { $smtpSecurity = 'StartTls' }
+    if ([string]::IsNullOrWhiteSpace($smtpTimeoutSeconds)) { $smtpTimeoutSeconds = '30' }
+    if ([string]::IsNullOrWhiteSpace($smtpUsername) -ne [string]::IsNullOrWhiteSpace($smtpPassword)) {
+        throw 'SMTP_USERNAME and SMTP_PASSWORD must be configured together.'
+    }
+
+    $parsedSmtpPort = 0
+    if (-not [int]::TryParse($smtpPort, [ref]$parsedSmtpPort)) {
+        throw 'SMTP_PORT must be an integer.'
+    }
+    $parsedSmtpTimeout = 0
+    if (-not [int]::TryParse($smtpTimeoutSeconds, [ref]$parsedSmtpTimeout)) {
+        throw 'SMTP_TIMEOUT_SECONDS must be an integer.'
+    }
+
+    $localConfiguration.Notifications = @{
+        Smtp = @{
+            Host = $smtpHost
+            Port = $parsedSmtpPort
+            FromAddress = $smtpFromAddress
+            FromName = $smtpFromName
+            Username = $smtpUsername
+            Password = $smtpPassword
+            Security = $smtpSecurity
+            TimeoutSeconds = $parsedSmtpTimeout
+        }
+    }
+}
+
+$localConfiguration = $localConfiguration | ConvertTo-Json -Depth 4
 $configurationPath = Join-Path $repositoryRoot 'backend/host/Api/appsettings.Development.local.json'
 [IO.File]::WriteAllText($configurationPath, $localConfiguration, [Text.UTF8Encoding]::new($false))
-Write-Host 'Configured Development database and JWT key for Rider and dotnet run.'
+Write-Host 'Configured Development database, JWT key, and optional SMTP settings for Rider and dotnet run.'

@@ -22,6 +22,8 @@ public sealed class ProvisioningStudentAccountHandler(
             var normalizedEmail = email.ToUpperInvariant();
             var userCode = command.UserCode.Trim().ToUpperInvariant();
 
+            await users.AcquireAccountProvisioningLockAsync(ct);
+
             if (await users.ExistsByEmailOrCodeAsync(normalizedEmail, userCode, ct))
             {
                 return Result.Failure<Guid>(IdentityErrors.DuplicateAccount);
