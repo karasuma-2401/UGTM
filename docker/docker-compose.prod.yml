@@ -33,14 +33,35 @@ services:
     restart: always
     depends_on:
       - backend
+    expose:
+      - "80"
+
+  gateway:
+    image: caddy:2.11.7-alpine
+    container_name: ugtm-gateway
+    restart: always
+    depends_on:
+      - backend
+      - frontend
+    environment:
+      API_HOST: ${API_HOST:?API_HOST must be configured}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be configured}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       default:
         ipv4_address: 172.29.0.10
-    ports:
-      - "80:80"
 
 volumes:
   data_protection_keys:
+  caddy_data:
+  caddy_config:
 
 networks:
   default:
