@@ -142,6 +142,8 @@ jobs:
 
       - name: Validate production Compose configuration
         env:
+          ACME_EMAIL: ops@example.test
+          API_HOST: api.example.test
           APP_URL: https://frontend.example.test
           DATABASE_CONNECTION_STRING: Host=database;Database=ugtm;Username=ugtm;Password=ci-only
           IDENTITY_IP_HASH_KEY: ci-only-identity-ip-hash-key-32-characters
@@ -149,3 +151,11 @@ jobs:
           SMTP_HOST: smtp.example.test
           SMTP_FROM_ADDRESS: no-reply@example.test
         run: docker compose -f docker/docker-compose.prod.yml config --quiet
+
+      - name: Validate Caddy gateway configuration
+        run: >-
+          docker run --rm
+          -e API_HOST=api.example.test
+          -e ACME_EMAIL=ops@example.test
+          -v "${{ github.workspace }}/docker/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2.11.7-alpine caddy validate --config /etc/caddy/Caddyfile

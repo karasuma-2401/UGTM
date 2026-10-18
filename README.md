@@ -110,6 +110,14 @@ Dừng môi trường bằng `docker compose down`. File cấu hình production:
 Production bắt buộc có `IDENTITY_IP_HASH_KEY` tối thiểu 32 ký tự; xem
 [checklist nghiệm thu Identity](backend/docs/Technical/IdentityVerificationChecklist.md) trước khi deploy.
 
+Production đặt Caddy trước API để tự động cấp/gia hạn TLS. DNS `API_HOST` phải trỏ tới public IP
+của VPS và Azure NSG phải cho phép TCP 80/443 (có thể mở thêm UDP 443 cho HTTP/3).
+Khai báo `API_HOST` và `ACME_EMAIL` trong GitHub Actions Variables; các credential và `APP_URL`
+tiếp tục đặt trong GitHub Actions Secrets. Gateway chuyển `/api/*` vào backend và tạm thời giữ
+frontend Docker cho tới khi hoàn tất cutover sang Vercel.
+Trong lần dựng HTTPS đầu tiên, `APP_URL` có thể tạm dùng `https://<API_HOST>`; sau khi Vercel
+hoạt động phải đổi sang origin Vercel chính thức và deploy lại backend.
+
 ## Cấu trúc và CI
 
 - `backend/host/Api`: composition root, DI, CORS, middleware, Scalar API Reference, nạp module qua `IModule`.
