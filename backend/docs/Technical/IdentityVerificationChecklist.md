@@ -47,6 +47,8 @@ Các permission ngoài mặc định có thể được Admin gán có chủ đ�
 - [x] `Automated` Message chưa tới thời điểm retry không được gửi lại sớm.
 - [x] `Automated` Retry thành công đánh dấu `processed_at`, xóa lỗi và xóa protected payload.
 - [x] `Automated` Các worker song song lấy message bằng `FOR UPDATE SKIP LOCKED`.
+- [x] `Automated` Template activation/recovery encode dữ liệu động, có text fallback và nhúng
+  logo Backend bằng Content-ID; OTP không xuất hiện trong subject.
 - [x] `Deployment` SMTP thật đã được xác nhận gửi thành công trong môi trường development.
 - [ ] `Deployment` Gửi thử activation và recovery email sau mỗi lần đổi SMTP provider/credential.
 

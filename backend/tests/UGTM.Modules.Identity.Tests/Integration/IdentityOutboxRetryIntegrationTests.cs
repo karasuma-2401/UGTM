@@ -123,15 +123,16 @@ public sealed class IdentityOutboxRetryIntegrationTests(PostgreSqlFixture fixtur
         IDataProtectionProvider dataProtection)
     {
         await using var db = CreateDbContext();
+        var emailOptions = Options.Create(new IdentityEmailOptions
+        {
+            PublicWebBaseUrl = new Uri("https://ugtm.example")
+        });
         var dispatcher = new IdentityOutboxDispatcher(
             db,
             sender,
             clock,
             dataProtection,
-            Options.Create(new IdentityEmailOptions
-            {
-                PublicWebBaseUrl = new Uri("https://ugtm.example")
-            }),
+            new IdentityEmailTemplateRenderer(emailOptions),
             NullLogger<IdentityOutboxDispatcher>.Instance);
         return await dispatcher.ProcessBatchAsync(CancellationToken.None);
     }

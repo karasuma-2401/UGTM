@@ -7,6 +7,18 @@ Identity không gọi SMTP trong request chính: handler ghi message vào transa
 `IdentityOutboxProcessor` giải mã payload và gửi bất đồng bộ. Vì vậy lỗi SMTP không làm rollback thao tác nghiệp vụ;
 message thất bại được retry theo exponential backoff, tối đa 60 phút giữa hai lần thử.
 
+## Giao diện email
+
+Identity có template HTML riêng cho email kích hoạt và OTP khôi phục mật khẩu. Template dùng
+table layout cùng inline CSS để tương thích các email client phổ biến, màu thương hiệu chuyển
+từ xanh `#2054A5` sang cam `#FA7921`, CTA/link dự phòng, cảnh báo bảo mật và bản text fallback.
+OTP chỉ xuất hiện trong nội dung, không được đưa vào subject để tránh lộ qua notification.
+
+Logo được lưu riêng trong Backend tại
+`Modules/Identity/Infrastructure/Notifications/Assets`. Bản PNG được nhúng vào assembly và gửi
+cùng email bằng linked MIME resource `cid:ugtm-brand-logo`; do đó email không phụ thuộc URL hoặc
+deployment của Frontend. Nếu email client chặn hình ảnh, thuộc tính `alt` vẫn hiển thị `UGTM`.
+
 ## Cấu hình
 
 Không lưu tài khoản hoặc mật khẩu SMTP thật trong Git. Sao chép `.env.example` thành `.env` và điền credential

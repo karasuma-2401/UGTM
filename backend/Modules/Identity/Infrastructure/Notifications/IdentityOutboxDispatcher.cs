@@ -2,7 +2,6 @@ using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Infrastructure.Persistence;
 using UGTM.Modules.Notifications.Contracts.Email;
@@ -14,7 +13,7 @@ public sealed class IdentityOutboxDispatcher(
     IEmailSender sender,
     IClock clock,
     IDataProtectionProvider dataProtection,
-    IOptions<IdentityEmailOptions> emailOptions,
+    IdentityEmailTemplateRenderer templates,
     ILogger<IdentityOutboxDispatcher> logger)
 {
     private const int BatchSize = 20;
@@ -49,7 +48,7 @@ public sealed class IdentityOutboxDispatcher(
                         "Outbox message type does not match its payload.");
                 }
 
-                await sender.SendAsync(ToEmail(payload, emailOptions.Value), cancellationToken);
+                await sender.SendAsync(templates.Render(payload), cancellationToken);
                 message.MarkProcessed(clock.UtcNow);
             }
             catch (Exception ex)
@@ -64,36 +63,4 @@ public sealed class IdentityOutboxDispatcher(
         return messages.Count;
     }
 
-    private static EmailMessage ToEmail(
-        IdentityEmailPayload payload,
-        IdentityEmailOptions options)
-    {
-        return payload.Template switch
-        {
-            "activation" => new EmailMessage(
-                payload.To,
-                "Kích hoạt tài khoản UGTM",
-                $"<p>Xin chào {System.Net.WebUtility.HtmlEncode(payload.FullName)},</p>"
-                + $"<p><a href=\"{System.Net.WebUtility.HtmlEncode(ActivationUrl(payload.Secret, options))}\">Kích hoạt tài khoản</a></p>",
-                $"Kích hoạt tài khoản: {ActivationUrl(payload.Secret, options)}"),
-            "recovery-otp" => new EmailMessage(
-                payload.To,
-                "Mã khôi phục mật khẩu UGTM",
-                $"<p>Mã xác thực của bạn: <strong>{System.Net.WebUtility.HtmlEncode(payload.Secret)}</strong></p>",
-                $"Mã xác thực của bạn: {payload.Secret}"),
-            _ => throw new InvalidOperationException("Unknown email template.")
-        };
-    }
-
-    private static string ActivationUrl(
-        string token,
-        IdentityEmailOptions options)
-    {
-        var builder = new UriBuilder(new Uri(options.PublicWebBaseUrl, "/activate"))
-        {
-            Fragment = $"token={token}"
-        };
-
-        return builder.Uri.AbsoluteUri;
-    }
 }

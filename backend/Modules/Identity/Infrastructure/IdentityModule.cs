@@ -152,6 +152,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IAuditLogQueryReader, AuditLogQueryReader>();
         services.AddScoped<AuditIntegrationEventConsumer>();
         services.AddScoped<IIdentityEmailOutbox, IdentityEmailOutbox>();
+        services.AddSingleton<IdentityEmailTemplateRenderer>();
         services.AddScoped<IdentityOutboxDispatcher>();
         services.AddScoped<RefreshCookieService>();
         services.AddSingleton<ClientSessionMetadataProvider>();

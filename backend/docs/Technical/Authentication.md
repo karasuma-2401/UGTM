@@ -167,6 +167,11 @@ Activation và recovery ghi `IdentityOutboxMessage` trong cùng transaction vớ
 
 `IdentityOutboxProcessor` chạy mỗi 5 giây, lấy tối đa 20 message bằng `FOR UPDATE SKIP LOCKED`, gửi qua `IEmailSender`, rồi đánh dấu processed. Lỗi được retry theo exponential backoff, tối đa 60 phút. Sau khi gửi thành công, worker xóa nội dung protected payload khỏi bản ghi.
 
+`IdentityEmailTemplateRenderer` dựng HTML email-safe theo màu thương hiệu xanh-cam và luôn có
+plain-text fallback. Logo PNG thuộc Backend được đính kèm dưới dạng inline MIME resource qua
+Content-ID, không gọi tài nguyên Frontend hoặc URL bên ngoài. Tên người dùng, link và secret đều
+được encode trước khi đưa vào HTML; OTP không nằm trong subject.
+
 Data Protection key ring phải được giữ bền vững và dùng chung giữa các replica. Nếu mất key ring, các outbox message chưa gửi sẽ không thể giải mã. Docker Compose mount volume `data_protection_keys` cho mục đích này.
 
 ## Dữ liệu

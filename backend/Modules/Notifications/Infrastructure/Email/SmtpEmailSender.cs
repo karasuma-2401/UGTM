@@ -36,11 +36,20 @@ public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSende
         message.From.Add(new MailboxAddress(settings.FromName, settings.FromAddress));
         message.To.Add(MailboxAddress.Parse(email.To));
         message.Subject = email.Subject;
-        message.Body = new BodyBuilder
+        var bodyBuilder = new BodyBuilder
         {
             HtmlBody = email.HtmlBody,
             TextBody = email.TextBody
-        }.ToMessageBody();
+        };
+        foreach (var inlineImage in email.InlineImages ?? [])
+        {
+            var resource = bodyBuilder.LinkedResources.Add(
+                inlineImage.FileName,
+                inlineImage.Content);
+            resource.ContentId = inlineImage.ContentId;
+        }
+
+        message.Body = bodyBuilder.ToMessageBody();
 
         using var client = new SmtpClient();
         client.Timeout = checked(settings.TimeoutSeconds * 1000);
