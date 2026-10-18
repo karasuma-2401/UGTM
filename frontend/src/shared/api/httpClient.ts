@@ -1,11 +1,11 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { API_BASE_URL } from './config';
 import { authEvents } from './authEvents';
 import { clearCsrfToken, CSRF_HEADER_NAME, getCsrfToken } from './csrf';
 import { tokenStorage } from './tokenStorage';
 import type { ApiResponse } from './types';
 import type { LoginData } from '@/features/auth/types/auth.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5287';
 const REFRESH_TOKEN_URL = '/api/identity/auth/refresh';
 
 export const httpClient = axios.create({

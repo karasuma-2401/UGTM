@@ -8,7 +8,7 @@ on:
       - completed
     branches:
       - dev
-      - main
+      - production
   workflow_dispatch:
     inputs:
       target_env:
@@ -18,7 +18,7 @@ on:
         type: choice
         options:
           - dev
-          - main
+          - production
 
 jobs:
   deploy:
@@ -39,13 +39,14 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          APP_URL: ${{ secrets.APP_URL }}
           DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
           JWT_PRIVATE_KEY_PEM_BASE64: ${{ secrets.JWT_PRIVATE_KEY_PEM_BASE64 }}
           IDENTITY_IP_HASH_KEY: ${{ secrets.IDENTITY_IP_HASH_KEY }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_FROM_ADDRESS: ${{ secrets.SMTP_FROM_ADDRESS }}
         run: |
-          if [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ] || \
+          if [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ] || [ -z "$APP_URL" ] || \
              [ -z "$DATABASE_CONNECTION_STRING" ] || [ -z "$JWT_PRIVATE_KEY_PEM_BASE64" ] || \
              [ -z "$IDENTITY_IP_HASH_KEY" ] || [ "${#IDENTITY_IP_HASH_KEY}" -lt 32 ] || \
              [ -z "$SMTP_HOST" ] || [ -z "$SMTP_FROM_ADDRESS" ]; then
@@ -59,14 +60,14 @@ jobs:
         if: steps.check-secrets.outputs.configured == 'false'
         run: |
           echo "::warning ::Deployment skipped because required secrets are missing."
-          echo "Configure VPS_HOST, VPS_SSH_KEY, DATABASE_CONNECTION_STRING, JWT_PRIVATE_KEY_PEM_BASE64, IDENTITY_IP_HASH_KEY (at least 32 characters), SMTP_HOST and SMTP_FROM_ADDRESS in GitHub Actions secrets."
+          echo "Configure VPS_HOST, VPS_SSH_KEY, APP_URL, DATABASE_CONNECTION_STRING, JWT_PRIVATE_KEY_PEM_BASE64, IDENTITY_IP_HASH_KEY (at least 32 characters), SMTP_HOST and SMTP_FROM_ADDRESS in GitHub Actions secrets."
 
       - name: Deploy to VPS via SSH
         if: steps.check-secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.2.0
         env:
           DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
-          APP_URL: ${{ secrets.APP_URL || 'http://localhost' }}
+          APP_URL: ${{ secrets.APP_URL }}
           JWT_PRIVATE_KEY_PEM_BASE64: ${{ secrets.JWT_PRIVATE_KEY_PEM_BASE64 }}
           IDENTITY_IP_HASH_KEY: ${{ secrets.IDENTITY_IP_HASH_KEY }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
@@ -107,8 +108,8 @@ jobs:
                   - ASPNETCORE_ENVIRONMENT=Production
                   - ASPNETCORE_HTTP_PORTS=8080
                   - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING:?DATABASE_CONNECTION_STRING must be configured}
-                  - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
-                  - Identity__Email__PublicWebBaseUrl=${APP_URL:-http://localhost}
+                  - Cors__AllowedOrigins__0=${APP_URL:?APP_URL must be configured}
+                  - Identity__Email__PublicWebBaseUrl=${APP_URL:?APP_URL must be configured}
                   - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
                   - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:?IDENTITY_IP_HASH_KEY must be configured}
                   - Proxy__KnownProxies__0=172.29.0.10
