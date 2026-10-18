@@ -31,6 +31,7 @@ using UGTM.Modules.Identity.Application.Recovery;
 using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
 using UGTM.Modules.Identity.Application.Security;
+using UGTM.Modules.Identity.Application.Sessions;
 using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
 using UGTM.Modules.Identity.Application.Users.ImportUsers;
@@ -153,6 +154,12 @@ public sealed class IdentityModule : IModule
         services.AddScoped<RefreshSessionHandler>();
         services.AddScoped<LogoutHandler>();
         services.AddScoped<GetCurrentUserHandler>();
+        services.AddScoped<GetMySessionsHandler>();
+        services.AddScoped<RevokeMySessionHandler>();
+        services.AddScoped<RevokeAllMySessionsHandler>();
+        services.AddScoped<GetUserSessionsHandler>();
+        services.AddScoped<RevokeUserSessionHandler>();
+        services.AddScoped<RevokeAllUserSessionsHandler>();
         services.AddScoped<ChangePasswordHandler>();
         services.AddScoped<StartPasswordRecoveryHandler>();
         services.AddScoped<VerifyRecoveryOtpHandler>();
@@ -218,6 +225,7 @@ public sealed class IdentityModule : IModule
     {
         endpoints.MapIdentityAuthEndpoints();
         endpoints.MapIdentityUserEndpoints();
+        endpoints.MapIdentitySessionManagementEndpoints();
         endpoints.MapIdentityRolePermissionEndpoints();
         endpoints.MapIdentityAuditLogEndpoints();
 

@@ -1,6 +1,6 @@
 # Authentication backend
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 13/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 18/10/2026
 
 Tài liệu này giải thích phần xác thực đang chạy trong module Identity: code nằm ở đâu, dữ liệu đi qua hệ thống thế nào và cần cấu hình gì khi vận hành. Request/response công khai được chốt riêng tại [Identity API](../../../docs/ApiContract/IdentityApiContract.md).
 
@@ -12,7 +12,8 @@ Backend hỗ trợ:
 - kích hoạt tài khoản bằng magic link và đặt mật khẩu lần đầu;
 - đăng nhập bằng email hoặc mã sinh viên;
 - JWT access token và phiên refresh token có rotation;
-- đăng xuất, đổi mật khẩu, quên mật khẩu bằng OTP;
+- đăng xuất, quản lý các phiên cá nhân, đổi mật khẩu và quên mật khẩu bằng OTP;
+- quản trị viên xem/thu hồi phiên của tài khoản khác bằng permission và Audit Log;
 - roles, permissions và policy động;
 - rate limiting theo IP;
 - email qua transactional outbox và SMTP.
@@ -30,6 +31,7 @@ backend/Modules/Identity/
   Application/
     Activation/               # validate, complete, resend magic link
     Authentication/           # login, refresh, logout, me, change password
+    Sessions/                 # liệt kê và thu hồi phiên cá nhân/quản trị
     Provisioning/             # cấp tài khoản sinh viên
     Recovery/                 # start, verify OTP, reset password
     Security/                 # contract token/password và policy thời hạn
@@ -119,6 +121,8 @@ Activation token, OTP khôi phục và reset grant dùng chung `OneTimeChallenge
 
 `/logout` revoke session hiện tại. Đổi hoặc reset mật khẩu revoke mọi session của người dùng và xóa refresh cookie trên trình duyệt đang gọi.
 
+Người dùng có thể gọi `GET /sessions`, `DELETE /sessions/{sessionId}` hoặc `DELETE /sessions` để xem và thu hồi phiên của chính mình. Endpoint quản trị dưới `/api/users/{userId}/sessions` yêu cầu `identity.sessions.revoke`; thao tác thu hồi quản trị dùng lý do `AdministratorRevoked` và luôn ghi Audit Log. Repository cập nhật có điều kiện để một phiên chỉ được thu hồi thành công một lần khi còn hiệu lực.
+
 ### Khôi phục mật khẩu
 
 1. `/recovery/start` tạo OTP và outbox email cho tài khoản active.
@@ -143,10 +147,13 @@ Policy theo permission có tên `Permission:<permission-code>`, ví dụ:
 endpoint.RequireAuthorization("Permission:identity.users.read");
 ```
 
-`PermissionPolicyProvider` tạo policy động và `PermissionAuthorizationHandler` kiểm tra claim `permission`. Module hiện khai báo ba mã Identity:
+`PermissionPolicyProvider` tạo policy động và `PermissionAuthorizationHandler` kiểm tra claim `permission`. Module hiện khai báo sáu mã Identity:
 
 - `identity.users.read`
 - `identity.users.manage`
+- `identity.users.import`
+- `identity.permissions.read`
+- `identity.roles.manage`
 - `identity.sessions.revoke`
 
 Các endpoint auth hiện chỉ dùng authenticated-user policy. Policy theo phân công, deadline, trạng thái đề tài hoặc quyền sửa điểm thuộc module sở hữu nghiệp vụ và chưa được xây trong Identity.
@@ -172,7 +179,7 @@ Migration [`CompleteIdentityAuthentication`](../../Database.Migrations/Migration
 
 `identity.user` có thêm normalized email, account status, thời điểm kích hoạt/đăng nhập/đổi mật khẩu, lockout, security stamp và concurrency stamp. `IdentityUnitOfWork` dùng execution strategy cùng transaction cho các handler cần cập nhật nhiều bản ghi. Repository dùng row lock cho refresh token và challenge để chống xử lý đồng thời.
 
-`identity.audit_log` đã có model mới cho actor, session, request và metadata; các handler auth hiện chưa ghi audit event vào bảng này.
+`identity.audit_log` lưu actor, session, request và metadata. Các thao tác thu hồi phiên qua Session Management ghi `Identity.Session.Revoked` hoặc `Identity.User.SessionsRevoked`; audit toàn bộ sự kiện login/recovery chưa thuộc phạm vi hiện tại.
 
 ## Cấu hình
 
@@ -227,7 +234,7 @@ dotnet test UGTM.sln
 dotnet format UGTM.sln --verify-no-changes
 ```
 
-Identity có 22 test bao phủ domain state, login handler, password hashing, authorization, rate limiting và hai trường hợp tranh chấp refresh/challenge trên PostgreSQL thật bằng Testcontainers.
+Identity có test bao phủ domain state, login/session handler, password hashing, authorization, rate limiting và các trường hợp tranh chấp refresh/challenge trên PostgreSQL thật bằng Testcontainers.
 
 Khi điều tra lỗi:
 
@@ -239,12 +246,10 @@ Khi điều tra lỗi:
 
 ## Giới hạn đã biết
 
-- Chưa có HTTP endpoint cấp tài khoản/import danh sách sinh viên.
 - Chưa có Google login hoặc SSO.
 - Chưa có màn hình frontend cho các luồng auth.
 - Rate limiter dùng bộ nhớ từng instance; triển khai nhiều replica chưa có quota dùng chung.
-- Audit log chưa được ghi từ các auth handler.
-- Chưa có API quản trị user, role, permission và revoke session.
+- Audit log chưa bao phủ toàn bộ sự kiện login, refresh và recovery; Session Management đã ghi audit cho các thao tác thu hồi.
 - Login trả lỗi riêng cho tài khoản pending, suspended và disabled trước khi kiểm tra mật khẩu; cần thống nhất lỗi nếu mô hình đe dọa yêu cầu chống dò trạng thái tài khoản.
 - Response chứa token chưa đặt `Cache-Control: no-store` ở middleware.
 - `IpAddressHash` của session đã có trong model nhưng login hiện chưa ghi giá trị.

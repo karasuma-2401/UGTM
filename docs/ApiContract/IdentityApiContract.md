@@ -1,6 +1,6 @@
 # Authentication API
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 13/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 18/10/2026
 **Base path:** `/api/identity/auth`
 
 Contract này mô tả đúng các endpoint Identity đang có trong backend. Source đối chiếu chính là thư mục [`Infrastructure/Endpoints`](../../backend/Modules/Identity/Infrastructure/Endpoints). Hệ thống chưa cung cấp API đăng nhập Google, SSO hoặc API công khai để tạo tài khoản.
@@ -71,6 +71,9 @@ Cookie CSRF là `HttpOnly`; client lấy request token từ body của `/csrf`, 
 | POST | `/activation/complete` | — | — | 5 yêu cầu/10 phút/IP |
 | POST | `/activation/resend` | — | — | 5 yêu cầu/10 phút/IP |
 | GET | `/me` | Có | — | — |
+| GET | `/sessions` | Có | — | — |
+| DELETE | `/sessions/{sessionId}` | Có | — | — |
+| DELETE | `/sessions` | Có | — | — |
 | POST | `/refresh` | — | Có | — |
 | POST | `/logout` | — | Có | — |
 | POST | `/change-password` | Có | — | — |
@@ -120,6 +123,21 @@ export interface AuthenticatedSession {
   accessToken: string;
   accessTokenExpiresAt: string;
   user: UserProfile;
+}
+
+export interface Session {
+  id: string;
+  authenticatedAt: string;
+  lastSeenAt: string;
+  idleExpiresAt: string;
+  absoluteExpiresAt: string;
+  userAgentSummary: string | null;
+  isCurrent: boolean;
+}
+
+export interface RevokeSessionsResult {
+  revokedCount: number;
+  currentSessionRevoked: boolean;
 }
 ```
 
@@ -262,6 +280,29 @@ Header: `Authorization: Bearer <access-token>`
 
 **200 OK:** `ApiResponse<UserProfile>` với cùng cấu trúc `user` của login. Dữ liệu roles và permissions được đọc lại từ database. Backend cũng kiểm tra phiên, trạng thái tài khoản và security stamp trước khi chạy endpoint.
 
+### `GET /sessions`
+
+Header: `Authorization: Bearer <access-token>`. Không có body và không cần CSRF token.
+
+**200 OK:** `ApiResponse<Session[]>`. Chỉ các phiên chưa bị thu hồi, chưa hết idle timeout và chưa hết absolute timeout được trả về; danh sách sắp xếp theo `lastSeenAt` giảm dần. `isCurrent` xác định phiên gắn với access token đang gọi API. Backend không trả refresh token hoặc IP hash.
+
+### `DELETE /sessions/{sessionId}`
+
+Thu hồi một phiên đang hoạt động thuộc chính người dùng hiện tại. Không có body và không cần CSRF token.
+
+**200 OK:** `ApiResponse<RevokeSessionsResult>` với `revokedCount = 1`. Nếu `currentSessionRevoked = true`, backend xóa refresh cookie và client phải xóa access token rồi chuyển về màn hình đăng nhập.
+
+| Status | Code | Khi nào xảy ra |
+| --- | --- | --- |
+| 401 | body rỗng hoặc `Identity.InvalidSession` | Bearer token/phiên gọi API không hợp lệ |
+| 404 | `Identity.SessionNotFound` | Phiên không tồn tại, đã hết hạn/thu hồi hoặc thuộc người dùng khác |
+
+### `DELETE /sessions`
+
+Thu hồi toàn bộ phiên đang hoạt động của người dùng hiện tại, bao gồm phiên đang gọi API. Không có body và không cần CSRF token.
+
+**200 OK:** `ApiResponse<RevokeSessionsResult>`. Backend xóa refresh cookie hiện tại. Sau response này, client phải xóa access token và hồ sơ đang giữ; mọi token thuộc các phiên vừa thu hồi sẽ bị từ chối ở request kế tiếp.
+
 ### `POST /refresh`
 
 Không có request body. Backend đọc refresh token từ cookie.
@@ -396,6 +437,7 @@ OTP cho phép tối đa 5 lần thử. Verify thành công tiêu thụ OTP và c
 | `Identity.WeakPassword` | 400 | Mật khẩu không đạt chính sách |
 | `Identity.CurrentPasswordIncorrect` | 400 | Mật khẩu hiện tại sai |
 | `Identity.InvalidSession` | 401 | Phiên không còn hợp lệ |
+| `Identity.SessionNotFound` | 404 | Phiên không tồn tại, không còn hoạt động hoặc không thuộc người dùng được phép thao tác |
 | `Identity.RateLimitExceeded` | 429 | Quá nhiều request từ cùng IP |
 
 `Identity.DuplicateAccount` và `Identity.UserNotFound` được định nghĩa cho application layer, hiện chưa được expose qua HTTP.

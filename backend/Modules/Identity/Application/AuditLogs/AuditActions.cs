@@ -8,6 +8,8 @@ public static class AuditActions
     public const string UserRolesChanged = "Identity.User.RolesChanged";
     public const string UsersImported = "Identity.Users.Imported";
     public const string RolePermissionsChanged = "Identity.Role.PermissionsChanged";
+    public const string SessionRevoked = "Identity.Session.Revoked";
+    public const string UserSessionsRevoked = "Identity.User.SessionsRevoked";
 }
 
 public static class AuditOutcomes
