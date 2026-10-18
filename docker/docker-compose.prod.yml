@@ -6,10 +6,11 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_HTTP_PORTS=8080
-      - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING}
+      - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING:?DATABASE_CONNECTION_STRING must be configured}
       - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
       - Identity__Email__PublicWebBaseUrl=${APP_URL:-http://localhost}
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
+      - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:?IDENTITY_IP_HASH_KEY must be configured}
       - Proxy__KnownProxies__0=172.29.0.10
       - Proxy__KnownProxies__1=::ffff:172.29.0.10
       - Notifications__Smtp__Host=${SMTP_HOST:?SMTP_HOST must be configured}

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
 
 namespace UGTM.Modules.Identity.Tests.Infrastructure;
@@ -101,5 +102,33 @@ public sealed class AuthorizationTests
         await new PermissionAuthorizationHandler().HandleAsync(context);
 
         Assert.False(context.HasSucceeded);
+    }
+
+    [Theory]
+    [InlineData(PermissionCodes.IdentityUsersRead, true)]
+    [InlineData(PermissionCodes.IdentityUsersImport, true)]
+    [InlineData(PermissionCodes.IdentityUsersManage, false)]
+    [InlineData(PermissionCodes.IdentityPermissionsRead, false)]
+    [InlineData(PermissionCodes.IdentityRolesManage, false)]
+    [InlineData(PermissionCodes.IdentitySessionsRevoke, false)]
+    public async Task Academic_affairs_permission_matrix_is_enforced(
+        string requestedPermission,
+        bool expectedAllowed)
+    {
+        var requirement = new PermissionRequirement(requestedPermission);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.Role, "AcademicAffairs"),
+            new Claim("permission", PermissionCodes.IdentityUsersRead),
+            new Claim("permission", PermissionCodes.IdentityUsersImport)
+        ], "Bearer"));
+        var context = new AuthorizationHandlerContext(
+            [requirement],
+            principal,
+            resource: null);
+
+        await new PermissionAuthorizationHandler().HandleAsync(context);
+
+        Assert.Equal(expectedAllowed, context.HasSucceeded);
     }
 }

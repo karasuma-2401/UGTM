@@ -84,7 +84,7 @@ Từ thư mục gốc:
 
 ```powershell
 Copy-Item .env.example .env
-# Điền DATABASE_CONNECTION_STRING và SMTP_* trong .env.
+# Điền DATABASE_CONNECTION_STRING, IDENTITY_IP_HASH_KEY và SMTP_* trong .env.
 ./scripts/GenerateDevelopmentJwtKey.ps1
 docker compose up -d backend mailpit minio redis rabbitmq
 ```
@@ -107,6 +107,8 @@ Nếu bỏ các biến `SMTP_*`, Compose dùng Mailpit làm fallback Development
 để chọn đúng `StartTls`/`SslOnConnect` và kiểm tra luồng activation hoặc recovery.
 
 Dừng môi trường bằng `docker compose down`. File cấu hình production: [docker/docker-compose.prod.yml](docker/docker-compose.prod.yml).
+Production bắt buộc có `IDENTITY_IP_HASH_KEY` tối thiểu 32 ký tự; xem
+[checklist nghiệm thu Identity](backend/docs/Technical/IdentityVerificationChecklist.md) trước khi deploy.
 
 ## Cấu trúc và CI
 

@@ -245,6 +245,10 @@ dotnet format UGTM.sln --verify-no-changes
 
 Identity có test bao phủ domain state, login/session handler, password hashing, authorization, rate limiting và các trường hợp tranh chấp refresh/challenge trên PostgreSQL thật bằng Testcontainers.
 
+Giai đoạn nghiệm thu cuối còn khóa toàn bộ chuỗi HTTP activation → login → refresh → revoke →
+recovery/reset (bao gồm CSRF/cookie), cùng retry email outbox trên PostgreSQL thật. Checklist release nằm tại
+[Backend Identity verification checklist](IdentityVerificationChecklist.md).
+
 Khi điều tra lỗi:
 
 - `401` ngay cả khi JWT còn hạn: kiểm tra session, account status và security stamp;
