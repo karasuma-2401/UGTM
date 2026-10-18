@@ -6,7 +6,14 @@ using UGTM.Modules.Notifications.Contracts.Email;
 
 namespace UGTM.Modules.Notifications.Infrastructure.Email;
 
-public sealed class SmtpOptions
+public enum SmtpSecurityMode
+{
+    None,
+    StartTls,
+    SslOnConnect
+}
+
+public sealed record SmtpOptions
 {
     public const string SectionName = "Notifications:Smtp";
 
@@ -16,7 +23,8 @@ public sealed class SmtpOptions
     public required string FromName { get; init; }
     public string? Username { get; init; }
     public string? Password { get; init; }
-    public bool UseStartTls { get; init; } = true;
+    public SmtpSecurityMode Security { get; init; } = SmtpSecurityMode.StartTls;
+    public int TimeoutSeconds { get; init; } = 30;
 }
 
 public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSender
@@ -35,12 +43,18 @@ public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSende
         }.ToMessageBody();
 
         using var client = new SmtpClient();
+        client.Timeout = checked(settings.TimeoutSeconds * 1000);
+        client.CheckCertificateRevocation = true;
         await client.ConnectAsync(
             settings.Host,
             settings.Port,
-            settings.UseStartTls
-                ? SecureSocketOptions.StartTls
-                : SecureSocketOptions.Auto,
+            settings.Security switch
+            {
+                SmtpSecurityMode.None => SecureSocketOptions.None,
+                SmtpSecurityMode.StartTls => SecureSocketOptions.StartTls,
+                SmtpSecurityMode.SslOnConnect => SecureSocketOptions.SslOnConnect,
+                _ => throw new InvalidOperationException("Unsupported SMTP security mode.")
+            },
             cancellationToken);
 
         if (!string.IsNullOrWhiteSpace(settings.Username))

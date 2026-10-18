@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.Notifications.Contracts.Email;
 using UGTM.Modules.Notifications.Infrastructure.Email;
@@ -20,15 +23,16 @@ public sealed class NotificationsModule : IModule
         services.AddModuleDbContext<NotificationsDbContext>(configuration);
         services.AddOptions<SmtpOptions>()
             .Bind(configuration.GetSection(SmtpOptions.SectionName))
-            .Validate(options => !string.IsNullOrWhiteSpace(options.Host),
-                "SMTP host is required.")
-            .Validate(options => !string.IsNullOrWhiteSpace(options.FromAddress),
-                "SMTP from address is required.")
-            .Validate(options => !string.IsNullOrWhiteSpace(options.FromName),
-                "SMTP from name is required.")
-            .Validate(options => options.Port is > 0 and <= 65535,
-                "SMTP port must be between 1 and 65535.")
             .ValidateOnStart();
+        var environmentName = configuration["ASPNETCORE_ENVIRONMENT"]
+                              ?? configuration["DOTNET_ENVIRONMENT"]
+                              ?? Environments.Production;
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IValidateOptions<SmtpOptions>>(
+                new SmtpOptionsValidator(allowUnencrypted: string.Equals(
+                    environmentName,
+                    Environments.Development,
+                    StringComparison.OrdinalIgnoreCase))));
         services.AddScoped<IEmailSender, SmtpEmailSender>();
     }
 
