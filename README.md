@@ -120,4 +120,4 @@ Production bắt buộc có `IDENTITY_IP_HASH_KEY` tối thiểu 32 ký tự; xe
 - `frontend`: SPA; [hướng dẫn frontend](frontend/README.md).
 - `backend/docs`: kiến trúc backend, tài liệu kỹ thuật và các sơ đồ PlantUML.
 
-GitHub Actions chạy trên `dev`/`main`: backend format, Gitleaks, build/test, Docker build; frontend lint/typecheck/build và Docker build. Workflow publish đóng gói image, quét Trivy và đẩy GHCR; deploy SSH được bỏ qua khi chưa có secrets VPS. File workflow thể hiện cấu hình tự động hóa, không chứng minh dịch vụ đã được triển khai.
+GitHub Actions chạy trên `dev`/`production`: backend format, Gitleaks, build/test, Docker build; frontend lint/typecheck/build và Docker build. Workflow publish đóng gói image, quét Trivy và đẩy GHCR; deploy SSH được bỏ qua khi chưa có secrets VPS. File workflow thể hiện cấu hình tự động hóa, không chứng minh dịch vụ đã được triển khai.

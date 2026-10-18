@@ -4,7 +4,7 @@ on:
   pull_request:
     branches:
       - dev
-      - main
+      - production
     paths:
       - "backend/**"
       - "docker/**"
@@ -16,7 +16,7 @@ on:
   push:
     branches:
       - dev
-      - main
+      - production
     paths:
       - "backend/**"
       - "docker/**"
@@ -142,6 +142,7 @@ jobs:
 
       - name: Validate production Compose configuration
         env:
+          APP_URL: https://frontend.example.test
           DATABASE_CONNECTION_STRING: Host=database;Database=ugtm;Username=ugtm;Password=ci-only
           IDENTITY_IP_HASH_KEY: ci-only-identity-ip-hash-key-32-characters
           JWT_PRIVATE_KEY_FILE: /tmp/ci-only-jwt-private.pem
