@@ -62,6 +62,10 @@ public static class IdentityErrors
         "Identity.InvalidSession",
         "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
 
+    public static readonly Error SessionNotFound = Error.NotFound(
+        "Identity.SessionNotFound",
+        "Không tìm thấy phiên đăng nhập đang hoạt động.");
+
     public static readonly Error InvalidInput = Error.Validation(
         "Identity.InvalidInput",
         "Dữ liệu đầu vào không hợp lệ.");

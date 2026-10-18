@@ -16,6 +16,7 @@ Tài liệu này đặc tả chi tiết các endpoint Quản lý Người dùng 
   - Xem danh sách: `identity.users.read` hoặc vai trò `Admin`.
   - Quản trị (tạo, sửa, đổi trạng thái): `identity.users.manage` hoặc vai trò `Admin`.
   - Import Excel: `identity.users.import` hoặc vai trò `Admin`.
+  - Quản lý phiên của tài khoản khác: `identity.sessions.revoke` hoặc vai trò `Admin`.
   > [!NOTE]
   > **Cơ chế Admin Role Bypass:** Hệ thống tự động cho phép người dùng có vai trò `Admin` (Role claim: `Admin`) thực thi toàn bộ các API quản lý người dùng mà không phụ thuộc vào việc tài khoản đó có được gán claim permission tương ứng trong cơ sở dữ liệu hay không.
 
@@ -63,6 +64,9 @@ Các phản hồi từ tầng pipeline ASP.NET Core & OpenApi/Scalar:
 | `GET` | `/api/users/import-template?role=Student` | `identity.users.import` hoặc vai trò `Admin` | Tải file `.xlsx` mẫu theo loại tài khoản |
 | `PUT` | `/api/users/{id}` | `identity.users.manage` hoặc vai trò `Admin` | Cập nhật thông tin hồ sơ và danh sách vai trò |
 | `PATCH` | `/api/users/{id}/status` | `identity.users.manage` hoặc vai trò `Admin` | Khóa / Mở khóa / Tạm ngưng tài khoản người dùng |
+| `GET` | `/api/users/{id}/sessions` | `identity.sessions.revoke` hoặc vai trò `Admin` | Xem các phiên còn hoạt động của người dùng |
+| `DELETE` | `/api/users/{id}/sessions/{sessionId}` | `identity.sessions.revoke` hoặc vai trò `Admin` | Thu hồi một phiên của người dùng |
+| `DELETE` | `/api/users/{id}/sessions` | `identity.sessions.revoke` hoặc vai trò `Admin` | Thu hồi toàn bộ phiên của người dùng |
 
 ---
 
@@ -399,6 +403,46 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 
 ---
 
+### 6. Quản lý phiên đăng nhập của người dùng
+
+Ba endpoint dưới đây yêu cầu `identity.sessions.revoke` hoặc vai trò `Admin`. Chúng không nhận body và không yêu cầu CSRF token vì xác thực bằng Bearer token.
+
+#### `GET /api/users/{id}/sessions`
+
+Trả `ApiResponse<Session[]>`, chỉ gồm các phiên chưa bị thu hồi và chưa hết hạn, sắp xếp theo `lastSeenAt` giảm dần. Response không chứa refresh token hoặc IP hash.
+
+#### `DELETE /api/users/{id}/sessions/{sessionId}`
+
+Thu hồi đúng một phiên với lý do `AdministratorRevoked` và ghi Audit Log `Identity.Session.Revoked`.
+
+#### `DELETE /api/users/{id}/sessions`
+
+Thu hồi toàn bộ phiên đang hoạt động với lý do `AdministratorRevoked`, trả số phiên thực tế đã thu hồi và ghi Audit Log `Identity.User.SessionsRevoked`. Kết quả vẫn là `200 OK` nếu tài khoản không có phiên hoạt động.
+
+Response thu hồi:
+
+```json
+{
+  "success": true,
+  "data": {
+    "revokedCount": 2,
+    "currentSessionRevoked": false
+  },
+  "error": null
+}
+```
+
+Nếu Admin thao tác trên chính mình và thu hồi phiên đang gọi API, `currentSessionRevoked` là `true`, refresh cookie hiện tại bị xóa và access token sẽ bị từ chối ở request kế tiếp.
+
+| HTTP Status | Mã lỗi | Nguyên nhân |
+| :--- | :--- | :--- |
+| 401 | — | Thiếu Access Token hoặc token/phiên không hợp lệ |
+| 403 | — | Không có quyền `identity.sessions.revoke` và không phải Admin |
+| 404 | `Identity.UserNotFound` | Không tìm thấy tài khoản mục tiêu |
+| 404 | `Identity.SessionNotFound` | Phiên không tồn tại, đã hết hạn/thu hồi hoặc không thuộc tài khoản mục tiêu |
+
+---
+
 ## Danh mục Mã lỗi (Error Codes)
 
 | Mã lỗi | HTTP Status | Diễn giải |
@@ -417,6 +461,7 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 | `Identity.CannotDisableLastAdmin` | 400 | Không thể tạm ngưng hoặc vô hiệu hóa tài khoản Quản trị viên (Admin) đang hoạt động cuối cùng |
 | `Identity.CannotRemoveLastAdminRole` | 400 | Không thể gỡ bỏ vai trò Quản trị viên (Admin) khỏi tài khoản Admin cuối cùng |
 | `Identity.AdminAlreadyExists` | 409 | Hệ thống đã có tài khoản Quản trị viên (Admin) |
+| `Identity.SessionNotFound` | 404 | Không tìm thấy phiên đang hoạt động thuộc tài khoản mục tiêu |
 
 ---
 
@@ -464,6 +509,21 @@ export interface UpdateUserRequest {
 
 export interface UpdateUserStatusRequest {
   status: 'Active' | 'Suspended' | 'Disabled';
+}
+
+export interface Session {
+  id: string;
+  authenticatedAt: string;
+  lastSeenAt: string;
+  idleExpiresAt: string;
+  absoluteExpiresAt: string;
+  userAgentSummary: string | null;
+  isCurrent: boolean;
+}
+
+export interface RevokeSessionsResult {
+  revokedCount: number;
+  currentSessionRevoked: boolean;
 }
 ```
 

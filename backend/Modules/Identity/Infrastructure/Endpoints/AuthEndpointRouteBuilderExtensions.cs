@@ -11,7 +11,8 @@ public static class AuthEndpointRouteBuilderExtensions
         this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/identity/auth")
-            .WithTags("Identity.Auth");
+            .WithTags("Identity.Auth")
+            .AddEndpointFilter<SensitiveResponseHeadersFilter>();
 
         group.MapGet("/csrf", CsrfEndpoint.Handle)
             .WithSummary("Khởi tạo CSRF token cho các thao tác xác thực dùng cookie")
@@ -41,8 +42,8 @@ public static class AuthEndpointRouteBuilderExtensions
                 trong `data`; refresh token chỉ được lưu trong cookie HttpOnly và không xuất hiện trong response body.
                 - Thành công: 200 OK kèm thông tin phiên đăng nhập.
                 - Thiếu hoặc sai CSRF token: 400 Bad Request.
-                - Sai identifier hoặc mật khẩu: 401 Unauthorized (`Identity.InvalidCredentials`).
-                - Tài khoản đang chờ kích hoạt, tạm ngưng hoặc đã vô hiệu hóa: 403 Forbidden.
+                - Identifier/mật khẩu sai hoặc tài khoản không ở trạng thái cho phép đăng nhập:
+                  401 Unauthorized (`Identity.InvalidCredentials`) để hạn chế dò trạng thái tài khoản.
                 - Tài khoản bị khóa tạm thời sau 5 lần đăng nhập sai liên tiếp: 429 Too Many Requests (`Identity.AccountLocked`).
                 - Vượt quá 10 request/phút/IP: 429 Too Many Requests (`Identity.RateLimitExceeded`).
                 """)

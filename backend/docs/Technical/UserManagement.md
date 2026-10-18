@@ -13,6 +13,7 @@ Backend phân hệ User Management hỗ trợ:
 - Cập nhật thông tin hồ sơ (Họ tên, Số điện thoại, Mã người dùng) và đồng bộ danh sách vai trò hệ thống;
 - Cập nhật trạng thái tài khoản: Khóa (`Disabled`), Tạm ngưng (`Suspended`) hoặc Mở khóa (`Active`);
 - Cơ chế thu hồi phiên tức thời: Mọi thao tác khóa tài khoản hoặc thay đổi vai trò đều kích hoạt xoay `SecurityStamp`, khiến các token JWT đang lưu hành bị `SessionValidator` từ chối ngay lập tức;
+- Quản trị phiên của từng tài khoản: xem, thu hồi một phiên hoặc toàn bộ phiên bằng `identity.sessions.revoke`, kèm Audit Log;
 - Phân quyền theo Policy động `Permission:identity.users.read` và `Permission:identity.users.manage`.
 - Bảo vệ Admin cuối cùng bằng khóa transaction: không thể đồng thời gỡ vai trò, tạm ngưng hoặc vô hiệu hóa toàn bộ Admin đang hoạt động.
 
@@ -124,6 +125,7 @@ Nếu tài khoản mục tiêu là Admin đang hoạt động, thao tác chuyể
 Phân hệ sử dụng cơ chế Dynamic Permission Policy kết hợp phân quyền theo vai trò:
 - Endpoint `GET /api/users` yêu cầu: `Permission:identity.users.read`.
 - Các endpoint `POST`, `PUT`, `PATCH` yêu cầu: `Permission:identity.users.manage`.
+- Các endpoint `/api/users/{userId}/sessions` yêu cầu: `Permission:identity.sessions.revoke`.
 - **Cơ chế Phân quyền (PBAC & Admin Bypass):** [`PermissionAuthorizationHandler`](../../Modules/Identity/Infrastructure/Authorization/PermissionAuthorizationHandler.cs) kiểm tra claim `permission` được nạp từ cơ sở dữ liệu vào JWT token. Đặc biệt, người dùng sở hữu vai trò `Admin` (Role claim: `Admin`) được tự động cấp quyền thực thi tất cả các API mà không cần phải gán quyền thủ công trong cơ sở dữ liệu mỗi khi có quyền mới phát sinh.
 
 Migration Identity tạo danh mục 6 quyền bằng `permission_code` (không phụ thuộc ID cố định) và chỉ bổ sung các gán mặc định còn thiếu:

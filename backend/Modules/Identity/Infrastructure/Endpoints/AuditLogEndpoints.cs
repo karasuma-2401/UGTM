@@ -18,8 +18,10 @@ public static class AuditLogEndpoints
             .WithDescription("""
                 Lấy danh sách Audit Log có hỗ trợ phân trang và kết hợp nhiều điều kiện lọc:
                 - `actorUserId`: ID người dùng thực hiện thao tác.
-                - `action`: Mã hành động nghiệp vụ, ví dụ `Identity.User.Created` hoặc `Identity.Users.Imported`.
-                - `targetType`: Loại đối tượng chịu tác động, ví dụ `User` hoặc `Role`.
+                - `action`: Mã hành động nghiệp vụ, ví dụ `Identity.User.Created`, `Identity.Authentication.Login`
+                  hoặc `Identity.Session.RefreshTokenReuseDetected`.
+                - `targetType`: Loại đối tượng chịu tác động, ví dụ `User`, `Role`, `AuthenticationSession`
+                  hoặc `Authentication` đối với request ẩn danh chưa xác định được tài khoản.
                 - `outcome`: Kết quả xử lý, chỉ nhận `Success`, `Denied` hoặc `Failed` và không phân biệt hoa thường.
                 - `fromUtc`: Thời điểm bắt đầu theo UTC, được tính trong khoảng kết quả.
                 - `toUtc`: Thời điểm kết thúc theo UTC, là cận trên không bao gồm.

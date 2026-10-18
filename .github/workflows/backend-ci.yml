@@ -7,16 +7,24 @@ on:
       - main
     paths:
       - "backend/**"
+      - "docker/**"
+      - "docker-compose.yml"
+      - ".env.example"
       - "UGTM.sln"
       - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/deploy.yml"
   push:
     branches:
       - dev
       - main
     paths:
       - "backend/**"
+      - "docker/**"
+      - "docker-compose.yml"
+      - ".env.example"
       - "UGTM.sln"
       - ".github/workflows/backend-ci.yml"
+      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 concurrency:
@@ -131,3 +139,12 @@ jobs:
 
       - name: Build API Docker image
         run: docker build -f backend/host/Api/Dockerfile backend
+
+      - name: Validate production Compose configuration
+        env:
+          DATABASE_CONNECTION_STRING: Host=database;Database=ugtm;Username=ugtm;Password=ci-only
+          IDENTITY_IP_HASH_KEY: ci-only-identity-ip-hash-key-32-characters
+          JWT_PRIVATE_KEY_FILE: /tmp/ci-only-jwt-private.pem
+          SMTP_HOST: smtp.example.test
+          SMTP_FROM_ADDRESS: no-reply@example.test
+        run: docker compose -f docker/docker-compose.prod.yml config --quiet

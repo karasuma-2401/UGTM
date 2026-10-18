@@ -13,4 +13,10 @@
     <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="Notifications\Assets\ugtm-logo.png" />
+    <EmbeddedResource Include="Notifications\Assets\ugtm-logo.png"
+                      LogicalName="UGTM.Identity.EmailAssets.ugtm-logo.png" />
+  </ItemGroup>
+
 </Project>

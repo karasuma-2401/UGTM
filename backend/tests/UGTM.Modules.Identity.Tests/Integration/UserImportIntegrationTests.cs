@@ -67,6 +67,7 @@ public sealed class UserImportIntegrationTests(PostgreSqlFixture fixture)
                     new OpaqueTokenService(),
                     new IdentityEmailOutbox(activationDb, new EphemeralDataProtectionProvider()),
                     new IdentityUnitOfWork(activationDb),
+                    new NoOpAuditLogWriter(),
                     new FixedClock(),
                     new IdentitySecurityPolicy());
 

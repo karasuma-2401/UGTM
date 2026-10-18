@@ -8,6 +8,7 @@ using UGTM.Modules.Identity.Application.Authentication.Logout;
 using UGTM.Modules.Identity.Application.Authentication.GetCurrentUser;
 using UGTM.Modules.Identity.Application.Authentication.RefreshSession;
 using UGTM.Modules.Identity.Application.Common;
+using UGTM.Modules.Identity.Application.Sessions;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
 
 namespace UGTM.Modules.Identity.Infrastructure.Endpoints;
@@ -30,6 +31,53 @@ public static class SessionEndpoints
                   kể cả khi thời hạn JWT chưa kết thúc.
                 """)
             .RequireAuthorization();
+        group.MapGet("/sessions", GetMySessionsAsync)
+            .WithSummary("Liệt kê các phiên đăng nhập đang hoạt động")
+            .WithDescription("""
+                Trả danh sách phiên đăng nhập còn hiệu lực của người dùng hiện tại, sắp xếp theo lần hoạt động gần nhất.
+                Mỗi phần tử gồm mã phiên, thời điểm đăng nhập, lần hoạt động gần nhất, thời hạn idle/absolute,
+                thông tin thiết bị rút gọn và cờ `isCurrent` để nhận biết phiên đang gọi API.
+
+                Request không có body và không yêu cầu CSRF token.
+                Yêu cầu header `Authorization: Bearer <accessToken>`.
+                - Thành công: 200 OK kèm danh sách `SessionDto`; danh sách có thể rỗng nếu không còn phiên hợp lệ.
+                - Thiếu token, token sai/hết hạn hoặc phiên hiện tại đã bị thu hồi: 401 Unauthorized.
+                """)
+            .RequireAuthorization()
+            .Produces<ApiResponse<IReadOnlyList<SessionDto>>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized);
+        group.MapDelete("/sessions/{sessionId:guid}", RevokeMySessionAsync)
+            .WithSummary("Thu hồi một phiên đăng nhập của chính mình")
+            .WithDescription("""
+                Thu hồi ngay một phiên đang hoạt động thuộc người dùng hiện tại. Access token và refresh token
+                gắn với phiên bị thu hồi sẽ không còn được chấp nhận. Nếu thu hồi chính phiên đang gọi API,
+                hệ thống đồng thời xóa refresh cookie trên client.
+
+                Request không có body, không yêu cầu CSRF token và không thể thu hồi phiên của người dùng khác.
+                Yêu cầu header `Authorization: Bearer <accessToken>`.
+                - Thành công: 200 OK kèm `revokedCount = 1` và cờ `currentSessionRevoked`.
+                - Không tìm thấy phiên đang hoạt động thuộc người dùng hiện tại: 404 Not Found (`Identity.SessionNotFound`).
+                - Thiếu token, token sai/hết hạn hoặc phiên hiện tại đã bị thu hồi: 401 Unauthorized.
+                """)
+            .RequireAuthorization()
+            .Produces<ApiResponse<RevokeSessionsResult>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+        group.MapDelete("/sessions", RevokeAllMySessionsAsync)
+            .WithSummary("Đăng xuất khỏi tất cả thiết bị")
+            .WithDescription("""
+                Thu hồi toàn bộ phiên đăng nhập còn hoạt động của người dùng hiện tại, bao gồm phiên đang gọi API.
+                Sau khi hoàn tất, mọi access token và refresh token của các phiên này đều bị vô hiệu hóa,
+                đồng thời refresh cookie trên client hiện tại bị xóa.
+
+                Request không có body và không yêu cầu CSRF token.
+                Yêu cầu header `Authorization: Bearer <accessToken>`.
+                - Thành công: 200 OK kèm số phiên đã thu hồi và `currentSessionRevoked = true` khi có phiên bị thu hồi.
+                - Thiếu token, token sai/hết hạn hoặc phiên hiện tại đã bị thu hồi: 401 Unauthorized.
+                """)
+            .RequireAuthorization()
+            .Produces<ApiResponse<RevokeSessionsResult>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized);
         group.MapPost("/refresh", RefreshAsync)
             .WithSummary("Làm mới access token từ refresh cookie")
             .WithDescription("""
@@ -63,6 +111,42 @@ public static class SessionEndpoints
         GetCurrentUserHandler handler,
         CancellationToken cancellationToken)
         => (await handler.HandleAsync(cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> GetMySessionsAsync(
+        GetMySessionsHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> RevokeMySessionAsync(
+        Guid sessionId,
+        HttpContext context,
+        RefreshCookieService cookies,
+        RevokeMySessionHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(sessionId, cancellationToken);
+        if (result.IsSuccess && result.Value.CurrentSessionRevoked)
+        {
+            cookies.Delete(context.Response);
+        }
+
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> RevokeAllMySessionsAsync(
+        HttpContext context,
+        RefreshCookieService cookies,
+        RevokeAllMySessionsHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(cancellationToken);
+        if (result.IsSuccess && result.Value.CurrentSessionRevoked)
+        {
+            cookies.Delete(context.Response);
+        }
+
+        return result.ToHttpResult();
+    }
 
     private static async Task<IResult> RefreshAsync(
         HttpContext context,

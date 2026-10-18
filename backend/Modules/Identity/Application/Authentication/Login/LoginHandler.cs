@@ -1,3 +1,4 @@
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Domain.Entities;
 
@@ -11,6 +12,7 @@ public sealed class LoginHandler(
     IOpaqueTokenService opaqueTokens,
     IAccessTokenService accessTokens,
     IIdentityUnitOfWork unitOfWork,
+    IAuditLogWriter auditLogs,
     IClock clock,
     IdentitySecurityPolicy policy)
 {
@@ -23,6 +25,12 @@ public sealed class LoginHandler(
             if (string.IsNullOrWhiteSpace(command.Identifier)
                 || string.IsNullOrEmpty(command.Password))
             {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    null,
+                    AuditActions.Login,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.InvalidCredentials.Code));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Failure<AuthenticatedSessionResult>(
                     IdentityErrors.InvalidCredentials);
             }
@@ -31,6 +39,12 @@ public sealed class LoginHandler(
             var user = await users.GetByIdentifierAsync(identifier, identifier, ct);
             if (user is null)
             {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    null,
+                    AuditActions.Login,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.InvalidCredentials.Code));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Failure<AuthenticatedSessionResult>(
                     IdentityErrors.InvalidCredentials);
             }
@@ -44,11 +58,24 @@ public sealed class LoginHandler(
             };
             if (statusError != Error.None)
             {
-                return Result.Failure<AuthenticatedSessionResult>(statusError);
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    user.Id,
+                    AuditActions.Login,
+                    AuditOutcomes.Denied,
+                    statusError.Code));
+                await unitOfWork.SaveChangesAsync(ct);
+                return Result.Failure<AuthenticatedSessionResult>(
+                    IdentityErrors.InvalidCredentials);
             }
 
             if (user.PasswordHash is null)
             {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    user.Id,
+                    AuditActions.Login,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.InvalidCredentials.Code));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Failure<AuthenticatedSessionResult>(
                     IdentityErrors.InvalidCredentials);
             }
@@ -56,6 +83,12 @@ public sealed class LoginHandler(
             var now = clock.UtcNow;
             if (user.IsLockedOut(now))
             {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    user.Id,
+                    AuditActions.Login,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.AccountLocked.Code));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Failure<AuthenticatedSessionResult>(
                     IdentityErrors.AccountLocked);
             }
@@ -66,6 +99,13 @@ public sealed class LoginHandler(
                     now,
                     policy.MaxFailedLoginAttempts,
                     policy.LockoutDuration);
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    user.Id,
+                    AuditActions.Login,
+                    AuditOutcomes.Denied,
+                    locked
+                        ? IdentityErrors.AccountLocked.Code
+                        : IdentityErrors.InvalidCredentials.Code));
                 await unitOfWork.SaveChangesAsync(ct);
 
                 return Result.Failure<AuthenticatedSessionResult>(
@@ -92,6 +132,11 @@ public sealed class LoginHandler(
 
             sessions.AddSession(session);
             sessions.AddRefreshToken(refreshToken);
+            auditLogs.Add(AuthenticationAudit.ForUser(
+                user.Id,
+                AuditActions.Login,
+                AuditOutcomes.Success,
+                metadata: new { SessionId = session.Id }));
             await unitOfWork.SaveChangesAsync(ct);
 
             var profile = await profiles.GetAsync(user.Id, ct)

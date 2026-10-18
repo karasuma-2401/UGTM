@@ -23,6 +23,7 @@ services:
       - S3Storage__SecretKey=${MINIO_ROOT_PASSWORD:-ugtm_secret_pass_123}
       - S3Storage__BucketName=ugtm-storage
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
+      - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:-local-development-only-ip-hash-key-change-me}
       - Notifications__Smtp__Host=${SMTP_HOST:-mailpit}
       - Notifications__Smtp__Port=${SMTP_PORT:-1025}
       - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS:-no-reply@ugtm.local}

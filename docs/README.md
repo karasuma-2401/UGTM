@@ -10,6 +10,7 @@ Nguồn nghiệp vụ: Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp 
 | [Sequences.md](../backend/docs/Architecture/Sequences.md) | 5 luồng tuần tự chính; là thiết kế nghiệp vụ cần triển khai |
 | [Architecture.md](../backend/docs/Architecture/Architecture.md) | Cấu trúc code, runtime, dữ liệu, xác thực và khác biệt với Word |
 | [Authentication.md](../backend/docs/Technical/Authentication.md) | Thiết kế và cách vận hành authentication backend đã triển khai |
+| [Identity verification checklist](../backend/docs/Technical/IdentityVerificationChecklist.md) | Tiêu chí nghiệm thu Backend Identity và checklist production |
 | [EmailDelivery.md](../backend/docs/Technical/EmailDelivery.md) | Cấu hình gửi email thật qua SMTP và cách kiểm tra end-to-end |
 | [UserManagement.md](../backend/docs/Technical/UserManagement.md) | Thiết kế và cách vận hành phân hệ quản lý người dùng đã triển khai |
 | [RolePermissionManagement.md](../backend/docs/Technical/RolePermissionManagement.md) | Thiết kế và cách vận hành phân hệ quản lý quyền & phân quyền vai trò (RBAC/PBAC) đã triển khai |
