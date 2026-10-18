@@ -1,0 +1,29 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$API_HOST} {
+	encode zstd gzip
+
+	@backend path /api/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
+
+	# Keep the existing containerized frontend available until the Vercel cutover.
+	handle {
+		reverse_proxy frontend:80
+	}
+
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
