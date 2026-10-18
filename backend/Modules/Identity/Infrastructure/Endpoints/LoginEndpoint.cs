@@ -15,23 +15,20 @@ public static class LoginEndpoint
         HttpContext httpContext,
         IAntiforgery antiforgery,
         LoginHandler handler,
+        ClientSessionMetadataProvider clientMetadata,
         RefreshCookieService cookies,
         CancellationToken cancellationToken)
     {
         await antiforgery.ValidateRequestAsync(httpContext);
 
-        var userAgent = httpContext.Request.Headers.UserAgent.ToString();
-        if (userAgent.Length > 300)
-        {
-            userAgent = userAgent[..300];
-        }
+        var metadata = clientMetadata.Capture(httpContext);
 
         var result = await handler.HandleAsync(
             new LoginCommand(
                 request.Identifier,
                 request.Password,
-                string.IsNullOrWhiteSpace(userAgent) ? null : userAgent,
-                null),
+                metadata.UserAgentSummary,
+                metadata.IpAddressHash),
             cancellationToken);
 
         if (result.IsFailure)

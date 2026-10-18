@@ -1,4 +1,5 @@
 using UGTM.Modules.Identity.Application.Authentication.Login;
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Persistence;
 using UGTM.Modules.Identity.Application.Security;
@@ -14,33 +15,43 @@ public sealed class LoginHandlerTests
         new(2026, 10, 12, 8, 0, 0, DateTimeKind.Utc);
 
     [Fact]
-    public async Task Pending_account_returns_pending_activation_error()
+    public async Task Pending_account_returns_uniform_credentials_error()
     {
         var user = CreatePendingUser();
-        var result = await CreateHandler(user).HandleAsync(
+        var auditLogs = new FakeAuditLogWriter();
+        var result = await CreateHandler(user, auditLogs).HandleAsync(
             new LoginCommand(user.Email, "irrelevant", null, null),
             CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal(IdentityErrors.AccountPendingActivation, result.Error);
+        Assert.Equal(IdentityErrors.InvalidCredentials, result.Error);
+        var audit = Assert.Single(auditLogs.Entries);
+        Assert.Equal(AuditActions.Login, audit.Action);
+        Assert.Equal(AuditOutcomes.Denied, audit.Outcome);
+        Assert.Equal(IdentityErrors.AccountPendingActivation.Code, audit.ReasonCode);
+        Assert.Equal(user.Id.ToString(), audit.TargetId);
     }
 
     [Fact]
-    public async Task Suspended_account_returns_suspended_error_before_password_verification()
+    public async Task Suspended_account_returns_uniform_credentials_error()
     {
         var user = CreatePendingUser();
         user.Activate("password-hash", Now.AddMinutes(1));
         user.Suspend(Now.AddMinutes(2));
 
-        var result = await CreateHandler(user).HandleAsync(
+        var auditLogs = new FakeAuditLogWriter();
+        var result = await CreateHandler(user, auditLogs).HandleAsync(
             new LoginCommand(user.UserCode!, "irrelevant", null, null),
             CancellationToken.None);
 
         Assert.True(result.IsFailure);
-        Assert.Equal(IdentityErrors.AccountSuspended, result.Error);
+        Assert.Equal(IdentityErrors.InvalidCredentials, result.Error);
+        Assert.Equal(
+            IdentityErrors.AccountSuspended.Code,
+            Assert.Single(auditLogs.Entries).ReasonCode);
     }
 
-    private static LoginHandler CreateHandler(User user)
+    private static LoginHandler CreateHandler(User user, IAuditLogWriter auditLogs)
         => new(
             new StubUserRepository(user),
             null!,
@@ -49,6 +60,7 @@ public sealed class LoginHandlerTests
             null!,
             null!,
             new InlineUnitOfWork(),
+            auditLogs,
             null!,
             new IdentitySecurityPolicy());
 
@@ -71,6 +83,13 @@ public sealed class LoginHandlerTests
             Func<CancellationToken, Task<TResult>> operation,
             CancellationToken cancellationToken)
             => operation(cancellationToken);
+    }
+
+    private sealed class FakeAuditLogWriter : IAuditLogWriter
+    {
+        public List<AuditEntry> Entries { get; } = [];
+
+        public void Add(AuditEntry entry) => Entries.Add(entry);
     }
 
     private sealed class StubUserRepository(User user) : IUserRepository

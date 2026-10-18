@@ -1,3 +1,4 @@
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Notifications;
 using UGTM.Modules.Identity.Domain.Entities;
 
@@ -12,6 +13,7 @@ public sealed class StartPasswordRecoveryHandler(
     IOpaqueTokenService tokens,
     IIdentityEmailOutbox emailOutbox,
     IIdentityUnitOfWork unitOfWork,
+    IAuditLogWriter auditLogs,
     IClock clock,
     IdentitySecurityPolicy policy)
 {
@@ -25,6 +27,12 @@ public sealed class StartPasswordRecoveryHandler(
             var expiresAt = now.Add(policy.RecoveryOtpLifetime);
             if (string.IsNullOrWhiteSpace(command.Email))
             {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    null,
+                    AuditActions.PasswordRecoveryRequested,
+                    AuditOutcomes.Success,
+                    metadata: new { NotificationQueued = false }));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Success(new StartPasswordRecoveryResult(
                     Guid.NewGuid().ToString("N"),
                     expiresAt));
@@ -35,6 +43,12 @@ public sealed class StartPasswordRecoveryHandler(
 
             if (user is null || user.Status != AccountStatus.Active)
             {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    user?.Id,
+                    AuditActions.PasswordRecoveryRequested,
+                    AuditOutcomes.Success,
+                    metadata: new { NotificationQueued = false }));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Success(new StartPasswordRecoveryResult(
                     Guid.NewGuid().ToString("N"),
                     expiresAt));
@@ -63,6 +77,11 @@ public sealed class StartPasswordRecoveryHandler(
                 user.FullName,
                 otp.Code,
                 now);
+            auditLogs.Add(AuthenticationAudit.ForUser(
+                user.Id,
+                AuditActions.PasswordRecoveryRequested,
+                AuditOutcomes.Success,
+                metadata: new { NotificationQueued = true }));
             await unitOfWork.SaveChangesAsync(ct);
 
             return Result.Success(new StartPasswordRecoveryResult(

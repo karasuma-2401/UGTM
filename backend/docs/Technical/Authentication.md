@@ -17,6 +17,7 @@ Backend hỗ trợ:
 - roles, permissions và policy động;
 - rate limiting theo IP;
 - email qua transactional outbox và SMTP.
+- audit bảo mật cho login, refresh/reuse, logout, activation, đổi/reset mật khẩu và recovery.
 
 Google login và SSO chưa nằm trong hệ thống. `ProvisioningStudentAccountHandler` cũng chưa có endpoint HTTP; module nghiệp vụ hoặc luồng import sẽ gọi handler này khi được triển khai.
 
@@ -61,6 +62,8 @@ backend/Modules/Identity/
 `SecurityStamp` là phiên bản bảo mật của tài khoản. Kích hoạt, đổi/reset mật khẩu, suspend và disable đều đổi stamp. Mỗi session giữ một snapshot; stamp lệch làm JWT và refresh session mất hiệu lực ngay ở request kế tiếp.
 
 Sau 5 lần nhập sai liên tiếp, tài khoản bị khóa 15 phút. Đăng nhập thành công xóa bộ đếm. Rate limit theo IP vẫn chạy độc lập để giảm brute force phân tán trên nhiều tài khoản.
+
+Login trả cùng lỗi `Identity.InvalidCredentials` cho identifier/mật khẩu sai và các tài khoản `PendingActivation`, `Suspended`, `Disabled`. Trạng thái thật chỉ được lưu làm `reasonCode` trong Audit Log dành cho Admin, nhờ đó client công khai không thể dùng response để dò trạng thái tài khoản.
 
 ## Token và phiên
 
@@ -115,7 +118,7 @@ Activation token, OTP khôi phục và reset grant dùng chung `OneTimeChallenge
 
 1. Frontend lấy CSRF token từ `/csrf`.
 2. `/login` kiểm tra CSRF, trạng thái tài khoản, lockout và password hash.
-3. Backend tạo session, refresh token và JWT; refresh token đi vào cookie `HttpOnly`.
+3. Backend chuẩn hóa user-agent, HMAC-SHA256 địa chỉ IP bằng secret riêng, rồi tạo session, refresh token và JWT; refresh token đi vào cookie `HttpOnly`.
 4. Frontend giữ JWT trong bộ nhớ và gửi Bearer header cho API được bảo vệ.
 5. Sau khi reload hoặc JWT hết hạn, frontend lấy CSRF token mới rồi gọi `/refresh` với cookie.
 
@@ -179,7 +182,9 @@ Migration [`CompleteIdentityAuthentication`](../../Database.Migrations/Migration
 
 `identity.user` có thêm normalized email, account status, thời điểm kích hoạt/đăng nhập/đổi mật khẩu, lockout, security stamp và concurrency stamp. `IdentityUnitOfWork` dùng execution strategy cùng transaction cho các handler cần cập nhật nhiều bản ghi. Repository dùng row lock cho refresh token và challenge để chống xử lý đồng thời.
 
-`identity.audit_log` lưu actor, session, request và metadata. Các thao tác thu hồi phiên qua Session Management ghi `Identity.Session.Revoked` hoặc `Identity.User.SessionsRevoked`; audit toàn bộ sự kiện login/recovery chưa thuộc phạm vi hiện tại.
+`identity.audit_log` lưu actor, session, request và metadata. Ngoài thao tác quản trị user/session, module ghi audit cho login, refresh thành công/thất bại, refresh-token reuse, logout hợp lệ, activation, đổi mật khẩu và toàn bộ recovery flow. Request ẩn danh không xác định được tài khoản dùng target `Authentication/Unknown`; audit không chứa identifier, email, mật khẩu, OTP, raw token hoặc địa chỉ IP thô.
+
+Các action xác thực chính gồm `Identity.Authentication.Login`, `Identity.Session.Refreshed`, `Identity.Session.RefreshTokenReuseDetected`, `Identity.Session.LoggedOut`, `Identity.Account.Activated`, `Identity.Account.ActivationRequested`, `Identity.Account.PasswordChanged`, `Identity.Account.PasswordRecoveryRequested`, `Identity.Account.RecoveryOtpVerified` và `Identity.Account.PasswordReset`.
 
 ## Cấu hình
 
@@ -194,11 +199,15 @@ Migration [`CompleteIdentityAuthentication`](../../Database.Migrations/Migration
 | `Identity:DataProtection:KeyRingPath` | chưa đặt | thư mục lưu key ring bền vững |
 | `Identity:Email:PublicWebBaseUrl` | `http://localhost:5173` | gốc URL trong activation email |
 | `Identity:Security:*` | xem `appsettings.json` | lockout, session và challenge lifetime |
+| `Identity:ClientMetadata:IpHashKey` | bắt buộc ngoài Development | HMAC secret tối thiểu 32 ký tự; giữ ổn định và dùng chung giữa các replica |
+| `Identity:ClientMetadata:UserAgentMaxLength` | `300` | giới hạn sau khi loại control character và chuẩn hóa whitespace |
 | `Notifications:Smtp:*` | xem Development/Compose | SMTP host, port, sender, security mode, timeout và credentials; xem [Email Delivery](EmailDelivery.md) |
 | `Cors:AllowedOrigins` | `http://localhost:5173` | danh sách origin chính xác |
 | `Proxy:KnownProxies` | rỗng | chỉ cấu hình proxy do hệ thống quản lý |
 
-Các option bảo mật và JWT được validate lúc startup. Không lưu private key, SMTP password hoặc connection string thật trong Git.
+Các option bảo mật, JWT và client metadata được validate lúc startup. Không lưu private key, IP hash key, SMTP password hoặc connection string thật trong Git.
+
+Toàn bộ endpoint dưới `/api/identity/auth` trả `Cache-Control: no-store`, `Pragma: no-cache` và `Expires: 0`, bao gồm cả response có access token, reset grant, challenge ID hoặc thông tin activation.
 
 ## Chạy local
 
@@ -206,7 +215,7 @@ Có thể chạy backend với SMTP thật hoặc Mailpit bằng Compose. SMTP t
 
 ```powershell
 Copy-Item .env.example .env
-# Điền DATABASE_CONNECTION_STRING và SMTP_* trong .env
+# Điền DATABASE_CONNECTION_STRING, IDENTITY_IP_HASH_KEY và SMTP_* trong .env
 ./scripts/GenerateDevelopmentJwtKey.ps1
 ./scripts/Database.ps1 -Action Update
 docker compose up -d backend
@@ -240,6 +249,7 @@ Khi điều tra lỗi:
 
 - `401` ngay cả khi JWT còn hạn: kiểm tra session, account status và security stamp;
 - `400 Invalid CSRF Token`: lấy token mới từ `/csrf`, gửi đúng cookie và `X-CSRF-TOKEN`;
+- startup lỗi client metadata: kiểm tra `IDENTITY_IP_HASH_KEY` có tối thiểu 32 ký tự và giống nhau trên mọi replica;
 - email chưa đến: xem Mailpit/SMTP, log `IdentityOutboxProcessor`, `attempt_count`, `next_attempt_at`, `last_error`;
 - startup lỗi JWT: kiểm tra đường dẫn PEM, quyền đọc file và nội dung RSA private key;
 - rate limit nhận sai IP: kiểm tra `Proxy:KnownProxies` và forwarded headers.
@@ -249,7 +259,3 @@ Khi điều tra lỗi:
 - Chưa có Google login hoặc SSO.
 - Chưa có màn hình frontend cho các luồng auth.
 - Rate limiter dùng bộ nhớ từng instance; triển khai nhiều replica chưa có quota dùng chung.
-- Audit log chưa bao phủ toàn bộ sự kiện login, refresh và recovery; Session Management đã ghi audit cho các thao tác thu hồi.
-- Login trả lỗi riêng cho tài khoản pending, suspended và disabled trước khi kiểm tra mật khẩu; cần thống nhất lỗi nếu mô hình đe dọa yêu cầu chống dò trạng thái tài khoản.
-- Response chứa token chưa đặt `Cache-Control: no-store` ở middleware.
-- `IpAddressHash` của session đã có trong model nhưng login hiện chưa ghi giá trị.

@@ -1,3 +1,4 @@
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Notifications;
 using UGTM.Modules.Identity.Domain.Entities;
 
@@ -9,6 +10,7 @@ public sealed class ResendActivationHandler(
     IOpaqueTokenService tokens,
     IIdentityEmailOutbox emailOutbox,
     IIdentityUnitOfWork unitOfWork,
+    IAuditLogWriter auditLogs,
     IClock clock,
     IdentitySecurityPolicy policy)
 {
@@ -20,6 +22,12 @@ public sealed class ResendActivationHandler(
         {
             if (string.IsNullOrWhiteSpace(command.Identifier))
             {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    null,
+                    AuditActions.ActivationRequested,
+                    AuditOutcomes.Success,
+                    metadata: new { NotificationQueued = false }));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Success();
             }
 
@@ -27,6 +35,12 @@ public sealed class ResendActivationHandler(
             var user = await users.GetByIdentifierAsync(identifier, identifier, ct);
             if (user is null || user.Status != AccountStatus.PendingActivation)
             {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    user?.Id,
+                    AuditActions.ActivationRequested,
+                    AuditOutcomes.Success,
+                    metadata: new { NotificationQueued = false }));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Success();
             }
 
@@ -54,6 +68,12 @@ public sealed class ResendActivationHandler(
                 user.FullName,
                 token.RawToken,
                 now);
+
+            auditLogs.Add(AuthenticationAudit.ForUser(
+                user.Id,
+                AuditActions.ActivationRequested,
+                AuditOutcomes.Success,
+                metadata: new { NotificationQueued = true }));
 
             await unitOfWork.SaveChangesAsync(ct);
             return Result.Success();

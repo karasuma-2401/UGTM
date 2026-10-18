@@ -123,6 +123,16 @@ public sealed class IdentityModule : IModule
                            && options.PublicWebBaseUrl.Scheme is "https" or "http",
                 "Identity email public web base URL must be an absolute HTTP(S) URL.")
             .ValidateOnStart();
+        services.AddOptions<IdentityClientMetadataOptions>()
+            .Bind(configuration.GetSection(IdentityClientMetadataOptions.SectionName))
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.IpHashKey)
+                           && options.IpHashKey.Length >= 32
+                           && options.UserAgentMaxLength is > 0 and <= 300,
+                "Identity client metadata IP hash key must contain at least 32 characters and the user-agent limit must be between 1 and 300.")
+            .ValidateOnStart();
+        services.AddSingleton(provider => provider
+            .GetRequiredService<IOptions<IdentityClientMetadataOptions>>().Value);
 
         services.AddScoped<IClock, SystemClock>();
         services.AddScoped<IPasswordService, AspNetPasswordService>();
@@ -143,6 +153,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<AuditIntegrationEventConsumer>();
         services.AddScoped<IIdentityEmailOutbox, IdentityEmailOutbox>();
         services.AddScoped<RefreshCookieService>();
+        services.AddSingleton<ClientSessionMetadataProvider>();
         services.AddScoped<SessionValidator>();
         services.AddScoped<ICurrentUser, HttpCurrentUser>();
 

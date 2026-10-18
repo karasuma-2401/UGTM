@@ -10,6 +10,16 @@ public static class AuditActions
     public const string RolePermissionsChanged = "Identity.Role.PermissionsChanged";
     public const string SessionRevoked = "Identity.Session.Revoked";
     public const string UserSessionsRevoked = "Identity.User.SessionsRevoked";
+    public const string Login = "Identity.Authentication.Login";
+    public const string SessionRefreshed = "Identity.Session.Refreshed";
+    public const string RefreshTokenReuseDetected = "Identity.Session.RefreshTokenReuseDetected";
+    public const string SessionLoggedOut = "Identity.Session.LoggedOut";
+    public const string AccountActivated = "Identity.Account.Activated";
+    public const string ActivationRequested = "Identity.Account.ActivationRequested";
+    public const string PasswordChanged = "Identity.Account.PasswordChanged";
+    public const string PasswordRecoveryRequested = "Identity.Account.PasswordRecoveryRequested";
+    public const string RecoveryOtpVerified = "Identity.Account.RecoveryOtpVerified";
+    public const string PasswordReset = "Identity.Account.PasswordReset";
 }
 
 public static class AuditOutcomes

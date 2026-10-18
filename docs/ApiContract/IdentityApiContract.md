@@ -12,6 +12,7 @@ Contract này mô tả đúng các endpoint Identity đang có trong backend. So
 - Access token nằm trong response JSON. Refresh token chỉ nằm trong cookie `HttpOnly` và không được trả trong body.
 - Trình duyệt phải gửi request kèm cookie (`credentials: 'include'` hoặc `withCredentials: true`).
 - Client xử lý lỗi theo HTTP status và `error.code`; `message` dùng để hiển thị.
+- Mọi response dưới `/api/identity/auth` có `Cache-Control: no-store`, `Pragma: no-cache` và `Expires: 0`.
 
 Response nghiệp vụ thành công:
 
@@ -198,10 +199,7 @@ Response đồng thời đặt refresh cookie. Access token mặc định sống
 | Status | Code | Khi nào xảy ra |
 | --- | --- | --- |
 | 400 | Problem Details | CSRF token thiếu hoặc không hợp lệ |
-| 401 | `Identity.InvalidCredentials` | Sai identifier hoặc mật khẩu |
-| 403 | `Identity.AccountPendingActivation` | Tài khoản chưa kích hoạt |
-| 403 | `Identity.AccountSuspended` | Tài khoản đang tạm ngưng |
-| 403 | `Identity.AccountDisabled` | Tài khoản đã bị vô hiệu hóa |
+| 401 | `Identity.InvalidCredentials` | Identifier/mật khẩu sai hoặc tài khoản không ở trạng thái cho phép đăng nhập; response được thống nhất để hạn chế account enumeration |
 | 429 | `Identity.AccountLocked` | Tài khoản bị khóa tạm thời sau 5 lần sai |
 | 429 | `Identity.RateLimitExceeded` | Vượt rate limit của endpoint |
 
@@ -427,9 +425,6 @@ OTP cho phép tối đa 5 lần thử. Verify thành công tiêu thụ OTP và c
 | Code | Status | Ý nghĩa |
 | --- | ---: | --- |
 | `Identity.InvalidCredentials` | 401 | Thông tin đăng nhập không đúng |
-| `Identity.AccountPendingActivation` | 403 | Chưa kích hoạt |
-| `Identity.AccountSuspended` | 403 | Đang tạm ngưng |
-| `Identity.AccountDisabled` | 403 | Đã vô hiệu hóa |
 | `Identity.AccountLocked` | 429 | Khóa tạm do đăng nhập sai |
 | `Identity.InvalidActivationToken` | 400 | Token kích hoạt không dùng được |
 | `Identity.InvalidOtp` | 400 | OTP không dùng được |

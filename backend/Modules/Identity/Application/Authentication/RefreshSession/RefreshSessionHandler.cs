@@ -1,3 +1,4 @@
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Authentication.Login;
 using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Domain.Entities;
@@ -10,6 +11,7 @@ public class RefreshSessionHandler(
     IOpaqueTokenService opaqueTokens,
     IAccessTokenService accessTokens,
     IIdentityUnitOfWork unitOfWork,
+    IAuditLogWriter auditLogs,
     IClock clock,
     IdentitySecurityPolicy policy)
 {
@@ -17,21 +19,33 @@ public class RefreshSessionHandler(
         RefreshSessionCommand command,
         CancellationToken cancellationToken)
     {
-        if (!opaqueTokens.TryParse(
-                command.RefreshToken,
-                out var selector,
-                out var validator))
-        {
-            return Task.FromResult(Result.Failure<AuthenticatedSessionResult>(
-                IdentityErrors.InvalidSession));
-        }
-
         return unitOfWork.ExecuteInTransactionAsync(async ct =>
         {
+            if (!opaqueTokens.TryParse(
+                    command.RefreshToken,
+                    out var selector,
+                    out var validator))
+            {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    null,
+                    AuditActions.SessionRefreshed,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.InvalidSession.Code));
+                await unitOfWork.SaveChangesAsync(ct);
+                return Result.Failure<AuthenticatedSessionResult>(
+                    IdentityErrors.InvalidSession);
+            }
+
             var now = clock.UtcNow;
             var currentToken = await sessions.GetRefreshTokenForUpdateAsync(selector, ct);
             if (currentToken is null)
             {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    null,
+                    AuditActions.SessionRefreshed,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.InvalidSession.Code));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Failure<AuthenticatedSessionResult>(
                     IdentityErrors.InvalidSession);
             }
@@ -39,6 +53,12 @@ public class RefreshSessionHandler(
             var session = currentToken.Session;
             if (!opaqueTokens.Verify(validator, currentToken.ValidatorHash))
             {
+                auditLogs.Add(AuthenticationAudit.ForSession(
+                    session.Id,
+                    AuditActions.SessionRefreshed,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.InvalidSession.Code));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Failure<AuthenticatedSessionResult>(
                     IdentityErrors.InvalidSession);
             }
@@ -46,6 +66,11 @@ public class RefreshSessionHandler(
             if (currentToken.ConsumedAt is not null)
             {
                 session.Revoke(SessionRevocationReason.RefreshTokenReuse, now);
+                auditLogs.Add(AuthenticationAudit.ForSession(
+                    session.Id,
+                    AuditActions.RefreshTokenReuseDetected,
+                    AuditOutcomes.Denied,
+                    SessionRevocationReason.RefreshTokenReuse.ToString()));
                 await unitOfWork.SaveChangesAsync(ct);
                 return Result.Failure<AuthenticatedSessionResult>(
                     IdentityErrors.InvalidSession);
@@ -54,6 +79,12 @@ public class RefreshSessionHandler(
             if (!currentToken.IsUsable(now)
                 || !session.CanRefresh(session.User.SecurityStamp, now))
             {
+                auditLogs.Add(AuthenticationAudit.ForSession(
+                    session.Id,
+                    AuditActions.SessionRefreshed,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.InvalidSession.Code));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Failure<AuthenticatedSessionResult>(
                     IdentityErrors.InvalidSession);
             }
@@ -69,6 +100,10 @@ public class RefreshSessionHandler(
 
             currentToken.Consume(replacement.Id, now);
             sessions.AddRefreshToken(replacement);
+            auditLogs.Add(AuthenticationAudit.ForSession(
+                session.Id,
+                AuditActions.SessionRefreshed,
+                AuditOutcomes.Success));
             await unitOfWork.SaveChangesAsync(ct);
 
             var profile = await profiles.GetAsync(session.UserId, ct)

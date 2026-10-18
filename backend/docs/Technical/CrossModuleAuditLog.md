@@ -3,6 +3,12 @@
 Audit events from `AcademicPeriods`, `ThesisManagement`, and `DefenseCouncil`
 are delivered to the Identity module through transactional outboxes.
 
+Identity-owned user, role, session and authentication events are written directly
+through `IAuditLogWriter` in the same database transaction as their state change.
+Anonymous authentication failures use target `Authentication/Unknown`; metadata is
+allowlisted and never includes identifiers, email addresses, passwords, OTPs, raw
+tokens, security stamps or client IP addresses.
+
 ## Flow
 
 ```text
@@ -55,6 +61,21 @@ explicit allowlist and must never contain passwords, tokens, credentials, or
 security stamps.
 
 ## Stable action codes
+
+Identity authentication actions:
+
+- `Identity.Authentication.Login`
+- `Identity.Session.Refreshed`
+- `Identity.Session.RefreshTokenReuseDetected`
+- `Identity.Session.LoggedOut`
+- `Identity.Account.Activated`
+- `Identity.Account.ActivationRequested`
+- `Identity.Account.PasswordChanged`
+- `Identity.Account.PasswordRecoveryRequested`
+- `Identity.Account.RecoveryOtpVerified`
+- `Identity.Account.PasswordReset`
+
+Cross-module actions:
 
 - `AcademicPeriods.Batch.ConfigurationUpdated`
 - `AcademicPeriods.Score.ConfigurationUpdated`
