@@ -1,8 +1,8 @@
 import axios from 'axios';
+import { API_BASE_URL } from './config';
 import type { ApiResponse } from './types';
 import type { CsrfTokenData } from '@/features/auth/types/auth.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5287';
 const CSRF_ENDPOINT = '/api/identity/auth/csrf';
 
 export const CSRF_HEADER_NAME = 'X-CSRF-TOKEN';
@@ -50,4 +50,3 @@ export function clearCsrfToken(): void {
   csrfTokenCache = null;
   pendingCsrfPromise = null;
 }
-

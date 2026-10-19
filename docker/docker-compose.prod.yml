@@ -6,19 +6,21 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_HTTP_PORTS=8080
-      - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING}
-      - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
-      - Identity__Email__PublicWebBaseUrl=${APP_URL:-http://localhost}
+      - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING:?DATABASE_CONNECTION_STRING must be configured}
+      - Cors__AllowedOrigins__0=${APP_URL:?APP_URL must be configured}
+      - Identity__Email__PublicWebBaseUrl=${APP_URL:?APP_URL must be configured}
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
+      - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:?IDENTITY_IP_HASH_KEY must be configured}
       - Proxy__KnownProxies__0=172.29.0.10
       - Proxy__KnownProxies__1=::ffff:172.29.0.10
-      - Notifications__Smtp__Host=${SMTP_HOST}
+      - Notifications__Smtp__Host=${SMTP_HOST:?SMTP_HOST must be configured}
       - Notifications__Smtp__Port=${SMTP_PORT:-587}
-      - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS}
+      - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS:?SMTP_FROM_ADDRESS must be configured}
       - Notifications__Smtp__FromName=${SMTP_FROM_NAME:-UGTM}
       - Notifications__Smtp__Username=${SMTP_USERNAME}
       - Notifications__Smtp__Password=${SMTP_PASSWORD}
-      - Notifications__Smtp__UseStartTls=${SMTP_USE_START_TLS:-true}
+      - Notifications__Smtp__Security=${SMTP_SECURITY:-StartTls}
+      - Notifications__Smtp__TimeoutSeconds=${SMTP_TIMEOUT_SECONDS:-30}
     expose:
       - "8080"
     volumes:
@@ -31,14 +33,35 @@ services:
     restart: always
     depends_on:
       - backend
+    expose:
+      - "80"
+
+  gateway:
+    image: caddy:2.11.7-alpine
+    container_name: ugtm-gateway
+    restart: always
+    depends_on:
+      - backend
+      - frontend
+    environment:
+      API_HOST: ${API_HOST:?API_HOST must be configured}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be configured}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       default:
         ipv4_address: 172.29.0.10
-    ports:
-      - "80:80"
 
 volumes:
   data_protection_keys:
+  caddy_data:
+  caddy_config:
 
 networks:
   default:

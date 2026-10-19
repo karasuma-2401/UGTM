@@ -9,7 +9,7 @@ on:
       - completed
     branches:
       - dev
-      - main
+      - production
   workflow_dispatch:
     inputs:
       image_tag:
@@ -31,7 +31,7 @@ jobs:
       (
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.event == 'push' &&
-        contains(fromJSON('["dev", "main"]'), github.event.workflow_run.head_branch)
+        contains(fromJSON('["dev", "production"]'), github.event.workflow_run.head_branch)
       )
     runs-on: ubuntu-latest
     strategy:
@@ -87,7 +87,7 @@ jobs:
 
           SCAN_TAG="ghcr.io/${IMAGE_NAME}:scan-${SHORT_SHA}"
           PUSH_TAGS="ghcr.io/${IMAGE_NAME}:${FLOATING_TAG},ghcr.io/${IMAGE_NAME}:sha-${SHORT_SHA}"
-          if [ "${BRANCH}" = "main" ]; then
+          if [ "${BRANCH}" = "production" ]; then
             PUSH_TAGS="${PUSH_TAGS},ghcr.io/${IMAGE_NAME}:latest"
           fi
 

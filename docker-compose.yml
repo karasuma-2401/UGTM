@@ -23,11 +23,15 @@ services:
       - S3Storage__SecretKey=${MINIO_ROOT_PASSWORD:-ugtm_secret_pass_123}
       - S3Storage__BucketName=ugtm-storage
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
-      - Notifications__Smtp__Host=mailpit
-      - Notifications__Smtp__Port=1025
-      - Notifications__Smtp__FromAddress=no-reply@ugtm.local
-      - Notifications__Smtp__FromName=UGTM
-      - Notifications__Smtp__UseStartTls=false
+      - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:-local-development-only-ip-hash-key-change-me}
+      - Notifications__Smtp__Host=${SMTP_HOST:-mailpit}
+      - Notifications__Smtp__Port=${SMTP_PORT:-1025}
+      - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS:-no-reply@ugtm.local}
+      - Notifications__Smtp__FromName=${SMTP_FROM_NAME:-UGTM}
+      - Notifications__Smtp__Username=${SMTP_USERNAME:-}
+      - Notifications__Smtp__Password=${SMTP_PASSWORD:-}
+      - Notifications__Smtp__Security=${SMTP_SECURITY:-None}
+      - Notifications__Smtp__TimeoutSeconds=${SMTP_TIMEOUT_SECONDS:-30}
     ports:
       - "5287:8080"
     volumes:

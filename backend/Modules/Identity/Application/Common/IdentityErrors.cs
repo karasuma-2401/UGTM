@@ -62,6 +62,10 @@ public static class IdentityErrors
         "Identity.InvalidSession",
         "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
 
+    public static readonly Error SessionNotFound = Error.NotFound(
+        "Identity.SessionNotFound",
+        "Không tìm thấy phiên đăng nhập đang hoạt động.");
+
     public static readonly Error InvalidInput = Error.Validation(
         "Identity.InvalidInput",
         "Dữ liệu đầu vào không hợp lệ.");
@@ -82,6 +86,18 @@ public static class IdentityErrors
         "Identity.InvalidPhoneNumber",
         "Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số, ví dụ: 0901234567 hoặc +84901234567).");
 
+    public static readonly Error InvalidImportFile = Error.Validation(
+        "Identity.InvalidImportFile",
+        "Tệp import phải là tệp Excel .xlsx hợp lệ, không rỗng và không vượt quá giới hạn cho phép.");
+
+    public static readonly Error InvalidImportRole = Error.Validation(
+        "Identity.InvalidImportRole",
+        "Import tài khoản chỉ hỗ trợ vai trò Student hoặc Lecturer.");
+
+    public static readonly Error ImportValidationFailed = Error.Validation(
+        "Identity.ImportValidationFailed",
+        "Tệp import có dữ liệu không hợp lệ. Không có tài khoản nào được tạo.");
+
     public static readonly Error RoleNotFound = Error.NotFound(
         "Identity.RoleNotFound",
         "Không tìm thấy vai trò người dùng.");
@@ -96,7 +112,7 @@ public static class IdentityErrors
 
     public static readonly Error CannotDisableLastAdmin = Error.Validation(
         "Identity.CannotDisableLastAdmin",
-        "Không thể vô hiệu hóa tài khoản Quản trị viên (Admin) cuối cùng của hệ thống.");
+        "Không thể tạm ngưng hoặc vô hiệu hóa tài khoản Quản trị viên (Admin) đang hoạt động cuối cùng của hệ thống.");
 
     public static readonly Error CannotRemoveLastAdminRole = Error.Validation(
         "Identity.CannotRemoveLastAdminRole",

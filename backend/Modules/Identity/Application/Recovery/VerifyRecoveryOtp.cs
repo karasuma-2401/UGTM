@@ -1,3 +1,4 @@
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Domain.Entities;
 
 namespace UGTM.Modules.Identity.Application.Recovery;
@@ -9,6 +10,7 @@ public sealed class VerifyRecoveryOtpHandler(
     IOneTimeChallengeRepository challenges,
     IOpaqueTokenService tokens,
     IIdentityUnitOfWork unitOfWork,
+    IAuditLogWriter auditLogs,
     IClock clock,
     IdentitySecurityPolicy policy)
 {
@@ -26,12 +28,23 @@ public sealed class VerifyRecoveryOtpHandler(
 
             if (otp is null || !otp.CanAttempt(now))
             {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    otp?.UserId,
+                    AuditActions.RecoveryOtpVerified,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.InvalidOtp.Code));
+                await unitOfWork.SaveChangesAsync(ct);
                 return Result.Failure<VerifyRecoveryOtpResult>(IdentityErrors.InvalidOtp);
             }
 
             if (!tokens.Verify(command.Code, otp.SecretHash))
             {
                 otp.RecordFailedAttempt(now);
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    otp.UserId,
+                    AuditActions.RecoveryOtpVerified,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.InvalidOtp.Code));
                 await unitOfWork.SaveChangesAsync(ct);
                 return Result.Failure<VerifyRecoveryOtpResult>(IdentityErrors.InvalidOtp);
             }
@@ -48,6 +61,10 @@ public sealed class VerifyRecoveryOtpHandler(
                 1,
                 now,
                 expiresAt));
+            auditLogs.Add(AuthenticationAudit.ForUser(
+                otp.UserId,
+                AuditActions.RecoveryOtpVerified,
+                AuditOutcomes.Success));
             await unitOfWork.SaveChangesAsync(ct);
 
             return Result.Success(new VerifyRecoveryOtpResult(

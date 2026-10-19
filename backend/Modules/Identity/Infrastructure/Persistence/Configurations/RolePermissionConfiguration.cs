@@ -29,26 +29,5 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
             .HasForeignKey(x => x.PermissionId)
             .HasConstraintName("fk_role_permission_permission_permission_id")
             .OnDelete(DeleteBehavior.Cascade);
-
-        var seedTimestamp = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        builder.HasData(
-            // Admin (Role ID = 1)
-            new RolePermission { RoleId = 1, PermissionId = 1, AssignedAt = seedTimestamp },
-            new RolePermission { RoleId = 1, PermissionId = 2, AssignedAt = seedTimestamp },
-            new RolePermission { RoleId = 1, PermissionId = 3, AssignedAt = seedTimestamp },
-            new RolePermission { RoleId = 1, PermissionId = 4, AssignedAt = seedTimestamp },
-            new RolePermission { RoleId = 1, PermissionId = 5, AssignedAt = seedTimestamp },
-            new RolePermission { RoleId = 1, PermissionId = 6, AssignedAt = seedTimestamp },
-
-            // Faculty (Role ID = 2)
-            new RolePermission { RoleId = 2, PermissionId = 1, AssignedAt = seedTimestamp },
-            new RolePermission { RoleId = 2, PermissionId = 3, AssignedAt = seedTimestamp },
-
-            // AcademicAffairs (Role ID = 3)
-            new RolePermission { RoleId = 3, PermissionId = 1, AssignedAt = seedTimestamp },
-            new RolePermission { RoleId = 3, PermissionId = 2, AssignedAt = seedTimestamp },
-            new RolePermission { RoleId = 3, PermissionId = 3, AssignedAt = seedTimestamp },
-            new RolePermission { RoleId = 3, PermissionId = 4, AssignedAt = seedTimestamp }
-        );
     }
 }

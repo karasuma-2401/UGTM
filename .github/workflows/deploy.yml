@@ -8,7 +8,7 @@ on:
       - completed
     branches:
       - dev
-      - main
+      - production
   workflow_dispatch:
     inputs:
       target_env:
@@ -18,7 +18,7 @@ on:
         type: choice
         options:
           - dev
-          - main
+          - production
 
 jobs:
   deploy:
@@ -37,15 +37,21 @@ jobs:
       - name: Verify VPS Secrets
         id: check-secrets
         env:
+          API_HOST: ${{ vars.API_HOST }}
+          ACME_EMAIL: ${{ vars.ACME_EMAIL }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          APP_URL: ${{ secrets.APP_URL }}
           DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
           JWT_PRIVATE_KEY_PEM_BASE64: ${{ secrets.JWT_PRIVATE_KEY_PEM_BASE64 }}
+          IDENTITY_IP_HASH_KEY: ${{ secrets.IDENTITY_IP_HASH_KEY }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_FROM_ADDRESS: ${{ secrets.SMTP_FROM_ADDRESS }}
         run: |
-          if [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ] || \
+          if [ -z "$API_HOST" ] || [ -z "$ACME_EMAIL" ] || \
+             [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ] || [ -z "$APP_URL" ] || \
              [ -z "$DATABASE_CONNECTION_STRING" ] || [ -z "$JWT_PRIVATE_KEY_PEM_BASE64" ] || \
+             [ -z "$IDENTITY_IP_HASH_KEY" ] || [ "${#IDENTITY_IP_HASH_KEY}" -lt 32 ] || \
              [ -z "$SMTP_HOST" ] || [ -z "$SMTP_FROM_ADDRESS" ]; then
             echo "One or more required deployment secrets are not configured."
             echo "configured=false" >> "$GITHUB_OUTPUT"
@@ -57,29 +63,34 @@ jobs:
         if: steps.check-secrets.outputs.configured == 'false'
         run: |
           echo "::warning ::Deployment skipped because required secrets are missing."
-          echo "Configure VPS_HOST, VPS_SSH_KEY, DATABASE_CONNECTION_STRING, JWT_PRIVATE_KEY_PEM_BASE64, SMTP_HOST and SMTP_FROM_ADDRESS in GitHub Actions secrets."
+          echo "Configure API_HOST and ACME_EMAIL as GitHub Actions variables."
+          echo "Configure VPS_HOST, VPS_SSH_KEY, APP_URL, DATABASE_CONNECTION_STRING, JWT_PRIVATE_KEY_PEM_BASE64, IDENTITY_IP_HASH_KEY (at least 32 characters), SMTP_HOST and SMTP_FROM_ADDRESS as GitHub Actions secrets."
 
       - name: Deploy to VPS via SSH
         if: steps.check-secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.2.0
         env:
+          API_HOST: ${{ vars.API_HOST }}
+          ACME_EMAIL: ${{ vars.ACME_EMAIL }}
           DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
-          APP_URL: ${{ secrets.APP_URL || 'http://localhost' }}
+          APP_URL: ${{ secrets.APP_URL }}
           JWT_PRIVATE_KEY_PEM_BASE64: ${{ secrets.JWT_PRIVATE_KEY_PEM_BASE64 }}
+          IDENTITY_IP_HASH_KEY: ${{ secrets.IDENTITY_IP_HASH_KEY }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT || '587' }}
           SMTP_FROM_ADDRESS: ${{ secrets.SMTP_FROM_ADDRESS }}
           SMTP_FROM_NAME: ${{ secrets.SMTP_FROM_NAME || 'UGTM' }}
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-          SMTP_USE_START_TLS: ${{ secrets.SMTP_USE_START_TLS || 'true' }}
+          SMTP_SECURITY: ${{ secrets.SMTP_SECURITY || 'StartTls' }}
+          SMTP_TIMEOUT_SECONDS: ${{ secrets.SMTP_TIMEOUT_SECONDS || '30' }}
           DEPLOY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME || 'ubuntu' }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
-          envs: DATABASE_CONNECTION_STRING,APP_URL,JWT_PRIVATE_KEY_PEM_BASE64,SMTP_HOST,SMTP_PORT,SMTP_FROM_ADDRESS,SMTP_FROM_NAME,SMTP_USERNAME,SMTP_PASSWORD,SMTP_USE_START_TLS,DEPLOY_GITHUB_TOKEN
+          envs: API_HOST,ACME_EMAIL,DATABASE_CONNECTION_STRING,APP_URL,JWT_PRIVATE_KEY_PEM_BASE64,IDENTITY_IP_HASH_KEY,SMTP_HOST,SMTP_PORT,SMTP_FROM_ADDRESS,SMTP_FROM_NAME,SMTP_USERNAME,SMTP_PASSWORD,SMTP_SECURITY,SMTP_TIMEOUT_SECONDS,DEPLOY_GITHUB_TOKEN
           script: |
             set -e
             APP_DIR="$HOME/ugtm"
@@ -102,10 +113,11 @@ jobs:
                 environment:
                   - ASPNETCORE_ENVIRONMENT=Production
                   - ASPNETCORE_HTTP_PORTS=8080
-                  - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING}
-                  - Cors__AllowedOrigins__0=${APP_URL:-http://localhost}
-                  - Identity__Email__PublicWebBaseUrl=${APP_URL:-http://localhost}
+                  - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING:?DATABASE_CONNECTION_STRING must be configured}
+                  - Cors__AllowedOrigins__0=${APP_URL:?APP_URL must be configured}
+                  - Identity__Email__PublicWebBaseUrl=${APP_URL:?APP_URL must be configured}
                   - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
+                  - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:?IDENTITY_IP_HASH_KEY must be configured}
                   - Proxy__KnownProxies__0=172.29.0.10
                   - Proxy__KnownProxies__1=::ffff:172.29.0.10
                   - Notifications__Smtp__Host=${SMTP_HOST}
@@ -114,7 +126,8 @@ jobs:
                   - Notifications__Smtp__FromName=${SMTP_FROM_NAME:-UGTM}
                   - Notifications__Smtp__Username=${SMTP_USERNAME}
                   - Notifications__Smtp__Password=${SMTP_PASSWORD}
-                  - Notifications__Smtp__UseStartTls=${SMTP_USE_START_TLS:-true}
+                  - Notifications__Smtp__Security=${SMTP_SECURITY:-StartTls}
+                  - Notifications__Smtp__TimeoutSeconds=${SMTP_TIMEOUT_SECONDS:-30}
                 expose:
                   - "8080"
                 volumes:
@@ -127,20 +140,72 @@ jobs:
                 restart: always
                 depends_on:
                   - backend
+                expose:
+                  - "80"
+
+              gateway:
+                image: caddy:2.11.7-alpine
+                container_name: ugtm-gateway
+                restart: always
+                depends_on:
+                  - backend
+                  - frontend
+                environment:
+                  API_HOST: ${API_HOST:?API_HOST must be configured}
+                  ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be configured}
+                ports:
+                  - "80:80"
+                  - "443:443"
+                  - "443:443/udp"
+                volumes:
+                  - ./Caddyfile:/etc/caddy/Caddyfile:ro
+                  - caddy_data:/data
+                  - caddy_config:/config
                 networks:
                   default:
                     ipv4_address: 172.29.0.10
-                ports:
-                  - "80:80"
 
             volumes:
               data_protection_keys:
+              caddy_data:
+              caddy_config:
 
             networks:
               default:
                 ipam:
                   config:
                     - subnet: 172.29.0.0/24
+            EOF
+
+            cat << 'EOF' > Caddyfile
+            {
+              email {$ACME_EMAIL}
+            }
+
+            {$API_HOST} {
+              encode zstd gzip
+
+              @backend path /api/*
+              handle @backend {
+                reverse_proxy backend:8080
+              }
+
+              handle {
+                reverse_proxy frontend:80
+              }
+
+              header {
+                -Server
+                Strict-Transport-Security "max-age=31536000"
+                X-Content-Type-Options "nosniff"
+                Referrer-Policy "strict-origin-when-cross-origin"
+              }
+
+              log {
+                output stdout
+                format json
+              }
+            }
             EOF
 
             umask 077
@@ -157,6 +222,11 @@ jobs:
             # Pull and restart containers
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            # Verify that DNS, TLS termination and the backend route all work publicly.
+            curl --fail --silent --show-error \
+              --retry 12 --retry-delay 5 --retry-all-errors \
+              "https://${API_HOST}/api/modules/Identity/ping"
 
             # Clean dangling images
             docker image prune -f

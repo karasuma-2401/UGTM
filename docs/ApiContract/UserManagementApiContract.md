@@ -1,6 +1,6 @@
 # User Management API
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 16/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 18/10/2026
 **Base path:** `/api/users`
 
 Tài liệu này đặc tả chi tiết các endpoint Quản lý Người dùng (User Management) trong hệ thống UGTM. Tài liệu kỹ thuật kiến trúc đối chiếu nằm tại [User Management Technical](../../backend/docs/Technical/UserManagement.md).
@@ -15,6 +15,8 @@ Tài liệu này đặc tả chi tiết các endpoint Quản lý Người dùng 
 - Quyền truy cập được kiểm soát thông qua Permission Policies kết hợp **Admin Role Bypass**:
   - Xem danh sách: `identity.users.read` hoặc vai trò `Admin`.
   - Quản trị (tạo, sửa, đổi trạng thái): `identity.users.manage` hoặc vai trò `Admin`.
+  - Import Excel: `identity.users.import` hoặc vai trò `Admin`.
+  - Quản lý phiên của tài khoản khác: `identity.sessions.revoke` hoặc vai trò `Admin`.
   > [!NOTE]
   > **Cơ chế Admin Role Bypass:** Hệ thống tự động cho phép người dùng có vai trò `Admin` (Role claim: `Admin`) thực thi toàn bộ các API quản lý người dùng mà không phụ thuộc vào việc tài khoản đó có được gán claim permission tương ứng trong cơ sở dữ liệu hay không.
 
@@ -58,8 +60,13 @@ Các phản hồi từ tầng pipeline ASP.NET Core & OpenApi/Scalar:
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/users` | `identity.users.read` hoặc vai trò `Admin` | Tra cứu, tìm kiếm và phân trang danh sách người dùng |
 | `POST` | `/api/users` | `identity.users.manage` hoặc vai trò `Admin` | Tạo tài khoản người dùng đơn lẻ |
+| `POST` | `/api/users/import` | `identity.users.import` hoặc vai trò `Admin` | Import Excel danh sách Sinh viên hoặc Giảng viên |
+| `GET` | `/api/users/import-template?role=Student` | `identity.users.import` hoặc vai trò `Admin` | Tải file `.xlsx` mẫu theo loại tài khoản |
 | `PUT` | `/api/users/{id}` | `identity.users.manage` hoặc vai trò `Admin` | Cập nhật thông tin hồ sơ và danh sách vai trò |
 | `PATCH` | `/api/users/{id}/status` | `identity.users.manage` hoặc vai trò `Admin` | Khóa / Mở khóa / Tạm ngưng tài khoản người dùng |
+| `GET` | `/api/users/{id}/sessions` | `identity.sessions.revoke` hoặc vai trò `Admin` | Xem các phiên còn hoạt động của người dùng |
+| `DELETE` | `/api/users/{id}/sessions/{sessionId}` | `identity.sessions.revoke` hoặc vai trò `Admin` | Thu hồi một phiên của người dùng |
+| `DELETE` | `/api/users/{id}/sessions` | `identity.sessions.revoke` hoặc vai trò `Admin` | Thu hồi toàn bộ phiên của người dùng |
 
 ---
 
@@ -202,7 +209,76 @@ Tạo tài khoản người dùng mới và phân vai trò.
 
 ---
 
-### 3. `PUT /api/users/{id}` — Cập nhật thông tin và vai trò
+### 3. `POST /api/users/import` — Import người dùng từ Excel
+
+Tải template trước bằng `GET /api/users/import-template?role=Student` hoặc `role=Lecturer`. File trả về có sheet `Users` với bốn cột chuẩn và sheet `Instructions`; `role` khác hai giá trị này trả `Identity.InvalidImportRole`.
+
+Request dùng `multipart/form-data`:
+
+| Trường | Kiểu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `file` | `.xlsx` | Có | Tệp Excel tối đa 5 MB và 5.000 dòng dữ liệu |
+| `role` | `string` | Có | Chỉ nhận `Student` hoặc `Lecturer` |
+
+Dòng đầu tiên của worksheet đầu tiên phải có đủ bốn cột `Email`, `FullName`, `UserCode`, `PhoneNumber`. Hệ thống cũng nhận các tên tiếng Việt tương ứng như `Họ và tên`, `Mã sinh viên`, `Mã giảng viên`, `Số điện thoại`. `UserCode` bắt buộc với `Student`, có thể để trống với `Lecturer`; `PhoneNumber` có thể để trống.
+
+Import áp dụng quy tắc **all-or-nothing**. Nếu một dòng sai định dạng, trùng trong file hoặc trùng với database thì không tài khoản nào được ghi. Ô công thức không được chấp nhận. Tài khoản thành công được tạo ở trạng thái `PendingActivation`, không tạo activation challenge và không gửi email hàng loạt.
+
+Sau import, người dùng nhập email hoặc mã người dùng tại `POST /api/identity/auth/activation/resend`. Backend khi đó mới tạo challenge và gửi magic link riêng cho người yêu cầu.
+
+Ví dụ:
+
+```bash
+curl -X POST "https://api.example.com/api/users/import" \
+  -H "Authorization: Bearer <access-token>" \
+  -F "role=Student" \
+  -F "file=@students.xlsx"
+```
+
+Phản hồi thành công:
+
+```json
+{
+  "success": true,
+  "data": {
+    "totalRows": 120,
+    "importedCount": 120,
+    "role": "Student",
+    "errors": []
+  },
+  "error": null
+}
+```
+
+Phản hồi file có dữ liệu sai:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "Identity.ImportValidationFailed",
+    "message": "Tệp import có dữ liệu không hợp lệ. Không có tài khoản nào được tạo.",
+    "errors": {
+      "rows[3].email": ["Email không hợp lệ hoặc vượt quá 150 ký tự."],
+      "rows[8].userCode": ["Mã người dùng đã tồn tại trong hệ thống."]
+    }
+  }
+}
+```
+
+| HTTP Status | Mã lỗi | Nguyên nhân |
+| :--- | :--- | :--- |
+| 400 | `Identity.InvalidImportFile` | File thiếu/rỗng, không phải `.xlsx`, hỏng hoặc vượt 5 MB |
+| 400 | `Identity.InvalidImportRole` | `role` không phải `Student`/`Lecturer` |
+| 400 | `Identity.ImportValidationFailed` | Một hoặc nhiều dòng/cột không hợp lệ hoặc bị trùng; không có dữ liệu được ghi |
+| 401 | — | Thiếu Access Token hoặc token không hợp lệ |
+| 403 | — | Không có quyền `identity.users.import` và không phải Admin |
+| 413 | — | Multipart request vượt giới hạn kích thước |
+
+---
+
+### 4. `PUT /api/users/{id}` — Cập nhật thông tin và vai trò
 
 Cập nhật thông tin cá nhân và thay đổi danh sách vai trò của người dùng.
 
@@ -269,7 +345,7 @@ Cập nhật thông tin cá nhân và thay đổi danh sách vai trò của ngư
 
 ---
 
-### 4. `PATCH /api/users/{id}/status` — Khóa / Mở khóa / Tạm ngưng tài khoản
+### 5. `PATCH /api/users/{id}/status` — Khóa / Mở khóa / Tạm ngưng tài khoản
 
 Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `Disabled`).
 
@@ -320,10 +396,50 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 | :--- | :--- | :--- |
 | 400 | `Identity.InvalidStatus` | Trạng thái rỗng, chuỗi số (ví dụ `"999"`), không hợp lệ hoặc cố tình đặt `PendingActivation` |
 | 400 | `Identity.InvalidStatusTransition` | Chuyển đổi trạng thái không hợp lệ (ví dụ tài khoản chờ kích hoạt hoặc tạm ngưng tài khoản không Active) |
-| 400 | `Identity.CannotDisableLastAdmin` | Cố tình vô hiệu hóa tài khoản Quản trị viên (Admin) cuối cùng của hệ thống |
+| 400 | `Identity.CannotDisableLastAdmin` | Cố tình tạm ngưng hoặc vô hiệu hóa tài khoản Quản trị viên (Admin) đang hoạt động cuối cùng của hệ thống |
 | 401 | — | Thiếu Access Token hoặc token không hợp lệ |
 | 403 | — | Người dùng không có quyền `identity.users.manage` và không phải Admin |
 | 404 | `Identity.UserNotFound` | Không tìm thấy người dùng với `id` cung cấp |
+
+---
+
+### 6. Quản lý phiên đăng nhập của người dùng
+
+Ba endpoint dưới đây yêu cầu `identity.sessions.revoke` hoặc vai trò `Admin`. Chúng không nhận body và không yêu cầu CSRF token vì xác thực bằng Bearer token.
+
+#### `GET /api/users/{id}/sessions`
+
+Trả `ApiResponse<Session[]>`, chỉ gồm các phiên chưa bị thu hồi và chưa hết hạn, sắp xếp theo `lastSeenAt` giảm dần. Response không chứa refresh token hoặc IP hash.
+
+#### `DELETE /api/users/{id}/sessions/{sessionId}`
+
+Thu hồi đúng một phiên với lý do `AdministratorRevoked` và ghi Audit Log `Identity.Session.Revoked`.
+
+#### `DELETE /api/users/{id}/sessions`
+
+Thu hồi toàn bộ phiên đang hoạt động với lý do `AdministratorRevoked`, trả số phiên thực tế đã thu hồi và ghi Audit Log `Identity.User.SessionsRevoked`. Kết quả vẫn là `200 OK` nếu tài khoản không có phiên hoạt động.
+
+Response thu hồi:
+
+```json
+{
+  "success": true,
+  "data": {
+    "revokedCount": 2,
+    "currentSessionRevoked": false
+  },
+  "error": null
+}
+```
+
+Nếu Admin thao tác trên chính mình và thu hồi phiên đang gọi API, `currentSessionRevoked` là `true`, refresh cookie hiện tại bị xóa và access token sẽ bị từ chối ở request kế tiếp.
+
+| HTTP Status | Mã lỗi | Nguyên nhân |
+| :--- | :--- | :--- |
+| 401 | — | Thiếu Access Token hoặc token/phiên không hợp lệ |
+| 403 | — | Không có quyền `identity.sessions.revoke` và không phải Admin |
+| 404 | `Identity.UserNotFound` | Không tìm thấy tài khoản mục tiêu |
+| 404 | `Identity.SessionNotFound` | Phiên không tồn tại, đã hết hạn/thu hồi hoặc không thuộc tài khoản mục tiêu |
 
 ---
 
@@ -339,9 +455,13 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 | `Identity.InvalidPhoneNumber` | 400 | Số điện thoại không đúng định dạng 10 chữ số chuẩn |
 | `Identity.WeakPassword` | 400 | Mật khẩu khởi tạo không đạt tiêu chuẩn chính sách bảo mật |
 | `Identity.InvalidInput` | 400 | Dữ liệu đầu vào bị thiếu hoặc không đúng định dạng |
-| `Identity.CannotDisableLastAdmin` | 400 | Không thể vô hiệu hóa tài khoản Quản trị viên (Admin) cuối cùng |
+| `Identity.InvalidImportFile` | 400 | Tệp Excel import không hợp lệ |
+| `Identity.InvalidImportRole` | 400 | Vai trò import không phải Student/Lecturer |
+| `Identity.ImportValidationFailed` | 400 | Dữ liệu trong file import không hợp lệ; không có tài khoản nào được tạo |
+| `Identity.CannotDisableLastAdmin` | 400 | Không thể tạm ngưng hoặc vô hiệu hóa tài khoản Quản trị viên (Admin) đang hoạt động cuối cùng |
 | `Identity.CannotRemoveLastAdminRole` | 400 | Không thể gỡ bỏ vai trò Quản trị viên (Admin) khỏi tài khoản Admin cuối cùng |
 | `Identity.AdminAlreadyExists` | 409 | Hệ thống đã có tài khoản Quản trị viên (Admin) |
+| `Identity.SessionNotFound` | 404 | Không tìm thấy phiên đang hoạt động thuộc tài khoản mục tiêu |
 
 ---
 
@@ -389,6 +509,21 @@ export interface UpdateUserRequest {
 
 export interface UpdateUserStatusRequest {
   status: 'Active' | 'Suspended' | 'Disabled';
+}
+
+export interface Session {
+  id: string;
+  authenticatedAt: string;
+  lastSeenAt: string;
+  idleExpiresAt: string;
+  absoluteExpiresAt: string;
+  userAgentSummary: string | null;
+  isCurrent: boolean;
+}
+
+export interface RevokeSessionsResult {
+  revokedCount: number;
+  currentSessionRevoked: boolean;
 }
 ```
 
