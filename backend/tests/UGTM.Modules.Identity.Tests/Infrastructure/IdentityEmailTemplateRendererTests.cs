@@ -72,7 +72,8 @@ public sealed class IdentityEmailTemplateRendererTests
     {
         return new IdentityEmailTemplateRenderer(Options.Create(new IdentityEmailOptions
         {
-            PublicWebBaseUrl = publicWebBaseUrl
+            PublicWebBaseUrl = publicWebBaseUrl,
+            OutboxPartition = "template-tests"
         }));
     }
 

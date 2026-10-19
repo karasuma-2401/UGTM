@@ -7,6 +7,11 @@ Identity không gọi SMTP trong request chính: handler ghi message vào transa
 `IdentityOutboxProcessor` giải mã payload và gửi bất đồng bộ. Vì vậy lỗi SMTP không làm rollback thao tác nghiệp vụ;
 message thất bại được retry theo exponential backoff, tối đa 60 phút giữa hai lần thử.
 
+Mỗi runtime phải có một `Identity:Email:OutboxPartition` ổn định. Partition được đưa vào Data Protection
+purpose của payload và worker chỉ lấy message thuộc partition của mình. Repository cấu hình sẵn
+`local-direct` cho Rider/`dotnet run`, `local-docker` cho Docker Compose và `azure-production` cho deployment.
+Nhờ đó local và Azure có thể dùng chung database mà không lấy nhầm message được mã hóa bằng key ring khác.
+
 ## Giao diện email
 
 Identity có template HTML riêng cho email kích hoạt và OTP khôi phục mật khẩu. Template dùng
@@ -48,6 +53,9 @@ SMTP_TIMEOUT_SECONDS=30
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | Cặp credential SMTP; phải cùng có hoặc cùng không có |
 | `SMTP_TIMEOUT_SECONDS` | Timeout kết nối/gửi, từ 5 đến 120 giây |
 
+Không đặt cùng một outbox partition cho hai môi trường có Data Protection key ring khác nhau. Các replica
+thật sự của cùng một môi trường chỉ được dùng chung partition khi chúng đồng thời dùng chung key ring.
+
 Production từ chối `SMTP_SECURITY=None` ngay khi startup. Không tắt kiểm tra chứng thư TLS.
 `None` chỉ dành cho SMTP giả lập như Mailpit trong môi trường Development.
 
@@ -82,6 +90,9 @@ Nếu không đặt `SMTP_HOST`, ứng dụng Development tiếp tục dùng Mai
 4. Kiểm tra hộp thư đến và thư mục spam; worker quét outbox mỗi 5 giây.
 5. Nếu email chưa đến, kiểm tra log `IdentityOutboxProcessor` và các cột `attempt_count`, `next_attempt_at`,
    `last_error` trong `identity.outbox_message`.
+
+Message tạo trước khi cơ chế partition được triển khai có protection purpose phiên bản cũ và không được worker
+mới nhận. Hãy gọi resend một lần sau khi backend mới được triển khai; Magic Link mới sẽ vô hiệu hóa link cũ.
 
 Không dùng endpoint resend liên tục để thử SMTP vì nhóm activation có rate limit 5 request/10 phút/IP
 và mỗi lần resend sẽ vô hiệu Magic Link trước đó.

@@ -116,6 +116,7 @@ jobs:
                   - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING:?DATABASE_CONNECTION_STRING must be configured}
                   - Cors__AllowedOrigins__0=${APP_URL:?APP_URL must be configured}
                   - Identity__Email__PublicWebBaseUrl=${APP_URL:?APP_URL must be configured}
+                  - Identity__Email__OutboxPartition=azure-production
                   - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
                   - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:?IDENTITY_IP_HASH_KEY must be configured}
                   - Proxy__KnownProxies__0=172.29.0.10
