@@ -29,7 +29,7 @@ public sealed class IdentityOutboxRetryIntegrationTests(PostgreSqlFixture fixtur
             await db.Database.ExecuteSqlRawAsync("DROP SCHEMA IF EXISTS identity CASCADE;");
             await db.Database.EnsureCreatedAsync();
 
-            var outbox = new IdentityEmailOutbox(db, dataProtection);
+            var outbox = new IdentityEmailOutbox(db, dataProtection, EmailOptions("local"));
             outbox.EnqueueActivationEmail(
                 Guid.NewGuid(),
                 "student@ugtm.edu.vn",
@@ -90,7 +90,7 @@ public sealed class IdentityOutboxRetryIntegrationTests(PostgreSqlFixture fixtur
             await db.Database.ExecuteSqlRawAsync("DROP SCHEMA IF EXISTS identity CASCADE;");
             await db.Database.EnsureCreatedAsync();
 
-            var outbox = new IdentityEmailOutbox(db, dataProtection);
+            var outbox = new IdentityEmailOutbox(db, dataProtection, EmailOptions("local"));
             outbox.EnqueueActivationEmail(
                 Guid.NewGuid(), "first@ugtm.edu.vn", "First", "first-token", Now);
             outbox.EnqueueActivationEmail(
@@ -117,25 +117,64 @@ public sealed class IdentityOutboxRetryIntegrationTests(PostgreSqlFixture fixtur
             sender.Delivered.Select(value => value.To).Order().ToArray());
     }
 
+    [Fact]
+    public async Task Dispatcher_only_processes_messages_from_its_partition()
+    {
+        var dataProtection = new EphemeralDataProtectionProvider();
+        var clock = new MutableClock(Now);
+        var sender = new FailOnceEmailSender { ShouldFail = false };
+
+        await using (var db = CreateDbContext())
+        {
+            await db.Database.ExecuteSqlRawAsync("DROP SCHEMA IF EXISTS identity CASCADE;");
+            await db.Database.EnsureCreatedAsync();
+
+            new IdentityEmailOutbox(db, dataProtection, EmailOptions("local"))
+                .EnqueueActivationEmail(
+                    Guid.NewGuid(), "local@ugtm.edu.vn", "Local", "local-token", Now);
+            new IdentityEmailOutbox(db, dataProtection, EmailOptions("azure"))
+                .EnqueueActivationEmail(
+                    Guid.NewGuid(), "azure@ugtm.edu.vn", "Azure", "azure-token", Now);
+            await db.SaveChangesAsync();
+        }
+
+        Assert.Equal(1, await DispatchAsync(sender, clock, dataProtection, "local"));
+        Assert.Equal("local@ugtm.edu.vn", Assert.Single(sender.Delivered).To);
+
+        await using var verificationDb = CreateDbContext();
+        var messages = await verificationDb.IdentityOutboxMessages
+            .AsNoTracking()
+            .OrderBy(value => value.Type)
+            .ToListAsync();
+        Assert.Single(messages, value => value.ProcessedAt is not null);
+        Assert.Single(messages, value => value.ProcessedAt is null);
+    }
+
     private async Task<int> DispatchAsync(
         IEmailSender sender,
         IClock clock,
-        IDataProtectionProvider dataProtection)
+        IDataProtectionProvider dataProtection,
+        string partition = "local")
     {
         await using var db = CreateDbContext();
-        var emailOptions = Options.Create(new IdentityEmailOptions
-        {
-            PublicWebBaseUrl = new Uri("https://ugtm.example")
-        });
+        var emailOptions = EmailOptions(partition);
         var dispatcher = new IdentityOutboxDispatcher(
             db,
             sender,
             clock,
             dataProtection,
             new IdentityEmailTemplateRenderer(emailOptions),
+            emailOptions,
             NullLogger<IdentityOutboxDispatcher>.Instance);
         return await dispatcher.ProcessBatchAsync(CancellationToken.None);
     }
+
+    private static IOptions<IdentityEmailOptions> EmailOptions(string partition) =>
+        Options.Create(new IdentityEmailOptions
+        {
+            PublicWebBaseUrl = new Uri("https://ugtm.example"),
+            OutboxPartition = partition
+        });
 
     private IdentityDbContext CreateDbContext()
     {
@@ -151,13 +190,14 @@ public sealed class IdentityOutboxRetryIntegrationTests(PostgreSqlFixture fixtur
 
     private sealed class FailOnceEmailSender : IEmailSender
     {
+        public bool ShouldFail { get; init; } = true;
         public int AttemptCount { get; private set; }
         public List<EmailMessage> Delivered { get; } = [];
 
         public Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
         {
             AttemptCount++;
-            if (AttemptCount == 1)
+            if (ShouldFail && AttemptCount == 1)
             {
                 throw new InvalidOperationException("Simulated SMTP failure.");
             }

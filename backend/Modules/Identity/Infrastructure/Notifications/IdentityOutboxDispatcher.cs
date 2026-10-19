@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Infrastructure.Persistence;
 using UGTM.Modules.Notifications.Contracts.Email;
@@ -14,6 +15,7 @@ public sealed class IdentityOutboxDispatcher(
     IClock clock,
     IDataProtectionProvider dataProtection,
     IdentityEmailTemplateRenderer templates,
+    IOptions<IdentityEmailOptions> configuredOptions,
     ILogger<IdentityOutboxDispatcher> logger)
 {
     private const int BatchSize = 20;
@@ -21,13 +23,17 @@ public sealed class IdentityOutboxDispatcher(
     public async Task<int> ProcessBatchAsync(CancellationToken cancellationToken)
     {
         var now = clock.UtcNow;
+        var protectionPurpose = IdentityEmailOutbox.ProtectionPurposeFor(
+            configuredOptions.Value.OutboxPartition);
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var messages = await db.IdentityOutboxMessages
             .FromSqlInterpolated(
                 $"""
                 SELECT *
                 FROM identity.outbox_message
-                WHERE processed_at IS NULL AND next_attempt_at <= {now}
+                WHERE protection_purpose = {protectionPurpose}
+                  AND processed_at IS NULL
+                  AND next_attempt_at <= {now}
                 ORDER BY created_at
                 LIMIT {BatchSize}
                 FOR UPDATE SKIP LOCKED
