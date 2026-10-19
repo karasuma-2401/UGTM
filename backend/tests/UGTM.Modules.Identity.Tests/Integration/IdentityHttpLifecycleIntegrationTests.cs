@@ -172,6 +172,7 @@ public sealed class IdentityHttpLifecycleIntegrationTests(PostgreSqlFixture fixt
             ["Identity:Jwt:KeyId"] = "identity-http-tests",
             ["Identity:Jwt:AccessTokenMinutes"] = "10",
             ["Identity:Email:PublicWebBaseUrl"] = "https://ugtm.example",
+            ["Identity:Email:OutboxPartition"] = "http-tests",
             ["Identity:ClientMetadata:IpHashKey"] = "identity-http-tests-ip-hash-key-32-characters",
             ["Identity:ClientMetadata:UserAgentMaxLength"] = "300"
         });

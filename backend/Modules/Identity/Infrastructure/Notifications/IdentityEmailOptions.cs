@@ -5,4 +5,5 @@ public sealed class IdentityEmailOptions
     public const string SectionName = "Identity:Email";
 
     public required Uri PublicWebBaseUrl { get; init; }
+    public required string OutboxPartition { get; init; }
 }
