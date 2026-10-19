@@ -19,10 +19,9 @@ table layout cùng inline CSS để tương thích các email client phổ biế
 từ xanh `#2054A5` sang cam `#FA7921`, CTA/link dự phòng, cảnh báo bảo mật và bản text fallback.
 OTP chỉ xuất hiện trong nội dung, không được đưa vào subject để tránh lộ qua notification.
 
-Logo được lưu riêng trong Backend tại
-`Modules/Identity/Infrastructure/Notifications/Assets`. Bản PNG được nhúng vào assembly và gửi
-cùng email bằng linked MIME resource `cid:ugtm-brand-logo`; do đó email không phụ thuộc URL hoặc
-deployment của Frontend. Nếu email client chặn hình ảnh, thuộc tính `alt` vẫn hiển thị `UGTM`.
+Logo chữ UGTM được dựng trực tiếp bằng HTML email-safe và màu thương hiệu. Email không tải ảnh từ
+URL bên ngoài, không dùng Content-ID và không đính kèm file, tránh trường hợp Gmail không ghép được
+inline MIME resource hoặc hiển thị logo thành attachment.
 
 ## Cấu hình
 

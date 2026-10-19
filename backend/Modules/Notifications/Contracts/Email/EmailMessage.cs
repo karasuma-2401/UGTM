@@ -3,7 +3,8 @@ namespace UGTM.Modules.Notifications.Contracts.Email;
 public sealed record EmailInlineImage(
     string ContentId,
     string FileName,
-    byte[] Content);
+    byte[] Content,
+    string MediaType = "image/png");
 
 public sealed record EmailMessage(
     string To,
