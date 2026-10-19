@@ -8,10 +8,7 @@ public sealed class IdentityEmailTemplateRenderer(IOptions<IdentityEmailOptions>
 {
     private const string BrandBlue = "#2054A5";
     private const string BrandOrange = "#FA7921";
-    private const string LogoContentId = "ugtm-brand-logo";
-    private const string LogoResourceName = "UGTM.Identity.EmailAssets.ugtm-logo.png";
     private const string ProductName = "Hệ thống quản lý tốt nghiệp";
-    private static readonly byte[] LogoContent = LoadLogo();
     private readonly IdentityEmailOptions options = configuredOptions.Value;
 
     public EmailMessage Render(IdentityEmailPayload payload)
@@ -55,8 +52,7 @@ public sealed class IdentityEmailTemplateRenderer(IOptions<IdentityEmailOptions>
             $"Xin chào {payload.FullName},\n\n"
             + "Tài khoản UGTM của bạn đã được khởi tạo. Kích hoạt và thiết lập mật khẩu tại:\n"
             + $"{activationUrl}\n\n"
-            + "Liên kết chỉ dùng được một lần và có thời hạn. Nếu bạn không yêu cầu tạo tài khoản, hãy bỏ qua email này.",
-            InlineLogo());
+            + "Liên kết chỉ dùng được một lần và có thời hạn. Nếu bạn không yêu cầu tạo tài khoản, hãy bỏ qua email này.");
     }
 
     private EmailMessage RenderRecoveryOtp(IdentityEmailPayload payload)
@@ -83,8 +79,7 @@ public sealed class IdentityEmailTemplateRenderer(IOptions<IdentityEmailOptions>
             $"Xin chào {payload.FullName},\n\n"
             + $"Mã xác thực khôi phục mật khẩu UGTM của bạn là: {payload.Secret}\n\n"
             + "Mã có thời hạn và chỉ dùng được một lần. Không chia sẻ mã này với bất kỳ ai. "
-            + "Nếu bạn không yêu cầu khôi phục mật khẩu, hãy bỏ qua email này.",
-            InlineLogo());
+            + "Nếu bạn không yêu cầu khôi phục mật khẩu, hãy bỏ qua email này.");
     }
 
     private string Layout(string preheader, string content)
@@ -112,7 +107,7 @@ public sealed class IdentityEmailTemplateRenderer(IOptions<IdentityEmailOptions>
                           <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
                             <tr>
                               <td valign="middle">
-                                <img src="cid:{{LogoContentId}}" width="128" height="34" alt="UGTM" style="display:block;width:128px;height:34px;border:0;color:{{BrandBlue}};font-size:24px;font-weight:800;">
+                                <span aria-label="UGTM" style="display:inline-block;font-family:Arial,sans-serif;font-size:27px;font-weight:800;line-height:34px;letter-spacing:-1.5px;white-space:nowrap;"><span style="color:#2054A5;">U</span><span style="color:#24324A;">G</span><span style="color:#C97852;">T</span><span style="color:#FA7921;">M</span></span>
                               </td>
                               <td align="right" valign="middle" style="padding-left:18px;color:#697E9F;font-size:12px;line-height:1.45;">{{ProductName}}</td>
                             </tr>
@@ -158,21 +153,6 @@ public sealed class IdentityEmailTemplateRenderer(IOptions<IdentityEmailOptions>
         };
 
         return builder.Uri.AbsoluteUri;
-    }
-
-    private static IReadOnlyCollection<EmailInlineImage> InlineLogo() =>
-    [
-        new EmailInlineImage(LogoContentId, "ugtm-logo.png", LogoContent)
-    ];
-
-    private static byte[] LoadLogo()
-    {
-        using var stream = typeof(IdentityEmailTemplateRenderer).Assembly
-            .GetManifestResourceStream(LogoResourceName)
-            ?? throw new InvalidOperationException("Embedded UGTM email logo was not found.");
-        using var buffer = new MemoryStream();
-        stream.CopyTo(buffer);
-        return buffer.ToArray();
     }
 
     private static string Html(string value) => WebUtility.HtmlEncode(value);
