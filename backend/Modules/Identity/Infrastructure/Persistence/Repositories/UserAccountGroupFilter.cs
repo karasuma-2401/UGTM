@@ -10,10 +10,10 @@ public static class UserAccountGroupFilter
         => group switch
         {
             nameof(UserAccountGroup.Student) => users.Where(user =>
-                user.UserRoles.Any(role => role.Role.RoleName == SystemRoleName.Student)),
+                user.UserRoles.Any(role => role.Role.RoleName == nameof(SystemRoleName.Student))),
             // Include roleless accounts so administrators can still find and repair them.
             nameof(UserAccountGroup.Staff) => users.Where(user =>
-                !user.UserRoles.Any(role => role.Role.RoleName == SystemRoleName.Student)),
+                !user.UserRoles.Any(role => role.Role.RoleName == nameof(SystemRoleName.Student))),
             _ => users
         };
 }
