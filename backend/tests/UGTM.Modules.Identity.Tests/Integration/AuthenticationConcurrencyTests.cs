@@ -1,6 +1,8 @@
+using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Modules.Identity.Application.Activation;
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Authentication.RefreshSession;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Profiles;
@@ -28,8 +30,9 @@ public sealed class AuthenticationConcurrencyTests(PostgreSqlFixture fixture)
 
         await using var firstDb = CreateDbContext();
         await using var secondDb = CreateDbContext();
-        var firstHandler = CreateRefreshHandler(firstDb, opaqueTokens);
-        var secondHandler = CreateRefreshHandler(secondDb, opaqueTokens);
+        var auditLogs = new ConcurrentAuditLogWriter();
+        var firstHandler = CreateRefreshHandler(firstDb, opaqueTokens, auditLogs);
+        var secondHandler = CreateRefreshHandler(secondDb, opaqueTokens, auditLogs);
 
         var results = await Task.WhenAll(
             firstHandler.HandleAsync(new(rawToken.RawToken), CancellationToken.None),
@@ -51,6 +54,12 @@ public sealed class AuthenticationConcurrencyTests(PostgreSqlFixture fixture)
         Assert.NotNull(session.RevokedAt);
         Assert.Equal(2, storedTokens.Count);
         Assert.Single(storedTokens, value => value.ConsumedAt is not null);
+        Assert.Contains(auditLogs.Entries, entry =>
+            entry.Action == AuditActions.SessionRefreshed
+            && entry.Outcome == AuditOutcomes.Success);
+        Assert.Contains(auditLogs.Entries, entry =>
+            entry.Action == AuditActions.RefreshTokenReuseDetected
+            && entry.Outcome == AuditOutcomes.Denied);
     }
 
     [Fact]
@@ -62,8 +71,9 @@ public sealed class AuthenticationConcurrencyTests(PostgreSqlFixture fixture)
 
         await using var firstDb = CreateDbContext();
         await using var secondDb = CreateDbContext();
-        var firstHandler = CreateActivationHandler(firstDb, opaqueTokens);
-        var secondHandler = CreateActivationHandler(secondDb, opaqueTokens);
+        var auditLogs = new ConcurrentAuditLogWriter();
+        var firstHandler = CreateActivationHandler(firstDb, opaqueTokens, auditLogs);
+        var secondHandler = CreateActivationHandler(secondDb, opaqueTokens, auditLogs);
         var command = new CompleteActivationCommand(rawToken.RawToken, "StrongPassword!123");
 
         var results = await Task.WhenAll(
@@ -82,6 +92,12 @@ public sealed class AuthenticationConcurrencyTests(PostgreSqlFixture fixture)
         Assert.Equal(AccountStatus.Active, user.Status);
         Assert.NotNull(user.PasswordHash);
         Assert.NotNull(challenge.ConsumedAt);
+        Assert.Contains(auditLogs.Entries, entry =>
+            entry.Action == AuditActions.AccountActivated
+            && entry.Outcome == AuditOutcomes.Success);
+        Assert.Contains(auditLogs.Entries, entry =>
+            entry.Action == AuditActions.AccountActivated
+            && entry.Outcome == AuditOutcomes.Denied);
     }
 
     private async Task<Guid> SeedActiveSessionAsync(OpaqueToken rawToken)
@@ -146,19 +162,22 @@ public sealed class AuthenticationConcurrencyTests(PostgreSqlFixture fixture)
 
     private static RefreshSessionHandler CreateRefreshHandler(
         IdentityDbContext db,
-        IOpaqueTokenService tokens)
+        IOpaqueTokenService tokens,
+        IAuditLogWriter auditLogs)
         => new(
             new AuthenticationSessionRepository(db),
             new UserProfileReader(db),
             tokens,
             new StubAccessTokenService(),
             new IdentityUnitOfWork(db),
+            auditLogs,
             new FixedClock(),
             new IdentitySecurityPolicy());
 
     private static CompleteActivationHandler CreateActivationHandler(
         IdentityDbContext db,
-        IOpaqueTokenService tokens)
+        IOpaqueTokenService tokens,
+        IAuditLogWriter auditLogs)
         => new(
             new OneTimeChallengeRepository(db),
             new UserRepository(db),
@@ -166,6 +185,7 @@ public sealed class AuthenticationConcurrencyTests(PostgreSqlFixture fixture)
             new AspNetPasswordService(),
             new PasswordPolicy(),
             new IdentityUnitOfWork(db),
+            auditLogs,
             new FixedClock());
 
     private static User CreateUser()
@@ -187,5 +207,12 @@ public sealed class AuthenticationConcurrencyTests(PostgreSqlFixture fixture)
     {
         public AccessTokenResult Create(UserProfileDto user, Guid sessionId, DateTime now)
             => new("access-token", now.AddMinutes(10));
+    }
+
+    private sealed class ConcurrentAuditLogWriter : IAuditLogWriter
+    {
+        public ConcurrentQueue<AuditEntry> Entries { get; } = new();
+
+        public void Add(AuditEntry entry) => Entries.Enqueue(entry);
     }
 }

@@ -1,8 +1,8 @@
 import axios from 'axios';
+import { API_BASE_URL } from './config';
 import type { ApiResponse } from './types';
 import type { CsrfTokenData } from '@/features/auth/types/auth.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5287';
 const CSRF_ENDPOINT = '/api/identity/auth/csrf';
 
 export const CSRF_HEADER_NAME = 'X-CSRF-TOKEN';
@@ -15,7 +15,7 @@ export async function getCsrfToken(forceRefresh = false): Promise<string> {
     return csrfTokenCache;
   }
 
-  if (pendingCsrfPromise && !forceRefresh) {
+  if (pendingCsrfPromise) {
     return pendingCsrfPromise;
   }
 
@@ -25,6 +25,7 @@ export async function getCsrfToken(forceRefresh = false): Promise<string> {
         `${API_BASE_URL}${CSRF_ENDPOINT}`,
         {
           withCredentials: true,
+          timeout: 15_000,
           headers: {
             'Content-Type': 'application/json',
           },
@@ -50,4 +51,3 @@ export function clearCsrfToken(): void {
   csrfTokenCache = null;
   pendingCsrfPromise = null;
 }
-

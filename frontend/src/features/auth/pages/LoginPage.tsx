@@ -31,7 +31,8 @@ function formatCountdown(totalSeconds: number): string {
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isLoading, sessionError, sessionNotice, retrySession } =
+    useAuth();
   const [identifier, setIdentifier] = useState(
     () => localStorage.getItem(REMEMBERED_IDENTIFIER_KEY) || '',
   );
@@ -101,7 +102,7 @@ export function LoginPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isLocked || isSubmitting) return;
+    if (isLocked || isSubmitting || isLoading || sessionError) return;
 
     setError('');
     setIsSubmitting(true);
@@ -192,6 +193,24 @@ export function LoginPage() {
       <p className="auth-subtitle">
         Đăng nhập tài khoản định danh để truy cập không gian làm việc Khóa luận
       </p>
+      {sessionNotice && (
+        <p className="auth-hint" role="status">
+          {sessionNotice}
+        </p>
+      )}
+      {isLoading && (
+        <p className="auth-hint" role="status">
+          Đang kiểm tra phiên đăng nhập…
+        </p>
+      )}
+      {sessionError && (
+        <div className="auth-error" role="alert">
+          <p>{sessionError}</p>
+          <Button type="button" variant="outline" onClick={retrySession}>
+            Thử lại
+          </Button>
+        </div>
+      )}
       {success && (
         <p className="auth-success" role="status">
           {success}
@@ -238,9 +257,11 @@ export function LoginPage() {
       <div className="auth-social">
         <button
           type="button"
-          disabled={isSubmitting || isLocked}
+          disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
           className="disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={() => setNotice('Cổng SSO đang ở chế độ demo. Hãy dùng tài khoản mẫu bên dưới.')}
+          onClick={() =>
+            setNotice('SSO chưa được kết nối. Vui lòng đăng nhập bằng MSSV hoặc email và mật khẩu.')
+          }
         >
           <img src={sso} alt="" />
           Cổng SSO Trường
@@ -261,7 +282,7 @@ export function LoginPage() {
             id="identifier"
             autoComplete="username"
             required
-            disabled={isSubmitting || isLocked}
+            disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
             placeholder="Nhập MSSV hoặc Email..."
             leftIcon={<IdCard size={16} />}
             value={identifier}
@@ -275,7 +296,7 @@ export function LoginPage() {
           value={password}
           onChange={setPassword}
           autoComplete="current-password"
-          disabled={isSubmitting || isLocked}
+          disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
           className="bg-[#f1f3f6] border-[#eef0f4] text-[13px] h-[34px]"
         >
           <Link to="/forgot-password">Quên mật khẩu?</Link>
@@ -283,7 +304,7 @@ export function LoginPage() {
         <label className={`auth-checkbox ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
           <input
             type="checkbox"
-            disabled={isSubmitting || isLocked}
+            disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
             checked={shouldRememberIdentifier}
             onChange={(event) => setShouldRememberIdentifier(event.target.checked)}
           />
@@ -297,7 +318,7 @@ export function LoginPage() {
         <Button
           type="submit"
           className="auth-submit"
-          disabled={isSubmitting || isLocked}
+          disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
           isLoading={isSubmitting}
           loadingText="Đang đăng nhập…"
           rightIcon={isLocked ? <Lock size={16} /> : <ArrowRight size={16} />}

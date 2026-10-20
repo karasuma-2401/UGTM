@@ -62,6 +62,10 @@ public static class IdentityErrors
         "Identity.InvalidSession",
         "Phiên đăng nhập không hợp lệ hoặc đã hết hạn.");
 
+    public static readonly Error SessionNotFound = Error.NotFound(
+        "Identity.SessionNotFound",
+        "Không tìm thấy phiên đăng nhập đang hoạt động.");
+
     public static readonly Error InvalidInput = Error.Validation(
         "Identity.InvalidInput",
         "Dữ liệu đầu vào không hợp lệ.");
@@ -74,6 +78,10 @@ public static class IdentityErrors
         "Identity.InvalidStatus",
         "Trạng thái tài khoản không hợp lệ.");
 
+    public static readonly Error InvalidAccountGroup = Error.Validation(
+        "Identity.InvalidAccountGroup",
+        "Nhóm tài khoản không hợp lệ. Chỉ chấp nhận Student hoặc Staff.");
+
     public static readonly Error InvalidStatusTransition = Error.Validation(
         "Identity.InvalidStatusTransition",
         "Không thể chuyển đổi trạng thái tài khoản theo yêu cầu.");
@@ -82,9 +90,29 @@ public static class IdentityErrors
         "Identity.InvalidPhoneNumber",
         "Số điện thoại không hợp lệ (yêu cầu định dạng 10 chữ số, ví dụ: 0901234567 hoặc +84901234567).");
 
+    public static readonly Error InvalidImportFile = Error.Validation(
+        "Identity.InvalidImportFile",
+        "Tệp import phải là tệp Excel .xlsx hợp lệ, không rỗng và không vượt quá giới hạn cho phép.");
+
+    public static readonly Error InvalidImportRole = Error.Validation(
+        "Identity.InvalidImportRole",
+        "Import tài khoản chỉ hỗ trợ vai trò Student hoặc Lecturer.");
+
+    public static readonly Error ImportValidationFailed = Error.Validation(
+        "Identity.ImportValidationFailed",
+        "Tệp import có dữ liệu không hợp lệ. Không có tài khoản nào được tạo.");
+
     public static readonly Error RoleNotFound = Error.NotFound(
         "Identity.RoleNotFound",
         "Không tìm thấy vai trò người dùng.");
+
+    public static readonly Error RoleAlreadyExists = Error.Conflict(
+        "Identity.RoleAlreadyExists",
+        "Vai trò người dùng đã tồn tại trong hệ thống.");
+
+    public static readonly Error InvalidRoleName = Error.Validation(
+        "Identity.InvalidRoleName",
+        "Tên vai trò không được để trống, phải từ 2 đến 50 ký tự và không chứa ký tự đặc biệt không hợp lệ.");
 
     public static readonly Error InvalidPermission = Error.Validation(
         "Identity.InvalidPermission",
@@ -93,6 +121,18 @@ public static class IdentityErrors
     public static readonly Error CannotRevokeAllAdminPermissions = Error.Validation(
         "Identity.CannotRevokeAllAdminPermissions",
         "Không thể gỡ bỏ toàn bộ quyền của vai trò Quản trị viên (Admin).");
+
+    public static readonly Error CannotDisableLastAdmin = Error.Validation(
+        "Identity.CannotDisableLastAdmin",
+        "Không thể tạm ngưng hoặc vô hiệu hóa tài khoản Quản trị viên (Admin) đang hoạt động cuối cùng của hệ thống.");
+
+    public static readonly Error CannotRemoveLastAdminRole = Error.Validation(
+        "Identity.CannotRemoveLastAdminRole",
+        "Không thể gỡ bỏ vai trò Quản trị viên (Admin) khỏi tài khoản Admin cuối cùng của hệ thống.");
+
+    public static readonly Error AdminAlreadyExists = Error.Conflict(
+        "Identity.AdminAlreadyExists",
+        "Hệ thống đã có tài khoản Quản trị viên (Admin). Không thể khởi tạo thêm bằng cơ chế bootstrap.");
 
     public static readonly Error InvalidAuditLogFilter = Error.Validation(
         "Identity.InvalidAuditLogFilter",

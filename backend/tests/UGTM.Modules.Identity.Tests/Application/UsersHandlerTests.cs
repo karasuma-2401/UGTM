@@ -8,6 +8,7 @@ using UGTM.Modules.Identity.Application.Security;
 using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.Dtos;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
+using UGTM.Modules.Identity.Application.Users.ImportUsers;
 using UGTM.Modules.Identity.Application.Users.UpdateUser;
 using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 using UGTM.Modules.Identity.Domain.Entities;
@@ -18,6 +19,38 @@ namespace UGTM.Modules.Identity.Tests.Application;
 
 public sealed class UsersHandlerTests
 {
+    [Theory]
+    [InlineData("student", "Student")]
+    [InlineData(" STAFF ", "Staff")]
+    [InlineData(null, null)]
+    [InlineData(" ", null)]
+    public async Task GetUsersHandler_normalizes_account_groups(string? input, string? expected)
+    {
+        var reader = new StubUserQueryReader();
+        var result = await new GetUsersHandler(reader).HandleAsync(
+            new GetUsersQuery(AccountGroup: input), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(expected, reader.LastQuery!.AccountGroup);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("1")]
+    [InlineData("-1")]
+    [InlineData("Lecturer")]
+    [InlineData("Student, Staff")]
+    public async Task GetUsersHandler_rejects_invalid_account_groups(string input)
+    {
+        var reader = new StubUserQueryReader();
+        var result = await new GetUsersHandler(reader).HandleAsync(
+            new GetUsersQuery(AccountGroup: input), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidAccountGroup", result.Error.Code);
+        Assert.Null(reader.LastQuery);
+    }
+
     private static readonly DateTime Now = new(2026, 10, 13, 10, 0, 0, DateTimeKind.Utc);
 
     [Fact]
@@ -34,6 +67,133 @@ public sealed class UsersHandlerTests
         Assert.NotNull(stubReader.LastQuery);
         Assert.Equal(1, stubReader.LastQuery.PageNumber);
         Assert.Equal(100, stubReader.LastQuery.PageSize);
+    }
+
+    [Fact]
+    public async Task ImportUsersHandler_imports_valid_students_as_pending_without_sending_email()
+    {
+        var repo = new FakeUserRepository();
+        var auditLogs = new FakeAuditLogWriter();
+        var handler = CreateImportHandler(
+            repo,
+            new ImportFileReadResult(
+                [
+                    new ImportUserRow(2, "student1@ugtm.edu.vn", "Student One", "sv001", "0901234567"),
+                    new ImportUserRow(3, "student2@ugtm.edu.vn", "Student Two", "sv002", null)
+                ],
+                []),
+            auditLogs);
+
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(new MemoryStream([1]), "students.xlsx", "Student"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value.Errors);
+        Assert.Equal(2, result.Value.ImportedCount);
+        Assert.All(repo.Users, user =>
+        {
+            Assert.Equal(AccountStatus.PendingActivation, user.Status);
+            Assert.Null(user.PasswordHash);
+            Assert.Contains(user.UserRoles, userRole => userRole.Role.RoleName == nameof(SystemRoleName.Student));
+        });
+        Assert.Contains(repo.Users, user => user.UserCode == "SV001");
+        Assert.Equal(AuditActions.UsersImported, Assert.Single(auditLogs.Entries).Action);
+    }
+
+    [Fact]
+    public async Task ImportUsersHandler_rejects_duplicate_rows_without_importing_any_user()
+    {
+        var repo = new FakeUserRepository();
+        var handler = CreateImportHandler(
+            repo,
+            new ImportFileReadResult(
+                [
+                    new ImportUserRow(2, "duplicate@ugtm.edu.vn", "Student One", "SV001", null),
+                    new ImportUserRow(3, "DUPLICATE@ugtm.edu.vn", "Student Two", "SV002", null)
+                ],
+                []));
+
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(new MemoryStream([1]), "students.xlsx", "Student"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0, result.Value.ImportedCount);
+        Assert.Equal(2, result.Value.Errors.Count(error => error.Code == "DuplicateEmailInFile"));
+        Assert.Empty(repo.Users);
+    }
+
+    [Fact]
+    public async Task ImportUsersHandler_rejects_database_conflict_without_importing_valid_rows()
+    {
+        var existing = User.Create(
+            Guid.NewGuid(),
+            "existing@ugtm.edu.vn",
+            "EXISTING@UGTM.EDU.VN",
+            "Existing",
+            "GV001",
+            null,
+            null,
+            AccountStatus.PendingActivation,
+            Now);
+        var repo = new FakeUserRepository([existing]);
+        var handler = CreateImportHandler(
+            repo,
+            new ImportFileReadResult(
+                [
+                    new ImportUserRow(2, "existing@ugtm.edu.vn", "Existing Again", "GV002", null),
+                    new ImportUserRow(3, "new@ugtm.edu.vn", "New Lecturer", "GV003", null)
+                ],
+                []));
+
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(new MemoryStream([1]), "lecturers.xlsx", "Lecturer"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0, result.Value.ImportedCount);
+        Assert.Contains(result.Value.Errors, error => error.RowNumber == 2 && error.Code == "DuplicateEmail");
+        Assert.Single(repo.Users);
+    }
+
+    [Fact]
+    public async Task ImportUsersHandler_allows_lecturer_without_user_code()
+    {
+        var repo = new FakeUserRepository();
+        var handler = CreateImportHandler(
+            repo,
+            new ImportFileReadResult(
+                [new ImportUserRow(2, "lecturer@ugtm.edu.vn", "Lecturer", null, null)],
+                []));
+
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(new MemoryStream([1]), "lecturers.xlsx", "Lecturer"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value.ImportedCount);
+        Assert.Null(Assert.Single(repo.Users).UserCode);
+    }
+
+    [Theory]
+    [InlineData("Admin")]
+    [InlineData("Faculty")]
+    [InlineData("3")]
+    [InlineData("4")]
+    [InlineData("unknown")]
+    public async Task ImportUsersHandler_rejects_unsupported_role(string role)
+    {
+        var handler = CreateImportHandler(
+            new FakeUserRepository(),
+            new ImportFileReadResult([], []));
+
+        var result = await handler.HandleAsync(
+            new ImportUsersCommand(new MemoryStream([1]), "users.xlsx", role),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidImportRole", result.Error.Code);
     }
 
     [Fact]
@@ -701,7 +861,7 @@ public sealed class UsersHandlerTests
         Assert.Equal(IdentityErrors.CannotBecomeStudent.Code, result.Error.Code);
         Assert.Equal("Original Name", user.FullName);
         Assert.Equal(oldStamp, user.SecurityStamp);
-        Assert.Equal(existingRole, Assert.Single(user.UserRoles).Role.RoleName);
+        Assert.Equal(existingRole.ToString(), Assert.Single(user.UserRoles).Role.RoleName);
     }
 
     [Fact]
@@ -739,15 +899,15 @@ public sealed class UsersHandlerTests
         Assert.Equal(firstRole == "Student" ? 1 : 2, result.Value.Roles.Count);
     }
 
-    private static User CreateUserWithRole(SystemRoleName role)
+    private static User CreateUserWithRole(SystemRoleName role, AccountStatus status = AccountStatus.Active)
     {
         var user = User.Create(Guid.NewGuid(), "test@uit.edu.vn", "TEST@UIT.EDU.VN",
-            "Original Name", null, null, null, AccountStatus.Active, Now);
+            "Original Name", null, null, null, status, Now);
         user.UserRoles.Add(new UserRole
         {
             UserId = user.Id,
             RoleId = (int)role + 1,
-            Role = new Role { Id = (int)role + 1, RoleName = role },
+            Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
             AssignedAt = Now,
             User = user
         });
@@ -826,6 +986,185 @@ public sealed class UsersHandlerTests
         Assert.Empty(auditLogs.Entries);
     }
 
+    [Fact]
+    public async Task UpdateUserStatusHandler_fails_when_disabling_last_admin()
+    {
+        var admin = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin]);
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(admin.Id, "Disabled"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.CannotDisableLastAdmin", result.Error.Code);
+        Assert.Equal(1, repo.AdminMutationLockCount);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusHandler_fails_when_suspending_last_active_admin()
+    {
+        var admin = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin]);
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(admin.Id, "Suspended"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.CannotDisableLastAdmin", result.Error.Code);
+        Assert.Equal(1, repo.AdminMutationLockCount);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusHandler_allows_disabling_admin_when_another_active_admin_exists()
+    {
+        var admin1 = CreateUserWithRole(SystemRoleName.Admin);
+        var admin2 = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin1, admin2]);
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(admin1.Id, "Disabled"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Disabled", result.Value.Status);
+    }
+
+    [Theory]
+    [InlineData(AccountStatus.Disabled)]
+    [InlineData(AccountStatus.Suspended)]
+    [InlineData(AccountStatus.PendingActivation)]
+    public async Task UpdateUserStatusHandler_fails_when_disabling_last_active_admin_when_other_admin_is_not_active(AccountStatus otherAdminStatus)
+    {
+        var activeAdmin = CreateUserWithRole(SystemRoleName.Admin, AccountStatus.Active);
+        var nonActiveAdmin = CreateUserWithRole(SystemRoleName.Admin, otherAdminStatus);
+        var repo = new FakeUserRepository([activeAdmin, nonActiveAdmin]);
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(activeAdmin.Id, "Disabled"),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.CannotDisableLastAdmin", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateUserStatusHandler_allows_disabling_non_admin_user()
+    {
+        var lecturer = CreateUserWithRole(SystemRoleName.Lecturer);
+        var repo = new FakeUserRepository([lecturer]);
+        var handler = new UpdateUserStatusHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserStatusCommand(lecturer.Id, "Disabled"),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Disabled", result.Value.Status);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_fails_when_removing_admin_role_from_last_admin()
+    {
+        var admin = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin]);
+        var handler = new UpdateUserHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(
+                admin.Id,
+                "Updated Admin",
+                admin.UserCode,
+                null,
+                ["Lecturer"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.CannotRemoveLastAdminRole", result.Error.Code);
+        Assert.Equal(1, repo.AdminMutationLockCount);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_allows_removing_admin_role_when_another_active_admin_exists()
+    {
+        var admin1 = CreateUserWithRole(SystemRoleName.Admin);
+        var admin2 = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin1, admin2]);
+        var handler = new UpdateUserHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(
+                admin1.Id,
+                "Demoted Admin",
+                admin1.UserCode,
+                null,
+                ["Lecturer"]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Contains("Lecturer", result.Value.Roles);
+        Assert.DoesNotContain("Admin", result.Value.Roles);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_allows_admin_to_update_profile_and_keep_admin_role()
+    {
+        var admin = CreateUserWithRole(SystemRoleName.Admin);
+        var repo = new FakeUserRepository([admin]);
+        var handler = new UpdateUserHandler(
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(
+                admin.Id,
+                "Updated Admin Name",
+                admin.UserCode,
+                "0987654321",
+                ["Admin", "Faculty"]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Updated Admin Name", result.Value.FullName);
+        Assert.Contains("Admin", result.Value.Roles);
+        Assert.Contains("Faculty", result.Value.Roles);
+    }
+
     private static CreateUserHandler CreateHandler(
         FakeUserRepository repo,
         FakeEmailOutbox? outbox = null,
@@ -844,6 +1183,22 @@ public sealed class UsersHandlerTests
             auditLogs ?? new FakeAuditLogWriter());
     }
 
+    private static ImportUsersHandler CreateImportHandler(
+        FakeUserRepository repo,
+        ImportFileReadResult readResult,
+        FakeAuditLogWriter? auditLogs = null)
+        => new(
+            new StubUserImportFileReader(readResult),
+            repo,
+            new DirectUnitOfWork(),
+            new FakeClock(Now),
+            auditLogs ?? new FakeAuditLogWriter());
+
+    private sealed class StubUserImportFileReader(ImportFileReadResult result) : IUserImportFileReader
+    {
+        public ImportFileReadResult Read(Stream stream) => result;
+    }
+
     private sealed class StubUserQueryReader : IUserQueryReader
     {
         public GetUsersQuery? LastQuery { get; private set; }
@@ -860,6 +1215,7 @@ public sealed class UsersHandlerTests
     private sealed class FakeUserRepository(IEnumerable<User>? initialUsers = null) : IUserRepository
     {
         public List<User> Users { get; } = [.. initialUsers ?? []];
+        public int AdminMutationLockCount { get; private set; }
 
         public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
             => Task.FromResult(Users.FirstOrDefault(u => u.Id == id));
@@ -885,11 +1241,80 @@ public sealed class UsersHandlerTests
         public Task<bool> ExistsByEmailAsync(string normalizedEmail, Guid? excludeUserId, CancellationToken cancellationToken)
             => Task.FromResult(Users.Any(u => u.NormalizedEmail == normalizedEmail && (!excludeUserId.HasValue || u.Id != excludeUserId.Value)));
 
+        public Task<IReadOnlySet<string>> GetExistingNormalizedEmailsAsync(IReadOnlyCollection<string> normalizedEmails, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlySet<string>>(Users
+                .Where(user => normalizedEmails.Contains(user.NormalizedEmail))
+                .Select(user => user.NormalizedEmail)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+        public Task<IReadOnlySet<string>> GetExistingUserCodesAsync(IReadOnlyCollection<string> userCodes, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlySet<string>>(Users
+                .Where(user => user.UserCode is not null && userCodes.Contains(user.UserCode))
+                .Select(user => user.UserCode!)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase));
+
         public Task AddToRoleAsync(User user, SystemRoleName role, DateTime assignedAt, CancellationToken cancellationToken)
-            => Task.CompletedTask;
+        {
+            user.UserRoles.Add(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = (int)role + 1,
+                Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
+                AssignedAt = assignedAt,
+                User = user
+            });
+            return Task.CompletedTask;
+        }
+
+        public async Task AddRangeToRoleAsync(IReadOnlyCollection<User> users, SystemRoleName role, DateTime assignedAt, CancellationToken cancellationToken)
+        {
+            foreach (var user in users)
+            {
+                Users.Add(user);
+                await AddToRoleAsync(user, role, assignedAt, cancellationToken);
+            }
+        }
 
         public Task UpdateRolesAsync(User user, IEnumerable<SystemRoleName> roles, DateTime assignedAt, CancellationToken cancellationToken)
+        {
+            user.UserRoles.Clear();
+            foreach (var role in roles)
+            {
+                user.UserRoles.Add(new UserRole
+                {
+                    UserId = user.Id,
+                    RoleId = (int)role + 1,
+                    Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
+                    AssignedAt = assignedAt,
+                    User = user
+                });
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task<int> CountActiveAdminsAsync(Guid? excludeUserId, CancellationToken cancellationToken)
+        {
+            var count = Users
+                .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == nameof(SystemRoleName.Admin)))
+                .Where(u => !excludeUserId.HasValue || u.Id != excludeUserId.Value)
+                .Count();
+            return Task.FromResult(count);
+        }
+
+        public Task AcquireAdminMutationLockAsync(CancellationToken cancellationToken)
+        {
+            AdminMutationLockCount++;
+            return Task.CompletedTask;
+        }
+
+        public Task AcquireAccountProvisioningLockAsync(CancellationToken cancellationToken)
             => Task.CompletedTask;
+
+        public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)
+        {
+            var exists = Users.Any(u => u.UserRoles.Any(ur => ur.Role.RoleName == nameof(SystemRoleName.Admin)));
+            return Task.FromResult(exists);
+        }
 
         public void Add(User user) => Users.Add(user);
     }

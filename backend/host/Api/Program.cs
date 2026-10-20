@@ -5,14 +5,22 @@ using UGTM.Api.Modules;
 using UGTM.Api.OpenApi;
 using UGTM.BuildingBlocks.Infrastructure.Middlewares;
 
-var builder = WebApplication.CreateBuilder(args);
+var isBootstrapCommand = args.Length > 0
+    && (string.Equals(args[0], "bootstrap-admin", StringComparison.OrdinalIgnoreCase)
+        || args.Contains("--bootstrap-admin"));
+
+var builder = WebApplication.CreateBuilder(isBootstrapCommand ? [] : args);
 
 if (builder.Environment.IsDevelopment())
 {
     builder.Configuration
         .AddJsonFile("appsettings.Development.local.json", optional: true, reloadOnChange: true)
-        .AddEnvironmentVariables()
-        .AddCommandLine(args);
+        .AddEnvironmentVariables();
+
+    if (!isBootstrapCommand)
+    {
+        builder.Configuration.AddCommandLine(args);
+    }
 }
 
 builder.Services.AddUgtmOpenApi();
@@ -55,6 +63,51 @@ builder.Services.AddCors(options =>
 builder.Services.AddUgtmModules(builder.Configuration);
 
 var app = builder.Build();
+
+if (isBootstrapCommand)
+{
+    string? email = null;
+    string? password = null;
+    string? fullName = null;
+    string? userCode = null;
+
+    for (int i = 0; i < args.Length; i++)
+    {
+        if ((args[i] == "--email" || args[i] == "-e") && i + 1 < args.Length)
+            email = args[++i];
+        else if ((args[i] == "--fullname" || args[i] == "-n") && i + 1 < args.Length)
+            fullName = args[++i];
+        else if ((args[i] == "--usercode" || args[i] == "-c") && i + 1 < args.Length)
+            userCode = args[++i];
+    }
+
+    email ??= app.Configuration["BOOTSTRAP_ADMIN_EMAIL"] ?? app.Configuration["UGTM_ADMIN_EMAIL"];
+    password ??= app.Configuration["BOOTSTRAP_ADMIN_PASSWORD"] ?? app.Configuration["UGTM_ADMIN_PASSWORD"];
+    fullName ??= app.Configuration["BOOTSTRAP_ADMIN_FULLNAME"] ?? app.Configuration["UGTM_ADMIN_FULLNAME"] ?? "System Administrator";
+    userCode ??= app.Configuration["BOOTSTRAP_ADMIN_USERCODE"] ?? app.Configuration["UGTM_ADMIN_USERCODE"];
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+    {
+        Console.Error.WriteLine("Error: Admin email and password are required. Supply the password through BOOTSTRAP_ADMIN_PASSWORD or UGTM_ADMIN_PASSWORD; command-line passwords are intentionally unsupported.");
+        Console.Error.WriteLine("Usage: dotnet run --project backend/host/Api/UGTM.Api.csproj -- bootstrap-admin --email <email> [--fullname <name>] [--usercode <code>]");
+        return 1;
+    }
+
+    using var scope = app.Services.CreateScope();
+    var bootstrapper = scope.ServiceProvider.GetRequiredService<UGTM.Modules.Identity.Application.Bootstrap.IInitialAdminBootstrapper>();
+    var result = await bootstrapper.BootstrapAdminAsync(email, password, fullName, userCode);
+
+    if (result.IsSuccess)
+    {
+        Console.WriteLine($"[SUCCESS] Initial Admin user '{email}' created successfully with ID: {result.Value}");
+        return 0;
+    }
+    else
+    {
+        Console.Error.WriteLine($"[FAILED] Initial Admin bootstrap failed: {result.Error.Code} - {result.Error.Message}");
+        return 1;
+    }
+}
 
 if (useForwardedHeaders)
 {
@@ -117,3 +170,4 @@ if (app.Environment.IsDevelopment())
 app.MapUgtmModules();
 
 await app.RunAsync();
+return 0;

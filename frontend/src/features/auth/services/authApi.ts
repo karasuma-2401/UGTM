@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+import { API_BASE_URL } from '@/shared/api/config';
 import { clearCsrfToken, CSRF_HEADER_NAME, getCsrfToken } from '@/shared/api/csrf';
 import { httpClient } from '@/shared/api/httpClient';
+import { refreshSession } from '@/shared/api/sessionRefresh';
 import type { ApiResponse } from '@/shared/api/types';
 
 import type {
@@ -11,13 +13,13 @@ import type {
   UserProfile,
 } from '../types/auth.types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5287';
 const AUTH_BASE_PATH = '/api/identity/auth';
 
 // Public auth operations (login, refresh, logout) must use withCredentials: true
 // to receive and send HttpOnly refresh and csrf cookies, and bypass Bearer interceptor.
 const publicAuthClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 15_000,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -40,17 +42,7 @@ export async function loginApi(payload: LoginRequest): Promise<ApiResponse<Login
 }
 
 export async function refreshTokenApi(): Promise<ApiResponse<LoginData>> {
-  const csrfToken = await getCsrfToken(true);
-  const response = await publicAuthClient.post<ApiResponse<LoginData>>(
-    `${AUTH_BASE_PATH}/refresh`,
-    {},
-    {
-      headers: {
-        [CSRF_HEADER_NAME]: csrfToken,
-      },
-    },
-  );
-  return response.data;
+  return refreshSession();
 }
 
 export async function logoutApi(): Promise<ApiResponse<null>> {
@@ -72,7 +64,9 @@ export async function logoutApi(): Promise<ApiResponse<null>> {
 }
 
 export async function getCurrentUserApi(): Promise<ApiResponse<UserProfile>> {
-  const response = await httpClient.get<ApiResponse<UserProfile>>(`${AUTH_BASE_PATH}/me`);
+  const response = await httpClient.get<ApiResponse<UserProfile>>(`${AUTH_BASE_PATH}/me`, {
+    timeout: 15_000,
+  });
   return response.data;
 }
 
@@ -94,7 +88,9 @@ export interface ActivationValidateData {
   expiresAt: string;
 }
 
-export async function validateActivationApi(token: string): Promise<ApiResponse<ActivationValidateData>> {
+export async function validateActivationApi(
+  token: string,
+): Promise<ApiResponse<ActivationValidateData>> {
   const response = await publicAuthClient.post<ApiResponse<ActivationValidateData>>(
     `${AUTH_BASE_PATH}/activation/validate`,
     { token },
@@ -102,7 +98,10 @@ export async function validateActivationApi(token: string): Promise<ApiResponse<
   return response.data;
 }
 
-export async function completeActivationApi(token: string, password: string): Promise<ApiResponse<null>> {
+export async function completeActivationApi(
+  token: string,
+  password: string,
+): Promise<ApiResponse<null>> {
   const response = await publicAuthClient.post<ApiResponse<null>>(
     `${AUTH_BASE_PATH}/activation/complete`,
     { token, password },
@@ -138,7 +137,10 @@ export async function startRecoveryApi(email: string): Promise<ApiResponse<Recov
   return response.data;
 }
 
-export async function verifyRecoveryOtpApi(challengeId: string, code: string): Promise<ApiResponse<RecoveryVerifyData>> {
+export async function verifyRecoveryOtpApi(
+  challengeId: string,
+  code: string,
+): Promise<ApiResponse<RecoveryVerifyData>> {
   const response = await publicAuthClient.post<ApiResponse<RecoveryVerifyData>>(
     `${AUTH_BASE_PATH}/recovery/verify`,
     { challengeId, code },
@@ -146,11 +148,13 @@ export async function verifyRecoveryOtpApi(challengeId: string, code: string): P
   return response.data;
 }
 
-export async function resetRecoveryPasswordApi(resetGrant: string, newPassword: string): Promise<ApiResponse<null>> {
+export async function resetRecoveryPasswordApi(
+  resetGrant: string,
+  newPassword: string,
+): Promise<ApiResponse<null>> {
   const response = await publicAuthClient.post<ApiResponse<null>>(
     `${AUTH_BASE_PATH}/recovery/reset`,
     { resetGrant, newPassword },
   );
   return response.data;
 }
-

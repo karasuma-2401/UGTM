@@ -17,7 +17,7 @@ Bắt đầu tại [mục lục docs](docs/README.md). Các tài liệu chính: 
 | Frontend | React 19, TypeScript, Vite 8, React Router, TanStack Query, Axios |
 | Giao diện | Tailwind CSS + các component shadcn/Radix trong layout đang chạy; có Ant Design và `ConfigProvider` |
 | Xác thực | JWT RSA, refresh rotation bằng HttpOnly cookie, activation/recovery, CSRF, permission policy và rate limit |
-| Hạ tầng | Mailpit/SMTP đã nối với Identity outbox; MinIO, Redis và RabbitMQ chưa có code tích hợp |
+| Hạ tầng | SMTP thật/Mailpit đã nối với Identity outbox; MinIO, Redis và RabbitMQ chưa có code tích hợp |
 
 Khác biệt với thiết kế kỹ thuật trong Word được ghi tại [Architecture.md](backend/docs/Architecture/Architecture.md). Docs lấy kiến trúc source hiện tại làm chuẩn; lần đối chiếu gần nhất là 13/10/2026.
 
@@ -44,7 +44,10 @@ API: `http://localhost:5287`. Scalar API Reference trong Development: `http://lo
 
 Trong Rider, mở `UGTM.sln`, chọn cấu hình `.NET Launch Settings Profile` với project `backend/host/Api/UGTM.Api.csproj` và profile `http` hoặc `https`. Nếu gặp `Selected profile was not found` sau khi đổi thư mục project, tạo lại cấu hình chạy để Rider đọc `backend/host/Api/Properties/launchSettings.json`; cấu hình cũ có thể vẫn trỏ tới `backend/host/UGTM.Api`.
 
-`ConfigureDevelopment.ps1` đọc `DATABASE_CONNECTION_STRING` và `JWT_PRIVATE_KEY_FILE` trong `.env` (mặc định khóa ở `secrets/ugtm-jwt-private.pem`), rồi tạo `backend/host/Api/appsettings.Development.local.json`. API chỉ nạp file này trong Development; file được Git bỏ qua và không đưa vào bản publish. Chạy lại script sau khi đổi `.env`. Có thể ghi đè bằng `ConnectionStrings__DefaultConnection` và `Identity__Jwt__PrivateKeyPath` trong Environment variables của Rider; biến môi trường và tham số dòng lệnh có độ ưu tiên cao hơn file local. Biến đặt trong terminal PowerShell không tự truyền vào Rider đang mở.
+`ConfigureDevelopment.ps1` đọc cấu hình database, JWT và SMTP trong `.env` (mặc định khóa ở `secrets/ugtm-jwt-private.pem`), rồi tạo `backend/host/Api/appsettings.Development.local.json`. API chỉ nạp file này trong Development; file được Git bỏ qua và không đưa vào bản publish. Chạy lại script sau khi đổi `.env`. Có thể ghi đè bằng các Environment variables dạng `ConnectionStrings__DefaultConnection`, `Identity__Jwt__PrivateKeyPath` và `Notifications__Smtp__*`; biến môi trường và tham số dòng lệnh có độ ưu tiên cao hơn file local. Biến đặt trong terminal PowerShell không tự truyền vào Rider đang mở.
+
+Email outbox dùng partition riêng cho từng runtime (`local-direct`, `local-docker`, `azure-production`), nên local
+và Azure có thể dùng chung database mà không tranh xử lý payload được mã hóa bằng Data Protection key khác.
 
 ```powershell
 Invoke-RestMethod http://localhost:5287/api/modules/Identity/ping
@@ -84,7 +87,7 @@ Từ thư mục gốc:
 
 ```powershell
 Copy-Item .env.example .env
-# Điền DATABASE_CONNECTION_STRING trong .env.
+# Điền DATABASE_CONNECTION_STRING, IDENTITY_IP_HASH_KEY và SMTP_* trong .env.
 ./scripts/GenerateDevelopmentJwtKey.ps1
 docker compose up -d backend mailpit minio redis rabbitmq
 ```
@@ -102,7 +105,21 @@ Chạy frontend bằng Vite như trên. `docker compose up -d` cũng khởi ch�
 
 Backend đọc `Cors:AllowedOrigins`; Compose cấu hình origin 5173 và 3000. Chạy bằng Vite ngoài Compose có fallback origin 5173. Script tạo khóa RSA chỉ dùng cho môi trường phát triển và file PEM trong `secrets` đã được Git bỏ qua. Các dịch vụ phụ trợ khởi chạy không đồng nghĩa email/upload/event bus/cache đã hoạt động. Cấu hình tài khoản dịch vụ xem `.env.example`; không đưa credentials thật vào tài liệu.
 
+Khi `SMTP_HOST` được đặt trong `.env`, backend gửi email thật tới provider đã cấu hình; Mailpit không còn nhận email từ backend.
+Nếu bỏ các biến `SMTP_*`, Compose dùng Mailpit làm fallback Development. Xem [hướng dẫn SMTP](backend/docs/Technical/EmailDelivery.md)
+để chọn đúng `StartTls`/`SslOnConnect` và kiểm tra luồng activation hoặc recovery.
+
 Dừng môi trường bằng `docker compose down`. File cấu hình production: [docker/docker-compose.prod.yml](docker/docker-compose.prod.yml).
+Production bắt buộc có `IDENTITY_IP_HASH_KEY` tối thiểu 32 ký tự; xem
+[checklist nghiệm thu Identity](backend/docs/Technical/IdentityVerificationChecklist.md) trước khi deploy.
+
+Production đặt Caddy trước API để tự động cấp/gia hạn TLS. DNS `API_HOST` phải trỏ tới public IP
+của VPS và Azure NSG phải cho phép TCP 80/443 (có thể mở thêm UDP 443 cho HTTP/3).
+Khai báo `API_HOST` và `ACME_EMAIL` trong GitHub Actions Variables; các credential và `APP_URL`
+tiếp tục đặt trong GitHub Actions Secrets. Gateway chuyển `/api/*` vào backend và tạm thời giữ
+frontend Docker cho tới khi hoàn tất cutover sang Vercel.
+Trong lần dựng HTTPS đầu tiên, `APP_URL` có thể tạm dùng `https://<API_HOST>`; sau khi Vercel
+hoạt động phải đổi sang origin Vercel chính thức và deploy lại backend.
 
 ## Cấu trúc và CI
 
@@ -114,4 +131,4 @@ Dừng môi trường bằng `docker compose down`. File cấu hình production:
 - `frontend`: SPA; [hướng dẫn frontend](frontend/README.md).
 - `backend/docs`: kiến trúc backend, tài liệu kỹ thuật và các sơ đồ PlantUML.
 
-GitHub Actions chạy trên `dev`/`main`: backend format, Gitleaks, build/test, Docker build; frontend lint/typecheck/build và Docker build. Workflow publish đóng gói image, quét Trivy và đẩy GHCR; deploy SSH được bỏ qua khi chưa có secrets VPS. File workflow thể hiện cấu hình tự động hóa, không chứng minh dịch vụ đã được triển khai.
+GitHub Actions chạy trên `dev`/`production`: backend format, Gitleaks, build/test, Docker build; frontend lint/typecheck/build và Docker build. Workflow publish đóng gói image, quét Trivy và đẩy GHCR; deploy SSH được bỏ qua khi chưa có secrets VPS. File workflow thể hiện cấu hình tự động hóa, không chứng minh dịch vụ đã được triển khai.

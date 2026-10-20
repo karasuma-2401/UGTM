@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:auth": "node --test test/auth-session.test.mjs",
+    "test:accounts": "node --test test/account-groups.test.mjs",
     "preview": "vite preview",
     "format:auth": "prettier --write src/features/auth src/app/router.tsx",
     "format:auth:check": "prettier --check src/features/auth src/app/router.tsx"
@@ -29,6 +31,7 @@
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
+    "@vercel/config": "^0.12.0",
     "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.6.1",
     "oxlint": "^1.81.0",

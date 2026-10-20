@@ -20,6 +20,7 @@ using UGTM.Modules.Identity.Application.Authentication.GetCurrentUser;
 using UGTM.Modules.Identity.Application.Authentication.Login;
 using UGTM.Modules.Identity.Application.Authentication.Logout;
 using UGTM.Modules.Identity.Application.Authentication.RefreshSession;
+using UGTM.Modules.Identity.Application.Bootstrap;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Notifications;
 using UGTM.Modules.Identity.Application.Persistence;
@@ -27,11 +28,14 @@ using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Application.Permissions.GetPermissions;
 using UGTM.Modules.Identity.Application.Provisioning;
 using UGTM.Modules.Identity.Application.Recovery;
+using UGTM.Modules.Identity.Application.Roles.CreateRole;
 using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
 using UGTM.Modules.Identity.Application.Security;
+using UGTM.Modules.Identity.Application.Sessions;
 using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
+using UGTM.Modules.Identity.Application.Users.ImportUsers;
 using UGTM.Modules.Identity.Application.Users.UpdateUser;
 using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 using UGTM.Modules.Identity.Contracts.Authorization;
@@ -39,7 +43,9 @@ using UGTM.Modules.Identity.Domain.Repositories;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
 using UGTM.Modules.Identity.Infrastructure.Auditing;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
+using UGTM.Modules.Identity.Infrastructure.Bootstrap;
 using UGTM.Modules.Identity.Infrastructure.Endpoints;
+using UGTM.Modules.Identity.Infrastructure.Importing;
 using UGTM.Modules.Identity.Infrastructure.Notifications;
 using UGTM.Modules.Identity.Infrastructure.Persistence.Repositories;
 using UGTM.Modules.Identity.Infrastructure.RateLimiting;
@@ -115,9 +121,21 @@ public sealed class IdentityModule : IModule
             .Bind(configuration.GetSection(IdentityEmailOptions.SectionName))
             .Validate(
                 options => options.PublicWebBaseUrl is { IsAbsoluteUri: true }
-                           && options.PublicWebBaseUrl.Scheme is "https" or "http",
-                "Identity email public web base URL must be an absolute HTTP(S) URL.")
+                           && options.PublicWebBaseUrl.Scheme is "https" or "http"
+                           && !string.IsNullOrWhiteSpace(options.OutboxPartition)
+                           && options.OutboxPartition.Length <= 100,
+                "Identity email public web base URL and an outbox partition of at most 100 characters are required.")
             .ValidateOnStart();
+        services.AddOptions<IdentityClientMetadataOptions>()
+            .Bind(configuration.GetSection(IdentityClientMetadataOptions.SectionName))
+            .Validate(
+                options => !string.IsNullOrWhiteSpace(options.IpHashKey)
+                           && options.IpHashKey.Length >= 32
+                           && options.UserAgentMaxLength is > 0 and <= 300,
+                "Identity client metadata IP hash key must contain at least 32 characters and the user-agent limit must be between 1 and 300.")
+            .ValidateOnStart();
+        services.AddSingleton(provider => provider
+            .GetRequiredService<IOptions<IdentityClientMetadataOptions>>().Value);
 
         services.AddScoped<IClock, SystemClock>();
         services.AddScoped<IPasswordService, AspNetPasswordService>();
@@ -132,11 +150,16 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IUserProfileReader, UserProfileReader>();
         services.AddScoped<IUserQueryReader, UserQueryReader>();
         services.AddScoped<UGTM.Modules.Identity.Contracts.Users.IStudentInfoReader, StudentInfoReader>();
+        services.AddScoped<IUserImportFileReader, ClosedXmlUserImportFileReader>();
+        services.AddSingleton<IUserImportTemplateGenerator, ClosedXmlUserImportTemplateGenerator>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
         services.AddScoped<IAuditLogQueryReader, AuditLogQueryReader>();
         services.AddScoped<AuditIntegrationEventConsumer>();
         services.AddScoped<IIdentityEmailOutbox, IdentityEmailOutbox>();
+        services.AddSingleton<IdentityEmailTemplateRenderer>();
+        services.AddScoped<IdentityOutboxDispatcher>();
         services.AddScoped<RefreshCookieService>();
+        services.AddSingleton<ClientSessionMetadataProvider>();
         services.AddScoped<SessionValidator>();
         services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
@@ -148,18 +171,27 @@ public sealed class IdentityModule : IModule
         services.AddScoped<RefreshSessionHandler>();
         services.AddScoped<LogoutHandler>();
         services.AddScoped<GetCurrentUserHandler>();
+        services.AddScoped<GetMySessionsHandler>();
+        services.AddScoped<RevokeMySessionHandler>();
+        services.AddScoped<RevokeAllMySessionsHandler>();
+        services.AddScoped<GetUserSessionsHandler>();
+        services.AddScoped<RevokeUserSessionHandler>();
+        services.AddScoped<RevokeAllUserSessionsHandler>();
         services.AddScoped<ChangePasswordHandler>();
         services.AddScoped<StartPasswordRecoveryHandler>();
         services.AddScoped<VerifyRecoveryOtpHandler>();
         services.AddScoped<ResetPasswordHandler>();
         services.AddScoped<GetUsersHandler>();
         services.AddScoped<CreateUserHandler>();
+        services.AddScoped<ImportUsersHandler>();
         services.AddScoped<UpdateUserHandler>();
         services.AddScoped<UpdateUserStatusHandler>();
         services.AddScoped<GetPermissionsHandler>();
         services.AddScoped<GetRolePermissionsHandler>();
+        services.AddScoped<CreateRoleHandler>();
         services.AddScoped<UpdateRolePermissionsHandler>();
         services.AddScoped<GetAuditLogsHandler>();
+        services.AddScoped<IInitialAdminBootstrapper, InitialAdminBootstrapper>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
@@ -201,12 +233,17 @@ public sealed class IdentityModule : IModule
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddHostedService<IdentityOutboxProcessor>();
         services.AddHostedService<AuditIntegrationEventProcessor>();
+        services.AddHostedService(sp => new InitialAdminBootstrapHostedService(
+            sp,
+            configuration,
+            sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<InitialAdminBootstrapHostedService>>()));
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapIdentityAuthEndpoints();
         endpoints.MapIdentityUserEndpoints();
+        endpoints.MapIdentitySessionManagementEndpoints();
         endpoints.MapIdentityRolePermissionEndpoints();
         endpoints.MapIdentityAuditLogEndpoints();
 

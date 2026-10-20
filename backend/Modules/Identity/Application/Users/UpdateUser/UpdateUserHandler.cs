@@ -1,6 +1,9 @@
 using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Common;
+using UGTM.Modules.Identity.Application.Persistence;
 using UGTM.Modules.Identity.Application.Users.Dtos;
+using UGTM.Modules.Identity.Domain.Enums;
+using UGTM.Modules.Identity.Domain.Repositories;
 
 namespace UGTM.Modules.Identity.Application.Users.UpdateUser;
 
@@ -102,7 +105,8 @@ public sealed class UpdateUserHandler(
                     return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
                 }
 
-                var currentRoles = user.UserRoles.Select(ur => ur.Role.RoleName).ToHashSet();
+                var currentRoles = user.UserRoles.Select(ur => ur.Role.RoleName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var studentRoleName = nameof(SystemRoleName.Student);
                 if (systemRoles.Contains(SystemRoleName.Student))
                 {
                     if (systemRoles.Count > 1)
@@ -110,19 +114,30 @@ public sealed class UpdateUserHandler(
                         return Result.Failure<UserSummaryDto>(IdentityErrors.StudentRoleConflict);
                     }
 
-                    if (currentRoles.Any(role => role != SystemRoleName.Student))
+                    if (currentRoles.Any(role => !string.Equals(role, studentRoleName, StringComparison.OrdinalIgnoreCase)))
                     {
                         return Result.Failure<UserSummaryDto>(IdentityErrors.CannotBecomeStudent);
                     }
                 }
 
-                var rolesChanged = !currentRoles.SetEquals(systemRoles);
+                var targetRoleNames = systemRoles.Select(r => r.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var rolesChanged = !currentRoles.SetEquals(targetRoleNames);
                 if (rolesChanged)
                 {
+                    var adminRoleName = nameof(SystemRoleName.Admin);
+                    if (currentRoles.Contains(adminRoleName) && !targetRoleNames.Contains(adminRoleName))
+                    {
+                        await users.AcquireAdminMutationLockAsync(ct);
+                        var otherActiveAdmins = await users.CountActiveAdminsAsync(user.Id, ct);
+                        if (otherActiveAdmins == 0)
+                        {
+                            return Result.Failure<UserSummaryDto>(IdentityErrors.CannotRemoveLastAdminRole);
+                        }
+                    }
+
                     await users.UpdateRolesAsync(user, systemRoles, now, ct);
                     user.RotateSecurityStamp();
 
-                    var requestedRoles = systemRoles.ToHashSet();
                     auditLogs.Add(new AuditEntry(
                         TargetType: "User",
                         TargetId: user.Id.ToString("D"),
@@ -131,18 +146,15 @@ public sealed class UpdateUserHandler(
                         ReasonCode: null,
                         Metadata: new
                         {
-                            AddedRoles = requestedRoles
+                            AddedRoles = targetRoleNames
                                 .Except(currentRoles)
-                                .Select(role => role.ToString())
                                 .Order()
                                 .ToArray(),
                             RemovedRoles = currentRoles
-                                .Except(requestedRoles)
-                                .Select(role => role.ToString())
+                                .Except(targetRoleNames)
                                 .Order()
                                 .ToArray(),
-                            CurrentRoles = requestedRoles
-                                .Select(role => role.ToString())
+                            CurrentRoles = targetRoleNames
                                 .Order()
                                 .ToArray()
                         }));
@@ -152,7 +164,7 @@ public sealed class UpdateUserHandler(
             }
             else
             {
-                resultRoles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList();
+                resultRoles = user.UserRoles.Select(ur => ur.Role.RoleName).ToList();
             }
 
             if (changedFields.Count > 0)

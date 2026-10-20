@@ -23,6 +23,23 @@ npm run preview
 
 `build` chạy `tsc -b` và Vite. Biến `VITE_*` được đưa vào bundle khi build, không đổi bằng biến môi trường runtime của container Nginx.
 
+## Deploy lên Vercel
+
+Tạo Vercel project với Root Directory là `frontend`. Chọn Vite preset, install command
+`npm ci`, build command `npm run build`, output directory `dist` và Production Branch là
+`production`. Nhánh `dev` được Vercel triển khai dưới dạng Preview Deployment.
+
+Khai báo `API_ORIGIN` cho từng Vercel environment được phép deploy. Giá trị phải là HTTPS
+origin của Azure API gateway, không có path hoặc dấu gạch chéo cuối, ví dụ:
+
+```dotenv
+API_ORIGIN=https://api.example.edu.vn
+```
+
+`vercel.ts` proxy `/api/*` tới origin này và fallback về `index.html` cho React Router deep
+link. Vì vậy browser dùng API cùng origin trong production. Local development tiếp tục dùng
+`VITE_API_BASE_URL=http://localhost:5287` từ `.env`.
+
 ## Các phần hiện có
 
 - `src/app/router.tsx`: route thực tế; `queryClient.ts`: TanStack Query.

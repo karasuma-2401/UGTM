@@ -18,6 +18,17 @@ public interface IAuthenticationSessionRepository
         Guid userId,
         DateTime now,
         CancellationToken cancellationToken);
+    Task<bool> RevokeActiveSessionAsync(
+        Guid sessionId,
+        Guid userId,
+        SessionRevocationReason reason,
+        DateTime now,
+        CancellationToken cancellationToken);
+    Task<int> RevokeActiveSessionsAsync(
+        Guid userId,
+        SessionRevocationReason reason,
+        DateTime now,
+        CancellationToken cancellationToken);
 
     Task RevokeAllAsync(
         Guid userId,

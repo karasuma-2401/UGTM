@@ -81,6 +81,8 @@ public sealed class CreateUserHandler(
 
             var normalizedEmail = email.ToUpperInvariant();
 
+            await users.AcquireAccountProvisioningLockAsync(ct);
+
             if (await users.ExistsByEmailAsync(normalizedEmail, excludeUserId: null, ct))
             {
                 return Result.Failure<UserSummaryDto>(IdentityErrors.DuplicateAccount);

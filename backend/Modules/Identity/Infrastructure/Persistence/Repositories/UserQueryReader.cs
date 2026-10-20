@@ -12,7 +12,7 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
         GetUsersQuery query,
         CancellationToken cancellationToken)
     {
-        var usersQuery = db.Users.AsNoTracking();
+        var usersQuery = db.Users.AsNoTracking().FilterByAccountGroup(query.AccountGroup);
 
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
@@ -41,13 +41,15 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
             && Enum.TryParse<SystemRoleName>(query.Role.Trim(), ignoreCase: true, out var roleEnum)
             && Enum.IsDefined(roleEnum))
         {
-            usersQuery = usersQuery.Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == roleEnum));
+            var roleName = roleEnum.ToString();
+            usersQuery = usersQuery.Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == roleName));
         }
 
         var totalCount = await usersQuery.CountAsync(cancellationToken);
 
         var pagedUsers = await usersQuery
             .OrderByDescending(u => u.CreatedAt)
+            .ThenBy(u => u.Id)
             .Skip((query.PageNumber - 1) * query.PageSize)
             .Take(query.PageSize)
             .Select(u => new
@@ -58,7 +60,7 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
                 u.UserCode,
                 u.PhoneNumber,
                 Status = u.Status.ToString(),
-                Roles = u.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+                Roles = u.UserRoles.Select(ur => ur.Role.RoleName).ToList(),
                 u.CreatedAt,
                 u.LastLoginAt
             })

@@ -1,5 +1,9 @@
 using UGTM.Modules.Identity.Application.AuditLogs;
+using UGTM.Modules.Identity.Application.Common;
+using UGTM.Modules.Identity.Application.Persistence;
 using UGTM.Modules.Identity.Application.Users.Dtos;
+using UGTM.Modules.Identity.Domain.Enums;
+using UGTM.Modules.Identity.Domain.Repositories;
 
 namespace UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 
@@ -46,6 +50,20 @@ public sealed class UpdateUserStatusHandler(
 
             if (user.Status != newStatus)
             {
+                if (user.Status == AccountStatus.Active && newStatus != AccountStatus.Active)
+                {
+                    var isAdmin = user.UserRoles.Any(ur => string.Equals(ur.Role.RoleName, nameof(SystemRoleName.Admin), StringComparison.OrdinalIgnoreCase));
+                    if (isAdmin)
+                    {
+                        await users.AcquireAdminMutationLockAsync(ct);
+                        var otherActiveAdmins = await users.CountActiveAdminsAsync(user.Id, ct);
+                        if (otherActiveAdmins == 0)
+                        {
+                            return Result.Failure<UserSummaryDto>(IdentityErrors.CannotDisableLastAdmin);
+                        }
+                    }
+                }
+
                 var previousStatus = user.Status;
                 var now = clock.UtcNow;
                 switch (newStatus)
@@ -76,7 +94,7 @@ public sealed class UpdateUserStatusHandler(
                 await unitOfWork.SaveChangesAsync(ct);
             }
 
-            var roles = user.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList();
+            var roles = user.UserRoles.Select(ur => ur.Role.RoleName).ToList();
 
             return Result.Success(new UserSummaryDto(
                 user.Id,

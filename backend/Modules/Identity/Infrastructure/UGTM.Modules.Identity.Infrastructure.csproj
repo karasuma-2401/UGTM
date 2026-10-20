@@ -2,12 +2,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Application\UGTM.Modules.Identity.Application.csproj" />
+    <ProjectReference Include="..\Contracts\UGTM.Modules.Identity.Contracts.csproj" />
     <ProjectReference Include="..\Domain\UGTM.Modules.Identity.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Infrastructure\UGTM.BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Notifications\Contracts\UGTM.Modules.Notifications.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Identity.Core" Version="10.0.12" />
   </ItemGroup>

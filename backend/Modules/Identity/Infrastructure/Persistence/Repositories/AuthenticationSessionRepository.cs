@@ -29,8 +29,51 @@ public sealed class AuthenticationSessionRepository(IdentityDbContext db)
     public async Task<IReadOnlyList<AuthenticationSession>> GetActiveSessionsAsync(
         Guid userId, DateTime now, CancellationToken ct)
         => await db.AuthenticationSessions
-            .Where(x => x.UserId == userId && x.RevokedAt == null && x.AbsoluteExpiresAt > now)
+            .AsNoTracking()
+            .Where(x => x.UserId == userId
+                        && x.RevokedAt == null
+                        && x.IdleExpiresAt > now
+                        && x.AbsoluteExpiresAt > now
+                        && x.User.Status == AccountStatus.Active
+                        && x.SecurityStampSnapshot == x.User.SecurityStamp)
+            .OrderByDescending(x => x.LastSeenAt)
             .ToListAsync(ct);
+
+    public async Task<bool> RevokeActiveSessionAsync(
+        Guid sessionId,
+        Guid userId,
+        SessionRevocationReason reason,
+        DateTime now,
+        CancellationToken ct)
+        => await db.AuthenticationSessions
+            .Where(x => x.Id == sessionId
+                        && x.UserId == userId
+                        && x.RevokedAt == null
+                        && x.IdleExpiresAt > now
+                        && x.AbsoluteExpiresAt > now
+                        && x.User.Status == AccountStatus.Active
+                        && x.SecurityStampSnapshot == x.User.SecurityStamp)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.RevokedAt, now)
+                .SetProperty(x => x.RevocationReason, reason)
+                .SetProperty(x => x.ConcurrencyStamp, Guid.NewGuid()), ct) == 1;
+
+    public Task<int> RevokeActiveSessionsAsync(
+        Guid userId,
+        SessionRevocationReason reason,
+        DateTime now,
+        CancellationToken ct)
+        => db.AuthenticationSessions
+            .Where(x => x.UserId == userId
+                        && x.RevokedAt == null
+                        && x.IdleExpiresAt > now
+                        && x.AbsoluteExpiresAt > now
+                        && x.User.Status == AccountStatus.Active
+                        && x.SecurityStampSnapshot == x.User.SecurityStamp)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.RevokedAt, now)
+                .SetProperty(x => x.RevocationReason, reason)
+                .SetProperty(x => x.ConcurrencyStamp, Guid.NewGuid()), ct);
 
     public Task RevokeAllAsync(
         Guid userId,
