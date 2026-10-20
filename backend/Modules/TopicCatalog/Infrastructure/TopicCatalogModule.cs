@@ -1,8 +1,14 @@
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Modules.TopicCatalog.Infrastructure.Persistence;
+using UGTM.Modules.TopicCatalog.Application.Persistence;
 using UGTM.Modules.TopicCatalog.Domain.Repositories;
 using UGTM.Modules.TopicCatalog.Infrastructure.Persistence.Repositories;
 using UGTM.Modules.TopicCatalog.Application.Topics;
+using UGTM.Modules.TopicCatalog.Application.Topics.CreateTopic;
+using UGTM.Modules.TopicCatalog.Application.Topics.UpdateTopic;
+using UGTM.Modules.TopicCatalog.Application.Topics.SubmitTopic;
+using UGTM.Modules.TopicCatalog.Application.Topics.ReviewTopic;
+using UGTM.Modules.TopicCatalog.Application.Topics.PublishTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetAllTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetMyTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetTopicTrackingDetail;
@@ -24,9 +30,17 @@ public sealed class TopicCatalogModule : IModule
     {
         services.AddModuleDbContext<TopicCatalogDbContext>(configuration);
 
-        // Repositories & Query Readers
+        // Repositories, Unit of Work & Query Readers
         services.AddScoped<ITopicRepository, TopicRepository>();
+        services.AddScoped<ITopicUnitOfWork>(provider => provider.GetRequiredService<TopicCatalogDbContext>());
         services.AddScoped<ITopicQueryReader, TopicQueryReader>();
+
+        // Command Handlers
+        services.AddScoped<CreateTopicHandler>();
+        services.AddScoped<UpdateTopicHandler>();
+        services.AddScoped<SubmitTopicHandler>();
+        services.AddScoped<ReviewTopicHandler>();
+        services.AddScoped<PublishTopicsHandler>();
 
         // Query Handlers
         services.AddScoped<GetAllTopicsHandler>();

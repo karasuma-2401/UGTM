@@ -48,7 +48,8 @@ public sealed class TopicQueryReader : ITopicQueryReader
         GetAllTopicsQuery query,
         CancellationToken cancellationToken = default)
     {
-        var topicsQuery = QueryTopics();
+        var topicsQuery = QueryTopics()
+            .Where(t => t.Status == TopicStatus.Published);
 
         if (query.BatchId.HasValue)
         {
@@ -77,7 +78,8 @@ public sealed class TopicQueryReader : ITopicQueryReader
                 t.Requirements,
                 t.Status.ToString(),
                 t.StudentNumber,
-                t.CreatedAt));
+                t.CreatedAt,
+                t.Status == TopicStatus.Published));
 
         var pagedTopics = await ToListSafeAsync(pagedQuery, cancellationToken);
 
@@ -288,7 +290,8 @@ public sealed class TopicQueryReader : ITopicQueryReader
             regStatus,
             HasRegistration: hasRegistration,
             IsAvailable: isAvailable,
-            Group: groupDto);
+            Group: groupDto,
+            IsPublished: topic.IsPublished);
     }
 
     public static TopicTrackingDetailDto BuildTrackingDetail(
@@ -317,7 +320,8 @@ public sealed class TopicQueryReader : ITopicQueryReader
             regStatus,
             HasRegistration: hasRegistration,
             IsAvailable: isAvailable,
-            Group: groupDto);
+            Group: groupDto,
+            IsPublished: topic.IsPublished);
     }
 
     private static TopicGroupDto? BuildGroupDto(

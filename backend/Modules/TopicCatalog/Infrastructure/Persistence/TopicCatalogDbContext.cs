@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
+using UGTM.Modules.TopicCatalog.Application.Persistence;
 using UGTM.Modules.TopicCatalog.Domain.Entities;
 
 namespace UGTM.Modules.TopicCatalog.Infrastructure.Persistence;
 
-public sealed class TopicCatalogDbContext(DbContextOptions<TopicCatalogDbContext> options) : ModuleDbContext(options)
+public sealed class TopicCatalogDbContext(DbContextOptions<TopicCatalogDbContext> options) : ModuleDbContext(options), ITopicUnitOfWork
 {
     public override string Schema => "topics";
 
