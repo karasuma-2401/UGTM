@@ -15,7 +15,7 @@ export async function getCsrfToken(forceRefresh = false): Promise<string> {
     return csrfTokenCache;
   }
 
-  if (pendingCsrfPromise && !forceRefresh) {
+  if (pendingCsrfPromise) {
     return pendingCsrfPromise;
   }
 
@@ -25,6 +25,7 @@ export async function getCsrfToken(forceRefresh = false): Promise<string> {
         `${API_BASE_URL}${CSRF_ENDPOINT}`,
         {
           withCredentials: true,
+          timeout: 15_000,
           headers: {
             'Content-Type': 'application/json',
           },

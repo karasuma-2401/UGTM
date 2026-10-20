@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:auth": "node --test test/auth-session.test.mjs",
+    "test:accounts": "node --test test/account-groups.test.mjs",
     "preview": "vite preview",
     "format:auth": "prettier --write src/features/auth src/app/router.tsx",
     "format:auth:check": "prettier --check src/features/auth src/app/router.tsx"

@@ -11,6 +11,19 @@ public sealed class GetUsersHandler(IUserQueryReader queryReader)
         GetUsersQuery query,
         CancellationToken cancellationToken)
     {
+        string? accountGroup = null;
+        if (!string.IsNullOrWhiteSpace(query.AccountGroup))
+        {
+            var input = query.AccountGroup.Trim();
+            if (input.Contains(',') || int.TryParse(input, out _)
+                || !Enum.TryParse<UserAccountGroup>(input, ignoreCase: true, out var parsedGroup)
+                || !Enum.IsDefined(parsedGroup))
+            {
+                return Result.Failure<PagedResult<UserSummaryDto>>(IdentityErrors.InvalidAccountGroup);
+            }
+            accountGroup = parsedGroup.ToString();
+        }
+
         if (!string.IsNullOrWhiteSpace(query.Role))
         {
             var trimmedRole = query.Role.Trim();
@@ -41,7 +54,7 @@ public sealed class GetUsersHandler(IUserQueryReader queryReader)
             _ => query.PageSize
         };
 
-        var sanitizedQuery = query with { PageNumber = pageNumber, PageSize = pageSize };
+        var sanitizedQuery = query with { PageNumber = pageNumber, PageSize = pageSize, AccountGroup = accountGroup };
         var result = await queryReader.GetUsersAsync(sanitizedQuery, cancellationToken);
         return Result.Success(result);
     }

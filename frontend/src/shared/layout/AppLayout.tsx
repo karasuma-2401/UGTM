@@ -57,7 +57,7 @@ const navItems: NavItem[] = [
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const { user, logout, hasPermission, hasRole } = useAuth();
+  const { user, logout, isLoggingOut, hasPermission, hasRole } = useAuth();
 
   const visibleNavItems = useMemo(() => {
     return navItems.filter((item) => {
@@ -174,9 +174,7 @@ export function AppLayout() {
                     <Icon
                       className={cn(
                         'size-4.5 shrink-0 transition-colors',
-                        isActive
-                          ? 'text-white'
-                          : 'text-slate-400 group-hover:text-slate-700',
+                        isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700',
                       )}
                     />
                     <span>{item.label}</span>
@@ -208,7 +206,8 @@ export function AppLayout() {
             </div>
             <button
               type="button"
-              onClick={logout}
+              onClick={() => void logout()}
+              disabled={isLoggingOut}
               title="Đăng xuất khỏi hệ thống"
               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
             >
@@ -263,7 +262,8 @@ export function AppLayout() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={logout}
+                onClick={() => void logout()}
+                disabled={isLoggingOut}
                 className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 gap-1.5 text-xs font-medium ml-1"
                 title="Đăng xuất"
               >
