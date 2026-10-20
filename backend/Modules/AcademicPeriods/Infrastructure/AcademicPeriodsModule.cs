@@ -1,5 +1,7 @@
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
+using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.AcademicPeriods.Infrastructure.Persistence;
+using UGTM.Modules.AcademicPeriods.Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -19,6 +21,7 @@ public sealed class AcademicPeriodsModule : IModule
     public void RegisterModule(IServiceCollection services, IConfiguration configuration)
     {
         services.AddModuleDbContext<AcademicPeriodsDbContext>(configuration);
+        services.AddScoped<IKltnBatchReader, KltnBatchReader>();
         services.AddScoped<IAcademicPeriodsAuditOutbox, AcademicPeriodsAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, AcademicPeriodsAuditEventSource>();
     }

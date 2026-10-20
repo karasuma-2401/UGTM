@@ -149,6 +149,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IOneTimeChallengeRepository, OneTimeChallengeRepository>();
         services.AddScoped<IUserProfileReader, UserProfileReader>();
         services.AddScoped<IUserQueryReader, UserQueryReader>();
+        services.AddScoped<UGTM.Modules.Identity.Contracts.Users.IStudentInfoReader, StudentInfoReader>();
         services.AddScoped<IUserImportFileReader, ClosedXmlUserImportFileReader>();
         services.AddSingleton<IUserImportTemplateGenerator, ClosedXmlUserImportTemplateGenerator>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();

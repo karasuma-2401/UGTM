@@ -4,6 +4,9 @@
     <ProjectReference Include="..\Contracts\UGTM.Modules.TopicCatalog.Contracts.csproj" />
     <ProjectReference Include="..\Domain\UGTM.Modules.TopicCatalog.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Application\UGTM.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\AcademicPeriods\Contracts\UGTM.Modules.AcademicPeriods.Contracts.csproj" />
+    <ProjectReference Include="..\..\Identity\Contracts\UGTM.Modules.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\..\ThesisManagement\Contracts\UGTM.Modules.ThesisManagement.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
