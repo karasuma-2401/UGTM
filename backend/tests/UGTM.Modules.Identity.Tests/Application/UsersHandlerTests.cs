@@ -63,7 +63,7 @@ public sealed class UsersHandlerTests
         {
             Assert.Equal(AccountStatus.PendingActivation, user.Status);
             Assert.Null(user.PasswordHash);
-            Assert.Contains(user.UserRoles, userRole => userRole.Role.RoleName == SystemRoleName.Student);
+            Assert.Contains(user.UserRoles, userRole => userRole.Role.RoleName == nameof(SystemRoleName.Student));
         });
         Assert.Contains(repo.Users, user => user.UserCode == "SV001");
         Assert.Equal(AuditActions.UsersImported, Assert.Single(auditLogs.Entries).Action);
@@ -829,7 +829,7 @@ public sealed class UsersHandlerTests
         Assert.Equal(IdentityErrors.CannotBecomeStudent.Code, result.Error.Code);
         Assert.Equal("Original Name", user.FullName);
         Assert.Equal(oldStamp, user.SecurityStamp);
-        Assert.Equal(existingRole, Assert.Single(user.UserRoles).Role.RoleName);
+        Assert.Equal(existingRole.ToString(), Assert.Single(user.UserRoles).Role.RoleName);
     }
 
     [Fact]
@@ -875,7 +875,7 @@ public sealed class UsersHandlerTests
         {
             UserId = user.Id,
             RoleId = (int)role + 1,
-            Role = new Role { Id = (int)role + 1, RoleName = role },
+            Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
             AssignedAt = Now,
             User = user
         });
@@ -1227,7 +1227,7 @@ public sealed class UsersHandlerTests
             {
                 UserId = user.Id,
                 RoleId = (int)role + 1,
-                Role = new Role { Id = (int)role + 1, RoleName = role },
+                Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
                 AssignedAt = assignedAt,
                 User = user
             });
@@ -1252,7 +1252,7 @@ public sealed class UsersHandlerTests
                 {
                     UserId = user.Id,
                     RoleId = (int)role + 1,
-                    Role = new Role { Id = (int)role + 1, RoleName = role },
+                    Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
                     AssignedAt = assignedAt,
                     User = user
                 });
@@ -1263,7 +1263,7 @@ public sealed class UsersHandlerTests
         public Task<int> CountActiveAdminsAsync(Guid? excludeUserId, CancellationToken cancellationToken)
         {
             var count = Users
-                .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin))
+                .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == nameof(SystemRoleName.Admin)))
                 .Where(u => !excludeUserId.HasValue || u.Id != excludeUserId.Value)
                 .Count();
             return Task.FromResult(count);
@@ -1280,7 +1280,7 @@ public sealed class UsersHandlerTests
 
         public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)
         {
-            var exists = Users.Any(u => u.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin));
+            var exists = Users.Any(u => u.UserRoles.Any(ur => ur.Role.RoleName == nameof(SystemRoleName.Admin)));
             return Task.FromResult(exists);
         }
 

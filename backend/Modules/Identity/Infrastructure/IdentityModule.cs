@@ -28,6 +28,7 @@ using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Application.Permissions.GetPermissions;
 using UGTM.Modules.Identity.Application.Provisioning;
 using UGTM.Modules.Identity.Application.Recovery;
+using UGTM.Modules.Identity.Application.Roles.CreateRole;
 using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
 using UGTM.Modules.Identity.Application.Security;
@@ -184,6 +185,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<UpdateUserStatusHandler>();
         services.AddScoped<GetPermissionsHandler>();
         services.AddScoped<GetRolePermissionsHandler>();
+        services.AddScoped<CreateRoleHandler>();
         services.AddScoped<UpdateRolePermissionsHandler>();
         services.AddScoped<GetAuditLogsHandler>();
         services.AddScoped<IInitialAdminBootstrapper, InitialAdminBootstrapper>();

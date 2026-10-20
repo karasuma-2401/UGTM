@@ -41,7 +41,8 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
             && Enum.TryParse<SystemRoleName>(query.Role.Trim(), ignoreCase: true, out var roleEnum)
             && Enum.IsDefined(roleEnum))
         {
-            usersQuery = usersQuery.Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == roleEnum));
+            var roleName = roleEnum.ToString();
+            usersQuery = usersQuery.Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == roleName));
         }
 
         var totalCount = await usersQuery.CountAsync(cancellationToken);
@@ -58,7 +59,7 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
                 u.UserCode,
                 u.PhoneNumber,
                 Status = u.Status.ToString(),
-                Roles = u.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+                Roles = u.UserRoles.Select(ur => ur.Role.RoleName).ToList(),
                 u.CreatedAt,
                 u.LastLoginAt
             })

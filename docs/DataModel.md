@@ -538,7 +538,7 @@ Navigation: `Session` → AuthenticationSession.
 | --- | --- | --- | --- | --- | --- |
 | Id | id | `Int32` | `integer` | Không | — |
 | Description | description | `String` | `character varying(255)` | Có | — |
-| RoleName | role_name | `SystemRoleName` | `character varying(50)` | Không | — |
+| RoleName | role_name | `String` | `character varying(50)` | Không | — |
 
 PK: `id`.
 

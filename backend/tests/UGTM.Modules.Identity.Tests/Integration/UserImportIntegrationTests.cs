@@ -53,7 +53,7 @@ public sealed class UserImportIntegrationTests(PostgreSqlFixture fixture)
                     Assert.Equal(AccountStatus.PendingActivation, user.Status);
                     Assert.Null(user.PasswordHash);
                     Assert.Contains(user.UserRoles, userRole =>
-                        userRole.Role.RoleName == SystemRoleName.Student);
+                        userRole.Role.RoleName == nameof(SystemRoleName.Student));
                 });
                 Assert.Empty(await verificationDb.OneTimeChallenges.AsNoTracking().ToListAsync());
                 Assert.Empty(await verificationDb.IdentityOutboxMessages.AsNoTracking().ToListAsync());
