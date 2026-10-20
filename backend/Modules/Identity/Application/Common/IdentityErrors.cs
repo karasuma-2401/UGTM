@@ -106,6 +106,14 @@ public static class IdentityErrors
         "Identity.RoleNotFound",
         "Không tìm thấy vai trò người dùng.");
 
+    public static readonly Error RoleAlreadyExists = Error.Conflict(
+        "Identity.RoleAlreadyExists",
+        "Vai trò người dùng đã tồn tại trong hệ thống.");
+
+    public static readonly Error InvalidRoleName = Error.Validation(
+        "Identity.InvalidRoleName",
+        "Tên vai trò không được để trống, phải từ 2 đến 50 ký tự và không chứa ký tự đặc biệt không hợp lệ.");
+
     public static readonly Error InvalidPermission = Error.Validation(
         "Identity.InvalidPermission",
         "Một hoặc nhiều quyền được chọn không tồn tại hoặc không hợp lệ.");

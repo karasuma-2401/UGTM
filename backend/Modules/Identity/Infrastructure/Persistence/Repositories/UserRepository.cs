@@ -81,7 +81,8 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
         DateTime assignedAt,
         CancellationToken ct)
     {
-        var roleId = await db.Roles.Where(x => x.RoleName == role)
+        var roleName = role.ToString();
+        var roleId = await db.Roles.Where(x => x.RoleName == roleName)
             .Select(x => (int?)x.Id)
             .SingleOrDefaultAsync(ct)
             ?? throw new InvalidOperationException($"Vai trò '{role}' chưa được khởi tạo trong bảng identity.role của cơ sở dữ liệu.");
@@ -99,8 +100,9 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
         DateTime assignedAt,
         CancellationToken ct)
     {
+        var roleName = role.ToString();
         var roleId = await db.Roles
-            .Where(entity => entity.RoleName == role)
+            .Where(entity => entity.RoleName == roleName)
             .Select(entity => (int?)entity.Id)
             .SingleOrDefaultAsync(ct)
             ?? throw new InvalidOperationException($"Vai trò '{role}' chưa được khởi tạo trong bảng identity.role của cơ sở dữ liệu.");
@@ -120,7 +122,7 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
         DateTime assignedAt,
         CancellationToken ct)
     {
-        var targetRoleNames = roles.ToHashSet();
+        var targetRoleNames = roles.Select(r => r.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var currentRoles = await db.UserRoles
             .Include(ur => ur.Role)
             .Where(ur => ur.UserId == user.Id)
@@ -136,7 +138,7 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
 
         var existingRoleNames = currentRoles
             .Select(ur => ur.Role.RoleName)
-            .ToHashSet();
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var rolesToAdd = targetRoleNames
             .Where(r => !existingRoleNames.Contains(r))
             .ToList();
@@ -166,8 +168,9 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
 
     public Task<int> CountActiveAdminsAsync(Guid? excludeUserId, CancellationToken ct)
     {
+        var adminRoleName = nameof(SystemRoleName.Admin);
         var query = db.Users
-            .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin));
+            .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == adminRoleName));
 
         if (excludeUserId.HasValue)
         {
@@ -188,5 +191,5 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
             ct);
 
     public Task<bool> AnyAdminExistsAsync(CancellationToken ct)
-        => db.UserRoles.AnyAsync(ur => ur.Role.RoleName == SystemRoleName.Admin, ct);
+        => db.UserRoles.AnyAsync(ur => ur.Role.RoleName == nameof(SystemRoleName.Admin), ct);
 }

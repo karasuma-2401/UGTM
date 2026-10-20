@@ -29,7 +29,7 @@ public sealed class GetRolePermissionsHandler(IRolePermissionRepository reposito
 
         return Result.Success(new RolePermissionsDto(
             role.Id,
-            role.RoleName.ToString(),
+            role.RoleName,
             role.Description,
             permissions));
     }

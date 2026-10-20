@@ -31,6 +31,14 @@ public sealed class RolePermissionRepository(IdentityDbContext db) : IRolePermis
             .AnyAsync(r => r.Id == roleId, cancellationToken);
     }
 
+    public async Task<bool> RoleNameExistsAsync(string roleName, CancellationToken cancellationToken)
+    {
+        var normalized = roleName.Trim().ToUpperInvariant();
+        return await db.Roles
+            .AsNoTracking()
+            .AnyAsync(r => r.RoleName.ToUpper() == normalized, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Permission>> GetPermissionsByIdsAsync(
         IEnumerable<int> permissionIds,
         CancellationToken cancellationToken)
@@ -40,6 +48,33 @@ public sealed class RolePermissionRepository(IdentityDbContext db) : IRolePermis
             .AsNoTracking()
             .Where(p => idList.Contains(p.Id))
             .ToListAsync(cancellationToken);
+    }
+
+    public Task<Role> CreateRoleAsync(
+        string roleName,
+        string? description,
+        IEnumerable<int> permissionIds,
+        DateTime assignedAt,
+        CancellationToken cancellationToken)
+    {
+        var role = new Role
+        {
+            RoleName = roleName.Trim(),
+            Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim()
+        };
+
+        foreach (var permId in permissionIds.Distinct())
+        {
+            role.RolePermissions.Add(new RolePermission
+            {
+                Role = role,
+                PermissionId = permId,
+                AssignedAt = assignedAt
+            });
+        }
+
+        db.Roles.Add(role);
+        return Task.FromResult(role);
     }
 
     public async Task UpdateRolePermissionsAsync(

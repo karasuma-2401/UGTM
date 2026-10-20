@@ -33,7 +33,7 @@ public sealed class UserAccountGroupTests
         Assert.Equal(1, staff.Count());
         Assert.Single(staff.Take(20));
         Assert.Equal(50, users.FilterByAccountGroup("Student").Count());
-        Assert.Empty(staff.Where(user => user.UserRoles.Any(role => role.Role.RoleName == SystemRoleName.Student)));
+        Assert.Empty(staff.Where(user => user.UserRoles.Any(role => role.Role.RoleName == nameof(SystemRoleName.Student))));
     }
 
     [Theory]
@@ -57,7 +57,7 @@ public sealed class UserAccountGroupTests
             code, code, null, null, AccountStatus.PendingActivation, DateTime.UtcNow);
         foreach (var role in roles)
         {
-            user.UserRoles.Add(new UserRole { UserId = user.Id, Role = new Role { RoleName = role } });
+            user.UserRoles.Add(new UserRole { UserId = user.Id, Role = new Role { RoleName = role.ToString() } });
         }
         return user;
     }
