@@ -13,7 +13,7 @@ public sealed class TopicQueryReaderTests
     private static readonly DateTime BaseTime = new(2026, 10, 17, 8, 0, 0, DateTimeKind.Utc);
 
     [Fact]
-    public async Task GetAllTopicsAsync_filters_by_batch_and_keyword_and_orders_deterministically()
+    public async Task GetAllTopicsAsync_only_returns_published_topics_and_orders_deterministically()
     {
         var batch1 = Guid.NewGuid();
         var batch2 = Guid.NewGuid();
@@ -31,7 +31,7 @@ public sealed class TopicQueryReaderTests
                 AdvisorId = advisorId,
                 TitleVi = "Ứng dụng Trí tuệ nhân tạo",
                 TitleEn = "Artificial Intelligence App",
-                Status = TopicStatus.Approved,
+                Status = TopicStatus.Published,
                 StudentNumber = 2,
                 CreatedAt = BaseTime // Identical CreatedAt to test tie-breaker ThenByDescending(Id)
             },
@@ -46,13 +46,64 @@ public sealed class TopicQueryReaderTests
                 StudentNumber = 2,
                 CreatedAt = BaseTime // Identical CreatedAt
             },
+            // Topics NOT published must NOT be visible to students in GetAllTopicsAsync:
+            new()
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch1,
+                AdvisorId = advisorId,
+                TitleVi = "Trí tuệ nhân tạo mới Approved nhưng chưa công bố",
+                Status = TopicStatus.Approved,
+                StudentNumber = 2,
+                CreatedAt = BaseTime.AddMinutes(5)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch1,
+                AdvisorId = advisorId,
+                TitleVi = "Trí tuệ nhân tạo đang chờ duyệt",
+                Status = TopicStatus.Submitted,
+                StudentNumber = 2,
+                CreatedAt = BaseTime.AddMinutes(6)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch1,
+                AdvisorId = advisorId,
+                TitleVi = "Trí tuệ nhân tạo bản nháp",
+                Status = TopicStatus.Draft,
+                StudentNumber = 2,
+                CreatedAt = BaseTime.AddMinutes(7)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch1,
+                AdvisorId = advisorId,
+                TitleVi = "Trí tuệ nhân tạo yêu cầu sửa",
+                Status = TopicStatus.NeedRevision,
+                StudentNumber = 2,
+                CreatedAt = BaseTime.AddMinutes(8)
+            },
+            new()
+            {
+                Id = Guid.NewGuid(),
+                BatchId = batch1,
+                AdvisorId = advisorId,
+                TitleVi = "Trí tuệ nhân tạo bị từ chối",
+                Status = TopicStatus.Rejected,
+                StudentNumber = 2,
+                CreatedAt = BaseTime.AddMinutes(9)
+            },
             new()
             {
                 Id = Guid.NewGuid(),
                 BatchId = batch2,
                 AdvisorId = advisorId,
                 TitleVi = "Trí tuệ nhân tạo đợt khác",
-                Status = TopicStatus.Approved,
+                Status = TopicStatus.Published,
                 StudentNumber = 2,
                 CreatedAt = BaseTime.AddMinutes(10)
             }
@@ -69,6 +120,11 @@ public sealed class TopicQueryReaderTests
 
         Assert.Equal(2, result.TotalCount);
         Assert.Equal(2, result.Items.Count);
+        Assert.All(result.Items, item =>
+        {
+            Assert.Equal("Published", item.Status);
+            Assert.True(item.IsPublished);
+        });
         // Tie-breaker: idHigh must come before idLow when CreatedAt is equal
         Assert.Equal(idHigh, result.Items[0].Id);
         Assert.Equal(idLow, result.Items[1].Id);
@@ -231,7 +287,7 @@ public sealed class TopicQueryReaderTests
                 BatchId = batchId,
                 AdvisorId = advisorId,
                 TitleVi = "Đề tài chi tiết",
-                Status = TopicStatus.Approved,
+                Status = TopicStatus.Published,
                 StudentNumber = 2,
                 CreatedAt = BaseTime
             }
@@ -265,6 +321,7 @@ public sealed class TopicQueryReaderTests
 
         Assert.NotNull(detail);
         Assert.Equal("Full", detail.RegistrationStatus);
+        Assert.True(detail.IsPublished);
         Assert.Equal(2, detail.RegisteredStudentsCount);
         Assert.Equal(0, detail.RemainingSlots);
         Assert.NotNull(detail.Group);

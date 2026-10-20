@@ -39,6 +39,16 @@ public sealed class FakeCurrentUser : ICurrentUser
         Roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Lecturer" }
     };
 
+    public static FakeCurrentUser AsFaculty(Guid? userId = null) => new()
+    {
+        IsAuthenticated = true,
+        UserId = userId ?? Guid.NewGuid(),
+        SessionId = Guid.NewGuid(),
+        Email = "faculty@example.com",
+        UserCode = "KHOA01",
+        Roles = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Faculty" }
+    };
+
     public static FakeCurrentUser AsAdmin(Guid? userId = null) => new()
     {
         IsAuthenticated = true,

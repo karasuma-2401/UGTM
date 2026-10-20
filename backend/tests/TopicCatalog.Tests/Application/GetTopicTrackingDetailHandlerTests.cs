@@ -72,7 +72,6 @@ public sealed class GetTopicTrackingDetailHandlerTests
 
     [Theory]
     [InlineData("Student")]
-    [InlineData("Faculty")]
     [InlineData("AcademicAffairs")]
     [InlineData("Guest")]
     [InlineData("RandomHacker")]
@@ -219,11 +218,10 @@ public sealed class GetTopicTrackingDetailHandlerTests
     }
 
     [Fact]
-    public async Task GetTopicTrackingDetail_council_member_can_view_any_topic_bypassing_advisor_check()
+    public async Task GetTopicTrackingDetail_faculty_and_council_member_can_view_any_topic_bypassing_advisor_check()
     {
         var topicId = Guid.NewGuid();
         var anotherAdvisorId = Guid.NewGuid();
-        var councilId = Guid.NewGuid();
 
         var repo = new FakeTopicRepository();
         repo.Add(CreateSampleTopic(topicId, anotherAdvisorId));
@@ -250,16 +248,23 @@ public sealed class GetTopicTrackingDetailHandlerTests
         {
             GetTopicTrackingDetailResponse = expectedDetail
         };
-        var currentUser = FakeCurrentUser.AsCouncilMember(councilId);
-        var handler = new GetTopicTrackingDetailHandler(repo, reader, currentUser);
 
-        var result = await handler.HandleAsync(
+        var councilHandler = new GetTopicTrackingDetailHandler(repo, reader, FakeCurrentUser.AsCouncilMember());
+        var councilResult = await councilHandler.HandleAsync(
             new GetTopicTrackingDetailQuery(topicId),
             CancellationToken.None);
 
-        Assert.True(result.IsSuccess);
-        Assert.Equal(topicId, result.Value.Id);
-        Assert.Equal("Registered", result.Value.RegistrationStatus);
+        Assert.True(councilResult.IsSuccess);
+        Assert.Equal(topicId, councilResult.Value.Id);
+        Assert.Equal("Registered", councilResult.Value.RegistrationStatus);
+
+        var facultyHandler = new GetTopicTrackingDetailHandler(repo, reader, FakeCurrentUser.AsFaculty());
+        var facultyResult = await facultyHandler.HandleAsync(
+            new GetTopicTrackingDetailQuery(topicId),
+            CancellationToken.None);
+
+        Assert.True(facultyResult.IsSuccess);
+        Assert.Equal(topicId, facultyResult.Value.Id);
     }
 
     // ==========================================
@@ -286,7 +291,6 @@ public sealed class GetTopicTrackingDetailHandlerTests
 
     [Theory]
     [InlineData("Student")]
-    [InlineData("Faculty")]
     [InlineData("AcademicAffairs")]
     public async Task GetTopicTrackingDetail_unauthorized_role_returns_forbidden_even_when_topic_does_not_exist_preventing_id_enumeration(string role)
     {
@@ -315,8 +319,8 @@ public sealed class GetTopicTrackingDetailHandlerTests
         repo.Add(CreateSampleTopic(topicId, formerLecturerId));
 
         var reader = new StubTopicQueryReader();
-        // User has the exact AdvisorId of the topic, but their role is now Faculty (not Lecturer/Admin/CouncilMember)
-        var currentUser = FakeCurrentUser.AsRole("Faculty", formerLecturerId);
+        // User has the exact AdvisorId of the topic, but their role is now AcademicAffairs (not Lecturer/Admin/Faculty/CouncilMember)
+        var currentUser = FakeCurrentUser.AsRole("AcademicAffairs", formerLecturerId);
         var handler = new GetTopicTrackingDetailHandler(repo, reader, currentUser);
 
         var result = await handler.HandleAsync(
@@ -331,6 +335,7 @@ public sealed class GetTopicTrackingDetailHandlerTests
     [Theory]
     [InlineData("lecturer")]
     [InlineData("ADMIN")]
+    [InlineData("faculty")]
     [InlineData("councilmember")]
     public async Task GetTopicTrackingDetail_matches_roles_case_insensitively_even_with_ordinal_role_set(string roleClaim)
     {

@@ -19,6 +19,7 @@
     <ProjectReference Include="..\..\Modules\TopicCatalog\Application\UGTM.Modules.TopicCatalog.Application.csproj" />
     <ProjectReference Include="..\..\Modules\TopicCatalog\Domain\UGTM.Modules.TopicCatalog.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\TopicCatalog\Infrastructure\UGTM.Modules.TopicCatalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\AcademicPeriods\Contracts\UGTM.Modules.AcademicPeriods.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Contracts\UGTM.Modules.Identity.Contracts.csproj" />
     <ProjectReference Include="..\..\Modules\ThesisManagement\Contracts\UGTM.Modules.ThesisManagement.Contracts.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\Application\UGTM.BuildingBlocks.Application.csproj" />

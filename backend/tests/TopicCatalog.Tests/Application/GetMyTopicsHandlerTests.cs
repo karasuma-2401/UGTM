@@ -1,7 +1,5 @@
-using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.TopicCatalog.Application.Common;
-using UGTM.Modules.TopicCatalog.Application.Topics.Dtos;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetMyTopics;
 using UGTM.Modules.TopicCatalog.Tests.Fakes;
 
@@ -32,7 +30,6 @@ public sealed class GetMyTopicsHandlerTests
 
     [Theory]
     [InlineData("Student")]
-    [InlineData("Faculty")]
     [InlineData("AcademicAffairs")]
     [InlineData("Guest")]
     [InlineData("Hacker")]
@@ -126,6 +123,32 @@ public sealed class GetMyTopicsHandlerTests
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(stubReader.LastGetMyQuery);
+        Assert.Equal(targetLecturerId, stubReader.LastEffectiveAdvisorId);
+        Assert.True(stubReader.LastIsPrivileged);
+    }
+
+    [Fact]
+    public async Task GetMyTopics_faculty_can_view_all_and_filter_by_advisor_id_for_review()
+    {
+        var facultyId = Guid.NewGuid();
+        var targetLecturerId = Guid.NewGuid();
+        var stubReader = new StubTopicQueryReader();
+        var currentUser = FakeCurrentUser.AsFaculty(facultyId);
+        var handler = new GetMyTopicsHandler(stubReader, currentUser);
+
+        var resultAll = await handler.HandleAsync(
+            new GetMyTopicsQuery(null, null, "Submitted", null, null, 1, 10),
+            CancellationToken.None);
+
+        Assert.True(resultAll.IsSuccess);
+        Assert.Null(stubReader.LastEffectiveAdvisorId);
+        Assert.True(stubReader.LastIsPrivileged);
+
+        var resultFiltered = await handler.HandleAsync(
+            new GetMyTopicsQuery(null, null, "Approved", null, targetLecturerId, 1, 10),
+            CancellationToken.None);
+
+        Assert.True(resultFiltered.IsSuccess);
         Assert.Equal(targetLecturerId, stubReader.LastEffectiveAdvisorId);
         Assert.True(stubReader.LastIsPrivileged);
     }
@@ -238,6 +261,7 @@ public sealed class GetMyTopicsHandlerTests
     [InlineData("Draft")]
     [InlineData("draft")]
     [InlineData("Submitted")]
+    [InlineData("NeedRevision")]
     [InlineData("Approved")]
     [InlineData("approved")]
     [InlineData("Rejected")]
