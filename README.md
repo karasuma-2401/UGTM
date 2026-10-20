@@ -46,6 +46,9 @@ Trong Rider, mở `UGTM.sln`, chọn cấu hình `.NET Launch Settings Profile` 
 
 `ConfigureDevelopment.ps1` đọc cấu hình database, JWT và SMTP trong `.env` (mặc định khóa ở `secrets/ugtm-jwt-private.pem`), rồi tạo `backend/host/Api/appsettings.Development.local.json`. API chỉ nạp file này trong Development; file được Git bỏ qua và không đưa vào bản publish. Chạy lại script sau khi đổi `.env`. Có thể ghi đè bằng các Environment variables dạng `ConnectionStrings__DefaultConnection`, `Identity__Jwt__PrivateKeyPath` và `Notifications__Smtp__*`; biến môi trường và tham số dòng lệnh có độ ưu tiên cao hơn file local. Biến đặt trong terminal PowerShell không tự truyền vào Rider đang mở.
 
+Email outbox dùng partition riêng cho từng runtime (`local-direct`, `local-docker`, `azure-production`), nên local
+và Azure có thể dùng chung database mà không tranh xử lý payload được mã hóa bằng Data Protection key khác.
+
 ```powershell
 Invoke-RestMethod http://localhost:5287/api/modules/Identity/ping
 dotnet test UGTM.sln

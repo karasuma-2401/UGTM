@@ -19,6 +19,38 @@ namespace UGTM.Modules.Identity.Tests.Application;
 
 public sealed class UsersHandlerTests
 {
+    [Theory]
+    [InlineData("student", "Student")]
+    [InlineData(" STAFF ", "Staff")]
+    [InlineData(null, null)]
+    [InlineData(" ", null)]
+    public async Task GetUsersHandler_normalizes_account_groups(string? input, string? expected)
+    {
+        var reader = new StubUserQueryReader();
+        var result = await new GetUsersHandler(reader).HandleAsync(
+            new GetUsersQuery(AccountGroup: input), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(expected, reader.LastQuery!.AccountGroup);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("1")]
+    [InlineData("-1")]
+    [InlineData("Lecturer")]
+    [InlineData("Student, Staff")]
+    public async Task GetUsersHandler_rejects_invalid_account_groups(string input)
+    {
+        var reader = new StubUserQueryReader();
+        var result = await new GetUsersHandler(reader).HandleAsync(
+            new GetUsersQuery(AccountGroup: input), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidAccountGroup", result.Error.Code);
+        Assert.Null(reader.LastQuery);
+    }
+
     private static readonly DateTime Now = new(2026, 10, 13, 10, 0, 0, DateTimeKind.Utc);
 
     [Fact]

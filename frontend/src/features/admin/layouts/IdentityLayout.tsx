@@ -1,5 +1,5 @@
 import { Navigate, NavLink, Outlet } from 'react-router-dom';
-import { ShieldCheck, UsersRound } from 'lucide-react';
+import { GraduationCap, ShieldCheck, UsersRound } from 'lucide-react';
 
 import { useAuth } from '@/shared/auth';
 import { getIdentityAccess } from '@/shared/auth/identityAccess';
@@ -10,7 +10,7 @@ export function IdentityIndexRedirect() {
   const { canReadUsers, canManageRoles } = getIdentityAccess(hasPermission);
 
   return (
-    <Navigate to={canReadUsers ? 'accounts' : canManageRoles ? 'permissions' : '/403'} replace />
+    <Navigate to={canReadUsers ? 'students' : canManageRoles ? 'permissions' : '/403'} replace />
   );
 }
 
@@ -21,10 +21,11 @@ export function IdentityLayout() {
   if (!canAccess) return <Navigate to="/403" replace />;
 
   const tabs = [
-    { path: 'accounts', label: 'Tài khoản', icon: UsersRound, visible: canReadUsers },
+    { path: 'students', label: 'Sinh viên', icon: GraduationCap, visible: canReadUsers },
+    { path: 'staff', label: 'Giảng viên & cán bộ', icon: UsersRound, visible: canReadUsers },
     {
       path: 'permissions',
-      label: 'Phân quyền vai trò',
+      label: 'Phân quyền',
       icon: ShieldCheck,
       visible: canManageRoles,
     },

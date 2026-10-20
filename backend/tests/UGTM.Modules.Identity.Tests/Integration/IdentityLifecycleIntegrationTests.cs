@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Modules.Identity.Application.Activation;
 using UGTM.Modules.Identity.Application.AuditLogs;
@@ -142,7 +143,14 @@ public sealed class IdentityLifecycleIntegrationTests(PostgreSqlFixture fixture)
                 new UserRepository(db),
                 new OneTimeChallengeRepository(db),
                 tokens,
-                new IdentityEmailOutbox(db, dataProtection),
+                new IdentityEmailOutbox(
+                    db,
+                    dataProtection,
+                    Options.Create(new IdentityEmailOptions
+                    {
+                        PublicWebBaseUrl = new Uri("https://ugtm.example"),
+                        OutboxPartition = "test"
+                    })),
                 new IdentityUnitOfWork(db),
                 audit,
                 clock,

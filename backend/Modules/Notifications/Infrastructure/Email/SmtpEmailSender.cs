@@ -45,8 +45,14 @@ public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSende
         {
             var resource = bodyBuilder.LinkedResources.Add(
                 inlineImage.FileName,
-                inlineImage.Content);
+                inlineImage.Content,
+                ContentType.Parse(inlineImage.MediaType));
             resource.ContentId = inlineImage.ContentId;
+            resource.ContentDisposition = new ContentDisposition(ContentDisposition.Inline);
+            if (resource is MimePart mimePart)
+            {
+                mimePart.ContentTransferEncoding = ContentEncoding.Base64;
+            }
         }
 
         message.Body = bodyBuilder.ToMessageBody();

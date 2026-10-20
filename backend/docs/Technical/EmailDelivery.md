@@ -7,6 +7,11 @@ Identity không gọi SMTP trong request chính: handler ghi message vào transa
 `IdentityOutboxProcessor` giải mã payload và gửi bất đồng bộ. Vì vậy lỗi SMTP không làm rollback thao tác nghiệp vụ;
 message thất bại được retry theo exponential backoff, tối đa 60 phút giữa hai lần thử.
 
+Mỗi runtime phải có một `Identity:Email:OutboxPartition` ổn định. Partition được đưa vào Data Protection
+purpose của payload và worker chỉ lấy message thuộc partition của mình. Repository cấu hình sẵn
+`local-direct` cho Rider/`dotnet run`, `local-docker` cho Docker Compose và `azure-production` cho deployment.
+Nhờ đó local và Azure có thể dùng chung database mà không lấy nhầm message được mã hóa bằng key ring khác.
+
 ## Giao diện email
 
 Identity có template HTML riêng cho email kích hoạt và OTP khôi phục mật khẩu. Template dùng
@@ -14,10 +19,9 @@ table layout cùng inline CSS để tương thích các email client phổ biế
 từ xanh `#2054A5` sang cam `#FA7921`, CTA/link dự phòng, cảnh báo bảo mật và bản text fallback.
 OTP chỉ xuất hiện trong nội dung, không được đưa vào subject để tránh lộ qua notification.
 
-Logo được lưu riêng trong Backend tại
-`Modules/Identity/Infrastructure/Notifications/Assets`. Bản PNG được nhúng vào assembly và gửi
-cùng email bằng linked MIME resource `cid:ugtm-brand-logo`; do đó email không phụ thuộc URL hoặc
-deployment của Frontend. Nếu email client chặn hình ảnh, thuộc tính `alt` vẫn hiển thị `UGTM`.
+Logo chữ UGTM được dựng trực tiếp bằng HTML email-safe và màu thương hiệu. Email không tải ảnh từ
+URL bên ngoài, không dùng Content-ID và không đính kèm file, tránh trường hợp Gmail không ghép được
+inline MIME resource hoặc hiển thị logo thành attachment.
 
 ## Cấu hình
 
@@ -47,6 +51,9 @@ SMTP_TIMEOUT_SECONDS=30
 | `SMTP_FROM_NAME` | Tên người gửi |
 | `SMTP_USERNAME` / `SMTP_PASSWORD` | Cặp credential SMTP; phải cùng có hoặc cùng không có |
 | `SMTP_TIMEOUT_SECONDS` | Timeout kết nối/gửi, từ 5 đến 120 giây |
+
+Không đặt cùng một outbox partition cho hai môi trường có Data Protection key ring khác nhau. Các replica
+thật sự của cùng một môi trường chỉ được dùng chung partition khi chúng đồng thời dùng chung key ring.
 
 Production từ chối `SMTP_SECURITY=None` ngay khi startup. Không tắt kiểm tra chứng thư TLS.
 `None` chỉ dành cho SMTP giả lập như Mailpit trong môi trường Development.
@@ -82,6 +89,9 @@ Nếu không đặt `SMTP_HOST`, ứng dụng Development tiếp tục dùng Mai
 4. Kiểm tra hộp thư đến và thư mục spam; worker quét outbox mỗi 5 giây.
 5. Nếu email chưa đến, kiểm tra log `IdentityOutboxProcessor` và các cột `attempt_count`, `next_attempt_at`,
    `last_error` trong `identity.outbox_message`.
+
+Message tạo trước khi cơ chế partition được triển khai có protection purpose phiên bản cũ và không được worker
+mới nhận. Hãy gọi resend một lần sau khi backend mới được triển khai; Magic Link mới sẽ vô hiệu hóa link cũ.
 
 Không dùng endpoint resend liên tục để thử SMTP vì nhóm activation có rate limit 5 request/10 phút/IP
 và mỗi lần resend sẽ vô hiệu Magic Link trước đó.

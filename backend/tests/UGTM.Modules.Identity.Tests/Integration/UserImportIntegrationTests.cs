@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Database.Migrations;
@@ -65,7 +66,14 @@ public sealed class UserImportIntegrationTests(PostgreSqlFixture fixture)
                     new UserRepository(activationDb),
                     new OneTimeChallengeRepository(activationDb),
                     new OpaqueTokenService(),
-                    new IdentityEmailOutbox(activationDb, new EphemeralDataProtectionProvider()),
+                    new IdentityEmailOutbox(
+                        activationDb,
+                        new EphemeralDataProtectionProvider(),
+                        Options.Create(new IdentityEmailOptions
+                        {
+                            PublicWebBaseUrl = new Uri("https://ugtm.example"),
+                            OutboxPartition = "test"
+                        })),
                     new IdentityUnitOfWork(activationDb),
                     new NoOpAuditLogWriter(),
                     new FixedClock(),

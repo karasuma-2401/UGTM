@@ -52,10 +52,12 @@ public static class UserEndpoints
                 - `keyword`: Tìm kiếm không phân biệt hoa thường theo email, họ tên, mã người dùng.
                 - `role`: Tên vai trò (`Student`, `Lecturer`, `Admin`, `Faculty`, `AcademicAffairs`, `CouncilMember`). Chuỗi số (ví dụ: '999') hoặc vai trò không hợp lệ sẽ trả về lỗi 400.
                 - `status`: Trạng thái (`PendingActivation`, `Active`, `Suspended`, `Disabled`). Chuỗi số (ví dụ: '999') hoặc trạng thái không hợp lệ sẽ trả về lỗi 400.
+                - `accountGroup`: `Student` chỉ lấy tài khoản có vai trò Sinh viên; `Staff` lấy tài khoản không có vai trò Sinh viên, kể cả tài khoản chưa có vai trò. Bỏ trống để giữ cách tra cứu tất cả tài khoản.
+                  Bộ lọc nhóm được áp dụng trước khi đếm tổng và phân trang; có thể kết hợp với `role`, `status` và `keyword`.
 
                 Yêu cầu Bearer token có quyền `identity.users.read` hoặc người dùng có vai trò `Admin`.
                 - Thành công: 200 OK kèm `PagedResult<UserSummaryDto>`.
-                - Tham số lọc không hợp lệ: 400 Bad Request (`Identity.InvalidRole` hoặc `Identity.InvalidStatus`).
+                - Tham số lọc không hợp lệ: 400 Bad Request (`Identity.InvalidRole`, `Identity.InvalidStatus` hoặc `Identity.InvalidAccountGroup`).
                 - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
                 - Không đủ quyền (không có quyền `identity.users.read` và không phải Admin): 403 Forbidden.
                 """)
@@ -204,10 +206,11 @@ public static class UserEndpoints
         string? status,
         int pageNumber = 1,
         int pageSize = 10,
+        string? accountGroup = null,
         GetUsersHandler handler = null!,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetUsersQuery(keyword, role, status, pageNumber, pageSize);
+        var query = new GetUsersQuery(keyword, role, status, pageNumber, pageSize, accountGroup);
         var result = await handler.HandleAsync(query, cancellationToken);
         return result.ToHttpResult();
     }

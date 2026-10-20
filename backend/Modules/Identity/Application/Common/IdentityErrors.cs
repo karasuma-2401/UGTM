@@ -78,6 +78,10 @@ public static class IdentityErrors
         "Identity.InvalidStatus",
         "Trạng thái tài khoản không hợp lệ.");
 
+    public static readonly Error InvalidAccountGroup = Error.Validation(
+        "Identity.InvalidAccountGroup",
+        "Nhóm tài khoản không hợp lệ. Chỉ chấp nhận Student hoặc Staff.");
+
     public static readonly Error InvalidStatusTransition = Error.Validation(
         "Identity.InvalidStatusTransition",
         "Không thể chuyển đổi trạng thái tài khoản theo yêu cầu.");

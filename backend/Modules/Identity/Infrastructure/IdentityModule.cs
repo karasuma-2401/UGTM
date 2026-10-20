@@ -121,8 +121,10 @@ public sealed class IdentityModule : IModule
             .Bind(configuration.GetSection(IdentityEmailOptions.SectionName))
             .Validate(
                 options => options.PublicWebBaseUrl is { IsAbsoluteUri: true }
-                           && options.PublicWebBaseUrl.Scheme is "https" or "http",
-                "Identity email public web base URL must be an absolute HTTP(S) URL.")
+                           && options.PublicWebBaseUrl.Scheme is "https" or "http"
+                           && !string.IsNullOrWhiteSpace(options.OutboxPartition)
+                           && options.OutboxPartition.Length <= 100,
+                "Identity email public web base URL and an outbox partition of at most 100 characters are required.")
             .ValidateOnStart();
         services.AddOptions<IdentityClientMetadataOptions>()
             .Bind(configuration.GetSection(IdentityClientMetadataOptions.SectionName))

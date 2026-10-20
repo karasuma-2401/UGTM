@@ -7,9 +7,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { SYSTEM_ROLES } from '../constants/systemRoles';
 import { Save, UserPlus } from 'lucide-react';
 
-import type { SystemRole, UserFormValues, UserSummary } from '../types/user.types';
+import type { AccountGroup, SystemRole, UserFormValues, UserSummary } from '../types/user.types';
+import { defaultRolesForGroup, rolesBelongToGroup } from '../utils/accountGroups';
 
 interface UserFormProps {
+  accountGroup: AccountGroup;
   user: UserSummary | null;
   isSaving: boolean;
   error: string | null;
@@ -17,38 +19,23 @@ interface UserFormProps {
   onCancel: () => void;
 }
 
-export function UserForm({ user, isSaving, error, onSave, onCancel }: UserFormProps) {
+export function UserForm({ accountGroup, user, isSaving, error, onSave, onCancel }: UserFormProps) {
+  const isStudent = accountGroup === 'Student';
   const [values, setValues] = useState<UserFormValues>(() => ({
     email: user?.email ?? '',
     fullName: user?.fullName ?? '',
     userCode: user?.userCode ?? '',
     phoneNumber: user?.phoneNumber ?? '',
-    roles: user ? [...user.roles] : ['Student'],
+    roles: user ? [...user.roles] : defaultRolesForGroup(accountGroup),
   }));
 
   const [validationError, setValidationError] = useState('');
-
-  // const cannotBecomeStudent = user?.roles.some((role) => role !== 'Student') ?? false;
-  const cannotBecomeStudent = values.roles.some((role) => role !== 'Student');
-
-  function isRoleDisabled(role: SystemRole, roles: SystemRole[]) {
-    if (roles.includes(role)) return false;
-    // return role === 'Student'
-    //   ? cannotBecomeStudent || roles.some((item) => item !== 'Student')
-    //   : roles.includes('Student');
-
-    if (role === 'Student') {
-      return roles.length > 0;
-    }
-
-    return roles.includes('Student');
-  }
 
   function toggleRole(role: SystemRole, checked: boolean) {
     if (isSaving) return;
     setValidationError('');
     setValues((previous) => {
-      if (checked && isRoleDisabled(role, previous.roles)) return previous;
+      if (role === 'Student' || isStudent) return previous;
       return {
         ...previous,
         roles: checked
@@ -74,13 +61,13 @@ export function UserForm({ user, isSaving, error, onSave, onCancel }: UserFormPr
       return;
     }
 
-    if (values.roles.includes('Student') && values.roles.length > 1) {
-      setValidationError('Vai trò Sinh viên không được kết hợp với vai trò khác.');
+    if (!rolesBelongToGroup(values.roles, accountGroup)) {
+      setValidationError('Vai trò không phù hợp với nhóm tài khoản đang quản lý.');
       return;
     }
 
-    if (values.roles.includes('Student') && cannotBecomeStudent) {
-      setValidationError('Tài khoản đã có vai trò khác không được chuyển thành Sinh viên.');
+    if (isStudent && !values.userCode.trim()) {
+      setValidationError('Vui lòng nhập mã số sinh viên.');
       return;
     }
 
@@ -96,7 +83,7 @@ export function UserForm({ user, isSaving, error, onSave, onCancel }: UserFormPr
 
         {!user && (
           <p className="mt-1 text-sm text-slate-500">
-            Người dùng sẽ nhận email để kích hoạt và đặt mật khẩu.
+            Vui lòng nhập đầy đủ thông tin.
           </p>
         )}
       </div>
@@ -126,8 +113,9 @@ export function UserForm({ user, isSaving, error, onSave, onCancel }: UserFormPr
           </label>
 
           <label className="space-y-1 text-sm">
-            <span>Mã người dùng</span>
+            <span>{isStudent ? 'Mã số sinh viên (MSSV)' : 'Mã cán bộ'}</span>
             <Input
+              required={isStudent}
               maxLength={20}
               value={values.userCode}
               onChange={(event) => setValues({ ...values, userCode: event.target.value })}
@@ -145,32 +133,39 @@ export function UserForm({ user, isSaving, error, onSave, onCancel }: UserFormPr
           </label>
         </div>
 
-        <fieldset aria-describedby="account-role-help">
-          <legend className="mb-2 text-sm font-medium">Vai trò hệ thống</legend>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {SYSTEM_ROLES.map((role) => {
-              const roleName = role.roleName;
-              const checked = values.roles.includes(roleName);
-
-              return (
-                <Checkbox
-                  key={role.id}
-                  className={`w-full rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${checked ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'}`}
-                  label={role.title}
-                  checked={checked}
-                  disabled={isSaving || isRoleDisabled(roleName, values.roles)}
-                  onCheckedChange={(nextChecked) => toggleRole(roleName, nextChecked)}
-                />
-              );
-            })}
-          </div>
-          <p id="account-role-help" className="mt-3 text-xs leading-relaxed text-muted-foreground">
-            {cannotBecomeStudent
-              ? 'Tài khoản này đã có vai trò khác nên không được chuyển thành Sinh viên.'
-              : 'Sinh viên là vai trò độc lập. Bỏ chọn Sinh viên trước khi chọn vai trò khác.'}
+        {isStudent ? (
+          <p className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+            Tài khoản được khởi tạo với vai trò sinh viên.
           </p>
-        </fieldset>
+        ) : (
+          <fieldset aria-describedby="account-role-help">
+            <legend className="mb-2 text-sm font-medium">Vai trò hệ thống</legend>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {SYSTEM_ROLES.filter((role) => role.roleName !== 'Student').map((role) => {
+                const roleName = role.roleName;
+                const checked = values.roles.includes(roleName);
+
+                return (
+                  <Checkbox
+                    key={role.id}
+                    className={`w-full rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${checked ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'}`}
+                    label={role.title}
+                    checked={checked}
+                    disabled={isSaving}
+                    onCheckedChange={(nextChecked) => toggleRole(roleName, nextChecked)}
+                  />
+                );
+              })}
+            </div>
+            <p
+              id="account-role-help"
+              className="mt-3 text-xs leading-relaxed text-muted-foreground"
+            >
+              Chọn một hoặc nhiều vai trò cho giảng viên, cán bộ.
+            </p>
+          </fieldset>
+        )}
       </fieldset>
 
       {(validationError || error) && (

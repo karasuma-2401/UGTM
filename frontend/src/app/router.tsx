@@ -44,9 +44,21 @@ export const router = createBrowserRouter([
           { index: true, element: <IdentityIndexRedirect /> },
           {
             path: 'accounts',
+            element: <Navigate to="../students" replace />,
+          },
+          {
+            path: 'students',
             element: (
               <ProtectedRoute requiredPermissions={['identity.users.read']}>
-                <UsersPage />
+                <UsersPage key="students" accountGroup="Student" />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'staff',
+            element: (
+              <ProtectedRoute requiredPermissions={['identity.users.read']}>
+                <UsersPage key="staff" accountGroup="Staff" />
               </ProtectedRoute>
             ),
           },

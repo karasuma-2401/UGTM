@@ -1,67 +1,140 @@
-import { ArrowRight, CircleCheck, IdCard, Mail, Phone } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { ArrowRight, IdCard } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import type { ApiResponse } from '@/shared/api/types';
 import { PasswordFields } from '../components/PasswordFields';
-import { DEMO_PROFILE } from '../mocks/authFixtures';
-import { findEligibleStudentMock, startChallenge } from '../mocks/authMock';
-import type { MockStudentProfile } from '../mocks/authMock.types';
+import {
+  completeActivationApi,
+  resendActivationApi,
+  validateActivationApi,
+  type ActivationValidateData,
+} from '../services/authApi';
 import { validatePasswords } from '../utils/passwordValidation';
 
+function activationError(error: unknown): string {
+  if (axios.isAxiosError<ApiResponse<unknown>>(error)) {
+    if (error.response?.status === 429) {
+      return 'Bạn đã gửi quá nhiều yêu cầu kích hoạt. Vui lòng thử lại sau ít phút.';
+    }
+    if (error.response?.data?.error?.code === 'Identity.InvalidActivationToken') {
+      return 'Link kích hoạt không hợp lệ, đã hết hạn hoặc đã được sử dụng. Hãy yêu cầu email mới bên dưới.';
+    }
+    return (
+      error.response?.data?.error?.message || 'Không thể kết nối đến máy chủ. Vui lòng thử lại.'
+    );
+  }
+  return error instanceof Error ? error.message : 'Không thể xử lý yêu cầu kích hoạt.';
+}
+
 export function ActivatePage() {
+  const location = useLocation();
+  const token = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+  return <ActivationForm key={token} token={token} />;
+}
+
+function ActivationForm({ token }: { token: string }) {
   const navigate = useNavigate();
-  const [studentId, setStudentId] = useState('');
-  const [profile, setProfile] = useState<MockStudentProfile | null>(null);
-  const [phone, setPhone] = useState('');
-  const [lookupError, setLookupError] = useState('');
+  const [identifier, setIdentifier] = useState('');
+  const [profile, setProfile] = useState<ActivationValidateData | null>(null);
   const [password, setPassword] = useState('');
   const [confirmationPassword, setConfirmationPassword] = useState('');
-  const [hasAgreedToTerms, setHasAgreedToTerms] = useState(false);
-  const [error, setError] = useState('');
+  const [checking, setChecking] = useState(Boolean(token));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const pendingValidation = useRef<{
+    token: string;
+    retry: number;
+    promise: ReturnType<typeof validateActivationApi>;
+  } | null>(null);
 
-  function handleStudentIdChange(value: string) {
-    setStudentId(value);
-    setProfile(null);
-    setPhone('');
-    setPassword('');
-    setConfirmationPassword('');
-    setHasAgreedToTerms(false);
-    setLookupError('');
-    setError('');
-  }
+  useEffect(() => {
+    let active = true;
+    if (!token) return;
 
-  function handleLookup(event: FormEvent<HTMLFormElement>) {
+    // Reuse validation during StrictMode's effect replay to avoid wasting rate limits.
+    if (pendingValidation.current?.token !== token || pendingValidation.current.retry !== retry) {
+      pendingValidation.current = { token, retry, promise: validateActivationApi(token) };
+    }
+    void pendingValidation.current.promise
+      .then((response) => {
+        if (!active) return;
+        if (!response.success || !response.data) {
+          throw new Error(response.error?.message || 'Link kích hoạt không hợp lệ.');
+        }
+        setProfile(response.data);
+      })
+      .catch((err: unknown) => {
+        if (active) setError(activationError(err));
+      })
+      .finally(() => {
+        if (active) setChecking(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [token, retry]);
+
+  useEffect(() => {
+    if (cooldownUntil <= Date.now()) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [cooldownUntil]);
+
+  const cooldown = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
+
+  async function handleResend(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLookupError('');
-
+    if (isSubmitting || cooldown > 0 || !identifier.trim()) return;
+    setIsSubmitting(true);
+    setError('');
+    setNotice('');
     try {
-      const studentProfile = findEligibleStudentMock(studentId);
-      setProfile(studentProfile);
-      setPhone(studentProfile.phone);
-    } catch (error) {
-      setProfile(null);
-      setLookupError(error instanceof Error ? error.message : 'Không thể kiểm tra hồ sơ.');
+      const response = await resendActivationApi(identifier.trim());
+      if (!response.success)
+        throw new Error(response.error?.message || 'Không thể yêu cầu email kích hoạt.');
+      setNotice(
+        'Nếu tài khoản đang chờ kích hoạt, hệ thống sẽ gửi hướng dẫn đến email đã đăng ký. Hãy kiểm tra cả thư mục spam và sử dụng link trong email mới nhất.',
+      );
+      setNow(Date.now());
+      setCooldownUntil(Date.now() + 60_000);
+    } catch (err) {
+      setError(activationError(err));
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleComplete(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting || !profile || !token) return;
     setError('');
     setIsSubmitting(true);
     try {
-      if (!profile || profile.id !== studentId.trim()) {
-        throw new Error('Vui lòng kiểm tra MSSV hợp lệ trước khi kích hoạt.');
-      }
       validatePasswords(password, confirmationPassword);
-      if (!/^0\d{9}$/.test(phone.replace(/\s/g, '')))
-        throw new Error('Số điện thoại cần có 10 chữ số và bắt đầu bằng 0.');
-      if (!hasAgreedToTerms) throw new Error('Vui lòng đồng ý với cam kết và quy chế.');
-      startChallenge('activate', 'email', password);
-      navigate('/verify-otp');
+      const response = await completeActivationApi(token, password);
+      if (!response.success)
+        throw new Error(response.error?.message || 'Không thể kích hoạt tài khoản.');
+      setPassword('');
+      setConfirmationPassword('');
+      navigate('/login', {
+        replace: true,
+        state: { success: 'Kích hoạt tài khoản thành công. Hãy đăng nhập bằng mật khẩu vừa tạo.' },
+      });
     } catch (err) {
-      setError((err as Error).message);
+      if (
+        axios.isAxiosError<ApiResponse<unknown>>(err) &&
+        err.response?.data?.error?.code === 'Identity.InvalidActivationToken'
+      ) {
+        setProfile(null);
+      }
+      setError(activationError(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -70,142 +143,107 @@ export function ActivatePage() {
   return (
     <section className="auth-card auth-activate">
       <p className="auth-top-link">
-        Đã có tài khoản hoạt động? <Link to="/login">Đăng nhập ngay →</Link>
+        Đã có tài khoản? <Link to="/login">Đăng nhập ngay →</Link>
       </p>
-      <h1>Kích hoạt Hồ sơ Khóa luận</h1>
-      <div className="auth-divider">THÔNG TIN HỒ SƠ SINH VIÊN</div>
-      {!profile && (
-        <form onSubmit={handleLookup}>
-          <div className="auth-field">
-            <label htmlFor="student-id">Mã số sinh viên</label>
-            <Input
-              id="student-id"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="Nhập MSSV để kiểm tra hồ sơ"
-              required
-              value={studentId}
-              onChange={(event) => handleStudentIdChange(event.target.value)}
-              leftIcon={<IdCard size={16} />}
-              className="bg-white border-[#cbd7e8] h-[39px]"
-            />
-            <p id="student-lookup-hint" className="auth-hint">
-              Nhập MSSV và bấm kiểm tra để đối soát điều kiện tham gia khóa luận.
-            </p>
+      <h1>Kích hoạt tài khoản</h1>
+      <p className="auth-subtitle">
+        {profile
+          ? 'Thiết lập mật khẩu để hoàn tất kích hoạt tài khoản.'
+          : 'Nhận link kích hoạt qua email đã đăng ký với nhà trường.'}
+      </p>
+      {checking && (
+        <p className="auth-hint" role="status">
+          Đang kiểm tra link kích hoạt…
+        </p>
+      )}
+      {error && (
+        <p className="auth-error" role="alert">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p className="auth-success" role="status">
+          {notice}
+        </p>
+      )}
+      {!checking && profile && (
+        <form onSubmit={handleComplete}>
+          <div className="auth-profile">
+            <div>
+              <strong>{profile.fullName}</strong>
+              <p>{profile.maskedEmail}</p>
+            </div>
           </div>
-          {lookupError && (
-            <p className="auth-error" role="alert">
-              {lookupError}
-            </p>
-          )}
+          <PasswordFields
+            password={password}
+            confirmationPassword={confirmationPassword}
+            onPasswordChange={setPassword}
+            onConfirmationChange={setConfirmationPassword}
+            disabled={isSubmitting}
+            showRules
+            autoValidateMismatch
+          />
           <Button
             type="submit"
             className="auth-submit"
-            disabled={!studentId.trim()}
+            isLoading={isSubmitting}
+            loadingText="Đang kích hoạt…"
             rightIcon={<ArrowRight size={16} />}
           >
-            Kiểm tra MSSV
+            Kích hoạt tài khoản
           </Button>
+          <p className="auth-hint">
+            Link không còn dùng được? <Link to="/activate">Yêu cầu email mới</Link>
+          </p>
         </form>
       )}
-      {profile && (
+      {!checking && !profile && (
         <>
-          <div className="auth-profile" role="status">
-            <span className="auth-avatar">
-              {profile.name
-                .split(' ')
-                .slice(-2)
-                .map((part) => part[0])
-                .join('')}
-            </span>
-            <div>
-              <strong>{profile.name}</strong> <span>({profile.id})</span>
-              <p>Khoa CNTT • K66 • Đủ ĐK Đợt 1 (GPA: 3.52 / 130 TC)</p>
-            </div>
-            <span className="auth-eligible">● Đủ điều kiện KLTN</span>
-          </div>
-          <form onSubmit={handleSubmit}>
-            <div className="auth-two-col">
-              <div className="auth-field">
-                <div className="auth-label-row">
-                  <label htmlFor="verified-student-id">Mã số sinh viên</label>
-                  <button
-                    type="button"
-                    className="auth-change-student"
-                    onClick={() => handleStudentIdChange(studentId)}
-                  >
-                    Đổi MSSV
-                  </button>
-                </div>
-                <div className="auth-input-wrap">
-                  <IdCard size={16} />
-                  <input id="verified-student-id" value={profile.id} readOnly />
-                  <CircleCheck size={16} className="auth-green" />
-                </div>
-              </div>
-              <div className="auth-field">
-                <label htmlFor="student-email">Email trường</label>
-                <div className="auth-input-wrap">
-                  <Mail size={16} />
-                  <input id="student-email" value={profile.email} readOnly />
-                </div>
-              </div>
-            </div>
-            <div className="auth-field">
-              <label htmlFor="phone">Số điện thoại</label>
-              <div className="auth-input-wrap">
-                <Phone size={16} />
-                <input
-                  id="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  required
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                />
-              </div>
-            </div>
-            <div className="auth-divider">THIẾT LẬP MẬT KHẨU BẢO VỆ</div>
-            <PasswordFields
-              password={password}
-              confirmationPassword={confirmationPassword}
-              onPasswordChange={setPassword}
-              onConfirmationChange={setConfirmationPassword}
+          {token && (
+            <Button
+              type="button"
+              variant="outline"
               disabled={isSubmitting}
-              showRules
-              autoValidateMismatch
-            />
-            <label className="auth-checkbox auth-terms">
-              <input
-                type="checkbox"
+              onClick={() => {
+                setChecking(true);
+                setError('');
+                setNotice('');
+                setRetry((value) => value + 1);
+              }}
+            >
+              Kiểm tra lại link
+            </Button>
+          )}
+          <form onSubmit={handleResend}>
+            <div className="auth-field">
+              <label htmlFor="activation-identifier">MSSV HOẶC EMAIL ĐÃ ĐĂNG KÝ</label>
+              <Input
+                id="activation-identifier"
+                autoComplete="username"
+                required
+                value={identifier}
+                onChange={(event) => setIdentifier(event.target.value)}
                 disabled={isSubmitting}
-                checked={hasAgreedToTerms}
-                onChange={(event) => setHasAgreedToTerms(event.target.checked)}
+                placeholder="Nhập MSSV hoặc email…"
+                leftIcon={<IdCard size={16} />}
               />
-              <span>
-                Tôi cam kết chịu trách nhiệm về tính chính xác của hồ sơ và tuân thủ tuyệt đối{' '}
-                <strong>Quy chế Khóa luận tốt nghiệp</strong> của Đại học Công nghệ Thông tin,
-                ĐHQG-HCM.
-              </span>
-            </label>
-            {error && (
-              <p className="auth-error" role="alert">
-                {error}
-              </p>
-            )}
+            </div>
             <Button
               type="submit"
               className="auth-submit"
               isLoading={isSubmitting}
-              loadingText="Đang kích hoạt tài khoản…"
+              disabled={cooldown > 0 || !identifier.trim()}
+              loadingText="Đang gửi yêu cầu…"
               rightIcon={<ArrowRight size={16} />}
             >
-              Kích hoạt Tài khoản & Nhận mã OTP
+              {cooldown > 0 ? `Gửi lại sau ${cooldown}s` : 'Gửi email kích hoạt'}
             </Button>
+            <p className="auth-hint">
+              Tài khoản cần được nhà trường tạo trước. Yêu cầu này không đăng ký tài khoản mới.
+            </p>
           </form>
         </>
       )}
-      <p className="auth-demo">Demo: nhập MSSV {DEMO_PROFILE.id} để kiểm tra hồ sơ hợp lệ.</p>
     </section>
   );
 }

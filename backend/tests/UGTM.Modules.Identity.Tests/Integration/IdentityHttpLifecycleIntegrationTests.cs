@@ -18,6 +18,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
+using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Application.Security;
 using UGTM.Modules.Identity.Domain.Entities;
@@ -172,6 +173,7 @@ public sealed class IdentityHttpLifecycleIntegrationTests(PostgreSqlFixture fixt
             ["Identity:Jwt:KeyId"] = "identity-http-tests",
             ["Identity:Jwt:AccessTokenMinutes"] = "10",
             ["Identity:Email:PublicWebBaseUrl"] = "https://ugtm.example",
+            ["Identity:Email:OutboxPartition"] = "http-tests",
             ["Identity:ClientMetadata:IpHashKey"] = "identity-http-tests-ip-hash-key-32-characters",
             ["Identity:ClientMetadata:UserAgentMaxLength"] = "300"
         });
@@ -179,7 +181,9 @@ public sealed class IdentityHttpLifecycleIntegrationTests(PostgreSqlFixture fixt
         var identity = new IdentityModule();
         identity.RegisterModule(builder.Services, builder.Configuration);
         builder.Services.RemoveAll<IHostedService>();
+        builder.Services.RemoveAll<IClock>();
         builder.Services.RemoveAll<IAccessTokenService>();
+        builder.Services.AddSingleton<IClock>(new FixedClock(Now));
         builder.Services.AddScoped<IAccessTokenService, TestAccessTokenService>();
         builder.Services.AddAuthentication(options =>
             {
@@ -351,6 +355,11 @@ public sealed class IdentityHttpLifecycleIntegrationTests(PostgreSqlFixture fixt
             => new(
                 $"test.{user.Id:N}.{sessionId:N}.{Guid.NewGuid():N}",
                 now.AddMinutes(10));
+    }
+
+    private sealed class FixedClock(DateTime now) : IClock
+    {
+        public DateTime UtcNow => now;
     }
 
     private sealed class TestAuthenticationHandler(

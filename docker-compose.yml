@@ -23,6 +23,8 @@ services:
       - S3Storage__SecretKey=${MINIO_ROOT_PASSWORD:-ugtm_secret_pass_123}
       - S3Storage__BucketName=ugtm-storage
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
+      - Identity__Email__PublicWebBaseUrl=http://localhost:3000
+      - Identity__Email__OutboxPartition=local-docker
       - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:-local-development-only-ip-hash-key-change-me}
       - Notifications__Smtp__Host=${SMTP_HOST:-mailpit}
       - Notifications__Smtp__Port=${SMTP_PORT:-1025}

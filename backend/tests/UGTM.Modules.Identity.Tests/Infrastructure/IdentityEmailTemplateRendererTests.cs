@@ -1,12 +1,13 @@
 using Microsoft.Extensions.Options;
 using UGTM.Modules.Identity.Infrastructure.Notifications;
+using UGTM.Modules.Notifications.Contracts.Email;
 
 namespace UGTM.Modules.Identity.Tests.Infrastructure;
 
 public sealed class IdentityEmailTemplateRendererTests
 {
     [Fact]
-    public void Activation_email_uses_inline_branding_and_safe_absolute_link()
+    public void Activation_email_uses_attachment_free_branding_and_safe_absolute_link()
     {
         var renderer = CreateRenderer(new Uri("https://portal.ugtm.edu.vn"));
         var payload = new IdentityEmailPayload(
@@ -20,7 +21,7 @@ public sealed class IdentityEmailTemplateRendererTests
         Assert.Equal("Kích hoạt tài khoản UGTM", email.Subject);
         Assert.Contains("#2054A5", email.HtmlBody, StringComparison.Ordinal);
         Assert.Contains("#FA7921", email.HtmlBody, StringComparison.Ordinal);
-        Assert.Contains("src=\"cid:ugtm-brand-logo\"", email.HtmlBody, StringComparison.Ordinal);
+        AssertHtmlBrandingDoesNotDependOnImages(email);
         Assert.Contains(
             "https://portal.ugtm.edu.vn/activate#token=token%2Fvalue%2Bone",
             email.HtmlBody,
@@ -28,7 +29,6 @@ public sealed class IdentityEmailTemplateRendererTests
         Assert.Contains("&lt;script&gt;", email.HtmlBody, StringComparison.Ordinal);
         Assert.DoesNotContain("<script>", email.HtmlBody, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("token%2Fvalue%2Bone", email.TextBody, StringComparison.Ordinal);
-        AssertValidInlineLogo(email.InlineImages);
     }
 
     [Fact]
@@ -47,9 +47,8 @@ public sealed class IdentityEmailTemplateRendererTests
         Assert.DoesNotContain("012345", email.Subject, StringComparison.Ordinal);
         Assert.Contains("012345", email.HtmlBody, StringComparison.Ordinal);
         Assert.Contains("012345", email.TextBody, StringComparison.Ordinal);
-        Assert.Contains("src=\"cid:ugtm-brand-logo\"", email.HtmlBody, StringComparison.Ordinal);
+        AssertHtmlBrandingDoesNotDependOnImages(email);
         Assert.Contains("Không chia sẻ mã", email.HtmlBody, StringComparison.Ordinal);
-        AssertValidInlineLogo(email.InlineImages);
     }
 
     [Fact]
@@ -72,20 +71,20 @@ public sealed class IdentityEmailTemplateRendererTests
     {
         return new IdentityEmailTemplateRenderer(Options.Create(new IdentityEmailOptions
         {
-            PublicWebBaseUrl = publicWebBaseUrl
+            PublicWebBaseUrl = publicWebBaseUrl,
+            OutboxPartition = "template-tests"
         }));
     }
 
-    private static void AssertValidInlineLogo(
-        IReadOnlyCollection<UGTM.Modules.Notifications.Contracts.Email.EmailInlineImage>? images)
+    private static void AssertHtmlBrandingDoesNotDependOnImages(EmailMessage email)
     {
-        var image = Assert.Single(Assert.IsAssignableFrom<IReadOnlyCollection<
-            UGTM.Modules.Notifications.Contracts.Email.EmailInlineImage>>(images));
-        Assert.Equal("ugtm-brand-logo", image.ContentId);
-        Assert.Equal("ugtm-logo.png", image.FileName);
-        Assert.True(image.Content.Length > 100);
-        Assert.Equal(
-            new byte[] { 0x89, 0x50, 0x4E, 0x47 },
-            image.Content[..4]);
+        Assert.Null(email.InlineImages);
+        Assert.DoesNotContain("<img", email.HtmlBody, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("cid:", email.HtmlBody, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("aria-label=\"UGTM\"", email.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains(">U</span><span", email.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains(">G</span><span", email.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains(">T</span><span", email.HtmlBody, StringComparison.Ordinal);
+        Assert.Contains(">M</span>", email.HtmlBody, StringComparison.Ordinal);
     }
 }
