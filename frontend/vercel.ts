@@ -20,6 +20,9 @@ if (
 }
 
 export const config: VercelConfig = {
+  git: {
+    deploymentEnabled: false,
+  },
   framework: 'vite',
   buildCommand: 'npm run build',
   outputDirectory: 'dist',
