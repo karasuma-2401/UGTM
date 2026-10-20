@@ -28,7 +28,9 @@ public sealed class GetMyTopicsHandler(
             return Result.Failure<PagedResult<TopicTrackingSummaryDto>>(TopicErrors.AccessDenied);
         }
 
-        var isPrivileged = HasRole(currentUser, "Admin") || HasRole(currentUser, "CouncilMember");
+        var isPrivileged = HasRole(currentUser, "Admin")
+            || HasRole(currentUser, "Faculty")
+            || HasRole(currentUser, "CouncilMember");
         Guid? effectiveAdvisorId;
 
         if (!isPrivileged)

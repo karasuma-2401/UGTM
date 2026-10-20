@@ -24,7 +24,8 @@ public sealed record TopicSummaryDto(
     string? Requirements,
     string Status,
     int? StudentNumber,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool IsPublished = false);
 
 public sealed record TopicTrackingSummaryDto(
     Guid Id,
@@ -42,7 +43,8 @@ public sealed record TopicTrackingSummaryDto(
     string RegistrationStatus,
     bool HasRegistration,
     bool IsAvailable,
-    TopicGroupDto? Group);
+    TopicGroupDto? Group,
+    bool IsPublished = false);
 
 public sealed record TopicTrackingDetailDto(
     Guid Id,
@@ -60,4 +62,10 @@ public sealed record TopicTrackingDetailDto(
     string RegistrationStatus,
     bool HasRegistration,
     bool IsAvailable,
-    TopicGroupDto? Group);
+    TopicGroupDto? Group,
+    bool IsPublished = false);
+
+public sealed record PublishTopicsResultDto(
+    Guid BatchId,
+    int PublishedCount,
+    IReadOnlyList<Guid> PublishedTopicIds);

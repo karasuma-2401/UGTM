@@ -1,4 +1,3 @@
-using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.TopicCatalog.Application.Common;
@@ -26,7 +25,9 @@ public sealed class GetTopicTrackingDetailHandler(
             return Result.Failure<TopicTrackingDetailDto>(TopicErrors.AccessDenied);
         }
 
-        var isPrivileged = HasRole(currentUser, "Admin") || HasRole(currentUser, "CouncilMember");
+        var isPrivileged = HasRole(currentUser, "Admin")
+            || HasRole(currentUser, "Faculty")
+            || HasRole(currentUser, "CouncilMember");
         var isLecturer = HasRole(currentUser, "Lecturer");
         if (!isPrivileged && !isLecturer)
         {
