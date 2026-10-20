@@ -1,4 +1,3 @@
-export type OtpPurpose = 'activate' | 'reset';
 export type OtpMethod = 'email' | 'sms';
 
 export interface UserProfile {

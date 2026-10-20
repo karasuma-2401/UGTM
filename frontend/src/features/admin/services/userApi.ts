@@ -5,6 +5,8 @@ import type { ApiResponse } from '@/shared/api/types';
 
 import type {
   AccountStatus,
+  AccountGroup,
+  ImportUsersResult,
   PagedResult,
   UserFormValues,
   UserSummary,
@@ -32,24 +34,25 @@ export function getUserErrorMessage(error: unknown): string {
       return response.error.message;
     }
     if (error.response?.status === 403) {
-      return 'Do not have permission';
+      return 'Bạn không có quyền thực hiện thao tác này.';
     }
     if (!error.response) {
-      return 'Connection failed, check backend diiiii';
+      return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối rồi thử lại.';
     }
   }
 
-  return error instanceof Error ? error.message : 'Failed, try again';
+  return error instanceof Error ? error.message : 'Không thể thực hiện thao tác. Vui lòng thử lại.';
 }
 
 export const userApi = {
-  async getStatistics(signal?: AbortSignal): Promise<UserStatistics> {
+  async getStatistics(accountGroup: AccountGroup, signal?: AbortSignal): Promise<UserStatistics> {
     // Read server totals rather than counting the current page's items.
     const [all, pending, disabled] = await Promise.all(
       (['', 'PendingActivation', 'Disabled'] as const).map((status) =>
         userApi.getUsers(
           {
             keyword: '',
+            accountGroup,
             role: '',
             status,
             pageNumber: 1,
@@ -65,6 +68,27 @@ export const userApi = {
       pendingActivation: pending.totalCount,
       disabled: disabled.totalCount,
     };
+  },
+  async importStudents(file: File): Promise<ImportUsersResult> {
+    const data = new FormData();
+    data.append('file', file);
+    data.append('role', 'Student');
+    const response = await httpClient.post<ApiResponse<ImportUsersResult>>(
+      '/api/users/import',
+      data,
+      {
+        // Let the browser supply the multipart boundary instead of the JSON default.
+        headers: { 'Content-Type': undefined },
+      },
+    );
+    return unwrap(response.data);
+  },
+  async downloadStudentTemplate(): Promise<Blob> {
+    const response = await httpClient.get<Blob>('/api/users/import-template', {
+      params: { role: 'Student' },
+      responseType: 'blob',
+    });
+    return response.data;
   },
   /**
    *

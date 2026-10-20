@@ -3,6 +3,8 @@ export type SystemRole =
 
 export type AccountStatus = 'PendingActivation' | 'Active' | 'Suspended' | 'Disabled';
 
+export type AccountGroup = 'Student' | 'Staff';
+
 /**
  * Thông tin tổng quan của một user nhận từ backend
  */
@@ -35,11 +37,19 @@ export interface PagedResult<T> {
 }
 
 export interface UsersQuery {
+  accountGroup?: AccountGroup;
   keyword: string;
   role: SystemRole | '';
   status: AccountStatus | '';
   pageNumber: number;
   pageSize: number;
+}
+
+export interface ImportUsersResult {
+  totalRows: number;
+  importedCount: number;
+  role: string;
+  errors: { rowNumber: number; field: string; code: string; message: string }[];
 }
 
 /**

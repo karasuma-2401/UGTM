@@ -6,6 +6,7 @@ import { Badge, type BadgeProps } from '@/components/ui/badge';
 import { SYSTEM_ROLES } from '../constants/systemRoles';
 import {
   Eye,
+  Mail,
   ShieldOff,
   RotateCcw,
   ShieldCheck,
@@ -20,6 +21,7 @@ import {
 import {
   STATUS_LABELS,
   type AccountStatus,
+  type AccountGroup,
   type SystemRole,
   type UserSummary,
 } from '../types/user.types';
@@ -34,6 +36,7 @@ const roleAppearance: Record<SystemRole, { icon: LucideIcon; tone: string }> = {
 };
 
 interface UsersTableProps {
+  accountGroup: AccountGroup;
   users: UserSummary[];
   currentUserId?: string;
   canManage: boolean;
@@ -42,6 +45,7 @@ interface UsersTableProps {
   pageSize: number;
   onEdit: (user: UserSummary) => void;
   onChangeStatus: (user: UserSummary) => void;
+  onResendActivation: (user: UserSummary) => void;
 }
 
 const statusVariants: Record<AccountStatus, NonNullable<BadgeProps['variant']>> = {
@@ -68,6 +72,7 @@ function formatLastLogin(value: string | null): string {
 }
 
 export function UsersTable({
+  accountGroup,
   users,
   currentUserId,
   canManage,
@@ -76,64 +81,99 @@ export function UsersTable({
   pageSize,
   onEdit,
   onChangeStatus,
+  onResendActivation,
 }: UsersTableProps) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] text-left text-sm">
-        <thead className="border-b border-slate-100 bg-slate-50/70 text-[11px] uppercase tracking-wider text-slate-400">
-          <tr>
-            <th scope="col" className="w-14 px-3 py-4 text-center font-medium">
-              STT
+    <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
+      <colgroup>
+        <col className="w-14" />
+        <col />
+        <col className="w-52" />
+        <col className="w-36" />
+        <col className="w-36" />
+        <col className="w-[248px]" />
+      </colgroup>
+      <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-400">
+        <tr>
+          <th scope="col" className="w-14 px-3 py-4 text-center font-medium">
+            STT
+          </th>
+          {[
+            accountGroup === 'Student' ? 'Sinh viên' : 'Giảng viên / Cán bộ',
+            accountGroup === 'Student' ? 'MSSV' : 'Vai trò / Mã cán bộ',
+            'Lần truy cập',
+            'Trạng thái',
+            'Thao tác',
+          ].map((heading) => (
+            <th key={heading} scope="col" className="whitespace-nowrap px-4 py-4 font-medium">
+              {heading}
             </th>
-            {['Người dùng', 'Vai trò / Mã', 'Lần truy cập', 'Trạng thái', 'Thao tác'].map(
-              (heading) => (
-                <th
-                  key={heading}
-                  scope="col"
-                  className={`px-4 py-4 font-medium ${heading === 'Vai trò / Mã' ? 'text-center' : ''}`}
-                >
-                  {heading}
-                </th>
-              ),
-            )}
-          </tr>
-        </thead>
+          ))}
+        </tr>
+      </thead>
 
-        <tbody className="divide-y divide-slate-100">
-          {users.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                Không tìm thấy tài khoản phù hợp.
+      <tbody className="divide-y divide-slate-100">
+        {users.length === 0 ? (
+          <tr>
+            <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+              Không tìm thấy tài khoản phù hợp.
+            </td>
+          </tr>
+        ) : (
+          users.map((user, index) => (
+            <tr key={user.id} className="h-[88px] transition-colors hover:bg-blue-50/30">
+              <td className="px-3 py-4 text-center text-xs tabular-nums text-slate-400">
+                {(pageNumber - 1) * pageSize + index + 1}
               </td>
-            </tr>
-          ) : (
-            users.map((user, index) => (
-              <tr key={user.id} className="transition-colors hover:bg-blue-50/30">
-                <td className="px-3 py-5 text-center text-xs tabular-nums text-slate-400">
-                  {(pageNumber - 1) * pageSize + index + 1}
-                </td>
-                <td className="px-4 py-5">
+              <td className="px-4 py-4">
+                <InfoCell
+                  leading={<Avatar name={user.fullName} muted={user.status === 'Disabled'} />}
+                  title={
+                    <span className="min-w-0 truncate" title={user.fullName}>
+                      {user.fullName}
+                    </span>
+                  }
+                  titleClassName="flex-nowrap"
+                  description={<span title={user.email}>{user.email}</span>}
+                  descriptionClassName="truncate"
+                  trailing={
+                    user.id === currentUserId ? (
+                      <Badge variant="info" className="px-1.5 py-0 text-[10px]">
+                        Bạn
+                      </Badge>
+                    ) : undefined
+                  }
+                />
+              </td>
+              <td className="px-4 py-4">
+                {accountGroup === 'Student' ? (
                   <InfoCell
-                    leading={<Avatar name={user.fullName} muted={user.status === 'Disabled'} />}
-                    title={user.fullName}
-                    description={user.email}
-                    trailing={
-                      user.id === currentUserId ? (
-                        <Badge variant="info" className="px-1.5 py-0 text-[10px]">
-                          Bạn
-                        </Badge>
-                      ) : undefined
+                    className="gap-2.5"
+                    title={
+                      <span className="truncate tabular-nums" title={user.userCode || undefined}>
+                        {user.userCode || 'Chưa cập nhật'}
+                      </span>
+                    }
+                    titleClassName="text-xs leading-5"
+                    description="Sinh viên"
+                    descriptionClassName="mt-0.5 text-[11px] leading-4"
+                    leading={
+                      <span
+                        aria-hidden="true"
+                        className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-inset ring-blue-100"
+                      >
+                        <GraduationCap className="size-4" />
+                      </span>
                     }
                   />
-                </td>
-                <td className="w-56 min-w-[224px] px-4 py-5">
+                ) : (
                   <InfoCell
-                    className="mx-auto w-48 gap-2.5"
-                    titleClassName="block text-xs font-semibold leading-5 text-slate-700"
-                    descriptionClassName="mt-0.5 text-[11px] font-normal leading-4"
+                    className="gap-2.5"
+                    titleClassName="block truncate text-xs font-semibold leading-5 text-slate-700"
+                    descriptionClassName="mt-0.5 truncate text-[11px] font-normal leading-4"
                     leading={(() => {
                       const { icon: Icon, tone } =
-                        roleAppearance[user.roles[0]] ?? roleAppearance.Student;
+                        roleAppearance[user.roles[0]] ?? roleAppearance.CouncilMember;
                       return (
                         <span
                           aria-hidden="true"
@@ -144,81 +184,105 @@ export function UsersTable({
                       );
                     })()}
                     title={
-                      <div className="space-y-0.5">
-                        {user.roles.map((name) => (
-                          <p key={name}>
-                            {SYSTEM_ROLES.find((role) => role.roleName === name)?.title ?? name}
-                          </p>
-                        ))}
-                      </div>
+                      <span
+                        title={user.roles
+                          .map(
+                            (name) =>
+                              SYSTEM_ROLES.find((role) => role.roleName === name)?.title ?? name,
+                          )
+                          .join(', ')}
+                      >
+                        {SYSTEM_ROLES.find((role) => role.roleName === user.roles[0])?.title ??
+                          user.roles[0] ??
+                          'Chưa phân vai trò'}
+                        {user.roles.length > 1 && ` +${user.roles.length - 1}`}
+                      </span>
                     }
-                    description={user.userCode || 'Chưa cập nhật'}
+                    description={
+                      <span title={user.userCode || undefined}>
+                        {user.userCode || 'Chưa cập nhật'}
+                      </span>
+                    }
                   />
-                </td>
+                )}
+              </td>
 
-                <td className="px-4 py-5 text-xs text-slate-500">
-                  {formatLastLogin(user.lastLoginAt)}
-                </td>
+              <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-500">
+                {formatLastLogin(user.lastLoginAt)}
+              </td>
 
-                <td className="px-4 py-5">
-                  <Badge
-                    variant={statusVariants[user.status]}
-                    dot
-                    className={`whitespace-nowrap px-2.5 py-1 text-[11px] font-medium shadow-none ${statusClasses[user.status]}`}
-                  >
-                    {STATUS_LABELS[user.status]}
-                  </Badge>
-                </td>
+              <td className="px-4 py-4">
+                <Badge
+                  variant={statusVariants[user.status]}
+                  dot
+                  className={`whitespace-nowrap px-2.5 py-1 text-[11px] font-medium shadow-none ${statusClasses[user.status]}`}
+                >
+                  {STATUS_LABELS[user.status]}
+                </Badge>
+              </td>
 
-                <td className="px-4 py-5">
-                  {canManage ? (
-                    <div className="flex flex-wrap items-center gap-2">
+              <td className="px-4 py-4">
+                {canManage ? (
+                  <div className="flex items-center gap-2 whitespace-nowrap">
+                    <Button
+                      type="button"
+                      variant="soft"
+                      size="sm"
+                      disabled={isChangingStatus}
+                      onClick={() => onEdit(user)}
+                      leftIcon={<Eye />}
+                      aria-label={`Xem chi tiết tài khoản ${user.fullName}`}
+                      className="h-9 cursor-pointer"
+                    >
+                      Chi tiết
+                    </Button>
+
+                    {user.status !== 'PendingActivation' && (
                       <Button
                         type="button"
-                        variant="soft"
+                        variant={user.status === 'Active' ? 'dangerOutline' : 'successOutline'}
                         size="sm"
-                        disabled={isChangingStatus}
-                        onClick={() => onEdit(user)}
-                        leftIcon={<Eye />}
-                        aria-label={`Xem chi tiết tài khoản ${user.fullName}`}
+                        disabled={isChangingStatus || user.id === currentUserId}
+                        title={
+                          user.id === currentUserId
+                            ? 'Không thể vô hiệu hóa tài khoản đang đăng nhập'
+                            : undefined
+                        }
+                        onClick={() => onChangeStatus(user)}
+                        leftIcon={user.status === 'Active' ? <ShieldOff /> : <RotateCcw />}
+                        aria-label={
+                          user.status === 'Active'
+                            ? `Vô hiệu hóa tài khoản ${user.fullName}`
+                            : `Khôi phục tài khoản ${user.fullName}`
+                        }
                         className="h-9 cursor-pointer"
                       >
-                        Chi tiết
+                        {user.status === 'Active' ? 'Vô hiệu hóa' : 'Khôi phục'}
                       </Button>
-
-                      {user.status !== 'PendingActivation' && (
-                        <Button
-                          type="button"
-                          variant={user.status === 'Active' ? 'dangerOutline' : 'successOutline'}
-                          size="sm"
-                          disabled={isChangingStatus || user.id === currentUserId}
-                          title={
-                            user.id === currentUserId
-                              ? 'Không thể vô hiệu hóa tài khoản đang đăng nhập'
-                              : undefined
-                          }
-                          onClick={() => onChangeStatus(user)}
-                          leftIcon={user.status === 'Active' ? <ShieldOff /> : <RotateCcw />}
-                          aria-label={
-                            user.status === 'Active'
-                              ? `Vô hiệu hóa tài khoản ${user.fullName}`
-                              : `Khôi phục tài khoản ${user.fullName}`
-                          }
-                          className="h-9 cursor-pointer"
-                        >
-                          {user.status === 'Active' ? 'Vô hiệu hóa' : 'Khôi phục'}
-                        </Button>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-slate-400">Chỉ xem</span>
-                  )}
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+                    )}
+                    {user.status === 'PendingActivation' && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isChangingStatus}
+                        leftIcon={<Mail />}
+                        onClick={() => onResendActivation(user)}
+                        aria-label={`Gửi email kích hoạt cho ${user.fullName}`}
+                        className="h-9 cursor-pointer"
+                      >
+                        Gửi kích hoạt
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-400">Chỉ xem</span>
+                )}
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
   );
 }

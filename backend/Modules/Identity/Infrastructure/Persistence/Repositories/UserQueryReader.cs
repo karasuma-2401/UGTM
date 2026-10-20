@@ -12,7 +12,7 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
         GetUsersQuery query,
         CancellationToken cancellationToken)
     {
-        var usersQuery = db.Users.AsNoTracking();
+        var usersQuery = db.Users.AsNoTracking().FilterByAccountGroup(query.AccountGroup);
 
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
@@ -48,6 +48,7 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
 
         var pagedUsers = await usersQuery
             .OrderByDescending(u => u.CreatedAt)
+            .ThenBy(u => u.Id)
             .Skip((query.PageNumber - 1) * query.PageSize)
             .Take(query.PageSize)
             .Select(u => new
