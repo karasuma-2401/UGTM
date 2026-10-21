@@ -120,10 +120,6 @@ public sealed class ScheduleTemplateVersion : AggregateRoot<Guid>
         Status = ConfigurationVersionStatus.Retired;
     }
 
-    // When I wrote this, only God and I understood what I was doing.
-    // Now, God only knows!
-    // Good luck!
-    
     public IReadOnlyList<StageSchedule> Materialize(DateOnly batchStartDate)
     {
         if (Status != ConfigurationVersionStatus.Active)

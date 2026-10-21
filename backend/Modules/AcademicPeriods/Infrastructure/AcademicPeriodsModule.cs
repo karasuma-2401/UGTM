@@ -13,6 +13,12 @@ using UGTM.Modules.AcademicPeriods.Infrastructure.Auditing;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.AcademicPeriods.Application.Persistence;
 using UGTM.Modules.AcademicPeriods.Domain.Repositories;
+using UGTM.Modules.AcademicPeriods.Application.Batches.ChangeKltnBatchStatus;
+using UGTM.Modules.AcademicPeriods.Application.Batches.CreateKltnBatch;
+using UGTM.Modules.AcademicPeriods.Application.Batches.Dtos;
+using UGTM.Modules.AcademicPeriods.Application.Batches.Queries;
+using UGTM.Modules.AcademicPeriods.Application.Batches.UpdateKltnBatchSchedule;
+using UGTM.Modules.AcademicPeriods.Infrastructure.Endpoints;
 
 namespace UGTM.Modules.AcademicPeriods.Infrastructure;
 
@@ -24,16 +30,28 @@ public sealed class AcademicPeriodsModule : IModule
     {
         services.AddModuleDbContext<AcademicPeriodsDbContext>(configuration);
         services.AddScoped<IKltnBatchReader, KltnBatchReader>();
+        services.AddScoped<IAcademicBatchQueryReader, AcademicBatchQueryReader>();
         services.AddScoped<IKltnBatchRepository, KltnBatchRepository>();
         services.AddScoped<IScheduleTemplateRepository, ScheduleTemplateRepository>();
         services.AddScoped<IScoreConfigurationRepository, ScoreConfigurationRepository>();
         services.AddScoped<IAcademicPeriodsUnitOfWork>(provider => provider.GetRequiredService<AcademicPeriodsDbContext>());
         services.AddScoped<IAcademicPeriodsAuditOutbox, AcademicPeriodsAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, AcademicPeriodsAuditEventSource>();
+        services.AddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddScoped<CreateKltnBatchHandler>();
+        services.AddScoped<UpdateKltnBatchScheduleHandler>();
+        services.AddScoped<OpenKltnBatchHandler>();
+        services.AddScoped<CloseKltnBatchHandler>();
+        services.AddScoped<ArchiveKltnBatchHandler>();
+        services.AddScoped<GetKltnBatchesHandler>();
+        services.AddScoped<GetKltnBatchByIdHandler>();
+        services.AddScoped<GetKltnBatchTimelineHandler>();
+        services.AddScoped<GetCurrentStageHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapAcademicBatchEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
