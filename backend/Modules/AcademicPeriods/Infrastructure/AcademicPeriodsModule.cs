@@ -11,6 +11,8 @@ using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.AcademicPeriods.Application.Auditing;
 using UGTM.Modules.AcademicPeriods.Infrastructure.Auditing;
 using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.AcademicPeriods.Application.Persistence;
+using UGTM.Modules.AcademicPeriods.Domain.Repositories;
 
 namespace UGTM.Modules.AcademicPeriods.Infrastructure;
 
@@ -22,6 +24,10 @@ public sealed class AcademicPeriodsModule : IModule
     {
         services.AddModuleDbContext<AcademicPeriodsDbContext>(configuration);
         services.AddScoped<IKltnBatchReader, KltnBatchReader>();
+        services.AddScoped<IKltnBatchRepository, KltnBatchRepository>();
+        services.AddScoped<IScheduleTemplateRepository, ScheduleTemplateRepository>();
+        services.AddScoped<IScoreConfigurationRepository, ScoreConfigurationRepository>();
+        services.AddScoped<IAcademicPeriodsUnitOfWork>(provider => provider.GetRequiredService<AcademicPeriodsDbContext>());
         services.AddScoped<IAcademicPeriodsAuditOutbox, AcademicPeriodsAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, AcademicPeriodsAuditEventSource>();
     }
