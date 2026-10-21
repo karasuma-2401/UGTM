@@ -14,7 +14,7 @@ import { UsersPage } from '../features/admin/pages/UsersPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/admin/layouts/IdentityLayout';
 
 import { ProtectedRoute } from '../shared/auth';
-import { RolePermissionPage, AuditLogPage } from '../features/admin';
+import { RolePermissionPage, AuditLogPage, ScoreConfigPage } from '../features/admin';
 
 export const router = createBrowserRouter([
   {
@@ -42,6 +42,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['Admin']}>
             <AuditLogPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/grade-config',
+        element: (
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
+            <ScoreConfigPage />
           </ProtectedRoute>
         ),
       },
