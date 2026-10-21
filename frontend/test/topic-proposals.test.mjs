@@ -8,7 +8,7 @@ import * as jsxRuntime from 'react/jsx-runtime';
 import * as icons from 'lucide-react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-function loadModule(path, dependencies = {}) {
+function loadModule(path, dependencies = {}, browserWindow = {}) {
   const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: {
@@ -18,10 +18,14 @@ function loadModule(path, dependencies = {}) {
     },
   });
   const exports = {};
-  new Function('require', 'exports', outputText)((name) => {
-    assert.ok(name in dependencies, `Unexpected dependency: ${name}`);
-    return { __esModule: true, ...dependencies[name] };
-  }, exports);
+  new Function('require', 'exports', 'window', outputText)(
+    (name) => {
+      assert.ok(name in dependencies, `Unexpected dependency: ${name}`);
+      return { __esModule: true, ...dependencies[name] };
+    },
+    exports,
+    browserWindow,
+  );
   return exports;
 }
 
@@ -176,22 +180,6 @@ test('empty filters are omitted and failed statistics do not silently display ze
   await assert.rejects(topicApi.getStatistics('lecturer-1'), /Offline/);
 });
 
-test('batch dropdown fetches all pages and preserves cancellation', async () => {
-  const calls = [];
-  const signal = new AbortController().signal;
-  const { topicApi } = apiFixture({
-    get: async (path, options) => {
-      calls.push([path, options]);
-      const page = options.params.pageNumber;
-      return success({ items: [{ id: `batch-${page}` }], hasNextPage: page === 1 });
-    },
-  });
-  assert.deepEqual(await topicApi.getBatches(signal), [{ id: 'batch-1' }, { id: 'batch-2' }]);
-  assert.equal(calls.length, 2);
-  assert.equal(calls[1][0], '/api/academic-periods/batches');
-  assert.deepEqual(calls[1][1], { params: { pageNumber: 2, pageSize: 100 }, signal });
-});
-
 test('API failures preserve backend validation messages rather than reporting success', async () => {
   const { topicApi, getTopicErrorMessage } = apiFixture({
     post: async () => ({
@@ -250,6 +238,7 @@ function renderSidebar(roles) {
     },
     '@/shared/auth/identityAccess': { getIdentityAccess: () => ({ canAccess: false }) },
     './navigationConfig': { navigationSections },
+    './CurrentAcademicBatch': { CurrentAcademicBatch: () => null },
   });
   return renderToStaticMarkup(React.createElement(AppLayout));
 }
@@ -281,4 +270,333 @@ test('only Draft and NeedRevision permit editing', () => {
   for (const status of ['Submitted', 'Approved', 'Rejected', 'Published', 'Closed', 'Archived']) {
     assert.equal(canEditTopic(status), false);
   }
+});
+
+function findElement(node, predicate) {
+  if (!React.isValidElement(node)) return undefined;
+  if (predicate(node)) return node;
+  for (const child of React.Children.toArray(node.props.children)) {
+    const found = findElement(child, predicate);
+    if (found) return found;
+  }
+}
+
+// Keep React/router/query boundaries controlled while executing the actual page
+// event handlers. No real proposals are created by these interaction tests.
+function proposalPageFixture() {
+  const state = [];
+  let cursor = 0;
+  let tree;
+  let listQuery;
+  let beforeUnload;
+  let shouldBlock;
+  let blockerState = 'unblocked';
+  let proceeds = 0;
+  let mutationCalls = 0;
+  const mutationVariables = [];
+  const componentNames = [
+    'Button',
+    'Input',
+    'Select',
+    'Dialog',
+    'StatisticsBar',
+    'Card',
+    'CardContent',
+    'CardHeader',
+    'CardTitle',
+    'TopicStatusBadge',
+    'TopicsTable',
+    'TopicPreview',
+    'TablePagination',
+  ];
+  const components = Object.fromEntries(componentNames.map((name) => [name, () => null]));
+  const dependency = (name) => ({ [name]: components[name] });
+  const { TopicProposePage } = loadModule(
+    'features/topics/pages/TopicProposePage.tsx',
+    {
+      react: {
+        useCallback: (callback) => callback,
+        useState: (initial) => {
+          const index = cursor++;
+          if (!(index in state)) state[index] = typeof initial === 'function' ? initial() : initial;
+          return [
+            state[index],
+            (value) => {
+              state[index] = typeof value === 'function' ? value(state[index]) : value;
+            },
+          ];
+        },
+      },
+      'react/jsx-runtime': jsxRuntime,
+      'react-router-dom': {
+        useBeforeUnload: (callback) => {
+          beforeUnload = callback;
+        },
+        useBlocker: (condition) => {
+          shouldBlock = condition;
+          return {
+            state: blockerState,
+            reset: () => {
+              blockerState = 'unblocked';
+            },
+            proceed: () => {
+              proceeds++;
+            },
+          };
+        },
+      },
+      '@tanstack/react-query': {
+        useQueryClient: () => ({ invalidateQueries: async () => {} }),
+        useQuery: (options) => {
+          if (typeof options.queryKey[2] === 'object') listQuery = options.queryKey;
+          return {
+            data:
+              typeof options.queryKey[2] === 'object'
+                ? {
+                    items: [],
+                    pageNumber: options.queryKey[3],
+                    pageSize: options.queryKey[4],
+                    totalCount: 30,
+                  }
+                : { total: 30, submitted: 4, needRevision: 2 },
+            isPending: false,
+            isError: false,
+            isFetching: false,
+          };
+        },
+        useMutation: () => ({
+          mutate: (variables) => {
+            mutationCalls++;
+            mutationVariables.push(variables);
+          },
+          reset() {},
+          isPending: false,
+          isError: false,
+        }),
+      },
+      'lucide-react': icons,
+      '@/components/ui/button': dependency('Button'),
+      '@/components/ui/input': dependency('Input'),
+      '@/components/ui/select': dependency('Select'),
+      '@/components/ui/dialog': dependency('Dialog'),
+      '@/components/ui/statistics-bar': dependency('StatisticsBar'),
+      '@/components/ui/card': Object.fromEntries(
+        ['Card', 'CardContent', 'CardHeader', 'CardTitle'].map((key) => [key, components[key]]),
+      ),
+      '@/components/ui/table-pagination': dependency('TablePagination'),
+      '../components/TopicStatusBadge': dependency('TopicStatusBadge'),
+      '../components/TopicsTable': dependency('TopicsTable'),
+      '../components/TopicPreview': dependency('TopicPreview'),
+      '@/shared/auth': { useAuth: () => ({ user: { id: 'lecturer-1', fullName: 'Giảng viên' } }) },
+      '@/shared/academic-periods/useAcademicBatches': {
+        useAcademicBatches: () => ({ data: [], isPending: false, isError: false }),
+      },
+      '../types/topic.types': loadModule('features/topics/types/topic.types.ts'),
+      '../services/topicApi': { topicApi: {}, getTopicErrorMessage: String },
+    },
+    { confirm: () => true },
+  );
+  const fixture = {
+    render() {
+      cursor = 0;
+      tree = TopicProposePage();
+      return tree;
+    },
+    find: (predicate) => findElement(tree, predicate),
+    button: (label) =>
+      findElement(tree, (node) => node.type === components.Button && node.props.children === label),
+    component: (name) => findElement(tree, (node) => node.type === components[name]),
+    query: () => listQuery,
+    unload: (event) => beforeUnload(event),
+    shouldBlock: () => shouldBlock,
+    block: () => {
+      blockerState = 'blocked';
+    },
+    proceeds: () => proceeds,
+    mutationCalls: () => mutationCalls,
+    mutationVariables: () => mutationVariables,
+  };
+  fixture.render();
+  return fixture;
+}
+
+test('Bỏ lọc clears applied and pending filters immediately and resets pagination', () => {
+  const page = proposalPageFixture();
+  page
+    .find((node) => node.props.placeholder === 'Tên đề tài tiếng Việt hoặc tiếng Anh')
+    .props.onChange({ target: { value: '  test  ' } });
+  page.render();
+  page.find((node) => node.props['aria-label'] === 'Lọc theo đợt KLTN').props.onChange('batch-1');
+  page.render();
+  page
+    .find((node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài')
+    .props.onChange('Draft');
+  page.render();
+  page.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  page.render();
+  assert.deepEqual(page.query()[2], { keyword: 'test', batchId: 'batch-1', status: 'Draft' });
+  page.component('TablePagination').props.onPageChange(3);
+  page.render();
+  assert.equal(page.query()[3], 3);
+  page
+    .find((node) => node.props.placeholder === 'Tên đề tài tiếng Việt hoặc tiếng Anh')
+    .props.onChange({ target: { value: 'pending change' } });
+  page.render();
+  page.button('Bỏ lọc').props.onClick();
+  page.render();
+  assert.deepEqual(page.query()[2], { keyword: '', batchId: '', status: '' });
+  assert.equal(page.query()[3], 1);
+  assert.equal(
+    page.find((node) => node.props.placeholder === 'Tên đề tài tiếng Việt hoặc tiếng Anh').props
+      .value,
+    '',
+  );
+  assert.equal(
+    page.find((node) => node.props['aria-label'] === 'Lọc theo đợt KLTN').props.value,
+    '',
+  );
+  assert.equal(
+    page.find((node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài').props.value,
+    '',
+  );
+  assert.equal(page.button('Bỏ lọc').props.disabled, true);
+});
+
+test('statistic shortcuts apply immediately, retain the applied batch and clear search', () => {
+  const page = proposalPageFixture();
+  page.find((node) => node.props['aria-label'] === 'Lọc theo đợt KLTN').props.onChange('batch-1');
+  page.render();
+  page.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  page.render();
+  page.component('TablePagination').props.onPageChange(2);
+  page.render();
+  page
+    .component('StatisticsBar')
+    .props.items.find((item) => item.key === 'revision')
+    .onClick();
+  page.render();
+  assert.deepEqual(page.query()[2], { keyword: '', batchId: 'batch-1', status: 'NeedRevision' });
+  assert.equal(page.query()[3], 1);
+  assert.equal(
+    page.component('StatisticsBar').props.items.find((item) => item.key === 'revision').active,
+    true,
+  );
+  page
+    .component('StatisticsBar')
+    .props.items.find((item) => item.key === 'total')
+    .onClick();
+  page.render();
+  assert.deepEqual(page.query()[2], { keyword: '', batchId: 'batch-1', status: '' });
+});
+
+test('preview preserves unsaved input and leaving/reloading requires a decision', () => {
+  const page = proposalPageFixture();
+  page.button('Đề xuất đề tài').props.onClick();
+  page.render();
+  assert.equal(page.shouldBlock(), false);
+  page
+    .find((node) => node.props.id === 'topic-title-vi')
+    .props.onChange({ target: { value: 'Nội dung chưa lưu' } });
+  page.render();
+  assert.equal(page.shouldBlock(), true);
+  let prevented = false;
+  const event = {
+    preventDefault: () => {
+      prevented = true;
+    },
+    returnValue: undefined,
+  };
+  page.unload(event);
+  assert.equal(prevented, true);
+  assert.equal(event.returnValue, '');
+  page.button('Xem trước đề tài').props.onClick();
+  page.render();
+  assert.equal(page.component('TopicPreview').props.values.titleVi, 'Nội dung chưa lưu');
+  page.button('Quay lại chỉnh sửa').props.onClick();
+  page.render();
+  assert.equal(
+    page.find((node) => node.props.id === 'topic-title-vi').props.value,
+    'Nội dung chưa lưu',
+  );
+  assert.equal(page.mutationCalls(), 0);
+  page.block();
+  page.render();
+  page.button('Tiếp tục soạn').props.onClick();
+  page.render();
+  assert.equal(page.shouldBlock(), true);
+  page.block();
+  page.render();
+  page.button('Bỏ thay đổi và rời trang').props.onClick();
+  page.render();
+  assert.equal(page.proceeds(), 1);
+  assert.equal(page.shouldBlock(), false);
+});
+
+function draftPage() {
+  const page = proposalPageFixture();
+  page.button('Đề xuất đề tài').props.onClick();
+  page.render();
+  page
+    .find((node) => node.props['aria-labelledby'] === 'topic-batch-label')
+    .props.onChange('batch-1');
+  page.render();
+  page
+    .find((node) => node.props.id === 'topic-title-vi')
+    .props.onChange({ target: { value: 'Đề tài mới' } });
+  page.render();
+  return page;
+}
+
+function submitProposal(page, action) {
+  page
+    .find((node) => node.type === 'form')
+    .props.onSubmit({
+      preventDefault() {},
+      nativeEvent: { submitter: { getAttribute: (name) => (name === 'value' ? action : null) } },
+    });
+  page.render();
+}
+
+test('saving a draft allows English title, description and requirements to remain unfinished', () => {
+  const page = draftPage();
+  submitProposal(page, 'draft');
+  assert.equal(page.mutationCalls(), 1);
+  const save = page.mutationVariables()[0];
+  assert.equal(save.submitImmediately, false);
+  assert.equal(save.values.titleEn, '');
+  assert.equal(save.values.description, '');
+  assert.equal(save.values.requirements, '');
+});
+
+test('sending requires every content field and reports all missing fields without saving', () => {
+  const page = draftPage();
+  submitProposal(page, 'submit');
+  assert.equal(page.mutationCalls(), 0);
+  const error = page.find((node) => node.props.role === 'alert').props.children;
+  assert.match(error, /tên đề tài tiếng Anh/);
+  assert.match(error, /mục tiêu và mô tả/);
+  assert.match(error, /yêu cầu công nghệ và kiến thức/);
+  for (const id of ['topic-title-en', 'topic-description', 'topic-requirements']) {
+    page.find((node) => node.props.id === id).props.onChange({ target: { value: '   ' } });
+    page.render();
+  }
+  submitProposal(page, 'submit');
+  assert.equal(page.mutationCalls(), 0);
+});
+
+test('sending becomes available only after all three additional fields have content', () => {
+  const page = draftPage();
+  for (const [index, id] of [
+    'topic-title-en',
+    'topic-description',
+    'topic-requirements',
+  ].entries()) {
+    page
+      .find((node) => node.props.id === id)
+      .props.onChange({ target: { value: 'Nội dung đầy đủ' } });
+    page.render();
+    submitProposal(page, 'submit');
+    assert.equal(page.mutationCalls(), index === 2 ? 1 : 0);
+  }
+  assert.equal(page.mutationVariables()[0].submitImmediately, true);
 });

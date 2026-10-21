@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/shared/auth';
 import { getIdentityAccess } from '@/shared/auth/identityAccess';
 import { navigationSections, type NavItemConfig } from './navigationConfig';
+import { CurrentAcademicBatch } from './CurrentAcademicBatch';
 
 export type NavItem = NavItemConfig;
 
@@ -104,15 +105,7 @@ export function AppLayout() {
           </button>
         </div>
 
-        {/* Academic Period Selector Badge */}
-        <div className="p-3 mx-3 my-2 rounded-lg bg-slate-50 border border-slate-150">
-          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-            Đợt hiện hành
-          </div>
-          <div className="text-xs font-semibold text-slate-800 flex items-center justify-between">
-            <span>Đợt 1 - HK2 (2025-2026)</span>
-          </div>
-        </div>
+        <CurrentAcademicBatch />
 
         {/* Navigation sections & items */}
         <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4">

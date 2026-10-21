@@ -19,6 +19,17 @@ export const TOPIC_STATUS_LABELS: Record<TopicStatus, string> = {
   Archived: 'Đã lưu trữ',
 };
 
+export const TOPIC_STATUS_HINTS: Record<TopicStatus, string> = {
+  Draft: 'Bạn có thể tiếp tục soạn thảo và gửi Khoa thẩm định khi sẵn sàng.',
+  Submitted: 'Đề tài đã gửi đến Khoa. Nội dung đang được khóa trong thời gian chờ duyệt.',
+  NeedRevision: 'Khoa yêu cầu chỉnh sửa. Cập nhật nội dung rồi gửi duyệt lại.',
+  Approved: 'Khoa đã duyệt đề tài. Đề tài đang chờ công bố cho sinh viên tra cứu.',
+  Rejected: 'Đề tài không được duyệt. Bạn có thể tạo một đề xuất mới.',
+  Published: 'Đề tài đã được công bố cho sinh viên tra cứu.',
+  Closed: 'Đề tài đã đóng. Nội dung chỉ được xem.',
+  Archived: 'Đề tài đã được lưu trữ. Nội dung chỉ được xem.',
+};
+
 export interface Topic {
   id: string;
   batchId: string;
@@ -54,13 +65,7 @@ export interface TopicStatistics {
   needRevision: number;
 }
 
-export interface TopicBatch {
-  id: string;
-  batchName: string;
-  academicYear: string;
-  semester: number;
-  status: 'Draft' | 'Open' | 'Closed' | 'Archived';
-}
+export type { AcademicBatch as TopicBatch } from '@/shared/academic-periods/types';
 
 export interface PagedResult<T> {
   items: T[];

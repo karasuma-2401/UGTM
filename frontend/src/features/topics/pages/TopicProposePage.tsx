@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useCallback, useState, type FormEvent } from 'react';
+import { useBeforeUnload, useBlocker } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   FilePlus2,
@@ -9,6 +10,11 @@ import {
   SlidersHorizontal,
   Save,
   Send,
+  Eye,
+  CheckCircle2,
+  Circle,
+  X,
+  ArrowLeft,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -19,12 +25,15 @@ import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
 import { TopicsTable } from '../components/TopicsTable';
+import { TopicPreview } from '../components/TopicPreview';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
+import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 
 import {
   canEditTopic,
   TOPIC_STATUS_LABELS,
+  TOPIC_STATUS_HINTS,
   type Topic,
   type TopicFormValues,
   type TopicFilters,
@@ -79,15 +88,52 @@ export function TopicProposePage() {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<TopicFilters>(INITIAL_FILTERS);
   const [filters, setFilters] = useState<TopicFilters>(INITIAL_FILTERS);
 
   const editable = !selectedTopic || canEditTopic(selectedTopic.status);
+  const hasUnsavedChanges = isFormOpen && editable && dirty;
+  const blocker = useBlocker(hasUnsavedChanges);
+  useBeforeUnload(
+    useCallback(
+      (event) => {
+        if (!hasUnsavedChanges) return;
+        event.preventDefault();
+        event.returnValue = '';
+      },
+      [hasUnsavedChanges],
+    ),
+  );
 
-  const batchesQuery = useQuery({
-    queryKey: ['topic-batches', user?.id],
-    queryFn: ({ signal }) => topicApi.getBatches(signal),
-  });
+  const hasFilters = [filters, draftFilters].some((value) =>
+    Boolean(value.keyword || value.batchId || value.status),
+  );
+  const checklist = [
+    { label: 'Đã chọn đợt KLTN', complete: Boolean(values.batchId) },
+    {
+      label: 'Tên tiếng Việt hợp lệ (tối đa 300 ký tự)',
+      complete: Boolean(values.titleVi.trim()) && values.titleVi.trim().length <= 300,
+    },
+    {
+      label: 'Chỉ tiêu 1 hoặc 2 sinh viên',
+      complete: values.studentNumber === 1 || values.studentNumber === 2,
+    },
+    {
+      label: 'Tên tiếng Anh hợp lệ (tối đa 350 ký tự)',
+      complete: Boolean(values.titleEn.trim()) && values.titleEn.trim().length <= 350,
+    },
+    {
+      label: 'Trình bày mục tiêu và mô tả',
+      complete: Boolean(values.description.trim()),
+    },
+    {
+      label: 'Bổ sung yêu cầu công nghệ, kiến thức',
+      complete: Boolean(values.requirements.trim()),
+    },
+  ];
+
+  const batchesQuery = useAcademicBatches();
 
   const topicsQuery = useQuery({
     queryKey: ['my-proposed-topics', user?.id, filters, pageNumber, pageSize],
@@ -111,6 +157,7 @@ export function TopicProposePage() {
       setSelectedTopic(topic);
       setValues(toFormValues(topic));
       setDirty(false);
+      setIsPreviewOpen(false);
       setIsFormOpen(true);
     },
   });
@@ -128,6 +175,7 @@ export function TopicProposePage() {
       setDirty(false);
       setFormError('');
       setIsFormOpen(false);
+      setIsPreviewOpen(false);
       setNotice(
         submitImmediately
           ? 'Đã gửi đề tài đến Khoa để thẩm định.'
@@ -167,6 +215,7 @@ export function TopicProposePage() {
     saveMutation.reset();
     detailMutation.reset();
 
+    setIsPreviewOpen(false);
     if (topic) {
       detailMutation.mutate(topic.id);
     } else {
@@ -179,6 +228,14 @@ export function TopicProposePage() {
 
   function closeForm() {
     if (busy) return;
+    if (blocker.state === 'blocked') {
+      blocker.reset();
+      return;
+    }
+    if (isPreviewOpen) {
+      setIsPreviewOpen(false);
+      return;
+    }
     if (dirty && !window.confirm('Bỏ các thay đổi chưa lưu để đóng cửa sổ?')) return;
     setDirty(false);
     setIsFormOpen(false);
@@ -190,13 +247,27 @@ export function TopicProposePage() {
     setPageNumber(1);
   }
 
+  function clearFilters() {
+    setDraftFilters({ ...INITIAL_FILTERS });
+    setFilters({ ...INITIAL_FILTERS });
+    setPageNumber(1);
+  }
+
+  function applyQuickFilter(status: TopicStatus | '') {
+    // Counts are scoped by batch, not by the search text. Clear search so the
+    // shortcut's results match the total shown on the statistic.
+    const next = { keyword: '', batchId: filters.batchId, status };
+    setDraftFilters(next);
+    setFilters(next);
+    setPageNumber(1);
+  }
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!editable || busy) return;
 
     const submitter = (event.nativeEvent as SubmitEvent).submitter;
-    const submitImmediately =
-      submitter instanceof HTMLButtonElement && submitter.value === 'submit';
+    const submitImmediately = submitter?.getAttribute('value') === 'submit';
 
     if (!values.batchId) {
       setFormError('Vui lòng chọn đợt KLTN.');
@@ -217,6 +288,18 @@ export function TopicProposePage() {
     if (values.studentNumber !== 1 && values.studentNumber !== 2) {
       setFormError('Chỉ tiêu sinh viên chỉ được chọn 1 hoặc 2.');
       return;
+    }
+
+    if (submitImmediately) {
+      const missingFields = [
+        !values.titleEn.trim() && 'tên đề tài tiếng Anh',
+        !values.description.trim() && 'mục tiêu và mô tả',
+        !values.requirements.trim() && 'yêu cầu công nghệ và kiến thức',
+      ].filter(Boolean);
+      if (missingFields.length > 0) {
+        setFormError(`Chưa thể gửi Khoa thẩm định. Vui lòng bổ sung: ${missingFields.join('; ')}.`);
+        return;
+      }
     }
 
     if (
@@ -254,7 +337,7 @@ export function TopicProposePage() {
           onClick={() => openTopic(null)}
           className="h-10 rounded-lg px-4 shadow-sm"
         >
-          Tạo đề tài
+          Đề xuất đề tài
         </Button>
       </div>
 
@@ -275,281 +358,403 @@ export function TopicProposePage() {
       )}
 
       {isFormOpen && (
-        <Dialog title="Đề xuất đề tài" busy={busy} onClose={closeForm} className="max-w-5xl">
-          <div className="grid items-start gap-5 bg-slate-50/60 p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
-            <Card className="min-w-0">
-              <CardHeader>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <CardTitle className="text-base">
-                    {selectedTopic
-                      ? editable
-                        ? 'Chỉnh sửa đề tài'
-                        : 'Thông tin đề tài'
-                      : 'Nội dung đề xuất'}
-                  </CardTitle>
-                  <TopicStatusBadge status={selectedTopic?.status ?? 'Draft'} />
-                </div>
-              </CardHeader>
+        <Dialog
+          title={
+            blocker.state === 'blocked'
+              ? 'Thay đổi chưa được lưu'
+              : isPreviewOpen
+                ? 'Xem trước đề tài'
+                : 'Đề xuất đề tài'
+          }
+          busy={busy}
+          onClose={closeForm}
+          className={
+            blocker.state === 'blocked' ? 'max-w-lg' : isPreviewOpen ? 'max-w-3xl' : 'max-w-5xl'
+          }
+        >
+          {blocker.state === 'blocked' ? (
+            <div className="space-y-5 p-5">
+              <p className="text-sm leading-6 text-slate-600">
+                Bạn đang có nội dung chưa lưu. Rời trang sẽ bỏ những thay đổi này.
+              </p>
+              <div className="flex flex-wrap justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => blocker.reset()}
+                >
+                  Tiếp tục soạn
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={busy}
+                  onClick={() => {
+                    setDirty(false);
+                    blocker.proceed();
+                  }}
+                >
+                  Bỏ thay đổi và rời trang
+                </Button>
+              </div>
+            </div>
+          ) : isPreviewOpen ? (
+            <>
+              <TopicPreview
+                values={values}
+                advisorName={user?.fullName ?? ''}
+                batchName={selectedBatch?.batchName}
+              />
+              <div className="flex justify-end border-t border-slate-100 px-5 py-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  leftIcon={<ArrowLeft />}
+                  onClick={() => setIsPreviewOpen(false)}
+                >
+                  {editable ? 'Quay lại chỉnh sửa' : 'Quay lại chi tiết'}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="grid items-start gap-5 bg-slate-50/60 p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+              <Card className="min-w-0">
+                <CardHeader>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <CardTitle className="text-base">
+                      {selectedTopic
+                        ? editable
+                          ? 'Chỉnh sửa đề tài'
+                          : 'Thông tin đề tài'
+                        : 'Nội dung đề xuất'}
+                    </CardTitle>
+                    <TopicStatusBadge status={selectedTopic?.status ?? 'Draft'} />
+                  </div>
+                </CardHeader>
 
-              <CardContent>
-                {!editable && (
-                  <p className="mb-5 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
-                    Đề tài ở trạng thái hiện tại chỉ được xem nội dung.
+                <CardContent>
+                  <p
+                    className={`mb-5 rounded-lg p-3 text-sm ${selectedTopic?.status === 'NeedRevision' ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700'}`}
+                  >
+                    {TOPIC_STATUS_HINTS[selectedTopic?.status ?? 'Draft']}
                   </p>
-                )}
-
-                {selectedTopic?.status === 'NeedRevision' && (
-                  <p className="mb-5 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-                    Khoa yêu cầu chỉnh sửa. Bạn có thể cập nhật nội dung và gửi duyệt lại.
-                  </p>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <fieldset disabled={busy || !editable} className="min-w-0 space-y-5">
-                    <div className="space-y-2">
-                      <label id="topic-batch-label" className="text-sm font-medium text-slate-700">
-                        Đợt KLTN <span className="text-rose-600">*</span>
-                      </label>
-                      <Select<string>
-                        triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
-                        aria-labelledby="topic-batch-label"
-                        value={values.batchId}
-                        options={batches.map((batch) => ({
-                          value: batch.id,
-                          label: batch.batchName,
-                          description: `${batch.academicYear} · HK${batch.semester}`,
-                        }))}
-                        onChange={(value: string) => updateField('batchId', value)}
-                        placeholder={
-                          batchesQuery.isPending ? 'Đang tải danh sách đợt...' : 'Chọn đợt KLTN'
-                        }
-                        searchable
-                        disabled={
-                          busy ||
-                          !editable ||
-                          Boolean(selectedTopic) ||
-                          batchesQuery.isPending ||
-                          batchesQuery.isError
-                        }
-                      />
-                      {selectedTopic && (
-                        <p className="text-xs text-slate-500">
-                          Đợt KLTN được giữ nguyên sau khi tạo đề tài.
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="topic-title-vi"
-                        className="text-sm font-medium text-slate-700"
-                      >
-                        Tên đề tài tiếng Việt <span className="text-rose-600">*</span>
-                      </label>
-                      <Input
-                        className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
-                        id="topic-title-vi"
-                        value={values.titleVi}
-                        onChange={(event) => updateField('titleVi', event.target.value)}
-                        maxLength={300}
-                        required
-                        placeholder="Nhập tên đề tài tiếng Việt"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="topic-title-en"
-                        className="text-sm font-medium text-slate-700"
-                      >
-                        Tên đề tài tiếng Anh
-                      </label>
-                      <Input
-                        className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
-                        id="topic-title-en"
-                        value={values.titleEn}
-                        onChange={(event) => updateField('titleEn', event.target.value)}
-                        maxLength={350}
-                        placeholder="Nhập tên tiếng Anh nếu có"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="topic-description"
-                        className="text-sm font-medium text-slate-700"
-                      >
-                        Mục tiêu và mô tả
-                      </label>
-                      <textarea
-                        id="topic-description"
-                        className={textareaClass}
-                        value={values.description}
-                        onChange={(event) => updateField('description', event.target.value)}
-                        placeholder="Trình bày mục tiêu, phạm vi nghiên cứu và sản phẩm dự kiến..."
-                        rows={5}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="topic-requirements"
-                        className="text-sm font-medium text-slate-700"
-                      >
-                        Yêu cầu công nghệ và kiến thức
-                      </label>
-                      <textarea
-                        id="topic-requirements"
-                        className={textareaClass}
-                        value={values.requirements}
-                        onChange={(event) => updateField('requirements', event.target.value)}
-                        placeholder="Công nghệ dự kiến, kiến thức nền tảng cần có..."
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label
-                        id="topic-capacity-label"
-                        className="text-sm font-medium text-slate-700"
-                      >
-                        Số sinh viên tối đa
-                      </label>
-                      <Select<number>
-                        triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
-                        aria-labelledby="topic-capacity-label"
-                        value={values.studentNumber}
-                        options={[
-                          { value: 1, label: '1 sinh viên' },
-                          { value: 2, label: '2 sinh viên' },
-                        ]}
-                        disabled={busy || !editable}
-                        onChange={(value: number) =>
-                          updateField('studentNumber', value === 1 ? 1 : 2)
-                        }
-                      />
-                    </div>
-                  </fieldset>
-
-                  {(formError || saveMutation.isError) && (
-                    <p role="alert" className="text-sm text-rose-600">
-                      {formError || getTopicErrorMessage(saveMutation.error)}
+                  {hasUnsavedChanges && (
+                    <p role="status" className="mb-4 text-xs font-medium text-amber-700">
+                      Có thay đổi chưa lưu
                     </p>
                   )}
 
-                  {editable && (
-                    <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-5">
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    <fieldset disabled={busy || !editable} className="min-w-0 space-y-5">
+                      <div className="space-y-2">
+                        <label
+                          id="topic-batch-label"
+                          className="text-sm font-medium text-slate-700"
+                        >
+                          Đợt KLTN <span className="text-rose-600">*</span>
+                        </label>
+                        <Select<string>
+                          triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
+                          aria-labelledby="topic-batch-label"
+                          value={values.batchId}
+                          options={batches.map((batch) => ({
+                            value: batch.id,
+                            label: batch.batchName,
+                            description: `${batch.academicYear} · HK${batch.semester}`,
+                          }))}
+                          onChange={(value: string) => updateField('batchId', value)}
+                          placeholder={
+                            batchesQuery.isPending ? 'Đang tải danh sách đợt...' : 'Chọn đợt KLTN'
+                          }
+                          searchable
+                          disabled={
+                            busy ||
+                            !editable ||
+                            Boolean(selectedTopic) ||
+                            batchesQuery.isPending ||
+                            batchesQuery.isError
+                          }
+                        />
+                        {selectedTopic && (
+                          <p className="text-xs text-slate-500">
+                            Đợt KLTN được giữ nguyên sau khi tạo đề tài.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="topic-title-vi"
+                          className="flex items-center justify-between gap-2 text-sm font-medium text-slate-700"
+                        >
+                          <span>
+                            Tên đề tài tiếng Việt <span className="text-rose-600">*</span>
+                          </span>
+                          <span className="text-[11px] font-normal tabular-nums text-slate-400">
+                            {values.titleVi.length}/300
+                          </span>
+                        </label>
+                        <Input
+                          className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
+                          id="topic-title-vi"
+                          value={values.titleVi}
+                          onChange={(event) => updateField('titleVi', event.target.value)}
+                          maxLength={300}
+                          required
+                          placeholder="Nhập tên đề tài tiếng Việt"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="topic-title-en"
+                          className="flex items-center justify-between gap-2 text-sm font-medium text-slate-700"
+                        >
+                          <span>
+                            Tên đề tài tiếng Anh{' '}
+                            <span className="text-[11px] font-normal text-slate-500">
+                              (cần khi gửi)
+                            </span>
+                          </span>
+                          <span className="text-[11px] font-normal tabular-nums text-slate-400">
+                            {values.titleEn.length}/350
+                          </span>
+                        </label>
+                        <Input
+                          className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
+                          id="topic-title-en"
+                          value={values.titleEn}
+                          onChange={(event) => updateField('titleEn', event.target.value)}
+                          maxLength={350}
+                          placeholder="Nhập tên tiếng Anh nếu có"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="topic-description"
+                          className="text-sm font-medium text-slate-700"
+                        >
+                          Mục tiêu và mô tả{' '}
+                          <span className="text-[11px] font-normal text-slate-500">
+                            (cần khi gửi)
+                          </span>
+                        </label>
+                        <textarea
+                          id="topic-description"
+                          className={textareaClass}
+                          value={values.description}
+                          onChange={(event) => updateField('description', event.target.value)}
+                          placeholder="Trình bày mục tiêu, phạm vi nghiên cứu và sản phẩm dự kiến..."
+                          rows={5}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="topic-requirements"
+                          className="text-sm font-medium text-slate-700"
+                        >
+                          Yêu cầu công nghệ và kiến thức{' '}
+                          <span className="text-[11px] font-normal text-slate-500">
+                            (cần khi gửi)
+                          </span>
+                        </label>
+                        <textarea
+                          id="topic-requirements"
+                          className={textareaClass}
+                          value={values.requirements}
+                          onChange={(event) => updateField('requirements', event.target.value)}
+                          placeholder="Công nghệ dự kiến, kiến thức nền tảng cần có..."
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label
+                          id="topic-capacity-label"
+                          className="text-sm font-medium text-slate-700"
+                        >
+                          Số sinh viên tối đa
+                        </label>
+                        <Select<number>
+                          triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
+                          aria-labelledby="topic-capacity-label"
+                          value={values.studentNumber}
+                          options={[
+                            { value: 1, label: '1 sinh viên' },
+                            { value: 2, label: '2 sinh viên' },
+                          ]}
+                          disabled={busy || !editable}
+                          onChange={(value: number) =>
+                            updateField('studentNumber', value === 1 ? 1 : 2)
+                          }
+                        />
+                      </div>
+                    </fieldset>
+
+                    {(formError || saveMutation.isError) && (
+                      <p role="alert" className="text-sm text-rose-600">
+                        {formError || getTopicErrorMessage(saveMutation.error)}
+                      </p>
+                    )}
+
+                    {editable && (
+                      <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-5">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={busy}
+                          onClick={closeForm}
+                          className="h-10 rounded-lg px-5"
+                        >
+                          Đóng
+                        </Button>
+                        <Button
+                          type="submit"
+                          name="action"
+                          value="draft"
+                          variant="outline"
+                          leftIcon={<Save />}
+                          className="h-10 rounded-lg px-5"
+                          disabled={busy}
+                          isLoading={
+                            saveMutation.isPending && !saveMutation.variables?.submitImmediately
+                          }
+                        >
+                          {selectedTopic?.status === 'NeedRevision' ? 'Lưu chỉnh sửa' : 'Lưu nháp'}
+                        </Button>
+                        <Button
+                          type="submit"
+                          name="action"
+                          value="submit"
+                          leftIcon={<Send />}
+                          className="h-10 rounded-lg px-5"
+                          disabled={busy}
+                          isLoading={
+                            saveMutation.isPending &&
+                            saveMutation.variables?.submitImmediately === true
+                          }
+                        >
+                          {selectedTopic?.status === 'NeedRevision'
+                            ? 'Gửi duyệt lại'
+                            : 'Gửi Khoa thẩm định'}
+                        </Button>
+                      </div>
+                    )}
+                  </form>
+                  {!editable && (
+                    <div className="mt-5 flex justify-end border-t border-slate-100 pt-5">
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={busy}
-                        onClick={closeForm}
                         className="h-10 rounded-lg px-5"
+                        onClick={closeForm}
                       >
                         Đóng
                       </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">
+                    {editable ? 'Trước khi gửi Khoa' : 'Thông tin đề tài'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-5 text-sm">
+                  <dl className="space-y-4">
+                    <div>
+                      <dt className="text-xs text-slate-500">Người đề xuất</dt>
+                      <dd className="mt-1 font-medium text-slate-800">{user?.fullName}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Đợt KLTN</dt>
+                      <dd className="mt-1 text-slate-800">
+                        {selectedBatch?.batchName ?? 'Chưa chọn đợt'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500">Chỉ tiêu</dt>
+                      <dd className="mt-1 text-slate-800">
+                        Tối đa {values.studentNumber} sinh viên
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <Button
+                    type="button"
+                    variant="soft"
+                    leftIcon={<Eye />}
+                    className="h-10 w-full rounded-lg"
+                    disabled={busy}
+                    onClick={() => setIsPreviewOpen(true)}
+                  >
+                    Xem trước đề tài
+                  </Button>
+                  {editable && (
+                    <div className="border-t border-slate-100 pt-4">
+                      <p className="font-medium text-slate-800">Cần hoàn thành trước khi gửi</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {checklist.filter((item) => item.complete).length}/{checklist.length} mục đã
+                        hoàn thành
+                      </p>
+                      <ul className="mt-3 space-y-3 text-xs leading-5">
+                        {checklist.map((item) => (
+                          <li
+                            key={item.label}
+                            className={`flex items-start gap-2 ${item.complete ? 'text-emerald-700' : 'text-slate-500'}`}
+                          >
+                            {item.complete ? (
+                              <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                            ) : (
+                              <Circle
+                                className="mt-0.5 size-4 shrink-0 text-slate-300"
+                                aria-hidden="true"
+                              />
+                            )}
+                            <span>
+                              <span className="sr-only">
+                                {item.complete ? 'Đã đủ: ' : 'Chưa đủ: '}
+                              </span>
+                              {item.label}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-3 text-[11px] leading-5 text-slate-400">
+                        Lưu nháp chỉ cần đợt KLTN, tên tiếng Việt và chỉ tiêu. Hoàn thành đủ 6 mục
+                        trước khi gửi Khoa thẩm định.
+                      </p>
+                    </div>
+                  )}
+
+                  {batchesQuery.isError && (
+                    <div role="alert" className="space-y-2 text-rose-600">
+                      <p>{getTopicErrorMessage(batchesQuery.error)}</p>
                       <Button
-                        type="submit"
-                        name="action"
-                        value="draft"
+                        type="button"
                         variant="outline"
-                        leftIcon={<Save />}
-                        className="h-10 rounded-lg px-5"
-                        disabled={busy}
-                        isLoading={
-                          saveMutation.isPending && !saveMutation.variables?.submitImmediately
-                        }
+                        size="sm"
+                        onClick={() => void batchesQuery.refetch()}
                       >
-                        {selectedTopic?.status === 'NeedRevision' ? 'Lưu chỉnh sửa' : 'Lưu nháp'}
-                      </Button>
-                      <Button
-                        type="submit"
-                        name="action"
-                        value="submit"
-                        leftIcon={<Send />}
-                        className="h-10 rounded-lg px-5"
-                        disabled={busy}
-                        isLoading={
-                          saveMutation.isPending &&
-                          saveMutation.variables?.submitImmediately === true
-                        }
-                      >
-                        {selectedTopic?.status === 'NeedRevision'
-                          ? 'Gửi duyệt lại'
-                          : 'Gửi Khoa thẩm định'}
+                        Tải lại danh sách đợt
                       </Button>
                     </div>
                   )}
-                </form>
-                {!editable && (
-                  <div className="mt-5 flex justify-end border-t border-slate-100 pt-5">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="h-10 rounded-lg px-5"
-                      onClick={closeForm}
-                    >
-                      Đóng
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Trước khi gửi Khoa</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-5 text-sm">
-                <dl className="space-y-4">
-                  <div>
-                    <dt className="text-xs text-slate-500">Người đề xuất</dt>
-                    <dd className="mt-1 font-medium text-slate-800">{user?.fullName}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">Đợt KLTN</dt>
-                    <dd className="mt-1 text-slate-800">
-                      {selectedBatch?.batchName ?? 'Chưa chọn đợt'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-slate-500">Chỉ tiêu</dt>
-                    <dd className="mt-1 text-slate-800">Tối đa {values.studentNumber} sinh viên</dd>
-                  </div>
-                </dl>
-
-                <div className="border-t border-slate-100 pt-4">
-                  <p className="font-medium text-slate-800">Kiểm tra nội dung</p>
-                  <ul className="mt-2 list-disc space-y-2 pl-4 text-xs leading-5 text-slate-500">
-                    <li>Tên Việt và Anh thống nhất về nội dung.</li>
-                    <li>Mục tiêu và sản phẩm dự kiến có thể đánh giá.</li>
-                    <li>Chỉ tiêu phù hợp với phạm vi đề tài.</li>
-                    <li>Sau khi gửi, đề tài chuyển sang chờ Khoa duyệt.</li>
-                  </ul>
-                </div>
-
-                {batchesQuery.isError && (
-                  <div role="alert" className="space-y-2 text-rose-600">
-                    <p>{getTopicErrorMessage(batchesQuery.error)}</p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void batchesQuery.refetch()}
-                    >
-                      Tải lại danh sách đợt
-                    </Button>
-                  </div>
-                )}
-
-                {batchesQuery.isSuccess && batches.length === 0 && (
-                  <p className="text-amber-700">
-                    Chưa có đợt KLTN. Vui lòng liên hệ đơn vị quản lý.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                  {batchesQuery.isSuccess && batches.length === 0 && (
+                    <p className="text-amber-700">
+                      Chưa có đợt KLTN. Vui lòng liên hệ đơn vị quản lý.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </Dialog>
       )}
 
@@ -600,14 +805,26 @@ export function TopicProposePage() {
             }
           />
         </div>
-        <Button
-          type="submit"
-          variant="soft"
-          leftIcon={<SlidersHorizontal />}
-          className="h-10 rounded-lg px-5"
-        >
-          Áp dụng
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="submit"
+            variant="soft"
+            leftIcon={<SlidersHorizontal />}
+            className="h-10 rounded-lg px-5"
+          >
+            Áp dụng
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            leftIcon={<X />}
+            className="h-10 rounded-lg px-4"
+            disabled={!hasFilters}
+            onClick={clearFilters}
+          >
+            Bỏ lọc
+          </Button>
+        </div>
       </form>
 
       {batchesQuery.isError && !isFormOpen && (
@@ -650,6 +867,8 @@ export function TopicProposePage() {
                   value: formatCount(statistics?.total),
                   icon: <FileText />,
                   tone: 'primary',
+                  active: filters.status === '' && !filters.keyword,
+                  onClick: () => applyQuickFilter(''),
                 },
                 {
                   key: 'submitted',
@@ -657,6 +876,8 @@ export function TopicProposePage() {
                   value: formatCount(statistics?.submitted),
                   icon: <Clock3 />,
                   tone: 'muted',
+                  active: filters.status === 'Submitted' && !filters.keyword,
+                  onClick: () => applyQuickFilter('Submitted'),
                 },
                 {
                   key: 'revision',
@@ -664,6 +885,8 @@ export function TopicProposePage() {
                   value: formatCount(statistics?.needRevision),
                   icon: <RotateCcw />,
                   tone: 'warning',
+                  active: filters.status === 'NeedRevision' && !filters.keyword,
+                  onClick: () => applyQuickFilter('NeedRevision'),
                 },
               ]}
             />
@@ -724,6 +947,11 @@ export function TopicProposePage() {
                   ? 'Không có đề tài phù hợp với bộ lọc.'
                   : 'Chưa có đề tài. Tạo đề xuất đầu tiên để bắt đầu.'}
               </p>
+              {Boolean(filters.keyword || filters.status || filters.batchId) && (
+                <Button type="button" variant="outline" leftIcon={<X />} onClick={clearFilters}>
+                  Bỏ lọc
+                </Button>
+              )}
             </div>
           )}
         </div>

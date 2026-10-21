@@ -4,7 +4,6 @@ import type { ApiResponse } from '@/shared/api/types';
 import type {
   PagedResult,
   Topic,
-  TopicBatch,
   TopicFilters,
   TopicFormValues,
   TopicStatistics,
@@ -34,28 +33,6 @@ export function getTopicErrorMessage(error: unknown): string {
 }
 
 export const topicApi = {
-  async getBatches(signal?: AbortSignal): Promise<TopicBatch[]> {
-    const batches: TopicBatch[] = [];
-    let pageNumber = 1;
-
-    // Đọc đủ các trang, không giới hạn dropdown vào 100 đợt đầu tiên.
-    while (true) {
-      const response = await httpClient.get<ApiResponse<PagedResult<TopicBatch>>>(
-        '/api/academic-periods/batches',
-        {
-          params: { pageNumber, pageSize: 100 },
-          signal,
-        },
-      );
-
-      const page = unwrap(response.data);
-      batches.push(...page.items);
-
-      if (!page.hasNextPage) return batches;
-      pageNumber += 1;
-    }
-  },
-
   async getMyTopics(
     query: Partial<TopicFilters> & {
       advisorId: string;
