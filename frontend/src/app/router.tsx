@@ -14,7 +14,7 @@ import { UsersPage } from '../features/admin/pages/UsersPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/admin/layouts/IdentityLayout';
 
 import { ProtectedRoute } from '../shared/auth';
-import { RolePermissionPage } from '../features/admin';
+import { RolePermissionPage, AuditLogPage } from '../features/admin';
 
 export const router = createBrowserRouter([
   {
@@ -37,6 +37,14 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'ui-test', element: <UiTestPage /> },
+      {
+        path: 'admin/audit-logs',
+        element: (
+          <ProtectedRoute allowedRoles={['Admin']}>
+            <AuditLogPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: 'modules/identity',
         element: <IdentityLayout />,
