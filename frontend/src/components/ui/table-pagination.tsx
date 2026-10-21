@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Button } from './button';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +27,11 @@ export function TablePagination({
 }: TablePaginationProps) {
   const last = Math.min(pageNumber * pageSize, totalCount);
   const first = totalCount > 0 ? Math.min((pageNumber - 1) * pageSize + 1, last) : 0;
+  const safePageSize = pageSize > 0 ? pageSize : 10;
+  const totalPages = Math.max(1, Math.ceil(totalCount / safePageSize));
+
+  const isFirstDisabled = pageNumber <= 1 || !hasPreviousPage || isLoading;
+  const isLastDisabled = pageNumber >= totalPages || !hasNextPage || isLoading;
 
   return (
     <div
@@ -39,6 +44,18 @@ export function TablePagination({
         Hiển thị {first}–{last} / {totalCount} {itemLabel}
       </p>
       <nav aria-label="Phân trang" className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 w-8 p-0"
+          disabled={isFirstDisabled}
+          onClick={() => onPageChange(1)}
+          title="Trang đầu"
+          aria-label="Trang đầu"
+        >
+          <ChevronsLeft className="size-4" />
+        </Button>
         <Button
           type="button"
           variant="outline"
@@ -64,6 +81,18 @@ export function TablePagination({
           onClick={() => onPageChange(pageNumber + 1)}
         >
           Sau
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 w-8 p-0"
+          disabled={isLastDisabled}
+          onClick={() => onPageChange(totalPages)}
+          title="Trang cuối"
+          aria-label="Trang cuối"
+        >
+          <ChevronsRight className="size-4" />
         </Button>
       </nav>
     </div>
