@@ -26,11 +26,6 @@ export interface NavSectionConfig {
   items: NavItemConfig[];
 }
 
-/**
- * Cấu hình Navigation phân nhóm theo RBAC:
- * - Section Quản trị hệ thống: Cố định cho Admin
- * - Section Nghiệp vụ khóa luận: Lọc động theo RBAC permissions
- */
 export const navigationSections: NavSectionConfig[] = [
   {
     id: 'admin',
@@ -65,7 +60,6 @@ export const navigationSections: NavSectionConfig[] = [
     id: 'academic',
     title: 'Khóa luận',
     items: [
-      // Các module nghiệp vụ khi bật tính năng sẽ được khai báo kèm permission tương ứng ở đây
     ],
   },
 ];
