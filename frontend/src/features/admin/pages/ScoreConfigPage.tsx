@@ -15,7 +15,7 @@ import { ScoreConfigActionBar } from '../components/ScoreConfigActionBar';
 import { ScoreComponentAddDialog } from '../components/ScoreComponentAddDialog';
 import { ScoreConfigHistoryDialog } from '../components/ScoreConfigHistoryDialog';
 import { ScoreConfigCloneReasonDialog } from '../components/ScoreConfigCloneReasonDialog';
-import { History, Wand2 } from 'lucide-react';
+import { History, Wand2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 function gcd(a: number, b: number): number {
@@ -300,26 +300,46 @@ export const ScoreConfigPage: React.FC = () => {
   };
 
   const executeSaveDraft = async (changeReasonText?: string | null) => {
-    if (!selectedBatchId) return;
+    if (!selectedBatchId) {
+      setErrorMessage('Vui lòng chọn đợt khóa luận áp dụng trước khi lưu.');
+      return;
+    }
+
+    if (!isValid) {
+      if (calculationMethod === 'Percentage') {
+        setErrorMessage(
+          `Cấu hình chưa hợp lệ. Tổng tỷ lệ phần trăm hiện tại là ${totalWeight}%, cần đạt chính xác 100%.`,
+        );
+      } else {
+        setErrorMessage('Cấu hình chưa hợp lệ. Tổng các hệ số phải lớn hơn 0.');
+      }
+      return;
+    }
+
     setIsSaving(true);
     setErrorMessage(null);
     setNotice(null);
 
     try {
+      let savedConfig: ScoreConfigurationDto;
       if (currentConfig && currentConfig.status === 'Draft') {
-        await scoreConfigApi.updateDraft(selectedBatchId, currentConfig.id, {
+        savedConfig = await scoreConfigApi.updateDraft(selectedBatchId, currentConfig.id, {
           calculationMethod,
           components,
           changeReason: changeReasonText || currentConfig.changeReason || null,
         });
-        setNotice('Đã cập nhật bản nháp cấu hình điểm thành công.');
+        setNotice(
+          `Đã lưu thành công bản nháp cấu hình điểm (Phiên bản v${savedConfig.versionNo}) cho ${currentBatch?.batchName || 'đợt khóa luận'}. Bạn có thể tiếp tục chỉnh sửa hoặc bấm "Công bố (Publish)" để áp dụng chính thức.`,
+        );
       } else {
-        await scoreConfigApi.createDraft(selectedBatchId, {
+        savedConfig = await scoreConfigApi.createDraft(selectedBatchId, {
           calculationMethod,
           components,
           changeReason: changeReasonText || null,
         });
-        setNotice('Đã tạo bản nháp cấu hình điểm thành công.');
+        setNotice(
+          `Đã tạo thành công bản nháp cấu hình điểm (Phiên bản v${savedConfig.versionNo}) cho ${currentBatch?.batchName || 'đợt khóa luận'}.`,
+        );
       }
 
       await loadBatchConfig(selectedBatchId);
@@ -351,8 +371,13 @@ export const ScoreConfigPage: React.FC = () => {
     setNotice(null);
 
     try {
-      await scoreConfigApi.publishConfiguration(selectedBatchId, currentConfig.id);
-      setNotice('Đã công bố (Publish) cấu hình điểm thành công. Cấu hình hiện đang có hiệu lực áp dụng.');
+      const published = await scoreConfigApi.publishConfiguration(
+        selectedBatchId,
+        currentConfig.id,
+      );
+      setNotice(
+        `Đã công bố (Publish) thành công cấu hình điểm phiên bản v${published.versionNo} cho ${currentBatch?.batchName || 'đợt khóa luận'}. Cấu hình hiện đang có hiệu lực áp dụng!`,
+      );
       await loadBatchConfig(selectedBatchId);
     } catch (err) {
       setErrorMessage(getScoreConfigErrorMessage(err));
@@ -403,13 +428,16 @@ export const ScoreConfigPage: React.FC = () => {
       {notice && (
         <div
           role="status"
-          className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-xs sm:text-sm text-emerald-800 flex items-center justify-between"
+          className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-xs sm:text-sm text-emerald-800 flex items-center justify-between shadow-xs transition-all animate-in fade-in"
         >
-          <span>{notice}</span>
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
+            <span className="font-medium">{notice}</span>
+          </div>
           <button
             type="button"
             onClick={() => setNotice(null)}
-            className="text-emerald-600 hover:text-emerald-900 font-bold ml-3 text-xs"
+            className="text-emerald-700 hover:text-emerald-950 font-bold ml-3 text-xs underline cursor-pointer"
           >
             Đóng
           </button>
@@ -419,16 +447,33 @@ export const ScoreConfigPage: React.FC = () => {
       {errorMessage && (
         <div
           role="alert"
-          className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-xs sm:text-sm text-rose-800 flex items-center justify-between"
+          className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-xs sm:text-sm text-rose-800 flex items-center justify-between shadow-xs transition-all animate-in fade-in"
         >
-          <span>{errorMessage}</span>
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="size-5 text-rose-600 shrink-0" />
+            <span className="font-medium">{errorMessage}</span>
+          </div>
           <button
             type="button"
             onClick={() => setErrorMessage(null)}
-            className="text-rose-600 hover:text-rose-900 font-bold ml-3 text-xs"
+            className="text-rose-700 hover:text-rose-950 font-bold ml-3 text-xs underline cursor-pointer"
           >
             Đóng
           </button>
+        </div>
+      )}
+
+      {batches.length === 0 && !isLoadingBatches && (
+        <div
+          role="alert"
+          className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-xs sm:text-sm text-amber-800 flex items-center justify-between shadow-xs transition-all animate-in fade-in"
+        >
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="size-5 text-amber-600 shrink-0" />
+            <span className="font-medium">
+              Chưa có đợt khóa luận nào trong hệ thống. Vui lòng tạo đợt khóa luận trước khi tiến hành cấu hình điểm.
+            </span>
+          </div>
         </div>
       )}
 
@@ -444,6 +489,7 @@ export const ScoreConfigPage: React.FC = () => {
             onReviewerMinimumScoreChange={handleReviewerMinScoreChange}
             onAddOptionalComponent={handleAddOptionalComponent}
             isReadOnly={isLoadingConfig || isLoadingBatches}
+            isLoadingBatches={isLoadingBatches}
           />
 
           <ScoreComponentTable

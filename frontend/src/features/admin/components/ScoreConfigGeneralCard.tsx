@@ -17,6 +17,7 @@ export interface ScoreConfigGeneralCardProps {
   onReviewerMinimumScoreChange: (score: number | null) => void;
   onAddOptionalComponent?: (sourceCode: string) => void;
   isReadOnly?: boolean;
+  isLoadingBatches?: boolean;
 }
 
 export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
@@ -29,6 +30,7 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
   onReviewerMinimumScoreChange,
   onAddOptionalComponent,
   isReadOnly = false,
+  isLoadingBatches = false,
 }) => {
   const batchOptions = batches.map((b) => ({
     value: b.id,
@@ -73,14 +75,21 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
           </p>
         </div>
 
-        <div className="w-full sm:w-64">
+        <div className="w-full sm:w-80 md:w-96">
           <Select
             options={batchOptions}
             value={selectedBatchId}
             onChange={(val) => onBatchChange(val as string)}
-            placeholder="Chọn đợt khóa luận..."
-            triggerClassName="h-9 text-xs font-medium"
-            disabled={isReadOnly || batches.length === 0}
+            placeholder={
+              isLoadingBatches
+                ? 'Đang tải đợt khóa luận...'
+                : batches.length === 0
+                ? 'Chưa có đợt khóa luận'
+                : 'Chọn đợt khóa luận...'
+            }
+            triggerClassName="h-9 w-full text-xs font-medium"
+            contentClassName="min-w-full"
+            disabled={isLoadingBatches || batches.length === 0}
           />
         </div>
       </div>
