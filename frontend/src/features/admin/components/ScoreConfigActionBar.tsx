@@ -1,6 +1,8 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Save, Send, Plus, Sliders, Percent } from 'lucide-react';
+import type { ScoreCalculationMethod } from '../types/scoreConfig.types';
+import { cn } from '@/lib/utils';
 
 export interface ScoreConfigActionBarProps {
   onSave: () => void;
@@ -8,8 +10,8 @@ export interface ScoreConfigActionBarProps {
   onPublish?: () => void;
   isPublishing?: boolean;
   canPublish?: boolean;
-  onApplyIntegerPreset: () => void;
-  onApplyPercentagePreset: () => void;
+  calculationMethod: ScoreCalculationMethod;
+  onSwitchCalculationMethod: (method: ScoreCalculationMethod) => void;
   onOpenAddComponentModal: () => void;
   isReadOnly?: boolean;
   saveButtonText?: string;
@@ -21,15 +23,17 @@ export const ScoreConfigActionBar: React.FC<ScoreConfigActionBarProps> = ({
   onPublish,
   isPublishing = false,
   canPublish = false,
-  onApplyIntegerPreset,
-  onApplyPercentagePreset,
+  calculationMethod,
+  onSwitchCalculationMethod,
   onOpenAddComponentModal,
   isReadOnly = false,
   saveButtonText = 'Lưu cấu hình',
 }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+      {/* Cụm nút thao tác chính bên trái */}
       <div className="flex items-center gap-2.5 flex-wrap">
+        {/* Nút Lưu cấu hình / Lưu nháp (Call to Action chính với gradient chuẩn thương hiệu) */}
         <button
           type="button"
           onClick={onSave}
@@ -44,6 +48,7 @@ export const ScoreConfigActionBar: React.FC<ScoreConfigActionBarProps> = ({
           <span>{saveButtonText}</span>
         </button>
 
+        {/* Nút Công bố (Publish) cấu hình nếu có bản Draft hợp lệ */}
         {canPublish && onPublish && (
           <Button
             type="button"
@@ -64,14 +69,29 @@ export const ScoreConfigActionBar: React.FC<ScoreConfigActionBarProps> = ({
         )}
       </div>
 
+      {/* Cụm nút chuyển đổi phương thức và thêm đầu điểm */}
       <div className="flex items-center gap-2 flex-wrap">
         <Button
           type="button"
           variant="outline"
-          className="rounded-lg h-10 px-3.5 text-xs sm:text-sm font-medium hover:bg-slate-50 text-slate-700"
-          onClick={onApplyIntegerPreset}
+          className={cn(
+            'rounded-lg h-10 px-3.5 text-xs sm:text-sm font-medium transition-colors',
+            calculationMethod === 'IntegerCoefficient'
+              ? 'border-primary bg-primary/10 text-primary font-semibold'
+              : 'text-slate-700 hover:bg-slate-50',
+          )}
+          onClick={() => onSwitchCalculationMethod('IntegerCoefficient')}
           disabled={isReadOnly}
-          leftIcon={<Sliders className="size-4 text-slate-500" />}
+          leftIcon={
+            <Sliders
+              className={cn(
+                'size-4',
+                calculationMethod === 'IntegerCoefficient'
+                  ? 'text-primary'
+                  : 'text-slate-500',
+              )}
+            />
+          }
         >
           Hệ số nguyên
         </Button>
@@ -79,10 +99,24 @@ export const ScoreConfigActionBar: React.FC<ScoreConfigActionBarProps> = ({
         <Button
           type="button"
           variant="outline"
-          className="rounded-lg h-10 px-3.5 text-xs sm:text-sm font-medium hover:bg-slate-50 text-slate-700"
-          onClick={onApplyPercentagePreset}
+          className={cn(
+            'rounded-lg h-10 px-3.5 text-xs sm:text-sm font-medium transition-colors',
+            calculationMethod === 'Percentage'
+              ? 'border-primary bg-primary/10 text-primary font-semibold'
+              : 'text-slate-700 hover:bg-slate-50',
+          )}
+          onClick={() => onSwitchCalculationMethod('Percentage')}
           disabled={isReadOnly}
-          leftIcon={<Percent className="size-4 text-slate-500" />}
+          leftIcon={
+            <Percent
+              className={cn(
+                'size-4',
+                calculationMethod === 'Percentage'
+                  ? 'text-primary'
+                  : 'text-slate-500',
+              )}
+            />
+          }
         >
           Tỷ lệ phần trăm
         </Button>

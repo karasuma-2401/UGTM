@@ -19,6 +19,11 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
   onChangeComponents,
   isReadOnly = false,
 }) => {
+  const totalWeight = components.reduce(
+    (sum, c) => sum + (Number(c.weight) > 0 ? Number(c.weight) : 0),
+    0,
+  );
+
   const handleWeightChange = (index: number, newWeightStr: string) => {
     const val = parseFloat(newWeightStr);
     const updated = components.map((c, i) => {
@@ -62,15 +67,43 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
 
   const getCategoryBadge = (item: ScoreComponentInput) => {
     if (item.source === 'Advisor') {
-      return <Badge variant="info">Nguồn riêng</Badge>;
+      return (
+        <Badge
+          variant="info"
+          className="whitespace-nowrap shrink-0 px-3 py-1 font-medium text-xs shadow-2xs"
+        >
+          Nguồn riêng
+        </Badge>
+      );
     }
     if (item.source === 'Reviewer') {
-      return <Badge variant="warning">Bắt buộc</Badge>;
+      return (
+        <Badge
+          variant="warning"
+          className="whitespace-nowrap shrink-0 px-3 py-1 font-medium text-xs shadow-2xs"
+        >
+          Bắt buộc
+        </Badge>
+      );
     }
     if (item.source.startsWith('Council')) {
-      return <Badge variant="secondary">Điểm HĐ</Badge>;
+      return (
+        <Badge
+          variant="secondary"
+          className="whitespace-nowrap shrink-0 px-3 py-1 font-medium text-xs shadow-2xs"
+        >
+          Điểm HĐ
+        </Badge>
+      );
     }
-    return <Badge variant="default">Tùy biến</Badge>;
+    return (
+      <Badge
+        variant="default"
+        className="whitespace-nowrap shrink-0 px-3 py-1 font-medium text-xs shadow-2xs"
+      >
+        Tùy biến
+      </Badge>
+    );
   };
 
   return (
@@ -93,16 +126,16 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
         <table className="w-full text-left text-sm border-collapse min-w-[640px]">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/60 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              <th scope="col" className="px-5 py-3.5 w-[32%]">
+              <th scope="col" className="px-5 py-3.5 w-[28%]">
                 Nguồn / thành viên
               </th>
-              <th scope="col" className="px-5 py-3.5 w-[24%]">
+              <th scope="col" className="px-5 py-3.5 w-[28%]">
                 Điểm / trọng số
               </th>
-              <th scope="col" className="px-5 py-3.5 w-[28%]">
+              <th scope="col" className="px-5 py-3.5 w-[24%]">
                 Điều kiện
               </th>
-              <th scope="col" className="px-5 py-3.5 w-[16%] text-right">
+              <th scope="col" className="px-5 py-3.5 w-[20%] text-right whitespace-nowrap">
                 Phân loại
               </th>
             </tr>
@@ -112,18 +145,26 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
             {components.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-5 py-12 text-center text-slate-400 text-sm">
-                  Chưa có đầu điểm nào trong cấu hình. Bấm "Hệ số nguyên" hoặc "Thêm đầu điểm" để bắt đầu.
+                  Chưa có đầu điểm nào trong cấu hình. Bấm "Thêm đầu điểm" để bắt đầu.
                 </td>
               </tr>
             ) : (
               components.map((item, index) => {
-                const isCustom = item.source === 'Custom' || item.componentCode.startsWith('CUSTOM');
+                const isCustom =
+                  item.source === 'Custom' || item.componentCode.startsWith('CUSTOM');
+
+                // Tính tỷ lệ phần trăm quy đổi động
+                const percentEquiv =
+                  totalWeight > 0
+                    ? Math.round(((Number(item.weight) / totalWeight) * 100) * 100) / 100
+                    : 0;
 
                 return (
                   <tr
                     key={item.componentCode || index}
                     className="hover:bg-slate-50/50 transition-colors"
                   >
+                    {/* Cột 1: Nguồn / thành viên */}
                     <td className="px-5 py-4">
                       <div className="font-semibold text-slate-800 text-sm">
                         {item.componentName}
@@ -133,17 +174,28 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                       </div>
                     </td>
 
+                    {/* Cột 2: Điểm / Trọng số */}
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {isReadOnly ? (
-                          <span className="font-semibold text-slate-800 text-sm">
-                            {item.weight} {calculationMethod === 'Percentage' ? '%' : ''}
-                          </span>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-semibold text-slate-800 text-sm">
+                              {item.weight}
+                            </span>
+                            <span className="text-xs text-slate-500 font-medium">
+                              {calculationMethod === 'Percentage' ? '%' : 'hệ số'}
+                            </span>
+                            {calculationMethod === 'IntegerCoefficient' && (
+                              <span className="text-[11px] text-slate-400 font-medium">
+                                (≈ {percentEquiv}%)
+                              </span>
+                            )}
+                          </div>
                         ) : (
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             <input
                               type="number"
-                              step={calculationMethod === 'Percentage' ? '1' : '0.5'}
+                              step={calculationMethod === 'Percentage' ? '0.01' : '1'}
                               min="0"
                               max={calculationMethod === 'Percentage' ? '100' : '99'}
                               value={item.weight === 0 ? '' : item.weight}
@@ -151,27 +203,37 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                               placeholder="0"
                               className="w-20 px-2.5 py-1 text-sm font-semibold text-slate-800 border border-slate-200 rounded-lg text-center bg-white focus:outline-none focus:ring-1 focus:ring-primary shadow-2xs"
                             />
-                            <span className="text-xs text-slate-500 font-medium">
+                            <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
                               {calculationMethod === 'Percentage' ? '%' : 'hệ số'}
                             </span>
+                            {calculationMethod === 'IntegerCoefficient' && (
+                              <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
+                                (≈ {percentEquiv}%)
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
                     </td>
 
+                    {/* Cột 3: Điều kiện */}
                     <td className="px-5 py-4 text-xs text-slate-600">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span>{getConditionText(item)}</span>
                         {item.minimumScore !== null && (
-                          <span title="Có áp dụng điểm sàn" className="text-amber-500 inline-flex items-center">
+                          <span
+                            title="Có áp dụng điểm sàn"
+                            className="text-amber-500 inline-flex items-center"
+                          >
                             <ShieldAlert className="size-3.5" />
                           </span>
                         )}
                       </div>
                     </td>
 
-                    <td className="px-5 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    {/* Cột 4: Phân loại & thao tác (Tăng width và không để wrap chữ) */}
+                    <td className="px-5 py-4 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center justify-end gap-2.5 shrink-0">
                         {getCategoryBadge(item)}
 
                         {isCustom && !isReadOnly && (
@@ -197,7 +259,9 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
       <div className="p-3.5 sm:px-5 border-t border-slate-100 bg-slate-50/40 text-xs text-slate-500 flex items-center justify-between">
         <span>{components.length} mục trong danh sách</span>
         <span className="text-[11px] text-slate-400">
-          Chỉnh sửa trực tiếp trọng số ở ô nhập
+          {calculationMethod === 'IntegerCoefficient'
+            ? 'Hệ số nguyên tự động quy đổi tỷ lệ phần trăm tương ứng'
+            : 'Tổng tỷ lệ phần trăm của các đầu điểm cần bằng đúng 100%'}
         </span>
       </div>
     </div>

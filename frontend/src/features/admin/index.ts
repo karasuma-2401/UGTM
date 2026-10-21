@@ -1,5 +1,6 @@
 export * from './pages/RolePermissionPage';
 export * from './pages/AuditLogPage';
+export * from './pages/ScoreConfigPage';
 export * from './components/RoleListCard';
 export * from './components/RolePermissionEditor';
 export * from './components/PermissionModuleCard';
@@ -14,6 +15,8 @@ export * from './components/ScoreConfigValidationCard';
 export * from './components/ScoreComponentTable';
 export * from './components/ScoreConfigActionBar';
 export * from './components/ScoreComponentAddDialog';
+export * from './components/ScoreConfigHistoryDialog';
+export * from './components/ScoreConfigCloneReasonDialog';
 export * from './types/rolePermission.types';
 export * from './types/auditLog.types';
 export * from './types/scoreConfig.types';
@@ -21,4 +24,6 @@ export * from './services/rolePermissionApi';
 export * from './services/auditLogApi';
 export * from './services/scoreConfigApi';
 export * from './utils/parseAuditDiff';
+export * from './constants/systemRoles';
+
 export * from './constants/systemRoles';
