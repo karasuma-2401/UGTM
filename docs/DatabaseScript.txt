@@ -2,19 +2,64 @@ Project UGTM {
   database_type: 'PostgreSQL'
 }
 
+Table academic.audit_outbox_message {
+  id uuid [pk, not null]
+  action "character varying(100)" [not null]
+  attempt_count integer [not null]
+  created_at "timestamp with time zone" [not null]
+  last_error "character varying(1000)" [null]
+  next_attempt_at "timestamp with time zone" [not null]
+  payload_json jsonb [not null]
+  processed_at "timestamp with time zone" [null]
+
+  indexes {
+    (processed_at, next_attempt_at) [name: 'ix_academic_audit_outbox_pending']
+  }
+}
+
 Table academic.kltn_batch {
   id uuid [pk, not null]
   academic_year "character varying(20)" [not null]
   batch_name "character varying(100)" [not null]
   created_at "timestamp with time zone" [not null]
+  created_by uuid [null]
   end_date date [not null]
+  schedule_template_version_id uuid [null]
   semester integer [not null]
   start_date date [not null]
   status "character varying(50)" [not null, default: 'Draft']
+  time_zone_id "character varying(100)" [not null, default: 'Asia/Ho_Chi_Minh']
+  updated_at "timestamp with time zone" [null]
+  updated_by uuid [null]
+  xmin xid [not null]
+
+  indexes {
+    (academic_year, semester) [unique, name: 'ix_kltn_batch_academic_year_semester']
+    schedule_template_version_id [name: 'ix_kltn_batch_schedule_template_version_id']
+  }
 
   checks {
     `end_date > start_date` [name: 'ck_batch_dates']
     `semester > 0` [name: 'ck_batch_semester']
+  }
+}
+
+Table academic.schedule_template_version {
+  id uuid [pk, not null]
+  created_at "timestamp with time zone" [not null]
+  created_by uuid [null]
+  name "character varying(200)" [not null]
+  published_at "timestamp with time zone" [null]
+  published_by uuid [null]
+  retired_at "timestamp with time zone" [null]
+  status "character varying(50)" [not null]
+  template_code "character varying(100)" [not null]
+  time_zone_id "character varying(100)" [not null]
+  version_no integer [not null]
+
+  indexes {
+    template_code [unique, name: 'ix_schedule_template_one_active', note: "WHERE status = 'Active'"]
+    (template_code, version_no) [unique, name: 'ix_schedule_template_code_version']
   }
 }
 
@@ -33,10 +78,12 @@ Table academic.score_component_config {
 
   indexes {
     (config_id, component_code) [unique, name: 'ix_score_component_config_config_id_component_code']
+    (config_id, order_index) [unique, name: 'ix_score_component_config_config_id_order_index']
   }
 
   checks {
     `minimum_score IS NULL OR minimum_score BETWEEN 0 AND 10` [name: 'ck_score_component_minimum']
+    `order_index > 0` [name: 'ck_score_component_order']
     `weight >= 0` [name: 'ck_score_component_weight']
   }
 }
@@ -45,29 +92,65 @@ Table academic.score_weight_config {
   id uuid [pk, not null]
   batch_id uuid [not null]
   calculation_method "character varying(50)" [not null, default: 'IntegerCoefficient']
+  change_reason "character varying(1000)" [null]
   created_at "timestamp with time zone" [not null]
-  is_active boolean [not null, default: true]
+  created_by uuid [null]
+  published_at "timestamp with time zone" [null]
+  published_by uuid [null]
+  retired_at "timestamp with time zone" [null]
+  status "character varying(50)" [not null, default: 'Draft']
+  updated_at "timestamp with time zone" [null]
   version_no integer [not null, default: 1]
+  xmin xid [not null]
 
   indexes {
-    batch_id [unique, name: 'ix_score_weight_config_batch_id']
+    (batch_id, version_no) [unique, name: 'ix_score_weight_config_batch_version']
+    batch_id [unique, name: 'ix_score_weight_config_one_active', note: "WHERE status = 'Active'"]
+    batch_id [unique, name: 'ix_score_weight_config_one_draft', note: "WHERE status = 'Draft'"]
   }
 }
 
 Table academic.stage {
   id uuid [pk, not null]
   batch_id uuid [not null]
-  deadline_date "timestamp with time zone" [not null]
-  stage_index integer [not null]
+  deadline_at_utc "timestamp with time zone" [not null]
+  end_date date [not null]
+  is_overridden boolean [not null, default: false]
+  order_index integer [not null]
+  stage_code "character varying(100)" [not null]
   stage_name "character varying(150)" [not null]
   start_date date [not null]
 
   indexes {
-    (batch_id, stage_index) [unique, name: 'ix_stage_batch_id_stage_index']
+    (batch_id, order_index) [unique, name: 'ix_stage_batch_id_order_index']
+    (batch_id, stage_code) [unique, name: 'ix_stage_batch_id_stage_code']
   }
 
   checks {
-    `stage_index BETWEEN 1 AND 7` [name: 'ck_stage_index']
+    `end_date >= start_date` [name: 'ck_stage_dates']
+    `order_index BETWEEN 1 AND 7` [name: 'ck_stage_order_index']
+  }
+}
+
+Table academic.stage_template_definition {
+  id uuid [pk, not null]
+  deadline_adjustment_policy "character varying(50)" [not null]
+  default_deadline_local_time "time without time zone" [not null]
+  end_offset_days integer [not null]
+  order_index integer [not null]
+  stage_code "character varying(100)" [not null]
+  stage_name "character varying(150)" [not null]
+  start_offset_days integer [not null]
+  template_version_id uuid [not null]
+
+  indexes {
+    (template_version_id, order_index) [unique, name: 'ix_stage_template_version_order']
+    (template_version_id, stage_code) [unique, name: 'ix_stage_template_version_code']
+  }
+
+  checks {
+    `start_offset_days >= 0 AND end_offset_days >= start_offset_days` [name: 'ck_stage_template_offsets']
+    `order_index BETWEEN 1 AND 7` [name: 'ck_stage_template_order']
   }
 }
 
@@ -642,8 +725,10 @@ Table topics.topic {
 }
 
 Ref fk_score_component_config_score_weight_configs_config_id: academic.score_component_config.config_id > academic.score_weight_config.id [delete: cascade]
-Ref fk_score_weight_config_kltn_batch_batch_id: academic.kltn_batch.id - academic.score_weight_config.batch_id [delete: restrict]
+Ref fk_kltn_batch_schedule_template_version: academic.kltn_batch.schedule_template_version_id > academic.schedule_template_version.id [delete: restrict]
+Ref fk_score_weight_config_kltn_batch_batch_id: academic.score_weight_config.batch_id > academic.kltn_batch.id [delete: restrict]
 Ref fk_stage_kltn_batch_batch_id: academic.stage.batch_id > academic.kltn_batch.id [delete: cascade]
+Ref fk_stage_template_definition_version: academic.stage_template_definition.template_version_id > academic.schedule_template_version.id [delete: cascade]
 Ref fk_advisor_evaluation_student_groups_group_id: thesis.student_group.id - councils.advisor_evaluation.group_id [delete: cascade]
 Ref fk_council_users_approved_by: councils.council.approved_by > identity.user.id [delete: set null]
 Ref fk_council_kltn_batch_batch_id: councils.council.batch_id > academic.kltn_batch.id [delete: restrict]

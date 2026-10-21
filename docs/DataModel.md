@@ -1,10 +1,10 @@
 # Mô hình dữ liệu UGTM
 
-Đối chiếu source ngày 13/10/2026. Nghiệp vụ theo [Requirements.md](Requirements.md); cấu trúc dưới đây lấy từ metadata mô hình EF Core, không suy diễn từ sơ đồ kiến trúc cũ trong Word.
+Đối chiếu source ngày 21/10/2026. Nghiệp vụ theo [Requirements.md](Requirements.md); cấu trúc dưới đây lấy từ metadata mô hình EF Core, không suy diễn từ sơ đồ kiến trúc cũ trong Word.
 
 ## 1. Nguồn chuẩn
 
-Sáu DbContext runtime, mỗi context chỉ có entity/schema của module mình; [UGTMDbContext](../backend/Database.Migrations/UGTMDbContext.cs) chỉ tổng hợp mô hình để tạo migration và không được đăng ký DI runtime. Cấu trúc vật lý gồm **38 bảng nghiệp vụ, 6 schema, 53 FK vật lý**. Quy ước snake_case; enum lưu string `varchar(50)`, không phải PostgreSQL enum. Guid dùng cho phần lớn ID; Role/Permission dùng int; UserRole/RolePermission dùng khóa ghép. Bảng lịch sử `public.__ef_migrations_history` không tính trong 38 bảng nghiệp vụ; public là schema kỹ thuật ngoài 6 schema nghiệp vụ.
+Sáu DbContext runtime, mỗi context chỉ có entity/schema của module mình; [UGTMDbContext](../backend/Database.Migrations/UGTMDbContext.cs) chỉ tổng hợp mô hình để tạo migration và không được đăng ký DI runtime. Cấu trúc vật lý gồm **41 bảng nghiệp vụ, 6 schema, 55 FK vật lý**. Quy ước snake_case; enum lưu string `varchar(50)`, không phải PostgreSQL enum. Guid dùng cho phần lớn ID; Role/Permission dùng int; UserRole/RolePermission dùng khóa ghép. Bảng lịch sử `public.__ef_migrations_history` không tính trong 41 bảng nghiệp vụ; public là schema kỹ thuật ngoài 6 schema nghiệp vụ.
 
 Nguồn thực thi: [EF configurations tại từng module](../backend/Modules), [migrations](../backend/Database.Migrations/Migrations), [snapshot](../backend/Database.Migrations/Migrations/UGTMDbContextModelSnapshot.cs). [DatabaseScript.txt](DatabaseScript.txt) là DBML đồng bộ theo mô hình này để xem bằng dbdiagram; không chứa comment dư thừa và không phải SQL để update Neon. PK, nullability, kiểu PostgreSQL, SQL default, index, check và FK đều được lấy từ EF metadata. Seed dữ liệu và chi tiết provider vẫn xem migration. Cú pháp theo [DBML chính thức](https://dbml.dbdiagram.io/docs/).
 
@@ -13,7 +13,7 @@ Nguồn thực thi: [EF configurations tại từng module](../backend/Modules),
 | Schema | Số bảng | Entity |
 | --- | --- | --- |
 | identity | 10 | AuditLog, AuthenticationSession, IdentityOutboxMessage, OneTimeChallenge, Permission, RefreshToken, Role, RolePermission, User, UserRole |
-| academic | 4 | KltnBatch, ScoreComponentConfig, ScoreWeightConfig, Stage |
+| academic | 7 | AuditOutboxMessage, KltnBatch, ScheduleTemplateVersion, ScoreComponentConfig, ScoreWeightConfig, Stage, StageTemplateDefinition |
 | topics | 1 | Topic |
 | thesis | 10 | FinalReport, FinalSubmission, MidtermReport, ProgressMilestone, ProgressReport, RenameRequest, StudentGroup, StudentGroupMember, SubmissionFile, Syllabus |
 | councils | 12 | AdvisorEvaluation, Council, CouncilAssignment, CouncilMember, CouncilMinute, CouncilScore, EvaluationDetail, GradingCriteria, ReviewerAssignment, ReviewerEvaluation, ScoreSummary, ScoreSummaryComponent |
@@ -33,9 +33,7 @@ Nguồn thực thi: [EF configurations tại từng module](../backend/Modules),
 
 Unique `(StudentId, BatchId)` của StudentGroupMember ngăn sinh viên ở hai nhóm cùng đợt. Unique `(GroupId, StudentId)` ngăn thành viên lặp. Unique `(CouncilAssignmentId, CouncilMemberId)` ngăn hai phiếu Hội đồng của cùng người cho cùng phân công. ReviewerAssignment unique `(GroupId, AssignmentOrder)` và `(GroupId, ReviewerId)` cho phép phản biện thứ hai.
 
-Stage có unique `(BatchId, StageIndex)` và index giai đoạn 1–7; chưa tự tạo đủ 7 giai đoạn hoặc kiểm tra toàn bộ deadline. Topic.StudentNumber có check 1–2 khi có giá trị. Aggregate StudentGroup giới hạn 2 thành viên, không trùng và cùng đợt qua AddMember; đăng ký đồng thời, chỉ tiêu đề tài và thời hạn cần Application kiểm soát trong transaction. Các phiếu điểm có check 0–10; precision trong DB không thay quy định nhập một chữ số thập phân ở API.
-
-ScoreWeightConfig vẫn unique BatchId: một cấu hình hiện hành mỗi đợt, VersionNo tăng khi sửa. Lịch sử tính cần snapshot, không giả định bảng này đã hỗ trợ nhiều phiên bản bất biến. Kiểm tra tổng % bằng 100/hệ số nguyên dương tổng, nguồn áp dụng, đủ đầu điểm và điểm sàn cần được use case gọi; check DB chỉ bảo đảm trọng số không âm và điểm sàn 0–10.
+AcademicPeriods bảo đảm một đợt cho mỗi `(AcademicYear, Semester)`, đúng bảy stage liên tục và deadline UTC sinh từ lịch mẫu theo `Asia/Ho_Chi_Minh`. Lịch mẫu và cấu hình điểm đều có version bất biến sau khi publish; partial unique index chỉ cho phép một `Active` và một `Draft` phù hợp. `xmin` bảo vệ cập nhật đồng thời của batch/cấu hình điểm, còn audit outbox được ghi cùng transaction nghiệp vụ. Topic.StudentNumber có check 1–2 khi có giá trị. Aggregate StudentGroup giới hạn 2 thành viên, không trùng và cùng đợt qua AddMember; đăng ký đồng thời, chỉ tiêu đề tài và thời hạn cần Application kiểm soát trong transaction. Các phiếu điểm có check 0–10; precision trong DB không thay quy định nhập một chữ số thập phân ở API.
 
 Những phần phải thiết kế tiếp trước API:
 
@@ -52,26 +50,62 @@ Những phần phải thiết kế tiếp trước API:
 
 Tên thuộc tính là C#; tên cột và kiểu là PostgreSQL lấy từ EF. Default dưới đây là **SQL default**, khác với giá trị khởi tạo C#. Navigation không phải cột. Runtime model chỉ có navigation nội bộ module; bảng FK ở mục 5 lấy từ mô hình migration tổng hợp, kể cả FK liên module cấu hình qua ID. Enum là string; nullable theo mô hình EF, kể cả thuộc tính tham chiếu.
 
+### academic.audit_outbox_message — AuditOutboxMessage
+
+Audit sự kiện tích hợp của AcademicPeriods; worker chuyển sang `identity.audit_log` theo cơ chế at-least-once.
+
+| Thuộc tính | Cột | Kiểu PostgreSQL | Nullable |
+| --- | --- | --- | --- |
+| Id | id | `uuid` | Không |
+| Action | action | `character varying(100)` | Không |
+| AttemptCount | attempt_count | `integer` | Không |
+| CreatedAt | created_at | `timestamp with time zone` | Không |
+| LastError | last_error | `character varying(1000)` | Có |
+| NextAttemptAt | next_attempt_at | `timestamp with time zone` | Không |
+| PayloadJson | payload_json | `jsonb` | Không |
+| ProcessedAt | processed_at | `timestamp with time zone` | Có |
+
+PK: `id`. Index: `ix_academic_audit_outbox_pending` (`processed_at`, `next_attempt_at`).
+
 ### academic.kltn_batch — KltnBatch
 
 [Entity](../backend/Modules/AcademicPeriods/Domain/Entities/KltnBatch.cs) · [EF configuration](../backend/Modules/AcademicPeriods/Infrastructure/Persistence/Configurations/KltnBatchConfiguration.cs).
 
-| Thuộc tính | Cột | Kiểu CLR | Kiểu PostgreSQL | Nullable | SQL default |
-| --- | --- | --- | --- | --- | --- |
-| Id | id | `Guid` | `uuid` | Không | — |
-| AcademicYear | academic_year | `String` | `character varying(20)` | Không | — |
-| BatchName | batch_name | `String` | `character varying(100)` | Không | — |
-| CreatedAt | created_at | `DateTime` | `timestamp with time zone` | Không | — |
-| EndDate | end_date | `DateOnly` | `date` | Không | — |
-| Semester | semester | `Int32` | `integer` | Không | — |
-| StartDate | start_date | `DateOnly` | `date` | Không | — |
-| Status | status | `BatchStatus` | `character varying(50)` | Không | 'Draft' |
+| Thuộc tính | Cột | Kiểu PostgreSQL | Nullable | SQL default |
+| --- | --- | --- | --- | --- |
+| Id | id | `uuid` | Không | — |
+| AcademicYear | academic_year | `character varying(20)` | Không | — |
+| BatchName | batch_name | `character varying(100)` | Không | — |
+| CreatedAt / CreatedBy | created_at / created_by | `timestamp with time zone` / `uuid` | Không / Có | — |
+| EndDate / StartDate | end_date / start_date | `date` | Không | — |
+| ScheduleTemplateVersionId | schedule_template_version_id | `uuid` | Có | — |
+| Semester | semester | `integer` | Không | — |
+| Status | status | `character varying(50)` | Không | `'Draft'` |
+| TimeZoneId | time_zone_id | `character varying(100)` | Không | `'Asia/Ho_Chi_Minh'` |
+| UpdatedAt / UpdatedBy | updated_at / updated_by | `timestamp with time zone` / `uuid` | Có | — |
+| Version | xmin | `xid` | Không | PostgreSQL quản lý |
 
-PK: `id`.
+PK: `id`. Unique: `ix_kltn_batch_academic_year_semester` (`academic_year`, `semester`). Concurrency token: `xmin`.
 
 Check: `ck_batch_dates`: `end_date > start_date`; `ck_batch_semester`: `semester > 0`.
 
-Navigation: `ScoreWeightConfig` → ScoreWeightConfig; `Stages` → Stage[].
+Navigation: `ScheduleTemplateVersion` → ScheduleTemplateVersion; `ScoreConfigurations` → ScoreWeightConfig[]; `Stages` → Stage[].
+
+### academic.schedule_template_version — ScheduleTemplateVersion
+
+| Cột | Kiểu PostgreSQL | Nullable |
+| --- | --- | --- |
+| id | `uuid` | Không |
+| template_code | `character varying(100)` | Không |
+| version_no | `integer` | Không |
+| name | `character varying(200)` | Không |
+| time_zone_id | `character varying(100)` | Không |
+| status | `character varying(50)` | Không |
+| created_by / published_by | `uuid` | Có |
+| created_at | `timestamp with time zone` | Không |
+| published_at / retired_at | `timestamp with time zone` | Có |
+
+PK: `id`. Unique `(template_code, version_no)`; partial unique `template_code WHERE status = 'Active'`. Seed hiện tại là `UIT_KLTN_STANDARD` version 1.
 
 ### academic.score_component_config — ScoreComponentConfig
 
@@ -93,9 +127,9 @@ Navigation: `ScoreWeightConfig` → ScoreWeightConfig; `Stages` → Stage[].
 
 PK: `id`.
 
-Index: `ix_score_component_config_config_id_component_code` (config_id, component_code) unique.
+Index unique: `(config_id, component_code)` và `(config_id, order_index)`.
 
-Check: `ck_score_component_minimum`: `minimum_score IS NULL OR minimum_score BETWEEN 0 AND 10`; `ck_score_component_weight`: `weight >= 0`.
+Check: điểm sàn 0–10 hoặc null, trọng số không âm, thứ tự lớn hơn 0.
 
 Navigation: `Config` → ScoreWeightConfig.
 
@@ -108,13 +142,17 @@ Navigation: `Config` → ScoreWeightConfig.
 | Id | id | `Guid` | `uuid` | Không | — |
 | BatchId | batch_id | `Guid` | `uuid` | Không | — |
 | CalculationMethod | calculation_method | `ScoreCalculationMethod` | `character varying(50)` | Không | 'IntegerCoefficient' |
-| CreatedAt | created_at | `DateTime` | `timestamp with time zone` | Không | — |
-| IsActive | is_active | `Boolean` | `boolean` | Không | true |
+| ChangeReason | change_reason | `String` | `character varying(1000)` | Có | — |
+| CreatedAt / CreatedBy | created_at / created_by | — | — | — |
+| PublishedAt / PublishedBy | published_at / published_by | — | — | — |
+| RetiredAt / UpdatedAt | retired_at / updated_at | — | — | — |
+| Status | status | `ConfigurationVersionStatus` | `character varying(50)` | Không | 'Draft' |
+| Version | xmin | `UInt32` | `xid` | Không | PostgreSQL quản lý |
 | VersionNo | version_no | `Int32` | `integer` | Không | 1 |
 
 PK: `id`.
 
-Index: `ix_score_weight_config_batch_id` (batch_id) unique.
+Index unique: `(batch_id, version_no)`; partial unique `batch_id WHERE status = 'Active'`; partial unique `batch_id WHERE status = 'Draft'`. Concurrency token: `xmin`.
 
 Navigation: `Batch` → KltnBatch; `Components` → ScoreComponentConfig[].
 
@@ -126,18 +164,36 @@ Navigation: `Batch` → KltnBatch; `Components` → ScoreComponentConfig[].
 | --- | --- | --- | --- | --- | --- |
 | Id | id | `Guid` | `uuid` | Không | — |
 | BatchId | batch_id | `Guid` | `uuid` | Không | — |
-| DeadlineDate | deadline_date | `DateTime` | `timestamp with time zone` | Không | — |
-| StageIndex | stage_index | `Int32` | `integer` | Không | — |
+| DeadlineAtUtc | deadline_at_utc | `DateTime` | `timestamp with time zone` | Không | — |
+| EndDate | end_date | `DateOnly` | `date` | Không | — |
+| IsOverridden | is_overridden | `Boolean` | `boolean` | Không | false |
+| OrderIndex | order_index | `Int32` | `integer` | Không | — |
+| StageCode | stage_code | `String` | `character varying(100)` | Không | — |
 | StageName | stage_name | `String` | `character varying(150)` | Không | — |
 | StartDate | start_date | `DateOnly` | `date` | Không | — |
 
 PK: `id`.
 
-Index: `ix_stage_batch_id_stage_index` (batch_id, stage_index) unique.
+Index unique: `(batch_id, order_index)` và `(batch_id, stage_code)`.
 
-Check: `ck_stage_index`: `stage_index BETWEEN 1 AND 7`.
+Check: `order_index BETWEEN 1 AND 7`; `end_date >= start_date`.
 
 Navigation: `Batch` → KltnBatch.
+
+### academic.stage_template_definition — StageTemplateDefinition
+
+| Cột | Kiểu PostgreSQL | Nullable |
+| --- | --- | --- |
+| id | `uuid` | Không |
+| template_version_id | `uuid` | Không |
+| stage_code | `character varying(100)` | Không |
+| stage_name | `character varying(150)` | Không |
+| order_index | `integer` | Không |
+| start_offset_days / end_offset_days | `integer` | Không |
+| default_deadline_local_time | `time without time zone` | Không |
+| deadline_adjustment_policy | `character varying(50)` | Không |
+
+PK: `id`. Unique: `(template_version_id, order_index)` và `(template_version_id, stage_code)`. Check: thứ tự 1–7, offset bắt đầu không âm và kết thúc không nhỏ hơn bắt đầu.
 
 ### councils.advisor_evaluation — AdvisorEvaluation
 
@@ -859,13 +915,15 @@ Index: `ix_topic_advisor_id` (advisor_id); `ix_topic_batch_id` (batch_id).
 
 Check: `ck_topic_student_number`: `student_number IS NULL OR student_number BETWEEN 1 AND 2`.
 
-## 5. 53 khóa ngoại vật lý
+## 5. 55 khóa ngoại vật lý
 
 | Bảng/cột nguồn | Bảng/cột đích | Quan hệ | ON DELETE |
 | --- | --- | --- | --- |
+| academic.kltn_batch.schedule_template_version_id | academic.schedule_template_version.id | N–1 | restrict |
 | academic.score_component_config.config_id | academic.score_weight_config.id | N–1 | cascade |
-| academic.score_weight_config.batch_id | academic.kltn_batch.id | 1–1 | restrict |
+| academic.score_weight_config.batch_id | academic.kltn_batch.id | N–1 | restrict |
 | academic.stage.batch_id | academic.kltn_batch.id | N–1 | cascade |
+| academic.stage_template_definition.template_version_id | academic.schedule_template_version.id | N–1 | cascade |
 | councils.advisor_evaluation.group_id | thesis.student_group.id | 1–1 | cascade |
 | councils.council.approved_by | identity.user.id | N–1 | set null |
 | councils.council.batch_id | academic.kltn_batch.id | N–1 | restrict |
@@ -919,4 +977,4 @@ Check: `ck_topic_student_number`: `student_number IS NULL OR student_number BETW
 
 ## 6. Kết nối và migration
 
-Xem [Architecture.md#6-migrations-và-neon](../backend/docs/Architecture/Architecture.md#6-migrations-và-neon) để chạy List/Check/Script/Update bằng công cụ pin trong repo. Giữ các migration đã áp dụng; `CompleteIdentityAuthentication` nâng mô hình lên 38 bảng/53 FK và bổ sung dữ liệu phiên, token, challenge cùng email outbox. CSDL đã chạy bản cũ cần chuyển history một lần bằng `MoveMigrationHistory.sql` trước khi update; không cần bước này trên CSDL mới. API không tự migrate khi khởi động. Không chạy `DatabaseScript.txt` như SQL hoặc tạo schema song song với EF.
+Xem [Architecture.md#6-migrations-và-neon](../backend/docs/Architecture/Architecture.md#6-migrations-và-neon) để chạy List/Check/Script/Update bằng công cụ pin trong repo. Giữ các migration đã áp dụng; chuỗi migration AcademicPeriods bổ sung lịch mẫu có version, audit outbox, vòng đời batch/cấu hình điểm, partial unique index và optimistic concurrency. CSDL đã chạy bản cũ cần chuyển history một lần bằng `MoveMigrationHistory.sql` trước khi update; không cần bước này trên CSDL mới. API không tự migrate khi khởi động. Không chạy `DatabaseScript.txt` như SQL hoặc tạo schema song song với EF.

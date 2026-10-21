@@ -15,8 +15,8 @@ Nguồn nghiệp vụ: Báo cáo SE310 (Bản Final).docx (tài liệu nghiệp 
 | [UserManagement.md](../backend/docs/Technical/UserManagement.md) | Thiết kế và cách vận hành phân hệ quản lý người dùng đã triển khai |
 | [RolePermissionManagement.md](../backend/docs/Technical/RolePermissionManagement.md) | Thiết kế và cách vận hành phân hệ quản lý quyền & phân quyền vai trò (RBAC/PBAC) đã triển khai |
 | [TopicProposalAndReview.md](../backend/docs/Technical/TopicProposalAndReview.md) | Thiết kế và cách vận hành phân hệ đề xuất, thẩm định & công bố đề tài khóa luận đã triển khai |
-| [API contracts](ApiContract/README.md) | Contract theo module; bao gồm Identity (Auth, Users, Roles/Permissions) và Topic Catalog |
-| [DataModel.md](DataModel.md) | 38 bảng/6 schema, 53 FK, nguồn migration và khoảng thiếu so với final |
+| [API contracts](ApiContract/README.md) | Contract theo module; bao gồm Identity, Topic Catalog và AcademicPeriods (SCRUM-81) |
+| [DataModel.md](DataModel.md) | 41 bảng/6 schema, 55 FK, nguồn migration và khoảng thiếu so với final |
 | [DatabaseScript.txt](DatabaseScript.txt) | DBML khớp EF, bỏ comment dư thừa; dùng để xem cấu trúc |
 
 ## Quy ước

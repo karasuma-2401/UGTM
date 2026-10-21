@@ -8,5 +8,6 @@ Mỗi module có một contract riêng. Contract chỉ mô tả endpoint đã tr
 | Identity (Users) | [UserManagementApiContract.md](UserManagementApiContract.md) | Đã triển khai |
 | Identity (Role & Permission) | [RolePermissionApiContract.md](RolePermissionApiContract.md) | Đã triển khai |
 | TopicCatalog (Topics & Tracking) | [TopicCatalogApiContract.md](TopicCatalogApiContract.md) | Đã triển khai |
+| AcademicPeriods (Batches, Timeline & Score Configuration) | [AcademicPeriodsApiContract.md](AcademicPeriodsApiContract.md) | SCRUM-81 và SCRUM-83 đã triển khai |
 
 Quy ước response, authentication, lỗi và hành vi đặc biệt được ghi trong contract của module đang sở hữu endpoint. Khi thay đổi request, response, status code hoặc error code, cập nhật contract trong cùng pull request.
