@@ -135,7 +135,15 @@ public sealed class CreateScoreConfigurationDraftHandler(
                 IntegrationAuditActions.ScoreConfigurationDraftCreated,
                 active is null ? null : new { ClonedFromConfigurationId = active.Id }),
             occurredAt);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        var saveError = await unitOfWork.TrySaveChangesAsync(
+            ScoreConfigurationErrors.ConcurrencyConflict,
+            ScoreConfigurationErrors.DraftAlreadyExists,
+            cancellationToken);
+        if (saveError is not null)
+        {
+            return Result.Failure<ScoreConfigurationDto>(saveError);
+        }
+
         return Result.Success(ScoreConfigurationMapper.ToDto(draft));
     }
 

@@ -50,7 +50,14 @@ public sealed class OpenKltnBatchHandler(
         }
 
         AddAudit(auditOutbox, batch, IntegrationAuditActions.BatchOpened, occurredAt);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        var saveError = await unitOfWork.TrySaveChangesAsync(
+            AcademicBatchErrors.ConcurrencyConflict,
+            cancellationToken: cancellationToken);
+        if (saveError is not null)
+        {
+            return Result.Failure<KltnBatchDetailDto>(saveError);
+        }
+
         return Result.Success(AcademicBatchMapper.ToDetail(batch));
     }
 
@@ -111,7 +118,14 @@ public sealed class CloseKltnBatchHandler(
         }
 
         OpenKltnBatchHandler.AddAudit(auditOutbox, batch, IntegrationAuditActions.BatchClosed, occurredAt);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        var saveError = await unitOfWork.TrySaveChangesAsync(
+            AcademicBatchErrors.ConcurrencyConflict,
+            cancellationToken: cancellationToken);
+        if (saveError is not null)
+        {
+            return Result.Failure<KltnBatchDetailDto>(saveError);
+        }
+
         return Result.Success(AcademicBatchMapper.ToDetail(batch));
     }
 }
@@ -149,7 +163,14 @@ public sealed class ArchiveKltnBatchHandler(
         }
 
         OpenKltnBatchHandler.AddAudit(auditOutbox, batch, IntegrationAuditActions.BatchArchived, occurredAt);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        var saveError = await unitOfWork.TrySaveChangesAsync(
+            AcademicBatchErrors.ConcurrencyConflict,
+            cancellationToken: cancellationToken);
+        if (saveError is not null)
+        {
+            return Result.Failure<KltnBatchDetailDto>(saveError);
+        }
+
         return Result.Success(AcademicBatchMapper.ToDetail(batch));
     }
 }

@@ -150,6 +150,7 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDatabaseName("ix_kltn_batch_schedule_template_version_id");
 
                     b.HasIndex("AcademicYear", "Semester")
+                        .IsUnique()
                         .HasDatabaseName("ix_kltn_batch_academic_year_semester");
 
                     b.ToTable("kltn_batch", "academic", t =>

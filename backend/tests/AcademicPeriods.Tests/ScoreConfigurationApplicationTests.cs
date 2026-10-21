@@ -177,6 +177,45 @@ public sealed class ScoreConfigurationApplicationTests
             entry => Assert.Equal(IntegrationAuditActions.ScoreConfigurationPublished, entry.Action));
     }
 
+    [Fact]
+    public async Task Publish_maps_persistence_race_to_concurrency_conflict()
+    {
+        var batch = AcademicPeriodTestData.DraftBatch();
+        var draft = ScoreWeightConfig.CreateDraft(
+            Guid.NewGuid(),
+            batch.Id,
+            1,
+            ScoreCalculationMethod.Percentage,
+            PercentageComponents().Select(component => new UGTM.Modules.AcademicPeriods.Domain.Grading.ScoreComponentDefinition(
+                component.ComponentCode,
+                component.ComponentName,
+                Enum.Parse<ScoreComponentSource>(component.Source),
+                Enum.Parse<ScoreComponentApplicability>(component.Applicability),
+                component.Weight,
+                component.IsRequired,
+                component.MinimumScore,
+                component.RequiresApproval,
+                component.OrderIndex)),
+            AcademicPeriodTestData.ActorId,
+            AcademicPeriodTestData.OccurredAtUtc);
+        var unitOfWork = new FakeUnitOfWork
+        {
+            SaveException = new AcademicPeriodsConcurrencyException(new InvalidOperationException())
+        };
+        var handler = new PublishScoreConfigurationHandler(
+            new FakeScoreConfigurationRepository(draft: draft, byId: draft),
+            new FakeAuditOutbox(),
+            unitOfWork,
+            AuthorizedUser(),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
+
+        var result = await handler.HandleAsync(new PublishScoreConfigurationCommand(batch.Id, draft.Id));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreConfigurationErrors.ConcurrencyConflict.Code, result.Error.Code);
+        Assert.Equal(1, unitOfWork.TransactionCount);
+    }
+
     private static CreateScoreConfigurationDraftHandler CreateHandler(
         KltnBatch batch,
         FakeScoreConfigurationRepository configurations,
@@ -275,9 +314,15 @@ public sealed class ScoreConfigurationApplicationTests
     {
         public int SaveCount { get; private set; }
         public int TransactionCount { get; private set; }
+        public Exception? SaveException { get; init; }
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             SaveCount++;
+            if (SaveException is not null)
+            {
+                return Task.FromException<int>(SaveException);
+            }
+
             return Task.FromResult(1);
         }
 

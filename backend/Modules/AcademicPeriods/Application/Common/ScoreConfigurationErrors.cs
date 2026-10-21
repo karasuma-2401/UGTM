@@ -63,4 +63,8 @@ public static class ScoreConfigurationErrors
     public static readonly Error InvalidStatusTransition = Error.Conflict(
         "ScoreConfiguration.InvalidStatusTransition",
         "Trạng thái hiện tại không cho phép thực hiện thao tác này.");
+
+    public static readonly Error ConcurrencyConflict = Error.Conflict(
+        "ScoreConfiguration.ConcurrencyConflict",
+        "Cấu hình điểm đã được cập nhật bởi một yêu cầu khác. Vui lòng tải lại dữ liệu và thử lại.");
 }

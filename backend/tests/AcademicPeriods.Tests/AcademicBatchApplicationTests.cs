@@ -75,6 +75,33 @@ public sealed class AcademicBatchApplicationTests
     }
 
     [Fact]
+    public async Task Create_batch_maps_database_race_to_duplicate_period_conflict()
+    {
+        var unitOfWork = new FakeUnitOfWork
+        {
+            SaveException = new AcademicPeriodsUniqueConstraintException(
+                "ix_kltn_batch_academic_year_semester",
+                new InvalidOperationException())
+        };
+        var handler = new CreateKltnBatchHandler(
+            new FakeBatchRepository(),
+            new FakeTemplateRepository(AcademicPeriodTestData.ActiveTemplate()),
+            new FakeAuditOutbox(),
+            unitOfWork,
+            AuthorizedUser(PermissionCodes.AcademicBatchesManage),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc));
+
+        var result = await handler.HandleAsync(new CreateKltnBatchCommand(
+            "KLTN HK1 2026-2027",
+            "2026-2027",
+            1,
+            AcademicPeriodTestData.BatchStart));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(AcademicBatchErrors.DuplicateAcademicPeriod.Code, result.Error.Code);
+    }
+
+    [Fact]
     public async Task Update_open_batch_schedule_requires_a_reason_and_does_not_commit_on_failure()
     {
         var batch = AcademicPeriodTestData.DraftBatch();
@@ -224,9 +251,15 @@ public sealed class AcademicBatchApplicationTests
     private sealed class FakeUnitOfWork : IAcademicPeriodsUnitOfWork
     {
         public int SaveCount { get; private set; }
+        public Exception? SaveException { get; init; }
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             SaveCount++;
+            if (SaveException is not null)
+            {
+                return Task.FromException<int>(SaveException);
+            }
+
             return Task.FromResult(1);
         }
     }

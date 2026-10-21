@@ -82,7 +82,14 @@ public sealed class UpdateKltnBatchScheduleHandler(
                 }),
             occurredAt);
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        var saveError = await unitOfWork.TrySaveChangesAsync(
+            AcademicBatchErrors.ConcurrencyConflict,
+            cancellationToken: cancellationToken);
+        if (saveError is not null)
+        {
+            return Result.Failure<KltnBatchDetailDto>(saveError);
+        }
+
         return Result.Success(AcademicBatchMapper.ToDetail(batch));
     }
 }

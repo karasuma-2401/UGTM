@@ -102,7 +102,7 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 **Luồng lý tưởng:**
 
 - Quản trị viên hoặc phòng Đào tạo khởi tạo đợt KLTN mới theo năm học và học kỳ (chu kỳ 21 tuần cố định), cấu hình hạn chót cho từng giai đoạn và nạp danh sách người dùng (import danh sách sinh viên đủ điều kiện, giảng viên từ Excel).
-- Văn phòng Khoa truy cập phân hệ cấu hình bảng điểm để thiết lập phương thức tính điểm tổng kết (tính theo phần trăm trọng số hoặc trung bình cộng hệ số nguyên):
+- PĐT hoặc Admin truy cập phân hệ cấu hình bảng điểm để thiết lập phương thức tính điểm tổng kết (tính theo phần trăm trọng số hoặc trung bình cộng hệ số nguyên):
 - + Thiết lập danh mục các đầu điểm thành phần: Điểm Cán bộ hướng dẫn (ADVISOR), Điểm Cán bộ phản biện (REVIEWER), Điểm Hội đồng bảo vệ (COUNCIL), kèm các đầu điểm tùy chọn khác.
 - + Gán tỷ lệ trọng số (Wi%) hoặc hệ số nguyên (Ci) tương ứng cho từng đầu điểm (ví dụ: GVHD hệ số 2, GVPB hệ số 2, Hội đồng hệ số 1).
 - + Cấu hình điều kiện tiên quyết cho từng đầu điểm (ví dụ: GVPB bắt buộc có điểm sàn ≥5.0 mới đủ điều kiện ra bảo vệ).
@@ -110,7 +110,7 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 
 **Luồng phát sinh:**
 
-- Điều chỉnh công thức/trọng số điểm giữa kỳ: Văn phòng Khoa/Admin chỉ cần cập nhật tham số trên giao diện cấu hình đợt mà không cần can thiệp chỉnh sửa mã nguồn.
+- Điều chỉnh công thức/trọng số điểm: PĐT/Admin tạo Draft từ version đang hoạt động, nhập lý do và công bố version mới mà không cần can thiệp chỉnh sửa mã nguồn.
 - Ràng buộc cấu hình trọng số: Nếu cấu hình theo tỷ lệ phần trăm (%), tổng các Wi phải bằng 100%; nếu cấu hình theo hệ số nguyên (Ci), tổng hệ số phải lớn hơn 0. Nếu vi phạm, hệ thống từ chối lưu và đưa ra cảnh báo lỗi trực quan.
 
 ### Quy trình đăng ký đề tài, ghép nhóm và thẩm định đề cương (Cổng kiểm soát 1 — Tuần 0 đến tuần 2)
@@ -286,13 +286,13 @@ Mã FR được giữ theo báo cáo để truy vết với Use Case và kiểm 
 | --- | --- | --- | --- |
 | FR-SYS-01 | Xác thực và quản lý tài khoản cá nhân | Hệ thống cho phép người dùng đăng nhập bằng email trường và mật khẩu được quản lý nội bộ. Mật khẩu được lưu trữ dưới dạng băm bảo mật (Password Hashing). Sau khi xác thực thành công, hệ thống cấp JWT để xác định danh tính và phục vụ kiểm soát quyền truy cập. Cho phép người dùng thay đổi mật khẩu bằng cách xác thực mật khẩu hiện tại và nhập mật khẩu mới. | Tất cả vai trò |
 | FR-SYS-02 | Khởi tạo và cấu hình đợt KLTN | Cho phép tạo đợt KLTN theo năm học và học kỳ với chu kỳ cố định 21 tuần; thiết lập các giai đoạn và cấu hình thời hạn nộp, xét duyệt tương ứng trong từng giai đoạn. | Admin, PĐT |
-| FR-SYS-03 | Thiết lập phương thức tính điểm động | Cho phép lựa chọn phương thức tính điểm tổng kết của từng đợt KLTN theo tỷ lệ trọng số phần trăm hoặc trung bình cộng có hệ số nguyên. Các tham số được thiết lập thông qua giao diện cấu hình mà không cần thay đổi mã nguồn. | Khoa, Admin |
+| FR-SYS-03 | Thiết lập phương thức tính điểm động | Cho phép lựa chọn phương thức tính điểm tổng kết của từng đợt KLTN theo tỷ lệ trọng số phần trăm hoặc trung bình cộng có hệ số nguyên. Các tham số được thiết lập thông qua giao diện cấu hình mà không cần thay đổi mã nguồn. | PĐT, Admin |
 | FR-SYS-04 | Tra cứu nhật ký hệ thống | Cho phép tìm kiếm, xem và lọc AuditLog theo tài khoản người dùng, loại thao tác và khoảng thời gian. Chỉ Admin được phép truy cập chức năng này. | Admin |
 | FR-SYS-05 | Quản lý tài khoản và phân quyền RBAC | Cho phép Admin tạo mới, cập nhật, vô hiệu hóa tài khoản và gán vai trò người dùng theo 7 nhóm: Sinh viên, GVHD, GVPB, Khoa, PĐT, Hội đồng và Admin. Hệ thống áp dụng RBAC kết hợp Policy-based Authorization để kiểm soát quyền thao tác theo chức danh và ngữ cảnh nghiệp vụ. | Admin |
 | FR-SYS-06 | Import danh sách sinh viên và giảng viên | Cho phép tải lên tệp Excel chứa danh sách sinh viên đủ điều kiện thực hiện KLTN và danh sách giảng viên để phục vụ quản lý, phân công và đăng ký trong từng đợt. | Admin, PĐT |
-| FR-SYS-07 | Quản lý danh mục đầu điểm thành phần | Cho phép thiết lập danh mục đầu điểm của từng đợt KLTN, bao gồm điểm GVHD (ADVISOR), điểm GVPB (REVIEWER), điểm Hội đồng (COUNCIL) và các đầu điểm tùy chọn khác theo cấu hình. | Khoa, Admin |
-| FR-SYS-08 | Cấu hình trọng số và hệ số điểm | Cho phép gán, cập nhật tỷ lệ phần trăm hoặc hệ số nguyên cho từng đầu điểm thành phần. Hỗ trợ điều chỉnh tham số tính điểm trong quá trình thực hiện đợt KLTN theo quyền được cấp. | Khoa, Admin |
-| FR-SYS-09 | Cấu hình điều kiện tiên quyết của đầu điểm | Cho phép thiết lập các điều kiện bắt buộc đối với từng đầu điểm, chẳng hạn ngưỡng điểm phản biện tối thiểu để xét điều kiện ra Hội đồng bảo vệ. Các điều kiện này được lưu theo cấu hình của từng đợt KLTN. | Khoa, Admin |
+| FR-SYS-07 | Quản lý danh mục đầu điểm thành phần | Cho phép thiết lập danh mục đầu điểm của từng đợt KLTN, bao gồm điểm GVHD (ADVISOR), điểm GVPB (REVIEWER), điểm Hội đồng (COUNCIL) và các đầu điểm tùy chọn khác theo cấu hình. | PĐT, Admin |
+| FR-SYS-08 | Cấu hình trọng số và hệ số điểm | Cho phép gán, cập nhật tỷ lệ phần trăm hoặc hệ số nguyên cho từng đầu điểm thành phần. Hỗ trợ điều chỉnh tham số tính điểm trong quá trình thực hiện đợt KLTN theo quyền được cấp. | PĐT, Admin |
+| FR-SYS-09 | Cấu hình điều kiện tiên quyết của đầu điểm | Cho phép thiết lập các điều kiện bắt buộc đối với từng đầu điểm, chẳng hạn ngưỡng điểm phản biện tối thiểu để xét điều kiện ra Hội đồng bảo vệ. Các điều kiện này được lưu theo cấu hình của từng đợt KLTN. | PĐT, Admin |
 | FR-SYS-10 | Kiểm tra tính hợp lệ của cấu hình điểm | Hệ thống tự động kiểm tra các tham số trước khi lưu. Với phương thức tỷ lệ phần trăm, tổng trọng số phải bằng 100%; với phương thức hệ số nguyên, tổng hệ số phải lớn hơn 0. Nếu không hợp lệ, hệ thống từ chối lưu và hiển thị thông báo lỗi. | Hệ thống (tự động) |
 | FR-SYS-11 | Kiểm soát quyền theo chính sách nghiệp vụ | Hệ thống kiểm tra quyền thao tác dựa trên vai trò RBAC kết hợp các chính sách đã xác định tại mục 1.3.2, bao gồm chức danh được phân công, phạm vi đề tài, giai đoạn, trạng thái hồ sơ và các quyền đặc biệt. Từ chối thao tác khi không thỏa mãn điều kiện tương ứng. | Hệ thống (tự động) |
 | FR-SYS-12 | Tự động ghi nhận AuditLog | Hệ thống ghi nhận nhật ký đối với các thao tác quan trọng như thay đổi phân quyền, cập nhật cấu hình, phê duyệt hồ sơ, mở khóa biên bản, điều chỉnh và loại trừ điểm. Nhật ký lưu thông tin người thực hiện, thời điểm và nội dung thao tác để phục vụ kiểm tra. | Hệ thống (tự động) |

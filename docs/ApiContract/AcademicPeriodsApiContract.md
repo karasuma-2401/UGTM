@@ -157,6 +157,7 @@ Khi publish version mới, hệ thống retire Active cũ trước rồi activat
 - `AcademicBatch.DuplicateAcademicPeriod`
 - `AcademicBatch.InvalidStatusTransition`
 - `AcademicBatch.ScoreConfigurationRequired`
+- `AcademicBatch.ConcurrencyConflict`
 - `ScoreConfiguration.AccessDenied`
 - `ScoreConfiguration.BatchNotFound`
 - `ScoreConfiguration.NotFound`
@@ -172,3 +173,6 @@ Khi publish version mới, hệ thống retire Active cũ trước rồi activat
 - `ScoreConfiguration.ChangeReasonRequired`
 - `ScoreConfiguration.InvalidRequest`
 - `ScoreConfiguration.InvalidStatusTransition`
+- `ScoreConfiguration.ConcurrencyConflict`
+
+Các mutation trả `409 Conflict` khi dữ liệu đã bị request khác cập nhật. Client cần tải lại batch/configuration hiện tại trước khi gửi lại thao tác; hệ thống không ghi đè âm thầm.

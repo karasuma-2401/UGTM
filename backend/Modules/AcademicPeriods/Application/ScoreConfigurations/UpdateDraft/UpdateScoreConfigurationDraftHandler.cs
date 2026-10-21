@@ -73,7 +73,14 @@ public sealed class UpdateScoreConfigurationDraftHandler(
                 configuration,
                 IntegrationAuditActions.ScoreConfigurationDraftUpdated),
             occurredAt);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        var saveError = await unitOfWork.TrySaveChangesAsync(
+            ScoreConfigurationErrors.ConcurrencyConflict,
+            cancellationToken: cancellationToken);
+        if (saveError is not null)
+        {
+            return Result.Failure<ScoreConfigurationDto>(saveError);
+        }
+
         return Result.Success(ScoreConfigurationMapper.ToDto(configuration));
     }
 }

@@ -32,50 +32,59 @@ public sealed class PublishScoreConfigurationHandler(
             return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.InvalidRequest);
         }
 
-        return await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+        try
         {
-            var configuration = await configurationRepository.GetByIdAsync(
-                command.ConfigurationId,
-                transactionCancellationToken);
-            if (configuration is null || configuration.BatchId != command.BatchId)
+            return await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
             {
-                return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.NotFound);
-            }
+                var configuration = await configurationRepository.GetByIdAsync(
+                    command.ConfigurationId,
+                    transactionCancellationToken);
+                if (configuration is null || configuration.BatchId != command.BatchId)
+                {
+                    return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.NotFound);
+                }
 
-            if (configuration.Status != ConfigurationVersionStatus.Draft)
-            {
-                return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.InvalidStatusTransition);
-            }
+                if (configuration.Status != ConfigurationVersionStatus.Draft)
+                {
+                    return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.InvalidStatusTransition);
+                }
 
-            var previousActive = await configurationRepository.GetActiveByBatchAsync(
-                command.BatchId,
-                transactionCancellationToken);
-            var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
-            if (previousActive is not null)
-            {
-                previousActive.Retire(occurredAt);
+                var previousActive = await configurationRepository.GetActiveByBatchAsync(
+                    command.BatchId,
+                    transactionCancellationToken);
+                var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
+                if (previousActive is not null)
+                {
+                    previousActive.Retire(occurredAt);
+                    auditOutbox.Add(
+                        CreateScoreConfigurationDraftHandler.AuditEntry(
+                            previousActive,
+                            IntegrationAuditActions.ScoreConfigurationRetired,
+                            new { ReplacedByConfigurationId = configuration.Id }),
+                        occurredAt);
+
+                    // Flush the retirement first so PostgreSQL's immediate filtered unique
+                    // index never observes two Active rows. The enclosing transaction keeps
+                    // both saves and both audit messages atomic.
+                    await unitOfWork.SaveChangesAsync(transactionCancellationToken);
+                }
+
+                configuration.Publish(currentUser.UserId!.Value, occurredAt);
                 auditOutbox.Add(
                     CreateScoreConfigurationDraftHandler.AuditEntry(
-                        previousActive,
-                        IntegrationAuditActions.ScoreConfigurationRetired,
-                        new { ReplacedByConfigurationId = configuration.Id }),
+                        configuration,
+                        IntegrationAuditActions.ScoreConfigurationPublished,
+                        new { PreviousActiveConfigurationId = previousActive?.Id }),
                     occurredAt);
-
-                // Flush the retirement first so PostgreSQL's immediate filtered unique
-                // index never observes two Active rows. The enclosing transaction keeps
-                // both saves and both audit messages atomic.
                 await unitOfWork.SaveChangesAsync(transactionCancellationToken);
-            }
-
-            configuration.Publish(currentUser.UserId!.Value, occurredAt);
-            auditOutbox.Add(
-                CreateScoreConfigurationDraftHandler.AuditEntry(
-                    configuration,
-                    IntegrationAuditActions.ScoreConfigurationPublished,
-                    new { PreviousActiveConfigurationId = previousActive?.Id }),
-                occurredAt);
-            await unitOfWork.SaveChangesAsync(transactionCancellationToken);
-            return Result.Success(ScoreConfigurationMapper.ToDto(configuration));
-        }, cancellationToken);
+                return Result.Success(ScoreConfigurationMapper.ToDto(configuration));
+            }, cancellationToken);
+        }
+        catch (AcademicPeriodsPersistenceException)
+        {
+            // Catch outside the transaction delegate so any partial retirement/audit write
+            // is rolled back before the conflict is returned to the caller.
+            return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.ConcurrencyConflict);
+        }
     }
 }

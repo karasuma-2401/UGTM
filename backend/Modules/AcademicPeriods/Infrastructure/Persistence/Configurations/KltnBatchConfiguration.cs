@@ -18,7 +18,8 @@ public sealed class KltnBatchConfiguration : IEntityTypeConfiguration<KltnBatch>
         builder.Navigation(x => x.ScoreConfigurations).HasField("_scoreConfigurations").UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.HasIndex(x => new { x.AcademicYear, x.Semester })
-            .HasDatabaseName("ix_kltn_batch_academic_year_semester");
+            .HasDatabaseName("ix_kltn_batch_academic_year_semester")
+            .IsUnique();
 
         builder.Property(x => x.BatchName).HasMaxLength(100).IsRequired();
         builder.Property(x => x.AcademicYear).HasMaxLength(20).IsRequired();

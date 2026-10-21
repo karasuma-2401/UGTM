@@ -31,4 +31,8 @@ public static class AcademicBatchErrors
     public static readonly Error ScoreConfigurationRequired = Error.Conflict(
         "AcademicBatch.ScoreConfigurationRequired",
         "Cần công bố một cấu hình điểm đang hoạt động trước khi mở đợt.");
+
+    public static readonly Error ConcurrencyConflict = Error.Conflict(
+        "AcademicBatch.ConcurrencyConflict",
+        "Đợt khóa luận đã được cập nhật bởi một yêu cầu khác. Vui lòng tải lại dữ liệu và thử lại.");
 }
