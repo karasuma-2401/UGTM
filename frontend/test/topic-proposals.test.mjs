@@ -103,12 +103,77 @@ test('topic list scopes privileged lecturer accounts to their own advisor ID and
       return success({ items: [], totalCount: 0 });
     },
   });
-  const query = { advisorId: 'lecturer-1', pageNumber: 2, pageSize: 10 };
+  const query = {
+    advisorId: 'lecturer-1',
+    pageNumber: 2,
+    pageSize: 10,
+    keyword: '  học sâu  ',
+    batchId: 'batch-1',
+    status: 'Draft',
+  };
   const signal = new AbortController().signal;
   await topicApi.getMyTopics(query, signal);
-  assert.deepEqual(calls, [['/api/topics/my-topics', { params: query, signal }]]);
+  assert.deepEqual(calls, [
+    ['/api/topics/my-topics', { params: { ...query, keyword: 'học sâu' }, signal }],
+  ]);
   await topicApi.getDetail('topic-1', signal);
   assert.deepEqual(calls[1], ['/api/topics/topic-1/tracking', { signal }]);
+});
+
+test('statistics use server totals across all pages and retain advisor/batch scope', async () => {
+  const calls = [];
+  const { topicApi } = apiFixture({
+    get: async (path, options) => {
+      calls.push([path, options]);
+      const totals = { Submitted: 15, NeedRevision: 7 };
+      return success({
+        items: [{ id: 'one-row' }],
+        totalCount: totals[options.params.status] ?? 84,
+      });
+    },
+  });
+  const signal = new AbortController().signal;
+  assert.deepEqual(await topicApi.getStatistics('admin-1', 'batch-1', signal), {
+    total: 84,
+    submitted: 15,
+    needRevision: 7,
+  });
+  assert.equal(calls.length, 3);
+  assert.deepEqual(
+    calls.map(([, options]) => options.params.status),
+    [undefined, 'Submitted', 'NeedRevision'],
+  );
+  for (const [path, options] of calls) {
+    assert.equal(path, '/api/topics/my-topics');
+    assert.equal(options.params.advisorId, 'admin-1');
+    assert.equal(options.params.batchId, 'batch-1');
+    assert.equal(options.params.pageNumber, 1);
+    assert.equal(options.params.pageSize, 1);
+    assert.equal(options.signal, signal);
+  }
+});
+
+test('empty filters are omitted and failed statistics do not silently display zero', async () => {
+  const calls = [];
+  const { topicApi } = apiFixture({
+    get: async (_path, options) => {
+      calls.push(options.params);
+      if (options.params.status === 'NeedRevision') throw new Error('Offline');
+      return success({ items: [], totalCount: 0 });
+    },
+  });
+  await topicApi.getMyTopics({
+    advisorId: 'lecturer-1',
+    batchId: '',
+    keyword: '  ',
+    status: '',
+    pageNumber: 1,
+    pageSize: 20,
+  });
+  assert.equal(calls[0].batchId, undefined);
+  assert.equal(calls[0].keyword, undefined);
+  assert.equal(calls[0].status, undefined);
+  await assert.rejects(topicApi.getStatistics('lecturer-1'), /Offline/);
 });
 
 test('batch dropdown fetches all pages and preserves cancellation', async () => {

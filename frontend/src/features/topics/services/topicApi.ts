@@ -1,7 +1,14 @@
 import axios from 'axios';
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
-import type { PagedResult, Topic, TopicBatch, TopicFormValues } from '../types/topic.types';
+import type {
+  PagedResult,
+  Topic,
+  TopicBatch,
+  TopicFilters,
+  TopicFormValues,
+  TopicStatistics,
+} from '../types/topic.types';
 
 function unwrap<T>(response: ApiResponse<T>): T {
   if (!response.success) {
@@ -50,7 +57,7 @@ export const topicApi = {
   },
 
   async getMyTopics(
-    query: {
+    query: Partial<TopicFilters> & {
       advisorId: string;
       pageNumber: number;
       pageSize: number;
@@ -59,10 +66,35 @@ export const topicApi = {
   ): Promise<PagedResult<Topic>> {
     const response = await httpClient.get<ApiResponse<PagedResult<Topic>>>(
       '/api/topics/my-topics',
-      { params: query, signal },
+      {
+        params: {
+          ...query,
+          keyword: query.keyword?.trim() || undefined,
+          batchId: query.batchId || undefined,
+          status: query.status || undefined,
+        },
+        signal,
+      },
     );
 
     return unwrap(response.data);
+  },
+
+  async getStatistics(
+    advisorId: string,
+    batchId?: string,
+    signal?: AbortSignal,
+  ): Promise<TopicStatistics> {
+    const [all, submitted, needRevision] = await Promise.all(
+      (['', 'Submitted', 'NeedRevision'] as const).map((status) =>
+        topicApi.getMyTopics({ advisorId, batchId, status, pageNumber: 1, pageSize: 1 }, signal),
+      ),
+    );
+    return {
+      total: all.totalCount,
+      submitted: submitted.totalCount,
+      needRevision: needRevision.totalCount,
+    };
   },
 
   async getDetail(id: string, signal?: AbortSignal): Promise<Topic> {

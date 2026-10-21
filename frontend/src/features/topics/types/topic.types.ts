@@ -42,6 +42,18 @@ export interface TopicFormValues {
   studentNumber: 1 | 2;
 }
 
+export interface TopicFilters {
+  keyword: string;
+  batchId: string;
+  status: TopicStatus | '';
+}
+
+export interface TopicStatistics {
+  total: number;
+  submitted: number;
+  needRevision: number;
+}
+
 export interface TopicBatch {
   id: string;
   batchName: string;

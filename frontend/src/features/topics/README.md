@@ -3,18 +3,20 @@
 - Route: `/topics/propose`, dùng `AppLayout` hiện tại.
 - Sidebar và route cho tài khoản có vai trò `Lecturer` hoặc `Admin`. Quyền Admin được mở tạm để kiểm thử màn hình Đề xuất.
 - Dùng `httpClient` chung để gửi Bearer token và xử lý refresh phiên.
+- Giao diện theo trang Users: danh sách chính có bộ lọc, `StatisticsBar`, badge trạng thái, bảng cuộn và phân trang; tạo/xem/sửa trong `Dialog` dùng chung.
+- Thống kê Tổng đề tài / Chờ duyệt / Cần chỉnh sửa lấy từ `totalCount` trên server cho tài khoản và đợt đang chọn, độc lập với từ khóa và bộ lọc trạng thái của bảng.
 - Danh sách luôn truyền `advisorId` của người đăng nhập, kể cả khi giảng viên đồng thời có vai trò Khoa/Admin.
 
 ## API
 
-| Thao tác | Endpoint |
-| --- | --- |
-| Chọn đợt, đọc đủ các trang | `GET /api/academic-periods/batches` |
-| Danh sách đề tài cá nhân, có phân trang | `GET /api/topics/my-topics` |
-| Đọc nội dung và trạng thái mới nhất khi mở | `GET /api/topics/{id}/tracking` |
-| Tạo nháp hoặc tạo và gửi duyệt | `POST /api/topics` |
-| Lưu sửa hoặc lưu và gửi duyệt trong cùng request | `PUT /api/topics/{id}` |
-| Gửi bản đã lưu không có thay đổi | `POST /api/topics/{id}/submit` |
+| Thao tác                                         | Endpoint                            |
+| ------------------------------------------------ | ----------------------------------- |
+| Chọn đợt, đọc đủ các trang                       | `GET /api/academic-periods/batches` |
+| Danh sách đề tài cá nhân, có phân trang          | `GET /api/topics/my-topics`         |
+| Đọc nội dung và trạng thái mới nhất khi mở       | `GET /api/topics/{id}/tracking`     |
+| Tạo nháp hoặc tạo và gửi duyệt                   | `POST /api/topics`                  |
+| Lưu sửa hoặc lưu và gửi duyệt trong cùng request | `PUT /api/topics/{id}`              |
+| Gửi bản đã lưu không có thay đổi                 | `POST /api/topics/{id}/submit`      |
 
 Chỉ `Draft` và `NeedRevision` cho chỉnh sửa/gửi duyệt. Các trạng thái khác chỉ xem.
 Khi lưu chỉnh sửa ở `NeedRevision`, trạng thái vẫn là `NeedRevision` cho đến khi gửi lại.
