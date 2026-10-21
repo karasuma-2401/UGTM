@@ -31,8 +31,16 @@ function formatCountdown(totalSeconds: number): string {
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, isLoading, sessionError, sessionNotice, retrySession } =
-    useAuth();
+  const {
+    login,
+    isAuthenticated,
+    isLoading: isRestoringSession,
+    isLoggingOut,
+    sessionError,
+    sessionNotice,
+    retrySession,
+  } = useAuth();
+  const isLoading = isRestoringSession || isLoggingOut;
   const [identifier, setIdentifier] = useState(
     () => localStorage.getItem(REMEMBERED_IDENTIFIER_KEY) || '',
   );
@@ -73,10 +81,10 @@ export function LoginPage() {
   const redirectFrom = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isLoading) {
       navigate(redirectFrom, { replace: true });
     }
-  }, [isAuthenticated, navigate, redirectFrom]);
+  }, [isAuthenticated, isLoading, navigate, redirectFrom]);
 
   useEffect(() => {
     if (!lockUntil) return;
