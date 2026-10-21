@@ -1,7 +1,7 @@
-import { Eye, FileText } from 'lucide-react';
+import { Eye, FileText, Copy, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InfoCell } from '@/components/ui/info-cell';
-import type { Topic, TopicBatch } from '../types/topic.types';
+import { canEditTopic, type Topic, type TopicBatch } from '../types/topic.types';
 import { TopicStatusBadge } from './TopicStatusBadge';
 
 interface TopicsTableProps {
@@ -11,6 +11,8 @@ interface TopicsTableProps {
   pageSize: number;
   busy: boolean;
   onOpen: (topic: Topic) => void;
+  onCopy: (topic: Topic) => void;
+  onSubmit: (topic: Topic) => void;
 }
 
 export function TopicsTable({
@@ -20,10 +22,12 @@ export function TopicsTable({
   pageSize,
   busy,
   onOpen,
+  onCopy,
+  onSubmit,
 }: TopicsTableProps) {
   const batchNames = new Map(batches.map((batch) => [batch.id, batch.batchName]));
   return (
-    <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
+    <table className="w-full min-w-[1200px] table-fixed text-left text-sm">
       <colgroup>
         <col className="w-14" />
         <col />
@@ -31,7 +35,7 @@ export function TopicsTable({
         <col className="w-24" />
         <col className="w-32" />
         <col className="w-44" />
-        <col className="w-32" />
+        <col className="w-72" />
       </colgroup>
       <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-400">
         <tr>
@@ -84,18 +88,46 @@ export function TopicsTable({
               <TopicStatusBadge status={topic.status} />
             </td>
             <td className="px-4 py-4">
-              <Button
-                type="button"
-                variant="soft"
-                size="sm"
-                leftIcon={<Eye />}
-                className="h-9 cursor-pointer"
-                disabled={busy}
-                onClick={() => onOpen(topic)}
-                aria-label={`Xem chi tiết đề tài ${topic.titleVi}`}
-              >
-                Chi tiết
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="soft"
+                  size="sm"
+                  leftIcon={<Eye />}
+                  className="h-9 cursor-pointer"
+                  disabled={busy}
+                  onClick={() => onOpen(topic)}
+                  aria-label={`Xem chi tiết đề tài ${topic.titleVi}`}
+                >
+                  Chi tiết
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9"
+                  leftIcon={<Copy />}
+                  disabled={busy}
+                  onClick={() => onCopy(topic)}
+                  aria-label={`Nhân bản đề tài ${topic.titleVi}`}
+                >
+                  Nhân bản
+                </Button>
+                {canEditTopic(topic.status) && (
+                  <Button
+                    type="button"
+                    variant="successOutline"
+                    size="sm"
+                    className="h-9"
+                    leftIcon={<Send />}
+                    disabled={busy}
+                    onClick={() => onSubmit(topic)}
+                    aria-label={`Gửi duyệt đề tài ${topic.titleVi}`}
+                  >
+                    Gửi duyệt
+                  </Button>
+                )}
+              </div>
             </td>
           </tr>
         ))}

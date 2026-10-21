@@ -18,13 +18,24 @@ function loadModule(path, dependencies = {}, browserWindow = {}) {
     },
   });
   const exports = {};
-  new Function('require', 'exports', 'window', outputText)(
+  new Function(
+    'require',
+    'exports',
+    'window',
+    'localStorage',
+    'document',
+    'HTMLElement',
+    outputText,
+  )(
     (name) => {
       assert.ok(name in dependencies, `Unexpected dependency: ${name}`);
       return { __esModule: true, ...dependencies[name] };
     },
     exports,
     browserWindow,
+    browserWindow.localStorage ?? { getItem: () => null, setItem() {}, removeItem() {} },
+    browserWindow.document ?? {},
+    browserWindow.HTMLElement ?? class {},
   );
   return exports;
 }
@@ -283,7 +294,7 @@ function findElement(node, predicate) {
 
 // Keep React/router/query boundaries controlled while executing the actual page
 // event handlers. No real proposals are created by these interaction tests.
-function proposalPageFixture() {
+function proposalPageFixture(options = {}) {
   const state = [];
   let cursor = 0;
   let tree;
@@ -294,6 +305,57 @@ function proposalPageFixture() {
   let proceeds = 0;
   let mutationCalls = 0;
   const mutationVariables = [];
+  const effects = [];
+  let effectCursor = 0;
+  let mutationCursor = 0;
+  const mutations = [];
+  const pendingJobs = [];
+  const timers = new Map();
+  const frames = new Map();
+  let nextTask = 1;
+  const saved = options.saved ?? new Map();
+  const focused = [];
+  class Element {
+    constructor(id) {
+      this.id = id;
+    }
+    matches() {
+      return !this.id.endsWith('-field');
+    }
+    querySelector() {
+      return new Element(`${this.id}-button`);
+    }
+    focus() {
+      focused.push(this.id);
+    }
+    scrollIntoView() {}
+  }
+  const browserWindow = {
+    confirm: () => true,
+    setTimeout: (callback) => {
+      const id = nextTask++;
+      timers.set(id, callback);
+      return id;
+    },
+    clearTimeout: (id) => timers.delete(id),
+    requestAnimationFrame: (callback) => {
+      const id = nextTask++;
+      frames.set(id, callback);
+      return id;
+    },
+    cancelAnimationFrame: (id) => frames.delete(id),
+    localStorage: {
+      getItem: (key) => saved.get(key) ?? null,
+      setItem: (key, value) => {
+        if (options.failLocalWrite) throw new Error('Storage full');
+        saved.set(key, value);
+      },
+      removeItem: (key) => saved.delete(key),
+    },
+    document: { getElementById: (id) => new Element(id) },
+    HTMLElement: Element,
+  };
+  const editing = loadModule('features/topics/proposalEditing.ts', {}, browserWindow);
   const componentNames = [
     'Button',
     'Input',
@@ -307,6 +369,7 @@ function proposalPageFixture() {
     'TopicStatusBadge',
     'TopicsTable',
     'TopicPreview',
+    'TopicProposalSchedule',
     'TablePagination',
   ];
   const components = Object.fromEntries(componentNames.map((name) => [name, () => null]));
@@ -316,6 +379,14 @@ function proposalPageFixture() {
     {
       react: {
         useCallback: (callback) => callback,
+        useEffect: (callback, deps) => {
+          const index = effectCursor++;
+          const old = effects[index];
+          if (!old || deps.some((dep, position) => !Object.is(dep, old.deps[position]))) {
+            old?.cleanup?.();
+            effects[index] = { deps, callback, pending: true };
+          }
+        },
         useState: (initial) => {
           const index = cursor++;
           if (!(index in state)) state[index] = typeof initial === 'function' ? initial() : initial;
@@ -347,15 +418,15 @@ function proposalPageFixture() {
       },
       '@tanstack/react-query': {
         useQueryClient: () => ({ invalidateQueries: async () => {} }),
-        useQuery: (options) => {
-          if (typeof options.queryKey[2] === 'object') listQuery = options.queryKey;
+        useQuery: (queryOptions) => {
+          if (typeof queryOptions.queryKey[2] === 'object') listQuery = queryOptions.queryKey;
           return {
             data:
-              typeof options.queryKey[2] === 'object'
+              typeof queryOptions.queryKey[2] === 'object'
                 ? {
-                    items: [],
-                    pageNumber: options.queryKey[3],
-                    pageSize: options.queryKey[4],
+                    items: options.listedTopic ? [options.listedTopic] : [],
+                    pageNumber: queryOptions.queryKey[3],
+                    pageSize: queryOptions.queryKey[4],
                     totalCount: 30,
                   }
                 : { total: 30, submitted: 4, needRevision: 2 },
@@ -364,15 +435,25 @@ function proposalPageFixture() {
             isFetching: false,
           };
         },
-        useMutation: () => ({
-          mutate: (variables) => {
-            mutationCalls++;
-            mutationVariables.push(variables);
-          },
-          reset() {},
-          isPending: false,
-          isError: false,
-        }),
+        useMutation: (configuration) => {
+          const index = mutationCursor++;
+          mutations[index] = configuration;
+          return {
+            mutate: (variables) => {
+              mutationCalls++;
+              mutationVariables.push(variables);
+              if (index === 0)
+                pendingJobs.push(
+                  Promise.resolve(configuration.mutationFn(variables)).then((topic) =>
+                    configuration.onSuccess(topic, variables),
+                  ),
+                );
+            },
+            reset() {},
+            isPending: false,
+            isError: false,
+          };
+        },
       },
       'lucide-react': icons,
       '@/components/ui/button': dependency('Button'),
@@ -387,19 +468,32 @@ function proposalPageFixture() {
       '../components/TopicStatusBadge': dependency('TopicStatusBadge'),
       '../components/TopicsTable': dependency('TopicsTable'),
       '../components/TopicPreview': dependency('TopicPreview'),
+      '../components/TopicProposalSchedule': dependency('TopicProposalSchedule'),
+      '../proposalEditing': editing,
       '@/shared/auth': { useAuth: () => ({ user: { id: 'lecturer-1', fullName: 'Giảng viên' } }) },
       '@/shared/academic-periods/useAcademicBatches': {
         useAcademicBatches: () => ({ data: [], isPending: false, isError: false }),
       },
       '../types/topic.types': loadModule('features/topics/types/topic.types.ts'),
-      '../services/topicApi': { topicApi: {}, getTopicErrorMessage: String },
+      '../services/topicApi': {
+        topicApi: { getDetail: async () => options.serverTopic ?? options.listedTopic },
+        getTopicErrorMessage: String,
+      },
     },
-    { confirm: () => true },
+    browserWindow,
   );
   const fixture = {
     render() {
       cursor = 0;
+      effectCursor = 0;
+      mutationCursor = 0;
       tree = TopicProposePage();
+      effects.forEach((effect) => {
+        if (effect.pending) {
+          effect.pending = false;
+          effect.cleanup = effect.callback();
+        }
+      });
       return tree;
     },
     find: (predicate) => findElement(tree, predicate),
@@ -415,6 +509,30 @@ function proposalPageFixture() {
     proceeds: () => proceeds,
     mutationCalls: () => mutationCalls,
     mutationVariables: () => mutationVariables,
+    saveCalls: () => mutationVariables.filter((value) => 'submitImmediately' in value),
+    settle: async () => {
+      await Promise.all(pendingJobs.splice(0));
+    },
+    completeSave: async (topic) =>
+      mutations[1].onSuccess(
+        topic,
+        mutationVariables.findLast((value) => 'submitImmediately' in value),
+      ),
+    flushTimers: () => {
+      for (const [id, callback] of [...timers]) {
+        timers.delete(id);
+        callback();
+      }
+    },
+    flushFrames: () => {
+      for (const [id, callback] of [...frames]) {
+        frames.delete(id);
+        callback();
+      }
+    },
+    focused,
+    saved,
+    editing,
   };
   fixture.render();
   return fixture;
@@ -572,16 +690,292 @@ test('sending requires every content field and reports all missing fields withou
   const page = draftPage();
   submitProposal(page, 'submit');
   assert.equal(page.mutationCalls(), 0);
-  const error = page.find((node) => node.props.role === 'alert').props.children;
+  const error = page.find(
+    (node) =>
+      node.props.role === 'alert' &&
+      typeof node.props.children === 'string' &&
+      node.props.children.startsWith('Vui lòng kiểm tra'),
+  ).props.children;
   assert.match(error, /tên đề tài tiếng Anh/);
   assert.match(error, /mục tiêu và mô tả/);
   assert.match(error, /yêu cầu công nghệ và kiến thức/);
+  assert.ok(page.find((node) => node.props.id === 'topic-title-en').props.error);
+  assert.equal(
+    page.find((node) => node.props.id === 'topic-description').props['aria-invalid'],
+    true,
+  );
+  page.flushFrames();
+  assert.equal(page.focused.at(-1), 'topic-title-en');
   for (const id of ['topic-title-en', 'topic-description', 'topic-requirements']) {
     page.find((node) => node.props.id === id).props.onChange({ target: { value: '   ' } });
     page.render();
   }
   submitProposal(page, 'submit');
   assert.equal(page.mutationCalls(), 0);
+});
+
+const fullTopic = {
+  id: 'topic-1',
+  advisorId: 'lecturer-1',
+  batchId: 'batch-1',
+  status: 'Draft',
+  titleVi: 'Đề tài ban đầu',
+  titleEn: 'Original topic',
+  description: 'Mục tiêu đầy đủ',
+  requirements: 'React, .NET',
+  studentNumber: 2,
+  createdAt: '2026-10-01T00:00:00Z',
+  isPublished: false,
+};
+
+test('local drafts are isolated by account and topic and malformed drafts are ignored', () => {
+  const { saveLocalProposal, readLocalProposal, removeLocalProposal, EMPTY_PROPOSAL } = loadModule(
+    'features/topics/proposalEditing.ts',
+  );
+  const entries = new Map();
+  const storage = {
+    getItem: (key) => entries.get(key) ?? null,
+    setItem: (key, value) => entries.set(key, value),
+    removeItem: (key) => entries.delete(key),
+  };
+  const values = { ...EMPTY_PROPOSAL, titleVi: 'Chưa lưu' };
+  saveLocalProposal('lecturer-1', null, values, EMPTY_PROPOSAL, storage);
+  saveLocalProposal(
+    'lecturer-1',
+    'topic-1',
+    { ...values, description: 'Bản sửa' },
+    values,
+    storage,
+  );
+  assert.equal(readLocalProposal('lecturer-1', null, storage).values.titleVi, 'Chưa lưu');
+  assert.equal(readLocalProposal('lecturer-2', null, storage), null);
+  assert.equal(readLocalProposal('lecturer-1', 'topic-2', storage), null);
+  removeLocalProposal('lecturer-1', null, storage);
+  assert.equal(readLocalProposal('lecturer-1', null, storage), null);
+  assert.equal(readLocalProposal('lecturer-1', 'topic-1', storage).values.description, 'Bản sửa');
+  const [key] = entries.keys();
+  entries.set(key, '{broken');
+  assert.equal(readLocalProposal('lecturer-1', 'topic-1', storage), null);
+  entries.set(key, JSON.stringify({ version: 1, values: {}, baseline: {}, savedAt: 'wrong' }));
+  assert.equal(readLocalProposal('lecturer-1', 'topic-1', storage), null);
+});
+
+test('autosaved new content survives a reload and is removed only after successful server save', async () => {
+  const page = draftPage();
+  page
+    .find((node) => node.props.id === 'topic-description')
+    .props.onChange({ target: { value: 'Nội dung dài chưa gửi' } });
+  page.render();
+  page.flushTimers();
+  page.render();
+  assert.ok(page.editing.readLocalProposal('lecturer-1', null));
+  // readLocalProposal's captured storage is the fixture's browser storage.
+  const reopened = proposalPageFixture({ saved: page.saved });
+  reopened.button('Khôi phục nội dung').props.onClick();
+  reopened.render();
+  assert.equal(
+    reopened.find((node) => node.props.id === 'topic-description').props.value,
+    'Nội dung dài chưa gửi',
+  );
+  assert.equal(reopened.shouldBlock(), true);
+  submitProposal(reopened, 'draft');
+  assert.equal(reopened.saveCalls().length, 1);
+  assert.ok(reopened.editing.readLocalProposal('lecturer-1', null));
+  await reopened.completeSave(fullTopic);
+  reopened.render();
+  assert.equal(reopened.editing.readLocalProposal('lecturer-1', null), null);
+});
+
+test('copying a published topic creates a new proposal with no batch or approval state', async () => {
+  const source = { ...fullTopic, status: 'Published', isPublished: true };
+  const page = proposalPageFixture({ listedTopic: source });
+  page.component('TopicsTable').props.onCopy(source);
+  await page.settle();
+  page.render();
+  assert.equal(
+    page.find((node) => node.props['aria-labelledby'] === 'topic-batch-label').props.value,
+    '',
+  );
+  assert.equal(page.component('TopicStatusBadge').props.status, 'Draft');
+  assert.equal(page.find((node) => node.props.id === 'topic-title-vi').props.value, source.titleVi);
+  assert.equal(page.saveCalls().length, 0);
+  page
+    .find((node) => node.props['aria-labelledby'] === 'topic-batch-label')
+    .props.onChange('batch-2');
+  page.render();
+  submitProposal(page, 'draft');
+  assert.equal(page.saveCalls()[0].id, null);
+  assert.equal(page.saveCalls()[0].values.batchId, 'batch-2');
+  assert.equal('status' in page.saveCalls()[0].values, false);
+});
+
+test('send from table refreshes the topic and refuses to send a status changed on the server', async () => {
+  const page = proposalPageFixture({
+    listedTopic: fullTopic,
+    serverTopic: { ...fullTopic, status: 'Submitted' },
+  });
+  page.component('TopicsTable').props.onSubmit(fullTopic);
+  await page.settle();
+  page.render();
+  assert.equal(page.saveCalls().length, 0);
+  assert.equal(page.component('Dialog'), undefined);
+});
+
+test('send from table validates fresh content, opens missing fields, and submits complete content', async () => {
+  const incomplete = proposalPageFixture({
+    listedTopic: fullTopic,
+    serverTopic: { ...fullTopic, titleEn: '', description: '' },
+  });
+  incomplete.component('TopicsTable').props.onSubmit(fullTopic);
+  await incomplete.settle();
+  incomplete.render();
+  assert.equal(incomplete.saveCalls().length, 0);
+  assert.ok(incomplete.find((node) => node.props.id === 'topic-title-en').props.error);
+  assert.equal(
+    incomplete.find((node) => node.props.id === 'topic-description').props['aria-invalid'],
+    true,
+  );
+  const complete = proposalPageFixture({ listedTopic: fullTopic });
+  complete.component('TopicsTable').props.onSubmit(fullTopic);
+  await complete.settle();
+  assert.deepEqual(complete.saveCalls()[0], {
+    id: fullTopic.id,
+    values: complete.editing.topicToValues(fullTopic),
+    submitImmediately: true,
+    hasChanges: false,
+  });
+});
+
+test('table submit cannot bypass a locally edited draft and recovery preserves the immutable batch', async () => {
+  const page = proposalPageFixture({ listedTopic: fullTopic });
+  const baseline = page.editing.topicToValues(fullTopic);
+  page.editing.saveLocalProposal(
+    'lecturer-1',
+    fullTopic.id,
+    { ...baseline, batchId: 'wrong-batch', description: 'Bản sửa trên thiết bị' },
+    baseline,
+  );
+  page.component('TopicsTable').props.onSubmit(fullTopic);
+  await page.settle();
+  page.render();
+  assert.equal(page.saveCalls().length, 0);
+  assert.ok(page.find((node) => node.type === 'fieldset').props.disabled);
+  page.button('Khôi phục nội dung').props.onClick();
+  page.render();
+  assert.equal(
+    page.find((node) => node.props['aria-labelledby'] === 'topic-batch-label').props.value,
+    fullTopic.batchId,
+  );
+  assert.equal(
+    page.find((node) => node.props.id === 'topic-description').props.value,
+    'Bản sửa trên thiết bị',
+  );
+  assert.equal(page.shouldBlock(), true);
+});
+
+test('removing one active filter chip retains the other filters and resets pagination', () => {
+  const page = proposalPageFixture();
+  page
+    .find((node) => node.props.placeholder === 'Tên đề tài tiếng Việt hoặc tiếng Anh')
+    .props.onChange({ target: { value: 'test' } });
+  page.render();
+  page.find((node) => node.props['aria-label'] === 'Lọc theo đợt KLTN').props.onChange('batch-1');
+  page.render();
+  page
+    .find((node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài')
+    .props.onChange('Draft');
+  page.render();
+  page.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  page.render();
+  page.component('TablePagination').props.onPageChange(3);
+  page.render();
+  page.find((node) => node.props['aria-label'] === 'Bỏ lọc trạng thái').props.onClick();
+  page.render();
+  assert.deepEqual(page.query()[2], { keyword: 'test', batchId: 'batch-1', status: '' });
+  assert.equal(page.query()[3], 1);
+  assert.equal(
+    page.find((node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài').props.value,
+    '',
+  );
+});
+
+test('a storage quota failure preserves form content and does not block saving to the server', () => {
+  const page = proposalPageFixture({ failLocalWrite: true });
+  page.button('Đề xuất đề tài').props.onClick();
+  page.render();
+  page
+    .find((node) => node.props['aria-labelledby'] === 'topic-batch-label')
+    .props.onChange('batch-1');
+  page.render();
+  page
+    .find((node) => node.props.id === 'topic-title-vi')
+    .props.onChange({ target: { value: 'Vẫn giữ nội dung' } });
+  page.render();
+  page.flushTimers();
+  page.render();
+  assert.ok(
+    page.find(
+      (node) =>
+        typeof node.props.children === 'string' &&
+        node.props.children.startsWith('Chưa thể lưu tạm'),
+    ),
+  );
+  assert.equal(
+    page.find((node) => node.props.id === 'topic-title-vi').props.value,
+    'Vẫn giữ nội dung',
+  );
+  submitProposal(page, 'draft');
+  assert.equal(page.saveCalls().length, 1);
+});
+
+test('discarding a form cancels pending autosave so it cannot recreate a deleted local draft', () => {
+  const page = draftPage();
+  page.button('Đóng').props.onClick();
+  page.render();
+  page.flushTimers();
+  assert.equal(page.editing.readLocalProposal('lecturer-1', null), null);
+});
+
+test('reverting all changes removes the obsolete local draft instead of offering it after reload', () => {
+  const page = proposalPageFixture();
+  page.button('Đề xuất đề tài').props.onClick();
+  page.render();
+  page
+    .find((node) => node.props.id === 'topic-title-vi')
+    .props.onChange({ target: { value: 'Sửa thử' } });
+  page.render();
+  page.flushTimers();
+  page.render();
+  assert.ok(page.editing.readLocalProposal('lecturer-1', null));
+  page.find((node) => node.props.id === 'topic-title-vi').props.onChange({ target: { value: '' } });
+  page.render();
+  assert.equal(page.shouldBlock(), false);
+  page.flushTimers();
+  assert.equal(page.editing.readLocalProposal('lecturer-1', null), null);
+});
+
+test('an outdated local draft is never restored into a submitted read-only topic', async () => {
+  const page = proposalPageFixture({
+    listedTopic: fullTopic,
+    serverTopic: { ...fullTopic, status: 'Submitted' },
+  });
+  const initial = page.editing.topicToValues(fullTopic);
+  page.editing.saveLocalProposal(
+    'lecturer-1',
+    fullTopic.id,
+    { ...initial, titleVi: 'Sửa chưa gửi' },
+    initial,
+  );
+  page.component('TopicsTable').props.onOpen(fullTopic);
+  await page.settle();
+  page.render();
+  assert.equal(page.button('Khôi phục nội dung'), undefined);
+  assert.equal(page.find((node) => node.type === 'fieldset').props.disabled, true);
+  assert.equal(
+    page.find((node) => node.props.id === 'topic-title-vi').props.value,
+    fullTopic.titleVi,
+  );
+  assert.equal(page.shouldBlock(), false);
 });
 
 test('sending becomes available only after all three additional fields have content', () => {

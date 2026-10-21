@@ -114,6 +114,64 @@ test('a failed batch request cannot be mistaken for an empty successful list', a
   await assert.rejects(api.getAll(), /Không có quyền đọc đợt KLTN/);
 });
 
+test('timeline API uses the existing batch endpoint and forwards cancellation', async () => {
+  const requests = [];
+  const timeline = { batchId: 'batch-1', stages: [] };
+  const api = apiFixture(async (...args) => {
+    requests.push(args);
+    return { data: { success: true, data: timeline } };
+  });
+  const signal = new AbortController().signal;
+  assert.deepEqual(await api.getTimeline('batch-1', signal), timeline);
+  assert.deepEqual(requests, [['/api/academic-periods/batches/batch-1/timeline', { signal }]]);
+});
+
+test('proposal schedule displays the configured stage and timezone without inventing a deadline', () => {
+  let queryOptions;
+  let data = {
+    batchId: 'batch-1',
+    currentLocalDate: '2026-10-03',
+    timeZoneId: 'Asia/Ho_Chi_Minh',
+    stages: [
+      {
+        stageCode: 'TOPIC_PREPARATION',
+        stageName: 'Chuẩn bị và công bố đề tài',
+        startDate: '2026-10-01',
+        endDate: '2026-10-07',
+        deadlineAtUtc: '2026-10-07T09:00:00Z',
+      },
+    ],
+  };
+  const { TopicProposalSchedule } = loadModule(
+    'features/topics/components/TopicProposalSchedule.tsx',
+    {
+      'react/jsx-runtime': jsxRuntime,
+      '@tanstack/react-query': {
+        useQuery: (options) => {
+          queryOptions = options;
+          return { data, isPending: false, isError: false };
+        },
+      },
+      'lucide-react': { CalendarDays: () => null },
+      '@/components/ui/button': { Button: () => null },
+      '@/shared/auth': {
+        useAuth: () => ({ user: { id: 'lecturer-1' }, hasPermission: () => true }),
+      },
+      '@/shared/academic-periods/academicBatchApi': { academicBatchApi: {} },
+    },
+  );
+  const render = () =>
+    renderToStaticMarkup(React.createElement(TopicProposalSchedule, { batchId: 'batch-1' }));
+  const html = render();
+  assert.deepEqual(queryOptions.queryKey, ['academic-batch-timeline', 'lecturer-1', 'batch-1']);
+  assert.match(html, /Chuẩn bị và công bố đề tài/);
+  assert.match(html, /16:00/);
+  assert.match(html, /Đang trong giai đoạn/);
+  data = { ...data, stages: [] };
+  assert.match(render(), /chưa có lịch chuẩn bị đề tài/);
+  assert.doesNotMatch(render(), /16:00/);
+});
+
 test('shared query scopes cache by user and only fetches with read permission', async () => {
   let options;
   let user = { id: 'user-1' };

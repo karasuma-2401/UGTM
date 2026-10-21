@@ -1,6 +1,6 @@
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
-import type { AcademicBatch } from './types';
+import type { AcademicBatch, AcademicBatchTimeline } from './types';
 
 interface BatchPage {
   items: AcademicBatch[];
@@ -8,6 +8,14 @@ interface BatchPage {
 }
 
 export const academicBatchApi = {
+  async getTimeline(id: string, signal?: AbortSignal): Promise<AcademicBatchTimeline> {
+    const response = await httpClient.get<ApiResponse<AcademicBatchTimeline>>(
+      `/api/academic-periods/batches/${id}/timeline`,
+      { signal },
+    );
+    if (!response.data.success) throw new Error(response.data.error.message);
+    return response.data.data;
+  },
   async getAll(signal?: AbortSignal): Promise<AcademicBatch[]> {
     const batches: AcademicBatch[] = [];
     let pageNumber = 1;

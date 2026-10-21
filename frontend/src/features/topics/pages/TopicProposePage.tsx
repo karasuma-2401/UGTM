@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useBeforeUnload, useBlocker } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -25,6 +25,19 @@ import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
 import { TopicsTable } from '../components/TopicsTable';
+import { TopicProposalSchedule } from '../components/TopicProposalSchedule';
+import {
+  EMPTY_PROPOSAL,
+  topicToValues as toFormValues,
+  copyProposal,
+  validateProposal,
+  readLocalProposal,
+  saveLocalProposal,
+  removeLocalProposal,
+  sameProposal,
+  type LocalProposal,
+  type ProposalErrors,
+} from '../proposalEditing';
 import { TopicPreview } from '../components/TopicPreview';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
@@ -41,14 +54,7 @@ import {
 } from '../types/topic.types';
 import { getTopicErrorMessage, topicApi } from '../services/topicApi';
 
-const INITIAL_VALUES: TopicFormValues = {
-  batchId: '',
-  titleVi: '',
-  titleEn: '',
-  description: '',
-  requirements: '',
-  studentNumber: 2,
-};
+const INITIAL_VALUES = EMPTY_PROPOSAL;
 
 interface SaveProposal {
   id: string | null;
@@ -65,46 +71,91 @@ const textareaClass =
   'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ' +
   'disabled:cursor-not-allowed disabled:opacity-50';
 
-function toFormValues(topic: Topic): TopicFormValues {
-  return {
-    batchId: topic.batchId,
-    titleVi: topic.titleVi,
-    titleEn: topic.titleEn ?? '',
-    description: topic.description ?? '',
-    requirements: topic.requirements ?? '',
-    studentNumber: topic.studentNumber === 1 ? 1 : 2,
-  };
-}
-
 export function TopicProposePage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [values, setValues] = useState<TopicFormValues>(INITIAL_VALUES);
-  const [dirty, setDirty] = useState(false);
+  const [baseline, setBaseline] = useState<TopicFormValues>(INITIAL_VALUES);
+  const dirty = !sameProposal(values, baseline);
   const [notice, setNotice] = useState('');
   const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<ProposalErrors>({});
+  const [focusField, setFocusField] = useState<keyof TopicFormValues | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<TopicFilters>(INITIAL_FILTERS);
   const [filters, setFilters] = useState<TopicFilters>(INITIAL_FILTERS);
-
+  const [recovery, setRecovery] = useState<LocalProposal | null>(null);
+  const [localSavedAt, setLocalSavedAt] = useState('');
+  const [localError, setLocalError] = useState('');
+  const [newLocalDraft, setNewLocalDraft] = useState<{
+    userId: string;
+    draft: LocalProposal;
+  } | null>(() => {
+    if (!user?.id) return null;
+    try {
+      const draft = readLocalProposal(user.id, null);
+      return draft ? { userId: user.id, draft } : null;
+    } catch {
+      return null;
+    }
+  });
+  const availableLocalDraft = newLocalDraft?.userId === user?.id ? newLocalDraft?.draft : null;
   const editable = !selectedTopic || canEditTopic(selectedTopic.status);
   const hasUnsavedChanges = isFormOpen && editable && dirty;
+  const ownerId = user?.id;
+  const editingTopicId = selectedTopic?.id ?? null;
+  const persistDraft = useCallback(() => {
+    if (!ownerId || !isFormOpen || !editable || !dirty || recovery) return;
+    try {
+      const draft = saveLocalProposal(ownerId, editingTopicId, values, baseline);
+      setLocalSavedAt(draft.savedAt);
+      setLocalError('');
+      if (!editingTopicId) setNewLocalDraft({ userId: ownerId, draft });
+    } catch {
+      setLocalError('Chưa thể lưu tạm trên thiết bị. Hãy dùng nút Lưu nháp để lưu lên hệ thống.');
+    }
+  }, [ownerId, editingTopicId, isFormOpen, editable, dirty, recovery, values, baseline]);
   const blocker = useBlocker(hasUnsavedChanges);
-  useBeforeUnload(
-    useCallback(
-      (event) => {
-        if (!hasUnsavedChanges) return;
-        event.preventDefault();
-        event.returnValue = '';
-      },
-      [hasUnsavedChanges],
-    ),
-  );
+  useBeforeUnload((event) => {
+    if (!hasUnsavedChanges) return;
+    persistDraft();
+    event.preventDefault();
+    event.returnValue = '';
+  });
+
+  useEffect(() => {
+    if (!hasUnsavedChanges || recovery) return;
+    const timer = window.setTimeout(persistDraft, 600);
+    return () => window.clearTimeout(timer);
+  }, [hasUnsavedChanges, recovery, persistDraft]);
+
+  useEffect(() => {
+    if (!focusField || !isFormOpen || isPreviewOpen || recovery) return;
+    const ids: Record<keyof TopicFormValues, string> = {
+      batchId: 'topic-batch-field',
+      titleVi: 'topic-title-vi',
+      titleEn: 'topic-title-en',
+      description: 'topic-description',
+      requirements: 'topic-requirements',
+      studentNumber: 'topic-capacity-field',
+    };
+    const frame = window.requestAnimationFrame(() => {
+      const container = document.getElementById(ids[focusField]);
+      const target = container?.matches('input, textarea')
+        ? container
+        : container?.querySelector('button');
+      if (target instanceof HTMLElement) {
+        target.focus();
+        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+      setFocusField(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusField, isFormOpen, isPreviewOpen, recovery]);
 
   const hasFilters = [filters, draftFilters].some((value) =>
     Boolean(value.keyword || value.batchId || value.status),
@@ -123,10 +174,7 @@ export function TopicProposePage() {
       label: 'Tên tiếng Anh hợp lệ (tối đa 350 ký tự)',
       complete: Boolean(values.titleEn.trim()) && values.titleEn.trim().length <= 350,
     },
-    {
-      label: 'Trình bày mục tiêu và mô tả',
-      complete: Boolean(values.description.trim()),
-    },
+    { label: 'Trình bày mục tiêu và mô tả', complete: Boolean(values.description.trim()) },
     {
       label: 'Bổ sung yêu cầu công nghệ, kiến thức',
       complete: Boolean(values.requirements.trim()),
@@ -134,14 +182,12 @@ export function TopicProposePage() {
   ];
 
   const batchesQuery = useAcademicBatches();
-
   const topicsQuery = useQuery({
     queryKey: ['my-proposed-topics', user?.id, filters, pageNumber, pageSize],
     enabled: Boolean(user?.id),
     queryFn: ({ signal }) =>
       topicApi.getMyTopics({ ...filters, advisorId: user!.id, pageNumber, pageSize }, signal),
   });
-
   const statisticsQuery = useQuery({
     queryKey: ['my-proposed-topics', user?.id, 'statistics', filters.batchId],
     enabled: Boolean(user?.id),
@@ -152,41 +198,66 @@ export function TopicProposePage() {
     count === undefined ? '—' : count.toLocaleString('vi-VN');
 
   const detailMutation = useMutation({
-    mutationFn: (id: string) => topicApi.getDetail(id),
-    onSuccess: (topic) => {
-      setSelectedTopic(topic);
-      setValues(toFormValues(topic));
-      setDirty(false);
-      setIsPreviewOpen(false);
-      setIsFormOpen(true);
+    mutationFn: ({ id }: { id: string; intent: 'edit' | 'copy' | 'submit' }) =>
+      topicApi.getDetail(id),
+    onSuccess: async (topic, { intent }) => {
+      const fresh = toFormValues(topic);
+      if (intent === 'copy') {
+        beginEditor(null, copyProposal(topic), { ...INITIAL_VALUES });
+        setNotice('Đã nhân bản nội dung. Chọn đợt và kiểm tra tên trước khi lưu đề xuất mới.');
+      } else if (intent === 'submit') {
+        if (!canEditTopic(topic.status)) {
+          setNotice('Trạng thái đề tài đã thay đổi. Đề tài hiện không thể gửi duyệt.');
+          await queryClient.invalidateQueries({ queryKey: ['my-proposed-topics'] });
+          return;
+        }
+        const cached = loadRecovery(topic.id, fresh);
+        const errors = validateProposal(fresh, true);
+        if (cached || Object.keys(errors).length) {
+          beginEditor(topic, fresh);
+          if (cached)
+            setFormError(
+              'Có bản chỉnh sửa trên thiết bị. Hãy khôi phục hoặc bỏ bản lưu tạm trước khi gửi.',
+            );
+          else showValidation(errors);
+          return;
+        }
+        if (confirmSubmission())
+          saveMutation.mutate({
+            id: topic.id,
+            values: fresh,
+            submitImmediately: true,
+            hasChanges: false,
+          });
+      } else beginEditor(topic, fresh);
     },
   });
 
   const saveMutation = useMutation({
     mutationFn: ({ id, values, submitImmediately, hasChanges }: SaveProposal) => {
-      // An unchanged saved draft only needs the submit endpoint. Edited content
-      // is saved and submitted atomically through PUT to avoid partial success.
       if (id && submitImmediately && !hasChanges) return topicApi.submit(id);
       return topicApi.save(id, values, submitImmediately);
     },
     onSuccess: async (topic, { submitImmediately, id }) => {
+      clearCachedDraft(id);
       setSelectedTopic(topic);
       setValues(toFormValues(topic));
-      setDirty(false);
+      setBaseline(toFormValues(topic));
       setFormError('');
+      setFieldErrors({});
       setIsFormOpen(false);
       setIsPreviewOpen(false);
+      setRecovery(null);
+      setLocalSavedAt('');
       setNotice(
         submitImmediately
           ? 'Đã gửi đề tài đến Khoa để thẩm định.'
           : topic.status === 'NeedRevision'
-            ? 'Đã lưu chỉnh sửa. Bạn có thể gửi duyệt lại khi sẵn sàng.'
-            : 'Đã lưu bản nháp đề tài.',
+            ? 'Đã lưu chỉnh sửa trên hệ thống. Bạn có thể gửi duyệt lại khi sẵn sàng.'
+            : 'Đã lưu bản nháp đề tài trên hệ thống.',
       );
       if (!id) setPageNumber(1);
-      await queryClient.invalidateQueries({
-        queryKey: ['my-proposed-topics'],
-      });
+      await queryClient.invalidateQueries({ queryKey: ['my-proposed-topics'] });
     },
   });
 
@@ -194,38 +265,89 @@ export function TopicProposePage() {
   const batches = batchesQuery.data ?? [];
   const selectedBatch = batches.find((batch) => batch.id === values.batchId);
 
-  function updateField<K extends keyof TopicFormValues>(key: K, value: TopicFormValues[K]) {
-    setValues((previous) => ({ ...previous, [key]: value }));
-    setDirty(true);
-    setNotice('');
-    setFormError('');
-    saveMutation.reset();
-    detailMutation.reset();
-  }
-
-  function openTopic(topic: Topic | null) {
-    if (busy) return;
-
-    if (dirty && !window.confirm('Bỏ các thay đổi chưa lưu để tiếp tục?')) {
-      return;
+  function clearCachedDraft(id: string | null) {
+    if (!user?.id) return;
+    try {
+      removeLocalProposal(user.id, id);
+      if (!id) setNewLocalDraft(null);
+      setLocalError('');
+    } catch {
+      setLocalError('Chưa thể xóa bản lưu tạm trên thiết bị.');
     }
-
-    setNotice('');
+  }
+  function loadRecovery(id: string | null, initial: TopicFormValues): LocalProposal | null {
+    if (!user?.id) return null;
+    try {
+      const draft = readLocalProposal(user.id, id);
+      return draft && !sameProposal(draft.values, initial) ? draft : null;
+    } catch {
+      setLocalError('Không thể đọc bản lưu tạm trên thiết bị.');
+      return null;
+    }
+  }
+  function beginEditor(topic: Topic | null, initial: TopicFormValues, initialBaseline = initial) {
+    setSelectedTopic(topic);
+    setValues(initial);
+    setBaseline(initialBaseline);
+    setFieldErrors({});
     setFormError('');
-    saveMutation.reset();
-    detailMutation.reset();
-
+    setFocusField(null);
+    setLocalSavedAt('');
+    setRecovery(
+      !topic || canEditTopic(topic.status)
+        ? loadRecovery(topic?.id ?? null, initialBaseline)
+        : null,
+    );
     setIsPreviewOpen(false);
-    if (topic) {
-      detailMutation.mutate(topic.id);
-    } else {
-      setSelectedTopic(null);
-      setValues({ ...INITIAL_VALUES, batchId: filters.batchId });
-      setDirty(false);
-      setIsFormOpen(true);
-    }
+    setIsFormOpen(true);
   }
-
+  function restoreRecovery() {
+    if (!recovery) return;
+    setValues({ ...recovery.values, batchId: selectedTopic?.batchId ?? recovery.values.batchId });
+    setLocalSavedAt(recovery.savedAt);
+    setRecovery(null);
+    setFormError('');
+    setFieldErrors({});
+  }
+  function restoreNewDraft() {
+    if (!user?.id || !availableLocalDraft || busy) return;
+    beginEditor(null, { ...availableLocalDraft.values }, { ...INITIAL_VALUES });
+    setRecovery(null);
+    setLocalSavedAt(availableLocalDraft.savedAt);
+  }
+  function discardRecovery() {
+    clearCachedDraft(selectedTopic?.id ?? null);
+    setRecovery(null);
+    setFormError('');
+  }
+  function updateField<K extends keyof TopicFormValues>(key: K, value: TopicFormValues[K]) {
+    const next = { ...values, [key]: value };
+    setValues(next);
+    if (!recovery && sameProposal(next, baseline)) {
+      clearCachedDraft(selectedTopic?.id ?? null);
+      setLocalSavedAt('');
+    }
+    setFieldErrors((previous) => {
+      const next = { ...previous };
+      delete next[key];
+      return next;
+    });
+    setNotice('');
+    setFormError('');
+    saveMutation.reset();
+    detailMutation.reset();
+  }
+  function openTopic(topic: Topic | null, intent: 'edit' | 'copy' | 'submit' = 'edit') {
+    if (busy) return;
+    if (hasUnsavedChanges && !window.confirm('Bỏ các thay đổi chưa lưu để tiếp tục?')) return;
+    setNotice('');
+    setFormError('');
+    setFieldErrors({});
+    saveMutation.reset();
+    detailMutation.reset();
+    if (topic) detailMutation.mutate({ id: topic.id, intent });
+    else beginEditor(null, { ...INITIAL_VALUES, batchId: filters.batchId });
+  }
   function closeForm() {
     if (busy) return;
     if (blocker.state === 'blocked') {
@@ -236,83 +358,64 @@ export function TopicProposePage() {
       setIsPreviewOpen(false);
       return;
     }
-    if (dirty && !window.confirm('Bỏ các thay đổi chưa lưu để đóng cửa sổ?')) return;
-    setDirty(false);
+    if (hasUnsavedChanges && !window.confirm('Bỏ các thay đổi chưa lưu để đóng cửa sổ?')) return;
+    if (dirty && !recovery) clearCachedDraft(selectedTopic?.id ?? null);
+    setValues(baseline);
     setIsFormOpen(false);
+    setRecovery(null);
   }
-
+  function leaveWithoutChanges() {
+    if (blocker.state !== 'blocked') return;
+    if (!recovery) clearCachedDraft(selectedTopic?.id ?? null);
+    setBaseline(values);
+    blocker.proceed();
+  }
+  function showValidation(errors: ProposalErrors) {
+    setFieldErrors(errors);
+    setFormError(`Vui lòng kiểm tra các trường: ${Object.values(errors).join(' ')}`);
+    setFocusField(Object.keys(errors)[0] as keyof TopicFormValues);
+  }
+  function confirmSubmission() {
+    return window.confirm(
+      'Gửi đề tài đến Khoa thẩm định? Sau khi gửi, bạn chỉ có thể sửa khi Khoa yêu cầu chỉnh sửa.',
+    );
+  }
   function handleApplyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFilters({ ...draftFilters, keyword: draftFilters.keyword.trim() });
     setPageNumber(1);
   }
-
   function clearFilters() {
     setDraftFilters({ ...INITIAL_FILTERS });
     setFilters({ ...INITIAL_FILTERS });
     setPageNumber(1);
   }
-
+  function removeFilter(key: keyof TopicFilters) {
+    const next = { ...filters, [key]: '' };
+    setDraftFilters(next);
+    setFilters(next);
+    setPageNumber(1);
+  }
   function applyQuickFilter(status: TopicStatus | '') {
-    // Counts are scoped by batch, not by the search text. Clear search so the
-    // shortcut's results match the total shown on the statistic.
     const next = { keyword: '', batchId: filters.batchId, status };
     setDraftFilters(next);
     setFilters(next);
     setPageNumber(1);
   }
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!editable || busy) return;
-
-    const submitter = (event.nativeEvent as SubmitEvent).submitter;
-    const submitImmediately = submitter?.getAttribute('value') === 'submit';
-
-    if (!values.batchId) {
-      setFormError('Vui lòng chọn đợt KLTN.');
+    if (!editable || busy || recovery) return;
+    const submitImmediately =
+      (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'submit';
+    const errors = validateProposal(values, submitImmediately);
+    if (Object.keys(errors).length) {
+      showValidation(errors);
       return;
     }
-    if (!values.titleVi.trim()) {
-      setFormError('Vui lòng nhập tên đề tài tiếng Việt.');
-      return;
-    }
-    if (values.titleVi.trim().length > 300) {
-      setFormError('Tên tiếng Việt không được vượt quá 300 ký tự.');
-      return;
-    }
-    if (values.titleEn.trim().length > 350) {
-      setFormError('Tên tiếng Anh không được vượt quá 350 ký tự.');
-      return;
-    }
-    if (values.studentNumber !== 1 && values.studentNumber !== 2) {
-      setFormError('Chỉ tiêu sinh viên chỉ được chọn 1 hoặc 2.');
-      return;
-    }
-
-    if (submitImmediately) {
-      const missingFields = [
-        !values.titleEn.trim() && 'tên đề tài tiếng Anh',
-        !values.description.trim() && 'mục tiêu và mô tả',
-        !values.requirements.trim() && 'yêu cầu công nghệ và kiến thức',
-      ].filter(Boolean);
-      if (missingFields.length > 0) {
-        setFormError(`Chưa thể gửi Khoa thẩm định. Vui lòng bổ sung: ${missingFields.join('; ')}.`);
-        return;
-      }
-    }
-
-    if (
-      submitImmediately &&
-      !window.confirm(
-        'Gửi đề tài đến Khoa thẩm định? Sau khi gửi, bạn chỉ có thể sửa khi Khoa yêu cầu chỉnh sửa.',
-      )
-    ) {
-      return;
-    }
-
+    if (submitImmediately && !confirmSubmission()) return;
     setNotice('');
     setFormError('');
+    setFieldErrors({});
     saveMutation.mutate({
       id: selectedTopic?.id ?? null,
       values: { ...values },
@@ -341,6 +444,38 @@ export function TopicProposePage() {
         </Button>
       </div>
 
+      {availableLocalDraft && !isFormOpen && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+        >
+          <div>
+            <p className="font-medium">Có đề xuất đang soạn được lưu trên thiết bị</p>
+            <p className="mt-1 text-xs text-amber-800">
+              Lưu lúc {new Date(availableLocalDraft.savedAt).toLocaleString('vi-VN')}. Nội dung này
+              chưa được lưu lên hệ thống.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" disabled={busy} onClick={restoreNewDraft}>
+              Khôi phục nội dung
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => clearCachedDraft(null)}
+            >
+              Bỏ bản lưu tạm
+            </Button>
+          </div>
+        </div>
+      )}
+      {localError && !isFormOpen && (
+        <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+          {localError}
+        </p>
+      )}
       {notice && (
         <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
           {notice}
@@ -391,8 +526,7 @@ export function TopicProposePage() {
                   variant="destructive"
                   disabled={busy}
                   onClick={() => {
-                    setDirty(false);
-                    blocker.proceed();
+                    leaveWithoutChanges();
                   }}
                 >
                   Bỏ thay đổi và rời trang
@@ -434,6 +568,33 @@ export function TopicProposePage() {
                 </CardHeader>
 
                 <CardContent>
+                  {recovery && (
+                    <div
+                      role="status"
+                      className="mb-4 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+                    >
+                      <p className="font-medium">Có nội dung chưa lưu lên hệ thống</p>
+                      <p className="text-xs">
+                        Bản lưu trên thiết bị lúc{' '}
+                        {new Date(recovery.savedAt).toLocaleString('vi-VN')}. Chọn khôi phục hoặc bỏ
+                        bản lưu tạm để tiếp tục.
+                      </p>
+                      {selectedTopic && !sameProposal(recovery.baseline, baseline) && (
+                        <p className="text-xs font-medium">
+                          Nội dung trên hệ thống đã thay đổi từ lần lưu tạm. Hãy kiểm tra kỹ nội
+                          dung sau khi khôi phục.
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" variant="outline" onClick={restoreRecovery}>
+                          Khôi phục nội dung
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={discardRecovery}>
+                          Bỏ bản lưu tạm
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   <p
                     className={`mb-5 rounded-lg p-3 text-sm ${selectedTopic?.status === 'NeedRevision' ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700'}`}
                   >
@@ -441,12 +602,26 @@ export function TopicProposePage() {
                   </p>
                   {hasUnsavedChanges && (
                     <p role="status" className="mb-4 text-xs font-medium text-amber-700">
-                      Có thay đổi chưa lưu
+                      Có thay đổi chưa lưu trên hệ thống
+                    </p>
+                  )}
+                  {editable && localSavedAt && (
+                    <p role="status" className="mb-4 text-xs text-slate-500">
+                      Đã lưu trên thiết bị lúc {new Date(localSavedAt).toLocaleTimeString('vi-VN')}.
+                      Dùng Lưu nháp để lưu lên hệ thống.
+                    </p>
+                  )}
+                  {localError && (
+                    <p role="alert" className="mb-4 text-xs text-amber-700">
+                      {localError}
                     </p>
                   )}
 
-                  <form onSubmit={handleSubmit} className="space-y-5">
-                    <fieldset disabled={busy || !editable} className="min-w-0 space-y-5">
+                  <form onSubmit={handleSubmit} noValidate className="space-y-5">
+                    <fieldset
+                      disabled={busy || !editable || Boolean(recovery)}
+                      className="min-w-0 space-y-5"
+                    >
                       <div className="space-y-2">
                         <label
                           id="topic-batch-label"
@@ -455,6 +630,8 @@ export function TopicProposePage() {
                           Đợt KLTN <span className="text-rose-600">*</span>
                         </label>
                         <Select<string>
+                          id="topic-batch-field"
+                          error={fieldErrors.batchId}
                           triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
                           aria-labelledby="topic-batch-label"
                           value={values.batchId}
@@ -470,6 +647,7 @@ export function TopicProposePage() {
                           searchable
                           disabled={
                             busy ||
+                            Boolean(recovery) ||
                             !editable ||
                             Boolean(selectedTopic) ||
                             batchesQuery.isPending ||
@@ -498,6 +676,7 @@ export function TopicProposePage() {
                         <Input
                           className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
                           id="topic-title-vi"
+                          error={fieldErrors.titleVi}
                           value={values.titleVi}
                           onChange={(event) => updateField('titleVi', event.target.value)}
                           maxLength={300}
@@ -524,10 +703,11 @@ export function TopicProposePage() {
                         <Input
                           className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
                           id="topic-title-en"
+                          error={fieldErrors.titleEn}
                           value={values.titleEn}
                           onChange={(event) => updateField('titleEn', event.target.value)}
                           maxLength={350}
-                          placeholder="Nhập tên tiếng Anh nếu có"
+                          placeholder="Nhập tên tiếng Anh (cần khi gửi duyệt)"
                         />
                       </div>
 
@@ -543,12 +723,25 @@ export function TopicProposePage() {
                         </label>
                         <textarea
                           id="topic-description"
-                          className={textareaClass}
+                          className={`${textareaClass} ${fieldErrors.description ? 'border-rose-400 focus-visible:ring-rose-500' : ''}`}
+                          aria-invalid={Boolean(fieldErrors.description)}
+                          aria-describedby={
+                            fieldErrors.description ? 'topic-description-error' : undefined
+                          }
                           value={values.description}
                           onChange={(event) => updateField('description', event.target.value)}
                           placeholder="Trình bày mục tiêu, phạm vi nghiên cứu và sản phẩm dự kiến..."
                           rows={5}
                         />
+                        {fieldErrors.description && (
+                          <p
+                            id="topic-description-error"
+                            role="alert"
+                            className="text-xs text-rose-600"
+                          >
+                            {fieldErrors.description}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -563,12 +756,25 @@ export function TopicProposePage() {
                         </label>
                         <textarea
                           id="topic-requirements"
-                          className={textareaClass}
+                          className={`${textareaClass} ${fieldErrors.requirements ? 'border-rose-400 focus-visible:ring-rose-500' : ''}`}
+                          aria-invalid={Boolean(fieldErrors.requirements)}
+                          aria-describedby={
+                            fieldErrors.requirements ? 'topic-requirements-error' : undefined
+                          }
                           value={values.requirements}
                           onChange={(event) => updateField('requirements', event.target.value)}
                           placeholder="Công nghệ dự kiến, kiến thức nền tảng cần có..."
                           rows={3}
                         />
+                        {fieldErrors.requirements && (
+                          <p
+                            id="topic-requirements-error"
+                            role="alert"
+                            className="text-xs text-rose-600"
+                          >
+                            {fieldErrors.requirements}
+                          </p>
+                        )}
                       </div>
 
                       <div className="space-y-2">
@@ -579,6 +785,8 @@ export function TopicProposePage() {
                           Số sinh viên tối đa
                         </label>
                         <Select<number>
+                          id="topic-capacity-field"
+                          error={fieldErrors.studentNumber}
                           triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
                           aria-labelledby="topic-capacity-label"
                           value={values.studentNumber}
@@ -586,7 +794,7 @@ export function TopicProposePage() {
                             { value: 1, label: '1 sinh viên' },
                             { value: 2, label: '2 sinh viên' },
                           ]}
-                          disabled={busy || !editable}
+                          disabled={busy || !editable || Boolean(recovery)}
                           onChange={(value: number) =>
                             updateField('studentNumber', value === 1 ? 1 : 2)
                           }
@@ -618,7 +826,7 @@ export function TopicProposePage() {
                           variant="outline"
                           leftIcon={<Save />}
                           className="h-10 rounded-lg px-5"
-                          disabled={busy}
+                          disabled={busy || Boolean(recovery)}
                           isLoading={
                             saveMutation.isPending && !saveMutation.variables?.submitImmediately
                           }
@@ -631,7 +839,7 @@ export function TopicProposePage() {
                           value="submit"
                           leftIcon={<Send />}
                           className="h-10 rounded-lg px-5"
-                          disabled={busy}
+                          disabled={busy || Boolean(recovery)}
                           isLoading={
                             saveMutation.isPending &&
                             saveMutation.variables?.submitImmediately === true
@@ -684,13 +892,14 @@ export function TopicProposePage() {
                       </dd>
                     </div>
                   </dl>
+                  {values.batchId && <TopicProposalSchedule batchId={values.batchId} />}
 
                   <Button
                     type="button"
                     variant="soft"
                     leftIcon={<Eye />}
                     className="h-10 w-full rounded-lg"
-                    disabled={busy}
+                    disabled={busy || Boolean(recovery)}
                     onClick={() => setIsPreviewOpen(true)}
                   >
                     Xem trước đề tài
@@ -827,6 +1036,49 @@ export function TopicProposePage() {
         </div>
       </form>
 
+      {Boolean(filters.keyword || filters.batchId || filters.status) && (
+        <div className="flex flex-wrap items-center gap-2" aria-label="Bộ lọc đang áp dụng">
+          <span className="text-xs text-slate-500">Đang lọc:</span>
+          {filters.keyword && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              rightIcon={<X />}
+              onClick={() => removeFilter('keyword')}
+              aria-label={`Bỏ lọc từ khóa ${filters.keyword}`}
+            >
+              Từ khóa: {filters.keyword}
+            </Button>
+          )}
+          {filters.batchId && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              rightIcon={<X />}
+              onClick={() => removeFilter('batchId')}
+              aria-label="Bỏ lọc đợt KLTN"
+            >
+              {batches.find((batch) => batch.id === filters.batchId)?.batchName ?? 'Đợt đã chọn'}
+            </Button>
+          )}
+          {filters.status && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              rightIcon={<X />}
+              onClick={() => removeFilter('status')}
+              aria-label="Bỏ lọc trạng thái"
+            >
+              {TOPIC_STATUS_LABELS[filters.status]}
+            </Button>
+          )}
+        </div>
+      )}
+      {filters.batchId && <TopicProposalSchedule batchId={filters.batchId} />}
+
       {batchesQuery.isError && !isFormOpen && (
         <div
           role="alert"
@@ -938,6 +1190,8 @@ export function TopicProposePage() {
               pageSize={topicsQuery.data.pageSize}
               busy={busy}
               onOpen={openTopic}
+              onCopy={(topic) => openTopic(topic, 'copy')}
+              onSubmit={(topic) => openTopic(topic, 'submit')}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
