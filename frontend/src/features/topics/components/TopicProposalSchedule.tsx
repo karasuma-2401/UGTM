@@ -73,7 +73,6 @@ export function TopicProposalSchedule({ batchId }: { batchId: string }) {
                 ? 'Đã qua giai đoạn'
                 : 'Đang trong giai đoạn'}
           </p>
-          <p className="text-[11px] text-slate-500">Theo lịch được cấu hình cho đợt KLTN.</p>
         </div>
       ) : (
         <p className="text-slate-500">Đợt này chưa có lịch chuẩn bị đề tài.</p>

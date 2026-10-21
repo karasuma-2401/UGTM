@@ -6,6 +6,7 @@ import * as React from 'react';
 import * as jsxRuntime from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Save, UserPlus } from 'lucide-react';
+import * as icons from 'lucide-react';
 
 function loadModule(path, dependencies = {}) {
   const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
@@ -73,7 +74,7 @@ function renderForm(accountGroup) {
 test('student form requires MSSV and has no staff role checkboxes', () => {
   const html = renderForm('Student');
   assert.match(html, /Mã số sinh viên/);
-  assert.match(html, /Vai trò: Sinh viên/);
+  assert.match(html, /Tài khoản được khởi tạo với vai trò sinh viên/);
   assert.doesNotMatch(html, /type="checkbox"/);
   assert.doesNotMatch(html, /Quản trị viên/);
 });
@@ -156,4 +157,146 @@ test('student import uploads multipart data with a fixed Student role', async ()
     },
   });
   assert.equal((await api.importStudents(file)).importedCount, 25);
+});
+
+function usersPageFixture(accountGroup) {
+  const state = [];
+  let cursor = 0;
+  let queries = [];
+  const component = (name) => ({ [name]: name });
+  const { UsersPage } = loadModule('features/admin/pages/UsersPage.tsx', {
+    react: {
+      useState(initial) {
+        const index = cursor++;
+        if (!(index in state)) state[index] = initial;
+        return [
+          state[index],
+          (value) => {
+            state[index] = value;
+          },
+        ];
+      },
+    },
+    'react/jsx-runtime': jsxRuntime,
+    'lucide-react': icons,
+    '@tanstack/react-query': {
+      useQueryClient: () => ({}),
+      useQuery(options) {
+        queries.push(options);
+        return {
+          data: options.queryKey.includes('statistics')
+            ? { total: 30, pendingActivation: 4, disabled: 2 }
+            : { items: [{}], pageNumber: options.queryKey[3], pageSize: 20 },
+        };
+      },
+      useMutation: () => ({}),
+    },
+    '@/shared/auth': { useAuth: () => ({ user: { id: 'admin' }, hasPermission: () => true }) },
+    '@/components/ui/button': component('Button'),
+    '@/components/ui/input': component('Input'),
+    '@/components/ui/card': { Card: 'Card', CardHeader: 'CardHeader', CardTitle: 'CardTitle' },
+    '@/components/ui/select': component('Select'),
+    '@/components/ui/statistics-bar': component('StatisticsBar'),
+    '@/components/ui/table-pagination': component('TablePagination'),
+    '../components/UserFormDialog': component('UserFormDialog'),
+    '../components/StudentImportDialog': component('StudentImportDialog'),
+    '../components/UsersTable': component('UsersTable'),
+    '../types/user.types': loadModule('features/admin/types/user.types.ts'),
+    '../constants/systemRoles': loadModule('features/admin/constants/systemRoles.ts'),
+    '../services/userApi': {
+      userApi: { getUsers: async (query) => query },
+      getUserErrorMessage: String,
+    },
+    '@/features/auth/services/authApi': {},
+  });
+  let tree;
+  function render() {
+    cursor = 0;
+    queries = [];
+    tree = UsersPage({ accountGroup });
+  }
+  function find(predicate, node) {
+    if (Array.isArray(node)) return node.flatMap((item) => find(predicate, item));
+    if (!React.isValidElement(node)) return [];
+    return [...(predicate(node) ? [node] : []), ...find(predicate, node.props.children)];
+  }
+  render();
+  return {
+    render,
+    find: (predicate) => find(predicate, tree),
+    stat: (key) =>
+      find((node) => node.type === 'StatisticsBar', tree)[0].props.items.find(
+        (item) => item.key === key,
+      ),
+    listQuery: () => queries[0].queryFn({}),
+  };
+}
+
+for (const accountGroup of ['Student', 'Staff']) {
+  test(`${accountGroup} statistic clicks filter the server list, reset pagination and highlight selection`, async () => {
+    const page = usersPageFixture(accountGroup);
+    assert.equal(page.stat('total').active, true);
+    page.find((node) => node.type === 'Input')[0].props.onChange({ target: { value: ' NGUYEN ' } });
+    page.render();
+    if (accountGroup === 'Staff') {
+      page
+        .find((node) => node.props['aria-label'] === 'Lọc theo vai trò')[0]
+        .props.onChange('Lecturer');
+      page.render();
+    }
+    page.find((node) => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    page.render();
+    assert.equal((await page.listQuery()).keyword, 'NGUYEN');
+    assert.equal(page.stat('total').active, false);
+    page.find((node) => node.type === 'TablePagination')[0].props.onPageChange(3);
+    page.render();
+
+    for (const [key, status] of [
+      ['pending', 'PendingActivation'],
+      ['disabled', 'Disabled'],
+      ['total', ''],
+    ]) {
+      page.stat(key).onClick();
+      page.render();
+      assert.deepEqual(await page.listQuery(), {
+        keyword: '',
+        role: '',
+        status,
+        accountGroup,
+        pageNumber: 1,
+        pageSize: 20,
+      });
+      assert.equal(page.stat(key).active, true);
+      assert.equal(
+        page.find((node) => node.props['aria-label'] === 'Lọc theo trạng thái')[0].props.value,
+        status,
+      );
+    }
+  });
+}
+
+test('Users filter chips and Bỏ lọc synchronize applied filters and pending inputs', async () => {
+  const page = usersPageFixture('Staff');
+  const clear = () =>
+    page.find((node) => node.type === 'Button' && node.props.children === 'Bỏ lọc')[0];
+  assert.equal(clear().props.disabled, true);
+  page.stat('pending').onClick();
+  page.render();
+  page.find((node) => node.type === 'Input')[0].props.onChange({ target: { value: 'An' } });
+  page.render();
+  page.find((node) => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+  page.render();
+  page.find((node) => node.props['aria-label'] === 'Bỏ lọc trạng thái')[0].props.onClick();
+  page.render();
+  assert.equal((await page.listQuery()).keyword, 'An');
+  assert.equal((await page.listQuery()).status, '');
+  page.find((node) => node.type === 'Input')[0].props.onChange({ target: { value: 'unsent' } });
+  page.render();
+  clear().props.onClick();
+  page.render();
+  assert.equal(page.find((node) => node.type === 'Input')[0].props.value, '');
+  assert.equal((await page.listQuery()).keyword, '');
+  assert.equal(page.find((node) => node.props['aria-label'] === 'Bộ lọc đang áp dụng').length, 0);
+  assert.equal(clear().props.disabled, true);
+  assert.equal(page.stat('total').active, true);
 });
