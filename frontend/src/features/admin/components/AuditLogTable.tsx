@@ -45,19 +45,19 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
       </div>
 
       <div className="overflow-x-auto min-h-[280px]">
-        <table className="w-full text-left text-sm border-collapse">
+        <table className="w-full min-w-[720px] text-left text-sm table-fixed border-collapse">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/60 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              <th scope="col" className="px-5 py-3.5 w-36">
+              <th scope="col" className="px-5 py-3.5 w-[20%]">
                 Thời gian
               </th>
-              <th scope="col" className="px-5 py-3.5 w-56">
+              <th scope="col" className="px-5 py-3.5 w-[28%]">
                 Người thực hiện
               </th>
-              <th scope="col" className="px-5 py-3.5">
+              <th scope="col" className="px-5 py-3.5 w-[36%]">
                 Thao tác / Hồ sơ
               </th>
-              <th scope="col" className="px-5 py-3.5 w-32 text-right">
+              <th scope="col" className="px-5 py-3.5 w-[16%]">
                 Chi tiết
               </th>
             </tr>
@@ -107,11 +107,11 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
                     </td>
 
                     <td className="px-5 py-4 whitespace-nowrap">
-                      <div className="font-medium text-slate-800 text-xs sm:text-sm">
+                      <div className="font-medium text-slate-800 text-xs sm:text-sm truncate">
                         {actorName}
                       </div>
                       {log.actorEmail && log.actorFullName && (
-                        <div className="text-[11px] text-slate-400 truncate max-w-[200px]">
+                        <div className="text-[11px] text-slate-400 truncate">
                           {log.actorEmail}
                         </div>
                       )}
@@ -135,7 +135,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
                       </div>
                     </td>
 
-                    <td className="px-5 py-4 whitespace-nowrap text-right">
+                    <td className="px-5 py-4 whitespace-nowrap">
                       <button
                         type="button"
                         onClick={(e) => {
