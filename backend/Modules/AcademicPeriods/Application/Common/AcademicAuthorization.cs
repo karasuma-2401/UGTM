@@ -10,6 +10,12 @@ internal static class AcademicAuthorization
     internal static bool CanManageBatches(ICurrentUser currentUser)
         => HasPermission(currentUser, PermissionCodes.AcademicBatchesManage);
 
+    internal static bool CanReadScoreConfigurations(ICurrentUser currentUser)
+        => HasPermission(currentUser, PermissionCodes.AcademicScoreConfigurationsRead);
+
+    internal static bool CanManageScoreConfigurations(ICurrentUser currentUser)
+        => HasPermission(currentUser, PermissionCodes.AcademicScoreConfigurationsManage);
+
     private static bool HasPermission(ICurrentUser currentUser, string permission)
         => currentUser.IsAuthenticated
            && currentUser.UserId.HasValue

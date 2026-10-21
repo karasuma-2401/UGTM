@@ -67,6 +67,25 @@ public sealed class ScoreConfigurationVersionTests
             AcademicPeriodTestData.OccurredAtUtc));
     }
 
+    [Fact]
+    public void Later_draft_version_cannot_clear_its_change_reason()
+    {
+        var active = Create(PercentageComponents());
+        active.Publish(AcademicPeriodTestData.ActorId, AcademicPeriodTestData.OccurredAtUtc.AddMinutes(1));
+        var draft = active.CloneAsNextDraft(
+            Guid.NewGuid(),
+            AcademicPeriodTestData.ActorId,
+            AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2),
+            "Initial reason");
+
+        Assert.Throws<ArgumentException>(() => draft.UpdateDraft(
+            ScoreCalculationMethod.Percentage,
+            PercentageComponents(),
+            AcademicPeriodTestData.OccurredAtUtc.AddMinutes(3),
+            null));
+        Assert.Equal("Initial reason", draft.ChangeReason);
+    }
+
     private static ScoreWeightConfig Create(IEnumerable<ScoreComponentDefinition> components)
         => ScoreWeightConfig.CreateDraft(
             Guid.NewGuid(),

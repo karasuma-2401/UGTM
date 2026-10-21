@@ -18,6 +18,13 @@ public sealed class ScoreConfigurationRepository(AcademicPeriodsDbContext db) : 
                 x => x.BatchId == batchId && x.Status == ConfigurationVersionStatus.Active,
                 cancellationToken);
 
+    public Task<ScoreWeightConfig?> GetDraftByBatchAsync(Guid batchId, CancellationToken cancellationToken = default)
+        => db.ScoreWeightConfigs
+            .Include(x => x.Components)
+            .SingleOrDefaultAsync(
+                x => x.BatchId == batchId && x.Status == ConfigurationVersionStatus.Draft,
+                cancellationToken);
+
     public async Task<int> GetLatestVersionNoAsync(Guid batchId, CancellationToken cancellationToken = default)
         => await db.ScoreWeightConfigs
             .Where(x => x.BatchId == batchId)

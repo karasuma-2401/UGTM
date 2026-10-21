@@ -19,6 +19,11 @@ using UGTM.Modules.AcademicPeriods.Application.Batches.Dtos;
 using UGTM.Modules.AcademicPeriods.Application.Batches.Queries;
 using UGTM.Modules.AcademicPeriods.Application.Batches.UpdateKltnBatchSchedule;
 using UGTM.Modules.AcademicPeriods.Infrastructure.Endpoints;
+using UGTM.Modules.AcademicPeriods.Application.ScoreConfigurations.CreateDraft;
+using UGTM.Modules.AcademicPeriods.Application.ScoreConfigurations.Dtos;
+using UGTM.Modules.AcademicPeriods.Application.ScoreConfigurations.Publish;
+using UGTM.Modules.AcademicPeriods.Application.ScoreConfigurations.Queries;
+using UGTM.Modules.AcademicPeriods.Application.ScoreConfigurations.UpdateDraft;
 
 namespace UGTM.Modules.AcademicPeriods.Infrastructure;
 
@@ -31,6 +36,7 @@ public sealed class AcademicPeriodsModule : IModule
         services.AddModuleDbContext<AcademicPeriodsDbContext>(configuration);
         services.AddScoped<IKltnBatchReader, KltnBatchReader>();
         services.AddScoped<IAcademicBatchQueryReader, AcademicBatchQueryReader>();
+        services.AddScoped<IScoreConfigurationQueryReader, ScoreConfigurationQueryReader>();
         services.AddScoped<IKltnBatchRepository, KltnBatchRepository>();
         services.AddScoped<IScheduleTemplateRepository, ScheduleTemplateRepository>();
         services.AddScoped<IScoreConfigurationRepository, ScoreConfigurationRepository>();
@@ -47,11 +53,18 @@ public sealed class AcademicPeriodsModule : IModule
         services.AddScoped<GetKltnBatchByIdHandler>();
         services.AddScoped<GetKltnBatchTimelineHandler>();
         services.AddScoped<GetCurrentStageHandler>();
+        services.AddScoped<CreateScoreConfigurationDraftHandler>();
+        services.AddScoped<UpdateScoreConfigurationDraftHandler>();
+        services.AddScoped<PublishScoreConfigurationHandler>();
+        services.AddScoped<GetActiveScoreConfigurationHandler>();
+        services.AddScoped<GetScoreConfigurationVersionHandler>();
+        services.AddScoped<GetScoreConfigurationHistoryHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapAcademicBatchEndpoints();
+        endpoints.MapScoreConfigurationEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))

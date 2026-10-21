@@ -14,9 +14,13 @@ public sealed class ScoreWeightConfigConfiguration : IEntityTypeConfiguration<Sc
         builder.HasIndex(x => new { x.BatchId, x.VersionNo })
             .HasDatabaseName("ix_score_weight_config_batch_version")
             .IsUnique();
-        builder.HasIndex(x => x.BatchId)
+        builder.HasIndex(x => x.BatchId, "IX_ScoreWeightConfig_OneActive")
             .HasDatabaseName("ix_score_weight_config_one_active")
             .HasFilter("status = 'Active'")
+            .IsUnique();
+        builder.HasIndex(x => x.BatchId, "IX_ScoreWeightConfig_OneDraft")
+            .HasDatabaseName("ix_score_weight_config_one_draft")
+            .HasFilter("status = 'Draft'")
             .IsUnique();
 
         builder.Property(x => x.VersionNo).HasDefaultValue(1).HasSentinel(1);

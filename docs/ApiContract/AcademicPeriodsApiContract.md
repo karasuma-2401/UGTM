@@ -1,10 +1,10 @@
 # AcademicPeriods API contract
 
-Trạng thái: phần quản lý đợt KLTN và lịch 7 giai đoạn (SCRUM-81) đã triển khai. API cấu hình điểm (SCRUM-83) chưa thuộc contract này.
+Trạng thái: quản lý đợt KLTN/lịch 7 giai đoạn (SCRUM-81) và cấu hình điểm có version (SCRUM-83) đã triển khai.
 
 Base route: `/api/academic-periods/batches`.
 
-Tất cả endpoint yêu cầu Bearer token. Endpoint đọc yêu cầu `academic.batches.read`; endpoint ghi yêu cầu `academic.batches.manage`. Migration mặc định cấp quyền đọc cho sáu vai trò hệ thống và quyền ghi chỉ cho `Admin`, `AcademicAffairs`.
+Tất cả endpoint yêu cầu Bearer token. Batch dùng `academic.batches.read/manage`; cấu hình điểm dùng `academic.score-config.read/manage`. Migration mặc định cấp quyền đọc batch cho sáu vai trò hệ thống. Quyền đọc và quản lý cấu hình điểm chỉ được cấp mặc định cho `Admin`, `AcademicAffairs`.
 
 Response thành công dùng `ApiResponse<T>`. Response lỗi có error `code`, `message`; mã HTTP là `400` cho input/domain value không hợp lệ, `401` khi chưa xác thực, `403` khi thiếu quyền, `404` khi không tìm thấy và `409` cho xung đột trạng thái hoặc dữ liệu.
 
@@ -21,6 +21,17 @@ Response thành công dùng `ApiResponse<T>`. Response lỗi có error `code`, `
 | `POST` | `/{batchId}/archive` | `academic.batches.manage` | `KltnBatchDetailDto` |
 | `GET` | `/{batchId}/timeline` | `academic.batches.read` | `KltnBatchTimelineDto` |
 | `GET` | `/{batchId}/current-stage` | `academic.batches.read` | `CurrentStageResultDto` |
+
+Base route cấu hình điểm: `/api/academic-periods/batches/{batchId}/score-configurations`.
+
+| Method | Route | Permission | Response |
+| --- | --- | --- | --- |
+| `POST` | `/drafts` | `academic.score-config.manage` | `ScoreConfigurationDto` |
+| `PUT` | `/drafts/{configurationId}` | `academic.score-config.manage` | `ScoreConfigurationDto` |
+| `POST` | `/{configurationId}/publish` | `academic.score-config.manage` | `ScoreConfigurationDto` |
+| `GET` | `/active` | `academic.score-config.read` | `ScoreConfigurationDto` |
+| `GET` | `/{configurationId}` | `academic.score-config.read` | `ScoreConfigurationDto` |
+| `GET` | `/history` | `academic.score-config.read` | `IReadOnlyList<ScoreConfigurationDto>` |
 
 ## Tạo đợt
 
@@ -76,6 +87,67 @@ Timeline trả `state` của từng stage là `Upcoming`, `Current` hoặc `Comp
 
 Current-stage trả `currentStage: null` khi ngày địa phương nằm ngoài toàn bộ lịch. Khi có stage hiện tại, response gồm `isDeadlinePassed` và `remainingSeconds`; thời gian còn lại không âm và bằng `0` sau deadline.
 
+## Cấu hình điểm có version
+
+Lifecycle của một version là `Draft -> Active -> Retired`. Active/Retired là bất biến; muốn thay đổi cấu hình đang dùng phải clone Active thành Draft version kế tiếp. Mỗi batch có tối đa một Draft và một Active, được bảo vệ bằng filtered unique indexes tại PostgreSQL.
+
+Tạo version đầu tiên:
+
+```json
+{
+  "calculationMethod": "Percentage",
+  "changeReason": null,
+  "components": [
+    {
+      "componentCode": "ADVISOR",
+      "componentName": "Điểm GVHD",
+      "source": "Advisor",
+      "applicability": "Always",
+      "weight": 40,
+      "isRequired": true,
+      "minimumScore": null,
+      "requiresApproval": false,
+      "orderIndex": 1
+    },
+    {
+      "componentCode": "REVIEWER",
+      "componentName": "Điểm GVPB",
+      "source": "Reviewer",
+      "applicability": "Always",
+      "weight": 30,
+      "isRequired": true,
+      "minimumScore": 5,
+      "requiresApproval": true,
+      "orderIndex": 2
+    },
+    {
+      "componentCode": "COUNCIL",
+      "componentName": "Điểm hội đồng",
+      "source": "CouncilAverage",
+      "applicability": "Always",
+      "weight": 30,
+      "isRequired": true,
+      "minimumScore": null,
+      "requiresApproval": false,
+      "orderIndex": 3
+    }
+  ]
+}
+```
+
+Nếu batch đã có Active, `POST /drafts` tự clone thành version kế tiếp. Khi đó `changeReason` bắt buộc; có thể bỏ `calculationMethod/components` để giữ nguyên cấu hình Active, sau đó chỉnh bằng `PUT /drafts/{configurationId}`.
+
+Quy tắc validation:
+
+- `Percentage`: trọng số không âm và tổng bằng chính xác `100`.
+- `IntegerCoefficient`: hệ số là số nguyên không âm và tổng lớn hơn `0`.
+- Component code và `orderIndex` duy nhất trong một version; order phải dương.
+- `minimumScore` là `null` hoặc thuộc `0..10`.
+- `source`: `Advisor`, `Reviewer`, `CouncilChairman`, `CouncilSecretary`, `CouncilMember`, `CouncilAverage`, `Custom`.
+- `applicability`: `Always`, `ReviewerInCouncil`, `ReviewerOutsideCouncil`.
+
+Khi publish version mới, hệ thống retire Active cũ trước rồi activate Draft mới trong cùng database transaction để không vi phạm unique Active. Hai thay đổi và audit outbox cùng commit hoặc cùng rollback.
+
 ## Error codes
 
 - `AcademicBatch.AccessDenied`
@@ -85,3 +157,18 @@ Current-stage trả `currentStage: null` khi ngày địa phương nằm ngoài 
 - `AcademicBatch.DuplicateAcademicPeriod`
 - `AcademicBatch.InvalidStatusTransition`
 - `AcademicBatch.ScoreConfigurationRequired`
+- `ScoreConfiguration.AccessDenied`
+- `ScoreConfiguration.BatchNotFound`
+- `ScoreConfiguration.NotFound`
+- `ScoreConfiguration.ActiveNotFound`
+- `ScoreConfiguration.DraftAlreadyExists`
+- `ScoreConfiguration.ActiveNotEditable`
+- `ScoreConfiguration.InvalidPercentageTotal`
+- `ScoreConfiguration.InvalidCoefficient`
+- `ScoreConfiguration.DuplicateComponentCode`
+- `ScoreConfiguration.DuplicateComponentOrder`
+- `ScoreConfiguration.InvalidMinimumScore`
+- `ScoreConfiguration.EmptyComponents`
+- `ScoreConfiguration.ChangeReasonRequired`
+- `ScoreConfiguration.InvalidRequest`
+- `ScoreConfiguration.InvalidStatusTransition`

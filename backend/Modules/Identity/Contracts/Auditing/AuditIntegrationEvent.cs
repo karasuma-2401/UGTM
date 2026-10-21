@@ -75,6 +75,18 @@ public static class IntegrationAuditActions
     public const string BatchArchived =
         "AcademicPeriods.Batch.Archived";
 
+    public const string ScoreConfigurationDraftCreated =
+        "AcademicPeriods.ScoreConfiguration.DraftCreated";
+
+    public const string ScoreConfigurationDraftUpdated =
+        "AcademicPeriods.ScoreConfiguration.DraftUpdated";
+
+    public const string ScoreConfigurationPublished =
+        "AcademicPeriods.ScoreConfiguration.Published";
+
+    public const string ScoreConfigurationRetired =
+        "AcademicPeriods.ScoreConfiguration.Retired";
+
     public const string BatchConfigurationUpdated =
         "AcademicPeriods.Batch.ConfigurationUpdated";
 

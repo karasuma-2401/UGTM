@@ -71,9 +71,15 @@ public sealed class ScoreWeightConfig : AggregateRoot<Guid>
         string? changeReason)
     {
         EnsureDraft();
+        var normalizedChangeReason = NormalizeOptionalText(changeReason, 1000, nameof(changeReason));
+        if (VersionNo > 1 && normalizedChangeReason is null)
+        {
+            throw new ArgumentException("A change reason is required after the first score configuration version.", nameof(changeReason));
+        }
+
         ReplaceComponents(calculationMethod, components);
         UpdatedAt = RequireUtc(updatedAt, nameof(updatedAt));
-        ChangeReason = NormalizeOptionalText(changeReason, 1000, nameof(changeReason));
+        ChangeReason = normalizedChangeReason;
     }
 
     public ScoreWeightConfig CloneAsNextDraft(Guid newId, Guid createdBy, DateTime createdAt, string changeReason)

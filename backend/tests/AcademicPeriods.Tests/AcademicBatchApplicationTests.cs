@@ -214,6 +214,8 @@ public sealed class AcademicBatchApplicationTests
             => Task.FromResult(active?.Id == id ? active : null);
         public Task<ScoreWeightConfig?> GetActiveByBatchAsync(Guid batchId, CancellationToken cancellationToken = default)
             => Task.FromResult(active?.BatchId == batchId ? active : null);
+        public Task<ScoreWeightConfig?> GetDraftByBatchAsync(Guid batchId, CancellationToken cancellationToken = default)
+            => Task.FromResult<ScoreWeightConfig?>(null);
         public Task<int> GetLatestVersionNoAsync(Guid batchId, CancellationToken cancellationToken = default)
             => Task.FromResult(active?.VersionNo ?? 0);
         public void Add(ScoreWeightConfig configuration) => throw new NotSupportedException();

@@ -392,14 +392,19 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_score_weight_config");
 
-                    b.HasIndex("BatchId")
+                    b.HasIndex("BatchId", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_score_weight_config_batch_version");
+
+                    b.HasIndex(new[] { "BatchId" }, "IX_ScoreWeightConfig_OneActive")
                         .IsUnique()
                         .HasDatabaseName("ix_score_weight_config_one_active")
                         .HasFilter("status = 'Active'");
 
-                    b.HasIndex("BatchId", "VersionNo")
+                    b.HasIndex(new[] { "BatchId" }, "IX_ScoreWeightConfig_OneDraft")
                         .IsUnique()
-                        .HasDatabaseName("ix_score_weight_config_batch_version");
+                        .HasDatabaseName("ix_score_weight_config_one_draft")
+                        .HasFilter("status = 'Draft'");
 
                     b.ToTable("score_weight_config", "academic");
                 });
