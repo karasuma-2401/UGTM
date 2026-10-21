@@ -275,6 +275,15 @@ test('actual AppLayout hides the proposal link from accounts without Lecturer or
   }
 });
 
+test('review sidebar entry is visible only to Faculty and Admin, including mixed roles', () => {
+  for (const roles of [['Faculty'], ['faculty'], ['Admin'], ['Faculty', 'Lecturer']]) {
+    assert.match(renderSidebar(roles), /href="\/topics\/review"/);
+  }
+  for (const roles of [['Lecturer'], ['Student'], ['CouncilMember'], ['AcademicAffairs'], []]) {
+    assert.doesNotMatch(renderSidebar(roles), /href="\/topics\/review"/);
+  }
+});
+
 test('only Draft and NeedRevision permit editing', () => {
   const { canEditTopic } = loadModule('features/topics/types/topic.types.ts');
   for (const status of ['Draft', 'NeedRevision']) assert.equal(canEditTopic(status), true);

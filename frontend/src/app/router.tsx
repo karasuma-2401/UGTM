@@ -12,6 +12,7 @@ import { OtpPage } from '../features/auth/pages/OtpPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 import { UsersPage } from '../features/admin/pages/UsersPage';
 import { TopicProposePage } from '../features/topics/pages/TopicProposePage';
+import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/admin/layouts/IdentityLayout';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -43,6 +44,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
             <TopicProposePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'topics/review',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin']}>
+            <TopicReviewPage />
           </ProtectedRoute>
         ),
       },

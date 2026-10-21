@@ -35,7 +35,7 @@ export function getTopicErrorMessage(error: unknown): string {
 export const topicApi = {
   async getMyTopics(
     query: Partial<TopicFilters> & {
-      advisorId: string;
+      advisorId?: string;
       pageNumber: number;
       pageSize: number;
     },

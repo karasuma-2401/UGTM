@@ -5,6 +5,7 @@ import {
   SlidersHorizontal,
   ScrollText,
   FilePenLine,
+  ClipboardCheck,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -66,6 +67,12 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/topics/propose',
         icon: FilePenLine,
         roles: ['Lecturer', 'Admin'],
+      },
+      {
+        label: 'Thẩm định đề tài',
+        path: '/topics/review',
+        icon: ClipboardCheck,
+        roles: ['Faculty', 'Admin'],
       },
     ],
   },
