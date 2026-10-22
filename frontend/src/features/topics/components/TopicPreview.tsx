@@ -3,12 +3,18 @@ import { Badge } from '@/components/ui/badge';
 import type { TopicFormValues } from '../types/topic.types';
 
 interface TopicPreviewProps {
-  values: TopicFormValues;
+  values: Omit<TopicFormValues, 'studentNumber'> & { studentNumber: number | null };
   advisorName: string;
   batchName?: string;
+  previewLabel?: string;
 }
 
-export function TopicPreview({ values, advisorName, batchName }: TopicPreviewProps) {
+export function TopicPreview({
+  values,
+  advisorName,
+  batchName,
+  previewLabel = 'Bản xem trước',
+}: TopicPreviewProps) {
   return (
     <article className="space-y-6 p-5 sm:p-6">
       <div className="flex items-start gap-3">
@@ -19,7 +25,7 @@ export function TopicPreview({ values, advisorName, batchName }: TopicPreviewPro
           <FileText className="size-5" />
         </span>
         <div className="min-w-0 space-y-2">
-          <Badge variant="secondary">Bản xem trước</Badge>
+          <Badge variant="secondary">{previewLabel}</Badge>
           <h2 className="break-words text-xl font-bold leading-snug text-slate-900">
             {values.titleVi.trim() || 'Chưa nhập tên đề tài'}
           </h2>
@@ -42,7 +48,9 @@ export function TopicPreview({ values, advisorName, batchName }: TopicPreviewPro
       </dl>
       <div className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700">
         <UsersRound className="size-4" aria-hidden="true" />
-        Tối đa {values.studentNumber} sinh viên
+        {values.studentNumber === null
+          ? 'Chưa có chỉ tiêu sinh viên'
+          : `Tối đa ${values.studentNumber} sinh viên`}
       </div>
       {[
         { title: 'Mục tiêu và mô tả', content: values.description },

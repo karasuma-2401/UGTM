@@ -8,6 +8,16 @@ export type TopicStatus =
   | 'Closed'
   | 'Archived';
 
+export const REVIEW_TOPIC_STATUSES = [
+  'Submitted',
+  'NeedRevision',
+  'Approved',
+  'Rejected',
+  'Published',
+  'Closed',
+  'Archived',
+] as const satisfies readonly TopicStatus[];
+
 export const TOPIC_STATUS_LABELS: Record<TopicStatus, string> = {
   Draft: 'Bản nháp',
   Submitted: 'Chờ duyệt',
