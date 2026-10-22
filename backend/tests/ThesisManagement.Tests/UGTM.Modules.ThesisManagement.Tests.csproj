@@ -7,6 +7,7 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
@@ -19,6 +20,7 @@
     <ProjectReference Include="..\..\Modules\ThesisManagement\Application\UGTM.Modules.ThesisManagement.Application.csproj" />
     <ProjectReference Include="..\..\Modules\ThesisManagement\Domain\UGTM.Modules.ThesisManagement.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\ThesisManagement\Infrastructure\UGTM.Modules.ThesisManagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Database.Migrations\UGTM.Database.Migrations.csproj" />
   </ItemGroup>
 
 </Project>

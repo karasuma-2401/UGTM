@@ -13,10 +13,12 @@ public sealed class ThesisManagementDbContext(DbContextOptions<ThesisManagementD
     public DbSet<MidtermReport> MidtermReports => Set<MidtermReport>();
     public DbSet<ProgressMilestone> ProgressMilestones => Set<ProgressMilestone>();
     public DbSet<ProgressReport> ProgressReports => Set<ProgressReport>();
+    public DbSet<ReviewGateConfiguration> ReviewGateConfigurations => Set<ReviewGateConfiguration>();
     public DbSet<RenameRequest> RenameRequests => Set<RenameRequest>();
     public DbSet<StudentGroup> StudentGroups => Set<StudentGroup>();
     public DbSet<StudentGroupMember> StudentGroupMembers => Set<StudentGroupMember>();
     public DbSet<SubmissionFile> SubmissionFiles => Set<SubmissionFile>();
+    public DbSet<SubmissionReview> SubmissionReviews => Set<SubmissionReview>();
     public DbSet<Syllabus> Syllabuses => Set<Syllabus>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
