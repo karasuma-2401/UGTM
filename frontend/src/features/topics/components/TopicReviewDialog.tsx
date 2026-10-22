@@ -10,6 +10,7 @@ import { topicReviewApi, type ReviewDecision } from '../services/topicReviewApi'
 import { TOPIC_STATUS_LABELS, type TopicBatch, type TopicStatus } from '../types/topic.types';
 import { TopicPreview } from './TopicPreview';
 import { TopicStatusBadge } from './TopicStatusBadge';
+import { TopicDetailSkeleton } from './TopicDetailSkeleton';
 
 export type ReviewAction =
   | { kind: 'review'; id: string; decision: ReviewDecision }
@@ -83,9 +84,7 @@ export function TopicReviewDialog({
       className="max-w-4xl"
     >
       {detail.isPending ? (
-        <p role="status" className="p-8 text-center text-sm text-slate-500">
-          Đang tải nội dung đề tài...
-        </p>
+        <TopicDetailSkeleton />
       ) : detail.isError ? (
         <div role="alert" className="space-y-3 p-6 text-sm text-rose-700">
           <p>{getTopicErrorMessage(detail.error)}</p>
@@ -142,10 +141,6 @@ export function TopicReviewDialog({
                       }}
                     />
                   </div>
-                  <p className="rounded-lg bg-amber-50 p-3 text-xs leading-6 text-amber-800">
-                    Hiện chỉ gửi được kết luận thẩm định. Hệ thống chưa hỗ trợ lưu nhận xét và
-                    chuyển lý do chỉnh sửa hoặc từ chối đến giảng viên.
-                  </p>
                 </>
               )}
               {canPublish && (

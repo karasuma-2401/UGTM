@@ -309,6 +309,8 @@ const ui = Object.fromEntries(
     'Input',
     'StatisticsBar',
     'TablePagination',
+    'TableSkeleton',
+    'TopicDetailSkeleton',
     'Checkbox',
     'InfoCell',
     'Card',
@@ -390,6 +392,7 @@ function dialogFixture(status = 'Submitted') {
     '../types/topic.types': types,
     './TopicPreview': ui.TopicPreview,
     './TopicStatusBadge': ui.TopicStatusBadge,
+    './TopicDetailSkeleton': ui.TopicDetailSkeleton,
   });
   return {
     actions,
@@ -474,7 +477,7 @@ test('a refreshed approval cannot turn an existing review confirmation into a pu
   assert.equal(dialog.actions.length, 0); // Publication still requires its own confirmation.
 });
 
-function pageFixture(roles = ['Faculty']) {
+function pageFixture(roles = ['Faculty'], queryState = {}) {
   const state = [];
   let cursor = 0;
   let queries;
@@ -506,6 +509,7 @@ function pageFixture(roles = ['Faculty']) {
           data: options.queryKey.includes('list')
             ? { items: [fullTopic], pageNumber: options.queryKey[4], pageSize: 20, totalCount: 50 }
             : {},
+          ...queryState,
         };
       },
       useMutation: (options) => {
@@ -514,7 +518,15 @@ function pageFixture(roles = ['Faculty']) {
       },
     },
     ...Object.fromEntries(
-      ['Button', 'Dialog', 'Input', 'Select', 'StatisticsBar', 'TablePagination'].map((name) => [
+      [
+        'Button',
+        'Dialog',
+        'Input',
+        'Select',
+        'StatisticsBar',
+        'TablePagination',
+        'TableSkeleton',
+      ].map((name) => [
         `@/components/ui/${name.replace(/[A-Z]/g, (c, i) => `${i ? '-' : ''}${c.toLowerCase()}`)}`,
         ui[name],
       ]),
@@ -554,11 +566,30 @@ function pageFixture(roles = ['Faculty']) {
   };
 }
 
+test('review refresh retains only the same reviewer data and locks selection/publication', () => {
+  const page = pageFixture(['Faculty'], { isFetching: true, isPending: false });
+  const query = page.query();
+  const previous = { items: [fullTopic] };
+  assert.equal(query.placeholderData(previous, { queryKey: query.queryKey }), previous);
+  assert.equal(
+    query.placeholderData(previous, { queryKey: ['topic-review', 'another-faculty'] }),
+    undefined,
+  );
+  assert.equal(query.placeholderData(previous, undefined), undefined);
+  assert.equal(page.find((node) => node.type === 'TopicReviewTable')[0].props.busy, true);
+  assert.equal(page.find((node) => node.type === 'TablePagination')[0].props.isLoading, true);
+});
+
 test('review queue defaults to Submitted and quick filters synchronize controls while retaining the applied batch', () => {
   const page = pageFixture();
   assert.equal(page.query().queryKey[3].status, 'Submitted');
-  const statusOptions = page.find((node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài')[0].props.options;
-  assert.equal(statusOptions.some((option) => option.value === 'Draft'), false);
+  const statusOptions = page.find(
+    (node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài',
+  )[0].props.options;
+  assert.equal(
+    statusOptions.some((option) => option.value === 'Draft'),
+    false,
+  );
   page
     .find((node) => node.props['aria-label'] === 'Lọc theo đợt KLTN')[0]
     .props.onChange('batch-1');

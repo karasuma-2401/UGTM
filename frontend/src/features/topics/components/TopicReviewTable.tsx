@@ -40,8 +40,8 @@ export function TopicReviewTable({
   return (
     <table className="w-full min-w-[1180px] table-fixed text-left text-sm">
       <colgroup>
-        <col className="w-12" />
         <col className="w-14" />
+        <col className="w-12" />
         <col />
         <col className="w-48" />
         <col className="w-40" />
@@ -51,6 +51,9 @@ export function TopicReviewTable({
       </colgroup>
       <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-400">
         <tr>
+          <th scope="col" className="px-3 py-4 text-center font-medium">
+            STT
+          </th>
           <th scope="col" className="px-4">
             <Checkbox
               aria-label="Chọn tất cả đề tài đã duyệt cùng đợt trên trang này"
@@ -65,7 +68,6 @@ export function TopicReviewTable({
             />
           </th>
           {[
-            'STT',
             'Đề tài',
             'Giảng viên hướng dẫn',
             'Đợt KLTN',
@@ -87,6 +89,9 @@ export function TopicReviewTable({
               key={topic.id}
               className={`h-[88px] transition-colors ${checked ? 'bg-blue-50/60' : 'hover:bg-blue-50/30'}`}
             >
+              <td className="px-3 py-4 text-center text-xs tabular-nums text-slate-400">
+                {(pageNumber - 1) * pageSize + index + 1}
+              </td>
               <td className="px-4 py-4">
                 <Checkbox
                   aria-label={`Chọn công bố đề tài ${topic.titleVi}`}
@@ -104,9 +109,6 @@ export function TopicReviewTable({
                     )
                   }
                 />
-              </td>
-              <td className="px-4 py-4 text-xs tabular-nums text-slate-400">
-                {(pageNumber - 1) * pageSize + index + 1}
               </td>
               <td className="px-4 py-4">
                 <InfoCell

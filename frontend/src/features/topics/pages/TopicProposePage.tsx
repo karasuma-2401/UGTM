@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
 import { TopicsTable } from '../components/TopicsTable';
 import { TopicProposalSchedule } from '../components/TopicProposalSchedule';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import {
   EMPTY_PROPOSAL,
   topicToValues as toFormValues,
@@ -72,7 +73,8 @@ const textareaClass =
   'disabled:cursor-not-allowed disabled:opacity-50';
 
 export function TopicProposePage() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const canReadBatches = hasPermission('academic.batches.read');
   const queryClient = useQueryClient();
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [values, setValues] = useState<TopicFormValues>(INITIAL_VALUES);
@@ -187,6 +189,8 @@ export function TopicProposePage() {
     enabled: Boolean(user?.id),
     queryFn: ({ signal }) =>
       topicApi.getMyTopics({ ...filters, advisorId: user!.id, pageNumber, pageSize }, signal),
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
   });
   const statisticsQuery = useQuery({
     queryKey: ['my-proposed-topics', user?.id, 'statistics', filters.batchId],
@@ -194,6 +198,7 @@ export function TopicProposePage() {
     queryFn: ({ signal }) => topicApi.getStatistics(user!.id, filters.batchId || undefined, signal),
   });
   const statistics = statisticsQuery.isError ? undefined : statisticsQuery.data;
+  const isRefreshing = topicsQuery.isFetching && !topicsQuery.isPending;
   const formatCount = (count: number | undefined) =>
     count === undefined ? '—' : count.toLocaleString('vi-VN');
 
@@ -227,7 +232,7 @@ export function TopicProposePage() {
             id: topic.id,
             values: fresh,
             submitImmediately: true,
-            hasChanges: false,
+            hasChanges: topic.studentNumber !== fresh.studentNumber,
           });
       } else beginEditor(topic, fresh);
     },
@@ -256,8 +261,11 @@ export function TopicProposePage() {
             ? 'Đã lưu chỉnh sửa trên hệ thống. Bạn có thể gửi duyệt lại khi sẵn sàng.'
             : 'Đã lưu bản nháp đề tài trên hệ thống.',
       );
-      if (!id) setPageNumber(1);
-      await queryClient.invalidateQueries({ queryKey: ['my-proposed-topics'] });
+      setPageNumber(1);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['my-proposed-topics'] }),
+        queryClient.invalidateQueries({ queryKey: ['topic-review'] }),
+      ]);
     },
   });
 
@@ -420,7 +428,8 @@ export function TopicProposePage() {
       id: selectedTopic?.id ?? null,
       values: { ...values },
       submitImmediately,
-      hasChanges: dirty,
+      hasChanges:
+        dirty || Boolean(selectedTopic && selectedTopic.studentNumber !== values.studentNumber),
     });
   }
 
@@ -429,9 +438,9 @@ export function TopicProposePage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Đề xuất đề tài</h1>
-          <p className="mt-2 text-sm text-slate-500">
+          {/* <p className="mt-2 text-sm text-slate-500">
             Quản lý đề xuất, lưu nháp và theo dõi kết quả thẩm định của Khoa.
-          </p>
+          </p> */}
         </div>
         <Button
           type="button"
@@ -642,11 +651,16 @@ export function TopicProposePage() {
                           }))}
                           onChange={(value: string) => updateField('batchId', value)}
                           placeholder={
-                            batchesQuery.isPending ? 'Đang tải danh sách đợt...' : 'Chọn đợt KLTN'
+                            !canReadBatches
+                              ? 'Chưa có quyền xem đợt KLTN'
+                              : batchesQuery.isPending
+                                ? 'Đang tải danh sách đợt...'
+                                : 'Chọn đợt KLTN'
                           }
                           searchable
                           disabled={
                             busy ||
+                            !canReadBatches ||
                             Boolean(recovery) ||
                             !editable ||
                             Boolean(selectedTopic) ||
@@ -654,6 +668,12 @@ export function TopicProposePage() {
                             batchesQuery.isError
                           }
                         />
+                        {!canReadBatches && (
+                          <p role="alert" className="text-xs text-amber-700">
+                            Bạn chưa có quyền xem danh sách đợt KLTN. Liên hệ quản trị viên để được
+                            cấp quyền.
+                          </p>
+                        )}
                         {selectedTopic && (
                           <p className="text-xs text-slate-500">
                             Đợt KLTN được giữ nguyên sau khi tạo đề tài.
@@ -1079,6 +1099,12 @@ export function TopicProposePage() {
       )}
       {filters.batchId && <TopicProposalSchedule batchId={filters.batchId} />}
 
+      {!canReadBatches && !isFormOpen && (
+        <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+          Bạn chưa có quyền xem danh sách đợt KLTN. Liên hệ quản trị viên để được cấp quyền.
+        </p>
+      )}
+
       {batchesQuery.isError && !isFormOpen && (
         <div
           role="alert"
@@ -1112,6 +1138,7 @@ export function TopicProposePage() {
             aria-busy={statisticsQuery.isFetching}
           >
             <StatisticsBar
+              loading={statisticsQuery.isPending}
               items={[
                 {
                   key: 'total',
@@ -1143,7 +1170,7 @@ export function TopicProposePage() {
               ]}
             />
             {statisticsQuery.isPending && (
-              <p role="status" className="mt-2 text-xs text-muted-foreground">
+              <p role="status" className="sr-only">
                 Đang tải thống kê...
               </p>
             )}
@@ -1164,14 +1191,26 @@ export function TopicProposePage() {
           </section>
         </CardHeader>
 
-        <div className="h-[min(60vh,40rem)] min-h-[20rem] overflow-auto">
+        <div className="h-6 px-5 text-xs text-slate-500">
+          <span role="status">{isRefreshing ? 'Đang cập nhật danh sách...' : ''}</span>
+        </div>
+        <div
+          aria-busy={topicsQuery.isFetching}
+          className={`h-[min(60vh,40rem)] min-h-[20rem] overflow-auto transition-opacity ${isRefreshing ? 'opacity-60' : ''}`}
+        >
           {topicsQuery.isPending ? (
-            <p
-              role="status"
-              className="flex h-full items-center justify-center p-8 text-center text-sm text-slate-500"
-            >
-              Đang tải danh sách đề tài...
-            </p>
+            <TableSkeleton
+              className="min-w-[1200px]"
+              columns={[
+                { label: 'STT', width: 'w-14' },
+                { label: 'Đề tài' },
+                { label: 'Đợt KLTN', width: 'w-40' },
+                { label: 'Chỉ tiêu', width: 'w-24' },
+                { label: 'Ngày tạo', width: 'w-32' },
+                { label: 'Trạng thái', width: 'w-44' },
+                { label: 'Thao tác', width: 'w-72' },
+              ]}
+            />
           ) : topicsQuery.isError ? (
             <div
               role="alert"
@@ -1188,7 +1227,7 @@ export function TopicProposePage() {
               batches={batches}
               pageNumber={topicsQuery.data.pageNumber}
               pageSize={topicsQuery.data.pageSize}
-              busy={busy}
+              busy={busy || topicsQuery.isFetching}
               onOpen={openTopic}
               onCopy={(topic) => openTopic(topic, 'copy')}
               onSubmit={(topic) => openTopic(topic, 'submit')}

@@ -15,6 +15,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
@@ -52,6 +53,8 @@ export function TopicReviewPage() {
     queryKey: ['topic-review', user?.id, 'list', filters, pageNumber, pageSize],
     queryFn: ({ signal }) => topicReviewApi.getTopics({ ...filters, pageNumber, pageSize }, signal),
     enabled: canReview && Boolean(user?.id),
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
   });
   const statisticsQuery = useQuery({
     queryKey: ['topic-review', user?.id, 'statistics', filters.batchId],
@@ -96,6 +99,7 @@ export function TopicReviewPage() {
   });
   const busy = actionMutation.isPending;
   const data = topicsQuery.data;
+  const isRefreshing = topicsQuery.isFetching && !topicsQuery.isPending;
   const statistics = statisticsQuery.isError ? undefined : statisticsQuery.data;
   const hasFilters = Boolean(
     Object.values(filters).some(Boolean) || Object.values(draftFilters).some(Boolean),
@@ -130,9 +134,9 @@ export function TopicReviewPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Thẩm định & công bố đề tài
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
+          {/* <p className="mt-2 text-sm text-slate-500">
             Thẩm định đề xuất của giảng viên và công bố các đề tài đã duyệt cho sinh viên tra cứu.
-          </p>
+          </p> */}
         </div>
         <Button
           type="button"
@@ -144,7 +148,7 @@ export function TopicReviewPage() {
             setPublishOpen(true);
           }}
         >
-          Công bố đã chọn{selected.length > 0 ? ` (${selected.length})` : ''}
+          Công bố đề tài đã chọn{selected.length > 0 ? ` (${selected.length})` : ''}
         </Button>
       </div>
 
@@ -167,7 +171,7 @@ export function TopicReviewPage() {
           <span>Tìm đề tài</span>
           <Input
             leftIcon={<Search className="size-4" />}
-            placeholder="Tên đề tài tiếng Việt hoặc tiếng Anh"
+            placeholder="Tên đề tài..."
             className="h-10 rounded-lg bg-slate-50/70 shadow-none"
             value={draftFilters.keyword}
             onChange={(event) => setDraftFilters({ ...draftFilters, keyword: event.target.value })}
@@ -286,6 +290,7 @@ export function TopicReviewPage() {
             aria-busy={statisticsQuery.isFetching}
           >
             <StatisticsBar
+              loading={statisticsQuery.isPending}
               items={[
                 {
                   key: 'total',
@@ -326,7 +331,7 @@ export function TopicReviewPage() {
               ]}
             />
             {statisticsQuery.isPending && (
-              <p role="status" className="mt-2 text-xs text-slate-500">
+              <p role="status" className="sr-only">
                 Đang tải thống kê...
               </p>
             )}
@@ -363,14 +368,27 @@ export function TopicReviewPage() {
             </Button>
           )}
         </div>
+        <div className="h-6 px-5 text-xs text-slate-500">
+          <span role="status">{isRefreshing ? 'Đang cập nhật danh sách...' : ''}</span>
+        </div>
         <div
-          className="h-[min(60vh,40rem)] min-h-[20rem] overflow-auto"
+          className={`h-[min(60vh,40rem)] min-h-[20rem] overflow-auto transition-opacity ${isRefreshing ? 'opacity-60' : ''}`}
           aria-busy={topicsQuery.isFetching}
         >
           {topicsQuery.isPending ? (
-            <p role="status" className="p-8 text-center text-sm text-slate-500">
-              Đang tải danh sách...
-            </p>
+            <TableSkeleton
+              className="min-w-[1180px]"
+              columns={[
+                { label: 'STT', width: 'w-14' },
+                { label: '', width: 'w-12' },
+                { label: 'Đề tài' },
+                { label: 'Giảng viên hướng dẫn', width: 'w-48' },
+                { label: 'Đợt KLTN', width: 'w-40' },
+                { label: 'Chỉ tiêu', width: 'w-20' },
+                { label: 'Trạng thái', width: 'w-44' },
+                { label: 'Thao tác', width: 'w-36' },
+              ]}
+            />
           ) : topicsQuery.isError ? (
             <div role="alert" className="space-y-3 p-8 text-center text-sm text-rose-700">
               <p>{getTopicErrorMessage(topicsQuery.error)}</p>
@@ -415,7 +433,7 @@ export function TopicReviewPage() {
               <select
                 id="review-page-size"
                 value={pageSize}
-                disabled={busy}
+                disabled={busy || topicsQuery.isFetching}
                 className="rounded-md border border-slate-200 bg-white p-2"
                 onChange={(event) => {
                   setPageSize(Number(event.target.value));

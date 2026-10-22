@@ -159,7 +159,7 @@ test('student import uploads multipart data with a fixed Student role', async ()
   assert.equal((await api.importStudents(file)).importedCount, 25);
 });
 
-function usersPageFixture(accountGroup) {
+function usersPageFixture(accountGroup, queryState = {}) {
   const state = [];
   let cursor = 0;
   let queries = [];
@@ -186,7 +186,8 @@ function usersPageFixture(accountGroup) {
         return {
           data: options.queryKey.includes('statistics')
             ? { total: 30, pendingActivation: 4, disabled: 2 }
-            : { items: [{}], pageNumber: options.queryKey[3], pageSize: 20 },
+            : { items: [{}], pageNumber: options.queryKey[4], pageSize: 20 },
+          ...queryState,
         };
       },
       useMutation: () => ({}),
@@ -198,6 +199,7 @@ function usersPageFixture(accountGroup) {
     '@/components/ui/select': component('Select'),
     '@/components/ui/statistics-bar': component('StatisticsBar'),
     '@/components/ui/table-pagination': component('TablePagination'),
+    '@/components/ui/table-skeleton': component('TableSkeleton'),
     '../components/UserFormDialog': component('UserFormDialog'),
     '../components/StudentImportDialog': component('StudentImportDialog'),
     '../components/UsersTable': component('UsersTable'),
@@ -229,6 +231,7 @@ function usersPageFixture(accountGroup) {
         (item) => item.key === key,
       ),
     listQuery: () => queries[0].queryFn({}),
+    listOptions: () => queries[0],
   };
 }
 
@@ -299,4 +302,26 @@ test('Users filter chips and Bỏ lọc synchronize applied filters and pending 
   assert.equal(page.find((node) => node.props['aria-label'] === 'Bộ lọc đang áp dụng').length, 0);
   assert.equal(clear().props.disabled, true);
   assert.equal(page.stat('total').active, true);
+});
+
+test('Users keeps rows only within the same account/group and locks actions while refreshing', () => {
+  const page = usersPageFixture('Staff', { isFetching: true, isPending: false });
+  const query = page.listOptions();
+  const previous = { items: [{ id: 'staff-1' }], totalCount: 1 };
+  assert.equal(query.placeholderData(previous, { queryKey: query.queryKey }), previous);
+  assert.equal(
+    query.placeholderData(previous, { queryKey: ['admin-users', 'other-admin', 'Staff'] }),
+    undefined,
+  );
+  assert.equal(
+    query.placeholderData(previous, { queryKey: ['admin-users', 'admin', 'Student'] }),
+    undefined,
+  );
+  assert.equal(query.placeholderData(previous, undefined), undefined);
+  assert.equal(page.find((node) => node.type === 'UsersTable')[0].props.isChangingStatus, true);
+  assert.equal(page.find((node) => node.type === 'TablePagination')[0].props.isLoading, true);
+  assert.ok(
+    page.find((node) => node.props['aria-busy'] && node.props.className?.includes('opacity-60'))
+      .length,
+  );
 });

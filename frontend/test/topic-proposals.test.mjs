@@ -209,6 +209,30 @@ test('API failures preserve backend validation messages rather than reporting su
   assert.equal(getTopicErrorMessage(error), 'Trạng thái đề tài đã thay đổi.');
 });
 
+test('statistics loading replaces counts with skeletons and disables filter shortcuts', () => {
+  const cn = (...parts) => parts.filter(Boolean).join(' ');
+  const { Skeleton } = loadModule('components/ui/skeleton.tsx', {
+    'react/jsx-runtime': jsxRuntime,
+    '@/lib/utils': { cn },
+  });
+  const { StatisticsBar } = loadModule('components/ui/statistics-bar.tsx', {
+    'react/jsx-runtime': jsxRuntime,
+    '@/lib/utils': { cn },
+    './skeleton': { Skeleton },
+  });
+  const items = [{ key: 'total', label: 'Tổng đề tài', value: 12345, onClick() {} }];
+  const loading = renderToStaticMarkup(
+    React.createElement(StatisticsBar, { items, loading: true }),
+  );
+  assert.match(loading, /Tổng đề tài/);
+  assert.match(loading, /disabled=""/);
+  assert.match(loading, /animate-pulse/);
+  assert.doesNotMatch(loading, /12345/);
+  const ready = renderToStaticMarkup(React.createElement(StatisticsBar, { items }));
+  assert.match(ready, /12345/);
+  assert.doesNotMatch(ready, /disabled=""/);
+});
+
 const { navigationSections } = loadModule('shared/layout/navigationConfig.ts', {
   'lucide-react': icons,
 });
@@ -308,6 +332,7 @@ function proposalPageFixture(options = {}) {
   let cursor = 0;
   let tree;
   let listQuery;
+  let listQueryOptions;
   let beforeUnload;
   let shouldBlock;
   let blockerState = 'unblocked';
@@ -319,6 +344,8 @@ function proposalPageFixture(options = {}) {
   let mutationCursor = 0;
   const mutations = [];
   const pendingJobs = [];
+  const invalidations = [];
+  const apiCalls = [];
   const timers = new Map();
   const frames = new Map();
   let nextTask = 1;
@@ -380,6 +407,7 @@ function proposalPageFixture(options = {}) {
     'TopicPreview',
     'TopicProposalSchedule',
     'TablePagination',
+    'TableSkeleton',
   ];
   const components = Object.fromEntries(componentNames.map((name) => [name, () => null]));
   const dependency = (name) => ({ [name]: components[name] });
@@ -426,9 +454,16 @@ function proposalPageFixture(options = {}) {
         },
       },
       '@tanstack/react-query': {
-        useQueryClient: () => ({ invalidateQueries: async () => {} }),
+        useQueryClient: () => ({
+          invalidateQueries: async ({ queryKey }) => {
+            invalidations.push(queryKey);
+          },
+        }),
         useQuery: (queryOptions) => {
-          if (typeof queryOptions.queryKey[2] === 'object') listQuery = queryOptions.queryKey;
+          if (typeof queryOptions.queryKey[2] === 'object') {
+            listQuery = queryOptions.queryKey;
+            listQueryOptions = queryOptions;
+          }
           return {
             data:
               typeof queryOptions.queryKey[2] === 'object'
@@ -442,6 +477,7 @@ function proposalPageFixture(options = {}) {
             isPending: false,
             isError: false,
             isFetching: false,
+            ...options.queryState,
           };
         },
         useMutation: (configuration) => {
@@ -474,18 +510,32 @@ function proposalPageFixture(options = {}) {
         ['Card', 'CardContent', 'CardHeader', 'CardTitle'].map((key) => [key, components[key]]),
       ),
       '@/components/ui/table-pagination': dependency('TablePagination'),
+      '@/components/ui/table-skeleton': dependency('TableSkeleton'),
       '../components/TopicStatusBadge': dependency('TopicStatusBadge'),
       '../components/TopicsTable': dependency('TopicsTable'),
       '../components/TopicPreview': dependency('TopicPreview'),
       '../components/TopicProposalSchedule': dependency('TopicProposalSchedule'),
       '../proposalEditing': editing,
-      '@/shared/auth': { useAuth: () => ({ user: { id: 'lecturer-1', fullName: 'Giảng viên' } }) },
+      '@/shared/auth': {
+        useAuth: () => ({
+          user: { id: 'lecturer-1', fullName: 'Giảng viên' },
+          hasPermission: () => options.canReadBatches !== false,
+        }),
+      },
       '@/shared/academic-periods/useAcademicBatches': {
         useAcademicBatches: () => ({ data: [], isPending: false, isError: false }),
       },
       '../types/topic.types': loadModule('features/topics/types/topic.types.ts'),
       '../services/topicApi': {
-        topicApi: { getDetail: async () => options.serverTopic ?? options.listedTopic },
+        topicApi: {
+          getDetail: async () => options.serverTopic ?? options.listedTopic,
+          save: async (...args) => {
+            apiCalls.push(['save', ...args]);
+          },
+          submit: async (...args) => {
+            apiCalls.push(['submit', ...args]);
+          },
+        },
         getTopicErrorMessage: String,
       },
     },
@@ -510,6 +560,7 @@ function proposalPageFixture(options = {}) {
       findElement(tree, (node) => node.type === components.Button && node.props.children === label),
     component: (name) => findElement(tree, (node) => node.type === components[name]),
     query: () => listQuery,
+    listOptions: () => listQueryOptions,
     unload: (event) => beforeUnload(event),
     shouldBlock: () => shouldBlock,
     block: () => {
@@ -517,6 +568,10 @@ function proposalPageFixture(options = {}) {
     },
     proceeds: () => proceeds,
     mutationCalls: () => mutationCalls,
+    invalidations,
+    apiCalls,
+    executeSave: () =>
+      mutations[1].mutationFn(mutationVariables.findLast((value) => 'submitImmediately' in value)),
     mutationVariables: () => mutationVariables,
     saveCalls: () => mutationVariables.filter((value) => 'submitImmediately' in value),
     settle: async () => {
@@ -546,6 +601,23 @@ function proposalPageFixture(options = {}) {
   fixture.render();
   return fixture;
 }
+
+test('proposal refresh retains only the same lecturer data and locks table actions', () => {
+  const page = proposalPageFixture({
+    listedTopic: fullTopic,
+    queryState: { isFetching: true, isPending: false },
+  });
+  const query = page.listOptions();
+  const previous = { items: [fullTopic] };
+  assert.equal(query.placeholderData(previous, { queryKey: query.queryKey }), previous);
+  assert.equal(
+    query.placeholderData(previous, { queryKey: ['my-proposed-topics', 'another-lecturer'] }),
+    undefined,
+  );
+  assert.equal(query.placeholderData(previous, undefined), undefined);
+  assert.equal(page.component('TopicsTable').props.busy, true);
+  assert.equal(page.component('TablePagination').props.isLoading, true);
+});
 
 test('Bỏ lọc clears applied and pending filters immediately and resets pagination', () => {
   const page = proposalPageFixture();
@@ -736,6 +808,54 @@ const fullTopic = {
   createdAt: '2026-10-01T00:00:00Z',
   isPublished: false,
 };
+
+test('legacy drafts with no capacity save the displayed capacity before table or form submission', async () => {
+  const legacy = { ...fullTopic, studentNumber: null };
+  const shortcut = proposalPageFixture({ listedTopic: legacy });
+  shortcut.component('TopicsTable').props.onSubmit(legacy);
+  await shortcut.settle();
+  assert.equal(shortcut.saveCalls()[0].hasChanges, true);
+  await shortcut.executeSave();
+  assert.equal(shortcut.apiCalls[0][0], 'save');
+  assert.equal(shortcut.apiCalls[0][2].studentNumber, 2);
+
+  const form = proposalPageFixture({ listedTopic: legacy });
+  form.component('TopicsTable').props.onOpen(legacy);
+  await form.settle();
+  form.render();
+  submitProposal(form, 'submit');
+  await form.executeSave();
+  assert.equal(form.apiCalls[0][0], 'save');
+  assert.equal(form.apiCalls[0][2].studentNumber, 2);
+});
+
+test('saving from a later filtered page resets pagination and refreshes both proposal and review caches', async () => {
+  const page = proposalPageFixture({ listedTopic: fullTopic });
+  page.component('TablePagination').props.onPageChange(3);
+  page.render();
+  page.component('TopicsTable').props.onSubmit(fullTopic);
+  await page.settle();
+  await page.completeSave({ ...fullTopic, status: 'Submitted' });
+  page.render();
+  assert.equal(page.query()[3], 1);
+  assert.deepEqual(page.invalidations, [['my-proposed-topics'], ['topic-review']]);
+});
+
+test('missing batch-read permission is explained rather than displayed as an endless loading state', () => {
+  const page = proposalPageFixture({ canReadBatches: false });
+  page.button('Đề xuất đề tài').props.onClick();
+  page.render();
+  const selector = page.find((node) => node.props.id === 'topic-batch-field');
+  assert.equal(selector.props.disabled, true);
+  assert.equal(selector.props.placeholder, 'Chưa có quyền xem đợt KLTN');
+  assert.ok(
+    page.find(
+      (node) =>
+        node.props.role === 'alert' &&
+        String(node.props.children).includes('chưa có quyền xem danh sách đợt'),
+    ),
+  );
+});
 
 test('local drafts are isolated by account and topic and malformed drafts are ignored', () => {
   const { saveLocalProposal, readLocalProposal, removeLocalProposal, EMPTY_PROPOSAL } = loadModule(
