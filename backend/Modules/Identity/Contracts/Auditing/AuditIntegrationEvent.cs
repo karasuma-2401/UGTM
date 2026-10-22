@@ -108,6 +108,12 @@ public static class IntegrationAuditActions
     public const string SyllabusReviewed =
         "ThesisManagement.Syllabus.Reviewed";
 
+    public const string MidtermReportSubmitted =
+        "ThesisManagement.MidtermReport.Submitted";
+
+    public const string MidtermReportReviewed =
+        "ThesisManagement.MidtermReport.Reviewed";
+
     public const string CouncilMinuteUnlockGranted =
         "DefenseCouncil.CouncilMinute.UnlockGranted";
 

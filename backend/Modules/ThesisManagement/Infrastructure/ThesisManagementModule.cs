@@ -25,6 +25,10 @@ using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusS
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusSubmissionFileDownload;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.ReviewSyllabus;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.SubmitSyllabus;
+using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.GetMidtermReportSubmissionHistory;
+using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.ReviewMidtermReport;
+using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.SubmitMidtermReport;
+using UGTM.Modules.ThesisManagement.Application.ReviewGateSubmissions.GetReviewGateSubmissionFileDownload;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -38,6 +42,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IStudentGroupRepository, StudentGroupRepository>();
         services.AddScoped<IReviewGateConfigurationRepository, ReviewGateConfigurationRepository>();
         services.AddScoped<ISyllabusRepository, SyllabusRepository>();
+        services.AddScoped<IMidtermReportRepository, MidtermReportRepository>();
         services.AddScoped<ISubmissionFileRepository, SubmissionFileRepository>();
         services.AddScoped<ISubmissionReviewRepository, SubmissionReviewRepository>();
         services.AddScoped<IThesisUnitOfWork>(provider => provider.GetRequiredService<ThesisManagementDbContext>());
@@ -61,12 +66,17 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<ReviewSyllabusHandler>();
         services.AddScoped<GetSyllabusSubmissionHistoryHandler>();
         services.AddScoped<GetSyllabusSubmissionFileDownloadHandler>();
+        services.AddScoped<SubmitMidtermReportHandler>();
+        services.AddScoped<ReviewMidtermReportHandler>();
+        services.AddScoped<GetMidtermReportSubmissionHistoryHandler>();
+        services.AddScoped<GetReviewGateSubmissionFileDownloadHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapReviewGateConfigurationEndpoints();
         endpoints.MapSyllabusSubmissionEndpoints();
+        endpoints.MapMidtermReportSubmissionEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))

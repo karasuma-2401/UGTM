@@ -8,7 +8,9 @@ using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusSubmissionHistory;
-using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusSubmissionFileDownload;
+using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.Dtos;
+using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.GetMidtermReportSubmissionHistory;
+using UGTM.Modules.ThesisManagement.Application.ReviewGateSubmissions.GetReviewGateSubmissionFileDownload;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.ReviewSyllabus;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.SubmitSyllabus;
 
@@ -88,12 +90,13 @@ public static class SyllabusSubmissionEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
 
         endpoints.MapGet("/api/thesis/groups/{groupId:guid}/submissions/{gateType}", GetHistoryAsync)
-            .WithTags("ThesisManagement.Syllabus")
+            .WithTags("ThesisManagement.ReviewGates")
             .RequireAuthorization()
-            .WithSummary("Xem lịch sử các phiên bản đề cương của nhóm")
+            .WithSummary("Xem lịch sử các phiên bản hồ sơ tại Cổng 1 hoặc Cổng 2")
             .WithDescription("""
-                Trả về metadata tệp và kết quả thẩm định theo từng phiên bản đề cương. Thành viên của nhóm
-                chỉ xem được nhóm mình; `Faculty`/`Admin` có quyền thẩm định có thể tra cứu để xử lý hồ sơ.
+                Đặt `gateType` là `Syllabus` (Cổng 1 — đề cương chi tiết) hoặc `Midterm` (Cổng 2 — báo cáo
+                giữa kỳ). Response trả metadata tệp và kết quả thẩm định theo từng phiên bản. Thành viên của
+                nhóm chỉ xem được nhóm mình; `Faculty`/`Admin` có quyền thẩm định có thể tra cứu để xử lý hồ sơ.
                 Response không chứa object key hoặc public URL; endpoint tải tệp có kiểm soát sẽ được cung cấp
                 riêng để giữ bucket MinIO/S3 private.
 
@@ -101,27 +104,30 @@ public static class SyllabusSubmissionEndpoints
                 - 200 OK: lịch sử phiên bản và review.
                 - 401 Unauthorized: chưa xác thực.
                 - 403 Forbidden: không thuộc nhóm và không có quyền thẩm định.
-                - 404 Not Found: không tìm thấy nhóm hoặc nhóm chưa có đề cương.
+                - 400 Bad Request: `gateType` không phải `Syllabus` hoặc `Midterm`.
+                - 404 Not Found: không tìm thấy nhóm hoặc nhóm chưa có hồ sơ tương ứng.
                 """)
             .Produces<ApiResponse<SyllabusSubmissionHistoryDto>>()
+            .Produces<ApiResponse<MidtermReportSubmissionHistoryDto>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
         endpoints.MapGet("/api/thesis/submission-files/{fileId:guid}/download", GetDownloadAsync)
-            .WithTags("ThesisManagement.Syllabus")
+            .WithTags("ThesisManagement.ReviewGates")
             .RequireAuthorization()
-            .WithSummary("Lấy URL tải tạm thời cho tệp đề cương")
+            .WithSummary("Lấy URL tải tạm thời cho tệp hồ sơ Cổng 1 hoặc Cổng 2")
             .WithDescription("""
                 Sau khi kiểm tra quyền trên database, trả về presigned URL chỉ có hiệu lực 5 phút cho một
-                tệp thuộc Cổng 1. Thành viên của chính nhóm hoặc `Faculty`/`Admin` có quyền thẩm định mới
+                tệp thuộc Cổng 1 hoặc Cổng 2. Thành viên của chính nhóm hoặc `Faculty`/`Admin` có quyền thẩm định mới
                 nhận được URL. Object key nội bộ và bucket private không bao giờ được trả về client.
 
                 Yêu cầu Bearer token.
                 - 200 OK: URL tải tạm thời và thời điểm hết hạn UTC.
                 - 401 Unauthorized: chưa xác thực.
                 - 403 Forbidden: không có quyền truy cập tệp.
-                - 404 Not Found: không tìm thấy tệp đề cương.
+                - 404 Not Found: không tìm thấy tệp hồ sơ.
                 """)
             .Produces<ApiResponse<SubmissionFileDownloadDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
@@ -163,30 +169,38 @@ public static class SyllabusSubmissionEndpoints
     private static async Task<IResult> GetHistoryAsync(
         Guid groupId,
         string gateType,
-        GetSyllabusSubmissionHistoryHandler handler,
+        GetSyllabusSubmissionHistoryHandler syllabusHandler,
+        GetMidtermReportSubmissionHistoryHandler midtermHandler,
         CancellationToken cancellationToken)
     {
-        if (!string.Equals(gateType, "Syllabus", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(gateType, "Syllabus", StringComparison.OrdinalIgnoreCase))
         {
-            return Results.Json(
-                ApiResponse<SyllabusSubmissionHistoryDto>.Fail(
-                    ApiError.Create(
-                        SyllabusSubmissionErrors.InvalidRequest.Code,
-                        "Checkpoint hiện tại chỉ hỗ trợ lịch sử Cổng 1 với gateType là Syllabus.")),
-                statusCode: StatusCodes.Status400BadRequest);
+            return (await syllabusHandler.HandleAsync(
+                new GetSyllabusSubmissionHistoryQuery(groupId),
+                cancellationToken)).ToHttpResult();
         }
 
-        return (await handler.HandleAsync(
-            new GetSyllabusSubmissionHistoryQuery(groupId),
-            cancellationToken)).ToHttpResult();
+        if (string.Equals(gateType, "Midterm", StringComparison.OrdinalIgnoreCase))
+        {
+            return (await midtermHandler.HandleAsync(
+                new GetMidtermReportSubmissionHistoryQuery(groupId),
+                cancellationToken)).ToHttpResult();
+        }
+
+        return Results.Json(
+            ApiResponse<object>.Fail(
+                ApiError.Create(
+                    "ReviewGate.InvalidGateType",
+                    "gateType chỉ nhận Syllabus hoặc Midterm.")),
+            statusCode: StatusCodes.Status400BadRequest);
     }
 
     private static async Task<IResult> GetDownloadAsync(
         Guid fileId,
-        GetSyllabusSubmissionFileDownloadHandler handler,
+        GetReviewGateSubmissionFileDownloadHandler handler,
         CancellationToken cancellationToken)
         => (await handler.HandleAsync(
-            new GetSyllabusSubmissionFileDownloadQuery(fileId),
+            new GetReviewGateSubmissionFileDownloadQuery(fileId),
             cancellationToken)).ToHttpResult();
 
     public sealed record ReviewSyllabusRequest(string? Decision, string? Feedback);
