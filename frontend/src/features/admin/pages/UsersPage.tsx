@@ -219,26 +219,27 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {isStudent && canImport && (
+          {canManage && (
             <Button
               type="button"
               variant="outline"
               disabled={isUpdating}
-              onClick={() => setIsImportOpen(true)}
-              leftIcon={<Upload />}
+              onClick={() => handleOpenForm(null)}
+              leftIcon={<UserPlus />}
+              // className="h-10 rounded-lg px-4 shadow-sm"
             >
-              Nhập Excel
+              {isStudent ? 'Thêm sinh viên' : 'Thêm giảng viên / cán bộ'}
             </Button>
           )}
-          {canManage && (
+          {isStudent && canImport && (
             <Button
               type="button"
               disabled={isUpdating}
-              onClick={() => handleOpenForm(null)}
-              leftIcon={<UserPlus />}
+              onClick={() => setIsImportOpen(true)}
+              leftIcon={<Upload />}
               className="h-10 rounded-lg px-4 shadow-sm"
             >
-              {isStudent ? 'Thêm sinh viên' : 'Thêm giảng viên / cán bộ'}
+              Nhập Excel
             </Button>
           )}
         </div>
@@ -478,9 +479,6 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
           </section>
         </CardHeader>
 
-        <div className="h-6 px-5 text-xs text-slate-500">
-          <span role="status">{isRefreshing ? 'Đang cập nhật danh sách...' : ''}</span>
-        </div>
         <div
           aria-busy={usersQuery.isFetching}
           className={`h-[min(60vh,40rem)] min-h-[20rem] overflow-auto transition-opacity ${isRefreshing ? 'opacity-60' : ''}`}

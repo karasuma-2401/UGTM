@@ -1191,9 +1191,6 @@ export function TopicProposePage() {
           </section>
         </CardHeader>
 
-        <div className="h-6 px-5 text-xs text-slate-500">
-          <span role="status">{isRefreshing ? 'Đang cập nhật danh sách...' : ''}</span>
-        </div>
         <div
           aria-busy={topicsQuery.isFetching}
           className={`h-[min(60vh,40rem)] min-h-[20rem] overflow-auto transition-opacity ${isRefreshing ? 'opacity-60' : ''}`}

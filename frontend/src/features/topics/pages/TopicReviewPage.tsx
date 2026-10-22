@@ -368,9 +368,6 @@ export function TopicReviewPage() {
             </Button>
           )}
         </div>
-        <div className="h-6 px-5 text-xs text-slate-500">
-          <span role="status">{isRefreshing ? 'Đang cập nhật danh sách...' : ''}</span>
-        </div>
         <div
           className={`h-[min(60vh,40rem)] min-h-[20rem] overflow-auto transition-opacity ${isRefreshing ? 'opacity-60' : ''}`}
           aria-busy={topicsQuery.isFetching}
