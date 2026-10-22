@@ -49,9 +49,9 @@ export function TopicReviewTable({
         <col className="w-44" />
         <col className="w-36" />
       </colgroup>
-      <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-400">
+      <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
         <tr>
-          <th scope="col" className="px-3 py-4 text-center font-medium">
+          <th scope="col" className="px-3 py-4 text-center font-bold">
             STT
           </th>
           <th scope="col" className="px-4">
@@ -75,7 +75,7 @@ export function TopicReviewTable({
             'Trạng thái',
             'Thao tác',
           ].map((label) => (
-            <th key={label} scope="col" className="px-4 py-4 font-medium">
+            <th key={label} scope="col" className="px-4 py-4 font-bold">
               {label}
             </th>
           ))}

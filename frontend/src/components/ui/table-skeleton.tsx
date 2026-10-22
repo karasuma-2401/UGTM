@@ -22,10 +22,10 @@ export function TableSkeleton({ columns, rows = 6, className }: TableSkeletonPro
             <col key={index} className={column.width} />
           ))}
         </colgroup>
-        <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-400">
+        <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
           <tr>
             {columns.map((column, index) => (
-              <th key={index} className="px-4 py-4 font-medium">
+              <th key={index} className="px-4 py-4 font-bold">
                 {column.label}
               </th>
             ))}

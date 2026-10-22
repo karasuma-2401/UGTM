@@ -93,9 +93,9 @@ export function UsersTable({
         <col className="w-36" />
         <col className="w-[248px]" />
       </colgroup>
-      <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-400">
+      <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
         <tr>
-          <th scope="col" className="w-14 px-3 py-4 text-center font-medium">
+          <th scope="col" className="w-14 px-3 py-4 text-center font-bold">
             STT
           </th>
           {[
@@ -105,7 +105,7 @@ export function UsersTable({
             'Trạng thái',
             'Thao tác',
           ].map((heading) => (
-            <th key={heading} scope="col" className="whitespace-nowrap px-4 py-4 font-medium">
+            <th key={heading} scope="col" className="whitespace-nowrap px-4 py-4 font-bold">
               {heading}
             </th>
           ))}
