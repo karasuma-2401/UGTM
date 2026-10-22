@@ -12,6 +12,10 @@ using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Infrastructure.Auditing;
+using UGTM.Modules.ThesisManagement.Application.Storage;
+using UGTM.Modules.ThesisManagement.Infrastructure.Storage;
+using Amazon.S3;
+using Microsoft.Extensions.Options;
 
 using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
 
@@ -29,6 +33,16 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IThesisRegistrationContract, ThesisRegistrationContract>();
         services.AddScoped<IThesisManagementAuditOutbox, ThesisManagementAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, ThesisManagementAuditEventSource>();
+        services.Configure<S3StorageOptions>(configuration.GetSection(S3StorageOptions.SectionName));
+        services.AddSingleton<IAmazonS3>(serviceProvider =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<S3StorageOptions>>().Value;
+            S3StorageOptionsValidator.ValidateAndThrow(options);
+            return S3ClientFactory.Create(options, options.Endpoint);
+        });
+        services.AddSingleton<IThesisSubmissionFileValidator, ThesisSubmissionFileValidator>();
+        services.AddSingleton<IThesisSubmissionObjectKeyFactory, ThesisSubmissionObjectKeyFactory>();
+        services.AddSingleton<IThesisSubmissionObjectStorage, S3ThesisSubmissionObjectStorage>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" Version="4.0.104.5" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Application\UGTM.Modules.ThesisManagement.Application.csproj" />
     <ProjectReference Include="..\Domain\UGTM.Modules.ThesisManagement.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\Infrastructure\UGTM.BuildingBlocks.Infrastructure.csproj" />
