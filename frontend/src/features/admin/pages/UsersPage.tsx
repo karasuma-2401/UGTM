@@ -8,6 +8,7 @@ import {
   Search,
   SlidersHorizontal,
   Upload,
+  X,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { Select } from '@/components/ui/select';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 
 import { UserFormDialog } from '../components/UserFormDialog';
 import { StudentImportDialog } from '../components/StudentImportDialog';
@@ -66,13 +68,17 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
   const [notice, setNotice] = useState('');
 
   const usersQuery = useQuery({
-    queryKey: ['admin-users', accountGroup, filters, pageNumber, pageSize],
+    queryKey: ['admin-users', currentUser?.id, accountGroup, filters, pageNumber, pageSize],
     queryFn: ({ signal }) =>
       userApi.getUsers({ ...filters, accountGroup, pageNumber, pageSize }, signal),
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === currentUser?.id && previousQuery?.queryKey[2] === accountGroup
+        ? previousData
+        : undefined,
   });
 
   const statisticsQuery = useQuery({
-    queryKey: ['admin-users', accountGroup, 'statistics'],
+    queryKey: ['admin-users', currentUser?.id, accountGroup, 'statistics'],
     queryFn: ({ signal }) => userApi.getStatistics(accountGroup, signal),
   });
 
@@ -128,6 +134,26 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
     setPageNumber(1);
   }
 
+  function clearFilters() {
+    setDraftFilters({ ...INITIAL_FILTERS });
+    setFilters({ ...INITIAL_FILTERS });
+    setPageNumber(1);
+  }
+
+  function applyQuickFilter(status: AccountStatus | '') {
+    const next = { ...INITIAL_FILTERS, status };
+    setDraftFilters(next);
+    setFilters(next);
+    setPageNumber(1);
+  }
+
+  function removeFilter(key: keyof UserFilters) {
+    const next = { ...filters, [key]: '' };
+    setDraftFilters(next);
+    setFilters(next);
+    setPageNumber(1);
+  }
+
   function handleOpenForm(user: UserSummary | null) {
     saveMutation.reset();
     statusMutation.reset();
@@ -161,9 +187,20 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
   }
 
   const data = usersQuery.data;
+  const isRefreshing = usersQuery.isFetching && !usersQuery.isPending;
   const mutationError = saveMutation.error || statusMutation.error || activationMutation.error;
   const isUpdating =
     saveMutation.isPending || statusMutation.isPending || activationMutation.isPending;
+  const hasFilters = Boolean(
+    filters.keyword ||
+    filters.role ||
+    filters.status ||
+    draftFilters.keyword ||
+    draftFilters.role ||
+    draftFilters.status,
+  );
+  const isQuickFilterActive = (status: AccountStatus | '') =>
+    filters.status === status && !filters.keyword && !filters.role;
 
   return (
     <div className="min-w-0 space-y-6">
@@ -173,35 +210,36 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               {isStudent ? 'Sinh viên' : 'Giảng viên & cán bộ'}
             </h1>
-            <p className="mt-2 text-sm text-slate-500">
+            {/* <p className="mt-2 text-sm text-slate-500">
               {isStudent
                 ? 'Quản lý tài khoản sinh viên, nhập danh sách và theo dõi kích hoạt.'
                 : 'Quản lý tài khoản, vai trò và trạng thái truy cập của giảng viên, cán bộ.'}
-            </p>
+            </p> */}
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {isStudent && canImport && (
+          {canManage && (
             <Button
               type="button"
               variant="outline"
               disabled={isUpdating}
-              onClick={() => setIsImportOpen(true)}
-              leftIcon={<Upload />}
+              onClick={() => handleOpenForm(null)}
+              leftIcon={<UserPlus />}
+              // className="h-10 rounded-lg px-4 shadow-sm"
             >
-              Nhập Excel
+              {isStudent ? 'Thêm sinh viên' : 'Thêm giảng viên / cán bộ'}
             </Button>
           )}
-          {canManage && (
+          {isStudent && canImport && (
             <Button
               type="button"
               disabled={isUpdating}
-              onClick={() => handleOpenForm(null)}
-              leftIcon={<UserPlus />}
+              onClick={() => setIsImportOpen(true)}
+              leftIcon={<Upload />}
               className="h-10 rounded-lg px-4 shadow-sm"
             >
-              {isStudent ? 'Thêm sinh viên' : 'Thêm giảng viên / cán bộ'}
+              Nhập Excel
             </Button>
           )}
         </div>
@@ -312,15 +350,69 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
           />
         </div>
 
-        <Button
-          type="submit"
-          variant="soft"
-          leftIcon={<SlidersHorizontal />}
-          className="h-10 rounded-lg px-5"
-        >
-          Áp dụng
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="submit"
+            variant="soft"
+            leftIcon={<SlidersHorizontal />}
+            className="h-10 rounded-lg px-5"
+          >
+            Áp dụng
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            leftIcon={<X />}
+            className="h-10 rounded-lg px-4"
+            disabled={!hasFilters}
+            onClick={clearFilters}
+          >
+            Bỏ lọc
+          </Button>
+        </div>
       </form>
+
+      {Boolean(filters.keyword || filters.role || filters.status) && (
+        <div className="flex flex-wrap items-center gap-2" aria-label="Bộ lọc đang áp dụng">
+          <span className="text-xs text-slate-500">Đang lọc:</span>
+          {filters.keyword && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              rightIcon={<X />}
+              onClick={() => removeFilter('keyword')}
+              aria-label={`Bỏ lọc từ khóa ${filters.keyword}`}
+            >
+              Từ khóa: {filters.keyword}
+            </Button>
+          )}
+          {filters.role && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              rightIcon={<X />}
+              onClick={() => removeFilter('role')}
+              aria-label="Bỏ lọc vai trò"
+            >
+              {SYSTEM_ROLES.find((role) => role.roleName === filters.role)?.title ?? filters.role}
+            </Button>
+          )}
+          {filters.status && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              rightIcon={<X />}
+              onClick={() => removeFilter('status')}
+              aria-label="Bỏ lọc trạng thái"
+            >
+              {STATUS_LABELS[filters.status]}
+            </Button>
+          )}
+        </div>
+      )}
 
       <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
         <CardHeader className="grid min-h-[104px] grid-cols-1 items-center gap-4 space-y-0 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-5 py-4 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -334,6 +426,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             aria-busy={statisticsQuery.isFetching}
           >
             <StatisticsBar
+              loading={statisticsQuery.isPending}
               items={[
                 {
                   key: 'total',
@@ -341,6 +434,8 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                   value: formatCount(statistics?.total),
                   icon: <UsersRound />,
                   tone: 'primary',
+                  active: isQuickFilterActive(''),
+                  onClick: () => applyQuickFilter(''),
                 },
                 {
                   key: 'pending',
@@ -348,6 +443,8 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                   value: formatCount(statistics?.pendingActivation),
                   icon: <Clock3 />,
                   tone: 'warning',
+                  active: isQuickFilterActive('PendingActivation'),
+                  onClick: () => applyQuickFilter('PendingActivation'),
                 },
                 {
                   key: 'disabled',
@@ -355,11 +452,13 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                   value: formatCount(statistics?.disabled),
                   icon: <ShieldOff />,
                   tone: 'muted',
+                  active: isQuickFilterActive('Disabled'),
+                  onClick: () => applyQuickFilter('Disabled'),
                 },
               ]}
             />
             {statisticsQuery.isPending && (
-              <p role="status" className="mt-2 text-xs text-muted-foreground">
+              <p role="status" className="sr-only">
                 Đang tải thống kê...
               </p>
             )}
@@ -380,14 +479,25 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
           </section>
         </CardHeader>
 
-        <div className="h-[min(60vh,40rem)] min-h-[20rem] overflow-auto">
+        <div
+          aria-busy={usersQuery.isFetching}
+          className={`h-[min(60vh,40rem)] min-h-[20rem] overflow-auto transition-opacity ${isRefreshing ? 'opacity-60' : ''}`}
+        >
           {usersQuery.isPending ? (
-            <p
-              role="status"
-              className="flex h-full items-center justify-center p-8 text-center text-sm text-slate-500"
-            >
-              Đang tải danh sách...
-            </p>
+            <TableSkeleton
+              className="min-w-[1040px]"
+              columns={[
+                { label: 'STT', width: 'w-14' },
+                { label: isStudent ? 'Sinh viên' : 'Giảng viên / Cán bộ' },
+                {
+                  label: isStudent ? 'MSSV' : 'Vai trò / Mã cán bộ',
+                  width: 'w-52',
+                },
+                { label: 'Lần truy cập', width: 'w-36' },
+                { label: 'Trạng thái', width: 'w-36' },
+                { label: 'Thao tác', width: 'w-[248px]' },
+              ]}
+            />
           ) : usersQuery.isError ? (
             <div
               role="alert"
@@ -406,7 +516,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               pageSize={data.pageSize}
               currentUserId={currentUser?.id}
               canManage={canManage}
-              isChangingStatus={isUpdating}
+              isChangingStatus={isUpdating || usersQuery.isFetching}
               onEdit={handleOpenForm}
               onChangeStatus={handleChangeStatus}
               onResendActivation={(user) => {
@@ -415,9 +525,14 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               }}
             />
           ) : (
-            <p className="flex h-full items-center justify-center p-8 text-center text-sm text-slate-500">
-              Không có tài khoản phù hợp.
-            </p>
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-sm text-slate-500">
+              <p>Không có tài khoản phù hợp.</p>
+              {hasFilters && (
+                <Button type="button" variant="outline" leftIcon={<X />} onClick={clearFilters}>
+                  Bỏ lọc
+                </Button>
+              )}
+            </div>
           )}
         </div>
 
@@ -428,6 +543,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               <select
                 id={`page-size-${accountGroup}`}
                 value={pageSize}
+                disabled={isUpdating || usersQuery.isFetching}
                 className="rounded-md border border-slate-200 bg-white p-2"
                 onChange={(event) => {
                   setPageSize(Number(event.target.value));
@@ -445,7 +561,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               totalCount={data.totalCount}
               hasPreviousPage={data.hasPreviousPage}
               hasNextPage={data.hasNextPage}
-              isLoading={usersQuery.isFetching}
+              isLoading={usersQuery.isFetching || isUpdating}
               itemLabel={isStudent ? 'sinh viên' : 'giảng viên / cán bộ'}
               onPageChange={setPageNumber}
             />

@@ -60,6 +60,33 @@ public static class AuditIntegrationEventValidation
 
 public static class IntegrationAuditActions
 {
+    public const string BatchCreated =
+        "AcademicPeriods.Batch.Created";
+
+    public const string BatchScheduleUpdated =
+        "AcademicPeriods.Batch.ScheduleUpdated";
+
+    public const string BatchOpened =
+        "AcademicPeriods.Batch.Opened";
+
+    public const string BatchClosed =
+        "AcademicPeriods.Batch.Closed";
+
+    public const string BatchArchived =
+        "AcademicPeriods.Batch.Archived";
+
+    public const string ScoreConfigurationDraftCreated =
+        "AcademicPeriods.ScoreConfiguration.DraftCreated";
+
+    public const string ScoreConfigurationDraftUpdated =
+        "AcademicPeriods.ScoreConfiguration.DraftUpdated";
+
+    public const string ScoreConfigurationPublished =
+        "AcademicPeriods.ScoreConfiguration.Published";
+
+    public const string ScoreConfigurationRetired =
+        "AcademicPeriods.ScoreConfiguration.Retired";
+
     public const string BatchConfigurationUpdated =
         "AcademicPeriods.Batch.ConfigurationUpdated";
 

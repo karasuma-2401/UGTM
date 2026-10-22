@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { Skeleton } from './skeleton';
 
 const tones = {
   primary: {
@@ -28,14 +29,17 @@ export interface StatisticItem {
   value: ReactNode;
   icon?: ReactNode;
   tone?: keyof typeof tones;
+  onClick?: () => void;
+  active?: boolean;
 }
 
 export interface StatisticsBarProps {
   items: StatisticItem[];
   className?: string;
+  loading?: boolean;
 }
 
-export function StatisticsBar({ items, className }: StatisticsBarProps) {
+export function StatisticsBar({ items, className, loading = false }: StatisticsBarProps) {
   return (
     <dl
       className={cn(
@@ -43,13 +47,27 @@ export function StatisticsBar({ items, className }: StatisticsBarProps) {
         className,
       )}
     >
-      {items.map(({ key, label, value, icon, tone = 'muted' }) => {
+      {items.map(({ key, label, value, icon, tone = 'muted', onClick, active }) => {
         const colors = tones[tone];
         return (
           <div
             key={key}
-            className={cn('flex items-center gap-2 rounded-md px-2.5 py-1.5', colors.background)}
+            className={cn(
+              'relative flex items-center gap-2 rounded-md px-2.5 py-1.5',
+              colors.background,
+              active && 'ring-1 ring-inset ring-primary/40',
+            )}
           >
+            {onClick && (
+              <button
+                type="button"
+                onClick={onClick}
+                disabled={loading}
+                aria-label={`Lọc: ${label}`}
+                aria-pressed={Boolean(active)}
+                className="absolute inset-0 z-10 cursor-pointer rounded-md transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              />
+            )}
             {icon && (
               <span
                 aria-hidden="true"
@@ -66,7 +84,7 @@ export function StatisticsBar({ items, className }: StatisticsBarProps) {
                   colors.value,
                 )}
               >
-                {value}
+                {loading ? <Skeleton className="h-4 w-10" /> : value}
               </dd>
             </div>
           </div>

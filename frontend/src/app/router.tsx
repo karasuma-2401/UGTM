@@ -11,10 +11,12 @@ import { LoginPage } from '../features/auth/pages/LoginPage';
 import { OtpPage } from '../features/auth/pages/OtpPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 import { UsersPage } from '../features/admin/pages/UsersPage';
+import { TopicProposePage } from '../features/topics/pages/TopicProposePage';
+import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/admin/layouts/IdentityLayout';
 
 import { ProtectedRoute } from '../shared/auth';
-import { RolePermissionPage } from '../features/admin';
+import { RolePermissionPage, AuditLogPage, ScoreConfigPage } from '../features/admin';
 
 export const router = createBrowserRouter([
   {
@@ -37,6 +39,38 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'ui-test', element: <UiTestPage /> },
+      {
+        path: 'topics/propose',
+        element: (
+          <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
+            <TopicProposePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'topics/review',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin']}>
+            <TopicReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/audit-logs',
+        element: (
+          <ProtectedRoute allowedRoles={['Admin']}>
+            <AuditLogPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/grade-config',
+        element: (
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
+            <ScoreConfigPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: 'modules/identity',
         element: <IdentityLayout />,

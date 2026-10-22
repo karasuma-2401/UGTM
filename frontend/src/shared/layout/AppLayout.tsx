@@ -2,18 +2,11 @@ import { useState, useMemo } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import ugtmLogo from '../../../assets/logo_UGTM.svg';
 import {
-  LayoutDashboard,
-  ShieldCheck,
-  CalendarDays,
-  BookOpen,
-  FileSignature,
-  Users2,
   Bell,
   Search,
   Menu,
   X,
   LogOut,
-  Palette,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -21,73 +14,56 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/shared/auth';
 import { getIdentityAccess } from '@/shared/auth/identityAccess';
+import { navigationSections, type NavItemConfig } from './navigationConfig';
+import { CurrentAcademicBatch } from './CurrentAcademicBatch';
 
-export interface NavItem {
-  label: string;
-  path: string;
-  icon: React.ComponentType<{ className?: string }>;
-  badge?: string;
-  permission?: string | string[];
-  permissions?: string | string[];
-  role?: string | string[];
-  roles?: string | string[];
-  requireAllPermissions?: boolean;
-}
-
-const navItems: NavItem[] = [
-  { label: 'Tổng quan', path: '/', icon: LayoutDashboard },
-  { label: 'Đợt KLTN', path: '/modules/academic-periods', icon: CalendarDays },
-  { label: 'Danh mục đề tài', path: '/modules/topic-catalog', icon: BookOpen },
-  {
-    label: 'Hồ sơ & Tiến độ KLTN',
-    path: '/modules/thesis-management',
-    icon: FileSignature,
-    badge: 'Mới',
-  },
-  { label: 'Đánh giá & Kết quả', path: '/modules/defense-council', icon: Users2 },
-  {
-    label: 'Tài khoản & Phân quyền',
-    path: '/modules/identity',
-    icon: ShieldCheck,
-  },
-  { label: 'Thông báo', path: '/modules/notifications', icon: Bell },
-  { label: 'UI Components (Dev)', path: '/ui-test', icon: Palette, badge: 'Dev' },
-];
+export type NavItem = NavItemConfig;
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const { user, logout, isLoggingOut, hasPermission, hasRole } = useAuth();
 
-  const visibleNavItems = useMemo(() => {
-    return navItems.filter((item) => {
-      if (item.path === '/modules/identity') {
-        return getIdentityAccess(hasPermission).canAccess;
-      }
-      const requiredPerms = item.permissions || item.permission;
-      if (requiredPerms) {
-        const perms = Array.isArray(requiredPerms) ? requiredPerms : [requiredPerms];
-        if (perms.length > 0) {
-          const hasPerm = item.requireAllPermissions
-            ? perms.every((p) => hasPermission(p))
-            : hasPermission(perms);
-          if (!hasPerm) return false;
-        }
-      }
+  const visibleSections = useMemo(() => {
+    return navigationSections
+      .map((section) => {
+        if (section.roles && !hasRole(section.roles)) return null;
+        if (section.permissions && !hasPermission(section.permissions)) return null;
 
-      const requiredRoles = item.roles || item.role;
-      if (requiredRoles) {
-        const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
-        if (roles.length > 0 && !hasRole(roles)) {
-          return false;
-        }
-      }
+        const visibleItems = section.items.filter((item) => {
+          if (item.path === '/modules/identity') {
+            return getIdentityAccess(hasPermission).canAccess;
+          }
+          const requiredPerms = item.permissions || item.permission;
+          if (requiredPerms) {
+            const perms = Array.isArray(requiredPerms) ? requiredPerms : [requiredPerms];
+            if (perms.length > 0) {
+              const hasPerm = item.requireAllPermissions
+                ? perms.every((p) => hasPermission(p))
+                : hasPermission(perms);
+              if (!hasPerm) return false;
+            }
+          }
 
-      return true;
-    });
+          const requiredRoles = item.roles || item.role;
+          if (requiredRoles) {
+            const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
+            if (roles.length > 0 && !hasRole(roles)) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+
+        if (visibleItems.length === 0) return null;
+        return { ...section, items: visibleItems };
+      })
+      .filter((s): s is NonNullable<typeof s> => s !== null);
   }, [hasPermission, hasRole]);
 
   const userInitial = user?.fullName ? user.fullName.trim().charAt(0).toUpperCase() : 'U';
+  const totalVisibleItems = visibleSections.reduce((acc, s) => acc + s.items.length, 0);
 
   return (
     <div className="min-h-screen bg-slate-50/60 flex">
@@ -129,64 +105,62 @@ export function AppLayout() {
           </button>
         </div>
 
-        {/* Academic Period Selector Badge */}
-        <div className="p-3 mx-3 my-2 rounded-lg bg-slate-50 border border-slate-150">
-          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-            Đợt hiện hành
-          </div>
-          <div className="text-xs font-semibold text-slate-800 flex items-center justify-between">
-            <span>Đợt 1 - HK2 (2025-2026)</span>
-          </div>
-        </div>
+        <CurrentAcademicBatch />
 
-        {/* Navigation items */}
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-1">
-            Phân hệ nghiệp vụ
-          </div>
-          {visibleNavItems.length === 0 ? (
+        {/* Navigation sections & items */}
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4">
+          {totalVisibleItems === 0 ? (
             <div className="px-3 py-6 text-center text-xs text-slate-400 font-medium">
               Không có phân hệ nào khả dụng cho tài khoản này
             </div>
           ) : (
-            visibleNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive =
-                item.path === '/'
-                  ? location.pathname === item.path
-                  : location.pathname === item.path ||
-                    location.pathname.startsWith(`${item.path}/`);
-
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setSidebarOpen(false)}
-                  style={isActive ? { background: 'var(--gradient-brand)' } : undefined}
-                  className={cn(
-                    'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group',
-                    isActive
-                      ? 'text-white shadow-sm'
-                      : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      className={cn(
-                        'size-4.5 shrink-0 transition-colors',
-                        isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700',
-                      )}
-                    />
-                    <span>{item.label}</span>
+            visibleSections.map((section) => (
+              <div key={section.id} className="space-y-1">
+                {section.title && (
+                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-1">
+                    {section.title}
                   </div>
-                  {item.badge && !isActive && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                      {item.badge}
-                    </Badge>
-                  )}
-                </NavLink>
-              );
-            })
+                )}
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive =
+                    item.path === '/'
+                      ? location.pathname === item.path
+                      : location.pathname === item.path ||
+                        location.pathname.startsWith(`${item.path}/`);
+
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setSidebarOpen(false)}
+                      style={isActive ? { background: 'var(--gradient-brand)' } : undefined}
+                      className={cn(
+                        'flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group',
+                        isActive
+                          ? 'text-white shadow-sm'
+                          : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon
+                          className={cn(
+                            'size-4.5 shrink-0 transition-colors',
+                            isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700',
+                          )}
+                        />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && !isActive && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {item.badge}
+                        </Badge>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            ))
           )}
         </div>
 

@@ -26,7 +26,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   } = useAuth();
   const location = useLocation();
 
-  if (isLoading || isLoggingOut) {
+  // An explicit logout starts a new login flow, without remembering the page
+  // belonging to the previous session (or a different account).
+  if (isLoggingOut) {
+    return <Navigate to={redirectTo} state={null} replace />;
+  }
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3">

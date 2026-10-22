@@ -93,9 +93,17 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("date")
                         .HasColumnName("end_date");
+
+                    b.Property<Guid?>("ScheduleTemplateVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("schedule_template_version_id");
 
                     b.Property<int>("Semester")
                         .HasColumnType("integer")
@@ -113,14 +121,126 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue("Draft")
                         .HasColumnName("status");
 
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasDefaultValue("Asia/Ho_Chi_Minh")
+                        .HasColumnName("time_zone_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_kltn_batch");
+
+                    b.HasIndex("ScheduleTemplateVersionId")
+                        .HasDatabaseName("ix_kltn_batch_schedule_template_version_id");
+
+                    b.HasIndex("AcademicYear", "Semester")
+                        .IsUnique()
+                        .HasDatabaseName("ix_kltn_batch_academic_year_semester");
 
                     b.ToTable("kltn_batch", "academic", t =>
                         {
                             t.HasCheckConstraint("ck_batch_dates", "end_date > start_date");
 
                             t.HasCheckConstraint("ck_batch_semester", "semester > 0");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.ScheduleTemplateVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<Guid?>("PublishedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("published_by");
+
+                    b.Property<DateTime?>("RetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retired_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TemplateCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("template_code");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("time_zone_id");
+
+                    b.Property<int>("VersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_schedule_template_version");
+
+                    b.HasIndex("TemplateCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_schedule_template_one_active")
+                        .HasFilter("status = 'Active'");
+
+                    b.HasIndex("TemplateCode", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_schedule_template_code_version");
+
+                    b.ToTable("schedule_template_version", "academic");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896"),
+                            CreatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "Quy trình KLTN chuẩn 21 tuần",
+                            PublishedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = "Active",
+                            TemplateCode = "UIT_KLTN_STANDARD",
+                            TimeZoneId = "Asia/Ho_Chi_Minh",
+                            VersionNo = 1
                         });
                 });
 
@@ -188,9 +308,15 @@ namespace UGTM.Database.Migrations.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_score_component_config_config_id_component_code");
 
+                    b.HasIndex("ConfigId", "OrderIndex")
+                        .IsUnique()
+                        .HasDatabaseName("ix_score_component_config_config_id_order_index");
+
                     b.ToTable("score_component_config", "academic", t =>
                         {
                             t.HasCheckConstraint("ck_score_component_minimum", "minimum_score IS NULL OR minimum_score BETWEEN 0 AND 10");
+
+                            t.HasCheckConstraint("ck_score_component_order", "order_index > 0");
 
                             t.HasCheckConstraint("ck_score_component_weight", "weight >= 0");
                         });
@@ -215,15 +341,48 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue("IntegerCoefficient")
                         .HasColumnName("calculation_method");
 
+                    b.Property<string>("ChangeReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("change_reason");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<bool>("IsActive")
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<Guid?>("PublishedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("published_by");
+
+                    b.Property<DateTime?>("RetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retired_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_active");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Draft")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int>("VersionNo")
                         .ValueGeneratedOnAdd()
@@ -234,9 +393,19 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_score_weight_config");
 
-                    b.HasIndex("BatchId")
+                    b.HasIndex("BatchId", "VersionNo")
                         .IsUnique()
-                        .HasDatabaseName("ix_score_weight_config_batch_id");
+                        .HasDatabaseName("ix_score_weight_config_batch_version");
+
+                    b.HasIndex(new[] { "BatchId" }, "IX_ScoreWeightConfig_OneActive")
+                        .IsUnique()
+                        .HasDatabaseName("ix_score_weight_config_one_active")
+                        .HasFilter("status = 'Active'");
+
+                    b.HasIndex(new[] { "BatchId" }, "IX_ScoreWeightConfig_OneDraft")
+                        .IsUnique()
+                        .HasDatabaseName("ix_score_weight_config_one_draft")
+                        .HasFilter("status = 'Draft'");
 
                     b.ToTable("score_weight_config", "academic");
                 });
@@ -252,13 +421,29 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("batch_id");
 
-                    b.Property<DateTime>("DeadlineDate")
+                    b.Property<DateTime>("DeadlineAtUtc")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deadline_date");
+                        .HasColumnName("deadline_at_utc");
 
-                    b.Property<int>("StageIndex")
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<bool>("IsOverridden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_overridden");
+
+                    b.Property<int>("OrderIndex")
                         .HasColumnType("integer")
-                        .HasColumnName("stage_index");
+                        .HasColumnName("order_index");
+
+                    b.Property<string>("StageCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("stage_code");
 
                     b.Property<string>("StageName")
                         .IsRequired()
@@ -273,13 +458,169 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_stage");
 
-                    b.HasIndex("BatchId", "StageIndex")
+                    b.HasIndex("BatchId", "OrderIndex")
                         .IsUnique()
-                        .HasDatabaseName("ix_stage_batch_id_stage_index");
+                        .HasDatabaseName("ix_stage_batch_id_order_index");
+
+                    b.HasIndex("BatchId", "StageCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_stage_batch_id_stage_code");
 
                     b.ToTable("stage", "academic", t =>
                         {
-                            t.HasCheckConstraint("ck_stage_index", "stage_index BETWEEN 1 AND 7");
+                            t.HasCheckConstraint("ck_stage_dates", "end_date >= start_date");
+
+                            t.HasCheckConstraint("ck_stage_order_index", "order_index BETWEEN 1 AND 7");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.StageTemplateDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("DeadlineAdjustmentPolicy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("deadline_adjustment_policy");
+
+                    b.Property<TimeOnly>("DefaultDeadlineLocalTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("default_deadline_local_time");
+
+                    b.Property<int>("EndOffsetDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_offset_days");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("order_index");
+
+                    b.Property<string>("StageCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("stage_code");
+
+                    b.Property<string>("StageName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("stage_name");
+
+                    b.Property<int>("StartOffsetDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("start_offset_days");
+
+                    b.Property<Guid>("TemplateVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_version_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stage_template_definition");
+
+                    b.HasIndex("TemplateVersionId", "OrderIndex")
+                        .IsUnique()
+                        .HasDatabaseName("ix_stage_template_version_order");
+
+                    b.HasIndex("TemplateVersionId", "StageCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_stage_template_version_code");
+
+                    b.ToTable("stage_template_definition", "academic", t =>
+                        {
+                            t.HasCheckConstraint("ck_stage_template_offsets", "start_offset_days >= 0 AND end_offset_days >= start_offset_days");
+
+                            t.HasCheckConstraint("ck_stage_template_order", "order_index BETWEEN 1 AND 7");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("2f7fd572-7fc5-4620-972b-36cfcf8c0091"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 6,
+                            OrderIndex = 1,
+                            StageCode = "TOPIC_PREPARATION",
+                            StageName = "Chuẩn bị và công bố đề tài",
+                            StartOffsetDays = 0,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("11e9e9ab-789e-462f-8eb1-f2d6be05e3b3"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 13,
+                            OrderIndex = 2,
+                            StageCode = "REGISTRATION_AND_SYLLABUS",
+                            StageName = "Đăng ký và đề cương",
+                            StartOffsetDays = 7,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("abf58e41-725e-421b-b9f4-d6dcfe4dddc2"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 62,
+                            OrderIndex = 3,
+                            StageCode = "PROGRESS_EXECUTION",
+                            StageName = "Thực hiện và theo dõi tiến độ",
+                            StartOffsetDays = 14,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("a08f9813-286c-4da4-999b-4334a4cf3a20"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 69,
+                            OrderIndex = 4,
+                            StageCode = "MIDTERM_GATE",
+                            StageName = "Đánh giá giữa kỳ",
+                            StartOffsetDays = 63,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("e938156b-26e7-4256-9465-ac2a458e8c15"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 125,
+                            OrderIndex = 5,
+                            StageCode = "FINAL_EVALUATION",
+                            StageName = "Báo cáo cuối kỳ và phản biện",
+                            StartOffsetDays = 70,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("32488d73-1973-4ea6-b6d2-23fc1fd13a99"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 139,
+                            OrderIndex = 6,
+                            StageCode = "DEFENSE",
+                            StageName = "Hội đồng và bảo vệ",
+                            StartOffsetDays = 126,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("b2b70276-7538-451b-86a5-cf61031cfbd1"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 146,
+                            OrderIndex = 7,
+                            StageCode = "ARCHIVAL_AND_PUBLICATION",
+                            StageName = "Lưu chiểu và công bố kết quả",
+                            StartOffsetDays = 140,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
                         });
                 });
 
@@ -2279,6 +2620,17 @@ namespace UGTM.Database.Migrations.Migrations
                         });
                 });
 
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.KltnBatch", b =>
+                {
+                    b.HasOne("UGTM.Modules.AcademicPeriods.Domain.Entities.ScheduleTemplateVersion", "ScheduleTemplateVersion")
+                        .WithMany()
+                        .HasForeignKey("ScheduleTemplateVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_kltn_batch_schedule_template_version");
+
+                    b.Navigation("ScheduleTemplateVersion");
+                });
+
             modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.ScoreComponentConfig", b =>
                 {
                     b.HasOne("UGTM.Modules.AcademicPeriods.Domain.Entities.ScoreWeightConfig", "Config")
@@ -2294,8 +2646,8 @@ namespace UGTM.Database.Migrations.Migrations
             modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.ScoreWeightConfig", b =>
                 {
                     b.HasOne("UGTM.Modules.AcademicPeriods.Domain.Entities.KltnBatch", "Batch")
-                        .WithOne("ScoreWeightConfig")
-                        .HasForeignKey("UGTM.Modules.AcademicPeriods.Domain.Entities.ScoreWeightConfig", "BatchId")
+                        .WithMany("ScoreConfigurations")
+                        .HasForeignKey("BatchId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_score_weight_config_kltn_batch_batch_id");
@@ -2313,6 +2665,18 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasConstraintName("fk_stage_kltn_batch_batch_id");
 
                     b.Navigation("Batch");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.StageTemplateDefinition", b =>
+                {
+                    b.HasOne("UGTM.Modules.AcademicPeriods.Domain.Entities.ScheduleTemplateVersion", "TemplateVersion")
+                        .WithMany("StageDefinitions")
+                        .HasForeignKey("TemplateVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stage_template_definition_version");
+
+                    b.Navigation("TemplateVersion");
                 });
 
             modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.AdvisorEvaluation", b =>
@@ -2793,9 +3157,14 @@ namespace UGTM.Database.Migrations.Migrations
 
             modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.KltnBatch", b =>
                 {
-                    b.Navigation("ScoreWeightConfig");
+                    b.Navigation("ScoreConfigurations");
 
                     b.Navigation("Stages");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.ScheduleTemplateVersion", b =>
+                {
+                    b.Navigation("StageDefinitions");
                 });
 
             modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.ScoreWeightConfig", b =>
