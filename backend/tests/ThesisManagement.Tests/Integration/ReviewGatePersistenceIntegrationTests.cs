@@ -38,6 +38,13 @@ public sealed class ReviewGatePersistenceIntegrationTests(PostgreSqlFixture fixt
                 WHERE table_schema = 'thesis' AND table_name = 'submission_file'
                 ORDER BY column_name
                 """).ToListAsync();
+            var progressReportVersionColumns = await db.Database.SqlQueryRaw<string>(
+                """
+                SELECT column_name AS "Value"
+                FROM information_schema.columns
+                WHERE table_schema = 'thesis' AND table_name = 'progress_report_version'
+                ORDER BY column_name
+                """).ToListAsync();
             var constraintNames = await db.Database.SqlQueryRaw<string>(
                 """
                 SELECT conname AS "Value"
@@ -98,10 +105,17 @@ public sealed class ReviewGatePersistenceIntegrationTests(PostgreSqlFixture fixt
             Assert.DoesNotContain("file_url", submissionFileColumns);
             Assert.Contains("content_type", submissionFileColumns);
             Assert.Contains("checksum_sha256", submissionFileColumns);
+            Assert.Equal(
+                [
+                    "advisor_feedback", "git_url", "id", "is_late", "progress_report_id", "reviewed_at",
+                    "reviewed_by", "status", "student_note", "submitted_at", "submitted_by", "version_no"
+                ],
+                progressReportVersionColumns);
             Assert.Contains("ck_review_gate_configuration_deadline_order", constraintNames);
             Assert.Contains("ck_submission_review_version_no", constraintNames);
             Assert.Contains("ix_review_gate_configuration_batch_gate_type", indexNames);
             Assert.Contains("ix_submission_review_gate_submission_version", indexNames);
+            Assert.Contains("ux_progress_report_version_report_id_version_no", indexNames);
             Assert.Equal([PermissionCodes.ThesisReviewGateConfigurationsManage], reviewGatePermissionCodes);
             Assert.Equal(["AcademicAffairs", "Admin"], reviewGatePermissionRoles);
             Assert.Equal([PermissionCodes.ThesisReviewGatesReview], reviewPermissionCodes);
