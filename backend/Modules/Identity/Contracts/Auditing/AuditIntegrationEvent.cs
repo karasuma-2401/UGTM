@@ -96,6 +96,12 @@ public static class IntegrationAuditActions
     public const string RenameRequestApproved =
         "ThesisManagement.RenameRequest.Approved";
 
+    public const string ReviewGateConfigurationCreated =
+        "ThesisManagement.ReviewGateConfiguration.Created";
+
+    public const string ReviewGateConfigurationUpdated =
+        "ThesisManagement.ReviewGateConfiguration.Updated";
+
     public const string CouncilMinuteUnlockGranted =
         "DefenseCouncil.CouncilMinute.UnlockGranted";
 

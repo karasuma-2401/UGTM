@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Database.Migrations;
+using UGTM.Modules.Identity.Contracts.Authorization;
 
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
@@ -12,7 +13,7 @@ public sealed class ReviewGatePersistenceIntegrationTests(PostgreSqlFixture fixt
     private const string PreviousMigration = "20261021092342_EnforceUniqueAcademicPeriod";
 
     [Fact]
-    public async Task Latest_migration_creates_review_gate_schema_and_preserves_submission_file_identity()
+    public async Task Latest_migration_creates_review_gate_schema_and_seeds_configuration_permission()
     {
         await using var db = CreateMigrationDbContext();
         await ResetSchemasAsync(db);
@@ -51,6 +52,23 @@ public sealed class ReviewGatePersistenceIntegrationTests(PostgreSqlFixture fixt
                 WHERE schemaname = 'thesis'
                 ORDER BY indexname
                 """).ToListAsync();
+            var reviewGatePermissionCodes = await db.Database.SqlQueryRaw<string>(
+                """
+                SELECT permission_code AS "Value"
+                FROM identity.permission
+                WHERE permission_code = {0}
+                """,
+                PermissionCodes.ThesisReviewGateConfigurationsManage).ToListAsync();
+            var reviewGatePermissionRoles = await db.Database.SqlQueryRaw<string>(
+                """
+                SELECT r.role_name AS "Value"
+                FROM identity.role_permission rp
+                JOIN identity.role r ON r.id = rp.role_id
+                JOIN identity.permission p ON p.id = rp.permission_id
+                WHERE p.permission_code = {0}
+                ORDER BY r.role_name
+                """,
+                PermissionCodes.ThesisReviewGateConfigurationsManage).ToListAsync();
 
             Assert.Equal(
                 [
@@ -67,6 +85,8 @@ public sealed class ReviewGatePersistenceIntegrationTests(PostgreSqlFixture fixt
             Assert.Contains("ck_submission_review_version_no", constraintNames);
             Assert.Contains("ix_review_gate_configuration_batch_gate_type", indexNames);
             Assert.Contains("ix_submission_review_gate_submission_version", indexNames);
+            Assert.Equal([PermissionCodes.ThesisReviewGateConfigurationsManage], reviewGatePermissionCodes);
+            Assert.Equal(["AcademicAffairs", "Admin"], reviewGatePermissionRoles);
         }
         finally
         {

@@ -18,6 +18,9 @@ using Amazon.S3;
 using Microsoft.Extensions.Options;
 
 using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
+using UGTM.Modules.ThesisManagement.Application.ReviewGateConfigurations.GetReviewGateConfigurations;
+using UGTM.Modules.ThesisManagement.Application.ReviewGateConfigurations.UpsertReviewGateConfiguration;
+using UGTM.Modules.ThesisManagement.Infrastructure.Endpoints;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -29,6 +32,7 @@ public sealed class ThesisManagementModule : IModule
     {
         services.AddModuleDbContext<ThesisManagementDbContext>(configuration);
         services.AddScoped<IStudentGroupRepository, StudentGroupRepository>();
+        services.AddScoped<IReviewGateConfigurationRepository, ReviewGateConfigurationRepository>();
         services.AddScoped<IThesisUnitOfWork>(provider => provider.GetRequiredService<ThesisManagementDbContext>());
         services.AddScoped<IThesisRegistrationContract, ThesisRegistrationContract>();
         services.AddScoped<IThesisManagementAuditOutbox, ThesisManagementAuditOutbox>();
@@ -43,13 +47,23 @@ public sealed class ThesisManagementModule : IModule
         services.AddSingleton<IThesisSubmissionFileValidator, ThesisSubmissionFileValidator>();
         services.AddSingleton<IThesisSubmissionObjectKeyFactory, ThesisSubmissionObjectKeyFactory>();
         services.AddSingleton<IThesisSubmissionObjectStorage, S3ThesisSubmissionObjectStorage>();
+        services.AddSingleton<TimeProvider>(TimeProvider.System);
+        services.AddScoped<UpsertReviewGateConfigurationHandler>();
+        services.AddScoped<GetReviewGateConfigurationsHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapReviewGateConfigurationEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
+            .WithSummary("Kiểm tra module Thesis Management đang hoạt động")
+            .WithDescription("""
+                Không cần xác thực hoặc body. Trả 200 với tên module và `status: ok` khi
+                endpoint có thể phục vụ request. Endpoint này không kiểm tra database,
+                object storage hoặc trạng thái deadline của các cổng thẩm định.
+                """)
             .WithName($"{Name}.Ping");
     }
 }
