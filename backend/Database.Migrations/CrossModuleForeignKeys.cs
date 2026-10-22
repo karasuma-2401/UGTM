@@ -80,6 +80,18 @@ internal static class CrossModuleForeignKeys
             .WithMany().HasForeignKey(x => x.ReviewedBy)
             .HasConstraintName("fk_midterm_report_user_reviewed_by")
             .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<ReviewGateConfiguration>().HasOne<KltnBatch>()
+            .WithMany().HasForeignKey(x => x.BatchId)
+            .HasConstraintName("fk_review_gate_configuration_kltn_batch_batch_id")
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ReviewGateConfiguration>().HasOne<User>()
+            .WithMany().HasForeignKey(x => x.CreatedBy)
+            .HasConstraintName("fk_review_gate_configuration_user_created_by")
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ReviewGateConfiguration>().HasOne<User>()
+            .WithMany().HasForeignKey(x => x.UpdatedBy)
+            .HasConstraintName("fk_review_gate_configuration_user_updated_by")
+            .OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<ProgressMilestone>().HasOne<User>()
             .WithMany().HasForeignKey(x => x.CreatedBy)
             .HasConstraintName("fk_progress_milestone_user_created_by")
@@ -99,6 +111,10 @@ internal static class CrossModuleForeignKeys
         modelBuilder.Entity<SubmissionFile>().HasOne<User>()
             .WithMany().HasForeignKey(x => x.UploadedBy)
             .HasConstraintName("fk_submission_file_user_uploaded_by")
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<SubmissionReview>().HasOne<User>()
+            .WithMany().HasForeignKey(x => x.ReviewedBy)
+            .HasConstraintName("fk_submission_review_user_reviewed_by")
             .OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<Syllabus>().HasOne<User>()
             .WithMany().HasForeignKey(x => x.ReviewedBy)

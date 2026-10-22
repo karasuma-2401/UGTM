@@ -28,6 +28,7 @@ public sealed class StudentGroup : AggregateRoot<Guid>
     public Guid TopicId { get; private set; }
     public StudentGroupStatus Status { get; private set; } = StudentGroupStatus.Registered;
     public DateTime CreatedAt { get; private set; }
+    public uint Version { get; private set; }
     public IReadOnlyCollection<StudentGroupMember> Members => _members.AsReadOnly();
 
     public StudentGroupMember AddMember(Guid studentId, Guid batchId, DateTime joinedAt)
@@ -60,5 +61,85 @@ public sealed class StudentGroup : AggregateRoot<Guid>
         var member = new StudentGroupMember(this, studentId, batchId, joinedAt);
         _members.Add(member);
         return member;
+    }
+
+    public bool TrySubmitSyllabus()
+    {
+        if (Status is not (StudentGroupStatus.Registered or StudentGroupStatus.SyllabusRevisionRequired))
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.SyllabusSubmitted;
+        return true;
+    }
+
+    public bool TryApproveSyllabus()
+    {
+        if (Status != StudentGroupStatus.SyllabusSubmitted)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.InProgress;
+        return true;
+    }
+
+    public bool TryOpenSyllabusRevision()
+    {
+        if (Status != StudentGroupStatus.SyllabusSubmitted)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.SyllabusRevisionRequired;
+        return true;
+    }
+
+    public bool TrySubmitMidtermReport()
+    {
+        if (Status != StudentGroupStatus.InProgress)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.MidtermSubmitted;
+        return true;
+    }
+
+    public bool TryApproveMidtermReport()
+    {
+        if (Status != StudentGroupStatus.MidtermSubmitted)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.InProgress;
+        return true;
+    }
+
+    public bool TryOpenMidtermReportRevision()
+    {
+        if (Status != StudentGroupStatus.MidtermSubmitted)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.InProgress;
+        return true;
+    }
+
+    public bool TryStop()
+    {
+        if (Status is StudentGroupStatus.Stopped
+            or StudentGroupStatus.Defended
+            or StudentGroupStatus.ScoreLocked
+            or StudentGroupStatus.Completed)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.Stopped;
+        return true;
     }
 }

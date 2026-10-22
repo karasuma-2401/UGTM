@@ -28,9 +28,17 @@ public class SubmissionFileConfiguration : IEntityTypeConfiguration<SubmissionFi
             .HasMaxLength(255)
             .IsRequired();
 
-        builder.Property(x => x.FileUrl)
-            .HasMaxLength(500)
+        builder.Property(x => x.ObjectKey)
+            .HasMaxLength(1000)
             .IsRequired();
+
+        builder.Property(x => x.ContentType)
+            .HasMaxLength(100)
+            .HasDefaultValue("application/octet-stream")
+            .IsRequired();
+
+        builder.Property(x => x.ChecksumSha256)
+            .HasMaxLength(64);
 
         builder.Property(x => x.FileSize)
             .IsRequired();

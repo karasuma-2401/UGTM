@@ -4,6 +4,7 @@ public enum StudentGroupStatus
 {
     Registered,
     SyllabusSubmitted,
+    SyllabusRevisionRequired,
     SyllabusApproved,
     InProgress,
     MidtermSubmitted,

@@ -19,9 +19,10 @@ services:
       - RabbitMQ__Username=${RABBITMQ_USER:-ugtm_user}
       - RabbitMQ__Password=${RABBITMQ_PASSWORD:-ugtm_rabbit_pass_123}
       - S3Storage__Endpoint=http://minio:9000
+      - S3Storage__PublicEndpoint=http://localhost:9000
       - S3Storage__AccessKey=${MINIO_ROOT_USER:-ugtm_admin}
       - S3Storage__SecretKey=${MINIO_ROOT_PASSWORD:-ugtm_secret_pass_123}
-      - S3Storage__BucketName=ugtm-storage
+      - S3Storage__BucketName=ugtm-thesis-submissions
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
       - Identity__Email__PublicWebBaseUrl=http://localhost:3000
       - Identity__Email__OutboxPartition=local-docker
@@ -44,8 +45,8 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_healthy
-      minio:
-        condition: service_started
+      minio-private-policy:
+        condition: service_completed_successfully
       mailpit:
         condition: service_started
 
@@ -70,6 +71,26 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
+
+  minio-init:
+    image: cgr.dev/chainguard/minio-client:latest
+    restart: on-failure
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      - MC_HOST_ugtm=http://${MINIO_ROOT_USER:-ugtm_minio_admin}:${MINIO_ROOT_PASSWORD:-ugtm_minio_password_change_me}@minio:9000
+    command: ["mb", "--ignore-existing", "ugtm/ugtm-thesis-submissions"]
+
+  minio-private-policy:
+    image: cgr.dev/chainguard/minio-client:latest
+    restart: on-failure
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      - MC_HOST_ugtm=http://${MINIO_ROOT_USER:-ugtm_minio_admin}:${MINIO_ROOT_PASSWORD:-ugtm_minio_password_change_me}@minio:9000
+    command: ["anonymous", "set", "none", "ugtm/ugtm-thesis-submissions"]
 
   redis:
     image: redis:7-alpine

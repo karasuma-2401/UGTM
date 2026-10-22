@@ -22,5 +22,8 @@ public class StudentGroupConfiguration : IEntityTypeConfiguration<StudentGroup>
         builder.Property(x => x.CreatedAt)
             .IsRequired();
 
+        builder.Property(x => x.Version)
+            .IsRowVersion();
+
     }
 }
