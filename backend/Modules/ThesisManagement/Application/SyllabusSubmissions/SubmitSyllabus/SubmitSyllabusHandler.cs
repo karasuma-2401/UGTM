@@ -80,7 +80,7 @@ public sealed class SubmitSyllabusHandler(
         else
         {
             if (syllabus.Status != SyllabusStatus.NeedRevision
-                || group.Status != StudentGroupStatus.SyllabusSubmitted)
+                || group.Status != StudentGroupStatus.SyllabusRevisionRequired)
             {
                 return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.InvalidSubmissionState);
             }

@@ -113,7 +113,7 @@ public sealed class ReviewSyllabusHandler(
         {
             ReviewDecision.Approved => group.TryApproveSyllabus(),
             ReviewDecision.Rejected => group.TryStop(),
-            ReviewDecision.NeedRevision => true,
+            ReviewDecision.NeedRevision => group.TryOpenSyllabusRevision(),
             _ => false
         };
         if (!groupTransitioned)

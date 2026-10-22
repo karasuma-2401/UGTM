@@ -29,6 +29,8 @@ using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.GetMidt
 using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.ReviewMidtermReport;
 using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.SubmitMidtermReport;
 using UGTM.Modules.ThesisManagement.Application.ReviewGateSubmissions.GetReviewGateSubmissionFileDownload;
+using UGTM.Modules.ThesisManagement.Application.ReviewGateDeadlines;
+using UGTM.Modules.ThesisManagement.Infrastructure.ReviewGateDeadlines;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -50,6 +52,15 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IThesisManagementAuditOutbox, ThesisManagementAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, ThesisManagementAuditEventSource>();
         services.Configure<S3StorageOptions>(configuration.GetSection(S3StorageOptions.SectionName));
+        services.AddOptions<ReviewGateDeadlineEnforcementOptions>()
+            .Bind(configuration.GetSection(ReviewGateDeadlineEnforcementOptions.SectionName))
+            .Validate(
+                options => options.PollingIntervalSeconds is >= 10 and <= 3600,
+                "PollingIntervalSeconds must be between 10 and 3600 seconds.")
+            .Validate(
+                options => options.BatchSize is >= 1 and <= 1000,
+                "BatchSize must be between 1 and 1000.")
+            .ValidateOnStart();
         services.AddSingleton<IAmazonS3>(serviceProvider =>
         {
             var options = serviceProvider.GetRequiredService<IOptions<S3StorageOptions>>().Value;
@@ -70,6 +81,8 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<ReviewMidtermReportHandler>();
         services.AddScoped<GetMidtermReportSubmissionHistoryHandler>();
         services.AddScoped<GetReviewGateSubmissionFileDownloadHandler>();
+        services.AddScoped<IReviewGateDeadlineEnforcer, ReviewGateDeadlineEnforcer>();
+        services.AddHostedService<ReviewGateDeadlineEnforcementWorker>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

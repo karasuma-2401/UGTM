@@ -114,6 +114,9 @@ public static class IntegrationAuditActions
     public const string MidtermReportReviewed =
         "ThesisManagement.MidtermReport.Reviewed";
 
+    public const string ReviewGateDeadlineClosed =
+        "ThesisManagement.ReviewGate.DeadlineClosed";
+
     public const string CouncilMinuteUnlockGranted =
         "DefenseCouncil.CouncilMinute.UnlockGranted";
 

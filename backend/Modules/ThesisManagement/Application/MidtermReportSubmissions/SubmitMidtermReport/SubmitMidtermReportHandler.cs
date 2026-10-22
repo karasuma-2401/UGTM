@@ -81,7 +81,7 @@ public sealed class SubmitMidtermReportHandler(
         else
         {
             if (report.Status != MidtermReportStatus.NeedRevision
-                || group.Status != StudentGroupStatus.MidtermSubmitted)
+                || group.Status != StudentGroupStatus.InProgress)
             {
                 return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.InvalidSubmissionState);
             }

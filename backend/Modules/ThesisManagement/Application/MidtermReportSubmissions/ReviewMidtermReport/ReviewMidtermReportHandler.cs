@@ -113,7 +113,7 @@ public sealed class ReviewMidtermReportHandler(
         {
             ReviewDecision.Approved => group.TryApproveMidtermReport(),
             ReviewDecision.Rejected => group.TryStop(),
-            ReviewDecision.NeedRevision => true,
+            ReviewDecision.NeedRevision => group.TryOpenMidtermReportRevision(),
             _ => false
         };
         if (!groupTransitioned)

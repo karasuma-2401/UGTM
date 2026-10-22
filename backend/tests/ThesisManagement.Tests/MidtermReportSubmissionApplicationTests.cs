@@ -31,6 +31,7 @@ public sealed class MidtermReportSubmissionApplicationTests
             .HandleAsync(SubmitCommand(group.Id));
         var revisionReview = await fixtures.CreateReviewHandler(ReviewerUser())
             .HandleAsync(new ReviewMidtermReportCommand(group.Id, "NeedRevision", "Bổ sung kết quả thực nghiệm."));
+        Assert.Equal(StudentGroupStatus.InProgress, group.Status);
         var secondSubmission = await fixtures.CreateSubmitHandler(StudentUser())
             .HandleAsync(SubmitCommand(group.Id));
         var approval = await fixtures.CreateReviewHandler(ReviewerUser())

@@ -28,6 +28,7 @@ public sealed class StudentGroup : AggregateRoot<Guid>
     public Guid TopicId { get; private set; }
     public StudentGroupStatus Status { get; private set; } = StudentGroupStatus.Registered;
     public DateTime CreatedAt { get; private set; }
+    public uint Version { get; private set; }
     public IReadOnlyCollection<StudentGroupMember> Members => _members.AsReadOnly();
 
     public StudentGroupMember AddMember(Guid studentId, Guid batchId, DateTime joinedAt)
@@ -64,7 +65,7 @@ public sealed class StudentGroup : AggregateRoot<Guid>
 
     public bool TrySubmitSyllabus()
     {
-        if (Status is not (StudentGroupStatus.Registered or StudentGroupStatus.SyllabusSubmitted))
+        if (Status is not (StudentGroupStatus.Registered or StudentGroupStatus.SyllabusRevisionRequired))
         {
             return false;
         }
@@ -84,9 +85,20 @@ public sealed class StudentGroup : AggregateRoot<Guid>
         return true;
     }
 
+    public bool TryOpenSyllabusRevision()
+    {
+        if (Status != StudentGroupStatus.SyllabusSubmitted)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.SyllabusRevisionRequired;
+        return true;
+    }
+
     public bool TrySubmitMidtermReport()
     {
-        if (Status is not (StudentGroupStatus.InProgress or StudentGroupStatus.MidtermSubmitted))
+        if (Status != StudentGroupStatus.InProgress)
         {
             return false;
         }
@@ -96,6 +108,17 @@ public sealed class StudentGroup : AggregateRoot<Guid>
     }
 
     public bool TryApproveMidtermReport()
+    {
+        if (Status != StudentGroupStatus.MidtermSubmitted)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.InProgress;
+        return true;
+    }
+
+    public bool TryOpenMidtermReportRevision()
     {
         if (Status != StudentGroupStatus.MidtermSubmitted)
         {

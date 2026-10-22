@@ -47,10 +47,16 @@ public class StudentGroupTests
 
         Assert.True(group.TrySubmitSyllabus());
         Assert.Equal(StudentGroupStatus.SyllabusSubmitted, group.Status);
+        Assert.True(group.TryOpenSyllabusRevision());
+        Assert.Equal(StudentGroupStatus.SyllabusRevisionRequired, group.Status);
+        Assert.True(group.TrySubmitSyllabus());
         Assert.True(group.TryApproveSyllabus());
         Assert.Equal(StudentGroupStatus.InProgress, group.Status);
         Assert.True(group.TrySubmitMidtermReport());
         Assert.Equal(StudentGroupStatus.MidtermSubmitted, group.Status);
+        Assert.True(group.TryOpenMidtermReportRevision());
+        Assert.Equal(StudentGroupStatus.InProgress, group.Status);
+        Assert.True(group.TrySubmitMidtermReport());
         Assert.True(group.TryApproveMidtermReport());
         Assert.Equal(StudentGroupStatus.InProgress, group.Status);
     }
@@ -63,6 +69,8 @@ public class StudentGroupTests
 
         Assert.False(group.TrySubmitMidtermReport());
         Assert.True(group.TrySubmitSyllabus());
+        Assert.Throws<InvalidOperationException>(() => group.AddMember(Guid.NewGuid(), batch, Timestamp));
+        Assert.True(group.TryOpenSyllabusRevision());
         Assert.Throws<InvalidOperationException>(() => group.AddMember(Guid.NewGuid(), batch, Timestamp));
     }
 

@@ -31,6 +31,7 @@ public sealed class SyllabusSubmissionApplicationTests
             .HandleAsync(SubmitCommand(group.Id));
         var revisionReview = await fixtures.CreateReviewHandler(ReviewerUser())
             .HandleAsync(new ReviewSyllabusCommand(group.Id, "NeedRevision", "Bổ sung phạm vi nghiên cứu."));
+        Assert.Equal(StudentGroupStatus.SyllabusRevisionRequired, group.Status);
         var secondSubmission = await fixtures.CreateSubmitHandler(StudentUser())
             .HandleAsync(SubmitCommand(group.Id));
         var approval = await fixtures.CreateReviewHandler(ReviewerUser())
