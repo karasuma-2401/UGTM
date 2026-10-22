@@ -31,6 +31,12 @@ using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.SubmitM
 using UGTM.Modules.ThesisManagement.Application.ReviewGateSubmissions.GetReviewGateSubmissionFileDownload;
 using UGTM.Modules.ThesisManagement.Application.ReviewGateDeadlines;
 using UGTM.Modules.ThesisManagement.Infrastructure.ReviewGateDeadlines;
+using UGTM.Modules.ThesisManagement.Application.ProgressMilestones.CreateProgressMilestone;
+using UGTM.Modules.ThesisManagement.Application.ProgressMilestones.GetProgressMilestones;
+using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetProgressReport;
+using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetProgressReportFileDownload;
+using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.ReviewProgressReport;
+using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.SubmitProgressReport;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -45,6 +51,8 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IReviewGateConfigurationRepository, ReviewGateConfigurationRepository>();
         services.AddScoped<ISyllabusRepository, SyllabusRepository>();
         services.AddScoped<IMidtermReportRepository, MidtermReportRepository>();
+        services.AddScoped<IProgressMilestoneRepository, ProgressMilestoneRepository>();
+        services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
         services.AddScoped<ISubmissionFileRepository, SubmissionFileRepository>();
         services.AddScoped<ISubmissionReviewRepository, SubmissionReviewRepository>();
         services.AddScoped<IThesisUnitOfWork>(provider => provider.GetRequiredService<ThesisManagementDbContext>());
@@ -81,6 +89,12 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<ReviewMidtermReportHandler>();
         services.AddScoped<GetMidtermReportSubmissionHistoryHandler>();
         services.AddScoped<GetReviewGateSubmissionFileDownloadHandler>();
+        services.AddScoped<CreateProgressMilestoneHandler>();
+        services.AddScoped<GetProgressMilestonesHandler>();
+        services.AddScoped<SubmitProgressReportHandler>();
+        services.AddScoped<ReviewProgressReportHandler>();
+        services.AddScoped<GetProgressReportHandler>();
+        services.AddScoped<GetProgressReportFileDownloadHandler>();
         services.AddScoped<IReviewGateDeadlineEnforcer, ReviewGateDeadlineEnforcer>();
         services.AddHostedService<ReviewGateDeadlineEnforcementWorker>();
     }
@@ -90,6 +104,8 @@ public sealed class ThesisManagementModule : IModule
         endpoints.MapReviewGateConfigurationEndpoints();
         endpoints.MapSyllabusSubmissionEndpoints();
         endpoints.MapMidtermReportSubmissionEndpoints();
+        endpoints.MapProgressMilestoneEndpoints();
+        endpoints.MapProgressReportSubmissionEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))

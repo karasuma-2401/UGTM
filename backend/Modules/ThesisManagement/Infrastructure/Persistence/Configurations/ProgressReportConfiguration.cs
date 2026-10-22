@@ -34,6 +34,9 @@ public class ProgressReportConfiguration : IEntityTypeConfiguration<ProgressRepo
         builder.Property(x => x.AdvisorFeedback)
             .HasColumnType("text");
 
+        builder.Property(x => x.Version)
+            .IsRowVersion();
+
         builder.HasOne(x => x.Milestone)
             .WithMany(m => m.ProgressReports)
             .HasForeignKey(x => x.MilestoneId)

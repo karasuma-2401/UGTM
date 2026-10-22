@@ -11,7 +11,7 @@ Hệ thống quản lý KLTN tại UIT, gồm 7 giai đoạn và 2 cổng kiểm
 | 1 | Tuần 0–1 | GVHD đề xuất đề tài; Văn phòng Khoa thẩm định, phê duyệt và công bố danh mục đề tài. |
 | 2 | Tuần 2 | Sinh viên đăng ký đề tài, ghép nhóm và nộp đề cương chi tiết; Văn phòng Khoa thẩm định đề cương tại Cổng kiểm soát 1. |
 | 3 | Tuần 3–10 | Sinh viên thực hiện đề tài theo các Milestones do GVHD thiết lập, nộp sản phẩm tiến độ, báo cáo giữa kỳ và thực hiện thủ tục đổi tên đề tài khi có nhu cầu. |
-| 4 | Tuần 10 | GVHD đánh giá báo cáo giữa kỳ và quyết định cho phép tiếp tục hoặc dừng KLTN tại Cổng kiểm soát 2; Văn phòng Khoa tổng hợp kết quả gửi Phòng Đào tạo. |
+| 4 | Tuần 10 | Văn phòng Khoa thẩm định báo cáo giữa kỳ tại Cổng kiểm soát 2; kết quả `Approved`, `NeedRevision` hoặc `Rejected` quyết định nhóm tiếp tục, nộp lại hay dừng KLTN. |
 | 5 | Tuần 11–18 | Sinh viên nộp báo cáo cuối kỳ; GVHD nhận xét, chấm điểm và xác nhận chuyển phản biện; GVPB đánh giá, chấm điểm và kết luận điều kiện bảo vệ. |
 | 6 | Tuần 19–21 | Văn phòng Khoa lập Hội đồng và xếp lịch bảo vệ; Phòng Đào tạo phê duyệt quyết định; Hội đồng tổ chức bảo vệ, chấm điểm và khóa biên bản. Sau bảo vệ, sinh viên hoàn thiện hồ sơ lưu chiểu, GVHD kiểm tra bản chỉnh sửa và Khoa xác nhận hoàn thành lưu chiểu. |
 | 7 | Tuần 21 | Văn phòng Khoa tổng hợp điểm theo cấu hình động của đợt KLTN, rà soát bảng điểm dự thảo và công bố kết quả chính thức; Khoa và Phòng Đào tạo xuất báo cáo phục vụ xét tốt nghiệp. |
@@ -50,7 +50,7 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 | Theo dõi trạng thái, hạn nộp và cảnh báo trễ mốc | X | X | — | — | — | — | — |
 | 4. Báo cáo giữa kỳ và thẩm định điều kiện tiếp tục — Cổng 2 |  |  |  |  |  |  |  |
 | Nộp báo cáo giữa kỳ | N | X | — | X | — | — | — |
-| Nhận xét, quyết định Tiếp tục/Dừng KLTN | X | D | — | X | — | — | — |
+| Thẩm định báo cáo giữa kỳ — Cổng 2 | X | X | — | D | — | — | D |
 | Tổng hợp kết quả giữa kỳ và chuyển PĐT | X | X | — | TH | X | — | — |
 | 5. Đổi tên đề tài liên thông ba cấp |  |  |  |  |  |  |  |
 | Tạo đơn xin đổi tên đề tài | TH | X | — | X | X | — | — |
@@ -154,14 +154,15 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 
 - Trong suốt giai đoạn Tuần 3 đến Tuần 10, nhóm sinh viên hoàn thiện nội dung theo các mốc và theo dõi tiến độ tổng thể trên Dashboard.
 - Đến hạn chót Tuần 10, sinh viên upload tệp Báo cáo giữa kỳ lên hệ thống.
-- GVHD xem xét báo cáo, nhập phiếu nhận xét tiến độ giữa kỳ và đưa ra quyết định thẩm định.
-- GVHD chọn "Đồng ý tiếp tục KLTN" → Dữ liệu báo cáo của nhóm được chuyển lên Văn phòng Khoa.
-- Khoa tiếp nhận, tổng hợp danh sách nhóm được tiếp tục thực hiện và chuyển dữ liệu sang Phòng Đào tạo để theo dõi.
+- Văn phòng Khoa thẩm định báo cáo giữa kỳ tại Cổng 2, nhập nhận xét và chọn `Approved`, `NeedRevision` hoặc `Rejected`.
+- `Approved` giữ nhóm ở trạng thái thực hiện KLTN; `NeedRevision` mở quyền nộp phiên bản mới trước hạn chót cuối cùng; `Rejected` chuyển nhóm sang `Stopped`.
+- Khi qua hạn chốt cuối cùng mà báo cáo chưa `Approved`, hệ thống tự động dừng nhóm và lưu audit trail.
 
 **Luồng phát sinh:**
 
-- GVHD đánh giá "Không đồng ý tiếp tục KLTN": GVHD nhập lý do đình chỉ trên hệ thống → Đề tài chuyển sang trạng thái "Dừng KLTN", ngắt quyền truy cập các giai đoạn sau và ghi nhận điểm kết quả giữa kỳ/học phần là 0 điểm theo quy chế.
-- Nộp trễ hạn Tuần 10: Hệ thống tự động khóa chức năng upload báo cáo giữa kỳ khi qua hạn chót; sinh viên không thể nộp bài và tự động bị xem xét dừng đề tài.
+- Khoa chọn `NeedRevision`: Khoa nhập feedback → hệ thống mở quyền cho nhóm nộp phiên bản mới cho đến deadline chốt cuối cùng; lịch sử phiên bản và feedback cũ được giữ nguyên.
+- Khoa chọn `Rejected`: Khoa nhập feedback → nhóm chuyển `Stopped` và các nghiệp vụ KLTN tiếp theo bị khóa.
+- Quá deadline chốt cuối cùng: worker tự động dừng nhóm nếu báo cáo giữa kỳ chưa `Approved`; deadline lấy từ cấu hình đợt, không hard-code tuần hoặc ngày trong source.
 
 ### Luồng Đổi tên đề tài (ĐTĐT) liên thông 3 bên (Tuần 3 đến Tuần 10)
 
@@ -328,11 +329,11 @@ Mã FR được giữ theo báo cáo để truy vết với Use Case và kiểm 
 | FR-MILE-04 | Chỉnh sửa và nộp lại sản phẩm Milestones | Khi GVHD đánh giá "Cần chỉnh sửa", hệ thống mở quyền cho phép nhóm sinh viên nộp lại sản phẩm của Milestone tương ứng. Các phiên bản nộp lại (v2, v3,...) và lịch sử phản hồi được lưu trữ để theo dõi tiến trình thực hiện. | Sinh viên, Hệ thống |
 | FR-MILE-05 | Theo dõi và cảnh báo tiến độ Milestones | Hệ thống theo dõi thời hạn hoàn thành của từng Milestone, tự động ghi nhận trạng thái nộp trễ và hiển thị cảnh báo trên Dashboard. GVHD có thể sử dụng thông tin nộp trễ làm căn cứ đánh giá chuyên cần và tiến độ thực hiện của nhóm. | Sinh viên, GVHD, Hệ thống |
 | FR-MILE-06 | Thông báo kết quả đánh giá Milestones | Hệ thống tự động gửi thông báo trong ứng dụng (in-app) và email đến sinh viên khi GVHD hoàn thành đánh giá Milestone. Đồng thời lưu vết lịch sử trao đổi và phản hồi giữa GVHD với nhóm sinh viên. | Hệ thống (tự động) |
-| FR-MID-01 | Nộp và đánh giá báo cáo giữa kỳ | Cho phép nhóm sinh viên tải lên báo cáo giữa kỳ trước hạn chót Tuần 10. GVHD truy cập báo cáo, nhập phiếu nhận xét tiến độ và đưa ra quyết định "Đồng ý tiếp tục KLTN" hoặc "Không đồng ý tiếp tục KLTN". Khi GVHD đồng ý, dữ liệu báo cáo được chuyển đến Văn phòng Khoa. | Sinh viên, GVHD |
+| FR-MID-01 | Nộp và thẩm định báo cáo giữa kỳ | Cho phép mọi thành viên nhóm tải lên báo cáo giữa kỳ trước deadline cấu hình. Văn phòng Khoa hoặc Admin thẩm định từng phiên bản với `Approved`, `NeedRevision` hoặc `Rejected`; feedback bắt buộc cho hai kết quả không đạt. Phiên bản nộp và kết quả thẩm định được lưu lịch sử. | Sinh viên, Khoa, Admin |
 | FR-MID-02 | Tạo đơn xin đổi tên đề tài | Cho phép sinh viên tạo và gửi đơn xin đổi tên đề tài trực tuyến trong giai đoạn Tuần 3 đến Tuần 10. Đơn phải có tên đề tài mới bằng tiếng Việt, tiếng Anh và lý do điều chỉnh. Hệ thống không cho phép tạo đơn sau Tuần 10. | Sinh viên |
-| FR-MID-03 | Tổng hợp kết quả đánh giá giữa kỳ | Cho phép Văn phòng Khoa tiếp nhận kết quả đánh giá từ GVHD, tổng hợp danh sách các nhóm được tiếp tục hoặc phải dừng thực hiện KLTN và chuyển dữ liệu tổng hợp sang Phòng Đào tạo để theo dõi. | Khoa, PĐT |
-| FR-MID-04 | Xử lý kết quả không đạt giữa kỳ | Khi GVHD chọn "Không đồng ý tiếp tục KLTN", hệ thống yêu cầu ghi nhận lý do đình chỉ, tự động chuyển trạng thái đề tài sang "Dừng KLTN", khóa quyền truy cập các giai đoạn tiếp theo và ghi nhận điểm kết quả giữa kỳ/học phần bằng 0 theo quy chế đã xác định. | GVHD, Hệ thống |
-| FR-MID-05 | Kiểm soát thời hạn nộp báo cáo giữa kỳ | Hệ thống tự động kiểm tra hạn chót nộp báo cáo giữa kỳ tại Tuần 10. Khi vượt quá thời hạn, hệ thống khóa chức năng tải lên báo cáo giữa kỳ và ghi nhận trường hợp chưa hoàn thành để xem xét dừng đề tài theo quy định. | Hệ thống (tự động) |
+| FR-MID-03 | Tổng hợp kết quả giữa kỳ | Cho phép Khoa tổng hợp các nhóm đã `Approved`, đang `NeedRevision` hoặc bị `Rejected` tại Cổng 2 và chuyển dữ liệu cần thiết sang PĐT theo dõi. | Khoa, PĐT |
+| FR-MID-04 | Xử lý kết quả không đạt giữa kỳ | Khi Khoa chọn `Rejected`, hệ thống yêu cầu feedback, tự động chuyển nhóm sang `Stopped` và khóa quyền truy cập các giai đoạn tiếp theo. Khi Khoa chọn `NeedRevision`, hệ thống chỉ mở quyền nộp phiên bản mới đến deadline chốt cuối cùng. | Khoa, Hệ thống |
+| FR-MID-05 | Kiểm soát deadline Cổng 2 | Hệ thống kiểm tra ba deadline cấu hình của Cổng 2. Qua hạn chốt cuối cùng, worker dừng nhóm chưa được `Approved`; không hard-code tuần hoặc ngày. | Hệ thống (tự động) |
 | FR-MID-06 | Phê duyệt đơn đổi tên đề tài liên thông ba cấp | Cho phép xử lý đơn đổi tên đề tài lần lượt qua ba cấp: GVHD xác nhận cấp 1, Văn phòng Khoa thẩm định và ký duyệt cấp 2, Phòng Đào tạo phê duyệt chính thức cấp 3. Hệ thống quản lý trạng thái đơn và chỉ chuyển sang cấp tiếp theo khi cấp trước đã đồng ý. | GVHD, Khoa, PĐT |
 | FR-MID-07 | Từ chối đơn đổi tên đề tài | Cho phép người thẩm định tại bất kỳ cấp nào từ chối đơn đổi tên đề tài và nhập lý do từ chối. Hệ thống dừng quy trình phê duyệt, giữ nguyên tên đề tài hiện tại và thông báo kết quả cùng lý do cho sinh viên. | GVHD, Khoa, PĐT |
 | FR-MID-08 | Cập nhật đề tài sau phê duyệt đổi tên | Sau khi Phòng Đào tạo phê duyệt chính thức, hệ thống tự động cập nhật tên đề tài mới trong cơ sở dữ liệu, chuyển trạng thái đơn sang "Hoàn tất", ghi nhận lịch sử thay đổi vào AuditLog và mở quyền cho sinh viên nộp lại bản đề cương chi tiết cập nhật. | Hệ thống (tự động), Sinh viên |
@@ -429,8 +430,8 @@ Các câu về SQL Server, DbContext riêng mỗi module và không có FK liên
 
 ## 6. Quy tắc diễn giải và giới hạn
 
-- Cổng 1 do Khoa thẩm định: Đạt / Yêu cầu chỉnh sửa / Không đạt. Cổng 2 do GVHD quyết định Tiếp tục / Dừng; Khoa tổng hợp và chuyển PĐT, không có vòng Khoa duyệt giữa kỳ thay GVHD.
-- Quá hạn giữa kỳ: khóa upload và ghi nhận để xem xét dừng; không tự kết luận điểm 0 ngay khi hết hạn. Điểm 0 gắn với quyết định dừng theo quy chế.
+- Cổng 1 và Cổng 2 đều do Khoa hoặc Admin thẩm định theo cùng state machine: `Submitted` → `NeedRevision` → `Submitted` (v2, v3, ...) → `Approved` hoặc `Rejected`. GVHD không thẩm định Cổng 2; GVHD chỉ đánh giá các Milestone của đề tài được phân công.
+- Quá deadline chốt cuối cùng của Cổng 1 hoặc Cổng 2: worker dừng nhóm chưa `Approved` và lưu audit trail. Hệ thống không tự gán điểm 0; điểm theo quy chế là nghiệp vụ riêng.
 - Ngưỡng phản biện lấy từ cấu hình đợt; `5.0` trong luồng mô tả là giá trị minh họa, không hard-code.
 - Tệp tối đa 20 MB theo ràng buộc chung và QĐ2.1 (bảng FR-REG-01 ghi “dưới 20 MB”). Đề cương: PDF/DOC/DOCX; cuối kỳ: PDF/DOCX; lưu chiểu cần cả PDF, DOCX, tóm tắt và từ khóa Việt/Anh.
 - Điểm và phiếu nhận xét bảo mật không trả cho sinh viên trước công bố. Góp ý chỉnh sửa của GVPB và Hội đồng phải được cung cấp riêng, không kèm dữ liệu điểm chưa công bố.

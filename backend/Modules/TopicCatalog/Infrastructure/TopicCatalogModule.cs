@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
+using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 
 namespace UGTM.Modules.TopicCatalog.Infrastructure;
 
@@ -34,6 +35,7 @@ public sealed class TopicCatalogModule : IModule
         services.AddScoped<ITopicRepository, TopicRepository>();
         services.AddScoped<ITopicUnitOfWork>(provider => provider.GetRequiredService<TopicCatalogDbContext>());
         services.AddScoped<ITopicQueryReader, TopicQueryReader>();
+        services.AddScoped<ITopicAdvisorAssignmentContract, TopicAdvisorAssignmentContract>();
 
         // Command Handlers
         services.AddScoped<CreateTopicHandler>();

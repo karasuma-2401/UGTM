@@ -2271,6 +2271,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_progress_report");
 
@@ -2282,6 +2288,77 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDatabaseName("ix_progress_report_milestone_id_group_id");
 
                     b.ToTable("progress_report", "thesis");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.ProgressReportVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdvisorFeedback")
+                        .HasColumnType("text")
+                        .HasColumnName("advisor_feedback");
+
+                    b.Property<string>("GitUrl")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("git_url");
+
+                    b.Property<bool>("IsLate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_late");
+
+                    b.Property<Guid>("ProgressReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("progress_report_id");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StudentNote")
+                        .HasColumnType("text")
+                        .HasColumnName("student_note");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid>("SubmittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<int>("VersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_progress_report_version");
+
+                    b.HasIndex("ReviewedBy")
+                        .HasDatabaseName("ix_progress_report_version_reviewed_by");
+
+                    b.HasIndex("SubmittedBy")
+                        .HasDatabaseName("ix_progress_report_version_submitted_by");
+
+                    b.HasIndex("ProgressReportId", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_progress_report_version_report_id_version_no");
+
+                    b.ToTable("progress_report_version", "thesis");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.RenameRequest", b =>
@@ -3190,6 +3267,18 @@ namespace UGTM.Database.Migrations.Migrations
                     b.Navigation("Group");
 
                     b.Navigation("Milestone");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.ProgressReportVersion", b =>
+                {
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.ProgressReport", "ProgressReport")
+                        .WithMany()
+                        .HasForeignKey("ProgressReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_progress_report_version_progress_report_report_id");
+
+                    b.Navigation("ProgressReport");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.RenameRequest", b =>
