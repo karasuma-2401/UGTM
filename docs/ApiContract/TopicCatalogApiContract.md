@@ -1,12 +1,12 @@
 # Topic Catalog, Proposal, Review & Tracking API
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 20/10/2026  
+**Trạng thái:** đã triển khai · **Cập nhật:** 22/10/2026  
 **Base path:** `/api/topics`
 
 Tài liệu này đặc tả chi tiết các endpoint thuộc phân hệ **Đề tài khóa luận (TopicCatalog)**:
 1. **Đề xuất & Soạn thảo đề tài (GVHD):** Tạo mới, chỉnh sửa và gửi duyệt đề tài.
-2. **Thẩm định & Công bố danh mục đề tài (Văn phòng Khoa):** Duyệt (`Approved`), yêu cầu sửa (`NeedRevision`), từ chối (`Rejected`), và công bố danh mục đề tài (`Published` / `isPublished = true`).
-3. **Tra cứu & Theo dõi đề tài (Sinh viên / GVHD / Khoa / Hội đồng):** Sinh viên tra cứu đề tài đã công bố; GVHD theo dõi trạng thái đăng ký và thông tin sinh viên của đề tài mình hướng dẫn.
+2. **Thẩm định & Công bố danh mục đề tài (Văn phòng Khoa):** Duyệt (`Approved`), yêu cầu sửa (`NeedRevision`), từ chối (`Rejected`) kèm lý do thẩm định (`reviewNote`), và công bố danh mục đề tài (`Published` / `isPublished = true`).
+3. **Tra cứu & Theo dõi đề tài (Sinh viên / GVHD / Khoa / Hội đồng):** Sinh viên tra cứu đề tài đã công bố; GVHD theo dõi trạng thái đăng ký, thông tin sinh viên và lý do thẩm định của Khoa.
 
 ---
 
@@ -15,8 +15,12 @@ Tài liệu này đặc tả chi tiết các endpoint thuộc phân hệ **Đề
 - Request và Response sử dụng định dạng JSON `camelCase`; thời gian chuẩn ISO 8601 UTC.
 - **Vòng đời trạng thái đề tài (`TopicStatus`):**
   - `Draft` (Nháp) ➔ `Submitted` (Chờ duyệt) ➔ `Approved` (Khoa duyệt) / `NeedRevision` (Khoa yêu cầu sửa) / `Rejected` (Từ chối).
-  - Khi ở `NeedRevision`, GVHD có thể chỉnh sửa và gửi duyệt lại (`NeedRevision` ➔ `Submitted`).
+  - Khi ở `NeedRevision`, GVHD có thể chỉnh sửa và gửi duyệt lại (`NeedRevision` ➔ `Submitted`). Lý do thẩm định cũ (`reviewNote`) vẫn được giữ lại để GVHD và Khoa tiện theo dõi lịch sử chỉnh sửa.
+  - Khi Khoa duyệt (`Approved`) không nhập ghi chú mới, `reviewNote` cũ được xóa về `null`.
   - Khi Khoa bấm lệnh **Công bố danh mục đề tài**, các đề tài đang ở `Approved` chuyển sang `Published` (`isPublished = true`).
+- **Phạm vi hiển thị trường `reviewNote`:**
+  - GVHD (trong `my-topics`, `tracking` và response review) và các vai trò quản trị/thẩm định (`Faculty`, `Admin`, `CouncilMember`) xem được `reviewNote`.
+  - Sinh viên tra cứu công khai qua `all-topics` **không** nhận trường này (`reviewNote = null`).
 - **Ma trận phân quyền (Role-based Authorization Matrix):**
   - **Sinh viên (`Student`) / Công khai:**
     - `GET /api/topics/all-topics`: Chỉ tra cứu được các đề tài đã được Khoa duyệt và công bố (`status == "Published"` và `isPublished == true`).
@@ -24,10 +28,10 @@ Tài liệu này đặc tả chi tiết các endpoint thuộc phân hệ **Đề
     - `POST /api/topics`: Tạo đề tài mới cho chính mình (`studentNumber` chỉ nhận `1` hoặc `2`).
     - `PUT /api/topics/{id}`: Chỉnh sửa đề tài của chính mình khi đang ở trạng thái `Draft` hoặc `NeedRevision`.
     - `POST /api/topics/{id}/submit`: Gửi đề tài của chính mình từ `Draft` / `NeedRevision` sang `Submitted`.
-    - `GET /api/topics/my-topics` & `GET /api/topics/{id}/tracking`: Xem danh sách và chi tiết các đề tài do chính mình hướng dẫn kèm thông tin nhóm sinh viên đăng ký.
+    - `GET /api/topics/my-topics` & `GET /api/topics/{id}/tracking`: Xem danh sách và chi tiết các đề tài do chính mình hướng dẫn kèm thông tin nhóm sinh viên đăng ký và lý do thẩm định.
   - **Văn phòng Khoa (`Faculty`):**
     - `GET /api/topics/my-topics` & `GET /api/topics/{id}/tracking`: Xem và lọc toàn bộ đề tài theo mọi trạng thái (`Submitted`, `Approved`, `NeedRevision`, `Rejected`, `Published`, `Draft`) để thẩm định và công bố.
-    - `POST /api/topics/{id}/review`: Thẩm định đề tài đang ở `Submitted` (`Approved`, `NeedRevision`, `Rejected`).
+    - `POST /api/topics/{id}/review`: Thẩm định đề tài đang ở `Submitted` (`Approved`, `NeedRevision`, `Rejected`) kèm lý do thẩm định `reviewNote`.
     - `POST /api/topics/publish`: Công bố danh mục đề tài đã duyệt (`Approved` ➔ `Published` / `isPublished = true`).
   - **Quản trị viên (`Admin`):**
     - Có toàn quyền thực hiện và tra cứu trên tất cả các endpoint.
@@ -40,7 +44,7 @@ Tài liệu này đặc tả chi tiết các endpoint thuộc phân hệ **Đề
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/topics/all-topics` | Mọi vai trò / Công khai | Tra cứu danh mục đề tài đã được Khoa duyệt và công bố (`isPublished = true`) |
 | `GET` | `/api/topics/my-topics` | `Lecturer` (chính chủ), `Faculty`, `Admin`, `CouncilMember` | GVHD theo dõi đề tài của mình; Khoa/Admin/Hội đồng xem & lọc toàn bộ đề tài |
-| `GET` | `/api/topics/{id}/tracking` | `Lecturer` (chính chủ), `Faculty`, `Admin`, `CouncilMember` | Xem chi tiết đề tài kèm trạng thái đăng ký và thông tin nhóm sinh viên |
+| `GET` | `/api/topics/{id}/tracking` | `Lecturer` (chính chủ), `Faculty`, `Admin`, `CouncilMember` | Xem chi tiết đề tài kèm trạng thái đăng ký, nhóm sinh viên và lý do thẩm định |
 | `POST` | `/api/topics` | `Lecturer`, `Admin` | GVHD tạo đề tài mới (`Draft` hoặc gửi duyệt ngay `Submitted`) |
 | `PUT` | `/api/topics/{id}` | `Lecturer` (chính chủ), `Admin` | GVHD chỉnh sửa đề tài khi ở trạng thái `Draft` hoặc `NeedRevision` |
 | `POST` | `/api/topics/{id}/submit` | `Lecturer` (chính chủ), `Admin` | GVHD gửi đề tài lên Văn phòng Khoa thẩm định (`Draft`/`NeedRevision` ➔ `Submitted`) |
@@ -109,10 +113,37 @@ Chỉ vai trò `Faculty` hoặc `Admin` được phép thực hiện trên đề
 #### Request Body
 ```json
 {
-  "decision": "Approved"
+  "decision": "NeedRevision",
+  "reviewNote": "Cần làm rõ mục tiêu thực nghiệm và bổ sung công nghệ dự kiến sử dụng."
 }
 ```
-- `decision`: Chỉ chấp nhận `"Approved"`, `"NeedRevision"`, hoặc `"Rejected"` (không phân biệt hoa thường).
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc |
+| :--- | :--- | :---: | :--- |
+| `decision` | `string` | Có | Chỉ chấp nhận `'Approved'`, `'NeedRevision'`, hoặc `'Rejected'` (không phân biệt hoa thường). |
+| `reviewNote` | `string?` | Có (khi NeedRevision/Rejected) | **Bắt buộc** khi `decision` là `'NeedRevision'` hoặc `'Rejected'`. Tùy chọn khi `'Approved'`. Tối đa 2000 ký tự. |
+
+#### Phản hồi thành công (200 OK)
+```json
+{
+  "success": true,
+  "data": {
+    "id": "7b5879a9-3d08-4127-b5b4-aa8aef9f3a01",
+    "batchId": "c3e38719-7975-4d2c-81bb-987a02b1c4e1",
+    "advisorId": "0199d750-a92c-7b56-b076-eb34d3d1fe55",
+    "titleVi": "Xây dựng hệ thống phát hiện bất thường dựa trên học sâu",
+    "titleEn": "Deep Learning-based Anomaly Detection System",
+    "description": "Nghiên cứu áp dụng các kiến trúc Transformer trong phân tích log chuỗi thời gian.",
+    "requirements": "Python, PyTorch, Docker.",
+    "status": "NeedRevision",
+    "studentNumber": 2,
+    "createdAt": "2026-10-20T08:00:00Z",
+    "isPublished": false,
+    "reviewNote": "Cần làm rõ mục tiêu thực nghiệm và bổ sung công nghệ dự kiến sử dụng."
+  },
+  "error": null
+}
+```
 
 ---
 
@@ -158,6 +189,8 @@ Chỉ vai trò `Faculty` hoặc `Admin` được phép thực hiện. Chuyển c
 | `Topic.InvalidTitleEn` | 400 Bad Request | Tên đề tài tiếng Anh không được vượt quá 350 ký tự. | `titleEn` dài hơn 350 ký tự. |
 | `Topic.InvalidStudentNumber` | 400 Bad Request | Chỉ tiêu sinh viên tối đa chỉ nhận giá trị 1 hoặc 2. | `studentNumber` khác `1` và `2`. |
 | `Topic.InvalidReviewDecision` | 400 Bad Request | Kết quả thẩm định không hợp lệ (chỉ chấp nhận: 'Approved', 'NeedRevision', 'Rejected'). | `decision` không thuộc 3 giá trị hợp lệ. |
+| `Topic.ReviewNoteRequired` | 400 Bad Request | Vui lòng nhập lý do khi từ chối hoặc yêu cầu chỉnh sửa đề tài. | `decision` là `NeedRevision` hoặc `Rejected` nhưng không có `reviewNote` hoặc chỉ toàn khoảng trắng. |
+| `Topic.InvalidReviewNote` | 400 Bad Request | Lý do thẩm định không được vượt quá 2000 ký tự. | `reviewNote` dài hơn 2000 ký tự sau khi cắt tỉa khoảng trắng. |
 | `Topic.NoApprovedTopicsToPublish` | 400 Bad Request | Không có đề tài nào ở trạng thái đã duyệt (Approved) để công bố. | Bấm công bố theo đợt nhưng chưa có đề tài nào ở trạng thái `Approved`. |
 | `Topic.InvalidRegistrationStatusFilter` | 400 Bad Request | Bộ lọc trạng thái đăng ký không hợp lệ (chỉ chấp nhận: 'All', 'Empty', 'Registered', 'Full'). | `registrationStatus` không thuộc các giá trị hợp lệ. |
 | `Topic.InvalidTopicStatusFilter` | 400 Bad Request | Bộ lọc trạng thái đề tài không hợp lệ. | `status` là chuỗi số hoặc không map được sang enum `TopicStatus`. |

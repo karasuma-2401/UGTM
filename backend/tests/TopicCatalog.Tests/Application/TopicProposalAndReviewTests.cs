@@ -533,11 +533,13 @@ public sealed class TopicProposalAndReviewTests
         var uow = new FakeTopicUnitOfWork();
         var handler = new ReviewTopicHandler(repo, uow, FakeCurrentUser.AsFaculty());
 
-        var result = await handler.HandleAsync(new ReviewTopicCommand(topicId, decisionInput));
+        var reviewNote = expectedStatus is TopicStatus.Approved ? null : "Lý do thẩm định của Khoa";
+        var result = await handler.HandleAsync(new ReviewTopicCommand(topicId, decisionInput, reviewNote));
 
         Assert.True(result.IsSuccess);
         Assert.Equal(expectedStatus.ToString(), result.Value.Status);
         Assert.False(result.Value.IsPublished);
+        Assert.Equal(reviewNote, result.Value.ReviewNote);
         Assert.Equal(1, uow.SaveChangesCallCount);
     }
 
@@ -741,9 +743,10 @@ public sealed class TopicProposalAndReviewTests
         Assert.Equal("Submitted", submitted.Value.Status);
 
         // Step 3: Faculty reviews and requests revision -> NeedRevision
-        var needRevision = await reviewHandler.HandleAsync(new ReviewTopicCommand(topicId, "NeedRevision"));
+        var needRevision = await reviewHandler.HandleAsync(new ReviewTopicCommand(topicId, "NeedRevision", "Cần bổ sung mục tiêu chi tiết hơn"));
         Assert.True(needRevision.IsSuccess);
         Assert.Equal("NeedRevision", needRevision.Value.Status);
+        Assert.Equal("Cần bổ sung mục tiêu chi tiết hơn", needRevision.Value.ReviewNote);
 
         // Step 4: Lecturer updates the topic and immediately resubmits -> Submitted
         var updatedAndResubmitted = await updateHandler.HandleAsync(new UpdateTopicCommand(
@@ -756,12 +759,14 @@ public sealed class TopicProposalAndReviewTests
             SubmitImmediately: true));
         Assert.True(updatedAndResubmitted.IsSuccess);
         Assert.Equal("Submitted", updatedAndResubmitted.Value.Status);
+        Assert.Equal("Cần bổ sung mục tiêu chi tiết hơn", updatedAndResubmitted.Value.ReviewNote);
 
-        // Step 5: Faculty approves the topic -> Approved (not yet published!)
+        // Step 5: Faculty approves the topic -> Approved (not yet published! Previous note is cleared)
         var approved = await reviewHandler.HandleAsync(new ReviewTopicCommand(topicId, "Approved"));
         Assert.True(approved.IsSuccess);
         Assert.Equal("Approved", approved.Value.Status);
         Assert.False(approved.Value.IsPublished);
+        Assert.Null(approved.Value.ReviewNote);
 
         // Before Publish: Students searching GetAllTopicsAsync MUST NOT see the topic yet!
         var queryReaderBeforePublish = TopicQueryReader.CreateInMemory(

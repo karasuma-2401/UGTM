@@ -146,6 +146,7 @@ public static class TopicEndpoints
             .WithDescription("""
                 Chỉ Văn phòng Khoa (`Faculty`) hoặc `Admin` mới có quyền thẩm định đề tài đang ở trạng thái `Submitted`.
                 - `decision`: Kết quả thẩm định, chỉ chấp nhận `'Approved'` (Khoa duyệt), `'NeedRevision'` (Yêu cầu sửa), hoặc `'Rejected'` (Từ chối).
+                - `reviewNote`: Lý do thẩm định (tối đa 2000 ký tự). Bắt buộc khi `decision` là `'NeedRevision'` hoặc `'Rejected'`; tùy chọn khi `'Approved'`.
                 """)
             .RequireAuthorization()
             .Produces<ApiResponse<TopicSummaryDto>>(StatusCodes.Status200OK)
@@ -267,7 +268,7 @@ public static class TopicEndpoints
         ReviewTopicHandler handler,
         CancellationToken cancellationToken = default)
     {
-        var command = new ReviewTopicCommand(id, request.Decision ?? string.Empty);
+        var command = new ReviewTopicCommand(id, request.Decision ?? string.Empty, request.ReviewNote);
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
     }
@@ -301,7 +302,8 @@ public static class TopicEndpoints
         bool SubmitImmediately = false);
 
     public sealed record ReviewTopicRequest(
-        string? Decision);
+        string? Decision,
+        string? ReviewNote = null);
 
     public sealed record PublishTopicsRequest(
         Guid BatchId,

@@ -116,7 +116,8 @@ public sealed class UpdateTopicHandler(
             topic.Status.ToString(),
             topic.StudentNumber,
             topic.CreatedAt,
-            topic.IsPublished));
+            topic.IsPublished,
+            topic.ReviewNote));
     }
 
     private static bool HasRole(ICurrentUser user, string role)
