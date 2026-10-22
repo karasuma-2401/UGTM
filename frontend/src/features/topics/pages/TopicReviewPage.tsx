@@ -8,6 +8,7 @@ import {
   Search,
   SlidersHorizontal,
   X,
+  FunnelX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +16,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
+import { Skeleton } from '@/components/ui/skeleton';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
@@ -98,6 +100,15 @@ export function TopicReviewPage() {
     },
   });
   const busy = actionMutation.isPending;
+  const advisorsLoading =
+    canReview &&
+    Boolean(user?.id) &&
+    hasPermission('identity.users.read') &&
+    (advisorsQuery.isPending || advisorsQuery.isFetching);
+  const batchesLoading =
+    Boolean(user?.id) &&
+    hasPermission('academic.batches.read') &&
+    (batchesQuery.isPending || batchesQuery.isFetching);
   const data = topicsQuery.data;
   const isRefreshing = topicsQuery.isFetching && !topicsQuery.isPending;
   const statistics = statisticsQuery.isError ? undefined : statisticsQuery.data;
@@ -171,7 +182,7 @@ export function TopicReviewPage() {
           <span>Tìm đề tài</span>
           <Input
             leftIcon={<Search className="size-4" />}
-            placeholder="Tên đề tài..."
+            placeholder="Tên đề tài tiếng Việt hoặc tiếng Anh"
             className="h-10 rounded-lg bg-slate-50/70 shadow-none"
             value={draftFilters.keyword}
             onChange={(event) => setDraftFilters({ ...draftFilters, keyword: event.target.value })}
@@ -220,7 +231,7 @@ export function TopicReviewPage() {
             type="button"
             variant="outline"
             className="h-10 rounded-lg px-4"
-            leftIcon={<X />}
+            leftIcon={<FunnelX />}
             disabled={!hasFilters}
             onClick={() => applyFilters({ ...EMPTY_FILTERS })}
           >
@@ -398,6 +409,8 @@ export function TopicReviewPage() {
               topics={data.items}
               batches={batches}
               advisorNames={advisorsQuery.data ?? {}}
+              advisorsLoading={advisorsLoading}
+              batchesLoading={batchesLoading}
               selected={selected}
               pageNumber={data.pageNumber}
               pageSize={data.pageSize}
@@ -414,7 +427,7 @@ export function TopicReviewPage() {
               {hasFilters && (
                 <Button
                   variant="outline"
-                  leftIcon={<X />}
+                  leftIcon={<FunnelX />}
                   onClick={() => applyFilters({ ...EMPTY_FILTERS })}
                 >
                   Bỏ lọc
@@ -466,6 +479,8 @@ export function TopicReviewPage() {
           topicId={topicId}
           batches={batches}
           advisorNames={advisorsQuery.data ?? {}}
+          advisorsLoading={advisorsLoading}
+          batchesLoading={batchesLoading}
           busy={busy}
           error={actionMutation.error ? getTopicErrorMessage(actionMutation.error) : ''}
           onClose={() => {
@@ -495,8 +510,11 @@ export function TopicReviewPage() {
                   Công bố {selected.length} đề tài đã chọn thuộc đợt{' '}
                   <strong>
                     {batches.find((batch) => batch.id === selected[0]?.batchId)?.batchName ||
-                      selected[0]?.batchId ||
-                      '—'}
+                      (batchesLoading ? (
+                        <Skeleton className="inline-block h-4 w-28 align-middle" />
+                      ) : (
+                        selected[0]?.batchId || '—'
+                      ))}
                   </strong>{' '}
                   để sinh viên tra cứu.
                 </p>
