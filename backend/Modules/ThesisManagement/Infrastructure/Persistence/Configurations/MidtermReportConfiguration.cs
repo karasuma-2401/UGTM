@@ -25,9 +25,8 @@ public class MidtermReportConfiguration : IEntityTypeConfiguration<MidtermReport
             .HasDefaultValue(MidtermReportStatus.Submitted)
             .HasSentinel(MidtermReportStatus.Submitted);
 
-        builder.Property(x => x.AdvisorFeedback)
+        builder.Property(x => x.FacultyFeedback)
             .HasColumnType("text");
-        builder.Property(x => x.StopReason).HasColumnType("text");
 
         builder.HasOne(x => x.Group)
             .WithOne()

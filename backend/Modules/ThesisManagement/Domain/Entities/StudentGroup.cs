@@ -61,4 +61,62 @@ public sealed class StudentGroup : AggregateRoot<Guid>
         _members.Add(member);
         return member;
     }
+
+    public bool TrySubmitSyllabus()
+    {
+        if (Status is not (StudentGroupStatus.Registered or StudentGroupStatus.SyllabusSubmitted))
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.SyllabusSubmitted;
+        return true;
+    }
+
+    public bool TryApproveSyllabus()
+    {
+        if (Status != StudentGroupStatus.SyllabusSubmitted)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.InProgress;
+        return true;
+    }
+
+    public bool TrySubmitMidtermReport()
+    {
+        if (Status is not (StudentGroupStatus.InProgress or StudentGroupStatus.MidtermSubmitted))
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.MidtermSubmitted;
+        return true;
+    }
+
+    public bool TryApproveMidtermReport()
+    {
+        if (Status != StudentGroupStatus.MidtermSubmitted)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.InProgress;
+        return true;
+    }
+
+    public bool TryStop()
+    {
+        if (Status is StudentGroupStatus.Stopped
+            or StudentGroupStatus.Defended
+            or StudentGroupStatus.ScoreLocked
+            or StudentGroupStatus.Completed)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.Stopped;
+        return true;
+    }
 }

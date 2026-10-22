@@ -8,9 +8,7 @@ public class MidtermReport
     public Guid GroupId { get; set; }
     public int CurrentVersionNo { get; set; } = 1;
     public MidtermReportStatus Status { get; set; } = MidtermReportStatus.Submitted;
-    public string? AdvisorFeedback { get; set; }
-    public bool? AllowedToContinue { get; set; }
-    public string? StopReason { get; set; }
+    public string? FacultyFeedback { get; set; }
     public Guid? ReviewedBy { get; set; }
     public DateTime? ReviewedAt { get; set; }
 

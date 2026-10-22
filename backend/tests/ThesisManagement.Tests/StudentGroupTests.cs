@@ -1,4 +1,5 @@
 using UGTM.Modules.ThesisManagement.Domain.Entities;
+using UGTM.Modules.ThesisManagement.Domain.Enums;
 
 namespace UGTM.Modules.ThesisManagement.Tests;
 
@@ -37,5 +38,41 @@ public class StudentGroupTests
         group.AddMember(Guid.NewGuid(), Guid.NewGuid(), Timestamp);
 
         Assert.Throws<InvalidOperationException>(() => group.AddMember(Guid.NewGuid(), Guid.NewGuid(), Timestamp));
+    }
+
+    [Fact]
+    public void A_group_follows_the_two_review_gate_transitions()
+    {
+        var group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Timestamp);
+
+        Assert.True(group.TrySubmitSyllabus());
+        Assert.Equal(StudentGroupStatus.SyllabusSubmitted, group.Status);
+        Assert.True(group.TryApproveSyllabus());
+        Assert.Equal(StudentGroupStatus.InProgress, group.Status);
+        Assert.True(group.TrySubmitMidtermReport());
+        Assert.Equal(StudentGroupStatus.MidtermSubmitted, group.Status);
+        Assert.True(group.TryApproveMidtermReport());
+        Assert.Equal(StudentGroupStatus.InProgress, group.Status);
+    }
+
+    [Fact]
+    public void A_group_cannot_skip_the_syllabus_gate_or_change_membership_after_submission()
+    {
+        var group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Timestamp);
+        var batch = Guid.NewGuid();
+
+        Assert.False(group.TrySubmitMidtermReport());
+        Assert.True(group.TrySubmitSyllabus());
+        Assert.Throws<InvalidOperationException>(() => group.AddMember(Guid.NewGuid(), batch, Timestamp));
+    }
+
+    [Fact]
+    public void A_group_cannot_be_stopped_twice()
+    {
+        var group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Timestamp);
+
+        Assert.True(group.TryStop());
+        Assert.Equal(StudentGroupStatus.Stopped, group.Status);
+        Assert.False(group.TryStop());
     }
 }
