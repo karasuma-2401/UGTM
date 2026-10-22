@@ -15,6 +15,7 @@ import {
   Circle,
   X,
   ArrowLeft,
+  FunnelX,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ import { TopicStatusBadge } from '../components/TopicStatusBadge';
 import { TopicsTable } from '../components/TopicsTable';
 import { TopicProposalSchedule } from '../components/TopicProposalSchedule';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   EMPTY_PROPOSAL,
   topicToValues as toFormValues,
@@ -272,6 +274,7 @@ export function TopicProposePage() {
   const busy = saveMutation.isPending || detailMutation.isPending;
   const batches = batchesQuery.data ?? [];
   const selectedBatch = batches.find((batch) => batch.id === values.batchId);
+  const batchesLoading = canReadBatches && (batchesQuery.isPending || batchesQuery.isFetching);
 
   function clearCachedDraft(id: string | null) {
     if (!user?.id) return;
@@ -547,7 +550,11 @@ export function TopicProposePage() {
               <TopicPreview
                 values={values}
                 advisorName={user?.fullName ?? ''}
-                batchName={selectedBatch?.batchName}
+                batchName={
+                  selectedBatch?.batchName ||
+                  (values.batchId ? `Mã đợt: ${values.batchId}` : undefined)
+                }
+                batchLoading={Boolean(values.batchId) && !selectedBatch && batchesLoading}
               />
               <div className="flex justify-end border-t border-slate-100 px-5 py-4">
                 <Button
@@ -902,7 +909,14 @@ export function TopicProposePage() {
                     <div>
                       <dt className="text-xs text-slate-500">Đợt KLTN</dt>
                       <dd className="mt-1 text-slate-800">
-                        {selectedBatch?.batchName ?? 'Chưa chọn đợt'}
+                        {selectedBatch?.batchName ||
+                          (values.batchId && batchesLoading ? (
+                            <Skeleton className="h-5 w-32 max-w-full" />
+                          ) : values.batchId ? (
+                            `Mã đợt: ${values.batchId}`
+                          ) : (
+                            'Chưa chọn đợt'
+                          ))}
                       </dd>
                     </div>
                     <div>
@@ -1046,7 +1060,7 @@ export function TopicProposePage() {
           <Button
             type="button"
             variant="outline"
-            leftIcon={<X />}
+            leftIcon={<FunnelX />}
             className="h-10 rounded-lg px-4"
             disabled={!hasFilters}
             onClick={clearFilters}
@@ -1222,6 +1236,7 @@ export function TopicProposePage() {
             <TopicsTable
               topics={topicsQuery.data.items}
               batches={batches}
+              batchesLoading={batchesLoading}
               pageNumber={topicsQuery.data.pageNumber}
               pageSize={topicsQuery.data.pageSize}
               busy={busy || topicsQuery.isFetching}
@@ -1238,7 +1253,12 @@ export function TopicProposePage() {
                   : 'Chưa có đề tài. Tạo đề xuất đầu tiên để bắt đầu.'}
               </p>
               {Boolean(filters.keyword || filters.status || filters.batchId) && (
-                <Button type="button" variant="outline" leftIcon={<X />} onClick={clearFilters}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  leftIcon={<FunnelX />}
+                  onClick={clearFilters}
+                >
                   Bỏ lọc
                 </Button>
               )}

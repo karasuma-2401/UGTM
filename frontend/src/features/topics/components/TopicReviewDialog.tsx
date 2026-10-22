@@ -31,6 +31,8 @@ interface TopicReviewDialogProps {
   topicId: string;
   batches: TopicBatch[];
   advisorNames: Record<string, string>;
+  advisorsLoading?: boolean;
+  batchesLoading?: boolean;
   busy: boolean;
   error: string;
   onClose: () => void;
@@ -41,6 +43,8 @@ export function TopicReviewDialog({
   topicId,
   batches,
   advisorNames,
+  advisorsLoading = false,
+  batchesLoading = false,
   busy,
   error,
   onClose,
@@ -113,6 +117,8 @@ export function TopicReviewDialog({
                 studentNumber: topic.studentNumber,
               }}
               advisorName={advisorNames[topic.advisorId] || `Mã GVHD: ${topic.advisorId}`}
+              advisorLoading={advisorsLoading && !advisorNames[topic.advisorId]}
+              batchLoading={batchesLoading && !batches.some((batch) => batch.id === topic.batchId)}
               batchName={
                 batches.find((batch) => batch.id === topic.batchId)?.batchName ||
                 `Mã đợt: ${topic.batchId}`

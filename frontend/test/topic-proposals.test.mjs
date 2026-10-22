@@ -408,6 +408,7 @@ function proposalPageFixture(options = {}) {
     'TopicProposalSchedule',
     'TablePagination',
     'TableSkeleton',
+    'Skeleton',
   ];
   const components = Object.fromEntries(componentNames.map((name) => [name, () => null]));
   const dependency = (name) => ({ [name]: components[name] });
@@ -511,6 +512,7 @@ function proposalPageFixture(options = {}) {
       ),
       '@/components/ui/table-pagination': dependency('TablePagination'),
       '@/components/ui/table-skeleton': dependency('TableSkeleton'),
+      '@/components/ui/skeleton': dependency('Skeleton'),
       '../components/TopicStatusBadge': dependency('TopicStatusBadge'),
       '../components/TopicsTable': dependency('TopicsTable'),
       '../components/TopicPreview': dependency('TopicPreview'),

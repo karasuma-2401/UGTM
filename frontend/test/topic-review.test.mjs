@@ -310,6 +310,7 @@ const ui = Object.fromEntries(
     'StatisticsBar',
     'TablePagination',
     'TableSkeleton',
+    'Skeleton',
     'TopicDetailSkeleton',
     'Checkbox',
     'InfoCell',
@@ -331,6 +332,7 @@ test('review table only allows selecting approved topics from one batch', () => 
     '@/components/ui/button': ui.Button,
     '@/components/ui/checkbox': ui.Checkbox,
     '@/components/ui/info-cell': ui.InfoCell,
+    '@/components/ui/skeleton': ui.Skeleton,
     './TopicStatusBadge': ui.TopicStatusBadge,
   });
   const topics = [
@@ -362,6 +364,97 @@ test('review table only allows selecting approved topics from one batch', () => 
   assert.equal(checkboxes[0].props.disabled, false);
   checkboxes[0].props.onCheckedChange(false);
   assert.deepEqual(selected, []);
+});
+
+test('review names stay skeletons until their own queries finish and cached names never flash back to IDs', () => {
+  const { TopicReviewTable } = loadModule('features/topics/components/TopicReviewTable.tsx', {
+    ...common,
+    '@/components/ui/button': ui.Button,
+    '@/components/ui/checkbox': ui.Checkbox,
+    '@/components/ui/info-cell': ui.InfoCell,
+    '@/components/ui/skeleton': ui.Skeleton,
+    './TopicStatusBadge': ui.TopicStatusBadge,
+  });
+  const props = {
+    topics: [fullTopic],
+    batches: [],
+    advisorNames: {},
+    selected: [],
+    pageNumber: 1,
+    pageSize: 20,
+    busy: false,
+    onSelect() {},
+    onOpen() {},
+  };
+  const cells = (overrides) =>
+    walk(TopicReviewTable({ ...props, ...overrides }), (node) => node.type === 'td');
+  const loading = cells({ advisorsLoading: true, batchesLoading: true });
+  assert.equal(walk(loading[3], (node) => node.type === 'Skeleton').length, 1);
+  assert.equal(walk(loading[4], (node) => node.type === 'Skeleton').length, 1);
+  assert.equal(walk(loading[3], (node) => node.type === 'span').length, 0); // No temporary ID.
+  const resolved = cells({
+    advisorsLoading: true,
+    batchesLoading: true,
+    advisorNames: { 'lecturer-1': 'Nguyễn Văn An' },
+    batches: [{ id: 'batch-1', batchName: 'Đợt 1' }],
+  });
+  assert.equal(resolved[3].props.children, 'Nguyễn Văn An');
+  assert.equal(resolved[4].props.children, 'Đợt 1');
+  const failedOrForbidden = cells({ advisorsLoading: false, batchesLoading: false });
+  assert.equal(walk(failedOrForbidden[3], (node) => node.type === 'Skeleton').length, 0);
+  assert.equal(
+    walk(failedOrForbidden[3], (node) => node.type === 'span')[0].props.title,
+    'lecturer-1',
+  );
+});
+
+test('proposal batch cells and shared preview keep skeletons while related names are unresolved', () => {
+  const { TopicsTable } = loadModule('features/topics/components/TopicsTable.tsx', {
+    ...common,
+    '@/components/ui/button': ui.Button,
+    '@/components/ui/info-cell': ui.InfoCell,
+    '@/components/ui/skeleton': ui.Skeleton,
+    '../types/topic.types': types,
+    './TopicStatusBadge': ui.TopicStatusBadge,
+  });
+  const props = {
+    topics: [fullTopic],
+    batches: [],
+    pageNumber: 1,
+    pageSize: 20,
+    busy: false,
+    onOpen() {},
+    onCopy() {},
+    onSubmit() {},
+  };
+  let table = TopicsTable({ ...props, batchesLoading: true });
+  assert.equal(walk(table, (node) => node.type === 'Skeleton').length, 1);
+  table = TopicsTable({
+    ...props,
+    batchesLoading: true,
+    batches: [{ id: 'batch-1', batchName: 'Đợt 1' }],
+  });
+  assert.equal(walk(table, (node) => node.type === 'Skeleton').length, 0);
+  const { TopicPreview } = loadModule('features/topics/components/TopicPreview.tsx', {
+    ...common,
+    '@/components/ui/badge': { Badge: 'Badge' },
+    '@/components/ui/skeleton': ui.Skeleton,
+  });
+  const preview = TopicPreview({
+    values: fullTopic,
+    advisorName: 'Mã GVHD: lecturer-1',
+    batchName: 'Mã đợt: batch-1',
+    advisorLoading: true,
+    batchLoading: true,
+  });
+  const fields = walk(preview, (node) => node.type === 'dd');
+  assert.equal(fields.length, 2);
+  assert.ok(
+    fields.every(
+      (field) =>
+        field.props['aria-busy'] && walk(field, (node) => node.type === 'Skeleton').length === 1,
+    ),
+  );
 });
 
 function dialogFixture(status = 'Submitted') {
@@ -526,6 +619,7 @@ function pageFixture(roles = ['Faculty'], queryState = {}) {
         'StatisticsBar',
         'TablePagination',
         'TableSkeleton',
+        'Skeleton',
       ].map((name) => [
         `@/components/ui/${name.replace(/[A-Z]/g, (c, i) => `${i ? '-' : ''}${c.toLowerCase()}`)}`,
         ui[name],

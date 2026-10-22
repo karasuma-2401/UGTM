@@ -2,6 +2,7 @@ import { ClipboardCheck, Eye, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InfoCell } from '@/components/ui/info-cell';
+import { Skeleton } from '@/components/ui/skeleton';
 import type { Topic, TopicBatch } from '../types/topic.types';
 import { TopicStatusBadge } from './TopicStatusBadge';
 
@@ -9,6 +10,8 @@ interface TopicReviewTableProps {
   topics: Topic[];
   batches: TopicBatch[];
   advisorNames: Record<string, string>;
+  advisorsLoading?: boolean;
+  batchesLoading?: boolean;
   selected: Topic[];
   pageNumber: number;
   pageSize: number;
@@ -21,6 +24,8 @@ export function TopicReviewTable({
   topics,
   batches,
   advisorNames,
+  advisorsLoading = false,
+  batchesLoading = false,
   selected,
   pageNumber,
   pageSize,
@@ -67,18 +72,13 @@ export function TopicReviewTable({
               onCheckedChange={(checked) => onSelect(checked ? selectable : [])}
             />
           </th>
-          {[
-            'Đề tài',
-            'Giảng viên hướng dẫn',
-            'Đợt KLTN',
-            'Chỉ tiêu',
-            'Trạng thái',
-            'Thao tác',
-          ].map((label) => (
-            <th key={label} scope="col" className="px-4 py-4 font-bold">
-              {label}
-            </th>
-          ))}
+          {['Đề tài', 'Giảng viên hướng dẫn', 'Đợt KLTN', 'Chỉ tiêu', 'Trạng thái', 'Thao tác'].map(
+            (label) => (
+              <th key={label} scope="col" className="px-4 py-4 font-bold">
+                {label}
+              </th>
+            ),
+          )}
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-100">
@@ -130,15 +130,24 @@ export function TopicReviewTable({
                   descriptionClassName="truncate text-[11px]"
                 />
               </td>
-              <td className="break-words px-4 py-4 text-xs text-slate-600">
-                {advisorNames[topic.advisorId] || (
-                  <span title={topic.advisorId}>Mã GVHD: {topic.advisorId}</span>
-                )}
+              <td
+                aria-busy={!advisorNames[topic.advisorId] && advisorsLoading}
+                className="break-words px-4 py-4 text-xs text-slate-600"
+              >
+                {advisorNames[topic.advisorId] ||
+                  (advisorsLoading ? (
+                    <Skeleton className="h-4 w-32 max-w-full" />
+                  ) : (
+                    <span title={topic.advisorId}>Mã GVHD: {topic.advisorId}</span>
+                  ))}
               </td>
               <td className="px-4 py-4 text-xs text-slate-500">
-                {batches.find((batch) => batch.id === topic.batchId)?.batchName || (
-                  <span title={topic.batchId}>Mã đợt: {topic.batchId}</span>
-                )}
+                {batches.find((batch) => batch.id === topic.batchId)?.batchName ||
+                  (batchesLoading ? (
+                    <Skeleton className="h-4 w-28 max-w-full" />
+                  ) : (
+                    <span title={topic.batchId}>Mã đợt: {topic.batchId}</span>
+                  ))}
               </td>
               <td className="px-4 py-4 text-xs text-slate-500">{topic.studentNumber ?? '—'} SV</td>
               <td className="px-4 py-4">

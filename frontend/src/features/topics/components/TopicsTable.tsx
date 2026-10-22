@@ -1,12 +1,14 @@
 import { Eye, FileText, Copy, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InfoCell } from '@/components/ui/info-cell';
+import { Skeleton } from '@/components/ui/skeleton';
 import { canEditTopic, type Topic, type TopicBatch } from '../types/topic.types';
 import { TopicStatusBadge } from './TopicStatusBadge';
 
 interface TopicsTableProps {
   topics: Topic[];
   batches: TopicBatch[];
+  batchesLoading?: boolean;
   pageNumber: number;
   pageSize: number;
   busy: boolean;
@@ -18,6 +20,7 @@ interface TopicsTableProps {
 export function TopicsTable({
   topics,
   batches,
+  batchesLoading = false,
   pageNumber,
   pageSize,
   busy,
@@ -78,7 +81,8 @@ export function TopicsTable({
               />
             </td>
             <td className="px-4 py-4 text-xs text-slate-500">
-              {batchNames.get(topic.batchId) || '—'}
+              {batchNames.get(topic.batchId) ||
+                (batchesLoading ? <Skeleton className="h-4 w-28 max-w-full" /> : '—')}
             </td>
             <td className="px-4 py-4 text-xs text-slate-500">{topic.studentNumber ?? '—'} SV</td>
             <td className="px-4 py-4 text-xs text-slate-500">
