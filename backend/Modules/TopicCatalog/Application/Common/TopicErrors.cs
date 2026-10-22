@@ -48,6 +48,14 @@ public static class TopicErrors
         "Topic.InvalidReviewDecision",
         "Kết quả thẩm định không hợp lệ (chỉ chấp nhận: 'Approved', 'NeedRevision', 'Rejected').");
 
+    public static readonly Error ReviewNoteRequired = Error.Validation(
+        "Topic.ReviewNoteRequired",
+        "Vui lòng nhập lý do khi từ chối hoặc yêu cầu chỉnh sửa đề tài.");
+
+    public static readonly Error InvalidReviewNote = Error.Validation(
+        "Topic.InvalidReviewNote",
+        "Lý do thẩm định không được vượt quá 2000 ký tự.");
+
     public static readonly Error NoApprovedTopicsToPublish = Error.Validation(
         "Topic.NoApprovedTopicsToPublish",
         "Không có đề tài nào ở trạng thái đã duyệt (Approved) để công bố.");

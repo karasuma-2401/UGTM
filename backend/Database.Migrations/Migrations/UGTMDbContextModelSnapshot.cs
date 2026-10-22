@@ -2577,6 +2577,11 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("requirements");
 
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("review_note");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()

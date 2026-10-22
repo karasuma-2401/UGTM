@@ -291,7 +291,8 @@ public sealed class TopicQueryReader : ITopicQueryReader
             HasRegistration: hasRegistration,
             IsAvailable: isAvailable,
             Group: groupDto,
-            IsPublished: topic.IsPublished);
+            IsPublished: topic.IsPublished,
+            ReviewNote: topic.ReviewNote);
     }
 
     public static TopicTrackingDetailDto BuildTrackingDetail(
@@ -321,7 +322,8 @@ public sealed class TopicQueryReader : ITopicQueryReader
             HasRegistration: hasRegistration,
             IsAvailable: isAvailable,
             Group: groupDto,
-            IsPublished: topic.IsPublished);
+            IsPublished: topic.IsPublished,
+            ReviewNote: topic.ReviewNote);
     }
 
     private static TopicGroupDto? BuildGroupDto(

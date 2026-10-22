@@ -25,7 +25,8 @@ public sealed record TopicSummaryDto(
     string Status,
     int? StudentNumber,
     DateTime CreatedAt,
-    bool IsPublished = false);
+    bool IsPublished = false,
+    string? ReviewNote = null);
 
 public sealed record TopicTrackingSummaryDto(
     Guid Id,
@@ -44,7 +45,8 @@ public sealed record TopicTrackingSummaryDto(
     bool HasRegistration,
     bool IsAvailable,
     TopicGroupDto? Group,
-    bool IsPublished = false);
+    bool IsPublished = false,
+    string? ReviewNote = null);
 
 public sealed record TopicTrackingDetailDto(
     Guid Id,
@@ -63,7 +65,8 @@ public sealed record TopicTrackingDetailDto(
     bool HasRegistration,
     bool IsAvailable,
     TopicGroupDto? Group,
-    bool IsPublished = false);
+    bool IsPublished = false,
+    string? ReviewNote = null);
 
 public sealed record PublishTopicsResultDto(
     Guid BatchId,

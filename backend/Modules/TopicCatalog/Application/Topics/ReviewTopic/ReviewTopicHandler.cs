@@ -13,6 +13,8 @@ public sealed class ReviewTopicHandler(
     ITopicUnitOfWork unitOfWork,
     ICurrentUser currentUser)
 {
+    private const int MaxReviewNoteLength = 2000;
+
     public async Task<Result<TopicSummaryDto>> HandleAsync(
         ReviewTopicCommand command,
         CancellationToken cancellationToken = default)
@@ -46,13 +48,28 @@ public sealed class ReviewTopicHandler(
             return Result.Failure<TopicSummaryDto>(TopicErrors.InvalidReviewDecision);
         }
 
+        string? trimmedNote = null;
+        if (!string.IsNullOrWhiteSpace(command.ReviewNote))
+        {
+            trimmedNote = command.ReviewNote.Trim();
+            if (trimmedNote.Length > MaxReviewNoteLength)
+            {
+                return Result.Failure<TopicSummaryDto>(TopicErrors.InvalidReviewNote);
+            }
+        }
+
+        if (decisionEnum is (TopicStatus.NeedRevision or TopicStatus.Rejected) && trimmedNote is null)
+        {
+            return Result.Failure<TopicSummaryDto>(TopicErrors.ReviewNoteRequired);
+        }
+
         var topic = await topicRepository.GetByIdAsync(command.TopicId, cancellationToken);
         if (topic is null)
         {
             return Result.Failure<TopicSummaryDto>(TopicErrors.TopicNotFound);
         }
 
-        if (!topic.TryReview(decisionEnum))
+        if (!topic.TryReview(decisionEnum, trimmedNote))
         {
             return Result.Failure<TopicSummaryDto>(TopicErrors.InvalidStatusTransition);
         }
@@ -70,7 +87,8 @@ public sealed class ReviewTopicHandler(
             topic.Status.ToString(),
             topic.StudentNumber,
             topic.CreatedAt,
-            topic.IsPublished));
+            topic.IsPublished,
+            topic.ReviewNote));
     }
 
     private static bool HasRole(ICurrentUser user, string role)

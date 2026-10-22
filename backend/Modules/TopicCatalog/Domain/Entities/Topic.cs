@@ -13,6 +13,7 @@ public class Topic
     public string? Requirements { get; set; }
     public TopicStatus Status { get; set; } = TopicStatus.Draft;
     public int? StudentNumber { get; set; }
+    public string? ReviewNote { get; set; }
     public DateTime CreatedAt { get; set; }
 
     public bool IsPublished => Status == TopicStatus.Published;
@@ -44,7 +45,7 @@ public class Topic
         return true;
     }
 
-    public bool TryReview(TopicStatus decision)
+    public bool TryReview(TopicStatus decision, string? reviewNote = null)
     {
         if (Status != TopicStatus.Submitted)
         {
@@ -56,7 +57,13 @@ public class Topic
             return false;
         }
 
+        if (decision is TopicStatus.NeedRevision or TopicStatus.Rejected && string.IsNullOrWhiteSpace(reviewNote))
+        {
+            return false;
+        }
+
         Status = decision;
+        ReviewNote = string.IsNullOrWhiteSpace(reviewNote) ? null : reviewNote.Trim();
         return true;
     }
 
