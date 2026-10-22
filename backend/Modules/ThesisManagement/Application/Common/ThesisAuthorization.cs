@@ -9,4 +9,10 @@ internal static class ThesisAuthorization
            && currentUser.UserId.HasValue
            && (currentUser.Roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
                || currentUser.Permissions.Contains(PermissionCodes.ThesisReviewGateConfigurationsManage));
+
+    internal static bool CanReviewGates(ICurrentUser currentUser)
+        => currentUser.IsAuthenticated
+           && currentUser.UserId.HasValue
+           && (currentUser.Roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
+               || currentUser.Permissions.Contains(PermissionCodes.ThesisReviewGatesReview));
 }

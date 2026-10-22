@@ -21,6 +21,10 @@ using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
 using UGTM.Modules.ThesisManagement.Application.ReviewGateConfigurations.GetReviewGateConfigurations;
 using UGTM.Modules.ThesisManagement.Application.ReviewGateConfigurations.UpsertReviewGateConfiguration;
 using UGTM.Modules.ThesisManagement.Infrastructure.Endpoints;
+using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusSubmissionHistory;
+using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusSubmissionFileDownload;
+using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.ReviewSyllabus;
+using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.SubmitSyllabus;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -33,6 +37,9 @@ public sealed class ThesisManagementModule : IModule
         services.AddModuleDbContext<ThesisManagementDbContext>(configuration);
         services.AddScoped<IStudentGroupRepository, StudentGroupRepository>();
         services.AddScoped<IReviewGateConfigurationRepository, ReviewGateConfigurationRepository>();
+        services.AddScoped<ISyllabusRepository, SyllabusRepository>();
+        services.AddScoped<ISubmissionFileRepository, SubmissionFileRepository>();
+        services.AddScoped<ISubmissionReviewRepository, SubmissionReviewRepository>();
         services.AddScoped<IThesisUnitOfWork>(provider => provider.GetRequiredService<ThesisManagementDbContext>());
         services.AddScoped<IThesisRegistrationContract, ThesisRegistrationContract>();
         services.AddScoped<IThesisManagementAuditOutbox, ThesisManagementAuditOutbox>();
@@ -50,11 +57,16 @@ public sealed class ThesisManagementModule : IModule
         services.AddSingleton<TimeProvider>(TimeProvider.System);
         services.AddScoped<UpsertReviewGateConfigurationHandler>();
         services.AddScoped<GetReviewGateConfigurationsHandler>();
+        services.AddScoped<SubmitSyllabusHandler>();
+        services.AddScoped<ReviewSyllabusHandler>();
+        services.AddScoped<GetSyllabusSubmissionHistoryHandler>();
+        services.AddScoped<GetSyllabusSubmissionFileDownloadHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapReviewGateConfigurationEndpoints();
+        endpoints.MapSyllabusSubmissionEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))

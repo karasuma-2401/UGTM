@@ -40,11 +40,12 @@ public sealed class UpsertReviewGateConfigurationHandler(
         }
 
         var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
-        var configuration = await configurationRepository.GetByBatchAndGateAsync(
+        var existingConfiguration = await configurationRepository.GetByBatchAndGateAsync(
             command.BatchId,
             command.GateType,
             cancellationToken);
-        var isNew = configuration is null;
+        var isNew = existingConfiguration is null;
+        ReviewGateConfiguration configuration;
 
         try
         {
@@ -63,6 +64,7 @@ public sealed class UpsertReviewGateConfigurationHandler(
             }
             else
             {
+                configuration = existingConfiguration!;
                 configuration.UpdateDeadlines(
                     command.InitialSubmissionDeadlineUtc,
                     command.FacultyResponseDeadlineUtc,

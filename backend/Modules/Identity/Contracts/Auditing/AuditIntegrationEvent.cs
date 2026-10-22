@@ -102,6 +102,12 @@ public static class IntegrationAuditActions
     public const string ReviewGateConfigurationUpdated =
         "ThesisManagement.ReviewGateConfiguration.Updated";
 
+    public const string SyllabusSubmitted =
+        "ThesisManagement.Syllabus.Submitted";
+
+    public const string SyllabusReviewed =
+        "ThesisManagement.Syllabus.Reviewed";
+
     public const string CouncilMinuteUnlockGranted =
         "DefenseCouncil.CouncilMinute.UnlockGranted";
 

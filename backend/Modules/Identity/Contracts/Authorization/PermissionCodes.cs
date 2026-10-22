@@ -8,6 +8,7 @@ public static class PermissionCodes
     public const string AcademicScoreConfigurationsManage = "academic.score-config.manage";
 
     public const string ThesisReviewGateConfigurationsManage = "thesis.review-gate-config.manage";
+    public const string ThesisReviewGatesReview = "thesis.review-gates.review";
 
     public const string IdentityUsersRead = "identity.users.read";
     public const string IdentityUsersManage = "identity.users.manage";

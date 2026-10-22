@@ -13,7 +13,7 @@ public sealed class ReviewGatePersistenceIntegrationTests(PostgreSqlFixture fixt
     private const string PreviousMigration = "20261021092342_EnforceUniqueAcademicPeriod";
 
     [Fact]
-    public async Task Latest_migration_creates_review_gate_schema_and_seeds_configuration_permission()
+    public async Task Latest_migration_creates_review_gate_schema_and_seeds_required_permissions()
     {
         await using var db = CreateMigrationDbContext();
         await ResetSchemasAsync(db);
@@ -69,6 +69,23 @@ public sealed class ReviewGatePersistenceIntegrationTests(PostgreSqlFixture fixt
                 ORDER BY r.role_name
                 """,
                 PermissionCodes.ThesisReviewGateConfigurationsManage).ToListAsync();
+            var reviewPermissionCodes = await db.Database.SqlQueryRaw<string>(
+                """
+                SELECT permission_code AS "Value"
+                FROM identity.permission
+                WHERE permission_code = {0}
+                """,
+                PermissionCodes.ThesisReviewGatesReview).ToListAsync();
+            var reviewPermissionRoles = await db.Database.SqlQueryRaw<string>(
+                """
+                SELECT r.role_name AS "Value"
+                FROM identity.role_permission rp
+                JOIN identity.role r ON r.id = rp.role_id
+                JOIN identity.permission p ON p.id = rp.permission_id
+                WHERE p.permission_code = {0}
+                ORDER BY r.role_name
+                """,
+                PermissionCodes.ThesisReviewGatesReview).ToListAsync();
 
             Assert.Equal(
                 [
@@ -87,6 +104,8 @@ public sealed class ReviewGatePersistenceIntegrationTests(PostgreSqlFixture fixt
             Assert.Contains("ix_submission_review_gate_submission_version", indexNames);
             Assert.Equal([PermissionCodes.ThesisReviewGateConfigurationsManage], reviewGatePermissionCodes);
             Assert.Equal(["AcademicAffairs", "Admin"], reviewGatePermissionRoles);
+            Assert.Equal([PermissionCodes.ThesisReviewGatesReview], reviewPermissionCodes);
+            Assert.Equal(["Admin", "Faculty"], reviewPermissionRoles);
         }
         finally
         {
