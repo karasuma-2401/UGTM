@@ -7,6 +7,13 @@ namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence.Repositories;
 internal sealed class ProgressMilestoneRepository(ThesisManagementDbContext context)
     : IProgressMilestoneRepository
 {
+    public Task<ProgressMilestone?> GetByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+        => context.ProgressMilestones
+            .AsNoTracking()
+            .SingleOrDefaultAsync(milestone => milestone.Id == id, cancellationToken);
+
     public async Task<IReadOnlyList<ProgressMilestone>> GetByGroupIdAsync(
         Guid groupId,
         CancellationToken cancellationToken = default)

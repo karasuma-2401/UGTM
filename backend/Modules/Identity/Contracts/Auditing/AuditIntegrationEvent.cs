@@ -120,6 +120,12 @@ public static class IntegrationAuditActions
     public const string ProgressMilestoneCreated =
         "ThesisManagement.ProgressMilestone.Created";
 
+    public const string ProgressReportSubmitted =
+        "ThesisManagement.ProgressReport.Submitted";
+
+    public const string ProgressReportReviewed =
+        "ThesisManagement.ProgressReport.Reviewed";
+
     public const string CouncilMinuteUnlockGranted =
         "DefenseCouncil.CouncilMinute.UnlockGranted";
 

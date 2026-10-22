@@ -15,6 +15,7 @@ public sealed class ThesisManagementDbContext(DbContextOptions<ThesisManagementD
     public DbSet<MidtermReport> MidtermReports => Set<MidtermReport>();
     public DbSet<ProgressMilestone> ProgressMilestones => Set<ProgressMilestone>();
     public DbSet<ProgressReport> ProgressReports => Set<ProgressReport>();
+    public DbSet<ProgressReportVersion> ProgressReportVersions => Set<ProgressReportVersion>();
     public DbSet<ReviewGateConfiguration> ReviewGateConfigurations => Set<ReviewGateConfiguration>();
     public DbSet<RenameRequest> RenameRequests => Set<RenameRequest>();
     public DbSet<StudentGroup> StudentGroups => Set<StudentGroup>();

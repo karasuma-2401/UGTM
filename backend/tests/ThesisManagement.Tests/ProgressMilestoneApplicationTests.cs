@@ -182,6 +182,11 @@ public sealed class ProgressMilestoneApplicationTests
     {
         public List<ProgressMilestone> Items { get; } = [];
 
+        public Task<ProgressMilestone?> GetByIdAsync(
+            Guid id,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(Items.SingleOrDefault(item => item.Id == id));
+
         public Task<IReadOnlyList<ProgressMilestone>> GetByGroupIdAsync(
             Guid groupId,
             CancellationToken cancellationToken = default)

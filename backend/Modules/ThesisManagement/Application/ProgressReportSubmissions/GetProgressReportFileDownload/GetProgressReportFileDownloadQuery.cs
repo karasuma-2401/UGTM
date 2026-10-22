@@ -1,0 +1,3 @@
+namespace UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetProgressReportFileDownload;
+
+public sealed record GetProgressReportFileDownloadQuery(Guid FileId);
