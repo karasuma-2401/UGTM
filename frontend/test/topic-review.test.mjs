@@ -332,7 +332,11 @@ const ui = Object.fromEntries(
     'TopicReviewTable',
   ].map((name) => [name, { [name]: name }]),
 );
-const common = { 'react/jsx-runtime': jsxRuntime, 'lucide-react': icons };
+const common = {
+  'react/jsx-runtime': jsxRuntime,
+  'lucide-react': icons,
+  '@/components/ui/selectable-table-row': { SelectableTableRow: 'SelectableTableRow' },
+};
 
 test('review table only allows selecting approved topics from one batch', () => {
   const { TopicReviewTable } = loadModule('features/topics/components/TopicReviewTable.tsx', {
@@ -677,6 +681,8 @@ function pageFixture(roles = ['Faculty'], queryState = {}) {
         ui[name],
       ]),
     ),
+    '@/components/ui/list-card-header': { ListCardHeader: 'ListCardHeader' },
+    '@/components/ui/page-header': { PageHeader: 'PageHeader' },
     '@/components/ui/card': { Card: 'Card', CardHeader: 'CardHeader', CardTitle: 'CardTitle' },
     '@/shared/auth': {
       useAuth: () => ({
@@ -726,7 +732,7 @@ test('review refresh retains only the same reviewer data and locks selection/pub
   assert.equal(page.find((node) => node.type === 'TablePagination')[0].props.isLoading, true);
 });
 
-test('review queue defaults to Submitted and quick filters synchronize controls while retaining the applied batch', () => {
+test('review queue defaults to Submitted and explicit filters retain the applied batch', () => {
   const page = pageFixture();
   assert.equal(page.query().queryKey[3].status, 'Submitted');
   const statusOptions = page.find(
@@ -749,7 +755,12 @@ test('review queue defaults to Submitted and quick filters synchronize controls 
   page.find((node) => node.type === 'TablePagination')[0].props.onPageChange(3);
   page.render();
   const stats = page.find((node) => node.type === 'StatisticsBar')[0].props.items;
-  stats.find((item) => item.key === 'approved').onClick();
+  assert.ok(stats.every((item) => typeof item.onClick === 'function'));
+  page
+    .find((node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài')[0]
+    .props.onChange('Approved');
+  page.render();
+  page.find((node) => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
   page.render();
   assert.deepEqual(page.query().queryKey[3], {
     keyword: '',
@@ -763,6 +774,37 @@ test('review queue defaults to Submitted and quick filters synchronize controls 
     .props.onClick();
   page.render();
   assert.deepEqual(page.query().queryKey[3], { keyword: '', batchId: '', status: '' });
+});
+
+test('review statistic clicks filter immediately and clear stale publication selections', () => {
+  const page = pageFixture();
+  page
+    .find((node) => node.type === 'TopicReviewTable')[0]
+    .props.onSelect([{ ...fullTopic, status: 'Approved' }]);
+  page.render();
+  page.find((node) => node.type === 'TablePagination')[0].props.onPageChange(3);
+  page.render();
+  for (const [key, status] of [
+    ['approved', 'Approved'],
+    ['published', 'Published'],
+    ['submitted', 'Submitted'],
+    ['total', ''],
+  ]) {
+    page
+      .find((node) => node.type === 'StatisticsBar')[0]
+      .props.items.find((item) => item.key === key)
+      .onClick();
+    page.render();
+    assert.equal(page.query().queryKey[3].status, status);
+    assert.equal(page.query().queryKey[4], 1);
+    assert.deepEqual(page.find((node) => node.type === 'TopicReviewTable')[0].props.selected, []);
+    assert.equal(
+      page
+        .find((node) => node.type === 'StatisticsBar')[0]
+        .props.items.find((item) => item.key === key).active,
+      true,
+    );
+  }
 });
 
 test('successful review refreshes both reviewer and lecturer lists; Lecturer/Student cannot issue review actions', async () => {

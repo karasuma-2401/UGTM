@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, UsersRound } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { IdentityNavigation } from '../components/IdentityNavigation';
 import { RoleListCard } from '../components/RoleListCard';
 import { RolePermissionEditor } from '../components/RolePermissionEditor';
 import { SYSTEM_ROLES } from '../constants/systemRoles';
@@ -191,24 +193,12 @@ export function RolePermissionPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted,#697e9f)] mb-1">
-            <span>Quản trị hệ thống</span>
-            <span>/</span>
-            <span className="text-[var(--color-primary-hover,#1d4ed8)] font-medium">
-              Phân quyền vai trò
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-heading,#10182c)] tracking-tight">
-            Phân quyền Vai trò (RBAC)
-          </h1>
-          <p className="text-xs sm:text-sm text-[var(--color-text-desc,#667b9a)] mt-0.5">
-            Thiết lập danh mục quyền thao tác cho từng vai trò người dùng trong hệ thống UGTM
-          </p>
-        </div>
-      </div>
+    <div className="min-w-0 space-y-5">
+      <PageHeader
+        title="Tài khoản và phân quyền"
+        icon={<UsersRound />}
+        navigation={<IdentityNavigation />}
+      />
 
       {feedback && (
         <div

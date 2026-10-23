@@ -209,7 +209,7 @@ test('API failures preserve backend validation messages rather than reporting su
   assert.equal(getTopicErrorMessage(error), 'Trạng thái đề tài đã thay đổi.');
 });
 
-test('statistics loading covers icons, counts and labels, preserves layout and disables shortcuts', () => {
+test('statistics quick filters are disabled during loading and expose selected state', () => {
   const cn = (...parts) => parts.filter(Boolean).join(' ');
   const { Skeleton } = loadModule('components/ui/skeleton.tsx', {
     'react/jsx-runtime': jsxRuntime,
@@ -225,9 +225,9 @@ test('statistics loading covers icons, counts and labels, preserves layout and d
       key: 'total',
       label: 'Tổng đề tài',
       value: 12345,
-      icon: React.createElement('svg', { 'data-ready-icon': true }),
-      active: true,
       onClick() {},
+      active: true,
+      icon: React.createElement('svg', { 'data-ready-icon': true }),
     },
   ];
   const loading = renderToStaticMarkup(
@@ -235,6 +235,7 @@ test('statistics loading covers icons, counts and labels, preserves layout and d
   );
   assert.match(loading, /Tổng đề tài/);
   assert.match(loading, /disabled=""/);
+  assert.match(loading, /aria-pressed="false"/);
   assert.match(loading, /animate-pulse/);
   assert.equal((loading.match(/animate-pulse/g) ?? []).length, 3);
   assert.match(loading, /aria-busy="true"/);
@@ -243,6 +244,7 @@ test('statistics loading covers icons, counts and labels, preserves layout and d
   assert.doesNotMatch(loading, /12345/);
   const ready = renderToStaticMarkup(React.createElement(StatisticsBar, { items }));
   assert.match(ready, /12345/);
+  assert.match(ready, /aria-pressed="true"/);
   assert.match(ready, /data-ready-icon/);
   assert.doesNotMatch(ready, /animate-pulse/);
   assert.doesNotMatch(ready, /disabled=""/);
@@ -294,7 +296,7 @@ function renderSidebar(roles) {
       Link,
       NavLink: Link,
       Outlet: () => null,
-      useLocation: () => ({ pathname: '/topics/propose' }),
+      useLocation: () => ({ pathname: '/topics/advising' }),
     },
     '../../../assets/logo_UGTM.svg': { default: '/logo.svg' },
     'lucide-react': icons,
@@ -325,7 +327,7 @@ function renderSidebar(roles) {
   return renderToStaticMarkup(React.createElement(AppLayout));
 }
 
-test('actual AppLayout renders the proposal link for Lecturer and Admin, including mixed roles', () => {
+test('actual AppLayout renders one guidance entry for Lecturer and Admin, including mixed roles', () => {
   for (const roles of [
     ['Lecturer'],
     ['lecturer'],
@@ -334,15 +336,17 @@ test('actual AppLayout renders the proposal link for Lecturer and Admin, includi
     ['Admin', 'Lecturer'],
   ]) {
     const markup = renderSidebar(roles);
-    assert.match(markup, /href="\/topics\/propose"/);
-    assert.match(markup, /Đề xuất đề tài/);
+    assert.match(markup, /href="\/topics\/advising"/);
+    assert.equal((markup.match(/href="\/topics\/advising"/g) ?? []).length, 1);
+    assert.doesNotMatch(markup, /href="\/topics\/propose"/);
+    assert.match(markup, /Đề tài hướng dẫn/);
     assert.doesNotMatch(markup, /Không có phân hệ nào khả dụng/);
   }
 });
 
-test('actual AppLayout hides the proposal link from accounts without Lecturer or Admin', () => {
+test('actual AppLayout hides guidance from accounts without Lecturer or Admin', () => {
   for (const roles of [['Student'], ['Faculty'], ['CouncilMember'], []]) {
-    assert.doesNotMatch(renderSidebar(roles), /href="\/topics\/propose"/);
+    assert.doesNotMatch(renderSidebar(roles), /href="\/topics\/advising"/);
   }
 });
 
@@ -361,6 +365,42 @@ test('only Draft and NeedRevision permit editing', () => {
   for (const status of ['Submitted', 'Approved', 'Rejected', 'Published', 'Closed', 'Archived']) {
     assert.equal(canEditTopic(status), false);
   }
+});
+
+test('guidance uses the live proposal page and links to separate group tabs on one route', () => {
+  function render(search = '') {
+    const { TopicGuidancePage } = loadModule('features/topics/pages/TopicGuidancePage.tsx', {
+      'lucide-react': icons,
+      'react/jsx-runtime': jsxRuntime,
+      'react-router-dom': { Link: 'Link', useSearchParams: () => [new URLSearchParams(search)] },
+      '@/components/ui/button': { Button: 'Button' },
+      '@/components/ui/badge': { Badge: 'Badge' },
+      './TopicProposePage': { TopicProposePage: 'TopicProposePage' },
+      './TopicAdvisingPage': { TopicAdvisingPage: 'TopicAdvisingPage' },
+      '@/components/ui/page-header': { PageHeader: 'PageHeader' },
+    });
+    return TopicGuidancePage();
+  }
+  const page = render();
+  assert.equal(page.type, 'TopicProposePage');
+  assert.equal(page.props.pageTitle, 'Đề tài hướng dẫn');
+  const navigation = page.props.navigation;
+  assert.equal(navigation.props.children.length, 3);
+  assert.deepEqual(
+    navigation.props.children.map((button) => button.props.children.props.to),
+    ['/topics/advising', '/topics/advising?tab=registrations', '/topics/advising?tab=advising'],
+  );
+  for (const tab of ['registrations', 'advising']) {
+    const groups = render(`tab=${tab}`);
+    const pane = findElement(groups, (node) => node.type === 'TopicAdvisingPage');
+    assert.equal(pane.props.embedded, true);
+    assert.equal(pane.props.initialTab, tab);
+    assert.equal(
+      findElement(groups, (node) => node.type === 'TopicProposePage'),
+      undefined,
+    );
+  }
+  assert.equal(render('tab=invalid').type, 'TopicProposePage');
 });
 
 function findElement(node, predicate) {
@@ -453,6 +493,8 @@ function proposalPageFixture(options = {}) {
     'TopicsTable',
     'TopicPreview',
     'TopicReviewNote',
+    'PageHeader',
+    'ListCardHeader',
     'TopicProposalSchedule',
     'TablePagination',
     'TableSkeleton',
@@ -555,6 +597,7 @@ function proposalPageFixture(options = {}) {
       '@/components/ui/select': dependency('Select'),
       '@/components/ui/dialog': dependency('Dialog'),
       '@/components/ui/statistics-bar': dependency('StatisticsBar'),
+      '@/components/ui/list-card-header': dependency('ListCardHeader'),
       '@/components/ui/card': Object.fromEntries(
         ['Card', 'CardContent', 'CardHeader', 'CardTitle'].map((key) => [key, components[key]]),
       ),
@@ -565,6 +608,7 @@ function proposalPageFixture(options = {}) {
       '../components/TopicsTable': dependency('TopicsTable'),
       '../components/TopicPreview': dependency('TopicPreview'),
       '../components/TopicReviewNote': dependency('TopicReviewNote'),
+      '@/components/ui/page-header': dependency('PageHeader'),
       '../components/TopicProposalSchedule': dependency('TopicProposalSchedule'),
       '../proposalEditing': editing,
       '@/shared/auth': {
@@ -712,7 +756,7 @@ test('Bỏ lọc clears applied and pending filters immediately and resets pagin
   assert.equal(page.button('Bỏ lọc').props.disabled, true);
 });
 
-test('statistic shortcuts apply immediately, retain the applied batch and clear search', () => {
+test('status filters retain the batch, reset pagination and statistics support quick filters', () => {
   const page = proposalPageFixture();
   page.find((node) => node.props['aria-label'] === 'Lọc theo đợt KLTN').props.onChange('batch-1');
   page.render();
@@ -721,11 +765,31 @@ test('statistic shortcuts apply immediately, retain the applied batch and clear 
   page.component('TablePagination').props.onPageChange(2);
   page.render();
   page
+    .find((node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài')
+    .props.onChange('NeedRevision');
+  page.render();
+  page.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  page.render();
+  assert.deepEqual(page.query()[2], { keyword: '', batchId: 'batch-1', status: 'NeedRevision' });
+  assert.equal(page.query()[3], 1);
+  assert.ok(
+    page.component('StatisticsBar').props.items.every((item) => typeof item.onClick === 'function'),
+  );
+  page.find((node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài').props.onChange('');
+  page.render();
+  page.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
+  page.render();
+  assert.deepEqual(page.query()[2], { keyword: '', batchId: 'batch-1', status: '' });
+});
+
+test('proposal statistics apply a status without submitting the filter form', () => {
+  const page = proposalPageFixture();
+  page
     .component('StatisticsBar')
     .props.items.find((item) => item.key === 'revision')
     .onClick();
   page.render();
-  assert.deepEqual(page.query()[2], { keyword: '', batchId: 'batch-1', status: 'NeedRevision' });
+  assert.equal(page.query()[2].status, 'NeedRevision');
   assert.equal(page.query()[3], 1);
   assert.equal(
     page.component('StatisticsBar').props.items.find((item) => item.key === 'revision').active,
@@ -736,7 +800,7 @@ test('statistic shortcuts apply immediately, retain the applied batch and clear 
     .props.items.find((item) => item.key === 'total')
     .onClick();
   page.render();
-  assert.deepEqual(page.query()[2], { keyword: '', batchId: 'batch-1', status: '' });
+  assert.equal(page.query()[2].status, '');
 });
 
 test('preview preserves unsaved input and leaving/reloading requires a decision', () => {

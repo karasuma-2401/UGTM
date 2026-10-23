@@ -28,7 +28,7 @@ const helpers = load('advising.ts');
 const adapter = load('services/advisingDemo.ts');
 const data = await adapter.loadAdvisingDemo();
 
-function fixture(queryOverrides = {}) {
+function fixture(queryOverrides = {}, pageProps = {}) {
   const state = [];
   let cursor = 0;
   const refetchCalls = [];
@@ -78,9 +78,12 @@ function fixture(queryOverrides = {}) {
     input: ['Input'],
     select: ['Select'],
     badge: ['Badge'],
+    'status-badge': ['StatusBadge'],
+    'selectable-table-row': ['SelectableTableRow'],
     card: ['Card', 'CardHeader', 'CardTitle'],
     dialog: ['Dialog'],
     'statistics-bar': ['StatisticsBar'],
+    'list-card-header': ['ListCardHeader'],
     'table-pagination': ['TablePagination'],
     'table-skeleton': ['TableSkeleton'],
     'info-cell': ['InfoCell'],
@@ -91,7 +94,7 @@ function fixture(queryOverrides = {}) {
   return {
     render: () => {
       cursor = 0;
-      return TopicAdvisingPage();
+      return TopicAdvisingPage(pageProps);
     },
     refetchCalls,
   };
@@ -177,6 +180,18 @@ test('default batch statistics distinguish pending email from the advising roste
   assert.doesNotMatch(buttons, /Xác nhận tiếp nhận|Từ chối|Tải phiếu|Duyệt nhóm/);
 });
 
+test('embedded advising shows only its selected group pane without a second title or navigation', () => {
+  const tree = fixture({}, { embedded: true, initialTab: 'advising' }).render();
+  assert.equal(nodes(tree).filter((node) => node.type === 'h1' || node.type === 'nav').length, 0);
+  assert.match(tableText(tree), /N01/);
+  assert.match(tableText(tree), /N03/);
+  assert.doesNotMatch(tableText(tree), /N02|N04|N05|N06|N07/);
+  assert.equal(
+    nodes(tree).some((node) => node.props['aria-label'] === 'Tải lại danh sách nhóm'),
+    false,
+  );
+});
+
 test('advising tab only shows confirmed, unfinished groups, including after switching batches', () => {
   const ui = fixture();
   let tree = ui.render();
@@ -195,12 +210,22 @@ test('advising tab only shows confirmed, unfinished groups, including after swit
   assert.match(text(tree), /Không có\s+nhóm\s+phù hợp/);
 });
 
-test('pending statistics open the email queue and changing tabs clears incompatible status', () => {
+test('explicit status filter opens the email queue and changing tabs clears incompatible status', () => {
   const ui = fixture();
   let tree = ui.render();
-  find(tree, (n) => n.type === 'StatisticsBar')
-    .props.items.find((item) => item.key === 'pending')
-    .onClick();
+  assert.ok(
+    find(tree, (n) => n.type === 'StatisticsBar').props.items.every(
+      (item) => typeof item.onClick === 'function',
+    ),
+  );
+  clickTab(tree, 'Nhóm đăng ký');
+  tree = ui.render();
+  find(
+    tree,
+    (n) => n.type === 'Select' && n.props['aria-label'] === 'Lọc trạng thái',
+  ).props.onChange('PendingEmail');
+  tree = ui.render();
+  find(tree, (n) => n.type === 'form').props.onSubmit({ preventDefault() {} });
   tree = ui.render();
   assert.match(tableText(tree), /N02/);
   assert.match(tableText(tree), /N04/);
@@ -212,6 +237,34 @@ test('pending statistics open the email queue and changing tabs clears incompati
       .value,
     '',
   );
+});
+
+test('advising statistics switch panes and preserve batch when embedded in the unified route', () => {
+  const transitions = [];
+  const ui = fixture(
+    {},
+    {
+      embedded: true,
+      initialTab: 'advising',
+      initialBatchId: '2025-2',
+      onQuickFilter: (...args) => transitions.push(args),
+    },
+  );
+  const tree = ui.render();
+  const items = find(tree, (node) => node.type === 'StatisticsBar').props.items;
+  for (const key of ['topics', 'pending', 'advising', 'students'])
+    items.find((item) => item.key === key).onClick();
+  assert.deepEqual(transitions, [
+    ['topics', '', '2025-2'],
+    ['registrations', 'PendingEmail', '2025-2'],
+    ['advising', '', '2025-2'],
+    ['advising', '', '2025-2'],
+  ]);
+  const pending = fixture(
+    {},
+    { embedded: true, initialTab: 'registrations', initialStatus: 'PendingEmail' },
+  ).render();
+  assert.equal(find(pending, (node) => node.type === 'TablePagination').props.totalCount, 2);
 });
 
 test('search applies on submit, finds unaccented names and student IDs, and reset restores results', () => {
@@ -237,7 +290,15 @@ test('search applies on submit, finds unaccented names and student IDs, and rese
 });
 
 test('pagination and topic details preserve registrations including cancelled history', () => {
-  const ui = fixture();
+  const ui = fixture({
+    data: {
+      ...data,
+      topics: [
+        ...data.topics,
+        ...data.topics.map((topic) => ({ ...topic, id: `${topic.id}-copy` })),
+      ],
+    },
+  });
   let tree = ui.render();
   find(tree, (n) => n.type === 'TablePagination').props.onPageChange(2);
   tree = ui.render();
@@ -253,6 +314,63 @@ test('pagination and topic details preserve registrations including cancelled hi
   assert.match(text(dialog), /Khoa hủy theo đề nghị/);
   dialog.props.onClose();
   assert.equal(nodes(ui.render()).filter((n) => n.type === 'Dialog').length, 0);
+});
+
+test('page size selector, visible rows and range agree for six groups and after changing size', () => {
+  const ui = fixture({}, { embedded: true, initialTab: 'registrations' });
+  let tree = ui.render();
+  const selector = find(tree, (node) => node.props.id === 'advising-page-size');
+  assert.equal(selector.props.value, 10);
+  assert.ok(
+    nodes(selector).some(
+      (node) => node.type === 'option' && node.props.value === selector.props.value,
+    ),
+  );
+  const pagination = find(tree, (node) => node.type === 'TablePagination').props;
+  assert.equal(pagination.pageSize, 10);
+  assert.equal(pagination.totalCount, 6);
+  assert.equal(
+    nodes(find(tree, (node) => node.type === 'tbody')).filter((node) => node.type === 'SelectableTableRow').length,
+    6,
+  );
+  const { TablePagination } = load('../../components/ui/table-pagination.tsx', {
+    'react/jsx-runtime': jsxRuntime,
+    'lucide-react': icons,
+    './button': { Button: 'Button' },
+    '@/lib/utils': { cn: (...parts) => parts.filter(Boolean).join(' ') },
+  });
+  const footer = TablePagination(pagination);
+  assert.match(text(footer).replace(/\s+/g, ''), /Hiểnthị1–6\/6nhóm/);
+  assert.equal(
+    find(footer, (node) => node.type === 'Button' && text(node) === 'Sau').props.disabled,
+    true,
+  );
+
+  const largerData = {
+    ...data,
+    registrations: [
+      ...data.registrations,
+      ...data.registrations.map((group) => ({ ...group, id: `${group.id}-copy` })),
+    ],
+  };
+  const larger = fixture({ data: largerData }, { embedded: true, initialTab: 'registrations' });
+  tree = larger.render();
+  find(tree, (node) => node.type === 'TablePagination').props.onPageChange(2);
+  tree = larger.render();
+  assert.equal(
+    nodes(find(tree, (node) => node.type === 'tbody')).filter((node) => node.type === 'SelectableTableRow').length,
+    2,
+  );
+  find(tree, (node) => node.props.id === 'advising-page-size').props.onChange({
+    target: { value: '20' },
+  });
+  tree = larger.render();
+  assert.equal(find(tree, (node) => node.type === 'TablePagination').props.pageNumber, 1);
+  assert.equal(find(tree, (node) => node.type === 'TablePagination').props.pageSize, 20);
+  assert.equal(
+    nodes(find(tree, (node) => node.type === 'tbody')).filter((node) => node.type === 'SelectableTableRow').length,
+    12,
+  );
 });
 
 test('group details show email confirmation per student and faculty contact never submits a cancellation', () => {
@@ -284,6 +402,19 @@ test('group details show email confirmation per student and faculty contact neve
       .join(' '),
     /Gửi yêu cầu|Hủy nhóm/,
   );
+});
+
+test('selecting another advising row moves the indicator without opening a dialog', () => {
+  const ui = fixture({}, { embedded: true, initialTab: 'registrations' });
+  const rows = () => nodes(ui.render()).filter((node) => node.type === 'SelectableTableRow');
+  assert.ok(rows().length > 1);
+  assert.equal(rows().filter((row) => row.props.selected).length, 0);
+  rows()[0].props.onSelect();
+  assert.equal(rows()[0].props.selected, true);
+  rows()[1].props.onSelect();
+  assert.equal(rows()[0].props.selected, false);
+  assert.equal(rows()[1].props.selected, true);
+  assert.equal(nodes(ui.render()).filter((node) => node.type === 'Dialog').length, 0);
 });
 
 test('loading and failed queries expose readable status and retry', () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useBeforeUnload, useBlocker } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Dialog } from '@/components/ui/dialog';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
+import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
 import { TopicsTable } from '../components/TopicsTable';
@@ -43,6 +44,7 @@ import {
 } from '../proposalEditing';
 import { TopicPreview } from '../components/TopicPreview';
 import { TopicReviewNote } from '../components/TopicReviewNote';
+import { PageHeader } from '@/components/ui/page-header';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
@@ -75,11 +77,15 @@ const textareaClass =
   'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ' +
   'disabled:cursor-not-allowed disabled:opacity-50';
 
-export function TopicProposePage() {
+export function TopicProposePage({
+  pageTitle = 'Đề xuất đề tài',
+  navigation,
+}: { pageTitle?: string; navigation?: ReactNode } = {}) {
   const { user, hasPermission } = useAuth();
   const canReadBatches = hasPermission('academic.batches.read');
   const queryClient = useQueryClient();
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [values, setValues] = useState<TopicFormValues>(INITIAL_VALUES);
   const [baseline, setBaseline] = useState<TopicFormValues>(INITIAL_VALUES);
   const dirty = !sameProposal(values, baseline);
@@ -392,6 +398,12 @@ export function TopicProposePage() {
       'Gửi đề tài đến Khoa thẩm định? Sau khi gửi, bạn chỉ có thể sửa khi Khoa yêu cầu chỉnh sửa.',
     );
   }
+  function quickFilter(status: TopicStatus | '') {
+    const next = { keyword: '', batchId: filters.batchId, status };
+    setFilters(next);
+    setDraftFilters(next);
+    setPageNumber(1);
+  }
   function handleApplyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFilters({ ...draftFilters, keyword: draftFilters.keyword.trim() });
@@ -404,12 +416,6 @@ export function TopicProposePage() {
   }
   function removeFilter(key: keyof TopicFilters) {
     const next = { ...filters, [key]: '' };
-    setDraftFilters(next);
-    setFilters(next);
-    setPageNumber(1);
-  }
-  function applyQuickFilter(status: TopicStatus | '') {
-    const next = { keyword: '', batchId: filters.batchId, status };
     setDraftFilters(next);
     setFilters(next);
     setPageNumber(1);
@@ -438,14 +444,8 @@ export function TopicProposePage() {
   }
 
   return (
-    <div className="min-w-0 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Đề xuất đề tài</h1>
-          {/* <p className="mt-2 text-sm text-slate-500">
-            Quản lý đề xuất, lưu nháp và theo dõi kết quả thẩm định của Khoa.
-          </p> */}
-        </div>
+    <div className="min-w-0 space-y-5">
+      <PageHeader icon={<FileText />} title={pageTitle} navigation={navigation}>
         <Button
           type="button"
           leftIcon={<FilePlus2 />}
@@ -455,8 +455,7 @@ export function TopicProposePage() {
         >
           Đề xuất đề tài
         </Button>
-      </div>
-
+      </PageHeader>
       {availableLocalDraft && !isFormOpen && (
         <div
           role="status"
@@ -1144,15 +1143,16 @@ export function TopicProposePage() {
       )}
 
       <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
-        <CardHeader className="grid min-h-[104px] grid-cols-1 items-center gap-4 space-y-0 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-5 py-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="space-y-1">
-            <CardTitle className="text-base text-slate-900">Đề tài của tôi</CardTitle>
-            <p className="text-xs text-slate-500">
-              {filters.batchId
-                ? 'Thống kê tất cả trạng thái trong đợt đang chọn'
-                : 'Nội dung đề xuất và trạng thái thẩm định'}
-            </p>
-          </div>
+        <ListCardHeader
+          title="Đề tài của tôi"
+          icon={<FileText />}
+          description={
+            filters.batchId
+              ? 'Thống kê trong đợt đang chọn'
+              : 'Nội dung đề xuất và kết quả thẩm định'
+          }
+          className="xl:grid-cols-[minmax(0,1fr)_420px]"
+        >
           <section
             className="w-full"
             aria-label="Thống kê đề tài"
@@ -1163,30 +1163,30 @@ export function TopicProposePage() {
               items={[
                 {
                   key: 'total',
+                  onClick: () => quickFilter(''),
+                  active: filters.status === '' && !filters.keyword,
                   label: 'Tổng đề tài',
                   value: formatCount(statistics?.total),
                   icon: <FileText />,
                   tone: 'primary',
-                  active: filters.status === '' && !filters.keyword,
-                  onClick: () => applyQuickFilter(''),
                 },
                 {
                   key: 'submitted',
+                  onClick: () => quickFilter('Submitted'),
+                  active: filters.status === 'Submitted' && !filters.keyword,
                   label: 'Chờ duyệt',
                   value: formatCount(statistics?.submitted),
                   icon: <Clock3 />,
                   tone: 'muted',
-                  active: filters.status === 'Submitted' && !filters.keyword,
-                  onClick: () => applyQuickFilter('Submitted'),
                 },
                 {
                   key: 'revision',
+                  onClick: () => quickFilter('NeedRevision'),
+                  active: filters.status === 'NeedRevision' && !filters.keyword,
                   label: 'Cần chỉnh sửa',
                   value: formatCount(statistics?.needRevision),
                   icon: <RotateCcw />,
                   tone: 'warning',
-                  active: filters.status === 'NeedRevision' && !filters.keyword,
-                  onClick: () => applyQuickFilter('NeedRevision'),
                 },
               ]}
             />
@@ -1210,7 +1210,7 @@ export function TopicProposePage() {
               </div>
             )}
           </section>
-        </CardHeader>
+        </ListCardHeader>
 
         <div
           aria-busy={topicsQuery.isFetching}
@@ -1248,6 +1248,8 @@ export function TopicProposePage() {
               pageSize={topicsQuery.data.pageSize}
               busy={busy || topicsQuery.isFetching}
               onOpen={openTopic}
+              selectedRowId={selectedRowId}
+              onSelectRow={setSelectedRowId}
               onCopy={(topic) => openTopic(topic, 'copy')}
               onSubmit={(topic) => openTopic(topic, 'submit')}
             />

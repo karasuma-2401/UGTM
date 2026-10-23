@@ -54,7 +54,7 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
           <div
             key={key}
             className={cn(
-              'relative flex items-center gap-2 rounded-md px-2.5 py-1.5',
+              'relative flex min-w-0 items-center gap-2 rounded-md px-2.5 py-1.5',
               loading ? 'bg-slate-50' : colors.background,
               !loading && active && 'ring-1 ring-inset ring-primary/40',
             )}
@@ -62,11 +62,11 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
             {onClick && (
               <button
                 type="button"
-                onClick={onClick}
-                disabled={loading}
                 aria-label={`Lọc: ${label}`}
                 aria-pressed={!loading && Boolean(active)}
-                className="absolute inset-0 z-10 cursor-pointer rounded-md transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                disabled={loading}
+                onClick={onClick}
+                className="absolute inset-0 z-10 rounded-md transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait"
               />
             )}
             {icon && (
@@ -77,8 +77,14 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
                 {loading ? <Skeleton className="size-3.5 rounded-sm" /> : icon}
               </span>
             )}
-            <div className="flex min-w-0 flex-col">
-              <dt className={cn('relative order-2 mt-1 text-[10px] font-medium', colors.label)}>
+            <div className="flex min-w-0 flex-1 flex-col">
+              <dt
+                title={label}
+                className={cn(
+                  'relative order-2 mt-1 truncate text-[10px] font-medium',
+                  colors.label,
+                )}
+              >
                 {loading ? (
                   <>
                     <span className="invisible" aria-hidden="true">

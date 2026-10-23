@@ -4,7 +4,7 @@ import { Skeleton } from './skeleton';
 interface SkeletonColumn {
   label: string;
   width?: string;
-  variant?: 'text' | 'number' | 'checkbox' | 'topic' | 'badge' | 'actions';
+  variant?: 'text' | 'number' | 'checkbox' | 'topic' | 'person' | 'badge' | 'actions';
   actionCount?: number;
 }
 
@@ -21,9 +21,15 @@ function CellSkeleton({ column }: { column: SkeletonColumn }) {
     case 'checkbox':
       return <Skeleton className="size-4 rounded-sm" />;
     case 'topic':
+    case 'person':
       return (
         <div className="flex items-center gap-3">
-          <Skeleton className="size-9 shrink-0 rounded-lg" />
+          <Skeleton
+            className={cn(
+              'size-9 shrink-0',
+              column.variant === 'person' ? 'rounded-full' : 'rounded-lg',
+            )}
+          />
           <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-4 w-5/6" />
             <Skeleton className="h-3 w-2/3" />
@@ -34,7 +40,7 @@ function CellSkeleton({ column }: { column: SkeletonColumn }) {
       return <Skeleton className="h-6 w-28 max-w-full" />;
     case 'actions':
       return (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           {Array.from({ length: column.actionCount ?? 1 }, (_, index) => (
             <Skeleton key={index} className="h-9 w-24 max-w-full" />
           ))}
@@ -64,6 +70,7 @@ export function TableSkeleton({ columns, rows = 6, className }: TableSkeletonPro
                 className={cn(
                   'px-4 py-4 font-bold',
                   column.variant === 'number' && 'px-3 text-center',
+                  column.variant === 'actions' && 'text-center',
                 )}
               >
                 {column.variant === 'checkbox' ? (

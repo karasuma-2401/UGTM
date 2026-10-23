@@ -11,9 +11,8 @@ import { LoginPage } from '../features/auth/pages/LoginPage';
 import { OtpPage } from '../features/auth/pages/OtpPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 import { UsersPage } from '../features/admin/pages/UsersPage';
-import { TopicProposePage } from '../features/topics/pages/TopicProposePage';
 import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
-import { TopicAdvisingPage } from '../features/topics/pages/TopicAdvisingPage';
+import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/admin/layouts/IdentityLayout';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -44,7 +43,7 @@ export const router = createBrowserRouter([
         path: 'topics/advising',
         element: (
           <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
-            <TopicAdvisingPage />
+            <TopicGuidancePage />
           </ProtectedRoute>
         ),
       },
@@ -52,7 +51,7 @@ export const router = createBrowserRouter([
         path: 'topics/propose',
         element: (
           <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
-            <TopicProposePage />
+            <Navigate to="/topics/advising" replace />
           </ProtectedRoute>
         ),
       },
