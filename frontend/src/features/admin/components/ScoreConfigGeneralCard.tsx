@@ -28,7 +28,7 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
   onCalculationMethodChange,
   reviewerMinimumScore,
   onReviewerMinimumScoreChange,
-  onAddOptionalComponent,
+  onAddOptionalComponent: _onAddOptionalComponent,
   isReadOnly = false,
   isLoadingBatches = false,
 }) => {
@@ -43,15 +43,6 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
     value: key,
     label: CALCULATION_METHOD_LABELS[key],
   }));
-
-  const optionalComponentOptions = [
-    { value: '', label: 'Chọn đầu điểm áp dụng...' },
-    { value: 'COUNCIL_CHAIRMAN', label: 'Chủ tịch hội đồng' },
-    { value: 'COUNCIL_SECRETARY', label: 'Thư ký hội đồng' },
-    { value: 'COUNCIL_MEMBER', label: 'Ủy viên hội đồng' },
-    { value: 'COUNCIL_AVG', label: 'Điểm trung bình hội đồng' },
-    { value: 'CUSTOM', label: 'Đầu điểm tùy chỉnh khác' },
-  ];
 
   const handleMinScoreChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.trim();
@@ -127,24 +118,6 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
             Giá trị của đợt mẫu, có thể cấu hình (0.0 – 10.0)
           </p>
         </div>
-      </div>
-
-      <div className="space-y-1.5 pt-1">
-        <label className="text-xs font-semibold text-slate-700">
-          Đầu điểm tùy chọn
-        </label>
-        <Select
-          options={optionalComponentOptions}
-          value=""
-          onChange={(val) => {
-            if (val && onAddOptionalComponent) {
-              onAddOptionalComponent(val as string);
-            }
-          }}
-          disabled={isReadOnly}
-          placeholder="Chọn đầu điểm áp dụng..."
-          triggerClassName="h-10 text-sm bg-white text-slate-500"
-        />
       </div>
     </div>
   );

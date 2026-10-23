@@ -15,7 +15,7 @@ import { ScoreConfigActionBar } from '../components/ScoreConfigActionBar';
 import { ScoreComponentAddDialog } from '../components/ScoreComponentAddDialog';
 import { ScoreConfigHistoryDialog } from '../components/ScoreConfigHistoryDialog';
 import { ScoreConfigCloneReasonDialog } from '../components/ScoreConfigCloneReasonDialog';
-import { History, Wand2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { History, Wand2, CheckCircle2, AlertCircle, Save, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 function gcd(a: number, b: number): number {
@@ -499,33 +499,21 @@ export const ScoreConfigPage: React.FC = () => {
             isReadOnly={isLoadingConfig || isLoadingBatches}
           />
 
+          <ScoreConfigActionBar
+            calculationMethod={calculationMethod}
+            onSwitchCalculationMethod={handleSwitchCalculationMethod}
+            onOpenAddComponentModal={() => setIsAddModalOpen(true)}
+            isReadOnly={isLoadingConfig || isLoadingBatches}
+          />
+
           <ScoreConfigValidationCard
             calculationMethod={calculationMethod}
             totalWeight={totalWeight}
             componentsCount={components.length}
           />
-
-          <ScoreConfigActionBar
-            onSave={handleSaveClick}
-            isSaving={isSaving}
-            onPublish={handlePublish}
-            isPublishing={isPublishing}
-            canPublish={currentConfig?.status === 'Draft' && isValid}
-            calculationMethod={calculationMethod}
-            onSwitchCalculationMethod={handleSwitchCalculationMethod}
-            onOpenAddComponentModal={() => setIsAddModalOpen(true)}
-            isReadOnly={isLoadingConfig || isLoadingBatches}
-            saveButtonText={
-              currentConfig?.status === 'Draft'
-                ? 'Lưu bản nháp'
-                : currentConfig?.status === 'Active'
-                ? 'Sửa cấu hình (Tạo Draft)'
-                : 'Lưu cấu hình'
-            }
-          />
         </div>
 
-        <div className="lg:col-span-4 sticky top-6">
+        <div className="lg:col-span-4 sticky top-6 space-y-4">
           <ScoreConfigSummaryCard
             batch={currentBatch}
             calculationMethod={calculationMethod}
@@ -534,6 +522,53 @@ export const ScoreConfigPage: React.FC = () => {
             versionNo={currentConfig?.versionNo}
             status={currentConfig?.status}
           />
+
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xs p-4 sm:p-5 space-y-3">
+            <button
+              type="button"
+              onClick={handleSaveClick}
+              disabled={isSaving || isLoadingConfig || isLoadingBatches}
+              className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-sm h-11 text-white bg-gradient-to-r from-[#2054A5] to-[#FA7921] hover:opacity-95 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 cursor-pointer"
+            >
+              {isSaving ? (
+                <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Save className="size-4" />
+              )}
+              <span>
+                {currentConfig?.status === 'Draft'
+                  ? 'Lưu bản nháp'
+                  : currentConfig?.status === 'Active'
+                  ? 'Sửa cấu hình (Tạo Draft)'
+                  : 'Lưu cấu hình'}
+              </span>
+            </button>
+
+            {currentConfig?.status === 'Draft' && (
+              <Button
+                type="button"
+                variant="default"
+                className="w-full rounded-lg h-11 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-semibold text-sm cursor-pointer disabled:pointer-events-none disabled:opacity-50"
+                onClick={handlePublish}
+                disabled={!isValid || isPublishing || isLoadingConfig || isLoadingBatches}
+                leftIcon={
+                  isPublishing ? (
+                    <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Send className="size-4" />
+                  )
+                }
+              >
+                <span>Công bố</span>
+              </Button>
+            )}
+
+            {currentConfig?.status === 'Draft' && !isValid && (
+              <p className="text-[11px] text-amber-600 text-center font-medium">
+                Cần đạt tổng {calculationMethod === 'Percentage' ? '100%' : 'hệ số > 0'} để công bố
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
