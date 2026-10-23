@@ -15,7 +15,8 @@ import { ScoreConfigActionBar } from '../components/ScoreConfigActionBar';
 import { ScoreComponentAddDialog } from '../components/ScoreComponentAddDialog';
 import { ScoreConfigHistoryDialog } from '../components/ScoreConfigHistoryDialog';
 import { ScoreConfigCloneReasonDialog } from '../components/ScoreConfigCloneReasonDialog';
-import { History, Wand2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { History, Wand2, CheckCircle2, AlertCircle, Save, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 function gcd(a: number, b: number): number {
@@ -81,6 +82,27 @@ function convertWeightsToInteger(items: ScoreComponentInput[]): ScoreComponentIn
   }));
 }
 
+function isConfigDifferentFromDefault(
+  method: ScoreCalculationMethod,
+  reviewerMinScore: number | null,
+  currentComponents: ScoreComponentInput[],
+): boolean {
+  if (method !== 'IntegerCoefficient') return true;
+  if (reviewerMinScore !== 5.0) return true;
+  if (currentComponents.length !== UIT_INTEGER_PRESET_COMPONENTS.length) return true;
+
+  return currentComponents.some((comp, idx) => {
+    const preset = UIT_INTEGER_PRESET_COMPONENTS[idx];
+    if (!preset) return true;
+    return (
+      comp.componentCode !== preset.componentCode ||
+      Number(comp.weight) !== Number(preset.weight) ||
+      comp.minimumScore !== preset.minimumScore ||
+      comp.applicability !== preset.applicability
+    );
+  });
+}
+
 export const ScoreConfigPage: React.FC = () => {
   const [batches, setBatches] = useState<KltnBatchSummaryDto[]>([]);
   const [selectedBatchId, setSelectedBatchId] = useState<string>('');
@@ -105,6 +127,7 @@ export const ScoreConfigPage: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
   const [isCloneReasonModalOpen, setIsCloneReasonModalOpen] = useState<boolean>(false);
+  const [isResetConfirmModalOpen, setIsResetConfirmModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -233,11 +256,27 @@ export const ScoreConfigPage: React.FC = () => {
     }
   };
 
-  const handleApplyDefaultTemplate = () => {
+  const applyDefaultTemplate = () => {
     setCalculationMethod('IntegerCoefficient');
     setReviewerMinimumScore(5.0);
     setComponents(UIT_INTEGER_PRESET_COMPONENTS);
     setNotice('Đã nạp lại bộ hệ số mẫu chuẩn 5 thành viên của UIT.');
+    setIsResetConfirmModalOpen(false);
+  };
+
+  const handleApplyDefaultTemplateClick = () => {
+    const isDifferent = isConfigDifferentFromDefault(
+      calculationMethod,
+      reviewerMinimumScore,
+      components,
+    );
+
+    if (isDifferent) {
+      setIsResetConfirmModalOpen(true);
+      return;
+    }
+
+    applyDefaultTemplate();
   };
 
   const handleAddOptionalComponent = (sourceCode: string) => {
@@ -403,7 +442,7 @@ export const ScoreConfigPage: React.FC = () => {
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleApplyDefaultTemplate}
+            onClick={handleApplyDefaultTemplateClick}
             className="rounded-lg h-9 text-xs"
             leftIcon={<Wand2 className="size-3.5 text-primary" />}
           >
@@ -499,33 +538,21 @@ export const ScoreConfigPage: React.FC = () => {
             isReadOnly={isLoadingConfig || isLoadingBatches}
           />
 
+          <ScoreConfigActionBar
+            calculationMethod={calculationMethod}
+            onSwitchCalculationMethod={handleSwitchCalculationMethod}
+            onOpenAddComponentModal={() => setIsAddModalOpen(true)}
+            isReadOnly={isLoadingConfig || isLoadingBatches}
+          />
+
           <ScoreConfigValidationCard
             calculationMethod={calculationMethod}
             totalWeight={totalWeight}
             componentsCount={components.length}
           />
-
-          <ScoreConfigActionBar
-            onSave={handleSaveClick}
-            isSaving={isSaving}
-            onPublish={handlePublish}
-            isPublishing={isPublishing}
-            canPublish={currentConfig?.status === 'Draft' && isValid}
-            calculationMethod={calculationMethod}
-            onSwitchCalculationMethod={handleSwitchCalculationMethod}
-            onOpenAddComponentModal={() => setIsAddModalOpen(true)}
-            isReadOnly={isLoadingConfig || isLoadingBatches}
-            saveButtonText={
-              currentConfig?.status === 'Draft'
-                ? 'Lưu bản nháp'
-                : currentConfig?.status === 'Active'
-                ? 'Sửa cấu hình (Tạo Draft)'
-                : 'Lưu cấu hình'
-            }
-          />
         </div>
 
-        <div className="lg:col-span-4 sticky top-6">
+        <div className="lg:col-span-4 sticky top-6 space-y-4">
           <ScoreConfigSummaryCard
             batch={currentBatch}
             calculationMethod={calculationMethod}
@@ -534,6 +561,51 @@ export const ScoreConfigPage: React.FC = () => {
             versionNo={currentConfig?.versionNo}
             status={currentConfig?.status}
           />
+
+          <button
+            type="button"
+            onClick={handleSaveClick}
+            disabled={isSaving || isLoadingConfig || isLoadingBatches}
+            className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-sm h-11 text-white bg-gradient-to-r from-[#2054A5] to-[#FA7921] hover:opacity-95 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 cursor-pointer"
+          >
+            {isSaving ? (
+              <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            <span>
+              {currentConfig?.status === 'Draft'
+                ? 'Lưu bản nháp'
+                : currentConfig?.status === 'Active'
+                ? 'Sửa cấu hình'
+                : 'Lưu cấu hình'}
+            </span>
+          </button>
+
+          {currentConfig?.status === 'Draft' && (
+            <Button
+              type="button"
+              variant="default"
+              className="w-full rounded-lg h-11 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-semibold text-sm cursor-pointer disabled:pointer-events-none disabled:opacity-50"
+              onClick={handlePublish}
+              disabled={!isValid || isPublishing || isLoadingConfig || isLoadingBatches}
+              leftIcon={
+                isPublishing ? (
+                  <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Send className="size-4" />
+                )
+              }
+            >
+              <span>Công bố</span>
+            </Button>
+          )}
+
+          {currentConfig?.status === 'Draft' && !isValid && (
+            <p className="text-[11px] text-amber-600 text-center font-medium">
+              Cần đạt tổng {calculationMethod === 'Percentage' ? '100%' : 'hệ số > 0'} để công bố
+            </p>
+          )}
         </div>
       </div>
 
@@ -581,6 +653,17 @@ export const ScoreConfigPage: React.FC = () => {
           setIsCloneReasonModalOpen(false);
           executeSaveDraft(reason);
         }}
+      />
+
+      <ConfirmDialog
+        open={isResetConfirmModalOpen}
+        onClose={() => setIsResetConfirmModalOpen(false)}
+        onConfirm={applyDefaultTemplate}
+        type="brand"
+        title="Cảnh báo!"
+        description="Cấu hình điểm hiện tại đã có sự thay đổi. Bạn có chắc chắn muốn nạp lại cấu hình mẫu chuẩn của UIT không? Các thiết lập vừa chỉnh sửa chưa lưu sẽ bị mất."
+        confirmText="Đồng ý"
+        cancelText="Hủy"
       />
     </div>
   );
