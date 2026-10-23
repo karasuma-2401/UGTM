@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   UsersRound,
+  GraduationCap,
   UserPlus,
   Clock3,
   ShieldOff,
@@ -13,7 +14,9 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
+import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Select } from '@/components/ui/select';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TablePagination } from '@/components/ui/table-pagination';
@@ -23,6 +26,7 @@ import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { UserFormDialog } from '../components/UserFormDialog';
 import { StudentImportDialog } from '../components/StudentImportDialog';
 import { UsersTable } from '../components/UsersTable';
+import { IdentityNavigation } from '../components/IdentityNavigation';
 import { STATUS_LABELS } from '../types/user.types';
 import { SYSTEM_ROLES } from '../constants/systemRoles';
 import { getUserErrorMessage, userApi } from '../services/userApi';
@@ -125,6 +129,12 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
     onSuccess: () => setNotice('Đã gửi email kích hoạt tài khoản.'),
   });
 
+  function quickFilter(status: AccountStatus | '') {
+    const next = { ...INITIAL_FILTERS, status };
+    setFilters(next);
+    setDraftFilters(next);
+    setPageNumber(1);
+  }
   function handleApplyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFilters({
@@ -137,13 +147,6 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
   function clearFilters() {
     setDraftFilters({ ...INITIAL_FILTERS });
     setFilters({ ...INITIAL_FILTERS });
-    setPageNumber(1);
-  }
-
-  function applyQuickFilter(status: AccountStatus | '') {
-    const next = { ...INITIAL_FILTERS, status };
-    setDraftFilters(next);
-    setFilters(next);
     setPageNumber(1);
   }
 
@@ -199,51 +202,38 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
     draftFilters.role ||
     draftFilters.status,
   );
-  const isQuickFilterActive = (status: AccountStatus | '') =>
-    filters.status === status && !filters.keyword && !filters.role;
 
   return (
-    <div className="min-w-0 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              {isStudent ? 'Sinh viên' : 'Giảng viên & cán bộ'}
-            </h1>
-            {/* <p className="mt-2 text-sm text-slate-500">
-              {isStudent
-                ? 'Quản lý tài khoản sinh viên, nhập danh sách và theo dõi kích hoạt.'
-                : 'Quản lý tài khoản, vai trò và trạng thái truy cập của giảng viên, cán bộ.'}
-            </p> */}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {canManage && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isUpdating}
-              onClick={() => handleOpenForm(null)}
-              leftIcon={<UserPlus />}
-              // className="h-10 rounded-lg px-4 shadow-sm"
-            >
-              {isStudent ? 'Thêm sinh viên' : 'Thêm giảng viên / cán bộ'}
-            </Button>
-          )}
-          {isStudent && canImport && (
-            <Button
-              type="button"
-              disabled={isUpdating}
-              onClick={() => setIsImportOpen(true)}
-              leftIcon={<Upload />}
-              className="h-10 rounded-lg px-4 shadow-sm"
-            >
-              Nhập Excel
-            </Button>
-          )}
-        </div>
-      </div>
+    <div className="min-w-0 space-y-5">
+      <PageHeader
+        title="Tài khoản và phân quyền"
+        icon={<UsersRound />}
+        navigation={<IdentityNavigation />}
+      >
+        {canManage && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isUpdating}
+            onClick={() => handleOpenForm(null)}
+            leftIcon={<UserPlus />}
+            className="h-10 rounded-lg px-4 shadow-sm"
+          >
+            {isStudent ? 'Thêm sinh viên' : 'Thêm giảng viên / cán bộ'}
+          </Button>
+        )}
+        {isStudent && canImport && (
+          <Button
+            type="button"
+            disabled={isUpdating}
+            onClick={() => setIsImportOpen(true)}
+            leftIcon={<Upload />}
+            className="h-10 rounded-lg px-4 shadow-sm"
+          >
+            Nhập Excel
+          </Button>
+        )}
+      </PageHeader>
 
       {notice && (
         <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
@@ -415,11 +405,12 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
       )}
 
       <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
-        <CardHeader className="grid min-h-[104px] grid-cols-1 items-center gap-4 space-y-0 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-5 py-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="space-y-1">
-            <CardTitle className="text-base text-slate-900">Danh sách tài khoản</CardTitle>
-            <p className="text-xs text-slate-500">Thông tin người dùng và trạng thái truy cập</p>
-          </div>
+        <ListCardHeader
+          title="Danh sách tài khoản"
+          icon={isStudent ? <GraduationCap /> : <UsersRound />}
+          description={`${formatCount(data?.totalCount)} ${isStudent ? 'sinh viên' : 'giảng viên / cán bộ'}`}
+          className="xl:grid-cols-[minmax(0,1fr)_420px]"
+        >
           <section
             className="w-full"
             aria-label="Thống kê tài khoản"
@@ -430,30 +421,31 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               items={[
                 {
                   key: 'total',
+                  onClick: () => quickFilter(''),
+                  active: !filters.status && !filters.keyword && !filters.role,
                   label: 'Tổng tài khoản',
                   value: formatCount(statistics?.total),
                   icon: <UsersRound />,
                   tone: 'primary',
-                  active: isQuickFilterActive(''),
-                  onClick: () => applyQuickFilter(''),
                 },
                 {
                   key: 'pending',
+                  onClick: () => quickFilter('PendingActivation'),
+                  active:
+                    filters.status === 'PendingActivation' && !filters.keyword && !filters.role,
                   label: 'Chờ kích hoạt',
                   value: formatCount(statistics?.pendingActivation),
                   icon: <Clock3 />,
                   tone: 'warning',
-                  active: isQuickFilterActive('PendingActivation'),
-                  onClick: () => applyQuickFilter('PendingActivation'),
                 },
                 {
                   key: 'disabled',
+                  onClick: () => quickFilter('Disabled'),
+                  active: filters.status === 'Disabled' && !filters.keyword && !filters.role,
                   label: 'Vô hiệu hóa',
                   value: formatCount(statistics?.disabled),
                   icon: <ShieldOff />,
                   tone: 'muted',
-                  active: isQuickFilterActive('Disabled'),
-                  onClick: () => applyQuickFilter('Disabled'),
                 },
               ]}
             />
@@ -477,7 +469,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               </div>
             )}
           </section>
-        </CardHeader>
+        </ListCardHeader>
 
         <div
           aria-busy={usersQuery.isFetching}
@@ -485,17 +477,17 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         >
           {usersQuery.isPending ? (
             <TableSkeleton
-              className="min-w-[1040px]"
+              className="min-w-[1120px]"
               columns={[
-                { label: 'STT', width: 'w-14' },
-                { label: isStudent ? 'Sinh viên' : 'Giảng viên / Cán bộ' },
+                { label: 'STT', width: 'w-14', variant: 'number' },
+                { label: isStudent ? 'Sinh viên' : 'Giảng viên / Cán bộ', variant: 'person' },
                 {
                   label: isStudent ? 'MSSV' : 'Vai trò / Mã cán bộ',
                   width: 'w-52',
                 },
                 { label: 'Lần truy cập', width: 'w-36' },
-                { label: 'Trạng thái', width: 'w-36' },
-                { label: 'Thao tác', width: 'w-[248px]' },
+                { label: 'Trạng thái', width: 'w-36', variant: 'badge' },
+                { label: 'Thao tác', width: 'w-[280px]', variant: 'actions', actionCount: 2 },
               ]}
             />
           ) : usersQuery.isError ? (

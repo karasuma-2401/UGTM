@@ -43,7 +43,7 @@ export function TopicReviewTable({
   const canSelectAll = new Set(selectable.map((topic) => topic.batchId)).size === 1;
 
   return (
-    <table className="w-full min-w-[1180px] table-fixed text-left text-sm">
+    <table className="w-full min-w-[1240px] table-fixed text-left text-sm">
       <colgroup>
         <col className="w-14" />
         <col className="w-12" />
@@ -52,7 +52,7 @@ export function TopicReviewTable({
         <col className="w-40" />
         <col className="w-20" />
         <col className="w-44" />
-        <col className="w-36" />
+        <col className="w-44" />
       </colgroup>
       <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
         <tr>
@@ -74,7 +74,11 @@ export function TopicReviewTable({
           </th>
           {['Đề tài', 'Giảng viên hướng dẫn', 'Đợt KLTN', 'Chỉ tiêu', 'Trạng thái', 'Thao tác'].map(
             (label) => (
-              <th key={label} scope="col" className="px-4 py-4 font-bold">
+              <th
+                key={label}
+                scope="col"
+                className={`px-4 py-4 font-bold ${label === 'Thao tác' ? 'text-center' : ''}`}
+              >
                 {label}
               </th>
             ),
@@ -87,7 +91,7 @@ export function TopicReviewTable({
           return (
             <tr
               key={topic.id}
-              className={`h-[88px] transition-colors ${checked ? 'bg-blue-50/60' : 'hover:bg-blue-50/30'}`}
+              className={`h-[88px] transition-colors ${checked ? 'bg-blue-50/60' : 'hover:bg-blue-50/40'}`}
             >
               <td className="px-3 py-4 text-center text-xs tabular-nums text-slate-400">
                 {(pageNumber - 1) * pageSize + index + 1}
@@ -153,12 +157,12 @@ export function TopicReviewTable({
               <td className="px-4 py-4">
                 <TopicStatusBadge status={topic.status} />
               </td>
-              <td className="px-4 py-4">
+              <td className="px-4 py-4 text-center">
                 <Button
                   type="button"
                   variant={topic.status === 'Submitted' ? 'default' : 'soft'}
                   size="sm"
-                  className="h-9 cursor-pointer"
+                  className="h-9 w-28 cursor-pointer rounded-lg shadow-none"
                   leftIcon={topic.status === 'Submitted' ? <ClipboardCheck /> : <Eye />}
                   disabled={busy}
                   onClick={() => onOpen(topic)}

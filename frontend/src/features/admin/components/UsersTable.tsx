@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { InfoCell } from '@/components/ui/info-cell';
-import { Badge, type BadgeProps } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
+import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
 
 import { SYSTEM_ROLES } from '../constants/systemRoles';
 import {
@@ -48,18 +49,11 @@ interface UsersTableProps {
   onResendActivation: (user: UserSummary) => void;
 }
 
-const statusVariants: Record<AccountStatus, NonNullable<BadgeProps['variant']>> = {
+const statusTones: Record<AccountStatus, StatusTone> = {
   Active: 'success',
   PendingActivation: 'warning',
-  Suspended: 'warning',
-  Disabled: 'secondary',
-};
-
-const statusClasses: Record<AccountStatus, string> = {
-  Active: 'border-emerald-200/70 bg-emerald-50 text-emerald-700',
-  PendingActivation: 'border-amber-200/70 bg-amber-50 text-amber-700',
-  Suspended: 'border-orange-200/70 bg-orange-50 text-orange-700',
-  Disabled: 'border-slate-200 bg-slate-100 text-slate-500',
+  Suspended: 'orange',
+  Disabled: 'neutral',
 };
 
 function formatLastLogin(value: string | null): string {
@@ -84,14 +78,14 @@ export function UsersTable({
   onResendActivation,
 }: UsersTableProps) {
   return (
-    <table className="w-full min-w-[1040px] table-fixed text-left text-sm">
+    <table className="w-full min-w-[1120px] table-fixed text-left text-sm">
       <colgroup>
         <col className="w-14" />
         <col />
         <col className="w-52" />
         <col className="w-36" />
         <col className="w-36" />
-        <col className="w-[248px]" />
+        <col className="w-[280px]" />
       </colgroup>
       <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
         <tr>
@@ -105,7 +99,11 @@ export function UsersTable({
             'Trạng thái',
             'Thao tác',
           ].map((heading) => (
-            <th key={heading} scope="col" className="whitespace-nowrap px-4 py-4 font-bold">
+            <th
+              key={heading}
+              scope="col"
+              className={`whitespace-nowrap px-4 py-4 font-bold ${heading === 'Thao tác' ? 'text-center' : ''}`}
+            >
               {heading}
             </th>
           ))}
@@ -121,7 +119,7 @@ export function UsersTable({
           </tr>
         ) : (
           users.map((user, index) => (
-            <tr key={user.id} className="h-[88px] transition-colors hover:bg-blue-50/30">
+            <tr key={user.id} className="h-[88px] transition-colors hover:bg-blue-50/40">
               <td className="px-3 py-4 text-center text-xs tabular-nums text-slate-400">
                 {(pageNumber - 1) * pageSize + index + 1}
               </td>
@@ -212,18 +210,14 @@ export function UsersTable({
               </td>
 
               <td className="px-4 py-4">
-                <Badge
-                  variant={statusVariants[user.status]}
-                  dot
-                  className={`whitespace-nowrap px-2.5 py-1 text-[11px] font-medium shadow-none ${statusClasses[user.status]}`}
-                >
+                <StatusBadge tone={statusTones[user.status]}>
                   {STATUS_LABELS[user.status]}
-                </Badge>
+                </StatusBadge>
               </td>
 
-              <td className="px-4 py-4">
+              <td className="px-4 py-4 text-center">
                 {canManage ? (
-                  <div className="flex items-center gap-2 whitespace-nowrap">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
                     <Button
                       type="button"
                       variant="soft"
@@ -232,7 +226,7 @@ export function UsersTable({
                       onClick={() => onEdit(user)}
                       leftIcon={<Eye />}
                       aria-label={`Xem chi tiết tài khoản ${user.fullName}`}
-                      className="h-9 cursor-pointer"
+                      className="h-9 cursor-pointer rounded-lg shadow-none"
                     >
                       Chi tiết
                     </Button>
@@ -255,7 +249,7 @@ export function UsersTable({
                             ? `Vô hiệu hóa tài khoản ${user.fullName}`
                             : `Khôi phục tài khoản ${user.fullName}`
                         }
-                        className="h-9 cursor-pointer"
+                        className="h-9 cursor-pointer rounded-lg shadow-none"
                       >
                         {user.status === 'Active' ? 'Vô hiệu hóa' : 'Khôi phục'}
                       </Button>
@@ -269,7 +263,7 @@ export function UsersTable({
                         leftIcon={<Mail />}
                         onClick={() => onResendActivation(user)}
                         aria-label={`Gửi email kích hoạt cho ${user.fullName}`}
-                        className="h-9 cursor-pointer"
+                        className="h-9 cursor-pointer rounded-lg shadow-none"
                       >
                         Gửi kích hoạt
                       </Button>

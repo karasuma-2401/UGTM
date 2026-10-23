@@ -197,12 +197,15 @@ function usersPageFixture(accountGroup, queryState = {}) {
     '@/components/ui/input': component('Input'),
     '@/components/ui/card': { Card: 'Card', CardHeader: 'CardHeader', CardTitle: 'CardTitle' },
     '@/components/ui/select': component('Select'),
+    '@/components/ui/page-header': component('PageHeader'),
+    '@/components/ui/list-card-header': component('ListCardHeader'),
     '@/components/ui/statistics-bar': component('StatisticsBar'),
     '@/components/ui/table-pagination': component('TablePagination'),
     '@/components/ui/table-skeleton': component('TableSkeleton'),
     '../components/UserFormDialog': component('UserFormDialog'),
     '../components/StudentImportDialog': component('StudentImportDialog'),
     '../components/UsersTable': component('UsersTable'),
+    '../components/IdentityNavigation': component('IdentityNavigation'),
     '../types/user.types': loadModule('features/admin/types/user.types.ts'),
     '../constants/systemRoles': loadModule('features/admin/constants/systemRoles.ts'),
     '../services/userApi': {
@@ -236,7 +239,7 @@ function usersPageFixture(accountGroup, queryState = {}) {
 }
 
 for (const accountGroup of ['Student', 'Staff']) {
-  test(`${accountGroup} statistic clicks filter the server list, reset pagination and highlight selection`, async () => {
+  test(`${accountGroup} status filters update the server list while statistics support quick filters`, async () => {
     const page = usersPageFixture(accountGroup);
     assert.equal(page.stat('total').active, true);
     page.find((node) => node.type === 'Input')[0].props.onChange({ target: { value: ' NGUYEN ' } });
@@ -259,7 +262,18 @@ for (const accountGroup of ['Student', 'Staff']) {
       ['disabled', 'Disabled'],
       ['total', ''],
     ]) {
-      page.stat(key).onClick();
+      assert.equal(typeof page.stat(key).onClick, 'function');
+      page.find((node) => node.type === 'Input')[0].props.onChange({ target: { value: '' } });
+      page.render();
+      if (accountGroup === 'Staff') {
+        page.find((node) => node.props['aria-label'] === 'Lọc theo vai trò')[0].props.onChange('');
+        page.render();
+      }
+      page
+        .find((node) => node.props['aria-label'] === 'Lọc theo trạng thái')[0]
+        .props.onChange(status);
+      page.render();
+      page.find((node) => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
       page.render();
       assert.deepEqual(await page.listQuery(), {
         keyword: '',
@@ -283,7 +297,9 @@ test('Users filter chips and Bỏ lọc synchronize applied filters and pending 
   const clear = () =>
     page.find((node) => node.type === 'Button' && node.props.children === 'Bỏ lọc')[0];
   assert.equal(clear().props.disabled, true);
-  page.stat('pending').onClick();
+  page
+    .find((node) => node.props['aria-label'] === 'Lọc theo trạng thái')[0]
+    .props.onChange('PendingActivation');
   page.render();
   page.find((node) => node.type === 'Input')[0].props.onChange({ target: { value: 'An' } });
   page.render();
@@ -302,6 +318,22 @@ test('Users filter chips and Bỏ lọc synchronize applied filters and pending 
   assert.equal(page.find((node) => node.props['aria-label'] === 'Bộ lọc đang áp dụng').length, 0);
   assert.equal(clear().props.disabled, true);
   assert.equal(page.stat('total').active, true);
+});
+
+test('Users statistics filter immediately and reset paging for both account groups', async () => {
+  for (const group of ['Student', 'Staff']) {
+    const page = usersPageFixture(group);
+    page.find((node) => node.type === 'TablePagination')[0].props.onPageChange(3);
+    page.render();
+    page.stat('pending').onClick();
+    page.render();
+    assert.equal((await page.listQuery()).status, 'PendingActivation');
+    assert.equal((await page.listQuery()).pageNumber, 1);
+    assert.equal(page.stat('pending').active, true);
+    page.stat('total').onClick();
+    page.render();
+    assert.equal((await page.listQuery()).status, '');
+  }
 });
 
 test('Users keeps rows only within the same account/group and locks actions while refreshing', () => {

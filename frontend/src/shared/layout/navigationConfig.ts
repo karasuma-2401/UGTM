@@ -4,7 +4,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   ScrollText,
-  FilePenLine,
   ClipboardCheck,
   BookOpen,
 } from 'lucide-react';
@@ -64,15 +63,9 @@ export const navigationSections: NavSectionConfig[] = [
     title: 'Khóa luận',
     items: [
       {
-        label: 'Đề tài & nhóm hướng dẫn',
+        label: 'Đề tài hướng dẫn',
         path: '/topics/advising',
         icon: BookOpen,
-        roles: ['Lecturer', 'Admin'],
-      },
-      {
-        label: 'Đề xuất đề tài',
-        path: '/topics/propose',
-        icon: FilePenLine,
         roles: ['Lecturer', 'Admin'],
       },
       {

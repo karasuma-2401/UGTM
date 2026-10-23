@@ -9,7 +9,6 @@ import {
   SlidersHorizontal,
   FunnelX,
   Eye,
-  RefreshCw,
   Info,
   Copy,
   ArrowUpRight,
@@ -19,7 +18,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { Card } from '@/components/ui/card';
+import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Dialog } from '@/components/ui/dialog';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TablePagination } from '@/components/ui/table-pagination';
@@ -42,6 +43,7 @@ import {
 } from '../advising';
 
 const initialFilters = { keyword: '', batchId: '2026-1', status: '' };
+const PAGE_SIZES = [10, 20, 50] as const;
 const tabs: { id: AdvisingTab; label: string }[] = [
   { id: 'topics', label: 'Danh sách đề tài' },
   { id: 'registrations', label: 'Nhóm đăng ký' },
@@ -60,23 +62,43 @@ function RegistrationBadge({ status }: { status: RegistrationStatus }) {
   const tone = {
     PendingEmail: 'warning',
     Confirmed: 'success',
-    Expired: 'inactive',
+    Expired: 'neutral',
     Cancelled: 'error',
   } as const;
   return (
-    <Badge variant={tone[status]} className="whitespace-nowrap">
+    <StatusBadge tone={tone[status]}>
       {REGISTRATION_LABELS[status]}
-    </Badge>
+    </StatusBadge>
   );
 }
 
-export function TopicAdvisingPage() {
+export function TopicAdvisingPage({
+  embedded = false,
+  initialTab = 'topics',
+  initialStatus = '',
+  initialBatchId = initialFilters.batchId,
+  onQuickFilter,
+}: {
+  embedded?: boolean;
+  initialTab?: AdvisingTab;
+  initialStatus?: string;
+  initialBatchId?: string;
+  onQuickFilter?: (tab: AdvisingTab, status: string, batchId: string) => void;
+} = {}) {
   const { user } = useAuth();
-  const [tab, setTab] = useState<AdvisingTab>('topics');
-  const [draft, setDraft] = useState(initialFilters);
-  const [filters, setFilters] = useState(initialFilters);
+  const [tab, setTab] = useState<AdvisingTab>(initialTab);
+  const [draft, setDraft] = useState({
+    ...initialFilters,
+    batchId: initialBatchId,
+    status: initialStatus,
+  });
+  const [filters, setFilters] = useState({
+    ...initialFilters,
+    batchId: initialBatchId,
+    status: initialStatus,
+  });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
   const [detail, setDetail] = useState<{ topicId: string; groupId?: string } | null>(null);
   const [facultyGroupId, setFacultyGroupId] = useState<string | null>(null);
   const [copyNotice, setCopyNotice] = useState('');
@@ -136,6 +158,10 @@ export function TopicAdvisingPage() {
       : '';
 
   function changeTab(next: AdvisingTab, status = '') {
+    if (embedded && onQuickFilter) {
+      onQuickFilter(next, status, filters.batchId);
+      return;
+    }
     setTab(next);
     const nextFilters = { keyword: '', batchId: filters.batchId, status };
     setFilters(nextFilters);
@@ -219,8 +245,8 @@ export function TopicAdvisingPage() {
                   {student.name}{' '}
                   <span className="font-normal text-slate-500">· {student.code}</span>
                 </p>
-                <Badge
-                  variant={
+                <StatusBadge
+                  tone={
                     student.registrationRole === 'Registrant'
                       ? 'info'
                       : student.participationConfirmedAt
@@ -233,7 +259,7 @@ export function TopicAdvisingPage() {
                     : student.participationConfirmedAt
                       ? 'Đã xác nhận tham gia'
                       : 'Chờ xác nhận tham gia'}
-                </Badge>
+                </StatusBadge>
               </div>
               <p className="mt-2 break-all text-slate-600">{student.email}</p>
               <p className="mt-1 text-xs text-slate-500">
@@ -267,50 +293,46 @@ export function TopicAdvisingPage() {
   }
 
   return (
-    <div className="min-w-0 space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Đề tài & nhóm hướng dẫn
-          </h1>
+    <div className="min-w-0 space-y-5">
+      {!embedded && (
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Đề tài & nhóm hướng dẫn
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="warning">Dữ liệu mẫu</Badge>
+            <Button asChild variant="outline" leftIcon={<ArrowUpRight />}>
+              <Link to="/topics/propose">Đề xuất đề tài</Link>
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="warning">Dữ liệu mẫu</Badge>
-          <Button
-            variant="outline"
-            leftIcon={<RefreshCw />}
-            disabled={query.isFetching}
-            onClick={() => void query.refetch()}
-          >
-            Tải lại
-          </Button>
-          <Button asChild variant="outline" leftIcon={<ArrowUpRight />}>
-            <Link to="/topics/propose">Đề xuất đề tài</Link>
-          </Button>
-        </div>
-      </div>
-      <nav className="flex flex-wrap gap-2" aria-label="Danh mục quản lý hướng dẫn">
-        {tabs.map((item) => (
-          <Button
-            key={item.id}
-            type="button"
-            variant={tab === item.id ? 'default' : 'outline'}
-            aria-current={tab === item.id ? 'page' : undefined}
-            onClick={() => changeTab(item.id)}
-          >
-            {item.label}
-          </Button>
-        ))}
-      </nav>
+      )}
+      {!embedded && (
+        <nav className="flex flex-wrap gap-2" aria-label="Danh mục quản lý hướng dẫn">
+          {tabs.map((item) => (
+            <Button
+              key={item.id}
+              type="button"
+              variant={tab === item.id ? 'default' : 'outline'}
+              aria-current={tab === item.id ? 'page' : undefined}
+              onClick={() => changeTab(item.id)}
+            >
+              {item.label}
+            </Button>
+          ))}
+        </nav>
+      )}
       <form
         onSubmit={applyFilters}
         className="grid items-end gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_auto]"
       >
-        <label className="space-y-2 text-sm text-slate-700">
+        <label className="block space-y-2 text-sm text-slate-700">
           <span>Tìm kiếm</span>
           <Input
             leftIcon={<Search className="size-4" />}
-            className="h-10 bg-slate-50/70"
+            className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
             placeholder="Đề tài, nhóm hoặc sinh viên"
             value={draft.keyword}
             onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
@@ -320,7 +342,7 @@ export function TopicAdvisingPage() {
           <span>Đợt KLTN</span>
           <Select
             aria-label="Lọc theo đợt KLTN"
-            triggerClassName="h-10 bg-slate-50/70"
+            triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
             value={draft.batchId}
             options={[
               { value: '', label: 'Tất cả đợt' },
@@ -333,7 +355,7 @@ export function TopicAdvisingPage() {
           <span>{tab === 'advising' ? 'Tiến độ khóa luận' : 'Trạng thái'}</span>
           <Select
             aria-label="Lọc trạng thái"
-            triggerClassName="h-10 bg-slate-50/70"
+            triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
             value={draft.status}
             options={[
               { value: '', label: 'Tất cả trạng thái' },
@@ -358,49 +380,49 @@ export function TopicAdvisingPage() {
         </div>
       </form>
       <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
-        <CardHeader className="grid min-h-[104px] grid-cols-1 items-center gap-4 space-y-0 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-5 py-4 xl:grid-cols-[minmax(0,1fr)_560px]">
-          <div className="space-y-1">
-            <CardTitle className="text-base text-slate-900">
-              {tabs.find((item) => item.id === tab)?.label}
-            </CardTitle>
-            <p className="text-xs text-slate-500">
-              {total} {tab === 'topics' ? 'đề tài' : 'nhóm'}
-            </p>
-          </div>
+        <ListCardHeader
+          title={tabs.find((item) => item.id === tab)?.label}
+          icon={<Users />}
+          description={`${total} ${tab === 'topics' ? 'đề tài' : 'nhóm'}`}
+        >
           <section className="w-full" aria-label="Thống kê hướng dẫn" aria-busy={query.isFetching}>
             <StatisticsBar
               loading={query.isPending}
               items={[
                 {
                   key: 'topics',
-                  label: 'Đề tài',
+                  onClick: () => changeTab('topics'),
+                  active: tab === 'topics' && !filters.status && !filters.keyword,
+                  label: 'Tổng đề tài',
                   value: batchTopics.length,
                   icon: <BookOpen />,
                   tone: 'primary',
-                  onClick: () => changeTab('topics'),
-                  active: tab === 'topics' && !filters.status,
                 },
                 {
                   key: 'pending',
+                  onClick: () => changeTab('registrations', 'PendingEmail'),
+                  active:
+                    tab === 'registrations' &&
+                    filters.status === 'PendingEmail' &&
+                    !filters.keyword,
                   label: 'Chờ xác nhận',
                   value: pendingGroups.length,
                   icon: <Mail />,
                   tone: 'warning',
-                  onClick: () => changeTab('registrations', 'PendingEmail'),
-                  active: tab === 'registrations' && filters.status === 'PendingEmail',
                 },
                 {
                   key: 'advising',
-                  label: 'Đang hướng dẫn',
+                  onClick: () => changeTab('advising'),
+                  active: tab === 'advising' && !filters.status && !filters.keyword,
+                  label: 'Nhóm hướng dẫn',
                   value: advisingGroups.length,
                   icon: <Users />,
                   tone: 'primary',
-                  onClick: () => changeTab('advising'),
-                  active: tab === 'advising',
                 },
                 {
                   key: 'students',
-                  label: 'Sinh viên',
+                  onClick: () => changeTab('advising'),
+                  label: 'SV hướng dẫn',
                   value: getConfirmedStudentCount(advisingGroups),
                   icon: <CheckCircle2 />,
                   tone: 'muted',
@@ -408,14 +430,14 @@ export function TopicAdvisingPage() {
               ]}
             />
           </section>
-        </CardHeader>
+        </ListCardHeader>
         <div
           aria-busy={query.isFetching}
           className="h-[min(60vh,40rem)] min-h-[20rem] overflow-auto"
         >
           {query.isPending ? (
             <TableSkeleton
-              className="min-w-[1000px]"
+              className="min-w-[1120px]"
               rows={5}
               columns={(tab === 'topics'
                 ? ['Đề tài', 'Đợt KLTN', 'Sinh viên', 'Trạng thái', 'Thao tác']
@@ -449,7 +471,14 @@ export function TopicAdvisingPage() {
               </Button>
             </div>
           ) : (
-            <table className="w-full min-w-[1000px] text-left text-sm">
+            <table className="w-full min-w-[1120px] table-fixed text-left text-sm">
+              <colgroup>
+                <col className={tab === 'topics' ? '' : 'w-44'} />
+                <col className={tab === 'topics' ? 'w-40' : ''} />
+                <col className={tab === 'topics' ? 'w-24' : 'w-48'} />
+                <col className="w-56" />
+                <col className="w-44" />
+              </colgroup>
               <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
                 <tr>
                   {(tab === 'topics'
@@ -462,7 +491,11 @@ export function TopicAdvisingPage() {
                         'Thao tác',
                       ]
                   ).map((label) => (
-                    <th scope="col" key={label} className="px-5 py-4 font-bold">
+                    <th
+                      scope="col"
+                      key={label}
+                      className={`px-5 py-4 font-bold ${label === 'Thao tác' ? 'text-center' : ''}`}
+                    >
                       {label}
                     </th>
                   ))}
@@ -487,9 +520,9 @@ export function TopicAdvisingPage() {
                               {topic.title}
                             </button>
                             {pending > 0 && (
-                              <Badge variant="warning" className="mt-2">
+                              <StatusBadge tone="warning" className="mt-2">
                                 Chờ xác nhận
-                              </Badge>
+                              </StatusBadge>
                             )}
                           </td>
                           <td className="px-5 py-5 text-xs text-slate-500">
@@ -503,13 +536,14 @@ export function TopicAdvisingPage() {
                           <td className="px-5 py-4">
                             <TopicStatusBadge status={topic.status} />
                           </td>
-                          <td className="px-5 py-4">
+                          <td className="px-5 py-4 text-center">
                             <Button
-                              variant="outline"
+                              variant="soft"
                               size="sm"
                               leftIcon={<Eye />}
                               onClick={() => setDetail({ topicId: topic.id })}
                               aria-label={`Xem đề tài ${topic.code}`}
+                              className="h-9 w-28 rounded-lg shadow-none"
                             >
                               Chi tiết
                             </Button>
@@ -520,16 +554,32 @@ export function TopicAdvisingPage() {
                   : groupRows.slice(start, start + pageSize).map((group) => {
                       const topic = topics.find((item) => item.id === group.topicId)!;
                       return (
-                        <tr key={group.id} className="hover:bg-blue-50/30">
+                        <tr key={group.id} className="group transition-colors hover:bg-blue-50/40">
                           <td className="px-5 py-4">
-                            <p className="font-semibold">{group.groupCode}</p>
+                            <Badge
+                              variant={
+                                group.status === 'PendingEmail'
+                                  ? 'warning'
+                                  : group.status === 'Confirmed'
+                                    ? 'info'
+                                    : 'secondary'
+                              }
+                              className="h-8 min-w-12 justify-center rounded-lg font-semibold ring-1 ring-inset ring-current/10"
+                            >
+                              {group.groupCode}
+                            </Badge>
                             <p className="mt-1 text-xs text-slate-500">{group.code}</p>
                             <p className="mt-1 text-xs text-slate-400">
                               {date(group.registeredAt)}
                             </p>
                           </td>
                           <td className="max-w-xs px-5 py-4">
-                            <p className="font-medium leading-6">{topic.title}</p>
+                            <p
+                              className="line-clamp-2 font-semibold leading-6 text-slate-800"
+                              title={topic.title}
+                            >
+                              {topic.title}
+                            </p>
                             <p className="mt-1 text-xs text-slate-500">
                               {topic.code} ·{' '}
                               {data?.batches.find((batch) => batch.id === topic.batchId)?.name}
@@ -543,26 +593,40 @@ export function TopicAdvisingPage() {
                                   title={student.name}
                                   description={student.code}
                                   titleClassName="font-medium"
+                                  leading={
+                                    <span
+                                      aria-hidden="true"
+                                      className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500"
+                                    >
+                                      {student.name
+                                        .trim()
+                                        .split(/\s+/)
+                                        .slice(-2)
+                                        .map((part) => part[0])
+                                        .join('')}
+                                    </span>
+                                  }
                                 />
                               ))}
                             </div>
                           </td>
                           <td className="px-5 py-4">
                             {tab === 'advising' ? (
-                              <Badge variant="info">{group.stage}</Badge>
+                              <StatusBadge tone="info">{group.stage}</StatusBadge>
                             ) : (
                               <>
                                 <RegistrationBadge status={group.status} />
                               </>
                             )}
                           </td>
-                          <td className="px-5 py-4">
+                          <td className="px-5 py-4 text-center">
                             <Button
-                              variant="outline"
+                              variant="soft"
                               size="sm"
                               leftIcon={<Eye />}
                               onClick={() => setDetail({ topicId: topic.id, groupId: group.id })}
                               aria-label={`Xem nhóm ${group.groupCode}`}
+                              className="h-9 w-28 rounded-lg shadow-none"
                             >
                               Chi tiết
                             </Button>
@@ -587,7 +651,7 @@ export function TopicAdvisingPage() {
                   setPage(1);
                 }}
               >
-                {[5, 10, 20].map((size) => (
+                {PAGE_SIZES.map((size) => (
                   <option key={size} value={size}>
                     {size}
                   </option>
@@ -622,7 +686,7 @@ export function TopicAdvisingPage() {
             </div>
             <dl className="grid gap-4 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-3">
               <div>
-                <dt className="text-xs text-slate-500">Giảng viên phụ trách</dt>
+                <dt className="text-xs text-slate-500">Giảng viên hướng dẫn</dt>
                 <dd className="mt-1 font-medium">{user?.fullName ?? 'Giảng viên hiện tại'}</dd>
               </div>
               <div>
@@ -632,17 +696,19 @@ export function TopicAdvisingPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">Chỉ tiêu sinh viên</dt>
+                <dt className="text-xs text-slate-500">Chỉ tiêu</dt>
                 <dd className="mt-1">{selectedTopic.capacity} sinh viên</dd>
               </div>
             </dl>
             <section>
-              <h3 className="font-semibold">Nội dung & mục tiêu</h3>
-              <p className="mt-2 whitespace-pre-line text-sm leading-7 text-slate-600">
+              <h3 className="text-sm font-semibold text-slate-800">Mục tiêu và mô tả</h3>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">
                 {selectedTopic.description}
               </p>
-              <h3 className="mt-4 font-semibold">Yêu cầu thực hiện</h3>
-              <p className="mt-2 whitespace-pre-line text-sm leading-7 text-slate-600">
+              <h3 className="mt-4 text-sm font-semibold text-slate-800">
+                Yêu cầu công nghệ và kiến thức
+              </h3>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">
                 {selectedTopic.requirements}
               </p>
             </section>

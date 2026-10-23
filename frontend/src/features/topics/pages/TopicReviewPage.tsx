@@ -11,11 +11,12 @@ import {
   FunnelX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
+import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { TablePagination } from '@/components/ui/table-pagination';
@@ -26,6 +27,7 @@ import { TopicReviewDialog, type ReviewAction } from '../components/TopicReviewD
 import { TopicReviewTable } from '../components/TopicReviewTable';
 import { getTopicErrorMessage } from '../services/topicApi';
 import { topicReviewApi } from '../services/topicReviewApi';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   TOPIC_STATUS_LABELS,
   REVIEW_TOPIC_STATUSES,
@@ -125,12 +127,12 @@ export function TopicReviewPage() {
     setPageNumber(1);
     setSelected([]);
   }
+  function quickFilter(status: TopicStatus | '') {
+    applyFilters({ keyword: '', batchId: filters.batchId, status });
+  }
   function handleApply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     applyFilters({ ...draftFilters, keyword: draftFilters.keyword.trim() });
-  }
-  function quickFilter(status: TopicStatus | '') {
-    applyFilters({ keyword: '', batchId: filters.batchId, status });
   }
   function executeAction(action: ReviewAction) {
     if (!canReview || busy) return;
@@ -139,16 +141,8 @@ export function TopicReviewPage() {
   }
 
   return (
-    <div className="min-w-0 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Thẩm định & công bố đề tài
-          </h1>
-          {/* <p className="mt-2 text-sm text-slate-500">
-            Thẩm định đề xuất của giảng viên và công bố các đề tài đã duyệt cho sinh viên tra cứu.
-          </p> */}
-        </div>
+    <div className="min-w-0 space-y-5">
+      <PageHeader title="Thẩm định & công bố đề tài" icon={<CheckCheck />}>
         <Button
           type="button"
           leftIcon={<Megaphone />}
@@ -161,7 +155,7 @@ export function TopicReviewPage() {
         >
           Công bố đề tài đã chọn{selected.length > 0 ? ` (${selected.length})` : ''}
         </Button>
-      </div>
+      </PageHeader>
 
       {notice && (
         <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
@@ -286,15 +280,13 @@ export function TopicReviewPage() {
         </p>
       )}
       {filters.batchId && <TopicProposalSchedule batchId={filters.batchId} />}
-
       <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
-        <CardHeader className="grid min-h-[104px] grid-cols-1 items-center gap-4 space-y-0 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-5 py-4 xl:grid-cols-[minmax(0,1fr)_560px]">
-          <div className="space-y-1">
-            <CardTitle className="text-base text-slate-900">Danh sách đề tài</CardTitle>
-            <p className="text-xs text-slate-500">
-              Chỉ thẩm định đề tài chờ duyệt; chỉ công bố đề tài đã duyệt.
-            </p>
-          </div>
+        <ListCardHeader
+          title="Danh sách đề tài"
+          icon={<FileText />}
+          description={'Thẩm định và công bố đề tài'}
+          className="xl:grid-cols-[minmax(0,1fr)_560px]"
+        >
           <section
             className="w-full"
             aria-label="Thống kê thẩm định đề tài"
@@ -305,39 +297,39 @@ export function TopicReviewPage() {
               items={[
                 {
                   key: 'total',
+                  onClick: () => quickFilter(''),
+                  active: filters.status === '' && !filters.keyword,
                   label: 'Tổng đề xuất',
                   value: formatCount(statistics?.total),
                   icon: <FileText />,
                   tone: 'primary',
-                  active: !filters.status && !filters.keyword,
-                  onClick: () => quickFilter(''),
                 },
                 {
                   key: 'submitted',
+                  onClick: () => quickFilter('Submitted'),
+                  active: filters.status === 'Submitted' && !filters.keyword,
                   label: 'Chờ duyệt',
                   value: formatCount(statistics?.Submitted),
                   icon: <Clock3 />,
                   tone: 'warning',
-                  active: filters.status === 'Submitted' && !filters.keyword,
-                  onClick: () => quickFilter('Submitted'),
                 },
                 {
                   key: 'approved',
+                  onClick: () => quickFilter('Approved'),
+                  active: filters.status === 'Approved' && !filters.keyword,
                   label: 'Chờ công bố',
                   value: formatCount(statistics?.Approved),
                   icon: <CheckCheck />,
                   tone: 'muted',
-                  active: filters.status === 'Approved' && !filters.keyword,
-                  onClick: () => quickFilter('Approved'),
                 },
                 {
                   key: 'published',
+                  onClick: () => quickFilter('Published'),
+                  active: filters.status === 'Published' && !filters.keyword,
                   label: 'Đã công bố',
                   value: formatCount(statistics?.Published),
                   icon: <Megaphone />,
                   tone: 'primary',
-                  active: filters.status === 'Published' && !filters.keyword,
-                  onClick: () => quickFilter('Published'),
                 },
               ]}
             />
@@ -360,9 +352,10 @@ export function TopicReviewPage() {
               </div>
             )}
           </section>
-        </CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3 text-xs text-slate-500">
-          {selected.length > 0 && (
+        </ListCardHeader>
+        {selected.length > 0 && (
+          <div className="flex items-center justify-between gap-2 border-b border-primary/10 bg-primary/5 px-5 py-2 text-sm">
+            <span className="font-medium text-primary">{selected.length} đề tài đã chọn</span>
             <Button
               type="button"
               size="sm"
@@ -372,15 +365,15 @@ export function TopicReviewPage() {
             >
               Bỏ chọn
             </Button>
-          )}
-        </div>
+          </div>
+        )}
         <div
           className={`h-[min(60vh,40rem)] min-h-[20rem] overflow-auto transition-opacity ${isRefreshing ? 'opacity-60' : ''}`}
           aria-busy={topicsQuery.isFetching}
         >
           {topicsQuery.isPending ? (
             <TableSkeleton
-              className="min-w-[1180px]"
+              className="min-w-[1240px]"
               columns={[
                 { label: 'STT', width: 'w-14', variant: 'number' },
                 { label: '', width: 'w-12', variant: 'checkbox' },
@@ -389,7 +382,7 @@ export function TopicReviewPage() {
                 { label: 'Đợt KLTN', width: 'w-40' },
                 { label: 'Chỉ tiêu', width: 'w-20' },
                 { label: 'Trạng thái', width: 'w-44', variant: 'badge' },
-                { label: 'Thao tác', width: 'w-36', variant: 'actions' },
+                { label: 'Thao tác', width: 'w-44', variant: 'actions' },
               ]}
             />
           ) : topicsQuery.isError ? (
@@ -418,11 +411,12 @@ export function TopicReviewPage() {
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-sm text-slate-500">
+              <FileText className="size-9 text-slate-300" aria-hidden="true" />
               <p>Không có đề tài phù hợp.</p>
               {hasFilters && (
                 <Button
+                  type="button"
                   variant="outline"
-                  leftIcon={<FunnelX />}
                   onClick={() => applyFilters({ ...EMPTY_FILTERS })}
                 >
                   Bỏ lọc
@@ -446,9 +440,11 @@ export function TopicReviewPage() {
                   setSelected([]);
                 }}
               >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
+                {[10, 20, 50].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
               </select>
             </div>
             <TablePagination
