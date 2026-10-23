@@ -217,7 +217,7 @@ export function UsersTable({
 
               <td className="px-4 py-4 text-center">
                 {canManage ? (
-                  <div className="flex flex-wrap items-center justify-center gap-2">
+                  <div className="grid grid-cols-2 items-center gap-2">
                     <Button
                       type="button"
                       variant="soft"
@@ -226,7 +226,7 @@ export function UsersTable({
                       onClick={() => onEdit(user)}
                       leftIcon={<Eye />}
                       aria-label={`Xem chi tiết tài khoản ${user.fullName}`}
-                      className="h-9 cursor-pointer rounded-lg shadow-none"
+                      className="h-9 w-full min-w-0 cursor-pointer rounded-lg px-2 shadow-none"
                     >
                       Chi tiết
                     </Button>
@@ -249,7 +249,7 @@ export function UsersTable({
                             ? `Vô hiệu hóa tài khoản ${user.fullName}`
                             : `Khôi phục tài khoản ${user.fullName}`
                         }
-                        className="h-9 cursor-pointer rounded-lg shadow-none"
+                        className="h-9 w-full min-w-0 cursor-pointer rounded-lg px-2 shadow-none"
                       >
                         {user.status === 'Active' ? 'Vô hiệu hóa' : 'Khôi phục'}
                       </Button>
@@ -263,7 +263,7 @@ export function UsersTable({
                         leftIcon={<Mail />}
                         onClick={() => onResendActivation(user)}
                         aria-label={`Gửi email kích hoạt cho ${user.fullName}`}
-                        className="h-9 cursor-pointer rounded-lg shadow-none"
+                        className="h-9 w-full min-w-0 cursor-pointer rounded-lg px-2 shadow-none"
                       >
                         Gửi kích hoạt
                       </Button>
