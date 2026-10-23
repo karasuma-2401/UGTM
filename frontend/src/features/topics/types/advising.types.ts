@@ -4,8 +4,8 @@ export type RegistrationStatus = 'PendingEmail' | 'Confirmed' | 'Expired' | 'Can
 export type AdvisingTab = 'topics' | 'registrations' | 'advising';
 
 export const REGISTRATION_LABELS: Record<RegistrationStatus, string> = {
-  PendingEmail: 'Chờ xác nhận email',
-  Confirmed: 'Đã xác nhận email',
+  PendingEmail: 'Chờ thành viên xác nhận',
+  Confirmed: 'Đăng ký thành công',
   Expired: 'Hết hạn xác nhận',
   Cancelled: 'Khoa đã hủy',
 };
@@ -16,7 +16,8 @@ export interface AdvisingStudent {
   name: string;
   email: string;
   phone: string;
-  emailConfirmedAt: string | null;
+  registrationRole: 'Registrant' | 'Invitee';
+  participationConfirmedAt: string | null;
 }
 
 export interface AdvisingRegistration {
@@ -26,7 +27,7 @@ export interface AdvisingRegistration {
   topicId: string;
   status: RegistrationStatus;
   registeredAt: string;
-  confirmationDeadline: string;
+  confirmationDeadline: string | null;
   confirmedAt: string | null;
   stage: string | null;
   cancellationReason: string | null;

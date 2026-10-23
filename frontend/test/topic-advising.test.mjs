@@ -124,6 +124,40 @@ test('demo adapter returns isolated data and respects aborted requests', async (
   await assert.rejects(adapter.loadAdvisingDemo(controller.signal), { name: 'AbortError' });
 });
 
+test('individual registration is immediately effective; only the second student receives an invitation', () => {
+  for (const group of data.registrations) {
+    assert.equal(
+      group.students.filter((student) => student.registrationRole === 'Registrant').length,
+      1,
+    );
+    assert.equal(
+      group.students.find((student) => student.registrationRole === 'Registrant')
+        .participationConfirmedAt,
+      null,
+    );
+    if (group.students.length === 1) {
+      assert.equal(group.confirmationDeadline, null);
+      assert.equal(group.confirmedAt, group.registeredAt);
+      assert.notEqual(group.status, 'PendingEmail');
+      assert.notEqual(group.status, 'Expired');
+    } else {
+      assert.equal(
+        group.students.filter((student) => student.registrationRole === 'Invitee').length,
+        1,
+      );
+    }
+  }
+  const ui = fixture();
+  let tree = ui.render();
+  clickTab(tree, 'Nhóm đăng ký');
+  tree = ui.render();
+  find(tree, (n) => n.props['aria-label'] === 'Xem nhóm N03').props.onClick();
+  tree = ui.render();
+  const dialog = find(tree, (n) => n.type === 'Dialog');
+  assert.match(text(dialog), /Không cần xác nhận qua email/);
+  assert.doesNotMatch(text(dialog), /Chờ xác nhận tham gia/);
+});
+
 test('default batch statistics distinguish pending email from the advising roster', () => {
   const tree = fixture().render();
   const items = find(tree, (n) => n.type === 'StatisticsBar').props.items;
@@ -226,7 +260,9 @@ test('group details show email confirmation per student and faculty contact neve
   tree = ui.render();
   let dialog = find(tree, (n) => n.type === 'Dialog');
   assert.match(text(dialog), /24521606@gm.uit.edu.vn/);
-  assert.match(text(dialog), /Chưa xác nhận email/);
+  assert.match(text(dialog), /Chờ xác nhận tham gia/);
+  assert.match(text(dialog), /Người đăng ký/);
+  assert.match(text(dialog), /Không cần xác nhận qua email/);
   assert.match(text(dialog), /tự động đưa nhóm/);
   dialog.props.onClose();
   tree = ui.render();

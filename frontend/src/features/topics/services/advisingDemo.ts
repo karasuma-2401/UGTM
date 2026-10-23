@@ -2,13 +2,19 @@ import type { AdvisingData, AdvisingStudent } from '../types/advising.types';
 
 // Isolated demo adapter. No registration state is inferred from the current topic API.
 // These timestamps are fixed scenario data, not live email expiration calculations.
-const student = (code: string, name: string, confirmed: boolean): AdvisingStudent => ({
+const student = (
+  code: string,
+  name: string,
+  role: 'Registrant' | 'Invitee',
+  confirmed = false,
+): AdvisingStudent => ({
   id: code,
   code,
   name,
   email: `${code}@gm.uit.edu.vn`,
   phone: '0900 000 000',
-  emailConfirmedAt: confirmed ? '2026-10-21T03:30:00Z' : null,
+  registrationRole: role,
+  participationConfirmedAt: role === 'Invitee' && confirmed ? '2026-10-21T03:30:00Z' : null,
 });
 
 const demoData: AdvisingData = {
@@ -92,8 +98,8 @@ const demoData: AdvisingData = {
       stage: 'Đang thực hiện',
       cancellationReason: null,
       students: [
-        student('24521603', 'Nguyễn Minh Đức', true),
-        student('24521604', 'Trần Mai Anh', true),
+        student('24521603', 'Nguyễn Minh Đức', 'Registrant'),
+        student('24521604', 'Trần Mai Anh', 'Invitee', true),
       ],
     },
     {
@@ -108,8 +114,8 @@ const demoData: AdvisingData = {
       stage: null,
       cancellationReason: null,
       students: [
-        student('24521605', 'Nguyễn Ngọc Linh', true),
-        student('24521606', 'Phạm Gia Bảo', false),
+        student('24521605', 'Nguyễn Ngọc Linh', 'Registrant'),
+        student('24521606', 'Phạm Gia Bảo', 'Invitee'),
       ],
     },
     {
@@ -119,11 +125,11 @@ const demoData: AdvisingData = {
       topicId: 'DT-003',
       status: 'Confirmed',
       registeredAt: '2026-10-20T04:00:00Z',
-      confirmationDeadline: '2026-10-22T04:00:00Z',
-      confirmedAt: '2026-10-21T03:30:00Z',
+      confirmationDeadline: null,
+      confirmedAt: '2026-10-20T04:00:00Z',
       stage: 'Đã nộp đề cương',
       cancellationReason: null,
-      students: [student('24521607', 'Lê Quốc Huy', true)],
+      students: [student('24521607', 'Lê Quốc Huy', 'Registrant')],
     },
     {
       id: 'reg-04',
@@ -137,8 +143,8 @@ const demoData: AdvisingData = {
       stage: null,
       cancellationReason: null,
       students: [
-        student('24521608', 'Võ Hoàng Nam', false),
-        student('24521609', 'Đỗ Thảo Nguyên', false),
+        student('24521608', 'Võ Hoàng Nam', 'Registrant'),
+        student('24521609', 'Đỗ Thảo Nguyên', 'Invitee'),
       ],
     },
     {
@@ -152,7 +158,10 @@ const demoData: AdvisingData = {
       confirmedAt: null,
       stage: null,
       cancellationReason: null,
-      students: [student('24521610', 'Bùi Minh Khang', false)],
+      students: [
+        student('24521610', 'Bùi Minh Khang', 'Registrant'),
+        student('24521613', 'Nguyễn Bảo Trâm', 'Invitee'),
+      ],
     },
     {
       id: 'reg-06',
@@ -161,11 +170,11 @@ const demoData: AdvisingData = {
       topicId: 'DT-004',
       status: 'Cancelled',
       registeredAt: '2026-10-16T02:00:00Z',
-      confirmationDeadline: '2026-10-18T02:00:00Z',
-      confirmedAt: '2026-10-17T03:30:00Z',
+      confirmationDeadline: null,
+      confirmedAt: '2026-10-16T02:00:00Z',
       stage: null,
       cancellationReason: 'Khoa hủy theo đề nghị thay đổi kế hoạch học tập của sinh viên.',
-      students: [student('24521611', 'Trương Hải Đăng', true)],
+      students: [student('24521611', 'Trương Hải Đăng', 'Registrant')],
     },
     {
       id: 'reg-07',
@@ -174,13 +183,11 @@ const demoData: AdvisingData = {
       topicId: 'DT-008',
       status: 'Confirmed',
       registeredAt: '2026-02-10T02:00:00Z',
-      confirmationDeadline: '2026-02-12T02:00:00Z',
-      confirmedAt: '2026-02-11T03:30:00Z',
+      confirmationDeadline: null,
+      confirmedAt: '2026-02-10T02:00:00Z',
       stage: 'Đã hoàn thành',
       cancellationReason: null,
-      students: [
-        { ...student('23521612', 'Trần Khánh Vy', true), emailConfirmedAt: '2026-02-11T03:30:00Z' },
-      ],
+      students: [student('23521612', 'Trần Khánh Vy', 'Registrant')],
     },
   ],
 };

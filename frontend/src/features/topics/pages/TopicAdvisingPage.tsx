@@ -194,8 +194,8 @@ export function TopicAdvisingPage() {
           <div>
             <dt className="text-xs text-slate-500">
               {group.status === 'PendingEmail' || group.status === 'Expired'
-                ? 'Hạn xác nhận email'
-                : 'Hoàn tất xác nhận email'}
+                ? 'Hạn xác nhận tham gia'
+                : 'Đăng ký có hiệu lực'}
             </dt>
             <dd className="mt-1">
               {date(
@@ -219,21 +219,37 @@ export function TopicAdvisingPage() {
                   {student.name}{' '}
                   <span className="font-normal text-slate-500">· {student.code}</span>
                 </p>
-                <Badge variant={student.emailConfirmedAt ? 'success' : 'warning'}>
-                  {student.emailConfirmedAt ? 'Đã xác nhận email' : 'Chưa xác nhận email'}
+                <Badge
+                  variant={
+                    student.registrationRole === 'Registrant'
+                      ? 'info'
+                      : student.participationConfirmedAt
+                        ? 'success'
+                        : 'warning'
+                  }
+                >
+                  {student.registrationRole === 'Registrant'
+                    ? 'Người đăng ký'
+                    : student.participationConfirmedAt
+                      ? 'Đã xác nhận tham gia'
+                      : 'Chờ xác nhận tham gia'}
                 </Badge>
               </div>
               <p className="mt-2 break-all text-slate-600">{student.email}</p>
               <p className="mt-1 text-xs text-slate-500">
-                Điện thoại: {student.phone} · Xác nhận: {date(student.emailConfirmedAt)}
+                Điện thoại: {student.phone} ·{' '}
+                {student.registrationRole === 'Registrant'
+                  ? 'Không cần xác nhận qua email'
+                  : `Xác nhận tham gia: ${date(student.participationConfirmedAt)}`}
               </p>
             </div>
           ))}
         </div>
         {group.status === 'PendingEmail' && (
           <p className="rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-800">
-            Đang chờ sinh viên hoàn tất xác nhận qua email. Khi đăng ký được xác nhận, hệ thống tự
-            động đưa nhóm vào danh sách hướng dẫn.
+            Đang chờ sinh viên được mời xác nhận tham gia qua email. Người đăng ký không cần xác
+            nhận lại. Khi thành viên còn lại đồng ý, hệ thống tự động đưa nhóm vào danh sách hướng
+            dẫn.
           </p>
         )}
         {group.status === 'Expired' && (
@@ -296,9 +312,9 @@ export function TopicAdvisingPage() {
       <div className="flex gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm leading-6 text-slate-600">
         <Info className="mt-1 size-4 shrink-0 text-primary" />
         <p>
-          Sinh viên đăng ký và xác nhận qua email. Sau khi xác nhận thành công, nhóm tự động được
-          ghi nhận vào đề tài và danh sách hướng dẫn. Trường hợp cần hủy nhóm, giảng viên liên hệ
-          Văn phòng Khoa xử lý.
+          Đăng ký 1 sinh viên được ghi nhận ngay. Với nhóm 2 sinh viên, hệ thống chỉ gửi email mời
+          người còn lại xác nhận tham gia; sau khi người này đồng ý, nhóm tự động vào danh sách
+          hướng dẫn. Trường hợp cần hủy nhóm, giảng viên liên hệ Văn phòng Khoa xử lý.
         </p>
       </div>
       <StatisticsBar
@@ -426,10 +442,10 @@ export function TopicAdvisingPage() {
             </CardTitle>
             <p className="mt-1 text-xs text-slate-500">
               {tab === 'topics'
-                ? 'Chỉ tiêu hiển thị theo số sinh viên đã hoàn tất xác nhận.'
+                ? 'Chỉ tiêu hiển thị theo số sinh viên đã đăng ký thành công.'
                 : tab === 'registrations'
                   ? 'Theo dõi xác nhận email và lịch sử đăng ký của nhóm.'
-                  : 'Nhóm đã xác nhận email và chưa hoàn thành khóa luận.'}
+                  : 'Nhóm đăng ký thành công và chưa hoàn thành khóa luận.'}
             </p>
           </div>
           <Badge variant="secondary">
@@ -468,12 +484,18 @@ export function TopicAdvisingPage() {
               <thead className="border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
                 <tr>
                   {(tab === 'topics'
-                    ? ['Đề tài', 'Đợt KLTN', 'SV đã xác nhận', 'Trạng thái đề tài', 'Thao tác']
+                    ? [
+                        'Đề tài',
+                        'Đợt KLTN',
+                        'SV đăng ký thành công',
+                        'Trạng thái đề tài',
+                        'Thao tác',
+                      ]
                     : [
                         'Nhóm / hồ sơ',
                         'Đề tài',
                         'Sinh viên',
-                        tab === 'advising' ? 'Tiến độ khóa luận' : 'Xác nhận email',
+                        tab === 'advising' ? 'Tiến độ khóa luận' : 'Trạng thái đăng ký',
                         'Thao tác',
                       ]
                   ).map((label) => (
@@ -505,8 +527,8 @@ export function TopicAdvisingPage() {
                               {pending
                                 ? `${pending} nhóm chờ xác nhận email`
                                 : groups.some((group) => group.status === 'Confirmed')
-                                  ? 'Đã có nhóm xác nhận'
-                                  : 'Chưa có nhóm xác nhận'}
+                                  ? 'Đã có nhóm đăng ký thành công'
+                                  : 'Chưa có nhóm đăng ký thành công'}
                             </p>
                           </td>
                           <td className="px-5 py-5 text-xs text-slate-500">
@@ -517,7 +539,7 @@ export function TopicAdvisingPage() {
                               {count}/{topic.capacity}
                             </span>
                             <p className="mt-1 text-xs text-slate-500">
-                              {Math.max(0, topic.capacity - count)} chỗ chưa xác nhận
+                              {Math.max(0, topic.capacity - count)} chỗ chưa ghi nhận
                             </p>
                           </td>
                           <td className="px-5 py-5">
@@ -572,11 +594,11 @@ export function TopicAdvisingPage() {
                               <>
                                 <RegistrationBadge status={group.status} />
                                 <p className="mt-2 text-xs text-slate-500">
-                                  {
-                                    group.students.filter((student) => student.emailConfirmedAt)
-                                      .length
-                                  }
-                                  /{group.students.length} sinh viên đã xác nhận
+                                  {group.students.length === 1
+                                    ? 'Cá nhân · Ghi nhận ngay, không cần email'
+                                    : group.status === 'PendingEmail'
+                                      ? `Chờ ${group.students.find((student) => student.registrationRole === 'Invitee')?.name ?? 'thành viên được mời'}`
+                                      : 'Nhóm 2 sinh viên'}
                                 </p>
                               </>
                             )}
