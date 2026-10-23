@@ -15,6 +15,7 @@ import { ScoreConfigActionBar } from '../components/ScoreConfigActionBar';
 import { ScoreComponentAddDialog } from '../components/ScoreComponentAddDialog';
 import { ScoreConfigHistoryDialog } from '../components/ScoreConfigHistoryDialog';
 import { ScoreConfigCloneReasonDialog } from '../components/ScoreConfigCloneReasonDialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { History, Wand2, CheckCircle2, AlertCircle, Save, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -81,6 +82,27 @@ function convertWeightsToInteger(items: ScoreComponentInput[]): ScoreComponentIn
   }));
 }
 
+function isConfigDifferentFromDefault(
+  method: ScoreCalculationMethod,
+  reviewerMinScore: number | null,
+  currentComponents: ScoreComponentInput[],
+): boolean {
+  if (method !== 'IntegerCoefficient') return true;
+  if (reviewerMinScore !== 5.0) return true;
+  if (currentComponents.length !== UIT_INTEGER_PRESET_COMPONENTS.length) return true;
+
+  return currentComponents.some((comp, idx) => {
+    const preset = UIT_INTEGER_PRESET_COMPONENTS[idx];
+    if (!preset) return true;
+    return (
+      comp.componentCode !== preset.componentCode ||
+      Number(comp.weight) !== Number(preset.weight) ||
+      comp.minimumScore !== preset.minimumScore ||
+      comp.applicability !== preset.applicability
+    );
+  });
+}
+
 export const ScoreConfigPage: React.FC = () => {
   const [batches, setBatches] = useState<KltnBatchSummaryDto[]>([]);
   const [selectedBatchId, setSelectedBatchId] = useState<string>('');
@@ -105,6 +127,7 @@ export const ScoreConfigPage: React.FC = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false);
   const [isCloneReasonModalOpen, setIsCloneReasonModalOpen] = useState<boolean>(false);
+  const [isResetConfirmModalOpen, setIsResetConfirmModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -233,11 +256,27 @@ export const ScoreConfigPage: React.FC = () => {
     }
   };
 
-  const handleApplyDefaultTemplate = () => {
+  const applyDefaultTemplate = () => {
     setCalculationMethod('IntegerCoefficient');
     setReviewerMinimumScore(5.0);
     setComponents(UIT_INTEGER_PRESET_COMPONENTS);
     setNotice('Đã nạp lại bộ hệ số mẫu chuẩn 5 thành viên của UIT.');
+    setIsResetConfirmModalOpen(false);
+  };
+
+  const handleApplyDefaultTemplateClick = () => {
+    const isDifferent = isConfigDifferentFromDefault(
+      calculationMethod,
+      reviewerMinimumScore,
+      components,
+    );
+
+    if (isDifferent) {
+      setIsResetConfirmModalOpen(true);
+      return;
+    }
+
+    applyDefaultTemplate();
   };
 
   const handleAddOptionalComponent = (sourceCode: string) => {
@@ -403,7 +442,7 @@ export const ScoreConfigPage: React.FC = () => {
             type="button"
             variant="outline"
             size="sm"
-            onClick={handleApplyDefaultTemplate}
+            onClick={handleApplyDefaultTemplateClick}
             className="rounded-lg h-9 text-xs"
             leftIcon={<Wand2 className="size-3.5 text-primary" />}
           >
@@ -614,6 +653,17 @@ export const ScoreConfigPage: React.FC = () => {
           setIsCloneReasonModalOpen(false);
           executeSaveDraft(reason);
         }}
+      />
+
+      <ConfirmDialog
+        open={isResetConfirmModalOpen}
+        onClose={() => setIsResetConfirmModalOpen(false)}
+        onConfirm={applyDefaultTemplate}
+        type="brand"
+        title="Cảnh báo!"
+        description="Cấu hình điểm hiện tại đã có sự thay đổi. Bạn có chắc chắn muốn nạp lại cấu hình mẫu chuẩn của UIT không? Các thiết lập vừa chỉnh sửa chưa lưu sẽ bị mất."
+        confirmText="Đồng ý"
+        cancelText="Hủy"
       />
     </div>
   );

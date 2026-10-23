@@ -5,13 +5,14 @@ import { Button } from './button';
 import { cn } from '@/lib/utils';
 
 export interface DialogProps {
-  title: ReactNode;
+  title?: ReactNode;
   children: ReactNode;
   onClose: () => void;
   open?: boolean;
   busy?: boolean;
   closeLabel?: string;
   className?: string;
+  hideHeader?: boolean;
 }
 
 export function Dialog({
@@ -22,6 +23,7 @@ export function Dialog({
   busy = false,
   closeLabel = 'Đóng cửa sổ',
   className,
+  hideHeader = false,
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -54,22 +56,24 @@ export function Dialog({
         className,
       )}
     >
-      <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-        <span id={titleId} className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {title}
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={closeLabel}
-          disabled={busy}
-          onClick={onClose}
-          className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-100"
-        >
-          <X />
-        </Button>
-      </div>
+      {!hideHeader && (
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+          <span id={titleId} className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {title}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={closeLabel}
+            disabled={busy}
+            onClick={onClose}
+            className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-100"
+          >
+            <X />
+          </Button>
+        </div>
+      )}
       {children}
     </dialog>,
     document.body,
