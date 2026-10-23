@@ -18,6 +18,7 @@ export function TopicDetailSkeleton() {
             </div>
           ))}
         </div>
+        <Skeleton className="h-9 w-44 max-w-full rounded-lg" />
         {[0, 1].map((index) => (
           <div key={index} className="space-y-3">
             <Skeleton className="h-4 w-48" />

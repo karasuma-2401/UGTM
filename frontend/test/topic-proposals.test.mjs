@@ -209,7 +209,7 @@ test('API failures preserve backend validation messages rather than reporting su
   assert.equal(getTopicErrorMessage(error), 'Trạng thái đề tài đã thay đổi.');
 });
 
-test('statistics loading replaces counts with skeletons and disables filter shortcuts', () => {
+test('statistics loading covers icons, counts and labels, preserves layout and disables shortcuts', () => {
   const cn = (...parts) => parts.filter(Boolean).join(' ');
   const { Skeleton } = loadModule('components/ui/skeleton.tsx', {
     'react/jsx-runtime': jsxRuntime,
@@ -220,17 +220,64 @@ test('statistics loading replaces counts with skeletons and disables filter shor
     '@/lib/utils': { cn },
     './skeleton': { Skeleton },
   });
-  const items = [{ key: 'total', label: 'Tổng đề tài', value: 12345, onClick() {} }];
+  const items = [
+    {
+      key: 'total',
+      label: 'Tổng đề tài',
+      value: 12345,
+      icon: React.createElement('svg', { 'data-ready-icon': true }),
+      active: true,
+      onClick() {},
+    },
+  ];
   const loading = renderToStaticMarkup(
     React.createElement(StatisticsBar, { items, loading: true }),
   );
   assert.match(loading, /Tổng đề tài/);
   assert.match(loading, /disabled=""/);
   assert.match(loading, /animate-pulse/);
+  assert.equal((loading.match(/animate-pulse/g) ?? []).length, 3);
+  assert.match(loading, /aria-busy="true"/);
+  assert.match(loading, /class="invisible" aria-hidden="true"/);
+  assert.doesNotMatch(loading, /data-ready-icon|ring-primary\/40/);
   assert.doesNotMatch(loading, /12345/);
   const ready = renderToStaticMarkup(React.createElement(StatisticsBar, { items }));
   assert.match(ready, /12345/);
+  assert.match(ready, /data-ready-icon/);
+  assert.doesNotMatch(ready, /animate-pulse/);
   assert.doesNotMatch(ready, /disabled=""/);
+});
+
+test('table loading matches topic cells, checkboxes, badges and action buttons', () => {
+  const cn = (...parts) => parts.filter(Boolean).join(' ');
+  const { Skeleton } = loadModule('components/ui/skeleton.tsx', {
+    'react/jsx-runtime': jsxRuntime,
+    '@/lib/utils': { cn },
+  });
+  const { TableSkeleton } = loadModule('components/ui/table-skeleton.tsx', {
+    'react/jsx-runtime': jsxRuntime,
+    '@/lib/utils': { cn },
+    './skeleton': { Skeleton },
+  });
+  const markup = renderToStaticMarkup(
+    React.createElement(TableSkeleton, {
+      rows: 2,
+      columns: [
+        { label: 'STT', width: 'w-14', variant: 'number' },
+        { label: '', width: 'w-12', variant: 'checkbox' },
+        { label: 'Đề tài', variant: 'topic' },
+        { label: 'Trạng thái', variant: 'badge' },
+        { label: 'Thao tác', variant: 'actions', actionCount: 2 },
+      ],
+    }),
+  );
+  assert.match(markup, /role="status" aria-busy="true"/);
+  assert.equal((markup.match(/h-\[88px\]/g) ?? []).length, 2);
+  assert.equal((markup.match(/size-9 shrink-0/g) ?? []).length, 2);
+  assert.equal((markup.match(/h-9 w-24/g) ?? []).length, 4);
+  assert.equal((markup.match(/size-4 rounded-sm/g) ?? []).length, 3);
+  assert.match(markup, /Đề tài/);
+  assert.doesNotMatch(markup, /<button|<input/);
 });
 
 const { navigationSections } = loadModule('shared/layout/navigationConfig.ts', {

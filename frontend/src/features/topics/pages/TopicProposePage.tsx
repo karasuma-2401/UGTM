@@ -1213,13 +1213,13 @@ export function TopicProposePage() {
             <TableSkeleton
               className="min-w-[1200px]"
               columns={[
-                { label: 'STT', width: 'w-14' },
-                { label: 'Đề tài' },
+                { label: 'STT', width: 'w-14', variant: 'number' },
+                { label: 'Đề tài', variant: 'topic' },
                 { label: 'Đợt KLTN', width: 'w-40' },
                 { label: 'Chỉ tiêu', width: 'w-24' },
                 { label: 'Ngày tạo', width: 'w-32' },
-                { label: 'Trạng thái', width: 'w-44' },
-                { label: 'Thao tác', width: 'w-72' },
+                { label: 'Trạng thái', width: 'w-44', variant: 'badge' },
+                { label: 'Thao tác', width: 'w-72', variant: 'actions', actionCount: 2 },
               ]}
             />
           ) : topicsQuery.isError ? (

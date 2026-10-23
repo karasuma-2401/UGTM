@@ -42,6 +42,7 @@ export interface StatisticsBarProps {
 export function StatisticsBar({ items, className, loading = false }: StatisticsBarProps) {
   return (
     <dl
+      aria-busy={loading}
       className={cn(
         'grid auto-cols-fr grid-flow-col gap-1 rounded-lg border border-slate-200/80 bg-white p-1 shadow-sm',
         className,
@@ -54,8 +55,8 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
             key={key}
             className={cn(
               'relative flex items-center gap-2 rounded-md px-2.5 py-1.5',
-              colors.background,
-              active && 'ring-1 ring-inset ring-primary/40',
+              loading ? 'bg-slate-50' : colors.background,
+              !loading && active && 'ring-1 ring-inset ring-primary/40',
             )}
           >
             {onClick && (
@@ -64,7 +65,7 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
                 onClick={onClick}
                 disabled={loading}
                 aria-label={`Lọc: ${label}`}
-                aria-pressed={Boolean(active)}
+                aria-pressed={!loading && Boolean(active)}
                 className="absolute inset-0 z-10 cursor-pointer rounded-md transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
               />
             )}
@@ -73,18 +74,30 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
                 aria-hidden="true"
                 className={cn('hidden shrink-0 md:block [&_svg]:size-3.5', colors.icon)}
               >
-                {icon}
+                {loading ? <Skeleton className="size-3.5 rounded-sm" /> : icon}
               </span>
             )}
             <div className="flex min-w-0 flex-col">
-              <dt className={cn('order-2 mt-1 text-[10px] font-medium', colors.label)}>{label}</dt>
+              <dt className={cn('relative order-2 mt-1 text-[10px] font-medium', colors.label)}>
+                {loading ? (
+                  <>
+                    <span className="invisible" aria-hidden="true">
+                      {label}
+                    </span>
+                    <span className="sr-only">{label}</span>
+                    <Skeleton className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2" />
+                  </>
+                ) : (
+                  label
+                )}
+              </dt>
               <dd
                 className={cn(
                   'order-1 text-base font-semibold leading-none tabular-nums',
                   colors.value,
                 )}
               >
-                {loading ? <Skeleton className="h-4 w-10" /> : value}
+                {loading ? <Skeleton className="h-4 w-8 max-w-full" /> : value}
               </dd>
             </div>
           </div>
