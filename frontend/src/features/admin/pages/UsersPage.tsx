@@ -69,6 +69,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserSummary | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
 
   const usersQuery = useQuery({
@@ -510,6 +511,8 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               canManage={canManage}
               isChangingStatus={isUpdating || usersQuery.isFetching}
               onEdit={handleOpenForm}
+              selectedRowId={selectedRowId}
+              onSelectRow={setSelectedRowId}
               onChangeStatus={handleChangeStatus}
               onResendActivation={(user) => {
                 setNotice('');

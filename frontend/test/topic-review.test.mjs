@@ -332,7 +332,11 @@ const ui = Object.fromEntries(
     'TopicReviewTable',
   ].map((name) => [name, { [name]: name }]),
 );
-const common = { 'react/jsx-runtime': jsxRuntime, 'lucide-react': icons };
+const common = {
+  'react/jsx-runtime': jsxRuntime,
+  'lucide-react': icons,
+  '@/components/ui/selectable-table-row': { SelectableTableRow: 'SelectableTableRow' },
+};
 
 test('review table only allows selecting approved topics from one batch', () => {
   const { TopicReviewTable } = loadModule('features/topics/components/TopicReviewTable.tsx', {

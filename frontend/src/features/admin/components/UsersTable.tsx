@@ -3,6 +3,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { InfoCell } from '@/components/ui/info-cell';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
+import { SelectableTableRow } from '@/components/ui/selectable-table-row';
 
 import { SYSTEM_ROLES } from '../constants/systemRoles';
 import {
@@ -47,6 +48,8 @@ interface UsersTableProps {
   onEdit: (user: UserSummary) => void;
   onChangeStatus: (user: UserSummary) => void;
   onResendActivation: (user: UserSummary) => void;
+  selectedRowId?: string | null;
+  onSelectRow?: (id: string) => void;
 }
 
 const statusTones: Record<AccountStatus, StatusTone> = {
@@ -76,6 +79,8 @@ export function UsersTable({
   onEdit,
   onChangeStatus,
   onResendActivation,
+  selectedRowId,
+  onSelectRow,
 }: UsersTableProps) {
   return (
     <table className="w-full min-w-[1120px] table-fixed text-left text-sm">
@@ -119,7 +124,13 @@ export function UsersTable({
           </tr>
         ) : (
           users.map((user, index) => (
-            <tr key={user.id} className="h-[88px] transition-colors hover:bg-blue-50/40">
+            <SelectableTableRow
+              key={user.id}
+              className="h-[88px]"
+              selected={selectedRowId === user.id}
+              onSelect={onSelectRow ? () => onSelectRow(user.id) : undefined}
+              disabled={isChangingStatus}
+            >
               <td className="px-3 py-4 text-center text-xs tabular-nums text-slate-400">
                 {(pageNumber - 1) * pageSize + index + 1}
               </td>
@@ -273,7 +284,7 @@ export function UsersTable({
                   <span className="text-xs text-slate-400">Chỉ xem</span>
                 )}
               </td>
-            </tr>
+            </SelectableTableRow>
           ))
         )}
       </tbody>

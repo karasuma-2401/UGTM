@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { SelectableTableRow } from '@/components/ui/selectable-table-row';
 import { Card } from '@/components/ui/card';
 import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Dialog } from '@/components/ui/dialog';
@@ -100,6 +101,7 @@ export function TopicAdvisingPage({
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
   const [detail, setDetail] = useState<{ topicId: string; groupId?: string } | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [facultyGroupId, setFacultyGroupId] = useState<string | null>(null);
   const [copyNotice, setCopyNotice] = useState('');
   const query = useQuery({
@@ -510,7 +512,12 @@ export function TopicAdvisingPage({
                         (group) => group.status === 'PendingEmail',
                       ).length;
                       return (
-                        <tr key={topic.id} className="hover:bg-blue-50/30">
+                        <SelectableTableRow
+                          key={topic.id}
+                          selected={selectedRowId === topic.id}
+                          onSelect={() => setSelectedRowId(topic.id)}
+                          disabled={query.isFetching}
+                        >
                           <td className="max-w-sm px-5 py-4">
                             <p className="text-xs font-medium text-primary">{topic.code}</p>
                             <button
@@ -548,13 +555,18 @@ export function TopicAdvisingPage({
                               Chi tiết
                             </Button>
                           </td>
-                        </tr>
+                        </SelectableTableRow>
                       );
                     })
                   : groupRows.slice(start, start + pageSize).map((group) => {
                       const topic = topics.find((item) => item.id === group.topicId)!;
                       return (
-                        <tr key={group.id} className="group transition-colors hover:bg-blue-50/40">
+                        <SelectableTableRow
+                          key={group.id}
+                          selected={selectedRowId === group.id}
+                          onSelect={() => setSelectedRowId(group.id)}
+                          disabled={query.isFetching}
+                        >
                           <td className="px-5 py-4">
                             <Badge
                               variant={
@@ -631,7 +643,7 @@ export function TopicAdvisingPage({
                               Chi tiết
                             </Button>
                           </td>
-                        </tr>
+                        </SelectableTableRow>
                       );
                     })}
               </tbody>

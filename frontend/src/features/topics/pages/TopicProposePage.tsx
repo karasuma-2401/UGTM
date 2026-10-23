@@ -85,6 +85,7 @@ export function TopicProposePage({
   const canReadBatches = hasPermission('academic.batches.read');
   const queryClient = useQueryClient();
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [values, setValues] = useState<TopicFormValues>(INITIAL_VALUES);
   const [baseline, setBaseline] = useState<TopicFormValues>(INITIAL_VALUES);
   const dirty = !sameProposal(values, baseline);
@@ -1247,6 +1248,8 @@ export function TopicProposePage({
               pageSize={topicsQuery.data.pageSize}
               busy={busy || topicsQuery.isFetching}
               onOpen={openTopic}
+              selectedRowId={selectedRowId}
+              onSelectRow={setSelectedRowId}
               onCopy={(topic) => openTopic(topic, 'copy')}
               onSubmit={(topic) => openTopic(topic, 'submit')}
             />

@@ -1,6 +1,7 @@
 import React from 'react';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { Badge } from '@/components/ui/badge';
+import { SelectableTableRow } from '@/components/ui/selectable-table-row';
 import {
   formatAuditShortTime,
   formatAuditAction,
@@ -86,23 +87,13 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
                 const actionTitle = formatAuditAction(log.action);
 
                 return (
-                  <tr
+                  <SelectableTableRow
                     key={log.id}
-                    onClick={() => onSelect(log)}
-                    className={cn(
-                      'transition-colors cursor-pointer group',
-                      isSelected
-                        ? 'bg-blue-50/70 text-slate-900'
-                        : 'hover:bg-slate-50/60 text-slate-700',
-                    )}
+                    onSelect={() => onSelect(log)}
+                    selected={isSelected}
+                    className={isSelected ? 'text-slate-900' : 'text-slate-700'}
                   >
                     <td className="relative px-5 py-4 whitespace-nowrap font-medium text-xs sm:text-sm text-slate-700">
-                      {isSelected && (
-                        <span
-                          className="absolute inset-y-1.5 left-0 w-1 bg-primary rounded-r"
-                          aria-hidden="true"
-                        />
-                      )}
                       {formatAuditShortTime(log.timestamp)}
                     </td>
 
@@ -153,7 +144,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
                         Xem chi tiết
                       </button>
                     </td>
-                  </tr>
+                  </SelectableTableRow>
                 );
               })
             )}

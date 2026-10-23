@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { InfoCell } from '@/components/ui/info-cell';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SelectableTableRow } from '@/components/ui/selectable-table-row';
 import type { Topic, TopicBatch } from '../types/topic.types';
 import { TopicStatusBadge } from './TopicStatusBadge';
 
@@ -18,6 +19,8 @@ interface TopicReviewTableProps {
   busy: boolean;
   onSelect: (topics: Topic[]) => void;
   onOpen: (topic: Topic) => void;
+  selectedRowId?: string | null;
+  onSelectRow?: (id: string) => void;
 }
 
 export function TopicReviewTable({
@@ -32,6 +35,8 @@ export function TopicReviewTable({
   busy,
   onSelect,
   onOpen,
+  selectedRowId,
+  onSelectRow,
 }: TopicReviewTableProps) {
   const selectedBatch = selected[0]?.batchId;
   const selectable = topics.filter(
@@ -89,14 +94,17 @@ export function TopicReviewTable({
         {topics.map((topic, index) => {
           const checked = selected.some((item) => item.id === topic.id);
           return (
-            <tr
+            <SelectableTableRow
               key={topic.id}
-              className={`h-[88px] transition-colors ${checked ? 'bg-blue-50/60' : 'hover:bg-blue-50/40'}`}
+              className="h-[88px]"
+              selected={checked || selectedRowId === topic.id}
+              onSelect={onSelectRow ? () => onSelectRow(topic.id) : undefined}
+              disabled={busy}
             >
               <td className="px-3 py-4 text-center text-xs tabular-nums text-slate-400">
                 {(pageNumber - 1) * pageSize + index + 1}
               </td>
-              <td className="px-4 py-4">
+              <td className="px-4 py-4" onClick={(event) => event.stopPropagation()}>
                 <Checkbox
                   aria-label={`Chọn công bố đề tài ${topic.titleVi}`}
                   checked={checked}
@@ -171,7 +179,7 @@ export function TopicReviewTable({
                   {topic.status === 'Submitted' ? 'Thẩm định' : 'Chi tiết'}
                 </Button>
               </td>
-            </tr>
+            </SelectableTableRow>
           );
         })}
       </tbody>

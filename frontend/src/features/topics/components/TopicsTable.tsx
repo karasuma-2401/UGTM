@@ -2,6 +2,7 @@ import { Eye, FileText, Copy, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InfoCell } from '@/components/ui/info-cell';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SelectableTableRow } from '@/components/ui/selectable-table-row';
 import { canEditTopic, type Topic, type TopicBatch } from '../types/topic.types';
 import { TopicStatusBadge } from './TopicStatusBadge';
 
@@ -15,6 +16,8 @@ interface TopicsTableProps {
   onOpen: (topic: Topic) => void;
   onCopy: (topic: Topic) => void;
   onSubmit: (topic: Topic) => void;
+  selectedRowId?: string | null;
+  onSelectRow?: (id: string) => void;
 }
 
 export function TopicsTable({
@@ -27,6 +30,8 @@ export function TopicsTable({
   onOpen,
   onCopy,
   onSubmit,
+  selectedRowId,
+  onSelectRow,
 }: TopicsTableProps) {
   const batchNames = new Map(batches.map((batch) => [batch.id, batch.batchName]));
   return (
@@ -56,7 +61,13 @@ export function TopicsTable({
       </thead>
       <tbody className="divide-y divide-slate-100">
         {topics.map((topic, index) => (
-          <tr key={topic.id} className="h-[88px] transition-colors hover:bg-blue-50/30">
+          <SelectableTableRow
+            key={topic.id}
+            className="h-[88px]"
+            selected={selectedRowId === topic.id}
+            onSelect={onSelectRow ? () => onSelectRow(topic.id) : undefined}
+            disabled={busy}
+          >
             <td className="px-3 py-4 text-center text-xs tabular-nums text-slate-400">
               {(pageNumber - 1) * pageSize + index + 1}
             </td>
@@ -133,7 +144,7 @@ export function TopicsTable({
                 )}
               </div>
             </td>
-          </tr>
+          </SelectableTableRow>
         ))}
       </tbody>
     </table>

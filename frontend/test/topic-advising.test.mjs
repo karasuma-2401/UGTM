@@ -79,6 +79,7 @@ function fixture(queryOverrides = {}, pageProps = {}) {
     select: ['Select'],
     badge: ['Badge'],
     'status-badge': ['StatusBadge'],
+    'selectable-table-row': ['SelectableTableRow'],
     card: ['Card', 'CardHeader', 'CardTitle'],
     dialog: ['Dialog'],
     'statistics-bar': ['StatisticsBar'],
@@ -329,7 +330,7 @@ test('page size selector, visible rows and range agree for six groups and after 
   assert.equal(pagination.pageSize, 10);
   assert.equal(pagination.totalCount, 6);
   assert.equal(
-    nodes(find(tree, (node) => node.type === 'tbody')).filter((node) => node.type === 'tr').length,
+    nodes(find(tree, (node) => node.type === 'tbody')).filter((node) => node.type === 'SelectableTableRow').length,
     6,
   );
   const { TablePagination } = load('../../components/ui/table-pagination.tsx', {
@@ -357,7 +358,7 @@ test('page size selector, visible rows and range agree for six groups and after 
   find(tree, (node) => node.type === 'TablePagination').props.onPageChange(2);
   tree = larger.render();
   assert.equal(
-    nodes(find(tree, (node) => node.type === 'tbody')).filter((node) => node.type === 'tr').length,
+    nodes(find(tree, (node) => node.type === 'tbody')).filter((node) => node.type === 'SelectableTableRow').length,
     2,
   );
   find(tree, (node) => node.props.id === 'advising-page-size').props.onChange({
@@ -367,7 +368,7 @@ test('page size selector, visible rows and range agree for six groups and after 
   assert.equal(find(tree, (node) => node.type === 'TablePagination').props.pageNumber, 1);
   assert.equal(find(tree, (node) => node.type === 'TablePagination').props.pageSize, 20);
   assert.equal(
-    nodes(find(tree, (node) => node.type === 'tbody')).filter((node) => node.type === 'tr').length,
+    nodes(find(tree, (node) => node.type === 'tbody')).filter((node) => node.type === 'SelectableTableRow').length,
     12,
   );
 });
@@ -401,6 +402,19 @@ test('group details show email confirmation per student and faculty contact neve
       .join(' '),
     /Gửi yêu cầu|Hủy nhóm/,
   );
+});
+
+test('selecting another advising row moves the indicator without opening a dialog', () => {
+  const ui = fixture({}, { embedded: true, initialTab: 'registrations' });
+  const rows = () => nodes(ui.render()).filter((node) => node.type === 'SelectableTableRow');
+  assert.ok(rows().length > 1);
+  assert.equal(rows().filter((row) => row.props.selected).length, 0);
+  rows()[0].props.onSelect();
+  assert.equal(rows()[0].props.selected, true);
+  rows()[1].props.onSelect();
+  assert.equal(rows()[0].props.selected, false);
+  assert.equal(rows()[1].props.selected, true);
+  assert.equal(nodes(ui.render()).filter((node) => node.type === 'Dialog').length, 0);
 });
 
 test('loading and failed queries expose readable status and retry', () => {

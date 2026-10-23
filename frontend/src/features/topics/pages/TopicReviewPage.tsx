@@ -48,6 +48,7 @@ export function TopicReviewPage() {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [selected, setSelected] = useState<Topic[]>([]);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [topicId, setTopicId] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [notice, setNotice] = useState('');
@@ -400,6 +401,8 @@ export function TopicReviewPage() {
               advisorsLoading={advisorsLoading}
               batchesLoading={batchesLoading}
               selected={selected}
+              selectedRowId={selectedRowId}
+              onSelectRow={setSelectedRowId}
               pageNumber={data.pageNumber}
               pageSize={data.pageSize}
               busy={busy || topicsQuery.isFetching}
