@@ -523,52 +523,50 @@ export const ScoreConfigPage: React.FC = () => {
             status={currentConfig?.status}
           />
 
-          <div className="bg-white border border-slate-200 rounded-xl shadow-xs p-4 sm:p-5 space-y-3">
-            <button
+          <button
+            type="button"
+            onClick={handleSaveClick}
+            disabled={isSaving || isLoadingConfig || isLoadingBatches}
+            className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-sm h-11 text-white bg-gradient-to-r from-[#2054A5] to-[#FA7921] hover:opacity-95 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 cursor-pointer"
+          >
+            {isSaving ? (
+              <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Save className="size-4" />
+            )}
+            <span>
+              {currentConfig?.status === 'Draft'
+                ? 'Lưu bản nháp'
+                : currentConfig?.status === 'Active'
+                ? 'Sửa cấu hình'
+                : 'Lưu cấu hình'}
+            </span>
+          </button>
+
+          {currentConfig?.status === 'Draft' && (
+            <Button
               type="button"
-              onClick={handleSaveClick}
-              disabled={isSaving || isLoadingConfig || isLoadingBatches}
-              className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-sm h-11 text-white bg-gradient-to-r from-[#2054A5] to-[#FA7921] hover:opacity-95 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50 cursor-pointer"
+              variant="default"
+              className="w-full rounded-lg h-11 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-semibold text-sm cursor-pointer disabled:pointer-events-none disabled:opacity-50"
+              onClick={handlePublish}
+              disabled={!isValid || isPublishing || isLoadingConfig || isLoadingBatches}
+              leftIcon={
+                isPublishing ? (
+                  <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Send className="size-4" />
+                )
+              }
             >
-              {isSaving ? (
-                <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Save className="size-4" />
-              )}
-              <span>
-                {currentConfig?.status === 'Draft'
-                  ? 'Lưu bản nháp'
-                  : currentConfig?.status === 'Active'
-                  ? 'Sửa cấu hình (Tạo Draft)'
-                  : 'Lưu cấu hình'}
-              </span>
-            </button>
+              <span>Công bố</span>
+            </Button>
+          )}
 
-            {currentConfig?.status === 'Draft' && (
-              <Button
-                type="button"
-                variant="default"
-                className="w-full rounded-lg h-11 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-semibold text-sm cursor-pointer disabled:pointer-events-none disabled:opacity-50"
-                onClick={handlePublish}
-                disabled={!isValid || isPublishing || isLoadingConfig || isLoadingBatches}
-                leftIcon={
-                  isPublishing ? (
-                    <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Send className="size-4" />
-                  )
-                }
-              >
-                <span>Công bố</span>
-              </Button>
-            )}
-
-            {currentConfig?.status === 'Draft' && !isValid && (
-              <p className="text-[11px] text-amber-600 text-center font-medium">
-                Cần đạt tổng {calculationMethod === 'Percentage' ? '100%' : 'hệ số > 0'} để công bố
-              </p>
-            )}
-          </div>
+          {currentConfig?.status === 'Draft' && !isValid && (
+            <p className="text-[11px] text-amber-600 text-center font-medium">
+              Cần đạt tổng {calculationMethod === 'Percentage' ? '100%' : 'hệ số > 0'} để công bố
+            </p>
+          )}
         </div>
       </div>
 
