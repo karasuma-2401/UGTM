@@ -14,7 +14,6 @@ import {
   Copy,
   ArrowUpRight,
   CheckCircle2,
-  Clock3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +23,8 @@ import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TablePagination } from '@/components/ui/table-pagination';
-import { Skeleton } from '@/components/ui/skeleton';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { InfoCell } from '@/components/ui/info-cell';
 import { useAuth } from '@/shared/auth';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
 import { TOPIC_STATUS_LABELS } from '../types/topic.types';
@@ -237,26 +237,13 @@ export function TopicAdvisingPage() {
               </div>
               <p className="mt-2 break-all text-slate-600">{student.email}</p>
               <p className="mt-1 text-xs text-slate-500">
-                Điện thoại: {student.phone} ·{' '}
-                {student.registrationRole === 'Registrant'
-                  ? 'Không cần xác nhận qua email'
-                  : `Xác nhận tham gia: ${date(student.participationConfirmedAt)}`}
+                {student.phone}
+                {student.participationConfirmedAt &&
+                  ` · Xác nhận: ${date(student.participationConfirmedAt)}`}
               </p>
             </div>
           ))}
         </div>
-        {group.status === 'PendingEmail' && (
-          <p className="rounded-lg bg-amber-50 p-3 text-sm leading-6 text-amber-800">
-            Đang chờ sinh viên được mời xác nhận tham gia qua email. Người đăng ký không cần xác
-            nhận lại. Khi thành viên còn lại đồng ý, hệ thống tự động đưa nhóm vào danh sách hướng
-            dẫn.
-          </p>
-        )}
-        {group.status === 'Expired' && (
-          <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-            Đăng ký đã hết hạn xác nhận email. Nhóm chưa được ghi nhận vào danh sách hướng dẫn.
-          </p>
-        )}
         {group.status === 'Cancelled' && (
           <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
             {group.cancellationReason}
@@ -272,7 +259,7 @@ export function TopicAdvisingPage() {
               setCopyNotice('');
             }}
           >
-            Hướng dẫn liên hệ Khoa
+            Liên hệ Khoa
           </Button>
         )}
       </section>
@@ -286,97 +273,33 @@ export function TopicAdvisingPage() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Đề tài & nhóm hướng dẫn
           </h1>
-          <p className="mt-2 text-sm text-slate-500">
-            Theo dõi đề tài phụ trách, đăng ký của sinh viên và các nhóm đang hướng dẫn.
-          </p>
         </div>
-        <Button asChild variant="outline" leftIcon={<ArrowUpRight />}>
-          <Link to="/topics/propose">Đề xuất đề tài</Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="warning">Dữ liệu mẫu</Badge>
+          <Button
+            variant="outline"
+            leftIcon={<RefreshCw />}
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
+          >
+            Tải lại
+          </Button>
+          <Button asChild variant="outline" leftIcon={<ArrowUpRight />}>
+            <Link to="/topics/propose">Đề xuất đề tài</Link>
+          </Button>
+        </div>
       </div>
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
-        <Badge variant="warning">Dữ liệu mẫu</Badge>
-        <p className="flex-1">
-          Dữ liệu minh họa để xem thử giao diện, chưa phản ánh đăng ký thực tế.
-        </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          leftIcon={<RefreshCw />}
-          disabled={query.isFetching}
-          onClick={() => void query.refetch()}
-        >
-          Tải lại
-        </Button>
-      </div>
-      <div className="flex gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4 text-sm leading-6 text-slate-600">
-        <Info className="mt-1 size-4 shrink-0 text-primary" />
-        <p>
-          Đăng ký 1 sinh viên được ghi nhận ngay. Với nhóm 2 sinh viên, hệ thống chỉ gửi email mời
-          người còn lại xác nhận tham gia; sau khi người này đồng ý, nhóm tự động vào danh sách
-          hướng dẫn. Trường hợp cần hủy nhóm, giảng viên liên hệ Văn phòng Khoa xử lý.
-        </p>
-      </div>
-      <StatisticsBar
-        loading={query.isPending}
-        items={[
-          {
-            key: 'topics',
-            label: 'Đề tài phụ trách',
-            value: batchTopics.length,
-            icon: <BookOpen />,
-            tone: 'primary',
-            onClick: () => changeTab('topics'),
-            active: tab === 'topics' && !filters.status,
-          },
-          {
-            key: 'pending',
-            label: 'Nhóm chờ email',
-            value: pendingGroups.length,
-            icon: <Mail />,
-            tone: 'warning',
-            onClick: () => changeTab('registrations', 'PendingEmail'),
-            active: tab === 'registrations' && filters.status === 'PendingEmail',
-          },
-          {
-            key: 'advising',
-            label: 'Nhóm đang hướng dẫn',
-            value: advisingGroups.length,
-            icon: <Users />,
-            tone: 'primary',
-            onClick: () => changeTab('advising'),
-            active: tab === 'advising',
-          },
-          {
-            key: 'students',
-            label: 'Sinh viên hướng dẫn',
-            value: getConfirmedStudentCount(advisingGroups),
-            icon: <CheckCircle2 />,
-            tone: 'muted',
-          },
-        ]}
-      />
-      <nav
-        className="flex gap-1 overflow-x-auto border-b border-slate-200"
-        aria-label="Danh mục quản lý hướng dẫn"
-      >
+      <nav className="flex flex-wrap gap-2" aria-label="Danh mục quản lý hướng dẫn">
         {tabs.map((item) => (
-          <button
+          <Button
             key={item.id}
             type="button"
+            variant={tab === item.id ? 'default' : 'outline'}
             aria-current={tab === item.id ? 'page' : undefined}
             onClick={() => changeTab(item.id)}
-            className={`whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${tab === item.id ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}
           >
-            {item.label}{' '}
-            <span className="ml-2 rounded-md bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
-              {item.id === 'topics'
-                ? batchTopics.length
-                : item.id === 'registrations'
-                  ? batchGroups.length
-                  : advisingGroups.length}
-            </span>
-          </button>
+            {item.label}
+          </Button>
         ))}
       </nav>
       <form
@@ -388,7 +311,7 @@ export function TopicAdvisingPage() {
           <Input
             leftIcon={<Search className="size-4" />}
             className="h-10 bg-slate-50/70"
-            placeholder="Tên đề tài, mã nhóm, hồ sơ, họ tên hoặc MSSV"
+            placeholder="Đề tài, nhóm hoặc sinh viên"
             value={draft.keyword}
             onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
           />
@@ -435,30 +358,76 @@ export function TopicAdvisingPage() {
         </div>
       </form>
       <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-5 py-4">
-          <div>
-            <CardTitle className="text-base">
+        <CardHeader className="grid min-h-[104px] grid-cols-1 items-center gap-4 space-y-0 border-b border-slate-100 bg-gradient-to-r from-slate-50/80 to-white px-5 py-4 xl:grid-cols-[minmax(0,1fr)_560px]">
+          <div className="space-y-1">
+            <CardTitle className="text-base text-slate-900">
               {tabs.find((item) => item.id === tab)?.label}
             </CardTitle>
-            <p className="mt-1 text-xs text-slate-500">
-              {tab === 'topics'
-                ? 'Chỉ tiêu hiển thị theo số sinh viên đã đăng ký thành công.'
-                : tab === 'registrations'
-                  ? 'Theo dõi xác nhận email và lịch sử đăng ký của nhóm.'
-                  : 'Nhóm đăng ký thành công và chưa hoàn thành khóa luận.'}
+            <p className="text-xs text-slate-500">
+              {total} {tab === 'topics' ? 'đề tài' : 'nhóm'}
             </p>
           </div>
-          <Badge variant="secondary">
-            {total} {tab === 'topics' ? 'đề tài' : 'nhóm'}
-          </Badge>
+          <section className="w-full" aria-label="Thống kê hướng dẫn" aria-busy={query.isFetching}>
+            <StatisticsBar
+              loading={query.isPending}
+              items={[
+                {
+                  key: 'topics',
+                  label: 'Đề tài',
+                  value: batchTopics.length,
+                  icon: <BookOpen />,
+                  tone: 'primary',
+                  onClick: () => changeTab('topics'),
+                  active: tab === 'topics' && !filters.status,
+                },
+                {
+                  key: 'pending',
+                  label: 'Chờ xác nhận',
+                  value: pendingGroups.length,
+                  icon: <Mail />,
+                  tone: 'warning',
+                  onClick: () => changeTab('registrations', 'PendingEmail'),
+                  active: tab === 'registrations' && filters.status === 'PendingEmail',
+                },
+                {
+                  key: 'advising',
+                  label: 'Đang hướng dẫn',
+                  value: advisingGroups.length,
+                  icon: <Users />,
+                  tone: 'primary',
+                  onClick: () => changeTab('advising'),
+                  active: tab === 'advising',
+                },
+                {
+                  key: 'students',
+                  label: 'Sinh viên',
+                  value: getConfirmedStudentCount(advisingGroups),
+                  icon: <CheckCircle2 />,
+                  tone: 'muted',
+                },
+              ]}
+            />
+          </section>
         </CardHeader>
-        <div aria-busy={query.isFetching} className="min-h-64 overflow-x-auto">
+        <div
+          aria-busy={query.isFetching}
+          className="h-[min(60vh,40rem)] min-h-[20rem] overflow-auto"
+        >
           {query.isPending ? (
-            <div className="space-y-4 p-5" role="status" aria-label="Đang tải danh sách">
-              {[1, 2, 3, 4].map((key) => (
-                <Skeleton key={key} className="h-16 w-full" />
-              ))}
-            </div>
+            <TableSkeleton
+              className="min-w-[1000px]"
+              rows={5}
+              columns={(tab === 'topics'
+                ? ['Đề tài', 'Đợt KLTN', 'Sinh viên', 'Trạng thái', 'Thao tác']
+                : [
+                    'Nhóm / hồ sơ',
+                    'Đề tài',
+                    'Sinh viên',
+                    tab === 'advising' ? 'Tiến độ' : 'Trạng thái',
+                    'Thao tác',
+                  ]
+              ).map((label) => ({ label }))}
+            />
           ) : query.isError ? (
             <div role="alert" className="space-y-3 p-10 text-center">
               <p className="text-sm text-rose-700">Không thể tải danh sách. Vui lòng thử lại.</p>
@@ -481,16 +450,10 @@ export function TopicAdvisingPage() {
             </div>
           ) : (
             <table className="w-full min-w-[1000px] text-left text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
+              <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
                 <tr>
                   {(tab === 'topics'
-                    ? [
-                        'Đề tài',
-                        'Đợt KLTN',
-                        'SV đăng ký thành công',
-                        'Trạng thái đề tài',
-                        'Thao tác',
-                      ]
+                    ? ['Đề tài', 'Đợt KLTN', 'Sinh viên', 'Trạng thái', 'Thao tác']
                     : [
                         'Nhóm / hồ sơ',
                         'Đề tài',
@@ -515,7 +478,7 @@ export function TopicAdvisingPage() {
                       ).length;
                       return (
                         <tr key={topic.id} className="hover:bg-blue-50/30">
-                          <td className="max-w-sm px-5 py-5">
+                          <td className="max-w-sm px-5 py-4">
                             <p className="text-xs font-medium text-primary">{topic.code}</p>
                             <button
                               className="mt-1 text-left font-semibold leading-6 text-slate-800 hover:text-primary focus-visible:underline"
@@ -523,29 +486,24 @@ export function TopicAdvisingPage() {
                             >
                               {topic.title}
                             </button>
-                            <p className="mt-1 text-xs text-slate-500">
-                              {pending
-                                ? `${pending} nhóm chờ xác nhận email`
-                                : groups.some((group) => group.status === 'Confirmed')
-                                  ? 'Đã có nhóm đăng ký thành công'
-                                  : 'Chưa có nhóm đăng ký thành công'}
-                            </p>
+                            {pending > 0 && (
+                              <Badge variant="warning" className="mt-2">
+                                Chờ xác nhận
+                              </Badge>
+                            )}
                           </td>
                           <td className="px-5 py-5 text-xs text-slate-500">
                             {data?.batches.find((batch) => batch.id === topic.batchId)?.name}
                           </td>
-                          <td className="px-5 py-5">
+                          <td className="px-5 py-4">
                             <span className="font-semibold tabular-nums">
                               {count}/{topic.capacity}
                             </span>
-                            <p className="mt-1 text-xs text-slate-500">
-                              {Math.max(0, topic.capacity - count)} chỗ chưa ghi nhận
-                            </p>
                           </td>
-                          <td className="px-5 py-5">
+                          <td className="px-5 py-4">
                             <TopicStatusBadge status={topic.status} />
                           </td>
-                          <td className="px-5 py-5">
+                          <td className="px-5 py-4">
                             <Button
                               variant="outline"
                               size="sm"
@@ -563,47 +521,42 @@ export function TopicAdvisingPage() {
                       const topic = topics.find((item) => item.id === group.topicId)!;
                       return (
                         <tr key={group.id} className="hover:bg-blue-50/30">
-                          <td className="px-5 py-5">
+                          <td className="px-5 py-4">
                             <p className="font-semibold">{group.groupCode}</p>
                             <p className="mt-1 text-xs text-slate-500">{group.code}</p>
                             <p className="mt-1 text-xs text-slate-400">
                               {date(group.registeredAt)}
                             </p>
                           </td>
-                          <td className="max-w-xs px-5 py-5">
+                          <td className="max-w-xs px-5 py-4">
                             <p className="font-medium leading-6">{topic.title}</p>
                             <p className="mt-1 text-xs text-slate-500">
                               {topic.code} ·{' '}
                               {data?.batches.find((batch) => batch.id === topic.batchId)?.name}
                             </p>
                           </td>
-                          <td className="px-5 py-5">
+                          <td className="px-5 py-4">
                             <div className="space-y-2">
                               {group.students.map((student) => (
-                                <div key={student.id}>
-                                  <p className="text-sm">{student.name}</p>
-                                  <p className="mt-0.5 text-xs text-slate-500">{student.code}</p>
-                                </div>
+                                <InfoCell
+                                  key={student.id}
+                                  title={student.name}
+                                  description={student.code}
+                                  titleClassName="font-medium"
+                                />
                               ))}
                             </div>
                           </td>
-                          <td className="px-5 py-5">
+                          <td className="px-5 py-4">
                             {tab === 'advising' ? (
                               <Badge variant="info">{group.stage}</Badge>
                             ) : (
                               <>
                                 <RegistrationBadge status={group.status} />
-                                <p className="mt-2 text-xs text-slate-500">
-                                  {group.students.length === 1
-                                    ? 'Cá nhân · Ghi nhận ngay, không cần email'
-                                    : group.status === 'PendingEmail'
-                                      ? `Chờ ${group.students.find((student) => student.registrationRole === 'Invitee')?.name ?? 'thành viên được mời'}`
-                                      : 'Nhóm 2 sinh viên'}
-                                </p>
                               </>
                             )}
                           </td>
-                          <td className="px-5 py-5">
+                          <td className="px-5 py-4">
                             <Button
                               variant="outline"
                               size="sm"
@@ -696,7 +649,7 @@ export function TopicAdvisingPage() {
             <section className="space-y-3">
               <h3 className="flex items-center gap-2 font-semibold">
                 <Users className="size-4 text-primary" />
-                {detail?.groupId ? 'Thông tin nhóm sinh viên' : 'Các nhóm đăng ký'}
+                {detail?.groupId ? 'Thành viên' : 'Nhóm đăng ký'}
               </h3>
               {selectedGroups.length ? (
                 selectedGroups.map(renderGroup)
@@ -723,16 +676,8 @@ export function TopicAdvisingPage() {
           }}
         >
           <div className="space-y-4 p-5">
-            <div className="flex gap-3 rounded-xl bg-blue-50 p-4 text-sm leading-6 text-slate-700">
-              <Info className="mt-1 size-5 shrink-0 text-primary" />
-              <p>
-                Giảng viên trao đổi với Văn phòng Khoa qua kênh liên hệ chính thức, cung cấp mã hồ
-                sơ, lý do và minh chứng. Khoa xem xét và thực hiện hủy nhóm nếu phù hợp.
-              </p>
-            </div>
-            <p className="text-sm text-slate-600">
-              Bạn có thể sao chép nội dung bên dưới để bổ sung và gửi cho Khoa. Thao tác này chỉ sao
-              chép văn bản, chưa gửi yêu cầu.
+            <p className="text-sm text-slate-500">
+              Sao chép nội dung để liên hệ Khoa xử lý. Thao tác này chưa gửi yêu cầu.
             </p>
             <label className="block space-y-2 text-sm">
               <span className="font-medium">Nội dung tham khảo</span>
@@ -763,10 +708,6 @@ export function TopicAdvisingPage() {
           </div>
         </Dialog>
       )}
-      <p className="flex items-center gap-2 text-xs text-slate-500">
-        <Clock3 className="size-3.5" />
-        Thời gian hiển thị theo giờ Việt Nam (UTC+7).
-      </p>
     </div>
   );
 }

@@ -82,7 +82,8 @@ function fixture(queryOverrides = {}) {
     dialog: ['Dialog'],
     'statistics-bar': ['StatisticsBar'],
     'table-pagination': ['TablePagination'],
-    skeleton: ['Skeleton'],
+    'table-skeleton': ['TableSkeleton'],
+    'info-cell': ['InfoCell'],
   })) {
     dependencies[`@/components/ui/${file}`] = Object.fromEntries(names.map((name) => [name, name]));
   }
@@ -112,7 +113,10 @@ const find = (tree, predicate) => {
   return node;
 };
 const clickTab = (tree, label) =>
-  find(tree, (n) => n.type === 'button' && text(n).includes(label)).props.onClick();
+  find(
+    tree,
+    (n) => n.type === 'Button' && n.props.type === 'button' && text(n) === label,
+  ).props.onClick();
 const tableText = (tree) => text(find(tree, (n) => n.type === 'tbody'));
 
 test('demo adapter returns isolated data and respects aborted requests', async () => {
@@ -154,7 +158,7 @@ test('individual registration is immediately effective; only the second student 
   find(tree, (n) => n.props['aria-label'] === 'Xem nhóm N03').props.onClick();
   tree = ui.render();
   const dialog = find(tree, (n) => n.type === 'Dialog');
-  assert.match(text(dialog), /Không cần xác nhận qua email/);
+  assert.match(text(dialog), /Người đăng ký/);
   assert.doesNotMatch(text(dialog), /Chờ xác nhận tham gia/);
 });
 
@@ -262,13 +266,11 @@ test('group details show email confirmation per student and faculty contact neve
   assert.match(text(dialog), /24521606@gm.uit.edu.vn/);
   assert.match(text(dialog), /Chờ xác nhận tham gia/);
   assert.match(text(dialog), /Người đăng ký/);
-  assert.match(text(dialog), /Không cần xác nhận qua email/);
-  assert.match(text(dialog), /tự động đưa nhóm/);
   dialog.props.onClose();
   tree = ui.render();
   find(tree, (n) => n.props['aria-label'] === 'Xem nhóm N01').props.onClick();
   tree = ui.render();
-  find(tree, (n) => n.type === 'Button' && text(n) === 'Hướng dẫn liên hệ Khoa').props.onClick();
+  find(tree, (n) => n.type === 'Button' && text(n) === 'Liên hệ Khoa').props.onClick();
   tree = ui.render();
   dialog = find(tree, (n) => n.type === 'Dialog' && n.props.title === 'Liên hệ Văn phòng Khoa');
   assert.match(text(dialog), /chưa gửi yêu cầu/);
@@ -287,7 +289,7 @@ test('group details show email confirmation per student and faculty contact neve
 test('loading and failed queries expose readable status and retry', () => {
   assert.ok(
     nodes(fixture({ data: undefined, isPending: true }).render()).some(
-      (n) => n.props.role === 'status',
+      (n) => n.type === 'TableSkeleton',
     ),
   );
   const ui = fixture({ data: undefined, isError: true });
