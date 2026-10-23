@@ -35,8 +35,31 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+        <div role="status" className="flex items-center gap-3 px-6">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 40 40"
+            fill="none"
+            className="size-10 shrink-0 text-primary motion-safe:animate-[access-check-scan_1.8s_ease-in-out_infinite]"
+          >
+            <circle
+              cx="16"
+              cy="16"
+              r="10"
+              fill="currentColor"
+              fillOpacity="0.08"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            />
+            <path d="m23.5 23.5 9 9" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+            <path
+              d="M11 16a5 5 0 0 1 5-5"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              opacity="0.45"
+            />
+          </svg>
           <p className="text-xs font-medium text-slate-500">Đang kiểm tra quyền truy cập...</p>
         </div>
       </div>

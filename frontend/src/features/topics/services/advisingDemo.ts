@@ -1,0 +1,198 @@
+import type { AdvisingData, AdvisingStudent } from '../types/advising.types';
+
+// Isolated demo adapter. No registration state is inferred from the current topic API.
+// These timestamps are fixed scenario data, not live email expiration calculations.
+const student = (
+  code: string,
+  name: string,
+  role: 'Registrant' | 'Invitee',
+  confirmed = false,
+): AdvisingStudent => ({
+  id: code,
+  code,
+  name,
+  email: `${code}@gm.uit.edu.vn`,
+  phone: '0900 000 000',
+  registrationRole: role,
+  participationConfirmedAt: role === 'Invitee' && confirmed ? '2026-10-21T03:30:00Z' : null,
+});
+
+const demoData: AdvisingData = {
+  batches: [
+    { id: '2026-1', name: 'Đợt 1 · HK1 2026–2027' },
+    { id: '2025-2', name: 'Đợt 2 · HK2 2025–2026' },
+  ],
+  topics: [
+    [
+      'DT-001',
+      'Ứng dụng học sâu trong phân loại ảnh y tế',
+      'Deep learning for medical image classification',
+      'Published',
+      2,
+    ],
+    ['DT-002', 'Trợ lý tìm kiếm tài liệu học thuật', 'Academic research assistant', 'Published', 2],
+    [
+      'DT-003',
+      'Phân tích dữ liệu và dự báo kết quả học tập',
+      'Learning analytics and performance prediction',
+      'Published',
+      1,
+    ],
+    [
+      'DT-004',
+      'Hệ thống quản lý năng lượng trong tòa nhà',
+      'Building energy management system',
+      'Published',
+      2,
+    ],
+    [
+      'DT-005',
+      'Nhận diện ngôn ngữ ký hiệu tiếng Việt',
+      'Vietnamese sign language recognition',
+      'Published',
+      2,
+    ],
+    [
+      'DT-006',
+      'Nền tảng đánh giá chất lượng mã nguồn',
+      'Code quality assessment platform',
+      'Approved',
+      2,
+    ],
+    [
+      'DT-007',
+      'Phát hiện bất thường trong giao dịch',
+      'Transaction anomaly detection',
+      'Submitted',
+      2,
+    ],
+    [
+      'DT-008',
+      'Hệ thống gợi ý lộ trình học tập',
+      'Personalized learning path recommendation',
+      'Closed',
+      2,
+    ],
+  ].map(([code, title, titleEn, status, capacity], index) => ({
+    id: String(code),
+    code: String(code),
+    title: String(title),
+    titleEn: String(titleEn),
+    status: status as AdvisingData['topics'][number]['status'],
+    capacity: Number(capacity),
+    batchId: index === 7 ? '2025-2' : '2026-1',
+    description: `Nghiên cứu và xây dựng giải pháp cho đề tài “${title}”. Khảo sát các phương pháp liên quan, thiết kế mô hình, triển khai ứng dụng thử nghiệm và đánh giá kết quả trên bộ dữ liệu thực tế.`,
+    requirements:
+      'Có kiến thức lập trình, cơ sở dữ liệu và phương pháp nghiên cứu. Chủ động đọc tài liệu tiếng Anh, làm việc nhóm và báo cáo tiến độ định kỳ.',
+  })),
+  registrations: [
+    {
+      id: 'reg-01',
+      code: 'KLTN-2026-084',
+      groupCode: 'N01',
+      topicId: 'DT-001',
+      status: 'Confirmed',
+      registeredAt: '2026-10-20T02:00:00Z',
+      confirmationDeadline: '2026-10-22T02:00:00Z',
+      confirmedAt: '2026-10-21T03:30:00Z',
+      stage: 'Đang thực hiện',
+      cancellationReason: null,
+      students: [
+        student('24521603', 'Nguyễn Minh Đức', 'Registrant'),
+        student('24521604', 'Trần Mai Anh', 'Invitee', true),
+      ],
+    },
+    {
+      id: 'reg-02',
+      code: 'KLTN-2026-085',
+      groupCode: 'N02',
+      topicId: 'DT-002',
+      status: 'PendingEmail',
+      registeredAt: '2026-10-23T01:00:00Z',
+      confirmationDeadline: '2026-10-25T01:00:00Z',
+      confirmedAt: null,
+      stage: null,
+      cancellationReason: null,
+      students: [
+        student('24521605', 'Nguyễn Ngọc Linh', 'Registrant'),
+        student('24521606', 'Phạm Gia Bảo', 'Invitee'),
+      ],
+    },
+    {
+      id: 'reg-03',
+      code: 'KLTN-2026-086',
+      groupCode: 'N03',
+      topicId: 'DT-003',
+      status: 'Confirmed',
+      registeredAt: '2026-10-20T04:00:00Z',
+      confirmationDeadline: null,
+      confirmedAt: '2026-10-20T04:00:00Z',
+      stage: 'Đã nộp đề cương',
+      cancellationReason: null,
+      students: [student('24521607', 'Lê Quốc Huy', 'Registrant')],
+    },
+    {
+      id: 'reg-04',
+      code: 'KLTN-2026-087',
+      groupCode: 'N04',
+      topicId: 'DT-004',
+      status: 'PendingEmail',
+      registeredAt: '2026-10-23T02:00:00Z',
+      confirmationDeadline: '2026-10-25T02:00:00Z',
+      confirmedAt: null,
+      stage: null,
+      cancellationReason: null,
+      students: [
+        student('24521608', 'Võ Hoàng Nam', 'Registrant'),
+        student('24521609', 'Đỗ Thảo Nguyên', 'Invitee'),
+      ],
+    },
+    {
+      id: 'reg-05',
+      code: 'KLTN-2026-080',
+      groupCode: 'N05',
+      topicId: 'DT-005',
+      status: 'Expired',
+      registeredAt: '2026-10-18T02:00:00Z',
+      confirmationDeadline: '2026-10-20T02:00:00Z',
+      confirmedAt: null,
+      stage: null,
+      cancellationReason: null,
+      students: [
+        student('24521610', 'Bùi Minh Khang', 'Registrant'),
+        student('24521613', 'Nguyễn Bảo Trâm', 'Invitee'),
+      ],
+    },
+    {
+      id: 'reg-06',
+      code: 'KLTN-2026-075',
+      groupCode: 'N06',
+      topicId: 'DT-004',
+      status: 'Cancelled',
+      registeredAt: '2026-10-16T02:00:00Z',
+      confirmationDeadline: null,
+      confirmedAt: '2026-10-16T02:00:00Z',
+      stage: null,
+      cancellationReason: 'Khoa hủy theo đề nghị thay đổi kế hoạch học tập của sinh viên.',
+      students: [student('24521611', 'Trương Hải Đăng', 'Registrant')],
+    },
+    {
+      id: 'reg-07',
+      code: 'KLTN-2025-032',
+      groupCode: 'N07',
+      topicId: 'DT-008',
+      status: 'Confirmed',
+      registeredAt: '2026-02-10T02:00:00Z',
+      confirmationDeadline: null,
+      confirmedAt: '2026-02-10T02:00:00Z',
+      stage: 'Đã hoàn thành',
+      cancellationReason: null,
+      students: [student('23521612', 'Trần Khánh Vy', 'Registrant')],
+    },
+  ],
+};
+
+export async function loadAdvisingDemo(signal?: AbortSignal): Promise<AdvisingData> {
+  signal?.throwIfAborted();
+  return structuredClone(demoData);
+}

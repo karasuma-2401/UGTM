@@ -80,7 +80,7 @@ export function TopicReviewPage() {
   const actionMutation = useMutation({
     mutationFn: async (action: ReviewAction) =>
       action.kind === 'review'
-        ? topicReviewApi.review(action.id, action.decision)
+        ? topicReviewApi.review(action.id, action.decision, action.reviewNote)
         : topicReviewApi.publish(action.batchId, action.topicIds),
     onSuccess: async (result, action) => {
       setNotice(
@@ -362,11 +362,6 @@ export function TopicReviewPage() {
           </section>
         </CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3 text-xs text-slate-500">
-          <span>
-            {selected.length
-              ? `Đã chọn ${selected.length} đề tài để công bố trong cùng một đợt.`
-              : 'Chọn đề tài đã duyệt trên trang này để công bố cùng đợt.'}
-          </span>
           {selected.length > 0 && (
             <Button
               type="button"
@@ -387,14 +382,14 @@ export function TopicReviewPage() {
             <TableSkeleton
               className="min-w-[1180px]"
               columns={[
-                { label: 'STT', width: 'w-14' },
-                { label: '', width: 'w-12' },
-                { label: 'Đề tài' },
+                { label: 'STT', width: 'w-14', variant: 'number' },
+                { label: '', width: 'w-12', variant: 'checkbox' },
+                { label: 'Đề tài', variant: 'topic' },
                 { label: 'Giảng viên hướng dẫn', width: 'w-48' },
                 { label: 'Đợt KLTN', width: 'w-40' },
                 { label: 'Chỉ tiêu', width: 'w-20' },
-                { label: 'Trạng thái', width: 'w-44' },
-                { label: 'Thao tác', width: 'w-36' },
+                { label: 'Trạng thái', width: 'w-44', variant: 'badge' },
+                { label: 'Thao tác', width: 'w-36', variant: 'actions' },
               ]}
             />
           ) : topicsQuery.isError ? (

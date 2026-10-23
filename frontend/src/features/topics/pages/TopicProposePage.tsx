@@ -42,6 +42,7 @@ import {
   type ProposalErrors,
 } from '../proposalEditing';
 import { TopicPreview } from '../components/TopicPreview';
+import { TopicReviewNote } from '../components/TopicReviewNote';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
@@ -548,6 +549,7 @@ export function TopicProposePage() {
           ) : isPreviewOpen ? (
             <>
               <TopicPreview
+                reviewNote={selectedTopic?.reviewNote}
                 values={values}
                 advisorName={user?.fullName ?? ''}
                 batchName={
@@ -584,6 +586,11 @@ export function TopicProposePage() {
                 </CardHeader>
 
                 <CardContent>
+                  {selectedTopic?.reviewNote && (
+                    <div className="mb-4">
+                      <TopicReviewNote note={selectedTopic.reviewNote} />
+                    </div>
+                  )}
                   {recovery && (
                     <div
                       role="status"
@@ -1213,13 +1220,13 @@ export function TopicProposePage() {
             <TableSkeleton
               className="min-w-[1200px]"
               columns={[
-                { label: 'STT', width: 'w-14' },
-                { label: 'Đề tài' },
+                { label: 'STT', width: 'w-14', variant: 'number' },
+                { label: 'Đề tài', variant: 'topic' },
                 { label: 'Đợt KLTN', width: 'w-40' },
                 { label: 'Chỉ tiêu', width: 'w-24' },
                 { label: 'Ngày tạo', width: 'w-32' },
-                { label: 'Trạng thái', width: 'w-44' },
-                { label: 'Thao tác', width: 'w-72' },
+                { label: 'Trạng thái', width: 'w-44', variant: 'badge' },
+                { label: 'Thao tác', width: 'w-72', variant: 'actions', actionCount: 2 },
               ]}
             />
           ) : topicsQuery.isError ? (

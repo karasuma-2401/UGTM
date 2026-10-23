@@ -4,6 +4,19 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes access-check-scan {
+  0%,
+  100% {
+    transform: translate(-3px, 1px) rotate(-12deg);
+  }
+  35% {
+    transform: translate(3px, -3px) rotate(8deg);
+  }
+  70% {
+    transform: translate(3px, 2px) rotate(-4deg);
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -77,6 +90,8 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-family-sans);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 }

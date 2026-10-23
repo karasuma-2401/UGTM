@@ -10,6 +10,7 @@
     "test:auth": "node --test test/auth-session.test.mjs test/auth-navigation.test.mjs",
     "test:accounts": "node --test test/account-groups.test.mjs",
     "test:topics": "node --test test/topic-proposals.test.mjs test/topic-review.test.mjs",
+    "test:advising": "node --test test/topic-advising.test.mjs",
     "test:academic": "node --test test/academic-batches.test.mjs",
     "preview": "vite preview",
     "format:auth": "prettier --write src/features/auth src/app/router.tsx",

@@ -2,6 +2,7 @@ import { FileText, UsersRound } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { TopicFormValues } from '../types/topic.types';
+import { TopicReviewNote } from './TopicReviewNote';
 
 interface TopicPreviewProps {
   values: Omit<TopicFormValues, 'studentNumber'> & { studentNumber: number | null };
@@ -10,6 +11,7 @@ interface TopicPreviewProps {
   previewLabel?: string;
   advisorLoading?: boolean;
   batchLoading?: boolean;
+  reviewNote?: string | null;
 }
 
 export function TopicPreview({
@@ -19,6 +21,7 @@ export function TopicPreview({
   previewLabel = 'Bản xem trước',
   advisorLoading = false,
   batchLoading = false,
+  reviewNote,
 }: TopicPreviewProps) {
   return (
     <article className="space-y-6 p-5 sm:p-6">
@@ -39,6 +42,7 @@ export function TopicPreview({
           )}
         </div>
       </div>
+      <TopicReviewNote note={reviewNote} />
       <dl className="grid gap-4 rounded-xl border border-slate-200/80 bg-slate-50 p-4 sm:grid-cols-2">
         <div>
           <dt className="text-xs text-slate-500">Giảng viên hướng dẫn</dt>

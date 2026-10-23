@@ -13,7 +13,7 @@ import { TopicStatusBadge } from './TopicStatusBadge';
 import { TopicDetailSkeleton } from './TopicDetailSkeleton';
 
 export type ReviewAction =
-  | { kind: 'review'; id: string; decision: ReviewDecision }
+  | { kind: 'review'; id: string; decision: ReviewDecision; reviewNote?: string | null }
   | { kind: 'publish'; batchId: string; topicIds: string[] };
 
 const REVIEW_STATUS_HINTS: Record<TopicStatus, string> = {
@@ -53,6 +53,8 @@ export function TopicReviewDialog({
   const { user } = useAuth();
   const [decision, setDecision] = useState<ReviewDecision | ''>('');
   const [confirmation, setConfirmation] = useState<ReviewAction | null>(null);
+  const [reviewNote, setReviewNote] = useState('');
+  const [noteError, setNoteError] = useState('');
   const detail = useQuery({
     queryKey: ['topic-review', user?.id, 'detail', topicId],
     queryFn: ({ signal }) => topicReviewApi.getDetail(topicId, signal),
@@ -76,7 +78,12 @@ export function TopicReviewDialog({
 
   function handleClose() {
     if (busy) return;
-    if (canReview && decision && !window.confirm('Bạn muốn đóng và bỏ kết luận chưa gửi?')) return;
+    if (
+      canReview &&
+      (decision || reviewNote.trim()) &&
+      !window.confirm('Bạn muốn đóng và bỏ kết luận chưa gửi?')
+    )
+      return;
     onClose();
   }
 
@@ -108,6 +115,7 @@ export function TopicReviewDialog({
               <p className="text-xs text-slate-500">{REVIEW_STATUS_HINTS[topic.status]}</p>
             </div>
             <TopicPreview
+              reviewNote={topic.reviewNote}
               values={{
                 batchId: topic.batchId,
                 titleVi: topic.titleVi,
@@ -144,8 +152,51 @@ export function TopicReviewDialog({
                       onChange={(value) => {
                         setDecision(value);
                         setConfirmation(null);
+                        setNoteError('');
                       }}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="topic-review-note"
+                      className="text-sm font-semibold text-slate-800"
+                    >
+                      Góp ý thẩm định
+                      {decision === 'NeedRevision' || decision === 'Rejected'
+                        ? ' *'
+                        : ' (tùy chọn)'}
+                    </label>
+                    <textarea
+                      id="topic-review-note"
+                      value={reviewNote}
+                      maxLength={2000}
+                      rows={4}
+                      required={decision === 'NeedRevision' || decision === 'Rejected'}
+                      aria-invalid={Boolean(noteError)}
+                      aria-describedby={
+                        noteError ? 'topic-review-note-error' : 'topic-review-note-count'
+                      }
+                      disabled={busy || confirming || !isReady}
+                      placeholder="Nhập nhận xét hoặc nội dung cần chỉnh sửa"
+                      className="w-full rounded-lg border border-input bg-slate-50/70 px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
+                      onChange={(event) => {
+                        setReviewNote(event.target.value);
+                        setNoteError('');
+                        setConfirmation(null);
+                      }}
+                    />
+                    <p id="topic-review-note-count" className="text-right text-xs text-slate-500">
+                      {reviewNote.length}/2000
+                    </p>
+                    {noteError && (
+                      <p
+                        id="topic-review-note-error"
+                        role="alert"
+                        className="text-sm text-rose-700"
+                      >
+                        {noteError}
+                      </p>
+                    )}
                   </div>
                 </>
               )}
@@ -161,6 +212,11 @@ export function TopicReviewDialog({
                 >
                   <h3 className="font-semibold text-slate-900">Xác nhận: {confirmLabel}</h3>
                   <p className="break-words text-slate-700">{topic.titleVi}</p>
+                  {confirmation?.kind === 'review' && confirmation.reviewNote && (
+                    <p className="whitespace-pre-wrap break-words text-slate-700">
+                      {confirmation.reviewNote}
+                    </p>
+                  )}
                   <p className="text-xs leading-6 text-slate-500">
                     {canPublish
                       ? 'Chỉ công bố đề tài này, không công bố toàn bộ đợt.'
@@ -207,8 +263,23 @@ export function TopicReviewDialog({
                             batchId: topic.batchId,
                             topicIds: [topic.id],
                           });
-                        else if (canReview && decision)
-                          setConfirmation({ kind: 'review', id: topic.id, decision });
+                        else if (canReview && decision) {
+                          const note = reviewNote.trim();
+                          if (decision !== 'Approved' && !note) {
+                            setNoteError('Vui lòng nhập góp ý cho kết luận này.');
+                            return;
+                          }
+                          if (note.length > 2000) {
+                            setNoteError('Góp ý không được vượt quá 2000 ký tự.');
+                            return;
+                          }
+                          setConfirmation({
+                            kind: 'review',
+                            id: topic.id,
+                            decision,
+                            reviewNote: note || null,
+                          });
+                        }
                         return;
                       }
                       if (confirmation) onAction(confirmation);

@@ -6,6 +6,7 @@ import {
   ScrollText,
   FilePenLine,
   ClipboardCheck,
+  BookOpen,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -63,6 +64,12 @@ export const navigationSections: NavSectionConfig[] = [
     title: 'Khóa luận',
     items: [
       {
+        label: 'Đề tài & nhóm hướng dẫn',
+        path: '/topics/advising',
+        icon: BookOpen,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
         label: 'Đề xuất đề tài',
         path: '/topics/propose',
         icon: FilePenLine,
@@ -77,4 +84,3 @@ export const navigationSections: NavSectionConfig[] = [
     ],
   },
 ];
-
