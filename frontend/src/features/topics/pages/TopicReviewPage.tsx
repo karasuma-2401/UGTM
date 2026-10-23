@@ -80,7 +80,7 @@ export function TopicReviewPage() {
   const actionMutation = useMutation({
     mutationFn: async (action: ReviewAction) =>
       action.kind === 'review'
-        ? topicReviewApi.review(action.id, action.decision)
+        ? topicReviewApi.review(action.id, action.decision, action.reviewNote)
         : topicReviewApi.publish(action.batchId, action.topicIds),
     onSuccess: async (result, action) => {
       setNotice(

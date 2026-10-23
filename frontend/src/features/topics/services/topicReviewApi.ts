@@ -122,16 +122,22 @@ export const topicReviewApi = {
     return names;
   },
 
-  async review(id: string, decision: ReviewDecision): Promise<Topic> {
+  async review(id: string, decision: ReviewDecision, reviewNote?: string | null): Promise<Topic> {
     if (!(['Approved', 'NeedRevision', 'Rejected'] as string[]).includes(decision)) {
       throw new Error('Kết luận thẩm định không hợp lệ.');
     }
+    const note = reviewNote?.trim() || null;
+    if (decision !== 'Approved' && !note) {
+      throw new Error('Vui lòng nhập góp ý khi yêu cầu chỉnh sửa hoặc từ chối đề tài.');
+    }
+    if (note && note.length > 2000) throw new Error('Góp ý không được vượt quá 2000 ký tự.');
     const fresh = await topicApi.getDetail(id);
     if (fresh.status !== 'Submitted') {
       throw new Error('Trạng thái đề tài đã thay đổi. Chỉ thẩm định đề tài đang chờ duyệt.');
     }
     const response = await httpClient.post<ApiResponse<Topic>>(`/api/topics/${id}/review`, {
       decision,
+      reviewNote: note,
     });
     return unwrap(response.data);
   },

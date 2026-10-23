@@ -168,7 +168,7 @@ test('review detail refuses to show a lecturer draft even when its ID is known',
   await assert.rejects(api.getDetail('topic-1'), /chưa được gửi thẩm định/);
 });
 
-test('all three conclusions send only the supported decision after checking the current status', async () => {
+test('all conclusions send feedback and decision after checking the current status', async () => {
   const posts = [];
   const reads = [];
   const api = apiFixture({
@@ -186,17 +186,25 @@ test('all three conclusions send only the supported decision after checking the 
     },
   });
   for (const decision of ['Approved', 'NeedRevision', 'Rejected']) {
-    assert.equal((await api.review('topic-1', decision)).status, decision);
+    assert.equal(
+      (await api.review('topic-1', decision, '  Cần bổ sung đánh giá.  ')).status,
+      decision,
+    );
   }
   assert.deepEqual(reads, ['topic-1', 'topic-1', 'topic-1']);
   assert.deepEqual(
     posts,
     ['Approved', 'NeedRevision', 'Rejected'].map((decision) => [
       '/api/topics/topic-1/review',
-      { decision },
+      { decision, reviewNote: 'Cần bổ sung đánh giá.' },
     ]),
   );
   await assert.rejects(api.review('topic-1', 'Published'), /không hợp lệ/);
+  assert.equal(posts.length, 3);
+  for (const decision of ['NeedRevision', 'Rejected']) {
+    await assert.rejects(api.review('topic-1', decision, '  '), /Vui lòng nhập góp ý/);
+  }
+  await assert.rejects(api.review('topic-1', 'Approved', 'x'.repeat(2001)), /2000/);
   assert.equal(posts.length, 3);
 });
 
@@ -436,6 +444,7 @@ test('proposal batch cells and shared preview keep skeletons while related names
   });
   assert.equal(walk(table, (node) => node.type === 'Skeleton').length, 0);
   const { TopicPreview } = loadModule('features/topics/components/TopicPreview.tsx', {
+    './TopicReviewNote': { TopicReviewNote: 'TopicReviewNote' },
     ...common,
     '@/components/ui/badge': { Badge: 'Badge' },
     '@/components/ui/skeleton': ui.Skeleton,
@@ -520,7 +529,9 @@ test('review requires an explicit decision and confirmation; approval never publ
   tree = dialog.render();
   assert.equal(walk(tree, (node) => node.props['aria-label'] === 'Xác nhận thao tác').length, 1);
   button('Xác nhận').props.onClick();
-  assert.deepEqual(dialog.actions, [{ kind: 'review', id: 'topic-1', decision: 'Approved' }]);
+  assert.deepEqual(dialog.actions, [
+    { kind: 'review', id: 'topic-1', decision: 'Approved', reviewNote: null },
+  ]);
 });
 
 test('approved detail publishes only itself; other lifecycle states have no decision action', () => {
@@ -546,6 +557,47 @@ test('approved detail publishes only itself; other lifecycle states have no deci
       0,
     );
   }
+});
+
+test('revision feedback is required, preserved on back and sent in the confirmed action', () => {
+  const dialog = dialogFixture();
+  let tree = dialog.render();
+  const button = (label) =>
+    walk(tree, (node) => node.type === 'Button' && node.props.children === label)[0];
+  walk(tree, (node) => node.type === 'Select')[0].props.onChange('NeedRevision');
+  tree = dialog.render();
+  button('Gửi kết luận').props.onClick();
+  tree = dialog.render();
+  assert.equal(walk(tree, (node) => node.props.role === 'alert').length, 1);
+  assert.equal(dialog.actions.length, 0);
+  const note = '  Bổ sung dữ liệu thử nghiệm.\nLàm rõ tiêu chí đánh giá.  ';
+  walk(tree, (node) => node.type === 'textarea')[0].props.onChange({ target: { value: note } });
+  tree = dialog.render();
+  button('Gửi kết luận').props.onClick();
+  tree = dialog.render();
+  assert.equal(walk(tree, (node) => node.type === 'textarea')[0].props.disabled, true);
+  button('Quay lại').props.onClick();
+  tree = dialog.render();
+  assert.equal(walk(tree, (node) => node.type === 'textarea')[0].props.value, note);
+  button('Gửi kết luận').props.onClick();
+  tree = dialog.render();
+  button('Xác nhận').props.onClick();
+  assert.deepEqual(dialog.actions, [
+    { kind: 'review', id: 'topic-1', decision: 'NeedRevision', reviewNote: note.trim() },
+  ]);
+});
+
+test('feedback display handles null, preserves line breaks and renders content as text', () => {
+  const { TopicReviewNote } = loadModule('features/topics/components/TopicReviewNote.tsx', {
+    'react/jsx-runtime': jsxRuntime,
+  });
+  assert.equal(TopicReviewNote({ note: null }), null);
+  assert.equal(TopicReviewNote({ note: '  ' }), null);
+  const note = 'Dòng một\n<script>Ví dụ nội dung</script>';
+  const tree = TopicReviewNote({ note });
+  assert.equal(walk(tree, (node) => node.type === 'p')[0].props.children, note);
+  assert.match(walk(tree, (node) => node.type === 'p')[0].props.className, /whitespace-pre-wrap/);
+  assert.equal(walk(tree, (node) => node.type === 'script').length, 0);
 });
 
 test('a refreshed approval cannot turn an existing review confirmation into a publish command', () => {

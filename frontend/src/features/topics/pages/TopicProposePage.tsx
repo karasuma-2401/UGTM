@@ -42,6 +42,7 @@ import {
   type ProposalErrors,
 } from '../proposalEditing';
 import { TopicPreview } from '../components/TopicPreview';
+import { TopicReviewNote } from '../components/TopicReviewNote';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
@@ -548,6 +549,7 @@ export function TopicProposePage() {
           ) : isPreviewOpen ? (
             <>
               <TopicPreview
+                reviewNote={selectedTopic?.reviewNote}
                 values={values}
                 advisorName={user?.fullName ?? ''}
                 batchName={
@@ -584,6 +586,11 @@ export function TopicProposePage() {
                 </CardHeader>
 
                 <CardContent>
+                  {selectedTopic?.reviewNote && (
+                    <div className="mb-4">
+                      <TopicReviewNote note={selectedTopic.reviewNote} />
+                    </div>
+                  )}
                   {recovery && (
                     <div
                       role="status"

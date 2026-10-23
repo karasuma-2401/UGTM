@@ -452,6 +452,7 @@ function proposalPageFixture(options = {}) {
     'TopicStatusBadge',
     'TopicsTable',
     'TopicPreview',
+    'TopicReviewNote',
     'TopicProposalSchedule',
     'TablePagination',
     'TableSkeleton',
@@ -563,6 +564,7 @@ function proposalPageFixture(options = {}) {
       '../components/TopicStatusBadge': dependency('TopicStatusBadge'),
       '../components/TopicsTable': dependency('TopicsTable'),
       '../components/TopicPreview': dependency('TopicPreview'),
+      '../components/TopicReviewNote': dependency('TopicReviewNote'),
       '../components/TopicProposalSchedule': dependency('TopicProposalSchedule'),
       '../proposalEditing': editing,
       '@/shared/auth': {

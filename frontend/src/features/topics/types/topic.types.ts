@@ -52,6 +52,7 @@ export interface Topic {
   status: TopicStatus;
   createdAt: string;
   isPublished: boolean;
+  reviewNote?: string | null;
 }
 
 export interface TopicFormValues {
