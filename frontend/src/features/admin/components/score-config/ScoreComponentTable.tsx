@@ -3,7 +3,7 @@ import { Trash2, ShieldAlert } from 'lucide-react';
 import type {
   ScoreComponentInput,
   ScoreCalculationMethod,
-} from '../types/scoreConfig.types';
+} from '../../types/scoreConfig.types';
 import { Badge } from '@/components/ui/badge';
 
 export interface ScoreComponentTableProps {

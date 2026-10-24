@@ -23,10 +23,10 @@ import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 
-import { UserFormDialog } from '../components/UserFormDialog';
-import { StudentImportDialog } from '../components/StudentImportDialog';
-import { UsersTable } from '../components/UsersTable';
-import { IdentityNavigation } from '../components/IdentityNavigation';
+import { UserFormDialog } from '../components/users/UserFormDialog';
+import { StudentImportDialog } from '../components/users/StudentImportDialog';
+import { UsersTable } from '../components/users/UsersTable';
+import { IdentityNavigation } from '../components/users/IdentityNavigation';
 import { STATUS_LABELS } from '../types/user.types';
 import { SYSTEM_ROLES } from '../constants/systemRoles';
 import { getUserErrorMessage, userApi } from '../services/userApi';

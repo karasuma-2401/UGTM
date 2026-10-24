@@ -4,7 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PermissionCheckboxItem } from './PermissionCheckboxItem';
-import type { PermissionDto } from '../types/rolePermission.types';
+import type { PermissionDto } from '../../types/rolePermission.types';
 
 export interface PermissionModuleCardProps {
   moduleName: string;

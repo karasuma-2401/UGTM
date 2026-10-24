@@ -3,7 +3,7 @@ import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, type SelectOption } from '@/components/ui/select';
-import type { AuditLogFilterState } from '../types/auditLog.types';
+import type { AuditLogFilterState } from '../../types/auditLog.types';
 
 interface AuditLogFilterBarProps {
   filter: AuditLogFilterState;

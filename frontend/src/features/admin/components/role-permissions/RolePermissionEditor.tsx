@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PermissionModuleCard } from './PermissionModuleCard';
-import type { ModulePermissionsDto, SystemRoleInfo } from '../types/rolePermission.types';
+import type { ModulePermissionsDto, SystemRoleInfo } from '../../types/rolePermission.types';
 
 export interface RolePermissionEditorProps {
   role: SystemRoleInfo;

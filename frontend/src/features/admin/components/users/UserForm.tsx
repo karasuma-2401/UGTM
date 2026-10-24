@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 
-import { SYSTEM_ROLES } from '../constants/systemRoles';
+import { SYSTEM_ROLES } from '../../constants/systemRoles';
 import { Save, UserPlus } from 'lucide-react';
 
-import type { AccountGroup, SystemRole, UserFormValues, UserSummary } from '../types/user.types';
-import { defaultRolesForGroup, rolesBelongToGroup } from '../utils/accountGroups';
+import type { AccountGroup, SystemRole, UserFormValues, UserSummary } from '../../types/user.types';
+import { defaultRolesForGroup, rolesBelongToGroup } from '../../utils/accountGroups';
 
 interface UserFormProps {
   accountGroup: AccountGroup;

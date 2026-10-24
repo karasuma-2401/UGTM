@@ -2,11 +2,11 @@ import React from 'react';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import type { ScoreConfigurationDto } from '../types/scoreConfig.types';
+import type { ScoreConfigurationDto } from '../../types/scoreConfig.types';
 import {
   CALCULATION_METHOD_LABELS,
   CONFIG_STATUS_LABELS,
-} from '../types/scoreConfig.types';
+} from '../../types/scoreConfig.types';
 
 export interface ScoreConfigHistoryDialogProps {
   open: boolean;
