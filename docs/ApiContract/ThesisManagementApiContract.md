@@ -185,7 +185,7 @@ Các nhóm mã lỗi nghiệp vụ hiện dùng gồm `ReviewGateConfiguration.*
 `POST /api/thesis/topic-registrations/confirm`:
 ```json
 {
-  "token": "4f1837053e1a4e21a221ce2c262cb9984f1837053e1a4e21a221ce2c262cb998"
+  "token": "sample-confirmation-token"
 }
 ```
 - Sinh viên B xác nhận tham gia nhóm đề tài bằng mã token nhận qua email.
