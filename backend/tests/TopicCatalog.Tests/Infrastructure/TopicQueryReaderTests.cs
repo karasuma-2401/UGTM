@@ -373,5 +373,24 @@ public sealed class TopicQueryReaderTests
                 .ToDictionary(id => id, id => _data[id]);
             return Task.FromResult<IReadOnlyDictionary<Guid, StudentInfoContractDto>>(result);
         }
+
+        public Task<StudentInfoContractDto?> GetStudentByIdOrCodeAsync(
+            Guid? studentId,
+            string? userCode,
+            CancellationToken cancellationToken = default)
+        {
+            if (studentId.HasValue && _data.TryGetValue(studentId.Value, out var byId))
+            {
+                return Task.FromResult<StudentInfoContractDto?>(byId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(userCode))
+            {
+                var byCode = _data.Values.FirstOrDefault(s => string.Equals(s.UserCode, userCode.Trim(), StringComparison.OrdinalIgnoreCase));
+                return Task.FromResult<StudentInfoContractDto?>(byCode);
+            }
+
+            return Task.FromResult<StudentInfoContractDto?>(null);
+        }
     }
 }

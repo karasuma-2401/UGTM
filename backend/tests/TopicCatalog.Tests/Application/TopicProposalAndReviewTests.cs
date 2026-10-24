@@ -817,5 +817,11 @@ public sealed class TopicProposalAndReviewTests
             CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyDictionary<Guid, StudentInfoContractDto>>(
                 new Dictionary<Guid, StudentInfoContractDto>());
+
+        public Task<StudentInfoContractDto?> GetStudentByIdOrCodeAsync(
+            Guid? studentId,
+            string? userCode,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<StudentInfoContractDto?>(null);
     }
 }
