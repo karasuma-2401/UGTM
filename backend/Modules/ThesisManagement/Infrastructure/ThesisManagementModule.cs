@@ -37,6 +37,12 @@ using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetPro
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetProgressReportFileDownload;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.ReviewProgressReport;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.SubmitProgressReport;
+using UGTM.Modules.ThesisManagement.Application.TopicRegistrations;
+using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.ConfirmTopicRegistration;
+using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.Expiration;
+using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.GetMyRegistrationStatus;
+using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.RegisterTopic;
+using UGTM.Modules.ThesisManagement.Infrastructure.BackgroundServices;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -97,6 +103,14 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<GetProgressReportFileDownloadHandler>();
         services.AddScoped<IReviewGateDeadlineEnforcer, ReviewGateDeadlineEnforcer>();
         services.AddHostedService<ReviewGateDeadlineEnforcementWorker>();
+
+        // Topic Registrations
+        services.AddScoped<ITopicRegistrationStore, TopicRegistrationStore>();
+        services.AddScoped<RegisterTopicHandler>();
+        services.AddScoped<ConfirmTopicRegistrationHandler>();
+        services.AddScoped<GetMyRegistrationStatusHandler>();
+        services.AddScoped<ITopicRegistrationExpirationEnforcer, TopicRegistrationExpirationEnforcer>();
+        services.AddHostedService<TopicRegistrationExpirationWorker>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
@@ -106,6 +120,7 @@ public sealed class ThesisManagementModule : IModule
         endpoints.MapMidtermReportSubmissionEndpoints();
         endpoints.MapProgressMilestoneEndpoints();
         endpoints.MapProgressReportSubmissionEndpoints();
+        endpoints.MapTopicRegistrationEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))

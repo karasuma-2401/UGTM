@@ -78,4 +78,18 @@ public sealed class FakeKltnBatchReader(params Guid[] existingBatchIds) : IKltnB
 
     public Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default)
         => Task.FromResult(_batches.Contains(batchId));
+
+    public Task<BatchRegistrationWindowContractDto?> GetRegistrationWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_batches.Contains(batchId))
+        {
+            return Task.FromResult<BatchRegistrationWindowContractDto?>(null);
+        }
+
+        return Task.FromResult<BatchRegistrationWindowContractDto?>(
+            new BatchRegistrationWindowContractDto(batchId, "Open", true, nowUtc.AddDays(7)));
+    }
 }

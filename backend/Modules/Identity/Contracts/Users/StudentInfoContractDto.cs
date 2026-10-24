@@ -12,4 +12,9 @@ public interface IStudentInfoReader
     Task<IReadOnlyDictionary<Guid, StudentInfoContractDto>> GetStudentsByIdsAsync(
         IEnumerable<Guid> studentIds,
         CancellationToken cancellationToken = default);
+
+    Task<StudentInfoContractDto?> GetStudentByIdOrCodeAsync(
+        Guid? studentId,
+        string? userCode,
+        CancellationToken cancellationToken = default);
 }

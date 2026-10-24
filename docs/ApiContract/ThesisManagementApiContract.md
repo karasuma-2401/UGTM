@@ -143,4 +143,68 @@ Chỉ thành viên nhóm và nhóm đang `InProgress` được nộp. Lần đ�
 - `409 Conflict`: deadline/quy trình không cho phép, không đúng trạng thái, hoặc optimistic-concurrency conflict.
 - `413 Payload Too Large`: multipart file vượt mức 20 MiB (cộng overhead request).
 
-Các nhóm mã lỗi nghiệp vụ hiện dùng gồm `ReviewGateConfiguration.*`, `ReviewGate.*`, `Syllabus.*`, `MidtermReport.*`, `ProgressMilestone.*`, `ProgressReport.*` và `SubmissionFile.*`. Mutation thành công được audit; các thao tác cạnh tranh không ghi đè âm thầm.
+Các nhóm mã lỗi nghiệp vụ hiện dùng gồm `ReviewGateConfiguration.*`, `ReviewGate.*`, `Syllabus.*`, `MidtermReport.*`, `ProgressMilestone.*`, `ProgressReport.*`, `TopicRegistration.*` và `SubmissionFile.*`. Mutation thành công được audit; các thao tác cạnh tranh không ghi đè âm thầm.
+
+## Đăng ký đề tài khóa luận & Xác nhận ghép nhóm
+
+### Tổng quan endpoint đăng ký đề tài
+
+| Method | Route | Response | Quyền truy cập |
+| --- | --- | --- | --- |
+| `POST` | `/api/thesis/topic-registrations` | `TopicRegistrationResultDto` | `Student` (đã xác thực) |
+| `POST` | `/api/thesis/topic-registrations/confirm` | `ConfirmRegistrationResultDto` | Public / Student (dùng confirmation token) |
+| `GET` | `/api/thesis/topic-registrations/my-status` | `StudentRegistrationStatusDto` | `Student` (đã xác thực) |
+
+### 1. Đăng ký đề tài
+`POST /api/thesis/topic-registrations`: Sinh viên đăng ký đề tài khóa luận (1 mình hoặc kèm bạn cùng nhóm).
+```json
+{
+  "topicId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "partnerStudentId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "partnerUserCode": "SV002"
+}
+```
+- **Chống race condition:** Sử dụng Database Transaction và Pessimistic Lock (`SELECT ... FOR UPDATE` trên bảng `topics.topic`) để đảm bảo không bị vượt chỉ tiêu `StudentNumber` (1 hoặc 2 sinh viên/đề tài).
+- **Quy tắc gộp nhóm theo slot:** Nếu đề tài có chỉ tiêu 2 sinh viên và có 2 sinh viên đăng ký đơn lẻ lần lượt vào đề tài, hệ thống tự động gộp 2 sinh viên vào chung một `StudentGroup`.
+- **Cơ chế xác nhận & giữ chỗ:**
+  - Đăng ký 1 mình: Trạng thái `Confirmed` ngay lập tức.
+  - Đăng ký kèm bạn (SV A kèm SV B): SV A ở trạng thái `Confirmed`; SV B ở trạng thái `Pending` và nhận email kèm token xác nhận (thời hạn 24 giờ). Slot của SV B được tạm giữ trong thời gian chờ.
+- **Mã lỗi đặc trưng:**
+  - `TopicRegistration.TopicNotFound` (404)
+  - `TopicRegistration.TopicAlreadyTaken` (409)
+  - `TopicRegistration.TopicNotPublished` (409)
+  - `TopicRegistration.RegistrationWindowClosed` (409)
+  - `TopicRegistration.StudentAlreadyRegisteredInBatch` (409)
+  - `TopicRegistration.StudentRegistrationBlocked` (403)
+  - `TopicRegistration.PartnerRegistrationBlocked` (403)
+  - `TopicRegistration.GroupSizeExceedsTopicQuota` (400)
+  - `TopicRegistration.PartnerNotFound` (404)
+  - `TopicRegistration.CannotInviteSelf` (400)
+
+### 2. Xác nhận tham gia nhóm đề tài
+`POST /api/thesis/topic-registrations/confirm`:
+```json
+{
+  "token": "sample-confirmation-token"
+}
+```
+- Sinh viên B xác nhận tham gia nhóm đề tài bằng mã token nhận qua email.
+- Sau khi xác nhận thành công, trạng thái thành viên chuyển thành `Confirmed`.
+- **Mã lỗi:**
+  - `TopicRegistration.InvalidConfirmationToken` (400)
+  - `TopicRegistration.AlreadyConfirmed` (400)
+  - `TopicRegistration.ConfirmationExpired` (400)
+  - `TopicRegistration.Forbidden` (403)
+  - `TopicRegistration.AlreadyConfirmed` (409)
+
+### 3. Tra cứu trạng thái đăng ký cá nhân
+`GET /api/thesis/topic-registrations/my-status`:
+- Trả về thông tin nhóm đề tài hiện tại, trạng thái xác nhận (`Confirmed` / `Pending`), thời hạn xác nhận còn lại (nếu có), số lần vi phạm cảnh cáo (`violationCount`) và cờ khóa quyền đăng ký (`isRegistrationBlocked`).
+
+### 4. Background Worker: Xử lý hết hạn & Phạt cảnh cáo
+- Định kỳ quét các yêu cầu `Pending` có `confirmationExpiresAtUtc < nowUtc`.
+- Tự động hủy yêu cầu của sinh viên B, nhả slot cho đề tài.
+- Ghi nhận vi phạm (+1) cho sinh viên không bấm xác nhận:
+  - Lần 1 và lần 2: Gửi email cảnh cáo.
+  - Lần 3 (`violationCount >= 3`): Khóa quyền đăng ký đề tài (`isRegistrationBlocked = true`), gửi email thông báo khóa quyền đăng ký (tài khoản vẫn đăng nhập hệ thống bình thường).
+- Cơ chế lazy cleanup ngay trong transaction đăng ký mới cũng tự động thu hồi slot quá hạn nếu có lượt đăng ký mới đến trước khi worker chạy.
