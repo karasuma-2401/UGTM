@@ -16,7 +16,7 @@ import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/admin/layouts/IdentityLayout';
 
 import { ProtectedRoute } from '../shared/auth';
-import { RolePermissionPage, AuditLogPage, ScoreConfigPage } from '../features/admin';
+import { RolePermissionPage, AuditLogPage, ScoreConfigPage, PeriodPage } from '../features/admin';
 
 export const router = createBrowserRouter([
   {
@@ -76,6 +76,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
             <ScoreConfigPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/periods',
+        element: (
+          <ProtectedRoute>
+            <PeriodPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'academic/periods',
+        element: (
+          <ProtectedRoute>
+            <PeriodPage />
           </ProtectedRoute>
         ),
       },
