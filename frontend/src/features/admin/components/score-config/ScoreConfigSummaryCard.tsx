@@ -5,7 +5,7 @@ import {
   type ScoreConfigurationStatus,
   CALCULATION_METHOD_LABELS,
   CONFIG_STATUS_LABELS,
-} from '../types/scoreConfig.types';
+} from '../../types/scoreConfig.types';
 import { Badge } from '@/components/ui/badge';
 
 export interface ScoreConfigSummaryCardProps {

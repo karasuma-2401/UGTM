@@ -9,11 +9,11 @@ import type {
   ScoreComponentSource,
   ScoreComponentApplicability,
   ScoreCalculationMethod,
-} from '../types/scoreConfig.types';
+} from '../../types/scoreConfig.types';
 import {
   COMPONENT_SOURCE_LABELS,
   APPLICABILITY_LABELS,
-} from '../types/scoreConfig.types';
+} from '../../types/scoreConfig.types';
 
 export interface ScoreComponentAddDialogProps {
   open: boolean;

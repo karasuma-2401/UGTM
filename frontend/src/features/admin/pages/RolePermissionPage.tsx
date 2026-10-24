@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AlertCircle, CheckCircle2, UsersRound } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { IdentityNavigation } from '../components/IdentityNavigation';
-import { RoleListCard } from '../components/RoleListCard';
-import { RolePermissionEditor } from '../components/RolePermissionEditor';
+import { IdentityNavigation } from '../components/users/IdentityNavigation';
+import { RoleListCard } from '../components/role-permissions/RoleListCard';
+import { RolePermissionEditor } from '../components/role-permissions/RolePermissionEditor';
 import { SYSTEM_ROLES } from '../constants/systemRoles';
 import { rolePermissionApi } from '../services/rolePermissionApi';
 import type { ModulePermissionsDto, SystemRoleInfo } from '../types/rolePermission.types';

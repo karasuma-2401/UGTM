@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
 import { SelectableTableRow } from '@/components/ui/selectable-table-row';
 
-import { SYSTEM_ROLES } from '../constants/systemRoles';
+import { SYSTEM_ROLES } from '../../constants/systemRoles';
 import {
   Eye,
   Mail,
@@ -26,7 +26,7 @@ import {
   type AccountGroup,
   type SystemRole,
   type UserSummary,
-} from '../types/user.types';
+} from '../../types/user.types';
 
 const roleAppearance: Record<SystemRole, { icon: LucideIcon; tone: string }> = {
   Admin: { icon: ShieldCheck, tone: 'bg-violet-50 text-violet-600 ring-violet-100' },

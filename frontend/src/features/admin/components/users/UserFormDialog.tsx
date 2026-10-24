@@ -1,6 +1,6 @@
 import { Dialog } from '@/components/ui/dialog';
 import { UserForm } from './UserForm';
-import type { AccountGroup, UserFormValues, UserSummary } from '../types/user.types';
+import type { AccountGroup, UserFormValues, UserSummary } from '../../types/user.types';
 
 interface UserFormDialogProps {
   accountGroup: AccountGroup;

@@ -5,7 +5,7 @@ import { Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import type { ApiResponse } from '@/shared/api/types';
-import { getUserErrorMessage, userApi } from '../services/userApi';
+import { getUserErrorMessage, userApi } from '../../services/userApi';
 
 interface StudentImportDialogProps {
   onClose: () => void;

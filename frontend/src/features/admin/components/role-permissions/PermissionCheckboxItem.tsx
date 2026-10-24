@@ -1,6 +1,6 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
-import type { PermissionDto } from '../types/rolePermission.types';
+import type { PermissionDto } from '../../types/rolePermission.types';
 
 export interface PermissionCheckboxItemProps {
   permission: PermissionDto;

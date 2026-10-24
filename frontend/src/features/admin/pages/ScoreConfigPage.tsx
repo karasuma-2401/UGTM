@@ -7,14 +7,14 @@ import {
   UIT_INTEGER_PRESET_COMPONENTS,
 } from '../types/scoreConfig.types';
 import { scoreConfigApi, getScoreConfigErrorMessage } from '../services/scoreConfigApi';
-import { ScoreConfigGeneralCard } from '../components/ScoreConfigGeneralCard';
-import { ScoreComponentTable } from '../components/ScoreComponentTable';
-import { ScoreConfigValidationCard } from '../components/ScoreConfigValidationCard';
-import { ScoreConfigSummaryCard } from '../components/ScoreConfigSummaryCard';
-import { ScoreConfigActionBar } from '../components/ScoreConfigActionBar';
-import { ScoreComponentAddDialog } from '../components/ScoreComponentAddDialog';
-import { ScoreConfigHistoryDialog } from '../components/ScoreConfigHistoryDialog';
-import { ScoreConfigCloneReasonDialog } from '../components/ScoreConfigCloneReasonDialog';
+import { ScoreConfigGeneralCard } from '../components/score-config/ScoreConfigGeneralCard';
+import { ScoreComponentTable } from '../components/score-config/ScoreComponentTable';
+import { ScoreConfigValidationCard } from '../components/score-config/ScoreConfigValidationCard';
+import { ScoreConfigSummaryCard } from '../components/score-config/ScoreConfigSummaryCard';
+import { ScoreConfigActionBar } from '../components/score-config/ScoreConfigActionBar';
+import { ScoreComponentAddDialog } from '../components/score-config/ScoreComponentAddDialog';
+import { ScoreConfigHistoryDialog } from '../components/score-config/ScoreConfigHistoryDialog';
+import { ScoreConfigCloneReasonDialog } from '../components/score-config/ScoreConfigCloneReasonDialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { History, Wand2, CheckCircle2, AlertCircle, Save, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';

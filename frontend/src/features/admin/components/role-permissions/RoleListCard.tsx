@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { SYSTEM_ROLES } from '../constants/systemRoles';
-import type { SystemRoleInfo } from '../types/rolePermission.types';
+import { SYSTEM_ROLES } from '../../constants/systemRoles';
+import type { SystemRoleInfo } from '../../types/rolePermission.types';
 
 export interface RoleListCardProps {
   selectedRoleId: number;
