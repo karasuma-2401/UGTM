@@ -32,6 +32,88 @@ public sealed class StudentGroup : AggregateRoot<Guid>
     public IReadOnlyCollection<StudentGroupMember> Members => _members.AsReadOnly();
 
     public StudentGroupMember AddMember(Guid studentId, Guid batchId, DateTime joinedAt)
+        => AddConfirmedMember(studentId, batchId, joinedAt);
+
+    public StudentGroupMember AddConfirmedMember(Guid studentId, Guid batchId, DateTime joinedAt)
+    {
+        ValidateCanAddMember(studentId, batchId, joinedAt);
+
+        var member = new StudentGroupMember(
+            this,
+            studentId,
+            batchId,
+            joinedAt,
+            invitedByStudentId: null,
+            confirmationStatus: MemberConfirmationStatus.Confirmed,
+            confirmationTokenHash: null,
+            confirmationExpiresAtUtc: null,
+            confirmedAtUtc: joinedAt);
+
+        _members.Add(member);
+        return member;
+    }
+
+    public StudentGroupMember AddPendingMember(
+        Guid studentId,
+        Guid batchId,
+        Guid invitedByStudentId,
+        string confirmationTokenHash,
+        DateTime joinedAt,
+        DateTime expiresAtUtc)
+    {
+        ValidateCanAddMember(studentId, batchId, joinedAt);
+
+        if (invitedByStudentId == Guid.Empty)
+        {
+            throw new ArgumentException("Inviter student identifier must be nonempty.", nameof(invitedByStudentId));
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(confirmationTokenHash);
+
+        if (expiresAtUtc.Kind != DateTimeKind.Utc || expiresAtUtc <= joinedAt)
+        {
+            throw new ArgumentException("Confirmation expiration time must be in UTC and after joining time.", nameof(expiresAtUtc));
+        }
+
+        var member = new StudentGroupMember(
+            this,
+            studentId,
+            batchId,
+            joinedAt,
+            invitedByStudentId: invitedByStudentId,
+            confirmationStatus: MemberConfirmationStatus.Pending,
+            confirmationTokenHash: confirmationTokenHash,
+            confirmationExpiresAtUtc: expiresAtUtc,
+            confirmedAtUtc: null);
+
+        _members.Add(member);
+        return member;
+    }
+
+    public bool ConfirmMember(Guid studentId, DateTime confirmedAtUtc)
+    {
+        var member = _members.FirstOrDefault(m => m.StudentId == studentId);
+        if (member is null)
+        {
+            return false;
+        }
+
+        member.Confirm(confirmedAtUtc);
+        return true;
+    }
+
+    public bool RemoveMember(Guid studentId)
+    {
+        var member = _members.FirstOrDefault(m => m.StudentId == studentId);
+        if (member is null)
+        {
+            return false;
+        }
+
+        return _members.Remove(member);
+    }
+
+    private void ValidateCanAddMember(Guid studentId, Guid batchId, DateTime joinedAt)
     {
         if (studentId == Guid.Empty || batchId == Guid.Empty || joinedAt.Kind != DateTimeKind.Utc)
         {
@@ -57,10 +139,6 @@ public sealed class StudentGroup : AggregateRoot<Guid>
         {
             throw new InvalidOperationException("All members must belong to the same academic batch.");
         }
-
-        var member = new StudentGroupMember(this, studentId, batchId, joinedAt);
-        _members.Add(member);
-        return member;
     }
 
     public bool TrySubmitSyllabus()

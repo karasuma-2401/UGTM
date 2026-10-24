@@ -2545,9 +2545,34 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("batch_id");
 
+                    b.Property<DateTime?>("ConfirmationExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmation_expires_at_utc");
+
+                    b.Property<string>("ConfirmationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Confirmed")
+                        .HasColumnName("confirmation_status");
+
+                    b.Property<string>("ConfirmationTokenHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("confirmation_token_hash");
+
+                    b.Property<DateTime?>("ConfirmedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at_utc");
+
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
+
+                    b.Property<Guid?>("InvitedByStudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invited_by_student_id");
 
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2563,6 +2588,15 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasIndex("BatchId")
                         .HasDatabaseName("ix_student_group_member_batch_id");
 
+                    b.HasIndex("ConfirmationTokenHash")
+                        .HasDatabaseName("ix_student_group_member_confirmation_token_hash");
+
+                    b.HasIndex("InvitedByStudentId")
+                        .HasDatabaseName("ix_student_group_member_invited_by_student_id");
+
+                    b.HasIndex("ConfirmationStatus", "ConfirmationExpiresAtUtc")
+                        .HasDatabaseName("ix_student_group_member_status_expires");
+
                     b.HasIndex("GroupId", "StudentId")
                         .IsUnique()
                         .HasDatabaseName("ix_student_group_member_group_id_student_id");
@@ -2572,6 +2606,44 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDatabaseName("ix_student_group_member_student_id_batch_id");
 
                     b.ToTable("student_group_member", "thesis");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.StudentRegistrationPenalty", b =>
+                {
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.Property<DateTime?>("BlockedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("blocked_at_utc");
+
+                    b.Property<bool>("IsRegistrationBlocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_registration_blocked");
+
+                    b.Property<DateTime?>("LastViolationAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_violation_at_utc");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("ViolationCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("violation_count");
+
+                    b.HasKey("StudentId")
+                        .HasName("pk_student_registration_penalty");
+
+                    b.ToTable("student_registration_penalty", "thesis");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionFile", b =>
@@ -3345,12 +3417,28 @@ namespace UGTM.Database.Migrations.Migrations
 
                     b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
                         .WithMany()
+                        .HasForeignKey("InvitedByStudentId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_student_group_member_user_invited_by_student_id");
+
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
+                        .WithMany()
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_student_group_member_user_student_id");
 
                     b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.StudentRegistrationPenalty", b =>
+                {
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_student_registration_penalty_user_student_id");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionFile", b =>

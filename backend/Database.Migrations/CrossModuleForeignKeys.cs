@@ -108,6 +108,14 @@ internal static class CrossModuleForeignKeys
             .WithMany().HasForeignKey(x => x.StudentId)
             .HasConstraintName("fk_student_group_member_user_student_id")
             .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentGroupMember>().HasOne<User>()
+            .WithMany().HasForeignKey(x => x.InvitedByStudentId)
+            .HasConstraintName("fk_student_group_member_user_invited_by_student_id")
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<StudentRegistrationPenalty>().HasOne<User>()
+            .WithMany().HasForeignKey(x => x.StudentId)
+            .HasConstraintName("fk_student_registration_penalty_user_student_id")
+            .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SubmissionFile>().HasOne<User>()
             .WithMany().HasForeignKey(x => x.UploadedBy)
             .HasConstraintName("fk_submission_file_user_uploaded_by")

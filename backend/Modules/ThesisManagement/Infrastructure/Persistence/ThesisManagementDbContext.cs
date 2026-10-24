@@ -1,5 +1,6 @@
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
+using UGTM.Modules.ThesisManagement.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -20,6 +21,7 @@ public sealed class ThesisManagementDbContext(DbContextOptions<ThesisManagementD
     public DbSet<RenameRequest> RenameRequests => Set<RenameRequest>();
     public DbSet<StudentGroup> StudentGroups => Set<StudentGroup>();
     public DbSet<StudentGroupMember> StudentGroupMembers => Set<StudentGroupMember>();
+    public DbSet<StudentRegistrationPenalty> StudentRegistrationPenalties => Set<StudentRegistrationPenalty>();
     public DbSet<SubmissionFile> SubmissionFiles => Set<SubmissionFile>();
     public DbSet<SubmissionReview> SubmissionReviews => Set<SubmissionReview>();
     public DbSet<Syllabus> Syllabuses => Set<Syllabus>();
