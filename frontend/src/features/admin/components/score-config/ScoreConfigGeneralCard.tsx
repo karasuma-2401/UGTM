@@ -5,7 +5,7 @@ import {
   type ScoreCalculationMethod,
   type KltnBatchSummaryDto,
   CALCULATION_METHOD_LABELS,
-} from '../types/scoreConfig.types';
+} from '../../types/scoreConfig.types';
 
 export interface ScoreConfigGeneralCardProps {
   batches: KltnBatchSummaryDto[];

@@ -1,6 +1,6 @@
 import React from 'react';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
-import type { ScoreCalculationMethod } from '../types/scoreConfig.types';
+import type { ScoreCalculationMethod } from '../../types/scoreConfig.types';
 
 export interface ScoreConfigValidationCardProps {
   calculationMethod: ScoreCalculationMethod;

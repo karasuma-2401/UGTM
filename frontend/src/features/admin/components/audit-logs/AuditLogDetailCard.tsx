@@ -3,8 +3,8 @@ import {
   formatAuditFullTime,
   formatAuditAction,
   parseAuditDiff,
-} from '../utils/parseAuditDiff';
-import type { AuditLogItem } from '../types/auditLog.types';
+} from '../../utils/parseAuditDiff';
+import type { AuditLogItem } from '../../types/auditLog.types';
 
 interface AuditLogDetailCardProps {
   log: AuditLogItem | null;

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { AuditLogFilterBar } from '../components/AuditLogFilterBar';
-import { AuditLogTable } from '../components/AuditLogTable';
-import { AuditLogDiffCard } from '../components/AuditLogDiffCard';
-import { AuditLogDetailCard } from '../components/AuditLogDetailCard';
+import { AuditLogFilterBar } from '../components/audit-logs/AuditLogFilterBar';
+import { AuditLogTable } from '../components/audit-logs/AuditLogTable';
+import { AuditLogDiffCard } from '../components/audit-logs/AuditLogDiffCard';
+import { AuditLogDetailCard } from '../components/audit-logs/AuditLogDetailCard';
 import { auditLogApi, getAuditLogErrorMessage } from '../services/auditLogApi';
 import type {
   AuditLogItem,

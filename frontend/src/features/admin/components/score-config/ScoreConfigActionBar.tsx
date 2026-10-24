@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Sliders, Percent } from 'lucide-react';
-import type { ScoreCalculationMethod } from '../types/scoreConfig.types';
+import type { ScoreCalculationMethod } from '../../types/scoreConfig.types';
 import { cn } from '@/lib/utils';
 
 export interface ScoreConfigActionBarProps {
