@@ -19,11 +19,13 @@ public class StudentGroupConfiguration : IEntityTypeConfiguration<StudentGroup>
             .HasDefaultValue(StudentGroupStatus.Registered)
             .HasSentinel(StudentGroupStatus.Registered);
 
+        builder.Property(x => x.AllowSyllabusResubmission)
+            .HasDefaultValue(false);
+
         builder.Property(x => x.CreatedAt)
             .IsRequired();
 
         builder.Property(x => x.Version)
             .IsRowVersion();
-
     }
 }

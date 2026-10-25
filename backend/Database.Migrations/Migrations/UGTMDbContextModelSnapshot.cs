@@ -2415,6 +2415,22 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("reason");
 
+                    b.Property<DateTime?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rejected_at");
+
+                    b.Property<Guid?>("RejectedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rejected_by");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("text")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<Guid>("RequestedByStudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_student_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -2502,6 +2518,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<bool>("AllowSyllabusResubmission")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("allow_syllabus_resubmission");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")

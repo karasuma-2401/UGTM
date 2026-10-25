@@ -20,6 +20,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
+using UGTM.Modules.TopicCatalog.Contracts.RenameRequests;
 
 namespace UGTM.Modules.TopicCatalog.Infrastructure;
 
@@ -36,6 +37,7 @@ public sealed class TopicCatalogModule : IModule
         services.AddScoped<ITopicUnitOfWork>(provider => provider.GetRequiredService<TopicCatalogDbContext>());
         services.AddScoped<ITopicQueryReader, TopicQueryReader>();
         services.AddScoped<ITopicAdvisorAssignmentContract, TopicAdvisorAssignmentContract>();
+        services.AddScoped<ITopicRenameContract, TopicRenameContract>();
 
         // Command Handlers
         services.AddScoped<CreateTopicHandler>();

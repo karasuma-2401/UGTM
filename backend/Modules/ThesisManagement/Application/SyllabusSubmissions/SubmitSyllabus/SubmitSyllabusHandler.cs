@@ -65,7 +65,16 @@ public sealed class SubmitSyllabusHandler(
 
         var syllabus = await syllabusRepository.GetByGroupIdAsync(command.GroupId, cancellationToken);
         var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
-        if (syllabus is null)
+        var isRenameResubmission = group.AllowSyllabusResubmission;
+
+        if (isRenameResubmission)
+        {
+            if (syllabus is null)
+            {
+                return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.InvalidSubmissionState);
+            }
+        }
+        else if (syllabus is null)
         {
             if (group.Status != StudentGroupStatus.Registered)
             {
@@ -139,22 +148,35 @@ public sealed class SubmitSyllabusHandler(
 
         try
         {
-            if (isFirstSubmission)
+            if (isRenameResubmission)
+            {
+                syllabus!.SubmitUpdatedAfterRename();
+                group.ConsumeSyllabusResubmission();
+            }
+            else if (isFirstSubmission)
             {
                 syllabus = Syllabus.CreateSubmitted(syllabusId, command.GroupId);
                 syllabusRepository.Add(syllabus);
+
+                if (!group.TrySubmitSyllabus())
+                {
+                    return await DeleteObjectAndFailAsync(
+                        objectKey,
+                        SyllabusSubmissionErrors.InvalidSubmissionState,
+                        cancellationToken);
+                }
             }
             else
             {
                 syllabus!.SubmitRevision();
-            }
 
-            if (!group.TrySubmitSyllabus())
-            {
-                return await DeleteObjectAndFailAsync(
-                    objectKey,
-                    SyllabusSubmissionErrors.InvalidSubmissionState,
-                    cancellationToken);
+                if (!group.TrySubmitSyllabus())
+                {
+                    return await DeleteObjectAndFailAsync(
+                        objectKey,
+                        SyllabusSubmissionErrors.InvalidSubmissionState,
+                        cancellationToken);
+                }
             }
 
             submissionFileRepository.Add(submissionFile);

@@ -44,6 +44,12 @@ using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.ConfirmTopicR
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.Expiration;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.GetMyRegistrationStatus;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.RegisterTopic;
+using UGTM.Modules.ThesisManagement.Application.RenameRequests.CreateRenameRequest;
+using UGTM.Modules.ThesisManagement.Application.RenameRequests.GetGroupRenameRequests;
+using UGTM.Modules.ThesisManagement.Application.RenameRequests.GetRenameRequests;
+using UGTM.Modules.ThesisManagement.Application.RenameRequests.ReviewByAcademicAffairs;
+using UGTM.Modules.ThesisManagement.Application.RenameRequests.ReviewByAdvisor;
+using UGTM.Modules.ThesisManagement.Application.RenameRequests.ReviewByFaculty;
 using UGTM.Modules.ThesisManagement.Infrastructure.BackgroundServices;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
@@ -63,6 +69,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
         services.AddScoped<ISubmissionFileRepository, SubmissionFileRepository>();
         services.AddScoped<ISubmissionReviewRepository, SubmissionReviewRepository>();
+        services.AddScoped<IRenameRequestRepository, RenameRequestRepository>();
         services.AddScoped<IThesisUnitOfWork>(provider => provider.GetRequiredService<ThesisManagementDbContext>());
         services.AddScoped<IThesisRegistrationContract, ThesisRegistrationContract>();
         services.AddScoped<IThesisManagementAuditOutbox, ThesisManagementAuditOutbox>();
@@ -115,6 +122,14 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<AdvisorUnassignTopicStudentsHandler>();
         services.AddScoped<ITopicRegistrationExpirationEnforcer, TopicRegistrationExpirationEnforcer>();
         services.AddHostedService<TopicRegistrationExpirationWorker>();
+
+        // Rename Requests
+        services.AddScoped<CreateRenameRequestHandler>();
+        services.AddScoped<GetGroupRenameRequestsHandler>();
+        services.AddScoped<GetRenameRequestsHandler>();
+        services.AddScoped<ReviewRenameRequestByAdvisorHandler>();
+        services.AddScoped<ReviewRenameRequestByFacultyHandler>();
+        services.AddScoped<ReviewRenameRequestByAcademicAffairsHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
@@ -125,6 +140,7 @@ public sealed class ThesisManagementModule : IModule
         endpoints.MapProgressMilestoneEndpoints();
         endpoints.MapProgressReportSubmissionEndpoints();
         endpoints.MapTopicRegistrationEndpoints();
+        endpoints.MapRenameRequestEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))

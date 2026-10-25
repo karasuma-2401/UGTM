@@ -20,4 +20,22 @@ internal static class ThesisAuthorization
            && currentUser.UserId.HasValue
            && (IsAdministrator(currentUser)
                || currentUser.Permissions.Contains(PermissionCodes.ThesisReviewGatesReview));
+
+    internal static bool CanReviewRenameRequestAdvisor(ICurrentUser currentUser, Guid advisorId)
+        => currentUser.IsAuthenticated
+           && currentUser.UserId.HasValue
+           && (IsAdministrator(currentUser) || currentUser.UserId.Value == advisorId);
+
+    internal static bool CanReviewRenameRequestFaculty(ICurrentUser currentUser)
+        => currentUser.IsAuthenticated
+           && currentUser.UserId.HasValue
+           && (IsAdministrator(currentUser)
+               || currentUser.Roles.Any(r => string.Equals(r, "Faculty", StringComparison.OrdinalIgnoreCase))
+               || currentUser.Permissions.Contains(PermissionCodes.ThesisReviewGatesReview));
+
+    internal static bool CanReviewRenameRequestAcademicAffairs(ICurrentUser currentUser)
+        => currentUser.IsAuthenticated
+           && currentUser.UserId.HasValue
+           && (IsAdministrator(currentUser)
+               || currentUser.Roles.Any(r => string.Equals(r, "AcademicAffairs", StringComparison.OrdinalIgnoreCase)));
 }
