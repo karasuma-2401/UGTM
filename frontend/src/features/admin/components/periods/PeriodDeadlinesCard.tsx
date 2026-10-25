@@ -8,6 +8,10 @@ interface PeriodDeadlinesCardProps {
   midtermDeadline: string;
   finalEvaluationDeadline: string;
   defenseDeadline: string;
+  syllabusMinDate?: string;
+  midtermMinDate?: string;
+  finalEvaluationMinDate?: string;
+  defenseMinDate?: string;
   canEdit: boolean;
   onSyllabusDeadlineChange: (val: string) => void;
   onMidtermDeadlineChange: (val: string) => void;
@@ -21,6 +25,10 @@ export const PeriodDeadlinesCard: React.FC<PeriodDeadlinesCardProps> = ({
   midtermDeadline,
   finalEvaluationDeadline,
   defenseDeadline,
+  syllabusMinDate,
+  midtermMinDate,
+  finalEvaluationMinDate,
+  defenseMinDate,
   canEdit,
   onSyllabusDeadlineChange,
   onMidtermDeadlineChange,
@@ -52,9 +60,10 @@ export const PeriodDeadlinesCard: React.FC<PeriodDeadlinesCardProps> = ({
             Đề cương
           </label>
           <Input
-            type="datetime-local"
+            type="date"
             disabled={!canEdit}
             value={syllabusDeadline}
+            min={syllabusMinDate}
             onChange={(e) => onSyllabusDeadlineChange(e.target.value)}
             className="h-10 text-sm border-slate-200"
           />
@@ -65,9 +74,10 @@ export const PeriodDeadlinesCard: React.FC<PeriodDeadlinesCardProps> = ({
             Giữa kỳ
           </label>
           <Input
-            type="datetime-local"
+            type="date"
             disabled={!canEdit}
             value={midtermDeadline}
+            min={midtermMinDate}
             onChange={(e) => onMidtermDeadlineChange(e.target.value)}
             className="h-10 text-sm border-slate-200"
           />
@@ -78,9 +88,10 @@ export const PeriodDeadlinesCard: React.FC<PeriodDeadlinesCardProps> = ({
             Cuối kỳ
           </label>
           <Input
-            type="datetime-local"
+            type="date"
             disabled={!canEdit}
             value={finalEvaluationDeadline}
+            min={finalEvaluationMinDate}
             onChange={(e) => onFinalEvaluationDeadlineChange(e.target.value)}
             className="h-10 text-sm border-slate-200"
           />
@@ -91,9 +102,10 @@ export const PeriodDeadlinesCard: React.FC<PeriodDeadlinesCardProps> = ({
             Bảo vệ / Lưu chiểu
           </label>
           <Input
-            type="datetime-local"
+            type="date"
             disabled={!canEdit}
             value={defenseDeadline}
+            min={defenseMinDate}
             onChange={(e) => onDefenseDeadlineChange(e.target.value)}
             className="h-10 text-sm border-slate-200"
           />

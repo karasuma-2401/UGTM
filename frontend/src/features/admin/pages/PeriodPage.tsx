@@ -44,29 +44,15 @@ function addDaysToDateString(baseDateStr: string, daysToAdd: number): string {
   }
 }
 
-function toLocalDatetimeInput(utcStr?: string): string {
-  if (!utcStr) return '';
+function toUtcDeadlineIso(dateInputStr: string, time: string = '23:59:00'): string {
+  if (!dateInputStr) return '';
   try {
-    const d = new Date(utcStr);
-    if (isNaN(d.getTime())) return '';
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    const mm = pad(d.getMonth() + 1);
-    const dd = pad(d.getDate());
-    const hh = pad(d.getHours());
-    const min = pad(d.getMinutes());
-    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-  } catch {
-    return '';
-  }
-}
-
-function toUtcIso(localDatetimeStr: string): string {
-  if (!localDatetimeStr) return '';
-  try {
-    const d = new Date(localDatetimeStr);
-    if (isNaN(d.getTime())) return '';
-    return d.toISOString();
+    const dateOnly = dateInputStr.includes('T') ? dateInputStr.split('T')[0] : dateInputStr;
+    const [y, m, d] = dateOnly.split('-').map(Number);
+    if (!y || !m || !d) return '';
+    const [hh, mm, ss] = time.split(':').map(Number);
+    const localDate = new Date(y, m - 1, d, hh || 23, mm || 59, ss || 0, 0);
+    return localDate.toISOString();
   } catch {
     return '';
   }
@@ -92,11 +78,6 @@ export const PeriodPage: React.FC = () => {
   const [startDate, setStartDate] = useState<string>('');
 
   const [stageWeeks, setStageWeeks] = useState<number[]>([...DEFAULT_STAGE_WEEKS]);
-
-  const [syllabusDeadline, setSyllabusDeadline] = useState<string>('');
-  const [midtermDeadline, setMidtermDeadline] = useState<string>('');
-  const [finalEvaluationDeadline, setFinalEvaluationDeadline] = useState<string>('');
-  const [defenseDeadline, setDefenseDeadline] = useState<string>('');
 
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isOpenLoading, setIsOpenLoading] = useState<boolean>(false);
@@ -133,10 +114,6 @@ export const PeriodPage: React.FC = () => {
       const stageEndDate = addDaysToDateString(stageStartDate, weeks * 7 - 1);
       currentStart = addDaysToDateString(stageEndDate, 1);
 
-      const [y, m, d] = stageEndDate.split('-').map(Number);
-      const localDeadline = new Date(y, m - 1, d, 23, 59, 0, 0);
-      const defaultDeadlineUtc = localDeadline.toISOString();
-
       result.push({
         orderIndex: meta.orderIndex,
         stageCode: meta.stageCode,
@@ -149,12 +126,16 @@ export const PeriodPage: React.FC = () => {
         weekLabel: weeks === 1 ? `Tuần ${startWeek}` : `Tuần ${startWeek}–${endWeek}`,
         startDate: stageStartDate,
         endDate: stageEndDate,
-        defaultDeadlineUtc,
       });
     }
 
     return result;
   }, [startDate, stageWeeks]);
+
+  const syllabusDeadline = computedStages[1]?.endDate || '';
+  const midtermDeadline = computedStages[3]?.endDate || '';
+  const finalEvaluationDeadline = computedStages[4]?.endDate || '';
+  const defenseDeadline = computedStages[5]?.endDate || '';
 
   const totalWeeks = useMemo(
     () => stageWeeks.reduce((acc, w) => acc + w, 0),
@@ -167,6 +148,38 @@ export const PeriodPage: React.FC = () => {
       next[index] = Math.max(1, newWeeks);
       return next;
     });
+  };
+
+  const handleSyllabusDeadlineChange = (val: string) => {
+    if (!val || !/^\d{4}-\d{2}-\d{2}$/.test(val) || !computedStages[1]) return;
+    const stageStart = computedStages[1].startDate;
+    const diffDays = Math.round((new Date(val).getTime() - new Date(stageStart).getTime()) / 86400000) + 1;
+    const newWeeks = Math.max(1, Math.round(diffDays / 7));
+    handleStageWeeksChange(1, newWeeks);
+  };
+
+  const handleMidtermDeadlineChange = (val: string) => {
+    if (!val || !/^\d{4}-\d{2}-\d{2}$/.test(val) || !computedStages[3]) return;
+    const stageStart = computedStages[3].startDate;
+    const diffDays = Math.round((new Date(val).getTime() - new Date(stageStart).getTime()) / 86400000) + 1;
+    const newWeeks = Math.max(1, Math.round(diffDays / 7));
+    handleStageWeeksChange(3, newWeeks);
+  };
+
+  const handleFinalEvaluationDeadlineChange = (val: string) => {
+    if (!val || !/^\d{4}-\d{2}-\d{2}$/.test(val) || !computedStages[4]) return;
+    const stageStart = computedStages[4].startDate;
+    const diffDays = Math.round((new Date(val).getTime() - new Date(stageStart).getTime()) / 86400000) + 1;
+    const newWeeks = Math.max(1, Math.round(diffDays / 7));
+    handleStageWeeksChange(4, newWeeks);
+  };
+
+  const handleDefenseDeadlineChange = (val: string) => {
+    if (!val || !/^\d{4}-\d{2}-\d{2}$/.test(val) || !computedStages[5]) return;
+    const stageStart = computedStages[5].startDate;
+    const diffDays = Math.round((new Date(val).getTime() - new Date(stageStart).getTime()) / 86400000) + 1;
+    const newWeeks = Math.max(1, Math.round(diffDays / 7));
+    handleStageWeeksChange(5, newWeeks);
   };
 
   const handleResetDefaultWeeks = () => {
@@ -209,16 +222,6 @@ export const PeriodPage: React.FC = () => {
       setSemester(1);
       setBatchName('Đợt 1');
       setStageWeeks([...DEFAULT_STAGE_WEEKS]);
-
-      const s2End = addDaysToDateString(defaultStart, 13);
-      const s4End = addDaysToDateString(defaultStart, 69);
-      const s5End = addDaysToDateString(defaultStart, 125);
-      const s6End = addDaysToDateString(defaultStart, 139);
-
-      setSyllabusDeadline(`${s2End}T23:59`);
-      setMidtermDeadline(`${s4End}T23:59`);
-      setFinalEvaluationDeadline(`${s5End}T23:59`);
-      setDefenseDeadline(`${s6End}T23:59`);
       return;
     }
 
@@ -251,27 +254,6 @@ export const PeriodPage: React.FC = () => {
       } else {
         setStageWeeks([...DEFAULT_STAGE_WEEKS]);
       }
-
-      const sylGate = gates.find((g) => g.gateType === 'Syllabus');
-      const midGate = gates.find((g) => g.gateType === 'Midterm');
-
-      const stage2 = detail.stages.find((s) => s.orderIndex === 2 || s.stageCode === 'REGISTRATION_AND_SYLLABUS');
-      const stage4 = detail.stages.find((s) => s.orderIndex === 4 || s.stageCode === 'MIDTERM_GATE');
-      const stage5 = detail.stages.find((s) => s.orderIndex === 5 || s.stageCode === 'FINAL_EVALUATION');
-      const stage6 = detail.stages.find((s) => s.orderIndex === 6 || s.stageCode === 'DEFENSE');
-
-      setSyllabusDeadline(
-        toLocalDatetimeInput(sylGate?.finalClosureDeadlineUtc || stage2?.deadlineAtUtc),
-      );
-      setMidtermDeadline(
-        toLocalDatetimeInput(midGate?.finalClosureDeadlineUtc || stage4?.deadlineAtUtc),
-      );
-      setFinalEvaluationDeadline(
-        toLocalDatetimeInput(stage5?.deadlineAtUtc),
-      );
-      setDefenseDeadline(
-        toLocalDatetimeInput(stage6?.deadlineAtUtc),
-      );
     } catch (err) {
       setErrorMessage(getPeriodErrorMessage(err));
     } finally {
@@ -310,6 +292,30 @@ export const PeriodPage: React.FC = () => {
 
     setIsSaving(true);
     try {
+      const stagesPayload: UpdateStageScheduleItem[] = computedStages.map((cs) => {
+        let deadlineDate = cs.endDate;
+        if (cs.orderIndex === 2 && syllabusDeadline) {
+          deadlineDate = syllabusDeadline;
+        } else if (cs.orderIndex === 4 && midtermDeadline) {
+          deadlineDate = midtermDeadline;
+        } else if (cs.orderIndex === 5 && finalEvaluationDeadline) {
+          deadlineDate = finalEvaluationDeadline;
+        } else if (cs.orderIndex === 6 && defenseDeadline) {
+          deadlineDate = defenseDeadline;
+        }
+
+        return {
+          orderIndex: cs.orderIndex,
+          stageCode: cs.stageCode,
+          stageName: cs.stageName,
+          startDate: cs.startDate,
+          endDate: cs.endDate,
+          deadlineAtUtc: toUtcDeadlineIso(deadlineDate, '23:59:00'),
+        };
+      });
+
+      let targetBatchId = currentBatch?.id;
+
       if (selectedBatchId === 'new') {
         const createdBatch = await periodApi.createBatch({
           batchName: batchName.trim(),
@@ -318,99 +324,31 @@ export const PeriodPage: React.FC = () => {
           startDate,
         });
 
-        const stagesPayload: UpdateStageScheduleItem[] = computedStages.map((cs) => {
-          let deadlineUtc = cs.defaultDeadlineUtc;
-          if (cs.orderIndex === 2 && syllabusDeadline) {
-            deadlineUtc = toUtcIso(syllabusDeadline);
-          } else if (cs.orderIndex === 4 && midtermDeadline) {
-            deadlineUtc = toUtcIso(midtermDeadline);
-          } else if (cs.orderIndex === 5 && finalEvaluationDeadline) {
-            deadlineUtc = toUtcIso(finalEvaluationDeadline);
-          } else if (cs.orderIndex === 6 && defenseDeadline) {
-            deadlineUtc = toUtcIso(defenseDeadline);
-          }
+        targetBatchId = createdBatch.id;
 
-          return {
-            orderIndex: cs.orderIndex,
-            stageCode: cs.stageCode,
-            stageName: cs.stageName,
-            startDate: cs.startDate,
-            endDate: cs.endDate,
-            deadlineAtUtc: deadlineUtc,
-          };
-        });
-
-        await periodApi.updateSchedule(createdBatch.id, {
+        await periodApi.updateSchedule(targetBatchId, {
           stages: stagesPayload,
         });
 
-        if (syllabusDeadline) {
-          const finalUtc = toUtcIso(syllabusDeadline);
-          const finalDate = new Date(syllabusDeadline);
-          const facultyDate = new Date(finalDate.getTime() - 2 * 86400000);
-          const initialDate = new Date(finalDate.getTime() - 5 * 86400000);
-          try {
-            await periodApi.upsertReviewGateConfiguration(createdBatch.id, 'Syllabus', {
-              initialSubmissionDeadlineUtc: initialDate.toISOString(),
-              facultyResponseDeadlineUtc: facultyDate.toISOString(),
-              finalClosureDeadlineUtc: finalUtc,
-            });
-          } catch {
-          }
-        }
-
-        if (midtermDeadline) {
-          const finalUtc = toUtcIso(midtermDeadline);
-          const finalDate = new Date(midtermDeadline);
-          const facultyDate = new Date(finalDate.getTime() - 2 * 86400000);
-          const initialDate = new Date(finalDate.getTime() - 5 * 86400000);
-          try {
-            await periodApi.upsertReviewGateConfiguration(createdBatch.id, 'Midterm', {
-              initialSubmissionDeadlineUtc: initialDate.toISOString(),
-              facultyResponseDeadlineUtc: facultyDate.toISOString(),
-              finalClosureDeadlineUtc: finalUtc,
-            });
-          } catch {
-          }
-        }
-
         setNotice('Khởi tạo đợt KLTN và cấu hình lịch trình giai đoạn thành công!');
-        await fetchBatches(createdBatch.id);
-      } else if (currentBatch) {
-        const stagesPayload: UpdateStageScheduleItem[] = computedStages.map((cs) => {
-          let deadlineUtc = cs.defaultDeadlineUtc;
-          if (cs.orderIndex === 2 && syllabusDeadline) {
-            deadlineUtc = toUtcIso(syllabusDeadline);
-          } else if (cs.orderIndex === 4 && midtermDeadline) {
-            deadlineUtc = toUtcIso(midtermDeadline);
-          } else if (cs.orderIndex === 5 && finalEvaluationDeadline) {
-            deadlineUtc = toUtcIso(finalEvaluationDeadline);
-          } else if (cs.orderIndex === 6 && defenseDeadline) {
-            deadlineUtc = toUtcIso(defenseDeadline);
-          }
-
-          return {
-            orderIndex: cs.orderIndex,
-            stageCode: cs.stageCode,
-            stageName: cs.stageName,
-            startDate: cs.startDate,
-            endDate: cs.endDate,
-            deadlineAtUtc: deadlineUtc,
-          };
-        });
-
-        const updated = await periodApi.updateSchedule(currentBatch.id, {
+      } else if (targetBatchId) {
+        const updated = await periodApi.updateSchedule(targetBatchId, {
           stages: stagesPayload,
           changeReason: reason || undefined,
         });
 
+        setCurrentBatch(updated);
+        setNotice('Lưu kế hoạch đợt và deadline thành công!');
+      }
+
+      if (targetBatchId) {
         if (syllabusDeadline) {
-          const finalUtc = toUtcIso(syllabusDeadline);
-          const finalDate = new Date(syllabusDeadline);
-          const facultyDate = new Date(finalDate.getTime() - 2 * 86400000);
-          const initialDate = new Date(finalDate.getTime() - 5 * 86400000);
+          const finalUtc = toUtcDeadlineIso(syllabusDeadline, '23:59:00');
+          const [y, m, d] = syllabusDeadline.split('-').map(Number);
+          const facultyDate = new Date(y, m - 1, d - 2, 23, 59, 0, 0);
+          const initialDate = new Date(y, m - 1, d - 5, 23, 59, 0, 0);
           try {
-            await periodApi.upsertReviewGateConfiguration(currentBatch.id, 'Syllabus', {
+            await periodApi.upsertReviewGateConfiguration(targetBatchId, 'Syllabus', {
               initialSubmissionDeadlineUtc: initialDate.toISOString(),
               facultyResponseDeadlineUtc: facultyDate.toISOString(),
               finalClosureDeadlineUtc: finalUtc,
@@ -420,12 +358,12 @@ export const PeriodPage: React.FC = () => {
         }
 
         if (midtermDeadline) {
-          const finalUtc = toUtcIso(midtermDeadline);
-          const finalDate = new Date(midtermDeadline);
-          const facultyDate = new Date(finalDate.getTime() - 2 * 86400000);
-          const initialDate = new Date(finalDate.getTime() - 5 * 86400000);
+          const finalUtc = toUtcDeadlineIso(midtermDeadline, '23:59:00');
+          const [y, m, d] = midtermDeadline.split('-').map(Number);
+          const facultyDate = new Date(y, m - 1, d - 2, 23, 59, 0, 0);
+          const initialDate = new Date(y, m - 1, d - 5, 23, 59, 0, 0);
           try {
-            await periodApi.upsertReviewGateConfiguration(currentBatch.id, 'Midterm', {
+            await periodApi.upsertReviewGateConfiguration(targetBatchId, 'Midterm', {
               initialSubmissionDeadlineUtc: initialDate.toISOString(),
               facultyResponseDeadlineUtc: facultyDate.toISOString(),
               finalClosureDeadlineUtc: finalUtc,
@@ -434,9 +372,11 @@ export const PeriodPage: React.FC = () => {
           }
         }
 
-        setCurrentBatch(updated);
-        setNotice('Lưu kế hoạch đợt và deadline thành công!');
-        await loadBatchDetail(currentBatch.id);
+        if (selectedBatchId === 'new') {
+          await fetchBatches(targetBatchId);
+        } else {
+          await loadBatchDetail(targetBatchId);
+        }
       }
     } catch (err) {
       setErrorMessage(getPeriodErrorMessage(err));
@@ -485,20 +425,20 @@ export const PeriodPage: React.FC = () => {
 
     if (syllabus.final) {
       await periodApi.upsertReviewGateConfiguration(currentBatch.id, 'Syllabus', {
-        initialSubmissionDeadlineUtc: toUtcIso(syllabus.initial),
-        facultyResponseDeadlineUtc: toUtcIso(syllabus.faculty),
-        finalClosureDeadlineUtc: toUtcIso(syllabus.final),
+        initialSubmissionDeadlineUtc: toUtcDeadlineIso(syllabus.initial, '23:59:00'),
+        facultyResponseDeadlineUtc: toUtcDeadlineIso(syllabus.faculty, '23:59:00'),
+        finalClosureDeadlineUtc: toUtcDeadlineIso(syllabus.final, '23:59:00'),
       });
-      setSyllabusDeadline(syllabus.final);
+      handleSyllabusDeadlineChange(syllabus.final);
     }
 
     if (midterm.final) {
       await periodApi.upsertReviewGateConfiguration(currentBatch.id, 'Midterm', {
-        initialSubmissionDeadlineUtc: toUtcIso(midterm.initial),
-        facultyResponseDeadlineUtc: toUtcIso(midterm.faculty),
-        finalClosureDeadlineUtc: toUtcIso(midterm.final),
+        initialSubmissionDeadlineUtc: toUtcDeadlineIso(midterm.initial, '23:59:00'),
+        facultyResponseDeadlineUtc: toUtcDeadlineIso(midterm.faculty, '23:59:00'),
+        finalClosureDeadlineUtc: toUtcDeadlineIso(midterm.final, '23:59:00'),
       });
-      setMidtermDeadline(midterm.final);
+      handleMidtermDeadlineChange(midterm.final);
     }
 
     const updatedGates = await periodApi.getReviewGateConfigurations(currentBatch.id);
@@ -517,35 +457,31 @@ export const PeriodPage: React.FC = () => {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Khởi tạo đợt & deadline
             </h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#2054A5] ring-1 ring-blue-500/20">
-              <CalendarRange className="size-3.5" />
-              Kế hoạch đợt
-            </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <select
             value={selectedBatchId}
-            disabled={isLoadingBatches}
             onChange={(e) => setSelectedBatchId(e.target.value)}
-            className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-[#2054A5]"
+            disabled={isLoadingBatches}
+            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-[#2054A5]"
           >
+            <option value="new">+ Khởi tạo đợt mới</option>
             {batches.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.batchName} ({b.academicYear} - HK{b.semester}) — {b.status}
+                {b.batchName} ({b.academicYear} - HK{b.semester}) [{b.status}]
               </option>
             ))}
-            <option value="new">+ Khởi tạo đợt mới...</option>
           </select>
 
-          {canManageBatch && selectedBatchId !== 'new' && (
+          {canManageBatch && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setSelectedBatchId('new')}
-              className="h-9 gap-1 text-xs font-medium"
+              className="h-9 gap-1.5 text-xs font-medium"
             >
               <Plus className="size-3.5" />
               Đợt mới
@@ -603,11 +539,15 @@ export const PeriodPage: React.FC = () => {
             midtermDeadline={midtermDeadline}
             finalEvaluationDeadline={finalEvaluationDeadline}
             defenseDeadline={defenseDeadline}
+            syllabusMinDate={computedStages[1]?.startDate}
+            midtermMinDate={computedStages[3]?.startDate}
+            finalEvaluationMinDate={computedStages[4]?.startDate}
+            defenseMinDate={computedStages[5]?.startDate}
             canEdit={canEdit}
-            onSyllabusDeadlineChange={setSyllabusDeadline}
-            onMidtermDeadlineChange={setMidtermDeadline}
-            onFinalEvaluationDeadlineChange={setFinalEvaluationDeadline}
-            onDefenseDeadlineChange={setDefenseDeadline}
+            onSyllabusDeadlineChange={handleSyllabusDeadlineChange}
+            onMidtermDeadlineChange={handleMidtermDeadlineChange}
+            onFinalEvaluationDeadlineChange={handleFinalEvaluationDeadlineChange}
+            onDefenseDeadlineChange={handleDefenseDeadlineChange}
             onOpenGateDetails={() => setIsGateDetailsOpen(true)}
           />
         </div>

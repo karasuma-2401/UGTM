@@ -24,18 +24,16 @@ interface PeriodReviewGateDialogProps {
   ) => Promise<void>;
 }
 
-function toLocalDatetimeInput(utcStr?: string): string {
+function toLocalDateInput(utcStr?: string): string {
   if (!utcStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(utcStr)) {
+    return utcStr;
+  }
   try {
     const d = new Date(utcStr);
     if (isNaN(d.getTime())) return '';
     const pad = (n: number) => String(n).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    const mm = pad(d.getMonth() + 1);
-    const dd = pad(d.getDate());
-    const hh = pad(d.getHours());
-    const min = pad(d.getMinutes());
-    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   } catch {
     return '';
   }
@@ -64,13 +62,13 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
 
   useEffect(() => {
     if (open) {
-      setSInitial(toLocalDatetimeInput(syllabusGate?.initialSubmissionDeadlineUtc));
-      setSFaculty(toLocalDatetimeInput(syllabusGate?.facultyResponseDeadlineUtc));
-      setSFinal(toLocalDatetimeInput(syllabusGate?.finalClosureDeadlineUtc));
+      setSInitial(toLocalDateInput(syllabusGate?.initialSubmissionDeadlineUtc));
+      setSFaculty(toLocalDateInput(syllabusGate?.facultyResponseDeadlineUtc));
+      setSFinal(toLocalDateInput(syllabusGate?.finalClosureDeadlineUtc));
 
-      setMInitial(toLocalDatetimeInput(midtermGate?.initialSubmissionDeadlineUtc));
-      setMFaculty(toLocalDatetimeInput(midtermGate?.facultyResponseDeadlineUtc));
-      setMFinal(toLocalDatetimeInput(midtermGate?.finalClosureDeadlineUtc));
+      setMInitial(toLocalDateInput(midtermGate?.initialSubmissionDeadlineUtc));
+      setMFaculty(toLocalDateInput(midtermGate?.facultyResponseDeadlineUtc));
+      setMFinal(toLocalDateInput(midtermGate?.finalClosureDeadlineUtc));
       setError(null);
     }
   }, [open, syllabusGate, midtermGate]);
@@ -79,14 +77,14 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
     setError(null);
 
     if (sInitial && sFaculty && sFinal) {
-      if (new Date(sInitial) >= new Date(sFaculty) || new Date(sFaculty) >= new Date(sFinal)) {
+      if (sInitial >= sFaculty || sFaculty >= sFinal) {
         setError('Cổng Đề cương: Hạn sinh viên nộp < Hạn Khoa phản hồi < Hạn chót đóng cổng.');
         return;
       }
     }
 
     if (mInitial && mFaculty && mFinal) {
-      if (new Date(mInitial) >= new Date(mFaculty) || new Date(mFaculty) >= new Date(mFinal)) {
+      if (mInitial >= mFaculty || mFaculty >= mFinal) {
         setError('Cổng Giữa kỳ: Hạn sinh viên nộp < Hạn Khoa phản hồi < Hạn chót đóng cổng.');
         return;
       }
@@ -100,7 +98,8 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
       );
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Lỗi khi lưu cấu hình cổng.');
+      const msg = err instanceof Error ? err.message : 'Có lỗi khi lưu cổng thẩm định.';
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -152,7 +151,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                 1. Hạn sinh viên nộp đề cương ban đầu
               </label>
               <Input
-                type="datetime-local"
+                type="date"
                 disabled={!canEdit}
                 value={sInitial}
                 onChange={(e) => setSInitial(e.target.value)}
@@ -164,7 +163,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                 2. Hạn Khoa / GV phản hồi & thẩm định
               </label>
               <Input
-                type="datetime-local"
+                type="date"
                 disabled={!canEdit}
                 value={sFaculty}
                 onChange={(e) => setSFaculty(e.target.value)}
@@ -176,7 +175,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                 3. Hạn chót đóng cổng & nộp hoàn thiện
               </label>
               <Input
-                type="datetime-local"
+                type="date"
                 disabled={!canEdit}
                 value={sFinal}
                 onChange={(e) => setSFinal(e.target.value)}
@@ -191,7 +190,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                 1. Hạn sinh viên nộp báo cáo giữa kỳ
               </label>
               <Input
-                type="datetime-local"
+                type="date"
                 disabled={!canEdit}
                 value={mInitial}
                 onChange={(e) => setMInitial(e.target.value)}
@@ -203,7 +202,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                 2. Hạn GVHD / Khoa đánh giá giữa kỳ
               </label>
               <Input
-                type="datetime-local"
+                type="date"
                 disabled={!canEdit}
                 value={mFaculty}
                 onChange={(e) => setMFaculty(e.target.value)}
@@ -215,7 +214,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                 3. Hạn chót kết luận đánh giá giữa kỳ
               </label>
               <Input
-                type="datetime-local"
+                type="date"
                 disabled={!canEdit}
                 value={mFinal}
                 onChange={(e) => setMFinal(e.target.value)}
