@@ -12,7 +12,6 @@ import {
   PeriodStagesCard,
   PeriodInfoCard,
   PeriodDeadlinesCard,
-  PeriodPermissionsCard,
   PeriodSummaryCard,
   PeriodActionBar,
   PeriodReviewGateDialog,
@@ -30,6 +29,20 @@ import {
   type ReviewGateConfigurationDto,
   type UpdateStageScheduleItem,
 } from '../types/period.types';
+
+const DEFAULT_STAGE_WEEKS: readonly number[] = [1, 1, 7, 1, 8, 2, 1];
+
+function addDaysToDateString(baseDateStr: string, daysToAdd: number): string {
+  try {
+    const [y, m, d] = baseDateStr.split('-').map(Number);
+    if (!y || !m || !d) return baseDateStr;
+    const date = new Date(y, m - 1, d + daysToAdd);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  } catch {
+    return baseDateStr;
+  }
+}
 
 function toLocalDatetimeInput(utcStr?: string): string {
   if (!utcStr) return '';
@@ -59,39 +72,6 @@ function toUtcIso(localDatetimeStr: string): string {
   }
 }
 
-function computeDefaultOffsetIso(
-  baseStartDate: string,
-  offsetDays: number,
-  hour = 23,
-  minute = 59,
-): string {
-  try {
-    const d = new Date(baseStartDate);
-    if (isNaN(d.getTime())) return '';
-    d.setDate(d.getDate() + offsetDays);
-    d.setHours(hour, minute, 0, 0);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  } catch {
-    return '';
-  }
-}
-
-function computeStageDateOnly(
-  baseStartDate: string,
-  offsetDays: number,
-): string {
-  try {
-    const d = new Date(baseStartDate);
-    if (isNaN(d.getTime())) return '';
-    d.setDate(d.getDate() + offsetDays);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  } catch {
-    return '';
-  }
-}
-
 export const PeriodPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const canManageBatch = hasPermission('academic.batches.manage');
@@ -110,6 +90,8 @@ export const PeriodPage: React.FC = () => {
   const [semester, setSemester] = useState<number>(1);
   const [batchName, setBatchName] = useState<string>('Đợt 1');
   const [startDate, setStartDate] = useState<string>('');
+
+  const [stageWeeks, setStageWeeks] = useState<number[]>([...DEFAULT_STAGE_WEEKS]);
 
   const [syllabusDeadline, setSyllabusDeadline] = useState<string>('');
   const [midtermDeadline, setMidtermDeadline] = useState<string>('');
@@ -134,6 +116,62 @@ export const PeriodPage: React.FC = () => {
     () => reviewGates.find((g) => g.gateType === 'Midterm') || null,
     [reviewGates],
   );
+
+  const computedStages = useMemo(() => {
+    const result = [];
+    let currentStart = startDate || new Date().toISOString().split('T')[0];
+    let cumulativeWeek = 0;
+
+    for (let index = 0; index < STANDARD_7_STAGES.length; index++) {
+      const meta = STANDARD_7_STAGES[index];
+      const weeks = stageWeeks[index] || 1;
+      const startWeek = cumulativeWeek + 1;
+      const endWeek = cumulativeWeek + weeks;
+      cumulativeWeek = endWeek;
+
+      const stageStartDate = currentStart;
+      const stageEndDate = addDaysToDateString(stageStartDate, weeks * 7 - 1);
+      currentStart = addDaysToDateString(stageEndDate, 1);
+
+      const [y, m, d] = stageEndDate.split('-').map(Number);
+      const localDeadline = new Date(y, m - 1, d, 23, 59, 0, 0);
+      const defaultDeadlineUtc = localDeadline.toISOString();
+
+      result.push({
+        orderIndex: meta.orderIndex,
+        stageCode: meta.stageCode,
+        stageName: meta.stageName,
+        shortName: meta.shortName,
+        actor: meta.actor,
+        weeks,
+        startWeek,
+        endWeek,
+        weekLabel: weeks === 1 ? `Tuần ${startWeek}` : `Tuần ${startWeek}–${endWeek}`,
+        startDate: stageStartDate,
+        endDate: stageEndDate,
+        defaultDeadlineUtc,
+      });
+    }
+
+    return result;
+  }, [startDate, stageWeeks]);
+
+  const totalWeeks = useMemo(
+    () => stageWeeks.reduce((acc, w) => acc + w, 0),
+    [stageWeeks],
+  );
+
+  const handleStageWeeksChange = (index: number, newWeeks: number) => {
+    setStageWeeks((prev) => {
+      const next = [...prev];
+      next[index] = Math.max(1, newWeeks);
+      return next;
+    });
+  };
+
+  const handleResetDefaultWeeks = () => {
+    setStageWeeks([...DEFAULT_STAGE_WEEKS]);
+  };
 
   const fetchBatches = useCallback(async (selectId?: string) => {
     setIsLoadingBatches(true);
@@ -170,10 +208,17 @@ export const PeriodPage: React.FC = () => {
       setAcademicYear('2026-2027');
       setSemester(1);
       setBatchName('Đợt 1');
-      setSyllabusDeadline(computeDefaultOffsetIso(defaultStart, 13));
-      setMidtermDeadline(computeDefaultOffsetIso(defaultStart, 69));
-      setFinalEvaluationDeadline(computeDefaultOffsetIso(defaultStart, 125));
-      setDefenseDeadline(computeDefaultOffsetIso(defaultStart, 139));
+      setStageWeeks([...DEFAULT_STAGE_WEEKS]);
+
+      const s2End = addDaysToDateString(defaultStart, 13);
+      const s4End = addDaysToDateString(defaultStart, 69);
+      const s5End = addDaysToDateString(defaultStart, 125);
+      const s6End = addDaysToDateString(defaultStart, 139);
+
+      setSyllabusDeadline(`${s2End}T23:59`);
+      setMidtermDeadline(`${s4End}T23:59`);
+      setFinalEvaluationDeadline(`${s5End}T23:59`);
+      setDefenseDeadline(`${s6End}T23:59`);
       return;
     }
 
@@ -191,6 +236,21 @@ export const PeriodPage: React.FC = () => {
       setSemester(detail.semester);
       setBatchName(detail.batchName);
       setStartDate(detail.startDate);
+
+      if (detail.stages && detail.stages.length === 7) {
+        const sorted = [...detail.stages].sort((a, b) => a.orderIndex - b.orderIndex);
+        const computed = sorted.map((s) => {
+          const [sy, sm, sd] = s.startDate.split('-').map(Number);
+          const [ey, em, ed] = s.endDate.split('-').map(Number);
+          const start = new Date(sy, sm - 1, sd).getTime();
+          const end = new Date(ey, em - 1, ed).getTime();
+          const days = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+          return Math.max(1, Math.round(days / 7));
+        });
+        setStageWeeks(computed);
+      } else {
+        setStageWeeks([...DEFAULT_STAGE_WEEKS]);
+      }
 
       const sylGate = gates.find((g) => g.gateType === 'Syllabus');
       const midGate = gates.find((g) => g.gateType === 'Midterm');
@@ -227,18 +287,6 @@ export const PeriodPage: React.FC = () => {
 
   const handleStartDateChange = (val: string) => {
     setStartDate(val);
-    if (!syllabusDeadline || selectedBatchId === 'new') {
-      setSyllabusDeadline(computeDefaultOffsetIso(val, 13));
-    }
-    if (!midtermDeadline || selectedBatchId === 'new') {
-      setMidtermDeadline(computeDefaultOffsetIso(val, 69));
-    }
-    if (!finalEvaluationDeadline || selectedBatchId === 'new') {
-      setFinalEvaluationDeadline(computeDefaultOffsetIso(val, 125));
-    }
-    if (!defenseDeadline || selectedBatchId === 'new') {
-      setDefenseDeadline(computeDefaultOffsetIso(val, 139));
-    }
   };
 
   const executeSave = async (reason?: string) => {
@@ -270,6 +318,32 @@ export const PeriodPage: React.FC = () => {
           startDate,
         });
 
+        const stagesPayload: UpdateStageScheduleItem[] = computedStages.map((cs) => {
+          let deadlineUtc = cs.defaultDeadlineUtc;
+          if (cs.orderIndex === 2 && syllabusDeadline) {
+            deadlineUtc = toUtcIso(syllabusDeadline);
+          } else if (cs.orderIndex === 4 && midtermDeadline) {
+            deadlineUtc = toUtcIso(midtermDeadline);
+          } else if (cs.orderIndex === 5 && finalEvaluationDeadline) {
+            deadlineUtc = toUtcIso(finalEvaluationDeadline);
+          } else if (cs.orderIndex === 6 && defenseDeadline) {
+            deadlineUtc = toUtcIso(defenseDeadline);
+          }
+
+          return {
+            orderIndex: cs.orderIndex,
+            stageCode: cs.stageCode,
+            stageName: cs.stageName,
+            startDate: cs.startDate,
+            endDate: cs.endDate,
+            deadlineAtUtc: deadlineUtc,
+          };
+        });
+
+        await periodApi.updateSchedule(createdBatch.id, {
+          stages: stagesPayload,
+        });
+
         if (syllabusDeadline) {
           const finalUtc = toUtcIso(syllabusDeadline);
           const finalDate = new Date(syllabusDeadline);
@@ -282,7 +356,6 @@ export const PeriodPage: React.FC = () => {
               finalClosureDeadlineUtc: finalUtc,
             });
           } catch {
-            /* Keep proceeding if gate configuration is pending. */
           }
         }
 
@@ -298,35 +371,30 @@ export const PeriodPage: React.FC = () => {
               finalClosureDeadlineUtc: finalUtc,
             });
           } catch {
-            /* Keep proceeding. */
           }
         }
 
-        setNotice('Khởi tạo đợt KLTN và tự động sinh lịch 7 giai đoạn thành công!');
+        setNotice('Khởi tạo đợt KLTN và cấu hình lịch trình giai đoạn thành công!');
         await fetchBatches(createdBatch.id);
       } else if (currentBatch) {
-        const stagesPayload: UpdateStageScheduleItem[] = STANDARD_7_STAGES.map((meta) => {
-          const existing = currentBatch.stages.find((s) => s.orderIndex === meta.orderIndex);
-          const sDate = existing?.startDate || computeStageDateOnly(startDate, meta.startOffsetDays);
-          const eDate = existing?.endDate || computeStageDateOnly(startDate, meta.endOffsetDays);
-
-          let deadlineUtc = existing?.deadlineAtUtc || new Date(`${eDate}T23:59:00Z`).toISOString();
-          if (meta.orderIndex === 2 && syllabusDeadline) {
+        const stagesPayload: UpdateStageScheduleItem[] = computedStages.map((cs) => {
+          let deadlineUtc = cs.defaultDeadlineUtc;
+          if (cs.orderIndex === 2 && syllabusDeadline) {
             deadlineUtc = toUtcIso(syllabusDeadline);
-          } else if (meta.orderIndex === 4 && midtermDeadline) {
+          } else if (cs.orderIndex === 4 && midtermDeadline) {
             deadlineUtc = toUtcIso(midtermDeadline);
-          } else if (meta.orderIndex === 5 && finalEvaluationDeadline) {
+          } else if (cs.orderIndex === 5 && finalEvaluationDeadline) {
             deadlineUtc = toUtcIso(finalEvaluationDeadline);
-          } else if (meta.orderIndex === 6 && defenseDeadline) {
+          } else if (cs.orderIndex === 6 && defenseDeadline) {
             deadlineUtc = toUtcIso(defenseDeadline);
           }
 
           return {
-            orderIndex: meta.orderIndex,
-            stageCode: meta.stageCode,
-            stageName: meta.stageName,
-            startDate: sDate,
-            endDate: eDate,
+            orderIndex: cs.orderIndex,
+            stageCode: cs.stageCode,
+            stageName: cs.stageName,
+            startDate: cs.startDate,
+            endDate: cs.endDate,
             deadlineAtUtc: deadlineUtc,
           };
         });
@@ -348,7 +416,6 @@ export const PeriodPage: React.FC = () => {
               finalClosureDeadlineUtc: finalUtc,
             });
           } catch {
-            /* Keep proceeding. */
           }
         }
 
@@ -364,7 +431,6 @@ export const PeriodPage: React.FC = () => {
               finalClosureDeadlineUtc: finalUtc,
             });
           } catch {
-            /* Keep proceeding. */
           }
         }
 
@@ -451,6 +517,10 @@ export const PeriodPage: React.FC = () => {
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Khởi tạo đợt & deadline
             </h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#2054A5] ring-1 ring-blue-500/20">
+              <CalendarRange className="size-3.5" />
+              Kế hoạch đợt
+            </span>
           </div>
         </div>
 
@@ -514,11 +584,6 @@ export const PeriodPage: React.FC = () => {
         </div>
       )}
 
-      <PeriodStagesCard
-        stages={currentBatch?.stages}
-        startDate={startDate}
-      />
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
           <PeriodInfoCard
@@ -545,15 +610,6 @@ export const PeriodPage: React.FC = () => {
             onDefenseDeadlineChange={setDefenseDeadline}
             onOpenGateDetails={() => setIsGateDetailsOpen(true)}
           />
-
-          <PeriodPermissionsCard canEdit={canEdit} />
-
-          <PeriodActionBar
-            canEdit={canEdit}
-            isSaving={isSaving}
-            onSave={handleSaveClick}
-            onImportUsers={() => setIsImportOpen(true)}
-          />
         </div>
 
         <div className="space-y-6">
@@ -562,12 +618,28 @@ export const PeriodPage: React.FC = () => {
             semester={semester}
             batchName={batchName}
             status={currentBatch?.status || 'Draft'}
+            totalWeeks={totalWeeks}
             canEdit={canEdit}
             onOpenBatch={handleOpenBatch}
             isOpenLoading={isOpenLoading}
           />
         </div>
       </div>
+
+      <PeriodStagesCard
+        computedStages={computedStages}
+        canEdit={canEdit}
+        onWeeksChange={handleStageWeeksChange}
+        onResetDefaultWeeks={handleResetDefaultWeeks}
+        totalWeeks={totalWeeks}
+      />  
+
+      <PeriodActionBar
+        canEdit={canEdit}
+        isSaving={isSaving}
+        onSave={handleSaveClick}
+        onImportUsers={() => setIsImportOpen(true)}
+      />
 
       <PeriodReviewGateDialog
         open={isGateDetailsOpen}

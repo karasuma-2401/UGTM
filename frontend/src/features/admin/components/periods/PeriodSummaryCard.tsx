@@ -7,6 +7,7 @@ interface PeriodSummaryCardProps {
   semester: number;
   batchName: string;
   status?: string;
+  totalWeeks?: number;
   canEdit: boolean;
   onOpenBatch?: () => void;
   isOpenLoading?: boolean;
@@ -36,6 +37,7 @@ export const PeriodSummaryCard: React.FC<PeriodSummaryCardProps> = ({
   semester,
   batchName,
   status = 'Draft',
+  totalWeeks = 21,
   canEdit,
   onOpenBatch,
   isOpenLoading = false,
@@ -80,7 +82,7 @@ export const PeriodSummaryCard: React.FC<PeriodSummaryCardProps> = ({
         <div>
           <div className="text-xs text-slate-400 font-medium">Thời lượng</div>
           <div className="font-semibold text-slate-800">
-            21 tuần - 7 giai đoạn
+            {totalWeeks} tuần - 7 giai đoạn
           </div>
         </div>
 
