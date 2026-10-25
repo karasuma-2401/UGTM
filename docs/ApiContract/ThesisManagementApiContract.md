@@ -258,3 +258,112 @@ Các nhóm mã lỗi nghiệp vụ hiện dùng gồm `ReviewGateConfiguration.*
   - `TopicRegistration.TopicPreparationWindowClosed` (409)
   - `TopicRegistration.InvalidTopicStatusForAdvisorAssign` (409)
   - `TopicRegistration.RegistrationNotFound` (404)
+
+
+## Đơn xin Đổi tên Đề tài (Quy trình thẩm định 3 cấp trực tuyến)
+
+Quy trình cho phép nhóm sinh viên làm đơn xin điều chỉnh tên đề tài trực tuyến qua 3 cấp thẩm định tuần tự: **Cấp 1 (GVHD) ➔ Cấp 2 (Văn phòng Khoa) ➔ Cấp 3 (Phòng Đào tạo)**.
+
+### Bảng tóm tắt Endpoint Đổi tên Đề tài
+
+| Method | Route | Chủ thể được phép | Mô tả |
+| --- | --- | --- | --- |
+| `POST` | `/api/thesis/groups/{groupId}/rename-requests` | Sinh viên thành viên nhóm (`Confirmed`) | Tạo đơn xin đổi tên đề tài trong Tuần 3 đến Tuần 10 |
+| `GET` | `/api/thesis/groups/{groupId}/rename-requests` | Thành viên nhóm, GVHD, Văn phòng Khoa, PĐT, `Admin` | Xem toàn bộ lịch sử các đơn đổi tên đề tài của nhóm |
+| `GET` | `/api/thesis/rename-requests` | GVHD, Văn phòng Khoa, PĐT, `Admin` | Tra cứu danh sách đơn đổi tên đề tài (hỗ trợ lọc theo `groupId`, `status`) |
+| `POST` | `/api/thesis/rename-requests/{requestId}/advisor-review` | GVHD của đề tài, `Admin` | **Cấp 1**: GVHD thẩm định đơn đổi tên đề tài |
+| `POST` | `/api/thesis/rename-requests/{requestId}/faculty-review` | Cán bộ Khoa (`Faculty`), `Admin` | **Cấp 2**: Văn phòng Khoa thẩm định đơn đổi tên đề tài |
+| `POST` | `/api/thesis/rename-requests/{requestId}/academic-affairs-review` | Chuyên viên PĐT (`AcademicAffairs`), `Admin` | **Cấp 3**: Phòng Đào tạo phê duyệt chính thức đơn đổi tên đề tài |
+
+---
+
+### 1. Tạo đơn xin đổi tên đề tài (Sinh viên)
+`POST /api/thesis/groups/{groupId}/rename-requests`
+
+- **Chủ thể:** Sinh viên là thành viên đã được xác nhận (`Confirmed`) của nhóm sinh viên thực hiện đề tài.
+- **Thời hạn quy định (Tuần 3 - Tuần 10):**
+  - Đợt KLTN phải đang ở trạng thái `Open`.
+  - Thời điểm tạo đơn phải nằm trong khoảng thời gian từ ngày bắt đầu của Giai đoạn thực hiện (`PROGRESS_EXECUTION`, Stage 3) đến hạn chót của Cổng giữa kỳ (`MIDTERM_GATE`, Stage 4) theo múi giờ đợt KLTN. Quá hạn hoặc ngoài giai đoạn này hệ thống khóa API và báo lỗi `400 Bad Request` (`RenameRequest.OutsideAllowedWindow`).
+- **Ràng buộc trạng thái nhóm:** Nhóm sinh viên phải ở trạng thái hoạt động trong giai đoạn này (`InProgress` hoặc `MidtermSubmitted`).
+- **Ràng buộc số lượng đơn:** Tại một thời điểm, mỗi nhóm chỉ được có tối đa 1 đơn đang trong tiến trình duyệt (`Created`, `AdvisorConfirmed`, `FacultyApproved`). Khi đơn cũ đã kết thúc (`Completed` hoặc bị từ chối), sinh viên có thể tạo đơn mới nếu vẫn còn trong thời hạn tuần 3-10.
+- **Request Body:**
+```json
+{
+  "newTitleVi": "Nghiên cứu ứng dụng Học máy trong chẩn đoán hình ảnh y khoa",
+  "newTitleEn": "Research on Applying Machine Learning in Medical Imaging Diagnosis",
+  "reason": "Điều chỉnh phạm vi nghiên cứu tập trung chuyên sâu vào phân khúc ảnh CT và MRI theo hướng dẫn của GVHD."
+}
+```
+  - `newTitleVi` (string, bắt buộc, tối đa 300 ký tự): Tên tiếng Việt mới của đề tài.
+  - `newTitleEn` (string, tùy chọn, tối đa 350 ký tự): Tên tiếng Anh mới của đề tài.
+  - `reason` (string, bắt buộc): Lý do xin điều chỉnh tên đề tài.
+  - Tên đề tài mới phải khác ít nhất một trong hai tên (tiếng Việt hoặc tiếng Anh) so với tên đề tài hiện tại (`RenameRequest.TitleUnchanged`).
+
+---
+
+### 2. Tra cứu lịch sử & Danh sách đơn
+- `GET /api/thesis/groups/{groupId}/rename-requests`: Lấy danh sách toàn bộ các đơn của nhóm sinh viên (bao gồm các đơn bị từ chối và đơn đã hoàn tất), sắp xếp mới nhất lên đầu.
+- `GET /api/thesis/rename-requests?groupId={groupId}&status={status}`: Hỗ trợ cán bộ quản lý và GVHD lọc danh sách đơn theo nhóm hoặc theo trạng thái đơn:
+  - `Created`: Chờ GVHD thẩm định.
+  - `AdvisorConfirmed`: GVHD đã đồng ý, chờ Văn phòng Khoa duyệt.
+  - `FacultyApproved`: Khoa đã duyệt, chờ Phòng Đào tạo duyệt.
+  - `Completed`: Đã được Phòng Đào tạo phê duyệt chính thức thành công.
+  - `RejectedByAdvisor`: Bị GVHD từ chối.
+  - `RejectedByFaculty`: Bị Văn phòng Khoa từ chối.
+  - `RejectedByAA`: Bị Phòng Đào tạo từ chối.
+
+---
+
+### 3. Quy trình duyệt 3 cấp tuần tự & Xử lý sau khi PĐT duyệt
+
+#### Cấp 1: GVHD thẩm định (`POST /api/thesis/rename-requests/{requestId}/advisor-review`)
+- **Chủ thể:** Giảng viên hướng dẫn sở hữu đề tài (hoặc `Admin`).
+- **Trạng thái đơn hợp lệ:** `Created`.
+- **Request Body:**
+```json
+{
+  "decision": "Approve",
+  "rejectionReason": null
+}
+```
+- **Xử lý:**
+  - `Approve`: Đơn chuyển sang trạng thái `AdvisorConfirmed`, lưu thời điểm `AdvisorConfirmedAt`.
+  - `Reject`: Bắt buộc nhập `rejectionReason`. Đơn chuyển sang `RejectedByAdvisor`, lưu lý do và thời điểm từ chối. Dừng luồng duyệt, giữ nguyên tên đề tài ban đầu.
+
+#### Cấp 2: Văn phòng Khoa thẩm định (`POST /api/thesis/rename-requests/{requestId}/faculty-review`)
+- **Chủ thể:** Cán bộ có vai trò `Faculty` hoặc quyền `thesis.review-gates.review` (hoặc `Admin`).
+- **Trạng thái đơn hợp lệ:** `AdvisorConfirmed`.
+- **Request Body:** Tương tự Cấp 1 (`decision`: `Approve` / `Reject`).
+- **Xử lý:**
+  - `Approve`: Đơn chuyển sang trạng thái `FacultyApproved`, lưu thời điểm `FacultyApprovedAt`.
+  - `Reject`: Bắt buộc nhập `rejectionReason`. Đơn chuyển sang `RejectedByFaculty`, dừng luồng duyệt, giữ nguyên tên đề tài ban đầu.
+
+#### Cấp 3: Phòng Đào tạo phê duyệt chính thức (`POST /api/thesis/rename-requests/{requestId}/academic-affairs-review`)
+- **Chủ thể:** Chuyên viên có vai trò `AcademicAffairs` (hoặc `Admin`).
+- **Trạng thái đơn hợp lệ:** `FacultyApproved`.
+- **Xử lý khi từ chối (`Reject`):** Bắt buộc nhập `rejectionReason`. Đơn chuyển sang `RejectedByAA`, dừng luồng duyệt, giữ nguyên tên đề tài ban đầu.
+- **Xử lý khi phê duyệt (`Approve`):**
+  1. Đơn chuyển sang trạng thái `Completed`, lưu thời điểm `AaApprovedAt`.
+  2. **Tự động cập nhật tên đề tài:** Cập nhật `TitleVi` và `TitleEn` mới vào bảng `topics.topic`.
+  3. **Tự động mở cờ quyền nộp lại Đề cương:** Kích hoạt cờ `AllowSyllabusResubmission = true` trên thực thể `StudentGroup`. Sinh viên được phép nộp lại bản Đề cương cập nhật thông qua endpoint `POST /api/thesis/groups/{groupId}/syllabus/submissions`. Lần nộp này sẽ vượt qua kiểm tra hạn chót của Cổng 1, tạo phiên bản đề cương mới và tự động tiêu thụ cờ (`AllowSyllabusResubmission = false`) mà không làm thay đổi hay gián đoạn trạng thái `InProgress` của nhóm.
+  4. **Ghi vết Audit Log hệ thống:** Gửi sự kiện tích hợp vào Audit Outbox qua `IThesisManagementAuditOutbox` với action `ThesisManagement.RenameRequest.Approved`, lưu thông tin `GroupId`, `TopicId`, `OldTitleVi`, `NewTitleVi`, `OldTitleEn`, `NewTitleEn`, `ApprovedBy` vào `MetadataJson`.
+
+---
+
+### Bảng Mã lỗi đặc trưng (Error Codes)
+
+| Mã lỗi | HTTP Status | Mô tả |
+| --- | --- | --- |
+| `RenameRequest.OutsideAllowedWindow` | `400 Bad Request` | Chỉ được phép tạo đơn xin đổi tên đề tài trong giai đoạn Tuần 3 đến Tuần 10 của đợt khóa luận. |
+| `RenameRequest.InvalidRequest` | `400 Bad Request` | Thông tin đơn không hợp lệ (tên tiếng Việt rỗng, lý do rỗng, độ dài vượt giới hạn...). |
+| `RenameRequest.TitleUnchanged` | `400 Bad Request` | Tên đề tài mới phải khác với tên đề tài hiện tại. |
+| `RenameRequest.RejectionReasonRequired` | `400 Bad Request` | Bắt buộc nhập lý do từ chối khi không đồng ý đơn đổi tên đề tài. |
+| `RenameRequest.InvalidDecision` | `400 Bad Request` | Quyết định thẩm định chỉ chấp nhận `Approve` hoặc `Reject`. |
+| `RenameRequest.AccessDenied` | `403 Forbidden` | Không có quyền thực hiện thao tác (không phải thành viên nhóm / không phải GVHD / không đúng vai trò). |
+| `RenameRequest.GroupNotFound` | `404 Not Found` | Không tìm thấy nhóm sinh viên tương ứng. |
+| `RenameRequest.TopicNotFound` | `404 Not Found` | Không tìm thấy đề tài tương ứng với nhóm. |
+| `RenameRequest.RequestNotFound` | `404 Not Found` | Không tìm thấy đơn xin đổi tên đề tài. |
+| `RenameRequest.ActiveRequestAlreadyExists` | `409 Conflict` | Nhóm đang có một đơn xin đổi tên đề tài chờ thẩm định. |
+| `RenameRequest.InvalidGroupState` | `409 Conflict` | Trạng thái nhóm hiện tại không cho phép nộp đơn xin đổi tên đề tài. |
+| `RenameRequest.InvalidReviewState` | `409 Conflict` | Đơn xin đổi tên đề tài không ở trạng thái hợp lệ để thực hiện xét duyệt này. |
+| `RenameRequest.ConcurrencyConflict` | `409 Conflict` | Dữ liệu đơn đã bị sửa đổi bởi thao tác khác. Vui lòng thử lại. |

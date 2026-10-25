@@ -219,6 +219,20 @@ public sealed class ReviewGateConfigurationApplicationTests
                 exists && batchId == BatchId
                     ? new BatchTopicPreparationWindowContractDto(batchId, "Open", true, nowUtc.AddDays(7))
                     : null);
+
+        public Task<BatchRenameRequestWindowContractDto?> GetRenameRequestWindowAsync(
+            Guid batchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchRenameRequestWindowContractDto?>(
+                exists && batchId == BatchId
+                    ? new BatchRenameRequestWindowContractDto(
+                        batchId,
+                        "Open",
+                        true,
+                        DateOnly.FromDateTime(nowUtc.AddDays(-7)),
+                        nowUtc.AddDays(7))
+                    : null);
     }
 
     private sealed class FakeConfigurationRepository(params ReviewGateConfiguration[] configurations)

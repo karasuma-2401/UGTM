@@ -22,6 +22,38 @@ public sealed class SyllabusSubmissionApplicationTests
     private static readonly Guid ReviewerId = Guid.NewGuid();
 
     [Fact]
+    public async Task Syllabus_can_be_resubmitted_when_AllowSyllabusResubmission_is_enabled_even_after_deadline()
+    {
+        var group = CreateGroup();
+        var fixtures = new WorkflowFixtures(group);
+
+        var firstSubmission = await fixtures.CreateSubmitHandler(StudentUser())
+            .HandleAsync(SubmitCommand(group.Id));
+        var approval = await fixtures.CreateReviewHandler(ReviewerUser())
+            .HandleAsync(new ReviewSyllabusCommand(group.Id, "Approved", null));
+
+        Assert.True(firstSubmission.IsSuccess);
+        Assert.True(approval.IsSuccess);
+        Assert.Equal(StudentGroupStatus.InProgress, group.Status);
+        Assert.Equal(SyllabusStatus.Approved, fixtures.Syllabus!.Status);
+
+        // Turn on flag (e.g. after PDT approves topic rename)
+        group.EnableSyllabusResubmission();
+        Assert.True(group.AllowSyllabusResubmission);
+
+        // Submit updated syllabus during InProgress and after Gate 1 deadline
+        var resubmission = await fixtures.CreateSubmitHandler(StudentUser())
+            .HandleAsync(SubmitCommand(group.Id));
+
+        Assert.True(resubmission.IsSuccess);
+        Assert.Equal(2, resubmission.Value.VersionNo);
+        Assert.False(group.AllowSyllabusResubmission); // Consumed
+        Assert.Equal(StudentGroupStatus.InProgress, group.Status); // Preserves InProgress
+        Assert.Equal(SyllabusStatus.Approved, fixtures.Syllabus!.Status);
+        Assert.Equal(2, fixtures.ObjectStorage.UploadedObjectKeys.Count);
+    }
+
+    [Fact]
     public async Task Member_can_submit_revision_after_need_revision_and_faculty_can_approve_it()
     {
         var group = CreateGroup();
