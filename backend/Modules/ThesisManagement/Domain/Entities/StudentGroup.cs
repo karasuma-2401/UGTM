@@ -29,7 +29,18 @@ public sealed class StudentGroup : AggregateRoot<Guid>
     public StudentGroupStatus Status { get; private set; } = StudentGroupStatus.Registered;
     public DateTime CreatedAt { get; private set; }
     public uint Version { get; private set; }
+    public bool AllowSyllabusResubmission { get; private set; }
     public IReadOnlyCollection<StudentGroupMember> Members => _members.AsReadOnly();
+
+    public void EnableSyllabusResubmission()
+    {
+        AllowSyllabusResubmission = true;
+    }
+
+    public void ConsumeSyllabusResubmission()
+    {
+        AllowSyllabusResubmission = false;
+    }
 
     public StudentGroupMember AddMember(Guid studentId, Guid batchId, DateTime joinedAt)
         => AddConfirmedMember(studentId, batchId, joinedAt);

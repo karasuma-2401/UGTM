@@ -48,6 +48,11 @@ public sealed class Syllabus
         ReviewedAt = null;
     }
 
+    public void SubmitUpdatedAfterRename()
+    {
+        CurrentVersionNo = checked(CurrentVersionNo + 1);
+    }
+
     public void RecordReview(
         ReviewDecision decision,
         string? feedback,

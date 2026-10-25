@@ -13,6 +13,9 @@ public class RenameRequestConfiguration : IEntityTypeConfiguration<RenameRequest
 
         builder.HasKey(x => x.Id);
 
+        builder.Property(x => x.RequestedByStudentId)
+            .IsRequired();
+
         builder.Property(x => x.OldTitleVi)
             .HasMaxLength(300)
             .IsRequired();
@@ -34,6 +37,13 @@ public class RenameRequestConfiguration : IEntityTypeConfiguration<RenameRequest
         builder.Property(x => x.Status)
             .HasDefaultValue(RenameRequestStatus.Created)
             .HasSentinel(RenameRequestStatus.Created);
+
+        builder.Property(x => x.RejectionReason)
+            .HasColumnType("text");
+
+        builder.Property(x => x.RejectedBy);
+
+        builder.Property(x => x.RejectedAt);
 
         builder.Property(x => x.CreatedAt)
             .IsRequired();
