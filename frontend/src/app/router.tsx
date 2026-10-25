@@ -18,7 +18,7 @@ import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 import { ProtectedRoute } from '../shared/auth';
 import { RolePermissionPage } from '../features/identity';
 import { AuditLogPage } from '../features/audit';
-import { ScoreConfigPage, PeriodPage } from '../features/academic';
+import { ScoreConfigPage, PeriodPage, SchoolRosterPage } from '../features/academic';
 
 export const router = createBrowserRouter([
   {
@@ -96,6 +96,22 @@ export const router = createBrowserRouter([
             <PeriodPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'academic/roster',
+        element: (
+          <ProtectedRoute>
+            <SchoolRosterPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'academic/school-roster',
+        element: <Navigate to="/academic/roster" replace />,
+      },
+      {
+        path: 'admin/school-roster',
+        element: <Navigate to="/academic/roster" replace />,
       },
       {
         path: 'modules/identity',

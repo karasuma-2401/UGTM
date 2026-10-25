@@ -1,5 +1,6 @@
 export * from './pages/PeriodPage';
 export * from './pages/ScoreConfigPage';
+export * from './pages/SchoolRosterPage';
 export * from './services/periodApi';
 export * from './services/scoreConfigApi';
 export * from './types/period.types';
@@ -8,3 +9,4 @@ export * from './components';
 export * from './hooks';
 export * from './utils/scoreWeights';
 export * from './utils/periodDates';
+export * from './utils/rosterExcel';

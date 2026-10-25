@@ -15,8 +15,6 @@ import type {
 
 const AUTH_BASE_PATH = '/api/identity/auth';
 
-// Public auth operations (login, refresh, logout) must use withCredentials: true
-// to receive and send HttpOnly refresh and csrf cookies, and bypass Bearer interceptor.
 const publicAuthClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15_000,
@@ -80,8 +78,6 @@ export async function changePasswordApi(
   return response.data;
 }
 
-// --- Account Activation APIs ---
-
 export interface ActivationValidateData {
   maskedEmail: string;
   fullName: string;
@@ -116,8 +112,6 @@ export async function resendActivationApi(identifier: string): Promise<ApiRespon
   );
   return response.data;
 }
-
-// --- Password Recovery APIs ---
 
 export interface RecoveryStartData {
   challengeId: string;

@@ -14,11 +14,6 @@ import type {
   UserStatistics,
 } from '../types/user.types';
 
-/**
- * unwrap lay data benn trong repsonse
- * @param response
- * @returns
- */
 function unwrap<T>(response: ApiResponse<T>): T {
   if (!response.success) {
     throw new Error(response.error.message);
@@ -46,7 +41,6 @@ export function getUserErrorMessage(error: unknown): string {
 
 export const userApi = {
   async getStatistics(accountGroup: AccountGroup, signal?: AbortSignal): Promise<UserStatistics> {
-    // Read server totals rather than counting the current page's items.
     const [all, pending, disabled] = await Promise.all(
       (['', 'PendingActivation', 'Disabled'] as const).map((status) =>
         userApi.getUsers(
@@ -69,33 +63,37 @@ export const userApi = {
       disabled: disabled.totalCount,
     };
   },
-  async importStudents(file: File): Promise<ImportUsersResult> {
+
+  async importUsers(file: File, role: 'Student' | 'Lecturer'): Promise<ImportUsersResult> {
     const data = new FormData();
     data.append('file', file);
-    data.append('role', 'Student');
+    data.append('role', role);
     const response = await httpClient.post<ApiResponse<ImportUsersResult>>(
       '/api/users/import',
       data,
       {
-        // Let the browser supply the multipart boundary instead of the JSON default.
         headers: { 'Content-Type': undefined },
       },
     );
     return unwrap(response.data);
   },
-  async downloadStudentTemplate(): Promise<Blob> {
+
+  async importStudents(file: File): Promise<ImportUsersResult> {
+    return userApi.importUsers(file, 'Student');
+  },
+
+  async downloadUserTemplate(role: 'Student' | 'Lecturer'): Promise<Blob> {
     const response = await httpClient.get<Blob>('/api/users/import-template', {
-      params: { role: 'Student' },
+      params: { role },
       responseType: 'blob',
     });
     return response.data;
   },
-  /**
-   *
-   * @param query
-   * @param signal
-   * @returns
-   */
+
+  async downloadStudentTemplate(): Promise<Blob> {
+    return userApi.downloadUserTemplate('Student');
+  },
+
   async getUsers(query: UsersQuery, signal?: AbortSignal): Promise<PagedResult<UserSummary>> {
     const response = await httpClient.get<ApiResponse<PagedResult<UserSummary>>>('/api/users', {
       params: {
@@ -110,11 +108,6 @@ export const userApi = {
     return unwrap(response.data);
   },
 
-  /**
-   *
-   * @param values
-   * @returns
-   */
   async createUser(values: UserFormValues): Promise<UserSummary> {
     const response = await httpClient.post<ApiResponse<UserSummary>>('/api/users', {
       email: values.email.trim(),
@@ -128,9 +121,6 @@ export const userApi = {
     return unwrap(response.data);
   },
 
-  /**
-   *
-   */
   async updateUser(id: string, values: UserFormValues): Promise<UserSummary> {
     const response = await httpClient.put<ApiResponse<UserSummary>>(`/api/users/${id}`, {
       fullName: values.fullName.trim(),
@@ -142,12 +132,6 @@ export const userApi = {
     return unwrap(response.data);
   },
 
-  /**
-   *
-   * @param id
-   * @param status
-   * @returns
-   */
   async updateStatus(
     id: string,
     status: Exclude<AccountStatus, 'PendingActivation'>,
