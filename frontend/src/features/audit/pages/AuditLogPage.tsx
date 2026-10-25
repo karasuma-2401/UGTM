@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { ScrollText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { AuditLogFilterBar } from '../components/AuditLogFilterBar';
 import { AuditLogTable } from '../components/AuditLogTable';
 import { AuditLogDiffCard } from '../components/AuditLogDiffCard';
@@ -34,7 +36,6 @@ export const AuditLogPage: React.FC = () => {
 
   const detailSectionRef = useRef<HTMLDivElement>(null);
 
-  // Fetch dữ liệu từ backend
   const fetchLogs = useCallback(
     async (page = 1, currentFilter = appliedFilter, signal?: AbortSignal) => {
       setIsLoading(true);
@@ -132,21 +133,14 @@ export const AuditLogPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Nhật ký thao tác
-            </h1>
-          </div>
-
-          <div>
-            <Badge variant="secondary" className="text-xs font-semibold px-2.5 py-1">
-              Nhật ký chỉ đọc
-            </Badge>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Nhật ký thao tác"
+        icon={<ScrollText />}
+      >
+        <Badge variant="secondary" className="text-xs font-semibold px-2.5 py-1">
+          Nhật ký chỉ đọc
+        </Badge>
+      </PageHeader>
 
       {error && (
         <div
