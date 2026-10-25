@@ -12,6 +12,13 @@ public sealed record BatchTopicPreparationWindowContractDto(
     bool IsTopicPreparationStageActive,
     DateTime? StageDeadlineAtUtc);
 
+public sealed record BatchRenameRequestWindowContractDto(
+    Guid BatchId,
+    string BatchStatus,
+    bool IsRenameWindowOpen,
+    DateOnly? WindowStartDate,
+    DateTime? WindowDeadlineAtUtc);
+
 public interface IKltnBatchReader
 {
     Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default);
@@ -22,6 +29,11 @@ public interface IKltnBatchReader
         CancellationToken cancellationToken = default);
 
     Task<BatchTopicPreparationWindowContractDto?> GetTopicPreparationWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default);
+
+    Task<BatchRenameRequestWindowContractDto?> GetRenameRequestWindowAsync(
         Guid batchId,
         DateTime nowUtc,
         CancellationToken cancellationToken = default);

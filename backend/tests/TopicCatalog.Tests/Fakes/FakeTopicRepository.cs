@@ -111,4 +111,23 @@ public sealed class FakeKltnBatchReader(params Guid[] existingBatchIds) : IKltnB
         return Task.FromResult<BatchTopicPreparationWindowContractDto?>(
             new BatchTopicPreparationWindowContractDto(batchId, "Open", true, nowUtc.AddDays(7)));
     }
+
+    public Task<BatchRenameRequestWindowContractDto?> GetRenameRequestWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_batches.Contains(batchId))
+        {
+            return Task.FromResult<BatchRenameRequestWindowContractDto?>(null);
+        }
+
+        return Task.FromResult<BatchRenameRequestWindowContractDto?>(
+            new BatchRenameRequestWindowContractDto(
+                batchId,
+                "Open",
+                true,
+                DateOnly.FromDateTime(nowUtc.AddDays(-7)),
+                nowUtc.AddDays(7)));
+    }
 }
