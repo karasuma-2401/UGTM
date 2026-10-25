@@ -67,4 +67,12 @@ public static class TopicErrors
     public static readonly Error InvalidTopicStatusFilter = Error.Validation(
         "Topic.InvalidTopicStatusFilter",
         "Bộ lọc trạng thái đề tài không hợp lệ.");
+
+    public static readonly Error QuotaLessThanRegisteredStudents = Error.Conflict(
+        "Topic.QuotaLessThanRegisteredStudents",
+        "Chỉ tiêu sinh viên mới không được nhỏ hơn số lượng sinh viên hiện đã được gán vào đề tài.");
+
+    public static readonly Error DuplicateStudentInGroup = Error.Validation(
+        "Topic.DuplicateStudentInGroup",
+        "Danh sách sinh viên chỉ định cho đề tài có chứa thông tin trùng lặp.");
 }

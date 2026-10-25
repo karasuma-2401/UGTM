@@ -1,6 +1,7 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
 using UGTM.Modules.TopicCatalog.Application.Common;
 using UGTM.Modules.TopicCatalog.Application.Persistence;
 using UGTM.Modules.TopicCatalog.Application.Topics.Dtos;
@@ -14,7 +15,8 @@ public sealed class CreateTopicHandler(
     ITopicRepository topicRepository,
     ITopicUnitOfWork unitOfWork,
     IKltnBatchReader batchReader,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    IThesisRegistrationContract? registrationContract = null)
 {
     private const int MaxTitleViLength = 300;
     private const int MaxTitleEnLength = 350;
@@ -89,6 +91,28 @@ public sealed class CreateTopicHandler(
             return Result.Failure<TopicSummaryDto>(TopicErrors.DuplicateTitle);
         }
 
+        var assignmentInputs = new List<AdvisorStudentAssignmentInputDto>();
+        if (command.StudentIds is { Count: > 0 })
+        {
+            foreach (var sId in command.StudentIds)
+            {
+                assignmentInputs.Add(new AdvisorStudentAssignmentInputDto(StudentId: sId));
+            }
+        }
+
+        if (command.StudentCodes is { Count: > 0 })
+        {
+            foreach (var code in command.StudentCodes)
+            {
+                assignmentInputs.Add(new AdvisorStudentAssignmentInputDto(UserCode: code));
+            }
+        }
+
+        if (assignmentInputs.Count > command.StudentNumber.Value)
+        {
+            return Result.Failure<TopicSummaryDto>(TopicErrors.QuotaLessThanRegisteredStudents);
+        }
+
         var topic = new Topic
         {
             Id = Guid.NewGuid(),
@@ -105,6 +129,26 @@ public sealed class CreateTopicHandler(
 
         topicRepository.Add(topic);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        if (assignmentInputs.Count > 0 && registrationContract is not null)
+        {
+            var assignResult = await registrationContract.AssignStudentsByAdvisorAsync(
+                topic.Id,
+                effectiveAdvisorId,
+                isAdmin,
+                assignmentInputs,
+                cancellationToken);
+
+            if (!assignResult.IsSuccess)
+            {
+                topicRepository.Remove(topic);
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+
+                return Result.Failure<TopicSummaryDto>(Error.Conflict(
+                    assignResult.ErrorCode ?? "TopicRegistration.Failed",
+                    assignResult.ErrorMessage ?? "Không thể gán nhóm sinh viên vào đề tài."));
+            }
+        }
 
         return Result.Success(new TopicSummaryDto(
             topic.Id,

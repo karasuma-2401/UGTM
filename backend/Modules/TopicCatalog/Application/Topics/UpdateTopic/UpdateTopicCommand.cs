@@ -7,4 +7,7 @@ public sealed record UpdateTopicCommand(
     string? Description,
     string? Requirements,
     int? StudentNumber,
-    bool SubmitImmediately = false);
+    bool SubmitImmediately = false,
+    IReadOnlyCollection<string>? StudentCodes = null,
+    IReadOnlyCollection<Guid>? StudentIds = null,
+    bool ClearAssignedStudents = false);

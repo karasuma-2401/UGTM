@@ -355,6 +355,21 @@ public sealed class TopicQueryReaderTests
             _data.TryGetValue(topicId, out var dto);
             return Task.FromResult(dto);
         }
+
+        public Task<AdvisorAssignStudentsContractResultDto> AssignStudentsByAdvisorAsync(
+            Guid topicId,
+            Guid actorUserId,
+            bool isAdmin,
+            IReadOnlyCollection<AdvisorStudentAssignmentInputDto> students,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(AdvisorAssignStudentsContractResultDto.Success(Guid.NewGuid(), topicId, Guid.NewGuid(), Array.Empty<Guid>()));
+
+        public Task<AdvisorUnassignStudentsContractResultDto> UnassignStudentsByAdvisorAsync(
+            Guid topicId,
+            Guid actorUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(AdvisorUnassignStudentsContractResultDto.Success());
     }
 
     private sealed class FakeStudentInfoReader(
