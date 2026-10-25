@@ -349,6 +349,134 @@ public sealed class AdvisorTopicRegistrationApplicationTests
         Assert.Equal(TopicRegistrationErrors.TopicPreparationWindowClosed.Code, result.Error.Code);
     }
 
+    [Fact]
+    public async Task Assign_MixedCodeAndId_SameStudent_Fails_DuplicateStudentInGroup()
+    {
+        var handler = CreateAssignHandler(AdvisorId, "Lecturer");
+        var result = await handler.HandleAsync(new AdvisorAssignTopicStudentsCommand(
+            TopicId1,
+            StudentCodes: new[] { "SV001" },
+            StudentIds: new[] { StudentAId }));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TopicRegistrationErrors.DuplicateStudentInGroup.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Assign_StudentCodes_WithWhitespaceAndMixedCase_ResolvesCorrectly()
+    {
+        var handler = CreateAssignHandler(AdvisorId, "Lecturer");
+        var result = await handler.HandleAsync(new AdvisorAssignTopicStudentsCommand(
+            TopicId1,
+            StudentCodes: new[] { "  sv001  " }));
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value.AssignedStudentIds);
+        Assert.Contains(StudentAId, result.Value.AssignedStudentIds);
+    }
+
+    [Fact]
+    public async Task Assign_DuplicateCodes_DifferentCase_Fails_DuplicateStudentInGroup()
+    {
+        var handler = CreateAssignHandler(AdvisorId, "Lecturer");
+        var result = await handler.HandleAsync(new AdvisorAssignTopicStudentsCommand(
+            TopicId1,
+            StudentCodes: new[] { "SV001", "sv001" }));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TopicRegistrationErrors.DuplicateStudentInGroup.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Assign_WithEmptyTopicId_Fails_TopicNotFound()
+    {
+        var handler = CreateAssignHandler(AdvisorId, "Lecturer");
+        var result = await handler.HandleAsync(new AdvisorAssignTopicStudentsCommand(
+            Guid.Empty,
+            StudentCodes: new[] { "SV001" }));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TopicRegistrationErrors.TopicNotFound.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Assign_WithEmptyGuidStudentId_Fails_StudentNotFound()
+    {
+        var handler = CreateAssignHandler(AdvisorId, "Lecturer");
+        var result = await handler.HandleAsync(new AdvisorAssignTopicStudentsCommand(
+            TopicId1,
+            StudentIds: new[] { Guid.Empty }));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TopicRegistrationErrors.StudentNotFound.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Assign_WithWhitespaceStudentCode_Fails_StudentNotFound()
+    {
+        var handler = CreateAssignHandler(AdvisorId, "Lecturer");
+        var result = await handler.HandleAsync(new AdvisorAssignTopicStudentsCommand(
+            TopicId1,
+            StudentCodes: new[] { "   " }));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TopicRegistrationErrors.StudentNotFound.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Assign_SameStudent_InDifferentBatch_Succeeds()
+    {
+        var handler = CreateAssignHandler(AdvisorId, "Lecturer");
+        // Assign to Topic 1 in Batch 1
+        var res1 = await handler.HandleAsync(new AdvisorAssignTopicStudentsCommand(
+            TopicId1, StudentCodes: new[] { "SV001" }));
+        Assert.True(res1.IsSuccess);
+
+        // Seed Topic 3 in Batch 2
+        var batch2Id = Guid.NewGuid();
+        var topicInBatch2Id = Guid.NewGuid();
+        _store.SeedTopic(topicInBatch2Id, batch2Id, studentNumber: 1, status: "Draft", advisorId: AdvisorId);
+
+        // Assign to Topic in Batch 2 -> Allowed
+        var res2 = await handler.HandleAsync(new AdvisorAssignTopicStudentsCommand(
+            topicInBatch2Id, StudentCodes: new[] { "SV001" }));
+        Assert.True(res2.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Unassign_ByAdmin_Succeeds_EvenIfNotTopicAdvisor()
+    {
+        var assignHandler = CreateAssignHandler(AdvisorId, "Lecturer");
+        await assignHandler.HandleAsync(new AdvisorAssignTopicStudentsCommand(
+            TopicId1, StudentCodes: new[] { "SV001" }));
+
+        var adminId = Guid.NewGuid();
+        var unassignHandler = CreateUnassignHandler(adminId, "Admin");
+        var result = await unassignHandler.HandleAsync(new AdvisorUnassignTopicStudentsCommand(TopicId1));
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Unassign_WithEmptyTopicId_Fails_TopicNotFound()
+    {
+        var unassignHandler = CreateUnassignHandler(AdvisorId, "Lecturer");
+        var result = await unassignHandler.HandleAsync(new AdvisorUnassignTopicStudentsCommand(Guid.Empty));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TopicRegistrationErrors.TopicNotFound.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Unassign_ByStudentRole_Fails_OnlyAdvisorsAllowed()
+    {
+        var unassignHandler = CreateUnassignHandler(StudentAId, "Student");
+        var result = await unassignHandler.HandleAsync(new AdvisorUnassignTopicStudentsCommand(TopicId1));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TopicRegistrationErrors.OnlyAdvisorsAllowed.Code, result.Error.Code);
+    }
+
     private AdvisorAssignTopicStudentsHandler CreateAssignHandler(Guid userId, string role)
         => new(
             _store,
