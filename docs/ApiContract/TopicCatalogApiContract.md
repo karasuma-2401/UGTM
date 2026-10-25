@@ -82,8 +82,11 @@ Tài liệu này đặc tả chi tiết các endpoint thuộc phân hệ **Đề
 | `requirements` | `string?` | Không | Yêu cầu công nghệ / kiến thức |
 | `studentNumber` | `integer` | Có | Chỉ nhận giá trị `1` hoặc `2` |
 | `submitImmediately` | `boolean` | Không | Mặc định `false` (`Draft`). Nếu `true` sẽ chuyển thẳng sang `Submitted` |
+| `studentCodes` | `string[]?` | Không | Danh sách MSSV sinh viên muốn gán trực tiếp cho đề tài (tuần 0-1) |
+| `studentIds` | `uuid[]?` | Không | Danh sách UserId sinh viên muốn gán trực tiếp cho đề tài |
 
-**Mở rộng chưa triển khai:** API tạo/cập nhật đề xuất cần hỗ trợ `assignedStudentIds` để GV chọn sinh viên cho đề tài. Trường này chưa có trong request hiện tại; xem mục 5.7.
+> [!NOTE]
+> Khi truyền `studentCodes` hoặc `studentIds`, hệ thống tự động gán nhóm sinh viên với trạng thái `Confirmed` ngay lập tức và gửi email thông báo. Nếu quá trình gán sinh viên thất bại, thao tác tạo đề tài sẽ tự động rollback.
 
 ---
 
@@ -99,9 +102,24 @@ Chỉ cho phép chỉnh sửa khi đề tài đang ở trạng thái `Draft` ho�
   "description": "Bổ sung phạm vi thực nghiệm theo góp ý của Khoa.",
   "requirements": "Python, PyTorch, Docker.",
   "studentNumber": 2,
-  "submitImmediately": true
+  "submitImmediately": true,
+  "studentCodes": ["24521680", "24521681"],
+  "studentIds": [],
+  "clearAssignedStudents": false
 }
 ```
+
+| Trường | Kiểu | Bắt buộc | Ràng buộc |
+| :--- | :--- | :---: | :--- |
+| `titleVi` | `string` | Có | Không rỗng, tối đa 300 ký tự |
+| `titleEn` | `string?` | Không | Tối đa 350 ký tự |
+| `description` | `string?` | Không | Mục tiêu đề tài |
+| `requirements` | `string?` | Không | Yêu cầu công nghệ / kiến thức |
+| `studentNumber` | `integer` | Có | Chỉ nhận giá trị `1` hoặc `2`. Không được giảm xuống thấp hơn số sinh viên đang được gán |
+| `submitImmediately` | `boolean` | Không | Mặc định `false`. Nếu `true` chuyển sang `Submitted` |
+| `studentCodes` | `string[]?` | Không | Danh sách MSSV sinh viên cập nhật cho đề tài |
+| `studentIds` | `uuid[]?` | Không | Danh sách UserId sinh viên cập nhật cho đề tài |
+| `clearAssignedStudents` | `boolean` | Không | Nếu `true`, hủy gán toàn bộ nhóm sinh viên đã có |
 
 ---
 
