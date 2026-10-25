@@ -1,6 +1,6 @@
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
-import { userApi } from '@/features/admin/services/userApi';
+import { userApi } from '@/features/identity';
 import {
   REVIEW_TOPIC_STATUSES,
   type Topic,

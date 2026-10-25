@@ -1,4 +1,4 @@
-import type { PagedResult } from './user.types';
+import type { PagedResult } from '@/shared/api/types';
 
 export type AuditOutcome = 'Success' | 'Denied' | 'Failed';
 

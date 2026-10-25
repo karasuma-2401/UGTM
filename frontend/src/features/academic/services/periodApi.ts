@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
-import type { PagedResult } from '../types/user.types';
+import type { PagedResult } from '@/shared/api/types';
 import type {
   KltnBatchSummaryDto,
   KltnBatchDetailDto,

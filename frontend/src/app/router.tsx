@@ -10,13 +10,15 @@ import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { OtpPage } from '../features/auth/pages/OtpPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
-import { UsersPage } from '../features/admin/pages/UsersPage';
+import { UsersPage } from '../features/identity';
 import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
 import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
-import { IdentityLayout, IdentityIndexRedirect } from '../features/admin/layouts/IdentityLayout';
+import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
-import { RolePermissionPage, AuditLogPage, ScoreConfigPage, PeriodPage } from '../features/admin';
+import { RolePermissionPage } from '../features/identity';
+import { AuditLogPage } from '../features/audit';
+import { ScoreConfigPage, PeriodPage } from '../features/academic';
 
 export const router = createBrowserRouter([
   {

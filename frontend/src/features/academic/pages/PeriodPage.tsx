@@ -15,7 +15,7 @@ import {
   PeriodActionBar,
   PeriodReviewGateDialog,
 } from '../components/periods';
-import { StudentImportDialog } from '../components/users/StudentImportDialog';
+import { StudentImportDialog } from '@/features/identity';
 import { ScoreConfigCloneReasonDialog } from '../components/score-config/ScoreConfigCloneReasonDialog';
 import {
   periodApi,

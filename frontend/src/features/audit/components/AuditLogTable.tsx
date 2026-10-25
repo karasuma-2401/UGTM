@@ -5,8 +5,8 @@ import { SelectableTableRow } from '@/components/ui/selectable-table-row';
 import {
   formatAuditShortTime,
   formatAuditAction,
-} from '../../utils/parseAuditDiff';
-import type { AuditLogItem } from '../../types/auditLog.types';
+} from '../utils/parseAuditDiff';
+import type { AuditLogItem } from '../types/auditLog.types';
 import { cn } from '@/lib/utils';
 
 interface AuditLogTableProps {

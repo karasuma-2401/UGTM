@@ -1,6 +1,6 @@
 import React from 'react';
-import { parseAuditDiff } from '../../utils/parseAuditDiff';
-import type { AuditLogItem } from '../../types/auditLog.types';
+import { parseAuditDiff } from '../utils/parseAuditDiff';
+import type { AuditLogItem } from '../types/auditLog.types';
 
 interface AuditLogDiffCardProps {
   log: AuditLogItem | null;
