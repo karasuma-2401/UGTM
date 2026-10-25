@@ -6,6 +6,7 @@ import {
   ScrollText,
   ClipboardCheck,
   BookOpen,
+  CalendarRange,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -62,6 +63,11 @@ export const navigationSections: NavSectionConfig[] = [
     id: 'academic',
     title: 'Khóa luận',
     items: [
+      {
+        label: 'Kế hoạch đợt',
+        path: '/academic/periods',
+        icon: CalendarRange,
+      },
       {
         label: 'Đề tài hướng dẫn',
         path: '/topics/advising',

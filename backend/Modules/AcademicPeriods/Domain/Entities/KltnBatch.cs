@@ -124,6 +124,7 @@ public sealed class KltnBatch : AggregateRoot<Guid>
 
         _stages.Clear();
         _stages.AddRange(values.Select(value => Stage.Create(Id, value, TimeZoneId, Status == BatchStatus.Open)));
+        EndDate = values[^1].EndDate;
         UpdatedBy = actorId;
         UpdatedAt = occurredAt;
     }
@@ -193,15 +194,15 @@ public sealed class KltnBatch : AggregateRoot<Guid>
             throw new ArgumentException("Stage codes must be unique within a batch.", nameof(schedule));
         }
 
-        if (schedule[0].StartDate != StartDate || schedule[^1].EndDate != EndDate)
+        if (schedule[0].StartDate != StartDate || schedule[^1].EndDate <= StartDate)
         {
-            throw new ArgumentException("The schedule must cover the complete batch date range.", nameof(schedule));
+            throw new ArgumentException("The schedule must start on the batch start date and end after it.", nameof(schedule));
         }
 
         for (var index = 0; index < schedule.Count; index++)
         {
             var current = schedule[index];
-            if (current.StartDate < StartDate || current.EndDate > EndDate || current.EndDate < current.StartDate)
+            if (current.StartDate < StartDate || current.EndDate < current.StartDate)
             {
                 throw new ArgumentException("Every stage must be contained in the batch date range.", nameof(schedule));
             }
