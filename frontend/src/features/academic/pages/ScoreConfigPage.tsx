@@ -1,6 +1,7 @@
 import React from 'react';
-import { History, Wand2, CheckCircle2, AlertCircle, Save, Send } from 'lucide-react';
+import { History, Wand2, CheckCircle2, AlertCircle, Save, Send, SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   ScoreConfigGeneralCard,
@@ -19,42 +20,34 @@ export const ScoreConfigPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-            Cấu hình điểm theo đợt
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Thiết lập phương thức tính điểm, trọng số và điều kiện áp dụng cho từng đầu điểm.
-          </p>
-        </div>
+      <PageHeader
+        title="Cấu hình điểm theo đợt"
+        icon={<SlidersHorizontal />}
+      >
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={actions.handleApplyDefaultTemplateClick}
+          className="rounded-lg h-10 text-xs shadow-sm"
+          leftIcon={<Wand2 className="size-3.5 text-primary" />}
+        >
+          Cấu hình đợt mẫu
+        </Button>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        {data.historyConfigs.length > 0 && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={actions.handleApplyDefaultTemplateClick}
-            className="rounded-lg h-9 text-xs"
-            leftIcon={<Wand2 className="size-3.5 text-primary" />}
+            onClick={() => modals.setIsHistoryModalOpen(true)}
+            className="rounded-lg h-10 text-xs shadow-sm"
+            leftIcon={<History className="size-3.5 text-slate-500" />}
           >
-            Cấu hình đợt mẫu
+            Lịch sử phiên bản ({data.historyConfigs.length})
           </Button>
-
-          {data.historyConfigs.length > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => modals.setIsHistoryModalOpen(true)}
-              className="rounded-lg h-9 text-xs"
-              leftIcon={<History className="size-3.5 text-slate-500" />}
-            >
-              Lịch sử phiên bản ({data.historyConfigs.length})
-            </Button>
-          )}
-        </div>
-      </div>
+        )}
+      </PageHeader>
 
       {modals.notice && (
         <div

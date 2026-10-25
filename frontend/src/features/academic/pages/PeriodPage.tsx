@@ -1,6 +1,7 @@
 import React from 'react';
-import { Plus, RefreshCw, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Plus, RefreshCw, AlertTriangle, CheckCircle2, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import {
   PeriodStagesCard,
   PeriodInfoCard,
@@ -18,59 +19,49 @@ export const PeriodPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-            Khóa luận / Phòng Đào tạo
-          </div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Khởi tạo đợt & deadline
-            </h1>
-          </div>
-        </div>
+      <PageHeader
+        title="Khởi tạo đợt & deadline"
+        icon={<CalendarDays />}
+      >
+        <select
+          value={data.selectedBatchId}
+          onChange={(e) => data.setSelectedBatchId(e.target.value)}
+          disabled={data.isLoadingBatches}
+          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#2054A5]"
+        >
+          <option value="new">+ Khởi tạo đợt mới</option>
+          {data.batches.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.batchName} ({b.academicYear} - HK{b.semester}) [{b.status}]
+            </option>
+          ))}
+        </select>
 
-        <div className="flex items-center gap-2">
-          <select
-            value={data.selectedBatchId}
-            onChange={(e) => data.setSelectedBatchId(e.target.value)}
-            disabled={data.isLoadingBatches}
-            className="h-9 rounded-md border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-[#2054A5]"
-          >
-            <option value="new">+ Khởi tạo đợt mới</option>
-            {data.batches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.batchName} ({b.academicYear} - HK{b.semester}) [{b.status}]
-              </option>
-            ))}
-          </select>
-
-          {permissions.canManageBatch && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => data.setSelectedBatchId('new')}
-              className="h-9 gap-1.5 text-xs font-medium"
-            >
-              <Plus className="size-3.5" />
-              Đợt mới
-            </Button>
-          )}
-
+        {permissions.canManageBatch && (
           <Button
             type="button"
-            variant="ghost"
-            size="icon"
-            onClick={actions.reloadCurrentBatch}
-            disabled={data.isLoadingDetail}
-            className="size-9 text-slate-500 hover:text-slate-800"
-            title="Tải lại dữ liệu"
+            variant="outline"
+            size="sm"
+            onClick={() => data.setSelectedBatchId('new')}
+            className="h-10 gap-1.5 text-xs font-medium shadow-sm"
           >
-            <RefreshCw className={`size-4 ${data.isLoadingDetail ? 'animate-spin' : ''}`} />
+            <Plus className="size-3.5" />
+            Đợt mới
           </Button>
-        </div>
-      </div>
+        )}
+
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={actions.reloadCurrentBatch}
+          disabled={data.isLoadingDetail}
+          className="size-10 text-slate-500 hover:text-slate-800 shadow-sm"
+          title="Tải lại dữ liệu"
+        >
+          <RefreshCw className={`size-4 ${data.isLoadingDetail ? 'animate-spin' : ''}`} />
+        </Button>
+      </PageHeader>
 
       {modals.notice && (
         <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 text-sm font-medium text-emerald-800 shadow-2xs">
