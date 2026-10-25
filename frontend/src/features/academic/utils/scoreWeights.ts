@@ -88,18 +88,26 @@ export function isConfigDifferentFromDefault(
   });
 }
 
-export const OPTIONAL_COMPONENT_PRESETS: Record<string, Partial<ScoreComponentInput>> = {
+export const OPTIONAL_COMPONENT_PRESETS: Record<string, Omit<ScoreComponentInput, 'orderIndex'>> = {
   COUNCIL_CHAIRMAN: {
     componentCode: 'COUNCIL_CHAIRMAN',
     componentName: 'Chủ tịch hội đồng',
     source: 'CouncilChairman',
     weight: 1,
+    applicability: 'Always',
+    isRequired: true,
+    minimumScore: null,
+    requiresApproval: false,
   },
   COUNCIL_SECRETARY: {
     componentCode: 'COUNCIL_SECRETARY',
     componentName: 'Thư ký hội đồng',
     source: 'CouncilSecretary',
     weight: 1,
+    applicability: 'Always',
+    isRequired: true,
+    minimumScore: null,
+    requiresApproval: false,
   },
   COUNCIL_MEMBER: {
     componentCode: 'COUNCIL_MEMBER',
@@ -107,11 +115,18 @@ export const OPTIONAL_COMPONENT_PRESETS: Record<string, Partial<ScoreComponentIn
     source: 'CouncilMember',
     weight: 1,
     applicability: 'ReviewerOutsideCouncil',
+    isRequired: true,
+    minimumScore: null,
+    requiresApproval: false,
   },
   COUNCIL_AVG: {
     componentCode: 'COUNCIL_AVG',
     componentName: 'Điểm trung bình hội đồng',
     source: 'CouncilAverage',
     weight: 2,
+    applicability: 'Always',
+    isRequired: true,
+    minimumScore: null,
+    requiresApproval: false,
   },
 };

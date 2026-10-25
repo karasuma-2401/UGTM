@@ -4,12 +4,12 @@ import {
   type ScoreComponentInput,
   type ScoreConfigurationDto,
   UIT_INTEGER_PRESET_COMPONENTS,
-} from '../types/scoreConfig.types';
+} from '../../types/scoreConfig.types';
 import {
   convertWeightsToPercentage,
   convertWeightsToInteger,
   OPTIONAL_COMPONENT_PRESETS,
-} from '../utils/scoreWeights';
+} from '../../utils/scoreWeights';
 
 export function useScoreConfigForm(
   onNotice: (msg: string) => void,
@@ -102,33 +102,26 @@ export function useScoreConfigForm(
       return;
     }
 
-    const template = OPTIONAL_COMPONENT_PRESETS[sourceCode];
-    if (!template) return;
+    const preset = OPTIONAL_COMPONENT_PRESETS[sourceCode];
+    if (!preset) return;
 
-    const alreadyExists = components.some((c) => c.componentCode === template.componentCode);
-    if (alreadyExists) {
-      onError(`Đầu điểm "${template.componentName}" đã có trong danh sách.`);
+    const exists = components.some((c) => c.componentCode === preset.componentCode);
+    if (exists) {
+      onError(`Đầu điểm "${preset.componentName}" đã có trong danh sách.`);
       return;
     }
 
-    const weightVal = calculationMethod === 'Percentage'
-      ? (sourceCode === 'COUNCIL_AVG' ? 30 : 15)
-      : (template.weight || 1);
-
-    const newComponent: ScoreComponentInput = {
-      componentCode: template.componentCode!,
-      componentName: template.componentName!,
-      source: template.source!,
-      applicability: template.applicability || 'Always',
-      weight: weightVal,
-      isRequired: true,
-      minimumScore: null,
-      requiresApproval: false,
-      orderIndex: components.length + 1,
-    };
-
-    setComponents((prev) => [...prev, newComponent]);
-    onNotice(`Đã thêm đầu điểm "${template.componentName}".`);
+    const nextOrder = components.length + 1;
+    const initialWeight = calculationMethod === 'Percentage' ? 10 : 1;
+    setComponents((prev) => [
+      ...prev,
+      {
+        ...preset,
+        weight: initialWeight,
+        orderIndex: nextOrder,
+      },
+    ]);
+    onNotice(`Đã thêm đầu điểm "${preset.componentName}".`);
   };
 
   return {

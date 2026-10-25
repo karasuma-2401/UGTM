@@ -4,8 +4,8 @@ import type {
   ScoreComponentInput,
   ScoreConfigurationDto,
   KltnBatchSummaryDto,
-} from '../types/scoreConfig.types';
-import { scoreConfigApi, getScoreConfigErrorMessage } from '../services/scoreConfigApi';
+} from '../../types/scoreConfig.types';
+import { scoreConfigApi, getScoreConfigErrorMessage } from '../../services/scoreConfigApi';
 
 interface SaveDraftParams {
   selectedBatchId: string;

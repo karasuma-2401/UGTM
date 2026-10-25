@@ -5,5 +5,6 @@ export * from './services/scoreConfigApi';
 export * from './types/period.types';
 export * from './types/scoreConfig.types';
 export * from './components';
-export * from './hooks/useScoreConfig';
+export * from './hooks';
 export * from './utils/scoreWeights';
+export * from './utils/periodDates';

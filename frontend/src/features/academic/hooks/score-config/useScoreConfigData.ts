@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type {
   KltnBatchSummaryDto,
   ScoreConfigurationDto,
-} from '../types/scoreConfig.types';
-import { scoreConfigApi, getScoreConfigErrorMessage } from '../services/scoreConfigApi';
+} from '../../types/scoreConfig.types';
+import { scoreConfigApi, getScoreConfigErrorMessage } from '../../services/scoreConfigApi';
 
 export function useScoreConfigData(onError: (msg: string) => void) {
   const [batches, setBatches] = useState<KltnBatchSummaryDto[]>([]);

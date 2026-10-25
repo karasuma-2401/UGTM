@@ -12,7 +12,7 @@ import {
   ScoreConfigHistoryDialog,
   ScoreConfigCloneReasonDialog,
 } from '../components/score-config';
-import { useScoreConfig } from '../hooks/useScoreConfig';
+import { useScoreConfig } from '../hooks/score-config';
 
 export const ScoreConfigPage: React.FC = () => {
   const { data, form, modals, actions } = useScoreConfig();

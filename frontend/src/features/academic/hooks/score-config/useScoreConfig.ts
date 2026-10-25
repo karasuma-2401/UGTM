@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import type { ScoreConfigurationDto } from '../types/scoreConfig.types';
-import { isConfigDifferentFromDefault } from '../utils/scoreWeights';
+import type { ScoreConfigurationDto } from '../../types/scoreConfig.types';
+import { isConfigDifferentFromDefault } from '../../utils/scoreWeights';
 import { useScoreConfigModals } from './useScoreConfigModals';
 import { useScoreConfigData } from './useScoreConfigData';
 import { useScoreConfigForm } from './useScoreConfigForm';
