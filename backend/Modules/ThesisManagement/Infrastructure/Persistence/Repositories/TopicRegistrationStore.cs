@@ -414,4 +414,302 @@ public sealed class TopicRegistrationStore(
             IsRegistrationBlocked: penalty?.IsRegistrationBlocked ?? false,
             BlockedAtUtc: penalty?.BlockedAtUtc);
     }
+
+    public async Task<Result<AdvisorTopicRegistrationResultDto>> AssignTopicStudentsByAdvisorAsync(
+        Guid topicId,
+        Guid advisorId,
+        bool isAdmin,
+        IReadOnlyList<Guid> studentIds,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var sem = TopicLocks.GetOrAdd(topicId, _ => new SemaphoreSlim(1, 1));
+        await sem.WaitAsync(cancellationToken);
+        try
+        {
+            if (db.Database.IsRelational())
+            {
+                var strategy = db.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+                    var topic = await QueryTopicForUpdateAsync(topicId, transaction.GetDbTransaction(), cancellationToken);
+                    if (topic is null)
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.TopicNotFound);
+                    }
+
+                    var assignResult = await ExecuteAdvisorAssignLogicAsync(
+                        topic,
+                        advisorId,
+                        isAdmin,
+                        studentIds,
+                        nowUtc,
+                        cancellationToken);
+
+                    if (!assignResult.IsSuccess)
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return assignResult;
+                    }
+
+                    await db.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                    return assignResult;
+                });
+            }
+            else
+            {
+                InProcessTestTopics.TryGetValue(topicId, out var topic);
+                if (topic is null)
+                {
+                    return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.TopicNotFound);
+                }
+
+                var assignResult = await ExecuteAdvisorAssignLogicAsync(
+                    topic,
+                    advisorId,
+                    isAdmin,
+                    studentIds,
+                    nowUtc,
+                    cancellationToken);
+
+                if (!assignResult.IsSuccess)
+                {
+                    return assignResult;
+                }
+
+                await db.SaveChangesAsync(cancellationToken);
+                return assignResult;
+            }
+        }
+        finally
+        {
+            sem.Release();
+        }
+    }
+
+    public async Task<Result> UnassignTopicStudentsByAdvisorAsync(
+        Guid topicId,
+        Guid advisorId,
+        bool isAdmin,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var sem = TopicLocks.GetOrAdd(topicId, _ => new SemaphoreSlim(1, 1));
+        await sem.WaitAsync(cancellationToken);
+        try
+        {
+            if (db.Database.IsRelational())
+            {
+                var strategy = db.Database.CreateExecutionStrategy();
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+                    var topic = await QueryTopicForUpdateAsync(topicId, transaction.GetDbTransaction(), cancellationToken);
+                    if (topic is null)
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return Result.Failure(TopicRegistrationErrors.TopicNotFound);
+                    }
+
+                    var unassignResult = await ExecuteAdvisorUnassignLogicAsync(
+                        topic,
+                        advisorId,
+                        isAdmin,
+                        nowUtc,
+                        cancellationToken);
+
+                    if (!unassignResult.IsSuccess)
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return unassignResult;
+                    }
+
+                    await db.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                    return unassignResult;
+                });
+            }
+            else
+            {
+                InProcessTestTopics.TryGetValue(topicId, out var topic);
+                if (topic is null)
+                {
+                    return Result.Failure(TopicRegistrationErrors.TopicNotFound);
+                }
+
+                var unassignResult = await ExecuteAdvisorUnassignLogicAsync(
+                    topic,
+                    advisorId,
+                    isAdmin,
+                    nowUtc,
+                    cancellationToken);
+
+                if (!unassignResult.IsSuccess)
+                {
+                    return unassignResult;
+                }
+
+                await db.SaveChangesAsync(cancellationToken);
+                return unassignResult;
+            }
+        }
+        finally
+        {
+            sem.Release();
+        }
+    }
+
+    private async Task<Result<AdvisorTopicRegistrationResultDto>> ExecuteAdvisorAssignLogicAsync(
+        TopicRegistrationDetailsDto topic,
+        Guid advisorId,
+        bool isAdmin,
+        IReadOnlyList<Guid> studentIds,
+        DateTime nowUtc,
+        CancellationToken cancellationToken)
+    {
+        if (!isAdmin && topic.AdvisorId != advisorId)
+        {
+            return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.NotTopicAdvisor);
+        }
+
+        var isAllowedStatus = string.Equals(topic.Status, "Draft", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(topic.Status, "Submitted", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(topic.Status, "NeedRevision", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(topic.Status, "Approved", StringComparison.OrdinalIgnoreCase);
+
+        if (!isAllowedStatus)
+        {
+            return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.InvalidTopicStatusForAdvisorAssign);
+        }
+
+        var prepWindow = await batchReader.GetTopicPreparationWindowAsync(topic.BatchId, nowUtc, cancellationToken);
+        if (prepWindow is null || !prepWindow.IsTopicPreparationStageActive)
+        {
+            return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.TopicPreparationWindowClosed);
+        }
+
+        if (studentIds.Count == 0)
+        {
+            return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.EmptyStudentList);
+        }
+
+        if (studentIds.Distinct().Count() != studentIds.Count)
+        {
+            return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.DuplicateStudentInGroup);
+        }
+
+        if (studentIds.Count > topic.StudentNumber)
+        {
+            return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.GroupSizeExceedsTopicQuota);
+        }
+
+        var penalties = await db.StudentRegistrationPenalties
+            .Where(p => studentIds.Contains(p.StudentId) && p.IsRegistrationBlocked)
+            .ToListAsync(cancellationToken);
+
+        if (penalties.Count > 0)
+        {
+            return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.StudentRegistrationBlocked);
+        }
+
+        var otherRegistrations = await db.StudentGroupMembers
+            .Include(m => m.Group)
+            .Where(m => studentIds.Contains(m.StudentId)
+                        && m.BatchId == topic.BatchId
+                        && m.Group.TopicId != topic.Id
+                        && m.Group.Status != StudentGroupStatus.Stopped)
+            .AnyAsync(cancellationToken);
+
+        if (otherRegistrations)
+        {
+            return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.StudentAlreadyRegisteredInBatch);
+        }
+
+        var group = await db.StudentGroups
+            .Include(g => g.Members)
+            .FirstOrDefaultAsync(g => g.TopicId == topic.Id, cancellationToken);
+
+        if (group is null)
+        {
+            group = new StudentGroup(Guid.NewGuid(), topic.Id, nowUtc);
+            db.StudentGroups.Add(group);
+        }
+        else
+        {
+            var existingMembers = group.Members.ToList();
+            foreach (var member in existingMembers)
+            {
+                if (!studentIds.Contains(member.StudentId))
+                {
+                    group.RemoveMember(member.StudentId);
+                }
+            }
+        }
+
+        var currentMemberIds = group.Members.Select(m => m.StudentId).ToHashSet();
+        foreach (var studentId in studentIds)
+        {
+            if (!currentMemberIds.Contains(studentId))
+            {
+                group.AddConfirmedMember(studentId, topic.BatchId, nowUtc);
+            }
+        }
+
+        return Result.Success(new AdvisorTopicRegistrationResultDto(
+            group.Id,
+            topic.Id,
+            topic.BatchId,
+            studentIds,
+            "Đăng ký nhóm sinh viên cho đề tài thành công."));
+    }
+
+    private async Task<Result> ExecuteAdvisorUnassignLogicAsync(
+        TopicRegistrationDetailsDto topic,
+        Guid advisorId,
+        bool isAdmin,
+        DateTime nowUtc,
+        CancellationToken cancellationToken)
+    {
+        if (!isAdmin && topic.AdvisorId != advisorId)
+        {
+            return Result.Failure(TopicRegistrationErrors.NotTopicAdvisor);
+        }
+
+        var isAllowedStatus = string.Equals(topic.Status, "Draft", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(topic.Status, "Submitted", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(topic.Status, "NeedRevision", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(topic.Status, "Approved", StringComparison.OrdinalIgnoreCase);
+
+        if (!isAllowedStatus)
+        {
+            return Result.Failure(TopicRegistrationErrors.InvalidTopicStatusForAdvisorAssign);
+        }
+
+        var prepWindow = await batchReader.GetTopicPreparationWindowAsync(topic.BatchId, nowUtc, cancellationToken);
+        if (prepWindow is null || !prepWindow.IsTopicPreparationStageActive)
+        {
+            return Result.Failure(TopicRegistrationErrors.TopicPreparationWindowClosed);
+        }
+
+        var group = await db.StudentGroups
+            .Include(g => g.Members)
+            .FirstOrDefaultAsync(g => g.TopicId == topic.Id, cancellationToken);
+
+        if (group is null || group.Members.Count == 0)
+        {
+            return Result.Failure(TopicRegistrationErrors.RegistrationNotFound);
+        }
+
+        var members = group.Members.ToList();
+        foreach (var member in members)
+        {
+            group.RemoveMember(member.StudentId);
+        }
+
+        db.StudentGroups.Remove(group);
+        return Result.Success();
+    }
 }

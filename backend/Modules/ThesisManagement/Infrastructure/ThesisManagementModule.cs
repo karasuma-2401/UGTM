@@ -38,6 +38,8 @@ using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetPro
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.ReviewProgressReport;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.SubmitProgressReport;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations;
+using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.AdvisorAssignTopicStudents;
+using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.AdvisorUnassignTopicStudents;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.ConfirmTopicRegistration;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.Expiration;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.GetMyRegistrationStatus;
@@ -109,6 +111,8 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<RegisterTopicHandler>();
         services.AddScoped<ConfirmTopicRegistrationHandler>();
         services.AddScoped<GetMyRegistrationStatusHandler>();
+        services.AddScoped<AdvisorAssignTopicStudentsHandler>();
+        services.AddScoped<AdvisorUnassignTopicStudentsHandler>();
         services.AddScoped<ITopicRegistrationExpirationEnforcer, TopicRegistrationExpirationEnforcer>();
         services.AddHostedService<TopicRegistrationExpirationWorker>();
     }

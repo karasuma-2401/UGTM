@@ -28,4 +28,19 @@ public interface ITopicRegistrationStore
     Task<StudentRegistrationStatusDto?> GetStudentRegistrationStatusAsync(
         Guid studentId,
         CancellationToken cancellationToken = default);
+
+    Task<Result<AdvisorTopicRegistrationResultDto>> AssignTopicStudentsByAdvisorAsync(
+        Guid topicId,
+        Guid advisorId,
+        bool isAdmin,
+        IReadOnlyList<Guid> studentIds,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default);
+
+    Task<Result> UnassignTopicStudentsByAdvisorAsync(
+        Guid topicId,
+        Guid advisorId,
+        bool isAdmin,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default);
 }

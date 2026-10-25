@@ -58,4 +58,52 @@ public sealed class KltnBatchReader(AcademicPeriodsDbContext db) : IKltnBatchRea
             isRegistrationOpen,
             stage.DeadlineAtUtc);
     }
+
+    public async Task<BatchTopicPreparationWindowContractDto?> GetTopicPreparationWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var batch = await db.KltnBatches
+            .AsNoTracking()
+            .Include(b => b.Stages)
+            .FirstOrDefaultAsync(b => b.Id == batchId, cancellationToken);
+
+        if (batch is null)
+        {
+            return null;
+        }
+
+        var stage = batch.Stages
+            .FirstOrDefault(s => s.StageCode == "TOPIC_PREPARATION" || s.OrderIndex == 1);
+
+        if (stage is null)
+        {
+            return new BatchTopicPreparationWindowContractDto(
+                batch.Id,
+                batch.Status.ToString(),
+                false,
+                null);
+        }
+
+        TimeZoneInfo tz;
+        try
+        {
+            tz = TimeZoneInfo.FindSystemTimeZoneById(string.IsNullOrWhiteSpace(batch.TimeZoneId) ? "Asia/Ho_Chi_Minh" : batch.TimeZoneId);
+        }
+        catch
+        {
+            tz = TimeZoneInfo.Utc;
+        }
+
+        var localDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tz));
+        var isStageActive = stage.StartDate <= localDate && nowUtc <= stage.DeadlineAtUtc;
+        var isPreparationOpen = batch.Status == BatchStatus.Open && isStageActive;
+
+        return new BatchTopicPreparationWindowContractDto(
+            batch.Id,
+            batch.Status.ToString(),
+            isPreparationOpen,
+            stage.DeadlineAtUtc);
+    }
 }

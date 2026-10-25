@@ -1,4 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Email;
+using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Application.TopicRegistrations;
 using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
@@ -8,11 +12,24 @@ namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence.Repositories;
 public sealed class ThesisRegistrationContract : IThesisRegistrationContract
 {
     private readonly ThesisManagementDbContext? _db;
+    private readonly ITopicRegistrationStore? _registrationStore;
+    private readonly IStudentInfoReader? _studentInfoReader;
+    private readonly IEmailSender? _emailSender;
+    private readonly TimeProvider? _timeProvider;
     private readonly IReadOnlyList<StudentGroup>? _inMemoryGroups;
 
-    public ThesisRegistrationContract(ThesisManagementDbContext db)
+    public ThesisRegistrationContract(
+        ThesisManagementDbContext db,
+        ITopicRegistrationStore registrationStore,
+        IStudentInfoReader studentInfoReader,
+        IEmailSender emailSender,
+        TimeProvider timeProvider)
     {
         _db = db;
+        _registrationStore = registrationStore;
+        _studentInfoReader = studentInfoReader;
+        _emailSender = emailSender;
+        _timeProvider = timeProvider;
     }
 
     private ThesisRegistrationContract(IReadOnlyList<StudentGroup> inMemoryGroups)
@@ -92,6 +109,130 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
             group.Status.ToString(),
             group.CreatedAt,
             members);
+    }
+
+    public async Task<AdvisorAssignStudentsContractResultDto> AssignStudentsByAdvisorAsync(
+        Guid topicId,
+        Guid actorUserId,
+        bool isAdmin,
+        IReadOnlyCollection<AdvisorStudentAssignmentInputDto> students,
+        CancellationToken cancellationToken = default)
+    {
+        if (_registrationStore is null || _studentInfoReader is null)
+        {
+            return AdvisorAssignStudentsContractResultDto.Failure(
+                "ThesisManagement.NotConfigured",
+                "Thesis registration store is not configured.");
+        }
+
+        if (topicId == Guid.Empty)
+        {
+            return AdvisorAssignStudentsContractResultDto.Failure(
+                TopicRegistrationErrors.TopicNotFound.Code,
+                TopicRegistrationErrors.TopicNotFound.Message);
+        }
+
+        if (students.Count == 0)
+        {
+            return AdvisorAssignStudentsContractResultDto.Failure(
+                TopicRegistrationErrors.EmptyStudentList.Code,
+                TopicRegistrationErrors.EmptyStudentList.Message);
+        }
+
+        var resolvedStudents = new List<StudentInfoContractDto>();
+        foreach (var item in students)
+        {
+            var student = await _studentInfoReader.GetStudentByIdOrCodeAsync(item.StudentId, item.UserCode, cancellationToken);
+            if (student is null)
+            {
+                return AdvisorAssignStudentsContractResultDto.Failure(
+                    TopicRegistrationErrors.StudentNotFound.Code,
+                    TopicRegistrationErrors.StudentNotFound.Message);
+            }
+            resolvedStudents.Add(student);
+        }
+
+        var distinctIds = resolvedStudents.Select(s => s.Id).Distinct().ToList();
+        if (distinctIds.Count != resolvedStudents.Count)
+        {
+            return AdvisorAssignStudentsContractResultDto.Failure(
+                TopicRegistrationErrors.DuplicateStudentInGroup.Code,
+                TopicRegistrationErrors.DuplicateStudentInGroup.Message);
+        }
+
+        var nowUtc = (_timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var assignResult = await _registrationStore.AssignTopicStudentsByAdvisorAsync(
+            topicId,
+            actorUserId,
+            isAdmin,
+            distinctIds,
+            nowUtc,
+            cancellationToken);
+
+        if (!assignResult.IsSuccess)
+        {
+            return AdvisorAssignStudentsContractResultDto.Failure(
+                assignResult.Error.Code,
+                assignResult.Error.Message);
+        }
+
+        if (_emailSender is not null)
+        {
+            foreach (var student in resolvedStudents)
+            {
+                if (string.IsNullOrWhiteSpace(student.Email)) continue;
+                try
+                {
+                    var body = $"""
+                        <h3>Thông báo: Giảng viên hướng dẫn đã đăng ký bạn vào đề tài khóa luận</h3>
+                        <p>Xin chào <strong>{student.FullName}</strong> ({student.UserCode}),</p>
+                        <p>Giảng viên hướng dẫn đã ghi nhận bạn vào nhóm đề tài khóa luận trong giai đoạn chuẩn bị đề tài.</p>
+                        <p>Trạng thái của bạn đã được <strong>xác nhận chính thức (Confirmed)</strong>.</p>
+                        """;
+                    await _emailSender.SendAsync(
+                        new EmailMessage(student.Email, "[UGTM] Thông báo gán đề tài khóa luận từ GVHD", body),
+                        cancellationToken);
+                }
+                catch { }
+            }
+        }
+
+        return AdvisorAssignStudentsContractResultDto.Success(
+            assignResult.Value.GroupId,
+            topicId,
+            assignResult.Value.BatchId,
+            distinctIds);
+    }
+
+    public async Task<AdvisorUnassignStudentsContractResultDto> UnassignStudentsByAdvisorAsync(
+        Guid topicId,
+        Guid actorUserId,
+        bool isAdmin,
+        CancellationToken cancellationToken = default)
+    {
+        if (_registrationStore is null)
+        {
+            return AdvisorUnassignStudentsContractResultDto.Failure(
+                "ThesisManagement.NotConfigured",
+                "Thesis registration store is not configured.");
+        }
+
+        var nowUtc = (_timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        var result = await _registrationStore.UnassignTopicStudentsByAdvisorAsync(
+            topicId,
+            actorUserId,
+            isAdmin,
+            nowUtc,
+            cancellationToken);
+
+        if (!result.IsSuccess)
+        {
+            return AdvisorUnassignStudentsContractResultDto.Failure(
+                result.Error.Code,
+                result.Error.Message);
+        }
+
+        return AdvisorUnassignStudentsContractResultDto.Success();
     }
 
     private IQueryable<StudentGroup> QueryGroups()
