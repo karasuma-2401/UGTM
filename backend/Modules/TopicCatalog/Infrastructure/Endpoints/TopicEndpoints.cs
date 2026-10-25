@@ -96,6 +96,7 @@ public static class TopicEndpoints
             .WithSummary("GVHD tạo đề tài khóa luận mới (lưu nháp Draft hoặc gửi duyệt Submitted)")
             .WithDescription("""
                 Cho phép GVHD tạo mới đề tài khóa luận gồm Tên tiếng Việt, Tên tiếng Anh, Mục tiêu, Yêu cầu công nghệ và Chỉ tiêu sinh viên tối đa (`studentNumber` bắt buộc là 1 hoặc 2).
+                - Hỗ trợ gán nhóm sinh viên ngay khi tạo đề tài thông qua danh sách `studentCodes` (MSSV) hoặc `studentIds`. Tất cả sinh viên được gán sẽ được xác nhận chính thức ngay (`Confirmed`) và nhận email thông báo nếu đợt KLTN đang trong giai đoạn `TOPIC_PREPARATION`.
                 - Nếu `submitImmediately = false` (mặc định): Đề tài được lưu ở trạng thái `Draft` (Nháp).
                 - Nếu `submitImmediately = true`: Đề tài chuyển ngay sang trạng thái `Submitted` (Chờ Khoa duyệt).
                 - Vai trò được phép: `Lecturer` (GVHD) hoặc `Admin`.
@@ -113,7 +114,8 @@ public static class TopicEndpoints
             .WithSummary("GVHD chỉnh sửa đề tài khóa luận (khi ở trạng thái Draft hoặc NeedRevision)")
             .WithDescription("""
                 Cho phép GVHD chỉnh sửa thông tin đề tài do mình phụ trách khi đề tài đang ở trạng thái `Draft` (Nháp) hoặc `NeedRevision` (Khoa yêu cầu chỉnh sửa).
-                - `studentNumber`: Chỉ nhận giá trị 1 hoặc 2.
+                - Hỗ trợ cập nhật nhóm sinh viên thông qua `studentCodes` / `studentIds`, hoặc hủy nhóm sinh viên đã gán bằng cách truyền `clearAssignedStudents = true`.
+                - `studentNumber`: Chỉ nhận giá trị 1 hoặc 2. Không được nhỏ hơn số lượng sinh viên đã gán trừ khi truyền cập nhật lại danh sách sinh viên tương ứng.
                 - `submitImmediately`: Nếu `true`, sau khi lưu cập nhật sẽ tự động chuyển trạng thái đề tài sang `Submitted` (Chờ duyệt).
                 - Vai trò được phép: `Lecturer` (chính chủ đề tài) hoặc `Admin`.
                 """)
@@ -227,7 +229,9 @@ public static class TopicEndpoints
             request.Requirements,
             request.StudentNumber,
             request.SubmitImmediately,
-            request.AdvisorId);
+            request.AdvisorId,
+            request.StudentCodes,
+            request.StudentIds);
 
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
@@ -246,7 +250,10 @@ public static class TopicEndpoints
             request.Description,
             request.Requirements,
             request.StudentNumber,
-            request.SubmitImmediately);
+            request.SubmitImmediately,
+            request.StudentCodes,
+            request.StudentIds,
+            request.ClearAssignedStudents);
 
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
@@ -291,7 +298,9 @@ public static class TopicEndpoints
         string? Requirements,
         int? StudentNumber,
         bool SubmitImmediately = false,
-        Guid? AdvisorId = null);
+        Guid? AdvisorId = null,
+        IReadOnlyCollection<string>? StudentCodes = null,
+        IReadOnlyCollection<Guid>? StudentIds = null);
 
     public sealed record UpdateTopicRequest(
         string? TitleVi,
@@ -299,7 +308,10 @@ public static class TopicEndpoints
         string? Description,
         string? Requirements,
         int? StudentNumber,
-        bool SubmitImmediately = false);
+        bool SubmitImmediately = false,
+        IReadOnlyCollection<string>? StudentCodes = null,
+        IReadOnlyCollection<Guid>? StudentIds = null,
+        bool ClearAssignedStudents = false);
 
     public sealed record ReviewTopicRequest(
         string? Decision,

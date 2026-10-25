@@ -6,11 +6,22 @@ public sealed record BatchRegistrationWindowContractDto(
     bool IsRegistrationStageActive,
     DateTime? StageDeadlineAtUtc);
 
+public sealed record BatchTopicPreparationWindowContractDto(
+    Guid BatchId,
+    string BatchStatus,
+    bool IsTopicPreparationStageActive,
+    DateTime? StageDeadlineAtUtc);
+
 public interface IKltnBatchReader
 {
     Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default);
 
     Task<BatchRegistrationWindowContractDto?> GetRegistrationWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default);
+
+    Task<BatchTopicPreparationWindowContractDto?> GetTopicPreparationWindowAsync(
         Guid batchId,
         DateTime nowUtc,
         CancellationToken cancellationToken = default);

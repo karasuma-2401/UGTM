@@ -6,6 +6,7 @@ public interface ITopicRepository
 {
     Task<Topic?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     void Add(Topic topic);
+    void Remove(Topic topic);
 
     Task<bool> ExistsByAdvisorAndTitleAsync(
         Guid batchId,

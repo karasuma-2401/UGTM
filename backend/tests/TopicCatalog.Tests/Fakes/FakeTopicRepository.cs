@@ -16,6 +16,11 @@ public sealed class FakeTopicRepository : ITopicRepository
         _topics[topic.Id] = topic;
     }
 
+    public void Remove(Topic topic)
+    {
+        _topics.Remove(topic.Id);
+    }
+
     public Task<Topic?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         _topics.TryGetValue(id, out var topic);
@@ -91,5 +96,19 @@ public sealed class FakeKltnBatchReader(params Guid[] existingBatchIds) : IKltnB
 
         return Task.FromResult<BatchRegistrationWindowContractDto?>(
             new BatchRegistrationWindowContractDto(batchId, "Open", true, nowUtc.AddDays(7)));
+    }
+
+    public Task<BatchTopicPreparationWindowContractDto?> GetTopicPreparationWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_batches.Contains(batchId))
+        {
+            return Task.FromResult<BatchTopicPreparationWindowContractDto?>(null);
+        }
+
+        return Task.FromResult<BatchTopicPreparationWindowContractDto?>(
+            new BatchTopicPreparationWindowContractDto(batchId, "Open", true, nowUtc.AddDays(7)));
     }
 }

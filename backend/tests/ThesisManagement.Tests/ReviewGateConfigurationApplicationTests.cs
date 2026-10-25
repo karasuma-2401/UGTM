@@ -210,6 +210,15 @@ public sealed class ReviewGateConfigurationApplicationTests
                 exists && batchId == BatchId
                     ? new BatchRegistrationWindowContractDto(batchId, "Open", true, nowUtc.AddDays(7))
                     : null);
+
+        public Task<BatchTopicPreparationWindowContractDto?> GetTopicPreparationWindowAsync(
+            Guid batchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchTopicPreparationWindowContractDto?>(
+                exists && batchId == BatchId
+                    ? new BatchTopicPreparationWindowContractDto(batchId, "Open", true, nowUtc.AddDays(7))
+                    : null);
     }
 
     private sealed class FakeConfigurationRepository(params ReviewGateConfiguration[] configurations)

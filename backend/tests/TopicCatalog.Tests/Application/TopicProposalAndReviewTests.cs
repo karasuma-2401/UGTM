@@ -796,6 +796,241 @@ public sealed class TopicProposalAndReviewTests
         Assert.True(visibleTopic.IsPublished);
     }
 
+    // ==============================================================
+    // 6. ADVISOR STUDENT PRE-ASSIGNMENT IN CREATE & UPDATE TESTS
+    // ==============================================================
+
+    [Fact]
+    public async Task CreateTopic_WithAssignedStudents_Succeeds_WhenContractSucceeds()
+    {
+        var lecturerId = Guid.NewGuid();
+        var repo = new FakeTopicRepository();
+        var uow = new FakeTopicUnitOfWork();
+        var batchReader = new FakeKltnBatchReader(ValidBatchId);
+        var regContract = new MockAssignableRegistrationContract();
+        var handler = new CreateTopicHandler(repo, uow, batchReader, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+
+        var result = await handler.HandleAsync(new CreateTopicCommand(
+            ValidBatchId,
+            "Đề tài có gán sinh viên trước",
+            null,
+            null,
+            null,
+            2,
+            StudentCodes: new[] { "SV001" }));
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(repo.All);
+        Assert.Equal(1, regContract.AssignCallCount);
+    }
+
+    [Fact]
+    public async Task CreateTopic_WithAssignedStudents_RollsBack_WhenContractFails()
+    {
+        var lecturerId = Guid.NewGuid();
+        var repo = new FakeTopicRepository();
+        var uow = new FakeTopicUnitOfWork();
+        var batchReader = new FakeKltnBatchReader(ValidBatchId);
+        var regContract = new MockAssignableRegistrationContract { ShouldFailAssign = true };
+        var handler = new CreateTopicHandler(repo, uow, batchReader, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+
+        var result = await handler.HandleAsync(new CreateTopicCommand(
+            ValidBatchId,
+            "Đề tài gán sinh viên thất bại",
+            null,
+            null,
+            null,
+            2,
+            StudentCodes: new[] { "SV001" }));
+
+        Assert.False(result.IsSuccess);
+        Assert.Empty(repo.All);
+    }
+
+    [Fact]
+    public async Task UpdateTopic_WithClearAssignedStudents_CallsUnassign()
+    {
+        var lecturerId = Guid.NewGuid();
+        var repo = new FakeTopicRepository();
+        var uow = new FakeTopicUnitOfWork();
+        var topic = new Topic
+        {
+            Id = Guid.NewGuid(),
+            BatchId = ValidBatchId,
+            AdvisorId = lecturerId,
+            TitleVi = "Đề tài cần xóa sinh viên",
+            StudentNumber = 2,
+            Status = TopicStatus.Draft
+        };
+        repo.Add(topic);
+
+        var regContract = new MockAssignableRegistrationContract();
+        var handler = new UpdateTopicHandler(repo, uow, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+
+        var result = await handler.HandleAsync(new UpdateTopicCommand(
+            topic.Id,
+            topic.TitleVi,
+            null,
+            null,
+            null,
+            2,
+            ClearAssignedStudents: true));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, regContract.UnassignCallCount);
+    }
+
+    [Fact]
+    public async Task UpdateTopic_LoweringQuotaBelowExistingMembers_FailsWithQuotaLessThanRegisteredStudents()
+    {
+        var lecturerId = Guid.NewGuid();
+        var repo = new FakeTopicRepository();
+        var uow = new FakeTopicUnitOfWork();
+        var topic = new Topic
+        {
+            Id = Guid.NewGuid(),
+            BatchId = ValidBatchId,
+            AdvisorId = lecturerId,
+            TitleVi = "Đề tài đang có 2 sinh viên",
+            StudentNumber = 2,
+            Status = TopicStatus.Draft
+        };
+        repo.Add(topic);
+
+        var regContract = new MockAssignableRegistrationContract
+        {
+            ExistingRegistration = new TopicRegistrationContractDto(
+                Guid.NewGuid(),
+                topic.Id,
+                "Registered",
+                DateTime.UtcNow,
+                new[]
+                {
+                    new TopicMemberContractDto(Guid.NewGuid(), ValidBatchId, DateTime.UtcNow),
+                    new TopicMemberContractDto(Guid.NewGuid(), ValidBatchId, DateTime.UtcNow)
+                })
+        };
+        var handler = new UpdateTopicHandler(repo, uow, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+
+        var result = await handler.HandleAsync(new UpdateTopicCommand(
+            topic.Id,
+            topic.TitleVi,
+            null,
+            null,
+            null,
+            1));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TopicErrors.QuotaLessThanRegisteredStudents.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task CreateTopic_WithInputsExceedingQuota_Fails_QuotaLessThanRegisteredStudents()
+    {
+        var repo = new FakeTopicRepository();
+        var uow = new FakeTopicUnitOfWork();
+        var batchReader = new FakeKltnBatchReader(ValidBatchId);
+        var regContract = new MockAssignableRegistrationContract();
+        var lecturerId = Guid.NewGuid();
+
+        var handler = new CreateTopicHandler(
+            repo, uow, batchReader, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+
+        var result = await handler.HandleAsync(new CreateTopicCommand(
+            ValidBatchId,
+            "Đề tài quá chỉ tiêu",
+            null,
+            null,
+            null,
+            1, // Quota is 1
+            false,
+            StudentCodes: new[] { "SV001", "SV002" })); // 2 students
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TopicErrors.QuotaLessThanRegisteredStudents.Code, result.Error.Code);
+        Assert.Equal(0, uow.SaveChangesCallCount);
+        Assert.Empty(repo.All);
+    }
+
+    [Fact]
+    public async Task UpdateTopic_WithInputsExceedingQuota_Fails_QuotaLessThanRegisteredStudents()
+    {
+        var lecturerId = Guid.NewGuid();
+        var topic = new Topic
+        {
+            Id = Guid.NewGuid(),
+            BatchId = ValidBatchId,
+            AdvisorId = lecturerId,
+            TitleVi = "Đề tài gốc",
+            Status = TopicStatus.Draft,
+            StudentNumber = 2,
+            CreatedAt = DateTime.UtcNow
+        };
+        var repo = new FakeTopicRepository();
+        repo.Add(topic);
+
+        var uow = new FakeTopicUnitOfWork();
+        var regContract = new MockAssignableRegistrationContract();
+        var handler = new UpdateTopicHandler(repo, uow, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+
+        var result = await handler.HandleAsync(new UpdateTopicCommand(
+            topic.Id,
+            topic.TitleVi,
+            null,
+            null,
+            null,
+            1, // Update quota to 1
+            false,
+            StudentCodes: new[] { "SV001", "SV002" })); // Provide 2 students
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(TopicErrors.QuotaLessThanRegisteredStudents.Code, result.Error.Code);
+        Assert.Equal(0, uow.SaveChangesCallCount);
+    }
+
+    private sealed class MockAssignableRegistrationContract : IThesisRegistrationContract
+    {
+        public int AssignCallCount { get; private set; }
+        public int UnassignCallCount { get; private set; }
+        public bool ShouldFailAssign { get; set; }
+        public TopicRegistrationContractDto? ExistingRegistration { get; set; }
+
+        public Task<IReadOnlyDictionary<Guid, TopicRegistrationContractDto>> GetRegistrationsByTopicIdsAsync(
+            IEnumerable<Guid> topicIds,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyDictionary<Guid, TopicRegistrationContractDto>>(new Dictionary<Guid, TopicRegistrationContractDto>());
+
+        public Task<TopicRegistrationContractDto?> GetRegistrationByTopicIdAsync(
+            Guid topicId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(ExistingRegistration);
+
+        public Task<AdvisorAssignStudentsContractResultDto> AssignStudentsByAdvisorAsync(
+            Guid topicId,
+            Guid actorUserId,
+            bool isAdmin,
+            IReadOnlyCollection<AdvisorStudentAssignmentInputDto> students,
+            CancellationToken cancellationToken = default)
+        {
+            AssignCallCount++;
+            if (ShouldFailAssign)
+            {
+                return Task.FromResult(AdvisorAssignStudentsContractResultDto.Failure("TopicRegistration.Failed", "Error"));
+            }
+            return Task.FromResult(AdvisorAssignStudentsContractResultDto.Success(Guid.NewGuid(), topicId, Guid.NewGuid(), Array.Empty<Guid>()));
+        }
+
+        public Task<AdvisorUnassignStudentsContractResultDto> UnassignStudentsByAdvisorAsync(
+            Guid topicId,
+            Guid actorUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default)
+        {
+            UnassignCallCount++;
+            return Task.FromResult(AdvisorUnassignStudentsContractResultDto.Success());
+        }
+    }
+
     private sealed class EmptyRegistrationContract : IThesisRegistrationContract
     {
         public Task<IReadOnlyDictionary<Guid, TopicRegistrationContractDto>> GetRegistrationsByTopicIdsAsync(
@@ -808,6 +1043,21 @@ public sealed class TopicProposalAndReviewTests
             Guid topicId,
             CancellationToken cancellationToken = default)
             => Task.FromResult<TopicRegistrationContractDto?>(null);
+
+        public Task<AdvisorAssignStudentsContractResultDto> AssignStudentsByAdvisorAsync(
+            Guid topicId,
+            Guid actorUserId,
+            bool isAdmin,
+            IReadOnlyCollection<AdvisorStudentAssignmentInputDto> students,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(AdvisorAssignStudentsContractResultDto.Success(Guid.NewGuid(), topicId, Guid.NewGuid(), Array.Empty<Guid>()));
+
+        public Task<AdvisorUnassignStudentsContractResultDto> UnassignStudentsByAdvisorAsync(
+            Guid topicId,
+            Guid actorUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(AdvisorUnassignStudentsContractResultDto.Success());
     }
 
     private sealed class EmptyStudentInfoReader : IStudentInfoReader

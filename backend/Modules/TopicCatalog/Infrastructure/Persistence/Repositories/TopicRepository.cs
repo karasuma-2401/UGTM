@@ -38,6 +38,17 @@ public sealed class TopicRepository : ITopicRepository
         _db!.Topics.Add(topic);
     }
 
+    public void Remove(Topic topic)
+    {
+        if (_inMemoryTopics is not null)
+        {
+            _inMemoryTopics.Remove(topic);
+            return;
+        }
+
+        _db!.Topics.Remove(topic);
+    }
+
     public Task<bool> ExistsByAdvisorAndTitleAsync(
         Guid batchId,
         Guid advisorId,

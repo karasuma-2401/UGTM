@@ -8,4 +8,6 @@ public sealed record CreateTopicCommand(
     string? Requirements,
     int? StudentNumber,
     bool SubmitImmediately = false,
-    Guid? AdvisorId = null);
+    Guid? AdvisorId = null,
+    IReadOnlyCollection<string>? StudentCodes = null,
+    IReadOnlyCollection<Guid>? StudentIds = null);

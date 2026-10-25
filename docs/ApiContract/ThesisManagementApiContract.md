@@ -154,6 +154,8 @@ Các nhóm mã lỗi nghiệp vụ hiện dùng gồm `ReviewGateConfiguration.*
 | `POST` | `/api/thesis/topic-registrations` | `TopicRegistrationResultDto` | `Student` (đã xác thực) |
 | `POST` | `/api/thesis/topic-registrations/confirm` | `ConfirmRegistrationResultDto` | Public / Student (dùng confirmation token) |
 | `GET` | `/api/thesis/topic-registrations/my-status` | `StudentRegistrationStatusDto` | `Student` (đã xác thực) |
+| `PUT` | `/api/thesis/topic-registrations/advisor-assign` | `AdvisorTopicRegistrationResultDto` | `Lecturer` (chính chủ đề tài), `Admin` |
+| `DELETE` | `/api/thesis/topic-registrations/advisor-assign/{topicId}` | `200 OK` (hoặc `Result`) | `Lecturer` (chính chủ đề tài), `Admin` |
 
 ### 1. Đăng ký đề tài
 `POST /api/thesis/topic-registrations`: Sinh viên đăng ký đề tài khóa luận (1 mình hoặc kèm bạn cùng nhóm).
@@ -208,3 +210,51 @@ Các nhóm mã lỗi nghiệp vụ hiện dùng gồm `ReviewGateConfiguration.*
   - Lần 1 và lần 2: Gửi email cảnh cáo.
   - Lần 3 (`violationCount >= 3`): Khóa quyền đăng ký đề tài (`isRegistrationBlocked = true`), gửi email thông báo khóa quyền đăng ký (tài khoản vẫn đăng nhập hệ thống bình thường).
 - Cơ chế lazy cleanup ngay trong transaction đăng ký mới cũng tự động thu hồi slot quá hạn nếu có lượt đăng ký mới đến trước khi worker chạy.
+
+
+### 5. GVHD Đăng ký / Gán nhóm sinh viên cho đề tài (Giai đoạn chuẩn bị)
+`PUT /api/thesis/topic-registrations/advisor-assign`:
+- **Chủ thể thực hiện:** Giảng viên hướng dẫn sở hữu đề tài hoặc `Admin`.
+- **Mục đích:** Đăng ký / gán trực tiếp nhóm sinh viên theo chỉ tiêu của đề tài trong giai đoạn chuẩn bị đề tài (`TOPIC_PREPARATION`, tuần 0-1) trước khi mở cổng đăng ký đại trà cho sinh viên.
+- **Request Body:**
+```json
+{
+  "topicId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "studentCodes": ["24521680", "24521681"],
+  "studentIds": ["9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"]
+}
+```
+- **Quy tắc nghiệp vụ:**
+  - Trạng thái đề tài hợp lệ: `Draft`, `Submitted`, `NeedRevision`, hoặc `Approved` (trước khi chuyển sang `Published`).
+  - Giai đoạn thực hiện: Đợt KLTN phải đang mở (`Open`) và trong thời gian giai đoạn chuẩn bị đề tài (`TOPIC_PREPARATION`, tuần 0-1).
+  - Số lượng sinh viên: `1 <= count <= topic.StudentNumber`.
+  - Không cho phép trùng lặp mã sinh viên/ID trong danh sách (`TopicRegistration.DuplicateStudentInGroup`).
+  - Sinh viên không được ở trạng thái bị khóa quyền đăng ký vi phạm (`TopicRegistration.StudentRegistrationBlocked`).
+  - Sinh viên chưa được gán vào bất kỳ đề tài nào khác trong cùng đợt (`TopicRegistration.StudentAlreadyRegisteredInBatch`).
+  - Toàn bộ sinh viên được gán chuyển thẳng sang trạng thái `Confirmed` ngay lập tức (không cần token xác nhận hay chờ 24 giờ).
+  - Tự động gửi email thông báo đề tài đã được gán đến từng sinh viên.
+  - Sử dụng Pessimistic Lock (`SELECT ... FOR UPDATE` trên đề tài) và Database Transaction để ngăn chặn race condition.
+- **Mã lỗi đặc trưng:**
+  - `TopicRegistration.TopicNotFound` (404)
+  - `TopicRegistration.OnlyAdvisorsAllowed` (403)
+  - `TopicRegistration.NotTopicAdvisor` (403)
+  - `TopicRegistration.TopicPreparationWindowClosed` (409)
+  - `TopicRegistration.InvalidTopicStatusForAdvisorAssign` (409)
+  - `TopicRegistration.EmptyStudentList` (400)
+  - `TopicRegistration.DuplicateStudentInGroup` (400)
+  - `TopicRegistration.GroupSizeExceedsTopicQuota` (400)
+  - `TopicRegistration.StudentNotFound` (404)
+  - `TopicRegistration.StudentRegistrationBlocked` (403)
+  - `TopicRegistration.StudentAlreadyRegisteredInBatch` (409)
+
+### 6. GVHD Hủy gán nhóm sinh viên khỏi đề tài
+`DELETE /api/thesis/topic-registrations/advisor-assign/{topicId}`:
+- **Chủ thể thực hiện:** Giảng viên hướng dẫn sở hữu đề tài hoặc `Admin`.
+- **Mục đích:** Xóa nhóm sinh viên đã được gán trước đó trong giai đoạn `TOPIC_PREPARATION`, giải phóng trạng thái đăng ký của các sinh viên để có thể gán sang đề tài khác hoặc tham gia đăng ký sau này.
+- **Mã lỗi đặc trưng:**
+  - `TopicRegistration.TopicNotFound` (404)
+  - `TopicRegistration.OnlyAdvisorsAllowed` (403)
+  - `TopicRegistration.NotTopicAdvisor` (403)
+  - `TopicRegistration.TopicPreparationWindowClosed` (409)
+  - `TopicRegistration.InvalidTopicStatusForAdvisorAssign` (409)
+  - `TopicRegistration.RegistrationNotFound` (404)

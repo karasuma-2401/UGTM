@@ -63,4 +63,36 @@ public static class TopicRegistrationErrors
     public static readonly Error ConcurrencyConflict = Error.Conflict(
         "TopicRegistration.ConcurrencyConflict",
         "Đã xảy ra xung đột khi đăng ký đề tài. Vui lòng thử lại.");
+
+    public static readonly Error OnlyAdvisorsAllowed = Error.Forbidden(
+        "TopicRegistration.OnlyAdvisorsAllowed",
+        "Chỉ giảng viên hướng dẫn hoặc quản trị viên mới có quyền thực hiện thao tác này.");
+
+    public static readonly Error NotTopicAdvisor = Error.Forbidden(
+        "TopicRegistration.NotTopicAdvisor",
+        "Bạn không phải là giảng viên hướng dẫn phụ trách đề tài này.");
+
+    public static readonly Error TopicPreparationWindowClosed = Error.Conflict(
+        "TopicRegistration.TopicPreparationWindowClosed",
+        "Giai đoạn chuẩn bị đề tài (TOPIC_PREPARATION) của đợt khóa luận hiện không mở.");
+
+    public static readonly Error InvalidTopicStatusForAdvisorAssign = Error.Conflict(
+        "TopicRegistration.InvalidTopicStatusForAdvisorAssign",
+        "Chỉ có thể gán hoặc thay đổi nhóm sinh viên khi đề tài ở trạng thái Draft, Submitted, NeedRevision hoặc Approved.");
+
+    public static readonly Error DuplicateStudentInGroup = Error.Validation(
+        "TopicRegistration.DuplicateStudentInGroup",
+        "Danh sách sinh viên chứa thông tin trùng lặp.");
+
+    public static readonly Error EmptyStudentList = Error.Validation(
+        "TopicRegistration.EmptyStudentList",
+        "Danh sách sinh viên đăng ký không được để trống.");
+
+    public static readonly Error StudentNotFound = Error.NotFound(
+        "TopicRegistration.StudentNotFound",
+        "Không tìm thấy sinh viên theo mã hoặc ID được cung cấp, hoặc tài khoản chưa kích hoạt.");
+
+    public static readonly Error RegistrationNotFound = Error.NotFound(
+        "TopicRegistration.RegistrationNotFound",
+        "Đề tài hiện chưa có nhóm sinh viên nào được gán để hủy.");
 }

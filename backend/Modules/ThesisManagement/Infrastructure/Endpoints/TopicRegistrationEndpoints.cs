@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using UGTM.BuildingBlocks.Application.Responses;
+using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.AdvisorAssignTopicStudents;
+using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.AdvisorUnassignTopicStudents;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.ConfirmTopicRegistration;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.Dtos;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.GetMyRegistrationStatus;
@@ -143,8 +145,87 @@ public static class TopicRegistrationEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden);
 
+        group.MapPut("/advisor-assign", AdvisorAssignTopicStudentsAsync)
+            .RequireAuthorization()
+            .WithSummary("GVHD đăng ký / cập nhật nhóm sinh viên cho đề tài của mình")
+            .WithDescription("""
+                Cho phép Giảng viên hướng dẫn (GVHD) chủ động gán hoặc cập nhật nhóm sinh viên (từ 1 đến tối đa chỉ tiêu tiếp nhận của đề tài)
+                vào đề tài do mình phụ trách trong giai đoạn Chuẩn bị và công bố đề tài (`TOPIC_PREPARATION` - tuần 0-1, trước khi mở cổng đăng ký cho sinh viên).
+
+                ### Tham số Request Body:
+                - `topicId` (Guid, bắt buộc): Mã định danh duy nhất của đề tài.
+                - `studentIds` (array of Guid, tùy chọn): Danh sách ID của các sinh viên cần gán.
+                - `studentCodes` (array of string, tùy chọn): Danh sách mã số sinh viên (MSSV) của các sinh viên cần gán.
+                *Lưu ý:* Phải cung cấp ít nhất một danh sách (`studentIds` hoặc `studentCodes`). Hệ thống sẽ hợp nhất và loại trừ trùng lặp.
+
+                ### Quy tắc nghiệp vụ & Kiểm soát:
+                1. **Phân quyền sở hữu:** Chỉ GVHD phụ trách đề tài (`topic.AdvisorId == currentUserId`) hoặc Quản trị viên (`Admin`) mới có quyền thực hiện.
+                2. **Khung thời gian:** Đợt KLTN phải đang ở trạng thái `Open` và thời điểm hiện tại phải nằm trong giai đoạn `TOPIC_PREPARATION` (Stage 1, tuần 0-1).
+                3. **Trạng thái đề tài:** Đề tài phải ở trạng thái `Draft`, `Submitted`, `NeedRevision` hoặc `Approved` (chưa công bố `Published` hoặc bị từ chối/hủy).
+                4. **Chỉ tiêu tiếp nhận:** Số lượng sinh viên đăng ký phải thỏa mãn `1 <= số lượng <= topic.StudentNumber`.
+                5. **Ràng buộc sinh viên:**
+                   - Tài khoản sinh viên phải tồn tại, đang hoạt động (`Active`) và có vai trò `Student`.
+                   - Sinh viên không bị khóa quyền đăng ký đề tài (`IsRegistrationBlocked == false`).
+                   - Sinh viên chưa thuộc bất kỳ nhóm đề tài nào khác trong cùng đợt KLTN.
+                6. **Xác nhận tức thì:** Tất cả sinh viên được gán sẽ được xác nhận chính thức ngay lập tức (`Confirmed`), không qua bước chờ token và không chịu phạt vi phạm.
+                7. **Gửi email thông báo:** Hệ thống tự động gửi email thông báo cho tất cả sinh viên được gán vào đề tài.
+
+                ### Mã phản hồi (Responses):
+                - `200 OK`: Gán / cập nhật nhóm sinh viên thành công, trả về `AdvisorTopicRegistrationResultDto`.
+                - `400 Bad Request`: Danh sách sinh viên rỗng, trùng lặp hoặc vượt quá chỉ tiêu tiếp nhận của đề tài.
+                - `401 Unauthorized`: Chưa đăng nhập hoặc token hết hạn.
+                - `403 Forbidden`: Người dùng không phải GVHD sở hữu đề tài hoặc sinh viên bị khóa quyền đăng ký.
+                - `404 Not Found`: Không tìm thấy đề tài hoặc không tìm thấy sinh viên theo mã/ID.
+                - `409 Conflict`: Đợt KLTN ngoài giai đoạn `TOPIC_PREPARATION`, đề tài sai trạng thái hoặc sinh viên đã có nhóm khác.
+                """)
+            .Produces<ApiResponse<AdvisorTopicRegistrationResultDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
+
+        group.MapDelete("/advisor-assign/{topicId:guid}", AdvisorUnassignTopicStudentsAsync)
+            .RequireAuthorization()
+            .WithSummary("GVHD hủy gán nhóm sinh viên khỏi đề tài trong giai đoạn chuẩn bị đề tài")
+            .WithDescription("""
+                Cho phép GVHD gỡ/hủy toàn bộ nhóm sinh viên đã gán khỏi đề tài của mình khi còn trong giai đoạn `TOPIC_PREPARATION`.
+                Sau khi hủy, đề tài trở lại trạng thái trống và các sinh viên được giải phóng để tham gia đề tài khác.
+
+                ### Mã phản hồi (Responses):
+                - `200 OK`: Hủy gán nhóm sinh viên thành công.
+                - `401 Unauthorized`: Chưa đăng nhập.
+                - `403 Forbidden`: Không phải GVHD sở hữu đề tài.
+                - `404 Not Found`: Không tìm thấy đề tài hoặc đề tài chưa có nhóm sinh viên nào.
+                - `409 Conflict`: Ngoài giai đoạn `TOPIC_PREPARATION` hoặc đề tài sai trạng thái.
+                """)
+            .Produces<ApiResponse<object>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
+
         return endpoints;
     }
+
+    private static async Task<IResult> AdvisorAssignTopicStudentsAsync(
+        [FromBody] AdvisorAssignTopicStudentsRequest? request,
+        AdvisorAssignTopicStudentsHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(
+            new AdvisorAssignTopicStudentsCommand(
+                request?.TopicId ?? Guid.Empty,
+                request?.StudentIds,
+                request?.StudentCodes),
+            cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> AdvisorUnassignTopicStudentsAsync(
+        [FromRoute] Guid topicId,
+        AdvisorUnassignTopicStudentsHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(
+            new AdvisorUnassignTopicStudentsCommand(topicId),
+            cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> RegisterTopicAsync(
         [FromBody] RegisterTopicRequest? request,
@@ -178,4 +259,9 @@ public static class TopicRegistrationEndpoints
         string? PartnerUserCode = null);
 
     public sealed record ConfirmTopicRegistrationRequest(string Token);
+
+    public sealed record AdvisorAssignTopicStudentsRequest(
+        Guid TopicId,
+        IReadOnlyCollection<Guid>? StudentIds = null,
+        IReadOnlyCollection<string>? StudentCodes = null);
 }

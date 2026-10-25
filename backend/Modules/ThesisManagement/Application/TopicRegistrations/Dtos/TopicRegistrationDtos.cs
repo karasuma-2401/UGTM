@@ -35,3 +35,11 @@ public sealed record ExpiredPendingMemberDto(
     string? TopicTitleVi,
     int NewViolationCount,
     bool IsNowBlocked);
+
+public sealed record AdvisorTopicRegistrationResultDto(
+    Guid GroupId,
+    Guid TopicId,
+    Guid BatchId,
+    IReadOnlyList<Guid> AssignedStudentIds,
+    string Message);
+
