@@ -1,8 +1,6 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { UsersRound, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { UsersRound, CheckCircle2, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { Button } from '@/components/ui/button';
 import { UserFormDialog } from '@/features/identity/components/users/UserFormDialog';
 import { userApi, getUserErrorMessage } from '@/features/identity/services/userApi';
 import type { UserFormValues } from '@/features/identity/types/user.types';
@@ -14,7 +12,6 @@ import {
 import { useSchoolRoster } from '../hooks/roster';
 
 export const SchoolRosterPage: React.FC = () => {
-  const navigate = useNavigate();
   const { data, roster } = useSchoolRoster();
   const [isSingleSaving, setIsSingleSaving] = React.useState(false);
   const [singleError, setSingleError] = React.useState<string | null>(null);

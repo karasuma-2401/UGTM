@@ -19,8 +19,12 @@ function activationError(error: unknown): string {
     if (error.response?.status === 429) {
       return 'Bạn đã gửi quá nhiều yêu cầu kích hoạt. Vui lòng thử lại sau ít phút.';
     }
-    if (error.response?.data?.error?.code === 'Identity.InvalidActivationToken') {
+    const errorCode = error.response?.data?.error?.code;
+    if (errorCode === 'Identity.InvalidActivationToken') {
       return 'Link kích hoạt không hợp lệ, đã hết hạn hoặc đã được sử dụng. Hãy yêu cầu email mới bên dưới.';
+    }
+    if (errorCode === 'Identity.WeakPassword') {
+      return 'Mật khẩu chưa đáp ứng tiêu chuẩn bảo mật (tối thiểu 12 ký tự, bao gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt).';
     }
     return (
       error.response?.data?.error?.message || 'Không thể kết nối đến máy chủ. Vui lòng thử lại.'
@@ -29,9 +33,20 @@ function activationError(error: unknown): string {
   return error instanceof Error ? error.message : 'Không thể xử lý yêu cầu kích hoạt.';
 }
 
+function extractToken(hash: string, search: string): string {
+  const rawHash = hash.startsWith('#') ? hash.slice(1) : hash;
+  const hashToken = new URLSearchParams(rawHash).get('token');
+  if (hashToken) return hashToken.trim();
+
+  const searchToken = new URLSearchParams(search).get('token');
+  if (searchToken) return searchToken.trim();
+
+  return '';
+}
+
 export function ActivatePage() {
   const location = useLocation();
-  const token = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+  const token = extractToken(location.hash, location.search);
   return <ActivationForm key={token} token={token} />;
 }
 
@@ -58,7 +73,6 @@ function ActivationForm({ token }: { token: string }) {
     let active = true;
     if (!token) return;
 
-    // Reuse validation during StrictMode's effect replay to avoid wasting rate limits.
     if (pendingValidation.current?.token !== token || pendingValidation.current.retry !== retry) {
       pendingValidation.current = { token, retry, promise: validateActivationApi(token) };
     }
