@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  CalendarRange,
   Plus,
   RefreshCw,
   AlertTriangle,
