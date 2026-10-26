@@ -105,27 +105,30 @@ public sealed class KltnBatch : AggregateRoot<Guid>
         Guid updatedBy,
         DateTime updatedAt)
     {
-        if (Status is BatchStatus.Closed or BatchStatus.Archived)
-        {
-            throw new InvalidOperationException("The schedule of a closed or archived batch cannot be changed.");
-        }
-
-        if (Status == BatchStatus.Open && string.IsNullOrWhiteSpace(changeReason))
-        {
-            throw new ArgumentException("A reason is required when changing the schedule of an open batch.", nameof(changeReason));
-        }
+        EnsureScheduleCanBeReplaced(changeReason);
 
         var actorId = RequireId(updatedBy, nameof(updatedBy));
         var occurredAt = RequireUtc(updatedAt, nameof(updatedAt));
-        var values = schedule?.OrderBy(x => x.OrderIndex).ToArray()
-            ?? throw new ArgumentNullException(nameof(schedule));
-
-        ValidateSchedule(values);
+        var values = PrepareSchedule(schedule);
 
         _stages.Clear();
         _stages.AddRange(values.Select(value => Stage.Create(Id, value, TimeZoneId, Status == BatchStatus.Open)));
         UpdatedBy = actorId;
         UpdatedAt = occurredAt;
+    }
+
+    public void ValidateScheduleReplacement(
+        IEnumerable<StageSchedule> schedule,
+        string? changeReason)
+    {
+        EnsureScheduleCanBeReplaced(changeReason);
+        _ = PrepareSchedule(schedule);
+    }
+
+    public void RemoveStagesForScheduleReplacement(string? changeReason)
+    {
+        EnsureScheduleCanBeReplaced(changeReason);
+        _stages.Clear();
     }
 
     public Stage? GetStageOn(DateOnly date)
@@ -211,6 +214,27 @@ public sealed class KltnBatch : AggregateRoot<Guid>
                 throw new ArgumentException("Stages must be contiguous and cannot overlap.", nameof(schedule));
             }
         }
+    }
+
+    private void EnsureScheduleCanBeReplaced(string? changeReason)
+    {
+        if (Status is BatchStatus.Closed or BatchStatus.Archived)
+        {
+            throw new InvalidOperationException("The schedule of a closed or archived batch cannot be changed.");
+        }
+
+        if (Status == BatchStatus.Open && string.IsNullOrWhiteSpace(changeReason))
+        {
+            throw new ArgumentException("A reason is required when changing the schedule of an open batch.", nameof(changeReason));
+        }
+    }
+
+    private StageSchedule[] PrepareSchedule(IEnumerable<StageSchedule> schedule)
+    {
+        var values = schedule?.OrderBy(x => x.OrderIndex).ToArray()
+            ?? throw new ArgumentNullException(nameof(schedule));
+        ValidateSchedule(values);
+        return values;
     }
 
     private void Touch(Guid updatedBy, DateTime updatedAt)
