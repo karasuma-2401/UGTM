@@ -25,7 +25,8 @@ services:
       - S3Storage__BucketName=ugtm-thesis-submissions
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
       - Identity__Email__PublicWebBaseUrl=http://localhost:3000
-      - Identity__Email__OutboxPartition=local-docker
+      # Each machine has its own Data Protection key volume, so the partition must be unique per developer.
+      - Identity__Email__OutboxPartition=local-docker-${UGTM_DEVELOPER_ID:-${COMPUTERNAME:-unset}}
       - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:-local-development-only-ip-hash-key-change-me}
       - Notifications__Smtp__Host=${SMTP_HOST:-mailpit}
       - Notifications__Smtp__Port=${SMTP_PORT:-1025}

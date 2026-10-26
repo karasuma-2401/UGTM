@@ -9,8 +9,15 @@ message thất bại được retry theo exponential backoff, tối đa 60 phút
 
 Mỗi runtime phải có một `Identity:Email:OutboxPartition` ổn định. Partition được đưa vào Data Protection
 purpose của payload và worker chỉ lấy message thuộc partition của mình. Repository cấu hình sẵn
-`local-direct` cho Rider/`dotnet run`, `local-docker` cho Docker Compose và `azure-production` cho deployment.
-Nhờ đó local và Azure có thể dùng chung database mà không lấy nhầm message được mã hóa bằng key ring khác.
+`local-direct-<developer-id>` cho Rider/`dotnet run`, `local-docker-<developer-id>` cho Docker Compose và
+`azure-production` cho deployment. Nhờ đó local và Azure có thể dùng chung database mà không lấy nhầm message
+được mã hóa bằng key ring khác.
+
+`<developer-id>` lấy từ biến `UGTM_DEVELOPER_ID` trong `.env`, mặc định là tên máy. Mỗi máy developer có
+Data Protection key ring riêng (`%LOCALAPPDATA%\ASP.NET\DataProtection-Keys` khi chạy trực tiếp, Docker volume
+`data_protection_keys` khi chạy Compose). Nếu hai máy cùng trỏ vào database chung mà dùng chung partition, worker
+của máy này có thể lấy message do máy kia tạo, giải mã thất bại với `CryptographicException` và email không
+bao giờ được gửi. Không sao chép key ring giữa các máy; hãy dùng partition riêng.
 
 ## Giao diện email
 
@@ -77,7 +84,8 @@ Chạy lại script sau mỗi lần thay đổi `.env`:
 ./scripts/ConfigureDevelopment.ps1
 ```
 
-Script ghi cấu hình database, JWT và SMTP vào `appsettings.Development.local.json`. File này bị Git ignore.
+Script ghi cấu hình database, JWT, SMTP và outbox partition riêng của máy vào
+`appsettings.Development.local.json`. File này bị Git ignore.
 Nếu không đặt `SMTP_HOST`, ứng dụng Development tiếp tục dùng Mailpit theo `appsettings.Development.json`.
 
 ## Kiểm tra end-to-end
@@ -89,6 +97,9 @@ Nếu không đặt `SMTP_HOST`, ứng dụng Development tiếp tục dùng Mai
 4. Kiểm tra hộp thư đến và thư mục spam; worker quét outbox mỗi 5 giây.
 5. Nếu email chưa đến, kiểm tra log `IdentityOutboxProcessor` và các cột `attempt_count`, `next_attempt_at`,
    `last_error` trong `identity.outbox_message`.
+6. `last_error = CryptographicException` nghĩa là message được worker của một key ring khác xử lý, thường do
+   hai máy dùng chung partition. Kiểm tra `protection_purpose`, chạy lại `ConfigureDevelopment.ps1` để có partition
+   riêng, sau đó yêu cầu gửi lại email; message cũ không thể khôi phục.
 
 Message tạo trước khi cơ chế partition được triển khai có protection purpose phiên bản cũ và không được worker
 mới nhận. Hãy gọi resend một lần sau khi backend mới được triển khai; Magic Link mới sẽ vô hiệu hóa link cũ.
