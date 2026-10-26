@@ -37,20 +37,16 @@ public sealed class UpdateKltnBatchScheduleHandler(
             return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.NotFound);
         }
 
-        var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
+        var schedule = command.Stages.Select(stage => new StageSchedule(
+            stage.OrderIndex,
+            stage.StageCode,
+            stage.StageName,
+            stage.StartDate,
+            stage.EndDate,
+            stage.DeadlineAtUtc.UtcDateTime)).ToArray();
         try
         {
-            batch.ReplaceSchedule(
-                command.Stages.Select(stage => new StageSchedule(
-                    stage.OrderIndex,
-                    stage.StageCode,
-                    stage.StageName,
-                    stage.StartDate,
-                    stage.EndDate,
-                    stage.DeadlineAtUtc.UtcDateTime)),
-                command.ChangeReason,
-                currentUser.UserId!.Value,
-                occurredAt);
+            batch.ValidateScheduleReplacement(schedule, command.ChangeReason);
         }
         catch (ArgumentException)
         {
@@ -61,35 +57,57 @@ public sealed class UpdateKltnBatchScheduleHandler(
             return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.InvalidStatusTransition);
         }
 
-        auditOutbox.Add(
-            new AuditIntegrationEntry(
-                "KltnBatch",
-                batch.Id.ToString(),
-                IntegrationAuditActions.BatchScheduleUpdated,
-                "Succeeded",
-                null,
-                new
-                {
-                    ChangeReason = string.IsNullOrWhiteSpace(command.ChangeReason) ? null : command.ChangeReason.Trim(),
-                    Stages = batch.Stages.OrderBy(x => x.OrderIndex).Select(x => new
-                    {
-                        x.OrderIndex,
-                        x.StageCode,
-                        x.StartDate,
-                        x.EndDate,
-                        x.DeadlineAtUtc
-                    })
-                }),
-            occurredAt);
-
-        var saveError = await unitOfWork.TrySaveChangesAsync(
-            AcademicBatchErrors.ConcurrencyConflict,
-            cancellationToken: cancellationToken);
-        if (saveError is not null)
+        try
         {
-            return Result.Failure<KltnBatchDetailDto>(saveError);
-        }
+            return await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+            {
+                // Delete existing rows first. Recreating seven stages in one SaveChanges call makes EF
+                // combine the relationship changes with the batch xmin update, which can produce a
+                // false optimistic-concurrency conflict.
+                batch.RemoveStagesForScheduleReplacement(command.ChangeReason);
+                await unitOfWork.SaveChangesAsync(transactionCancellationToken);
+                await batchRepository.ReloadAsync(batch, transactionCancellationToken);
 
-        return Result.Success(AcademicBatchMapper.ToDetail(batch));
+                var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
+                batch.ReplaceSchedule(
+                    schedule,
+                    command.ChangeReason,
+                    currentUser.UserId!.Value,
+                    occurredAt);
+                batchRepository.AddStages(batch.Stages);
+
+                auditOutbox.Add(
+                    new AuditIntegrationEntry(
+                        "KltnBatch",
+                        batch.Id.ToString(),
+                        IntegrationAuditActions.BatchScheduleUpdated,
+                        "Succeeded",
+                        null,
+                        new
+                        {
+                            ChangeReason = string.IsNullOrWhiteSpace(command.ChangeReason) ? null : command.ChangeReason.Trim(),
+                            Stages = batch.Stages.OrderBy(x => x.OrderIndex).Select(x => new
+                            {
+                                x.OrderIndex,
+                                x.StageCode,
+                                x.StartDate,
+                                x.EndDate,
+                                x.DeadlineAtUtc
+                            })
+                        }),
+                    occurredAt);
+
+                await unitOfWork.SaveChangesAsync(transactionCancellationToken);
+                return Result.Success(AcademicBatchMapper.ToDetail(batch));
+            }, cancellationToken);
+        }
+        catch (AcademicPeriodsConcurrencyException)
+        {
+            return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.ConcurrencyConflict);
+        }
+        catch (AcademicPeriodsUniqueConstraintException)
+        {
+            return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.ConcurrencyConflict);
+        }
     }
 }
