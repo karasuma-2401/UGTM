@@ -25,10 +25,11 @@ $smtpSecurity = $env:Notifications__Smtp__Security
 if ([string]::IsNullOrWhiteSpace($smtpSecurity)) { $smtpSecurity = $env:SMTP_SECURITY }
 $smtpTimeoutSeconds = $env:Notifications__Smtp__TimeoutSeconds
 if ([string]::IsNullOrWhiteSpace($smtpTimeoutSeconds)) { $smtpTimeoutSeconds = $env:SMTP_TIMEOUT_SECONDS }
+$developerId = $env:UGTM_DEVELOPER_ID
 
 if (Test-Path -LiteralPath $environmentFile) {
     foreach ($line in Get-Content -LiteralPath $environmentFile) {
-        if ($line -match '^\s*(DATABASE_CONNECTION_STRING|JWT_PRIVATE_KEY_FILE|SMTP_HOST|SMTP_PORT|SMTP_FROM_ADDRESS|SMTP_FROM_NAME|SMTP_USERNAME|SMTP_PASSWORD|SMTP_SECURITY|SMTP_TIMEOUT_SECONDS)\s*=(.*)$') {
+        if ($line -match '^\s*(DATABASE_CONNECTION_STRING|JWT_PRIVATE_KEY_FILE|SMTP_HOST|SMTP_PORT|SMTP_FROM_ADDRESS|SMTP_FROM_NAME|SMTP_USERNAME|SMTP_PASSWORD|SMTP_SECURITY|SMTP_TIMEOUT_SECONDS|UGTM_DEVELOPER_ID)\s*=(.*)$') {
             $variableName = $Matches[1]
             $variableValue = $Matches[2].Trim().Trim('"').Trim("'")
             switch ($variableName) {
@@ -42,6 +43,7 @@ if (Test-Path -LiteralPath $environmentFile) {
                 'SMTP_PASSWORD' { if ([string]::IsNullOrWhiteSpace($smtpPassword)) { $smtpPassword = $variableValue } }
                 'SMTP_SECURITY' { if ([string]::IsNullOrWhiteSpace($smtpSecurity)) { $smtpSecurity = $variableValue } }
                 'SMTP_TIMEOUT_SECONDS' { if ([string]::IsNullOrWhiteSpace($smtpTimeoutSeconds)) { $smtpTimeoutSeconds = $variableValue } }
+                'UGTM_DEVELOPER_ID' { if ([string]::IsNullOrWhiteSpace($developerId)) { $developerId = $variableValue } }
             }
         }
     }
@@ -61,9 +63,27 @@ if (-not (Test-Path -LiteralPath $privateKeyPath -PathType Leaf)) {
     throw 'JWT key not found. Run scripts/GenerateDevelopmentJwtKey.ps1 or configure an existing key path.'
 }
 
+# Every machine has its own Data Protection key ring, so outbox payloads encrypted on one
+# machine cannot be decrypted on another. Developers share the same database, therefore each
+# machine needs its own outbox partition to avoid picking up messages created by teammates.
+if ([string]::IsNullOrWhiteSpace($developerId)) {
+    $developerId = [Environment]::MachineName
+}
+$developerId = ($developerId.Trim().ToLowerInvariant() -replace '[^a-z0-9-]+', '-').Trim('-')
+if ([string]::IsNullOrWhiteSpace($developerId)) {
+    throw 'UGTM_DEVELOPER_ID must contain at least one letter or digit.'
+}
+$outboxPartition = "local-direct-$developerId"
+if ($outboxPartition.Length -gt 100) {
+    $outboxPartition = $outboxPartition.Substring(0, 100)
+}
+
 $localConfiguration = @{
     ConnectionStrings = @{ DefaultConnection = $connectionString }
-    Identity = @{ Jwt = @{ PrivateKeyPath = $privateKeyPath } }
+    Identity = @{
+        Jwt = @{ PrivateKeyPath = $privateKeyPath }
+        Email = @{ OutboxPartition = $outboxPartition }
+    }
 }
 
 if (-not [string]::IsNullOrWhiteSpace($smtpHost)) {
@@ -105,3 +125,4 @@ $localConfiguration = $localConfiguration | ConvertTo-Json -Depth 4
 $configurationPath = Join-Path $repositoryRoot 'backend/host/Api/appsettings.Development.local.json'
 [IO.File]::WriteAllText($configurationPath, $localConfiguration, [Text.UTF8Encoding]::new($false))
 Write-Host 'Configured Development database, JWT key, and optional SMTP settings for Rider and dotnet run.'
+Write-Host "Identity email outbox partition: $outboxPartition"
