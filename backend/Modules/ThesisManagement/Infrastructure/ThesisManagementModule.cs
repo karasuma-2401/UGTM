@@ -65,6 +65,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IReviewGateConfigurationRepository, ReviewGateConfigurationRepository>();
         services.AddScoped<ISyllabusRepository, SyllabusRepository>();
         services.AddScoped<IMidtermReportRepository, MidtermReportRepository>();
+        services.AddScoped<IFinalReportRepository, FinalReportRepository>();
         services.AddScoped<IProgressMilestoneRepository, ProgressMilestoneRepository>();
         services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
         services.AddScoped<ISubmissionFileRepository, SubmissionFileRepository>();
