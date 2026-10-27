@@ -346,9 +346,13 @@ public sealed class TopicQueryReaderTests
     {
         var topic = new Topic
         {
-            Id = Guid.NewGuid(), BatchId = Guid.NewGuid(), AdvisorId = Guid.NewGuid(),
-            TitleVi = "Public topic", Status = TopicStatus.Published,
-            StudentNumber = capacity, CreatedAt = BaseTime
+            Id = Guid.NewGuid(),
+            BatchId = Guid.NewGuid(),
+            AdvisorId = Guid.NewGuid(),
+            TitleVi = "Public topic",
+            Status = TopicStatus.Published,
+            StudentNumber = capacity,
+            CreatedAt = BaseTime
         };
         var members = Enumerable.Range(0, memberCount)
             .Select(_ => new TopicMemberContractDto(Guid.NewGuid(), topic.BatchId, BaseTime.AddDays(-1)))
@@ -384,8 +388,16 @@ public sealed class TopicQueryReaderTests
     [Fact]
     public async Task Public_catalog_does_not_invent_capacity_for_legacy_topics()
     {
-        var topic = new Topic { Id = Guid.NewGuid(), BatchId = Guid.NewGuid(), AdvisorId = Guid.NewGuid(),
-            TitleVi = "Legacy", Status = TopicStatus.Published, StudentNumber = null, CreatedAt = BaseTime };
+        var topic = new Topic
+        {
+            Id = Guid.NewGuid(),
+            BatchId = Guid.NewGuid(),
+            AdvisorId = Guid.NewGuid(),
+            TitleVi = "Legacy",
+            Status = TopicStatus.Published,
+            StudentNumber = null,
+            CreatedAt = BaseTime
+        };
         var reader = TopicQueryReader.CreateInMemory([topic], new FakeRegistrationContract(), new FakeStudentInfoReader());
         var result = await reader.GetAllTopicsAsync(new GetAllTopicsQuery(null, null, 1, 10));
         Assert.Null(Assert.Single(result.Items).AvailableSlots);
@@ -401,9 +413,13 @@ public sealed class TopicQueryReaderTests
         var topics = new[] { advisorId, advisorId, missingAdvisor, offPageAdvisor, draftAdvisor }
             .Select((id, index) => new Topic
             {
-                Id = Guid.NewGuid(), BatchId = Guid.NewGuid(), AdvisorId = id,
-                TitleVi = $"Topic {index}", CreatedAt = BaseTime.AddMinutes(-index),
-                Status = index == 4 ? TopicStatus.Draft : TopicStatus.Published, StudentNumber = 2
+                Id = Guid.NewGuid(),
+                BatchId = Guid.NewGuid(),
+                AdvisorId = id,
+                TitleVi = $"Topic {index}",
+                CreatedAt = BaseTime.AddMinutes(-index),
+                Status = index == 4 ? TopicStatus.Draft : TopicStatus.Published,
+                StudentNumber = 2
             }).ToList();
         var names = new FakeAdvisorNameReader(advisorId);
         var reader = TopicQueryReader.CreateInMemory(topics, new FakeRegistrationContract(),
