@@ -67,6 +67,17 @@ export function TopicPreview({
           ? 'Chưa có chỉ tiêu sinh viên'
           : `Tối đa ${values.studentNumber} sinh viên`}
       </div>
+      {values.studentCodes?.some((code) => code.trim()) && (
+        <section className="space-y-2 rounded-xl border border-slate-200 p-4">
+          <h3 className="text-sm font-semibold text-slate-800">Sinh viên chỉ định (MSSV)</h3>
+          <p className="text-sm text-slate-600">
+            {values.studentCodes
+              .map((code) => code.trim())
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        </section>
+      )}
       {[
         { title: 'Mục tiêu và mô tả', content: values.description },
         { title: 'Yêu cầu công nghệ và kiến thức', content: values.requirements },

@@ -3,7 +3,9 @@ namespace UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
 public sealed record TopicMemberContractDto(
     Guid StudentId,
     Guid BatchId,
-    DateTime JoinedAt);
+    DateTime JoinedAt,
+    string ConfirmationStatus = "Confirmed",
+    DateTime? ConfirmationExpiresAtUtc = null);
 
 public sealed record TopicRegistrationContractDto(
     Guid GroupId,

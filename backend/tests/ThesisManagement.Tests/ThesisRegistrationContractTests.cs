@@ -12,6 +12,28 @@ public sealed class ThesisRegistrationContractTests
     private static readonly Guid Student1Id = Guid.Parse("90000000-0000-0000-0000-000000000001");
     private static readonly Guid Student2Id = Guid.Parse("90000000-0000-0000-0000-000000000002");
 
+    [Fact]
+    public async Task Read_contract_preserves_confirmation_and_expiry_but_never_the_secret_token()
+    {
+        var joined = new DateTime(2026, 10, 27, 8, 0, 0, DateTimeKind.Utc);
+        var expires = joined.AddHours(24);
+        var group = new StudentGroup(Guid.NewGuid(), Topic1Id, joined);
+        group.AddConfirmedMember(Student1Id, BatchId, joined);
+        group.AddPendingMember(Student2Id, BatchId, Student1Id, "private-invitation-token-hash", joined, expires);
+        var contract = ThesisRegistrationContract.CreateInMemory([group]);
+        var one = await contract.GetRegistrationByTopicIdAsync(Topic1Id);
+        var many = await contract.GetRegistrationsByTopicIdsAsync([Topic1Id]);
+        Assert.NotNull(one);
+        foreach (var result in new[] { one, many[Topic1Id] })
+        {
+            Assert.Equal("Confirmed", result.Members.Single(m => m.StudentId == Student1Id).ConfirmationStatus);
+            var invitee = result.Members.Single(m => m.StudentId == Student2Id);
+            Assert.Equal("Pending", invitee.ConfirmationStatus);
+            Assert.Equal(expires, invitee.ConfirmationExpiresAtUtc);
+            Assert.DoesNotContain("private-invitation-token-hash", System.Text.Json.JsonSerializer.Serialize(result));
+        }
+    }
+
     private static void SetStatus(StudentGroup group, StudentGroupStatus status)
     {
         typeof(StudentGroup)

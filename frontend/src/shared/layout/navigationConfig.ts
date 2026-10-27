@@ -81,6 +81,12 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Lecturer', 'Admin'],
       },
       {
+        label: 'Đề tài & đăng ký',
+        path: '/topics/catalog',
+        icon: BookOpen,
+        roles: ['Student', 'Admin'],
+      },
+      {
         label: 'Thẩm định đề tài',
         path: '/topics/review',
         icon: ClipboardCheck,

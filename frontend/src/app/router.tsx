@@ -13,6 +13,7 @@ import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
 import { UsersPage } from '../features/identity';
 import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
 import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
+import { StudentTopicCatalogPage } from '../features/topics/pages/StudentTopicCatalogPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -41,6 +42,14 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'ui-test', element: <UiTestPage /> },
+      {
+        path: 'topics/catalog',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <StudentTopicCatalogPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: 'topics/advising',
         element: (

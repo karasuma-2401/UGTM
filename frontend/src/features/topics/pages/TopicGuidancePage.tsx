@@ -1,6 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { FileText, Users, GraduationCap } from 'lucide-react';
 import { TopicProposePage } from './TopicProposePage';
 import { TopicAdvisingPage } from './TopicAdvisingPage';
@@ -16,8 +15,7 @@ export function TopicGuidancePage() {
   const [params, setParams] = useSearchParams();
   const selected = params.get('tab');
   const tab = selected === 'registrations' || selected === 'advising' ? selected : 'topics';
-  const status =
-    tab === 'registrations' && params.get('status') === 'PendingEmail' ? 'PendingEmail' : '';
+  const status = params.get('status') ?? '';
   const navigation = (
     <nav
       className="flex gap-1 overflow-x-auto border-b border-slate-200"
@@ -48,20 +46,22 @@ export function TopicGuidancePage() {
 
   return (
     <div className="min-w-0 space-y-5">
-      <PageHeader icon={<FileText />} title="Đề tài hướng dẫn" navigation={navigation}>
-        <Badge variant="secondary" className="font-normal">
-          Dữ liệu nhóm mẫu
-        </Badge>
-      </PageHeader>
+      <PageHeader icon={<FileText />} title="Đề tài hướng dẫn" navigation={navigation} />
       <TopicAdvisingPage
-        key={`${tab}:${status}`}
+        key={`${tab}:${status}:${params.get('batchId') ?? ''}`}
         embedded
         initialTab={tab}
         initialStatus={status}
-        initialBatchId={params.get('batchId') ?? '2026-1'}
+        initialBatchId={params.get('batchId') ?? ''}
         onQuickFilter={(next, filter, batchId) =>
           setParams(
-            next === 'topics' ? {} : { tab: next, batchId, ...(filter ? { status: filter } : {}) },
+            next === 'topics'
+              ? {}
+              : {
+                  tab: next,
+                  ...(batchId ? { batchId } : {}),
+                  ...(filter ? { status: filter } : {}),
+                },
           )
         }
       />
