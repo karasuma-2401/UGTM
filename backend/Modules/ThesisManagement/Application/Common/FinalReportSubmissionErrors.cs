@@ -4,6 +4,18 @@ namespace UGTM.Modules.ThesisManagement.Application.Common;
 
 public static class FinalReportSubmissionErrors
 {
+    public static readonly Error InvalidFile = Error.Validation(
+        "FinalReport.InvalidFile",
+        "Tệp báo cáo cuối kỳ không hợp lệ. Chỉ chấp nhận PDF, DOC hoặc DOCX tối đa 20 MiB với nội dung khớp định dạng.");
+
+    public static readonly Error AlreadySubmitted = Error.Conflict(
+        "FinalReport.AlreadySubmitted",
+        "Nhóm đã nộp báo cáo cuối kỳ lần đầu.");
+
+    public static readonly Error ConcurrencyConflict = Error.Conflict(
+        "FinalReport.ConcurrencyConflict",
+        "Dữ liệu nhóm hoặc báo cáo cuối kỳ vừa được thay đổi. Vui lòng tải lại và thử lại.");
+
     public static readonly Error AuthenticationRequired = Error.Unauthorized(
         "FinalReport.AuthenticationRequired",
         "Bạn cần đăng nhập để nộp báo cáo cuối kỳ.");

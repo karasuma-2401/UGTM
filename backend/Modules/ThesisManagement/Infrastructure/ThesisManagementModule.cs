@@ -52,6 +52,7 @@ using UGTM.Modules.ThesisManagement.Application.RenameRequests.ReviewByAdvisor;
 using UGTM.Modules.ThesisManagement.Application.RenameRequests.ReviewByFaculty;
 using UGTM.Modules.ThesisManagement.Infrastructure.BackgroundServices;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
+using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.SubmitFinalReport;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -68,6 +69,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IMidtermReportRepository, MidtermReportRepository>();
         services.AddScoped<IFinalReportRepository, FinalReportRepository>();
         services.AddScoped<FinalReportSubmissionEligibilityChecker>();
+        services.AddScoped<SubmitFinalReportHandler>();
         services.AddScoped<IProgressMilestoneRepository, ProgressMilestoneRepository>();
         services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
         services.AddScoped<ISubmissionFileRepository, SubmissionFileRepository>();
@@ -140,6 +142,7 @@ public sealed class ThesisManagementModule : IModule
         endpoints.MapReviewGateConfigurationEndpoints();
         endpoints.MapSyllabusSubmissionEndpoints();
         endpoints.MapMidtermReportSubmissionEndpoints();
+        endpoints.MapFinalReportSubmissionEndpoints();
         endpoints.MapProgressMilestoneEndpoints();
         endpoints.MapProgressReportSubmissionEndpoints();
         endpoints.MapTopicRegistrationEndpoints();
