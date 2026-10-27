@@ -65,7 +65,9 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
             var members = group.Members
                 .OrderBy(m => m.JoinedAt)
                 .ThenBy(m => m.StudentId)
-                .Select(m => new TopicMemberContractDto(m.StudentId, m.BatchId, m.JoinedAt))
+                .Select(m => new TopicMemberContractDto(
+                    m.StudentId, m.BatchId, m.JoinedAt,
+                    m.ConfirmationStatus.ToString(), m.ConfirmationExpiresAtUtc))
                 .ToList();
 
             result[group.TopicId] = new TopicRegistrationContractDto(
@@ -100,7 +102,9 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
         var members = group.Members
             .OrderBy(m => m.JoinedAt)
             .ThenBy(m => m.StudentId)
-            .Select(m => new TopicMemberContractDto(m.StudentId, m.BatchId, m.JoinedAt))
+            .Select(m => new TopicMemberContractDto(
+                m.StudentId, m.BatchId, m.JoinedAt,
+                m.ConfirmationStatus.ToString(), m.ConfirmationExpiresAtUtc))
             .ToList();
 
         return new TopicRegistrationContractDto(

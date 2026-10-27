@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import {
   BookOpen,
   Users,
@@ -11,7 +10,6 @@ import {
   Eye,
   Info,
   Copy,
-  ArrowUpRight,
   CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,63 +19,56 @@ import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { SelectableTableRow } from '@/components/ui/selectable-table-row';
 import { Card } from '@/components/ui/card';
+import { PageHeader } from '@/components/ui/page-header';
 import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Dialog } from '@/components/ui/dialog';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { InfoCell } from '@/components/ui/info-cell';
 import { useAuth } from '@/shared/auth';
+import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
+import { TopicDetailSkeleton } from '../components/TopicDetailSkeleton';
 import { TOPIC_STATUS_LABELS } from '../types/topic.types';
-import {
-  REGISTRATION_LABELS,
-  type AdvisingRegistration,
-  type AdvisingTab,
-  type RegistrationStatus,
-} from '../types/advising.types';
-import { loadAdvisingDemo } from '../services/advisingDemo';
-import {
-  getConfirmedStudentCount,
-  getTopicRegistrations,
-  matchesAdvisingSearch,
-} from '../advising';
+import { GROUP_STATUS_LABELS, type AdvisingTab, type TrackingTopic } from '../types/advising.types';
+import { advisingApi } from '../services/advisingApi';
+import { getTopicErrorMessage } from '../services/topicApi';
+import { getAdvisingRows, getConfirmationStatistics, isAdvisingGroup } from '../advising';
 
-const initialFilters = { keyword: '', batchId: '2026-1', status: '' };
 const PAGE_SIZES = [10, 20, 50] as const;
 const tabs: { id: AdvisingTab; label: string }[] = [
   { id: 'topics', label: 'Danh sách đề tài' },
   { id: 'registrations', label: 'Nhóm đăng ký' },
   { id: 'advising', label: 'Đang hướng dẫn' },
 ];
-const date = (value: string | null) =>
-  value
-    ? new Intl.DateTimeFormat('vi-VN', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-        timeZone: 'Asia/Ho_Chi_Minh',
-      }).format(new Date(value))
-    : '—';
+const date = (value: string) =>
+  new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'Asia/Ho_Chi_Minh',
+  }).format(new Date(value));
 
-function RegistrationBadge({ status }: { status: RegistrationStatus }) {
-  const tone = {
-    PendingEmail: 'warning',
-    Confirmed: 'success',
-    Expired: 'neutral',
-    Cancelled: 'error',
-  } as const;
-  return (
-    <StatusBadge tone={tone[status]}>
-      {REGISTRATION_LABELS[status]}
-    </StatusBadge>
-  );
+function GroupStatusBadge({ status }: { status: string }) {
+  const tone =
+    status === 'Stopped'
+      ? 'error'
+      : status === 'SyllabusRevisionRequired'
+        ? 'warning'
+        : ['Completed', 'Defended', 'ScoreLocked'].includes(status)
+          ? 'success'
+          : 'info';
+  return <StatusBadge tone={tone}>{GROUP_STATUS_LABELS[status] ?? status}</StatusBadge>;
 }
+
+const unavailable = <span title="Chưa có dữ liệu xác nhận thành viên và lời mời">—</span>;
 
 export function TopicAdvisingPage({
   embedded = false,
   initialTab = 'topics',
   initialStatus = '',
-  initialBatchId = initialFilters.batchId,
+  initialBatchId = '',
   onQuickFilter,
 }: {
   embedded?: boolean;
@@ -86,78 +77,56 @@ export function TopicAdvisingPage({
   initialBatchId?: string;
   onQuickFilter?: (tab: AdvisingTab, status: string, batchId: string) => void;
 } = {}) {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [tab, setTab] = useState<AdvisingTab>(initialTab);
-  const [draft, setDraft] = useState({
-    ...initialFilters,
+  const initialFilters = {
+    keyword: '',
     batchId: initialBatchId,
-    status: initialStatus,
-  });
-  const [filters, setFilters] = useState({
-    ...initialFilters,
-    batchId: initialBatchId,
-    status: initialStatus,
-  });
+    status: Object.hasOwn(
+      initialTab === 'topics' ? TOPIC_STATUS_LABELS : GROUP_STATUS_LABELS,
+      initialStatus,
+    )
+      ? initialStatus
+      : '',
+  };
+  const [draft, setDraft] = useState(initialFilters);
+  const [filters, setFilters] = useState(initialFilters);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
-  const [detail, setDetail] = useState<{ topicId: string; groupId?: string } | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
-  const [facultyGroupId, setFacultyGroupId] = useState<string | null>(null);
+  const [facultyTopic, setFacultyTopic] = useState<TrackingTopic | null>(null);
   const [copyNotice, setCopyNotice] = useState('');
+  const batchesQuery = useAcademicBatches();
+  const batches = batchesQuery.data ?? [];
+  const canReadBatches = hasPermission('academic.batches.read');
   const query = useQuery({
-    queryKey: ['advising-demo', user?.id],
-    queryFn: ({ signal }) => loadAdvisingDemo(signal),
-    staleTime: Infinity,
+    queryKey: ['topic-advising', user?.id, filters.batchId],
+    queryFn: ({ signal }) => advisingApi.getTopics(user!.id, filters.batchId, signal),
+    enabled: Boolean(user?.id),
+    refetchInterval: 60_000,
   });
-  const data = query.data;
-  const topics = data?.topics ?? [];
-  const registrations = data?.registrations ?? [];
-  const batchTopics = topics.filter(
-    (topic) => !filters.batchId || topic.batchId === filters.batchId,
-  );
-  const batchGroups = registrations.filter((group) =>
-    batchTopics.some((topic) => topic.id === group.topicId),
-  );
-  const confirmedGroups = batchGroups.filter((group) => group.status === 'Confirmed');
-  // Completed groups remain in registration history, outside the current advising roster.
-  const advisingGroups = confirmedGroups.filter((group) => group.stage !== 'Đã hoàn thành');
-  const pendingGroups = batchGroups.filter((group) => group.status === 'PendingEmail');
-  const topicRows = batchTopics.filter((topic) => {
-    const groups = data ? getTopicRegistrations(data, topic.id) : [];
-    return (
-      (!filters.status || topic.status === filters.status) &&
-      matchesAdvisingSearch(topic, groups, filters.keyword)
-    );
+  const detailQuery = useQuery({
+    queryKey: ['topic-advising-detail', user?.id, detailId],
+    queryFn: ({ signal }) => advisingApi.getDetail(user!.id, detailId!, signal),
+    enabled: Boolean(user?.id && detailId),
+    staleTime: 0,
   });
-  const groupRows = (tab === 'advising' ? advisingGroups : batchGroups)
-    .filter((group) => {
-      const topic = topics.find((item) => item.id === group.topicId);
-      return (
-        topic &&
-        (!filters.status ||
-          (tab === 'advising'
-            ? group.stage === filters.status
-            : group.status === filters.status)) &&
-        matchesAdvisingSearch(topic, [group], filters.keyword)
-      );
-    })
-    .sort((a, b) => b.registeredAt.localeCompare(a.registeredAt));
-  const total = tab === 'topics' ? topicRows.length : groupRows.length;
+  // Do not present stale counts as current data after a failed refresh.
+  const topics = query.isError ? undefined : query.data;
+  const confirmationStatistics = getConfirmationStatistics(topics);
+  const rows = getAdvisingRows(topics ?? [], tab, filters.keyword, filters.status);
+  const total = rows.length;
   const currentPage = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
-  const start = (currentPage - 1) * pageSize;
-  const selectedTopic = topics.find((topic) => topic.id === detail?.topicId);
-  const selectedGroups =
-    data && selectedTopic
-      ? getTopicRegistrations(data, selectedTopic.id).filter(
-          (group) => !detail?.groupId || group.id === detail.groupId,
-        )
-      : [];
-  const facultyGroup = registrations.find((group) => group.id === facultyGroupId);
-  const facultyTopic = topics.find((topic) => topic.id === facultyGroup?.topicId);
-  const facultyText =
-    facultyGroup && facultyTopic
-      ? `Kính gửi Văn phòng Khoa,\nTôi là ${user?.fullName ?? 'giảng viên phụ trách'}. Tôi cần trao đổi về nhóm ${facultyGroup.groupCode}, hồ sơ ${facultyGroup.code}, đề tài ${facultyTopic.code} – ${facultyTopic.title}.\nSinh viên: ${facultyGroup.students.map((s) => `${s.name} (${s.code})`).join(', ')}.\nLý do đề nghị xử lý: [Giảng viên bổ sung lý do và minh chứng].\nKính nhờ Khoa xem xét và xử lý theo quy định.`
-      : '';
+  const visibleRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const detail = detailQuery.isError ? undefined : detailQuery.data;
+  const busy = query.isFetching;
+  const statusOptions = Object.entries(
+    tab === 'topics' ? TOPIC_STATUS_LABELS : GROUP_STATUS_LABELS,
+  ).filter(([status]) => tab !== 'advising' || !['Completed', 'Stopped'].includes(status));
+  const facultyText = facultyTopic?.group
+    ? `Kính gửi Văn phòng Khoa,\nTôi là ${user?.fullName ?? ''}. Tôi cần trao đổi về nhóm ${facultyTopic.group.groupId}, đề tài ${facultyTopic.titleVi} (${facultyTopic.id}).\nSinh viên: ${facultyTopic.group.students.map((s) => `${s.fullName} (${s.userCode ?? s.studentId})`).join(', ')}.\nLý do đề nghị xử lý: [Giảng viên bổ sung lý do và minh chứng].\nKính nhờ Khoa xem xét và xử lý theo quy định.`
+    : '';
 
   function changeTab(next: AdvisingTab, status = '') {
     if (embedded && onQuickFilter) {
@@ -169,292 +138,184 @@ export function TopicAdvisingPage({
     setFilters(nextFilters);
     setDraft(nextFilters);
     setPage(1);
+    setDetailId(null);
+    setSelectedRowId(null);
   }
   function resetFilters() {
     const cleared = { keyword: '', batchId: '', status: '' };
     setFilters(cleared);
     setDraft(cleared);
     setPage(1);
+    setSelectedRowId(null);
   }
   function applyFilters(event: FormEvent) {
     event.preventDefault();
     setFilters({ ...draft, keyword: draft.keyword.trim() });
     setPage(1);
+    setSelectedRowId(null);
   }
-  async function copy(text: string) {
+  async function copy() {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(facultyText);
       setCopyNotice('Đã sao chép nội dung.');
     } catch {
-      setCopyNotice(
-        'Không thể sao chép tự động. Bạn có thể chọn và sao chép nội dung trong khung bên dưới.',
-      );
+      setCopyNotice('Không thể sao chép tự động. Bạn có thể chọn và sao chép nội dung bên dưới.');
     }
   }
-  const statusOptions =
-    tab === 'topics'
-      ? Object.entries(TOPIC_STATUS_LABELS)
-      : tab === 'registrations'
-        ? Object.entries(REGISTRATION_LABELS)
-        : [
-            ...new Set(
-              advisingGroups
-                .map((group) => group.stage)
-                .filter((stage): stage is string => Boolean(stage)),
-            ),
-          ].map((stage) => [stage, stage]);
-
-  function renderGroup(group: AdvisingRegistration) {
-    return (
-      <section key={group.id} className="space-y-4 rounded-xl border border-slate-200 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="font-semibold text-slate-900">Nhóm {group.groupCode}</h3>
-            <p className="mt-1 text-xs text-slate-500">{group.code}</p>
-          </div>
-          <RegistrationBadge status={group.status} />
-        </div>
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-xs text-slate-500">Thời điểm đăng ký</dt>
-            <dd className="mt-1">{date(group.registeredAt)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">
-              {group.status === 'PendingEmail' || group.status === 'Expired'
-                ? 'Hạn xác nhận tham gia'
-                : 'Đăng ký có hiệu lực'}
-            </dt>
-            <dd className="mt-1">
-              {date(
-                group.status === 'PendingEmail' || group.status === 'Expired'
-                  ? group.confirmationDeadline
-                  : group.confirmedAt,
-              )}
-            </dd>
-          </div>
-        </dl>
-        {group.stage && group.status === 'Confirmed' && (
-          <p className="text-sm text-slate-600">
-            Tiến độ khóa luận: <strong>{group.stage}</strong>
-          </p>
-        )}
-        <div className="space-y-3">
-          {group.students.map((student) => (
-            <div key={student.id} className="rounded-lg bg-slate-50 p-3 text-sm">
-              <div className="flex flex-wrap justify-between gap-2">
-                <p className="font-medium">
-                  {student.name}{' '}
-                  <span className="font-normal text-slate-500">· {student.code}</span>
-                </p>
-                <StatusBadge
-                  tone={
-                    student.registrationRole === 'Registrant'
-                      ? 'info'
-                      : student.participationConfirmedAt
-                        ? 'success'
-                        : 'warning'
-                  }
-                >
-                  {student.registrationRole === 'Registrant'
-                    ? 'Người đăng ký'
-                    : student.participationConfirmedAt
-                      ? 'Đã xác nhận tham gia'
-                      : 'Chờ xác nhận tham gia'}
-                </StatusBadge>
-              </div>
-              <p className="mt-2 break-all text-slate-600">{student.email}</p>
-              <p className="mt-1 text-xs text-slate-500">
-                {student.phone}
-                {student.participationConfirmedAt &&
-                  ` · Xác nhận: ${date(student.participationConfirmedAt)}`}
-              </p>
-            </div>
-          ))}
-        </div>
-        {group.status === 'Cancelled' && (
-          <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
-            {group.cancellationReason}
-          </p>
-        )}
-        {group.status === 'Confirmed' && group.stage !== 'Đã hoàn thành' && (
-          <Button
-            variant="outline"
-            size="sm"
-            leftIcon={<Info />}
-            onClick={() => {
-              setFacultyGroupId(group.id);
-              setCopyNotice('');
-            }}
-          >
-            Liên hệ Khoa
-          </Button>
-        )}
-      </section>
-    );
+  function batchName(id: string) {
+    const name = batches.find((batch) => batch.id === id)?.batchName;
+    if (name) return name;
+    if (canReadBatches && batchesQuery.isPending)
+      return <Skeleton className="h-4 w-28 max-w-full" />;
+    return <span title={id}>Mã đợt: {id}</span>;
+  }
+  function openDetail(id: string) {
+    setSelectedRowId(id);
+    setDetailId(id);
   }
 
   return (
     <div className="min-w-0 space-y-5">
       {!embedded && (
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Đề tài & nhóm hướng dẫn
-            </h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="warning">Dữ liệu mẫu</Badge>
-            <Button asChild variant="outline" leftIcon={<ArrowUpRight />}>
-              <Link to="/topics/propose">Đề xuất đề tài</Link>
-            </Button>
-          </div>
-        </div>
-      )}
-      {!embedded && (
-        <nav className="flex flex-wrap gap-2" aria-label="Danh mục quản lý hướng dẫn">
-          {tabs.map((item) => (
-            <Button
-              key={item.id}
-              type="button"
-              variant={tab === item.id ? 'default' : 'outline'}
-              aria-current={tab === item.id ? 'page' : undefined}
-              onClick={() => changeTab(item.id)}
-            >
-              {item.label}
-            </Button>
-          ))}
-        </nav>
+        <PageHeader
+          title="Đề tài hướng dẫn"
+          icon={<BookOpen />}
+          navigation={
+            <nav className="flex gap-1 overflow-x-auto" aria-label="Đề tài hướng dẫn">
+              {tabs.map((item) => (
+                <Button
+                  key={item.id}
+                  type="button"
+                  variant={tab === item.id ? 'secondary' : 'ghost'}
+                  onClick={() => changeTab(item.id)}
+                >
+                  {item.label}
+                </Button>
+              ))}
+            </nav>
+          }
+        />
       )}
       <form
         onSubmit={applyFilters}
-        className="grid items-end gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_auto]"
+        className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4"
       >
-        <label className="block space-y-2 text-sm text-slate-700">
-          <span>Tìm kiếm</span>
+        <div className="min-w-60 flex-1">
           <Input
-            leftIcon={<Search className="size-4" />}
-            className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
-            placeholder="Đề tài, nhóm hoặc sinh viên"
+            aria-label="Tìm đề tài hoặc sinh viên"
+            placeholder="Tên đề tài, sinh viên, MSSV hoặc mã nhóm"
+            leftIcon={<Search />}
             value={draft.keyword}
             onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
           />
-        </label>
-        <div className="space-y-2 text-sm text-slate-700">
-          <span>Đợt KLTN</span>
-          <Select
-            aria-label="Lọc theo đợt KLTN"
-            triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
-            value={draft.batchId}
-            options={[
-              { value: '', label: 'Tất cả đợt' },
-              ...(data?.batches ?? []).map((batch) => ({ value: batch.id, label: batch.name })),
-            ]}
-            onChange={(batchId: string) => setDraft({ ...draft, batchId })}
-          />
         </div>
-        <div className="space-y-2 text-sm text-slate-700">
-          <span>{tab === 'advising' ? 'Tiến độ khóa luận' : 'Trạng thái'}</span>
-          <Select
-            aria-label="Lọc trạng thái"
-            triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
-            value={draft.status}
-            options={[
-              { value: '', label: 'Tất cả trạng thái' },
-              ...statusOptions.map(([value, label]) => ({ value, label })),
-            ]}
-            onChange={(status: string) => setDraft({ ...draft, status })}
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button type="submit" variant="soft" className="h-10" leftIcon={<SlidersHorizontal />}>
-            Áp dụng
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10"
-            leftIcon={<FunnelX />}
-            onClick={resetFilters}
-          >
-            Bỏ lọc
-          </Button>
-        </div>
+        <Select
+          aria-label="Đợt KLTN"
+          value={draft.batchId}
+          containerClassName="w-full sm:w-56"
+          disabled={!canReadBatches || batchesQuery.isPending}
+          options={[
+            { value: '', label: 'Tất cả đợt KLTN' },
+            ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
+          ]}
+          onChange={(batchId: string) => setDraft({ ...draft, batchId })}
+        />
+        <Select
+          aria-label="Trạng thái"
+          value={draft.status}
+          containerClassName="w-full sm:w-56"
+          options={[
+            { value: '', label: 'Tất cả trạng thái' },
+            ...statusOptions.map(([value, label]) => ({ value, label })),
+          ]}
+          onChange={(status: string) => setDraft({ ...draft, status })}
+        />
+        <Button type="submit" leftIcon={<SlidersHorizontal />}>
+          Áp dụng
+        </Button>
+        <Button type="button" variant="outline" leftIcon={<FunnelX />} onClick={resetFilters}>
+          Bỏ lọc
+        </Button>
       </form>
+      {batchesQuery.isError && (
+        <p role="alert" className="text-sm text-amber-700">
+          Không thể tải danh sách đợt KLTN.{' '}
+          <Button variant="link" size="sm" onClick={() => void batchesQuery.refetch()}>
+            Thử lại
+          </Button>
+        </p>
+      )}
       <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
         <ListCardHeader
           title={tabs.find((item) => item.id === tab)?.label}
           icon={<Users />}
-          description={`${total} ${tab === 'topics' ? 'đề tài' : 'nhóm'}`}
+          description={
+            topics ? `${total} ${tab === 'topics' ? 'đề tài' : 'nhóm'}` : 'Đang cập nhật danh sách'
+          }
         >
-          <section className="w-full" aria-label="Thống kê hướng dẫn" aria-busy={query.isFetching}>
-            <StatisticsBar
-              loading={query.isPending}
-              items={[
-                {
-                  key: 'topics',
-                  onClick: () => changeTab('topics'),
-                  active: tab === 'topics' && !filters.status && !filters.keyword,
-                  label: 'Tổng đề tài',
-                  value: batchTopics.length,
-                  icon: <BookOpen />,
-                  tone: 'primary',
-                },
-                {
-                  key: 'pending',
-                  onClick: () => changeTab('registrations', 'PendingEmail'),
-                  active:
-                    tab === 'registrations' &&
-                    filters.status === 'PendingEmail' &&
-                    !filters.keyword,
-                  label: 'Chờ xác nhận',
-                  value: pendingGroups.length,
-                  icon: <Mail />,
-                  tone: 'warning',
-                },
-                {
-                  key: 'advising',
-                  onClick: () => changeTab('advising'),
-                  active: tab === 'advising' && !filters.status && !filters.keyword,
-                  label: 'Nhóm hướng dẫn',
-                  value: advisingGroups.length,
-                  icon: <Users />,
-                  tone: 'primary',
-                },
-                {
-                  key: 'students',
-                  onClick: () => changeTab('advising'),
-                  label: 'SV hướng dẫn',
-                  value: getConfirmedStudentCount(advisingGroups),
-                  icon: <CheckCircle2 />,
-                  tone: 'muted',
-                },
-              ]}
-            />
-          </section>
+          <StatisticsBar
+            loading={query.isPending}
+            items={[
+              {
+                key: 'topics',
+                label: 'Tổng đề tài',
+                value: topics?.length ?? '—',
+                icon: <BookOpen />,
+                tone: 'primary',
+                onClick: () => changeTab('topics'),
+                active: tab === 'topics' && !filters.status && !filters.keyword,
+              },
+              {
+                key: 'pending',
+                label: 'Chờ xác nhận',
+                value: confirmationStatistics.pending ?? unavailable,
+                icon: <Mail />,
+                tone: 'warning',
+              },
+              {
+                key: 'advising',
+                label: 'Nhóm hướng dẫn',
+                value: topics?.filter(isAdvisingGroup).length ?? '—',
+                icon: <Users />,
+                tone: 'primary',
+                onClick: () => changeTab('advising'),
+                active: tab === 'advising' && !filters.status && !filters.keyword,
+              },
+              {
+                key: 'students',
+                label: 'SV đã xác nhận',
+                value: confirmationStatistics.confirmed ?? unavailable,
+                icon: <CheckCircle2 />,
+                tone: 'muted',
+              },
+            ]}
+          />
         </ListCardHeader>
-        <div
-          aria-busy={query.isFetching}
-          className="h-[min(60vh,40rem)] min-h-[20rem] overflow-auto"
-        >
+        <div aria-busy={busy} className="h-[min(60vh,40rem)] min-h-[20rem] overflow-auto">
           {query.isPending ? (
             <TableSkeleton
               className="min-w-[1120px]"
-              rows={5}
-              columns={(tab === 'topics'
-                ? ['Đề tài', 'Đợt KLTN', 'Sinh viên', 'Trạng thái', 'Thao tác']
-                : [
-                    'Nhóm / hồ sơ',
-                    'Đề tài',
-                    'Sinh viên',
-                    tab === 'advising' ? 'Tiến độ' : 'Trạng thái',
-                    'Thao tác',
-                  ]
-              ).map((label) => ({ label }))}
+              columns={
+                tab === 'topics'
+                  ? [
+                      { label: 'Đề tài', variant: 'topic' },
+                      { label: 'Đợt KLTN', width: 'w-40' },
+                      { label: 'Sinh viên', width: 'w-24', variant: 'number' },
+                      { label: 'Trạng thái', width: 'w-56', variant: 'badge' },
+                      { label: 'Thao tác', width: 'w-44', variant: 'actions' },
+                    ]
+                  : [
+                      { label: 'Nhóm', width: 'w-44' },
+                      { label: 'Đề tài', variant: 'topic' },
+                      { label: 'Sinh viên', width: 'w-48', variant: 'person' },
+                      { label: 'Tiến độ khóa luận', width: 'w-56', variant: 'badge' },
+                      { label: 'Thao tác', width: 'w-44', variant: 'actions' },
+                    ]
+              }
             />
           ) : query.isError ? (
             <div role="alert" className="space-y-3 p-10 text-center">
-              <p className="text-sm text-rose-700">Không thể tải danh sách. Vui lòng thử lại.</p>
+              <p className="text-sm text-rose-700">{getTopicErrorMessage(query.error)}</p>
               <Button variant="outline" onClick={() => void query.refetch()}>
                 Thử lại
               </Button>
@@ -464,9 +325,6 @@ export function TopicAdvisingPage({
               <Search className="size-9 text-slate-300" />
               <p className="font-medium text-slate-700">
                 Không có {tab === 'topics' ? 'đề tài' : 'nhóm'} phù hợp
-              </p>
-              <p className="text-sm text-slate-500">
-                Thử thay đổi từ khóa, đợt KLTN hoặc trạng thái.
               </p>
               <Button variant="outline" onClick={resetFilters}>
                 Bỏ bộ lọc
@@ -485,13 +343,7 @@ export function TopicAdvisingPage({
                 <tr>
                   {(tab === 'topics'
                     ? ['Đề tài', 'Đợt KLTN', 'Sinh viên', 'Trạng thái', 'Thao tác']
-                    : [
-                        'Nhóm / hồ sơ',
-                        'Đề tài',
-                        'Sinh viên',
-                        tab === 'advising' ? 'Tiến độ khóa luận' : 'Trạng thái đăng ký',
-                        'Thao tác',
-                      ]
+                    : ['Nhóm', 'Đề tài', 'Sinh viên', 'Tiến độ khóa luận', 'Thao tác']
                   ).map((label) => (
                     <th
                       scope="col"
@@ -504,148 +356,102 @@ export function TopicAdvisingPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {tab === 'topics'
-                  ? topicRows.slice(start, start + pageSize).map((topic) => {
-                      const groups = data ? getTopicRegistrations(data, topic.id) : [];
-                      const count = getConfirmedStudentCount(groups);
-                      const pending = groups.filter(
-                        (group) => group.status === 'PendingEmail',
-                      ).length;
-                      return (
-                        <SelectableTableRow
-                          key={topic.id}
-                          selected={selectedRowId === topic.id}
-                          onSelect={() => setSelectedRowId(topic.id)}
-                          disabled={query.isFetching}
-                        >
-                          <td className="max-w-sm px-5 py-4">
-                            <p className="text-xs font-medium text-primary">{topic.code}</p>
-                            <button
-                              className="mt-1 text-left font-semibold leading-6 text-slate-800 hover:text-primary focus-visible:underline"
-                              onClick={() => setDetail({ topicId: topic.id })}
-                            >
-                              {topic.title}
-                            </button>
-                            {pending > 0 && (
-                              <StatusBadge tone="warning" className="mt-2">
-                                Chờ xác nhận
-                              </StatusBadge>
-                            )}
-                          </td>
-                          <td className="px-5 py-5 text-xs text-slate-500">
-                            {data?.batches.find((batch) => batch.id === topic.batchId)?.name}
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className="font-semibold tabular-nums">
-                              {count}/{topic.capacity}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4">
-                            <TopicStatusBadge status={topic.status} />
-                          </td>
-                          <td className="px-5 py-4 text-center">
-                            <Button
-                              variant="soft"
-                              size="sm"
-                              leftIcon={<Eye />}
-                              onClick={() => setDetail({ topicId: topic.id })}
-                              aria-label={`Xem đề tài ${topic.code}`}
-                              className="h-9 w-28 rounded-lg shadow-none"
-                            >
-                              Chi tiết
-                            </Button>
-                          </td>
-                        </SelectableTableRow>
-                      );
-                    })
-                  : groupRows.slice(start, start + pageSize).map((group) => {
-                      const topic = topics.find((item) => item.id === group.topicId)!;
-                      return (
-                        <SelectableTableRow
-                          key={group.id}
-                          selected={selectedRowId === group.id}
-                          onSelect={() => setSelectedRowId(group.id)}
-                          disabled={query.isFetching}
-                        >
-                          <td className="px-5 py-4">
-                            <Badge
-                              variant={
-                                group.status === 'PendingEmail'
-                                  ? 'warning'
-                                  : group.status === 'Confirmed'
-                                    ? 'info'
-                                    : 'secondary'
-                              }
-                              className="h-8 min-w-12 justify-center rounded-lg font-semibold ring-1 ring-inset ring-current/10"
-                            >
-                              {group.groupCode}
-                            </Badge>
-                            <p className="mt-1 text-xs text-slate-500">{group.code}</p>
-                            <p className="mt-1 text-xs text-slate-400">
-                              {date(group.registeredAt)}
-                            </p>
-                          </td>
-                          <td className="max-w-xs px-5 py-4">
-                            <p
-                              className="line-clamp-2 font-semibold leading-6 text-slate-800"
-                              title={topic.title}
-                            >
-                              {topic.title}
-                            </p>
-                            <p className="mt-1 text-xs text-slate-500">
-                              {topic.code} ·{' '}
-                              {data?.batches.find((batch) => batch.id === topic.batchId)?.name}
-                            </p>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="space-y-2">
-                              {group.students.map((student) => (
-                                <InfoCell
-                                  key={student.id}
-                                  title={student.name}
-                                  description={student.code}
-                                  titleClassName="font-medium"
-                                  leading={
-                                    <span
-                                      aria-hidden="true"
-                                      className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500"
-                                    >
-                                      {student.name
-                                        .trim()
-                                        .split(/\s+/)
-                                        .slice(-2)
-                                        .map((part) => part[0])
-                                        .join('')}
-                                    </span>
-                                  }
-                                />
-                              ))}
-                            </div>
-                          </td>
-                          <td className="px-5 py-4">
-                            {tab === 'advising' ? (
-                              <StatusBadge tone="info">{group.stage}</StatusBadge>
-                            ) : (
-                              <>
-                                <RegistrationBadge status={group.status} />
-                              </>
-                            )}
-                          </td>
-                          <td className="px-5 py-4 text-center">
-                            <Button
-                              variant="soft"
-                              size="sm"
-                              leftIcon={<Eye />}
-                              onClick={() => setDetail({ topicId: topic.id, groupId: group.id })}
-                              aria-label={`Xem nhóm ${group.groupCode}`}
-                              className="h-9 w-28 rounded-lg shadow-none"
-                            >
-                              Chi tiết
-                            </Button>
-                          </td>
-                        </SelectableTableRow>
-                      );
-                    })}
+                {visibleRows.map((topic) => (
+                  <SelectableTableRow
+                    key={topic.id}
+                    selected={selectedRowId === topic.id}
+                    onSelect={() => setSelectedRowId(topic.id)}
+                    disabled={busy}
+                  >
+                    {tab === 'topics' ? (
+                      <>
+                        <td className="px-5 py-4">
+                          <p className="line-clamp-2 font-semibold leading-6 text-slate-800">
+                            {topic.titleVi}
+                          </p>
+                        </td>
+                        <td className="px-5 py-4 text-xs text-slate-500">
+                          {batchName(topic.batchId)}
+                        </td>
+                        <td className="px-5 py-4 tabular-nums">
+                          {topic.registeredStudentsCount}/{topic.studentNumber ?? '—'}
+                        </td>
+                        <td className="px-5 py-4">
+                          <TopicStatusBadge status={topic.status} />
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-5 py-4">
+                          <Badge variant="info" className="rounded-lg">
+                            Nhóm
+                          </Badge>
+                          <p
+                            className="mt-2 truncate font-mono text-xs text-slate-500"
+                            title={topic.group!.groupId}
+                          >
+                            {topic.group!.groupId}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {date(topic.group!.createdAt)}
+                          </p>
+                        </td>
+                        <td className="px-5 py-4">
+                          <p
+                            className="line-clamp-2 font-semibold leading-6 text-slate-800"
+                            title={topic.titleVi}
+                          >
+                            {topic.titleVi}
+                          </p>
+                          <div className="mt-1 text-xs text-slate-500">
+                            {batchName(topic.batchId)}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="space-y-2">
+                            {topic.group!.students.map((student) => (
+                              <InfoCell
+                                key={student.studentId}
+                                title={student.fullName}
+                                description={student.userCode ?? 'Chưa có MSSV'}
+                                titleClassName="font-medium"
+                                leading={
+                                  <span
+                                    aria-hidden="true"
+                                    className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500"
+                                  >
+                                    {student.fullName
+                                      .trim()
+                                      .split(/\s+/)
+                                      .slice(-2)
+                                      .map((part) => part[0])
+                                      .join('')}
+                                  </span>
+                                }
+                              />
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <GroupStatusBadge status={topic.group!.status} />
+                        </td>
+                      </>
+                    )}
+                    <td className="px-5 py-4 text-center">
+                      <Button
+                        variant="soft"
+                        size="sm"
+                        leftIcon={<Eye />}
+                        disabled={busy}
+                        className="h-9 w-28 rounded-lg shadow-none"
+                        onClick={() => openDetail(topic.id)}
+                        aria-label={`Xem chi tiết ${topic.titleVi}`}
+                      >
+                        Chi tiết
+                      </Button>
+                    </td>
+                  </SelectableTableRow>
+                ))}
               </tbody>
             </table>
           )}
@@ -661,6 +467,7 @@ export function TopicAdvisingPage({
                 onChange={(event) => {
                   setPageSize(Number(event.target.value));
                   setPage(1);
+                  setSelectedRowId(null);
                 }}
               >
                 {PAGE_SIZES.map((size) => (
@@ -674,85 +481,136 @@ export function TopicAdvisingPage({
               pageNumber={currentPage}
               pageSize={pageSize}
               totalCount={total}
-              onPageChange={setPage}
+              isLoading={busy}
+              onPageChange={(next) => {
+                setPage(next);
+                setSelectedRowId(null);
+              }}
               itemLabel={tab === 'topics' ? 'đề tài' : 'nhóm'}
             />
           </>
         )}
       </Card>
-      {selectedTopic && (
+      {detailId && (
         <Dialog
-          title={detail?.groupId ? 'Chi tiết nhóm đăng ký' : 'Chi tiết đề tài hướng dẫn'}
-          onClose={() => setDetail(null)}
+          title={tab === 'topics' ? 'Chi tiết đề tài hướng dẫn' : 'Chi tiết nhóm đăng ký'}
+          onClose={() => setDetailId(null)}
           className="max-w-4xl"
         >
-          <div className="space-y-6 p-5 sm:p-6">
-            <div>
-              <div className="mb-3 flex flex-wrap gap-2">
-                <Badge variant="secondary">{selectedTopic.code}</Badge>
-                <TopicStatusBadge status={selectedTopic.status} />
-                <Badge variant="warning">Dữ liệu mẫu</Badge>
-              </div>
-              <h2 className="text-xl font-bold leading-8 text-slate-900">{selectedTopic.title}</h2>
-              <p className="mt-1 text-sm text-slate-500">{selectedTopic.titleEn}</p>
-            </div>
-            <dl className="grid gap-4 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-3">
-              <div>
-                <dt className="text-xs text-slate-500">Giảng viên hướng dẫn</dt>
-                <dd className="mt-1 font-medium">{user?.fullName ?? 'Giảng viên hiện tại'}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Đợt KLTN</dt>
-                <dd className="mt-1">
-                  {data?.batches.find((batch) => batch.id === selectedTopic.batchId)?.name}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">Chỉ tiêu</dt>
-                <dd className="mt-1">{selectedTopic.capacity} sinh viên</dd>
-              </div>
-            </dl>
-            <section>
-              <h3 className="text-sm font-semibold text-slate-800">Mục tiêu và mô tả</h3>
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">
-                {selectedTopic.description}
-              </p>
-              <h3 className="mt-4 text-sm font-semibold text-slate-800">
-                Yêu cầu công nghệ và kiến thức
-              </h3>
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">
-                {selectedTopic.requirements}
-              </p>
-            </section>
-            <section className="space-y-3">
-              <h3 className="flex items-center gap-2 font-semibold">
-                <Users className="size-4 text-primary" />
-                {detail?.groupId ? 'Thành viên' : 'Nhóm đăng ký'}
-              </h3>
-              {selectedGroups.length ? (
-                selectedGroups.map(renderGroup)
-              ) : (
-                <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
-                  Chưa có nhóm đăng ký đề tài này.
-                </p>
-              )}
-            </section>
-            <div className="flex justify-end border-t border-slate-100 pt-4">
-              <Button variant="outline" onClick={() => setDetail(null)}>
-                Đóng
+          {detailQuery.isPending ? (
+            <TopicDetailSkeleton />
+          ) : detailQuery.isError ? (
+            <div role="alert" className="space-y-3 p-6">
+              <p className="text-sm text-rose-700">{getTopicErrorMessage(detailQuery.error)}</p>
+              <Button variant="outline" onClick={() => void detailQuery.refetch()}>
+                Thử lại
               </Button>
             </div>
-          </div>
+          ) : (
+            detail && (
+              <div className="space-y-6 p-5 sm:p-6">
+                <div>
+                  <TopicStatusBadge status={detail.status} />
+                  <h2 className="mt-3 text-xl font-bold leading-8 text-slate-900">
+                    {detail.titleVi}
+                  </h2>
+                  {detail.titleEn && (
+                    <p className="mt-1 text-sm text-slate-500">{detail.titleEn}</p>
+                  )}
+                </div>
+                <dl className="grid gap-4 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-3">
+                  <div>
+                    <dt className="text-xs text-slate-500">Giảng viên hướng dẫn</dt>
+                    <dd className="mt-1 font-medium">{user?.fullName}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Đợt KLTN</dt>
+                    <dd className="mt-1">{batchName(detail.batchId)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-slate-500">Sinh viên / chỉ tiêu</dt>
+                    <dd className="mt-1">
+                      {detail.registeredStudentsCount}/{detail.studentNumber ?? '—'}
+                    </dd>
+                  </div>
+                </dl>
+                <section>
+                  <h3 className="text-sm font-semibold text-slate-800">Mục tiêu và mô tả</h3>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">
+                    {detail.description || 'Chưa có nội dung.'}
+                  </p>
+                  <h3 className="mt-4 text-sm font-semibold text-slate-800">
+                    Yêu cầu công nghệ và kiến thức
+                  </h3>
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">
+                    {detail.requirements || 'Chưa có nội dung.'}
+                  </p>
+                </section>
+                {detail.group ? (
+                  <section className="space-y-4 rounded-xl border border-slate-200 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold">Nhóm đăng ký</h3>
+                        <p className="mt-1 break-all font-mono text-xs text-slate-500">
+                          {detail.group.groupId}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Ngày tạo: {date(detail.group.createdAt)}
+                        </p>
+                      </div>
+                      <GroupStatusBadge status={detail.group.status} />
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Chưa có trạng thái xác nhận riêng của từng thành viên.
+                    </p>
+                    {detail.group.students.map((student) => (
+                      <div key={student.studentId} className="rounded-lg bg-slate-50 p-3 text-sm">
+                        <p className="font-medium">
+                          {student.fullName}{' '}
+                          <span className="font-normal text-slate-500">
+                            · {student.userCode ?? 'Chưa có MSSV'}
+                          </span>
+                        </p>
+                        <p className="mt-1 break-all text-slate-600">
+                          {student.email || 'Chưa có email'}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {student.phoneNumber || 'Chưa có số điện thoại'} · Ghi nhận:{' '}
+                          {date(student.joinedAt)}
+                        </p>
+                      </div>
+                    ))}
+                    {isAdvisingGroup(detail) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        leftIcon={<Info />}
+                        onClick={() => {
+                          setFacultyTopic(detail);
+                          setCopyNotice('');
+                        }}
+                      >
+                        Liên hệ Khoa
+                      </Button>
+                    )}
+                  </section>
+                ) : (
+                  <p className="rounded-xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
+                    Chưa có nhóm đăng ký đề tài này.
+                  </p>
+                )}
+                <div className="flex justify-end border-t border-slate-100 pt-4">
+                  <Button variant="outline" onClick={() => setDetailId(null)}>
+                    Đóng
+                  </Button>
+                </div>
+              </div>
+            )
+          )}
         </Dialog>
       )}
-      {facultyGroup && (
-        <Dialog
-          title="Liên hệ Văn phòng Khoa"
-          onClose={() => {
-            setFacultyGroupId(null);
-            setCopyNotice('');
-          }}
-        >
+      {facultyTopic && (
+        <Dialog title="Liên hệ Văn phòng Khoa" onClose={() => setFacultyTopic(null)}>
           <div className="space-y-4 p-5">
             <p className="text-sm text-slate-500">
               Sao chép nội dung để liên hệ Khoa xử lý. Thao tác này chưa gửi yêu cầu.
@@ -770,16 +628,10 @@ export function TopicAdvisingPage({
               {copyNotice}
             </p>
             <div className="flex flex-wrap justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setFacultyGroupId(null);
-                  setCopyNotice('');
-                }}
-              >
+              <Button variant="outline" onClick={() => setFacultyTopic(null)}>
                 Đóng
               </Button>
-              <Button leftIcon={<Copy />} onClick={() => void copy(facultyText)}>
+              <Button leftIcon={<Copy />} onClick={() => void copy()}>
                 Sao chép nội dung
               </Button>
             </div>

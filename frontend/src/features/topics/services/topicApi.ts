@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
+import { normalizeStudentCodes } from '../proposalEditing';
 import type {
   PagedResult,
   Topic,
@@ -90,7 +91,15 @@ export const topicApi = {
     id: string | null,
     values: TopicFormValues,
     submitImmediately: boolean,
+    updateAssignedStudents = false,
   ): Promise<Topic> {
+    const studentCodes = normalizeStudentCodes(values.studentCodes);
+    if (
+      studentCodes.length > values.studentNumber ||
+      new Set(studentCodes).size !== studentCodes.length
+    ) {
+      throw new Error('Danh sách sinh viên bị trùng hoặc vượt quá chỉ tiêu.');
+    }
     const payload = {
       titleVi: values.titleVi.trim(),
       titleEn: values.titleEn.trim() || null,
@@ -98,6 +107,13 @@ export const topicApi = {
       requirements: values.requirements.trim() || null,
       studentNumber: values.studentNumber,
       submitImmediately,
+      ...(!id || updateAssignedStudents
+        ? studentCodes.length
+          ? { studentCodes }
+          : id
+            ? { clearAssignedStudents: true }
+            : {}
+        : {}),
     };
 
     if (id) {

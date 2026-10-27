@@ -7,6 +7,7 @@ export const EMPTY_PROPOSAL: TopicFormValues = {
   description: '',
   requirements: '',
   studentNumber: 2,
+  studentCodes: [],
 };
 export type ProposalErrors = Partial<Record<keyof TopicFormValues, string>>;
 
@@ -18,11 +19,24 @@ export function topicToValues(topic: Topic): TopicFormValues {
     description: topic.description ?? '',
     requirements: topic.requirements ?? '',
     studentNumber: topic.studentNumber === 1 ? 1 : 2,
+    studentCodes:
+      topic.group?.students.flatMap((student) => (student.userCode ? [student.userCode] : [])) ??
+      [],
   };
 }
 
 export function copyProposal(topic: Topic): TopicFormValues {
-  return { ...topicToValues(topic), batchId: '' };
+  return { ...topicToValues(topic), batchId: '', studentCodes: [] };
+}
+
+export function normalizeStudentCodes(codes: string[] = []): string[] {
+  return codes.map((code) => code.trim().toUpperCase()).filter(Boolean);
+}
+
+export function sameStudentCodes(a: string[] = [], b: string[] = []): boolean {
+  const left = normalizeStudentCodes(a).sort();
+  const right = normalizeStudentCodes(b).sort();
+  return left.length === right.length && left.every((code, index) => code === right[index]);
 }
 
 export function validateProposal(values: TopicFormValues, submitting: boolean): ProposalErrors {
@@ -41,6 +55,15 @@ export function validateProposal(values: TopicFormValues, submitting: boolean): 
     errors.requirements = 'Vui lòng bổ sung yêu cầu công nghệ và kiến thức.';
   if (values.studentNumber !== 1 && values.studentNumber !== 2)
     errors.studentNumber = 'Chỉ tiêu sinh viên chỉ được chọn 1 hoặc 2.';
+  const codes = normalizeStudentCodes(values.studentCodes);
+  if (codes.length > values.studentNumber)
+    errors.studentCodes = 'Số sinh viên chỉ định không được vượt quá chỉ tiêu.';
+  else if (new Set(codes).size !== codes.length)
+    errors.studentCodes = 'MSSV không được trùng nhau.';
+  else if (codes.some((code) => code.length > 20))
+    errors.studentCodes = 'MSSV không được vượt quá 20 ký tự.';
+  else if (codes.some((code) => /[\s,;]/.test(code)))
+    errors.studentCodes = 'Mỗi ô chỉ nhập một MSSV.';
   return errors;
 }
 
@@ -61,7 +84,11 @@ function isValues(value: unknown): value is TopicFormValues {
     ['batchId', 'titleVi', 'titleEn', 'description', 'requirements'].every(
       (key) => typeof fields[key] === 'string',
     ) &&
-    (fields.studentNumber === 1 || fields.studentNumber === 2)
+    (fields.studentNumber === 1 || fields.studentNumber === 2) &&
+    (fields.studentCodes === undefined ||
+      (Array.isArray(fields.studentCodes) &&
+        fields.studentCodes.length <= 2 &&
+        fields.studentCodes.every((code) => typeof code === 'string')))
   );
 }
 
@@ -107,7 +134,9 @@ export function removeLocalProposal(
 }
 
 export function sameProposal(a: TopicFormValues, b: TopicFormValues): boolean {
-  return (Object.keys(EMPTY_PROPOSAL) as (keyof TopicFormValues)[]).every(
-    (key) => a[key] === b[key],
+  return (Object.keys(EMPTY_PROPOSAL) as (keyof TopicFormValues)[]).every((key) =>
+    key === 'studentCodes'
+      ? JSON.stringify(a.studentCodes ?? []) === JSON.stringify(b.studentCodes ?? [])
+      : a[key] === b[key],
   );
 }

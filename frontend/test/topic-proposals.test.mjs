@@ -54,6 +54,7 @@ function apiFixture(client) {
   return loadModule('features/topics/services/topicApi.ts', {
     axios: { default: axios },
     '@/shared/api': { httpClient: client },
+    '../proposalEditing': loadModule('features/topics/proposalEditing.ts'),
   });
 }
 
@@ -108,6 +109,70 @@ test('an unchanged saved proposal uses the submit endpoint without a request bod
   });
   assert.equal((await topicApi.submit('topic-1')).status, 'Submitted');
   assert.deepEqual(calls, [['/api/topics/topic-1/submit']]);
+});
+
+test('creating a proposal assigns trimmed MSSV through the existing create request', async () => {
+  const calls = [];
+  const { topicApi } = apiFixture({
+    post: async (...args) => {
+      calls.push(args);
+      return success({ id: 'created' });
+    },
+  });
+  await topicApi.save(null, { ...values, studentCodes: [' 24521603 ', ' sv02 '] }, false);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0][0], '/api/topics');
+  assert.deepEqual(calls[0][1].studentCodes, ['24521603', 'SV02']);
+  assert.equal('clearAssignedStudents' in calls[0][1], false);
+});
+
+test('assignment edits replace explicitly; content edits never resend or clear the roster', async () => {
+  const calls = [];
+  const { topicApi } = apiFixture({
+    put: async (...args) => {
+      calls.push(args);
+      return success({ id: 'topic-1' });
+    },
+  });
+  const assigned = { ...values, studentCodes: ['24521603'] };
+  await topicApi.save('topic-1', assigned, false);
+  assert.equal('studentCodes' in calls[0][1], false);
+  assert.equal('clearAssignedStudents' in calls[0][1], false);
+  await topicApi.save('topic-1', assigned, false, true);
+  assert.deepEqual(calls[1][1].studentCodes, ['24521603']);
+  await topicApi.save('topic-1', { ...values, studentCodes: [] }, false, true);
+  assert.equal(calls[2][1].clearAssignedStudents, true);
+  assert.equal('studentCodes' in calls[2][1], false);
+});
+
+test('duplicate and over-capacity assignments never reach the backend', async () => {
+  let posts = 0;
+  const { topicApi } = apiFixture({
+    post: async () => {
+      posts++;
+      return success({});
+    },
+  });
+  await assert.rejects(
+    topicApi.save(null, { ...values, studentCodes: ['SV01', ' sv01 '] }, false),
+    /trùng/,
+  );
+  await assert.rejects(
+    topicApi.save(null, { ...values, studentNumber: 1, studentCodes: ['SV01', 'SV02'] }, false),
+    /chỉ tiêu/,
+  );
+  assert.equal(posts, 0);
+});
+
+test('an assignment failure preserves the backend message and leaves input intact', async () => {
+  const input = { ...values, studentCodes: ['24521603'] };
+  const { topicApi } = apiFixture({
+    post: async () => ({
+      data: { success: false, error: { message: 'Đã hết giai đoạn chuẩn bị đề tài.' } },
+    }),
+  });
+  await assert.rejects(topicApi.save(null, input, false), /Đã hết giai đoạn chuẩn bị/);
+  assert.deepEqual(input.studentCodes, ['24521603']);
 });
 
 test('topic list scopes privileged lecturer accounts to their own advisor ID and forwards paging/cancellation', async () => {
@@ -350,6 +415,17 @@ test('actual AppLayout hides guidance from accounts without Lecturer or Admin', 
   }
 });
 
+test('actual sidebar renders one catalog link for Student/Admin and hides it from other roles', () => {
+  for (const roles of [['Student'], ['student'], ['Admin'], ['admin'], ['Admin', 'Student']]) {
+    const markup = renderSidebar(roles);
+    assert.equal((markup.match(/href="\/topics\/catalog"/g) ?? []).length, 1);
+    assert.match(markup, /Đề tài &amp; đăng ký/);
+  }
+  for (const roles of [['Lecturer'], ['Faculty'], ['AcademicAffairs'], []]) {
+    assert.doesNotMatch(renderSidebar(roles), /href="\/topics\/catalog"/);
+  }
+});
+
 test('review sidebar entry is visible only to Faculty and Admin, including mixed roles', () => {
   for (const roles of [['Faculty'], ['faculty'], ['Admin'], ['Faculty', 'Lecturer']]) {
     assert.match(renderSidebar(roles), /href="\/topics\/review"/);
@@ -395,12 +471,20 @@ test('guidance uses the live proposal page and links to separate group tabs on o
     const pane = findElement(groups, (node) => node.type === 'TopicAdvisingPage');
     assert.equal(pane.props.embedded, true);
     assert.equal(pane.props.initialTab, tab);
+    assert.equal(pane.props.initialBatchId, '');
+    assert.doesNotMatch(JSON.stringify(groups), /Dữ liệu nhóm mẫu|2026-1/);
     assert.equal(
       findElement(groups, (node) => node.type === 'TopicProposePage'),
       undefined,
     );
   }
   assert.equal(render('tab=invalid').type, 'TopicProposePage');
+  const scoped = findElement(
+    render('tab=advising&batchId=batch-real&status=InProgress'),
+    (node) => node.type === 'TopicAdvisingPage',
+  );
+  assert.equal(scoped.props.initialBatchId, 'batch-real');
+  assert.equal(scoped.props.initialStatus, 'InProgress');
 });
 
 function findElement(node, predicate) {
@@ -493,6 +577,7 @@ function proposalPageFixture(options = {}) {
     'TopicsTable',
     'TopicPreview',
     'TopicReviewNote',
+    'TopicStudentAssignmentField',
     'PageHeader',
     'ListCardHeader',
     'TopicProposalSchedule',
@@ -608,6 +693,7 @@ function proposalPageFixture(options = {}) {
       '../components/TopicsTable': dependency('TopicsTable'),
       '../components/TopicPreview': dependency('TopicPreview'),
       '../components/TopicReviewNote': dependency('TopicReviewNote'),
+      '../components/TopicStudentAssignmentField': dependency('TopicStudentAssignmentField'),
       '@/components/ui/page-header': dependency('PageHeader'),
       '../components/TopicProposalSchedule': dependency('TopicProposalSchedule'),
       '../proposalEditing': editing,
@@ -871,6 +957,33 @@ function submitProposal(page, action) {
   page.render();
 }
 
+test('assignment input validates MSSV and quota before either save action', () => {
+  const page = draftPage();
+  page.component('TopicStudentAssignmentField').props.onChange(['24521603', '24521604']);
+  page.render();
+  page.find((node) => node.props.id === 'topic-capacity-field').props.onChange(1);
+  page.render();
+  assert.deepEqual(page.component('TopicStudentAssignmentField').props.codes, [
+    '24521603',
+    '24521604',
+  ]);
+  submitProposal(page, 'draft');
+  assert.match(page.component('TopicStudentAssignmentField').props.error, /vượt quá chỉ tiêu/);
+  assert.equal(page.mutationCalls(), 0);
+  page.flushFrames();
+  assert.equal(page.focused.at(-1), 'topic-student-codes');
+  page.component('TopicStudentAssignmentField').props.onChange(['SV01', ' sv01 ']);
+  page.render();
+  page.find((node) => node.props.id === 'topic-capacity-field').props.onChange(2);
+  page.render();
+  submitProposal(page, 'draft');
+  assert.match(page.component('TopicStudentAssignmentField').props.error, /trùng/);
+  page.component('TopicStudentAssignmentField').props.onChange(['24521603']);
+  page.render();
+  submitProposal(page, 'draft');
+  assert.deepEqual(page.saveCalls()[0].values.studentCodes, ['24521603']);
+});
+
 test('saving a draft allows English title, description and requirements to remain unfinished', () => {
   const page = draftPage();
   submitProposal(page, 'draft');
@@ -953,7 +1066,12 @@ test('saving from a later filtered page resets pagination and refreshes both pro
   await page.completeSave({ ...fullTopic, status: 'Submitted' });
   page.render();
   assert.equal(page.query()[3], 1);
-  assert.deepEqual(page.invalidations, [['my-proposed-topics'], ['topic-review']]);
+  assert.deepEqual(page.invalidations, [
+    ['my-proposed-topics'],
+    ['topic-review'],
+    ['topic-advising'],
+    ['topic-advising-detail'],
+  ]);
 });
 
 test('missing batch-read permission is explained rather than displayed as an endless loading state', () => {
@@ -1237,4 +1355,143 @@ test('sending becomes available only after all three additional fields have cont
     assert.equal(page.mutationCalls(), index === 2 ? 1 : 0);
   }
   assert.equal(page.mutationVariables()[0].submitImmediately, true);
+});
+
+const assignedTopic = {
+  ...fullTopic,
+  group: {
+    groupId: 'group-1',
+    status: 'Registered',
+    createdAt: fullTopic.createdAt,
+    students: [
+      {
+        studentId: 'student-1',
+        userCode: '24521603',
+        fullName: 'Nguyễn Minh Đức',
+        email: 'student1@example.test',
+        phoneNumber: null,
+        joinedAt: fullTopic.createdAt,
+      },
+    ],
+  },
+};
+
+test('editing reads the assigned roster and changes it only with an explicit assignment edit', async () => {
+  const page = proposalPageFixture({ listedTopic: assignedTopic });
+  page.component('TopicsTable').props.onOpen(assignedTopic);
+  await page.settle();
+  page.render();
+  assert.deepEqual(page.component('TopicStudentAssignmentField').props.codes, ['24521603']);
+  page
+    .find((node) => node.props.id === 'topic-description')
+    .props.onChange({ target: { value: 'Chỉ sửa nội dung' } });
+  page.render();
+  submitProposal(page, 'draft');
+  assert.equal(page.saveCalls()[0].updateAssignedStudents, undefined);
+  await page.executeSave();
+  assert.equal(page.apiCalls[0].length, 4); // operation, id, values, submit flag; no roster update flag.
+
+  page.component('TopicStudentAssignmentField').props.onChange(['24521603', '24521604']);
+  page.render();
+  submitProposal(page, 'draft');
+  assert.equal(page.saveCalls().at(-1).updateAssignedStudents, true);
+  await page.executeSave();
+  assert.equal(page.apiCalls.at(-1)[4], true);
+});
+
+test('clearing assigned students is retained as a pending edit until saving', async () => {
+  const page = proposalPageFixture({ listedTopic: assignedTopic });
+  page.component('TopicsTable').props.onOpen(assignedTopic);
+  await page.settle();
+  page.render();
+  page.component('TopicStudentAssignmentField').props.onChange([]);
+  page.render();
+  assert.equal(page.shouldBlock(), true);
+  assert.equal(page.apiCalls.length, 0);
+  submitProposal(page, 'draft');
+  assert.equal(page.saveCalls()[0].updateAssignedStudents, true);
+  assert.deepEqual(page.saveCalls()[0].values.studentCodes, []);
+});
+
+test('editing a one-person quota explains the backend limitation before assigning two students', async () => {
+  const limited = { ...assignedTopic, studentNumber: 1 };
+  const page = proposalPageFixture({ listedTopic: limited });
+  page.component('TopicsTable').props.onOpen(limited);
+  await page.settle();
+  page.render();
+  page.find((node) => node.props.id === 'topic-capacity-field').props.onChange(2);
+  page.render();
+  page.component('TopicStudentAssignmentField').props.onChange(['24521603', '24521604']);
+  page.render();
+  submitProposal(page, 'draft');
+  assert.equal(page.saveCalls().length, 0);
+  assert.match(page.component('TopicStudentAssignmentField').props.error, /lưu chỉ tiêu mới trước/);
+});
+
+test('assigned MSSV survive preview and local draft recovery, but never copy to another topic', async () => {
+  const page = draftPage();
+  page.component('TopicStudentAssignmentField').props.onChange(['24521603']);
+  page.render();
+  page.button('Xem trước đề tài').props.onClick();
+  page.render();
+  assert.deepEqual(page.component('TopicPreview').props.values.studentCodes, ['24521603']);
+  page.button('Quay lại chỉnh sửa').props.onClick();
+  page.render();
+  page.flushTimers();
+  const reloaded = proposalPageFixture({ saved: page.saved });
+  reloaded.button('Khôi phục nội dung').props.onClick();
+  reloaded.render();
+  assert.deepEqual(reloaded.component('TopicStudentAssignmentField').props.codes, ['24521603']);
+
+  const copy = proposalPageFixture({ listedTopic: assignedTopic });
+  copy.component('TopicsTable').props.onCopy(assignedTopic);
+  await copy.settle();
+  copy.render();
+  assert.deepEqual(copy.component('TopicStudentAssignmentField').props.codes, []);
+});
+
+test('recovering an older draft without studentCodes preserves the actual server roster', async () => {
+  const page = proposalPageFixture({ listedTopic: assignedTopic });
+  const legacyBaseline = page.editing.topicToValues(assignedTopic);
+  delete legacyBaseline.studentCodes;
+  page.editing.saveLocalProposal(
+    'lecturer-1',
+    assignedTopic.id,
+    { ...legacyBaseline, description: 'Nội dung lưu tạm cũ' },
+    legacyBaseline,
+  );
+  page.component('TopicsTable').props.onOpen(assignedTopic);
+  await page.settle();
+  page.render();
+  page.button('Khôi phục nội dung').props.onClick();
+  page.render();
+  assert.deepEqual(page.component('TopicStudentAssignmentField').props.codes, ['24521603']);
+  submitProposal(page, 'draft');
+  assert.equal(page.saveCalls()[0].updateAssignedStudents, undefined);
+});
+
+test('MSSV field retains excess entries after quota reduction and locks incomplete server identities', () => {
+  const { TopicStudentAssignmentField } = loadModule(
+    'features/topics/components/TopicStudentAssignmentField.tsx',
+    {
+      'react/jsx-runtime': jsxRuntime,
+      'lucide-react': icons,
+      '@/components/ui/input': { Input: 'Input' },
+      '@/components/ui/button': { Button: 'Button' },
+    },
+  );
+  const walk = (node, type) =>
+    !React.isValidElement(node)
+      ? []
+      : [
+          ...(node.type === type ? [node] : []),
+          ...React.Children.toArray(node.props.children).flatMap((child) => walk(child, type)),
+        ];
+  const props = { codes: ['24521603', '24521604'], capacity: 1, onChange() {} };
+  assert.equal(walk(TopicStudentAssignmentField(props), 'Input').length, 2);
+  const unknown = TopicStudentAssignmentField({
+    ...props,
+    currentStudents: [{ ...assignedTopic.group.students[0], userCode: null }],
+  });
+  assert.ok(walk(unknown, 'Input').every((input) => input.props.disabled));
 });

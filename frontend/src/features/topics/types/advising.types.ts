@@ -1,53 +1,30 @@
-import type { TopicStatus } from './topic.types';
-
-export type RegistrationStatus = 'PendingEmail' | 'Confirmed' | 'Expired' | 'Cancelled';
+import type { Topic, TopicGroup } from './topic.types';
 export type AdvisingTab = 'topics' | 'registrations' | 'advising';
 
-export const REGISTRATION_LABELS: Record<RegistrationStatus, string> = {
-  PendingEmail: 'Chờ thành viên xác nhận',
-  Confirmed: 'Đăng ký thành công',
-  Expired: 'Hết hạn xác nhận',
-  Cancelled: 'Khoa đã hủy',
+// Match the backend tracking DTOs. JoinedAt is not email confirmation.
+export type { TopicStudent as TrackingStudent, TopicGroup as TrackingGroup } from './topic.types';
+
+export interface TrackingTopic extends Topic {
+  confirmedStudentsCount?: number;
+  pendingConfirmationsCount?: number;
+  registeredStudentsCount: number;
+  remainingSlots: number;
+  registrationStatus: 'Empty' | 'Registered' | 'Full';
+  hasRegistration: boolean;
+  isAvailable: boolean;
+  group: TopicGroup | null;
+}
+
+export const GROUP_STATUS_LABELS: Record<string, string> = {
+  Registered: 'Đã ghi nhận nhóm',
+  SyllabusSubmitted: 'Đã nộp đề cương',
+  SyllabusRevisionRequired: 'Cần sửa đề cương',
+  SyllabusApproved: 'Đã duyệt đề cương',
+  InProgress: 'Đang thực hiện',
+  MidtermSubmitted: 'Đã nộp báo cáo giữa kỳ',
+  Stopped: 'Đã dừng thực hiện',
+  FinalReportSubmitted: 'Đã nộp báo cáo cuối kỳ',
+  Defended: 'Đã bảo vệ',
+  ScoreLocked: 'Đã khóa điểm',
+  Completed: 'Đã hoàn thành',
 };
-
-export interface AdvisingStudent {
-  id: string;
-  code: string;
-  name: string;
-  email: string;
-  phone: string;
-  registrationRole: 'Registrant' | 'Invitee';
-  participationConfirmedAt: string | null;
-}
-
-export interface AdvisingRegistration {
-  id: string;
-  code: string;
-  groupCode: string;
-  topicId: string;
-  status: RegistrationStatus;
-  registeredAt: string;
-  confirmationDeadline: string | null;
-  confirmedAt: string | null;
-  stage: string | null;
-  cancellationReason: string | null;
-  students: AdvisingStudent[];
-}
-
-export interface AdvisingTopic {
-  id: string;
-  code: string;
-  batchId: string;
-  title: string;
-  titleEn: string;
-  description: string;
-  requirements: string;
-  capacity: number;
-  status: TopicStatus;
-}
-
-export interface AdvisingData {
-  batches: { id: string; name: string }[];
-  topics: AdvisingTopic[];
-  registrations: AdvisingRegistration[];
-}

@@ -1,6 +1,6 @@
 # Topic Catalog, Proposal, Review & Tracking API
 
-**Trạng thái:** mục 1–4 đã triển khai; mục 5 là yêu cầu bổ sung, chưa triển khai · **Cập nhật:** 23/10/2026
+**Trạng thái:** mục 1–4 đã triển khai; mục 5 phân biệt API đã có và các phần còn thiếu · **Cập nhật:** 27/10/2026
 
 **Base path hiện có:** `/api/topics`
 
@@ -55,6 +55,18 @@ Tài liệu này đặc tả chi tiết các endpoint thuộc phân hệ **Đề
 | `POST` | `/api/topics/publish` | `Faculty`, `Admin` | Văn phòng Khoa công bố danh mục đề tài (`Approved` ➔ `Published`, `isPublished = true`) |
 
 ---
+
+### Số lượng đăng ký trong danh mục công khai
+
+`GET /api/topics/all-topics` đã trả thêm ba trường trong `TopicSummaryDto`:
+
+| Trường | Ý nghĩa |
+| --- | --- |
+| `confirmedStudentsCount` | SV đã có hiệu lực (`Confirmed`), gồm đăng ký cá nhân và GV chỉ định. |
+| `reservedSlots` | Chỗ đang giữ cho lời mời `Pending` còn hạn theo UTC server. |
+| `availableSlots` | `max(0, studentNumber - confirmedStudentsCount - reservedSlots)`; `null` nếu chỉ tiêu thiếu/không hợp lệ. |
+
+Lời mời tại hoặc sau thời điểm hết hạn không chiếm chỗ, kể cả worker chưa dọn bản ghi. Không công khai danh tính SV, token hoặc ghi chú thẩm định. Các response tạo/sửa dùng cùng DTO có thể để ba trường này `null`; API danh mục là nguồn đọc số liệu.
 
 ## 3. Chi tiết các Endpoint Đề xuất, Thẩm định & Công bố
 
@@ -227,14 +239,28 @@ Chỉ vai trò `Faculty` hoặc `Admin` được phép thực hiện. Chuyển c
 
 ## 5. Yêu cầu bổ sung — Đăng ký đề tài & danh sách nhóm hướng dẫn
 
+### 5.0. Trạng thái tích hợp ngày 27/10/2026
+
+**Thời hạn giữ chỗ đã chốt lại: 24 giờ**, phù hợp `RegisterTopicHandler.DefaultConfirmationWindow`. Thay thế mốc 48 giờ trước đây.
+
+Topic Advising đã nối `GET /api/topics/my-topics` và `GET /api/topics/{id}/tracking`; danh sách đợt dùng `GET /api/academic-periods/batches`. Chi tiết phần đã nối và API còn thiếu: [TopicAdvisingIntegration.md](TopicAdvisingIntegration.md).
+
+Backend đã có đăng ký/xác nhận trong `/api/thesis/topic-registrations`, và chỉ định SV bằng `studentIds`/`studentCodes` khi tạo/sửa đề tài hoặc `/advisor-assign`. Không coi các API này là chưa triển khai chỉ vì đường dẫn khác bản đề xuất cũ.
+
+**Bổ sung DTO tracking:** cả `GET /api/topics/my-topics` và `GET /api/topics/{id}/tracking` trả `confirmedStudentsCount: number` (số thành viên Confirmed) và `pendingConfirmationsCount: number` (Pending chưa hết hạn tại thời điểm đọc; hạn bằng hiện tại đã hết hạn). Pending cũ không có hạn vẫn được tính để khớp quy tắc giữ chỗ hiện tại. Không có nhóm trả 0 cho cả hai. Frontend cộng hai trường trên các nhóm đang hướng dẫn trong phạm vi GV/đợt, loại Completed/Stopped. Không trả token xác nhận.
+
+**Tên giảng viên trong danh mục công khai:** `GET /api/topics/all-topics` trả thêm `advisorName: string | null` trong từng `TopicSummaryDto`, đọc tên hiện tại từ Identity theo `advisorId`. Chỉ tra cứu một lần cho các giảng viên trong trang kết quả; không trả email, số điện thoại hoặc danh sách tài khoản. Nếu không tìm thấy tài khoản thì trả null. Frontend dùng trường này cho danh sách và chi tiết/đăng ký; không cần endpoint tra cứu tài khoản riêng hay quyền `identity.users.read`.
+
+**Giới hạn DTO tracking hiện tại:** `group.students` chứa cả bản ghi thành viên `Pending` và `Confirmed`, nhưng không trả `confirmationStatus`, `confirmedAtUtc`, `confirmationExpiresAtUtc`, `invitedByStudentId`. `registeredStudentsCount`/`remainingSlots` vẫn tính theo số bản ghi thành viên; không phải các số liệu xác nhận mới. Frontend không suy ra xác nhận từ `joinedAt`, số người hoặc trạng thái nhóm. Chỉ hiển thị `—` cho thống kê xác nhận nếu API cũ thiếu trường hoặc tải dữ liệu lỗi.
+
 ### 5.1. Luồng nghiệp vụ đã chốt
 
 | Trường hợp | Xử lý |
 | --- | --- |
 | Một nhóm cho một đề tài | Mỗi đề tài chỉ có **một nhóm đăng ký đang hoạt động**, tối đa `studentNumber` thành viên (1 hoặc 2). Sinh viên đăng ký thêm vào chỗ trống phải vào cùng nhóm hiện có; không tạo nhóm thứ hai. Giữ lịch sử nhóm/hồ sơ đã hủy. |
 | Đăng ký 1 sinh viên | A đăng ký hợp lệ thì được ghi nhận thành viên ngay và vào danh sách hướng dẫn, không cần email xác nhận. Đề tài chỉ tiêu 2 vẫn còn 1 chỗ để sinh viên khác đăng ký. |
-| Đăng ký kèm lời mời SV thứ hai | A được ghi nhận ngay; hệ thống chỉ gửi email mời **B**, giữ chỗ thứ hai cho B **48 giờ** từ khi tạo lời mời. B chấp nhận hợp lệ thì được thêm vào cùng nhóm A. Không chờ B để ghi nhận A, không yêu cầu A xác nhận lại. |
-| B không xác nhận hoặc từ chối | B không phản hồi trong 48 giờ thì lời mời hết hạn; B chủ động không tham gia thì lời mời bị từ chối. Chỉ giải phóng chỗ của B, giữ nguyên đăng ký của A và mở chỗ trống cho sinh viên khác. |
+| Đăng ký kèm lời mời SV thứ hai | A được ghi nhận ngay; hệ thống chỉ gửi email mời **B**, giữ chỗ thứ hai cho B **24 giờ** từ khi tạo lời mời. B chấp nhận hợp lệ thì được thêm vào cùng nhóm A. Không chờ B để ghi nhận A, không yêu cầu A xác nhận lại. |
+| B không xác nhận hoặc từ chối | B không phản hồi trong 24 giờ thì lời mời hết hạn; B chủ động không tham gia thì lời mời bị từ chối. Chỉ giải phóng chỗ của B, giữ nguyên đăng ký của A và mở chỗ trống cho sinh viên khác. |
 | Sinh viên khác đăng ký chỗ trống | C đăng ký cá nhân vào đề tài chỉ tiêu 2 đang có A và còn chỗ khả dụng thì được thêm ngay vào **cùng nhóm**, không gửi email xác nhận cá nhân, không cần A/GV duyệt. |
 | GV chỉ định sinh viên | GV có thể chọn trước sinh viên khi đề xuất đề tài, không vượt chỉ tiêu. API tạo/cập nhật phải hỗ trợ lưu và trả danh sách chỉ định; xem mục 5.7. |
 | Giảng viên phụ trách | Chỉ theo dõi đề tài, hồ sơ đăng ký và nhóm hướng dẫn; không duyệt, tiếp nhận, từ chối hoặc tự hủy nhóm. |
@@ -250,13 +276,13 @@ Không bổ sung API GV duyệt/từ chối nhóm hoặc tải phiếu. Xác nh�
 | --- | --- |
 | `GET /api/topics/my-topics` | Bổ sung `topicCode`, `confirmedStudentsCount`, `reservedSlots`, `availableSlots`, `pendingInvitationsCount`, thông tin chỉ định; tìm thêm mã đề tài/nhóm/hồ sơ, họ tên/MSSV/email. Giữ lọc theo đợt, trạng thái và phân trang hiện có. |
 | `GET /api/topics/{id}/tracking` | Giữ một `group` hiện tại; bổ sung thành viên có hiệu lực, lời mời, chỉ định và lịch sử hồ sơ. Có thể lấy lịch sử từ API đăng ký bằng `topicId`, không thay `group` thành mảng nhóm đang hoạt động. |
-| `GET /api/topics/all-topics` | Trả số thành viên đã ghi nhận, số chỗ đang giữ, số chỗ còn khả dụng và khả năng đăng ký để SV biết còn chỗ. Không công khai token/email lời mời hoặc thông tin cá nhân không cần thiết. |
+| `GET /api/topics/all-topics` | Đã bổ sung `confirmedStudentsCount`, `reservedSlots`, `availableSlots`, tính hết hạn theo server. Điều kiện đăng ký cá nhân vẫn do API đăng ký kiểm tra; không công khai token/email lời mời hoặc thông tin SV. |
 
 - `confirmedStudentsCount` là số sinh viên thuộc đăng ký thành công còn được tính vào chỉ tiêu, bao gồm cá nhân đăng ký thành công ngay. Không tính dựa trên số email đã xác nhận.
 - `pendingInvitationsCount` là số lời mời còn hiệu lực, tối đa 1 cho một đề tài tại cùng thời điểm.
-- `reservedSlots` là số chỗ giữ cho lời mời còn trong hạn 48 giờ. Nếu thống nhất thêm cơ chế giữ chỗ cho chỉ định GV chưa có hiệu lực, phải ghi rõ nguồn và không đếm trùng.
+- `reservedSlots` là số chỗ giữ cho lời mời còn trong hạn 24 giờ. Nếu thống nhất thêm cơ chế giữ chỗ cho chỉ định GV chưa có hiệu lực, phải ghi rõ nguồn và không đếm trùng.
 - `availableSlots = studentNumber - confirmedStudentsCount - reservedSlots`, luôn >= 0. `isAvailable` phản ánh còn chỗ; `canRegister` còn kiểm tra công bố, thời gian và điều kiện người đăng nhập. Có nhóm chưa đồng nghĩa đã hết chỗ.
-- Đề tài 2 SV: A đăng ký cá nhân → `1/0/1`; A đăng ký kèm mời B → `1/1/0`; B nhận lời → `2/0/0`; B từ chối/hết 48h → `1/0/1`; C vào chỗ trống → `2/0/0`. Thứ tự số là thành viên/chỗ giữ/chỗ trống, cùng một `groupId`.
+- Đề tài 2 SV: A đăng ký cá nhân → `1/0/1`; A đăng ký kèm mời B → `1/1/0`; B nhận lời → `2/0/0`; B từ chối/hết 24h → `1/0/1`; C vào chỗ trống → `2/0/0`. Thứ tự số là thành viên/chỗ giữ/chỗ trống, cùng một `groupId`.
 - Bộ lọc `registrationStatus` hiện có (`All`, `Empty`, `Registered`, `Full`) phản ánh tình trạng chỉ tiêu. Không đổi ý nghĩa bộ lọc này thành trạng thái hồ sơ/lời mời; trạng thái mới thuộc API đăng ký bên dưới.
 
 ### 5.3. API đọc cần bổ sung cho màn hình giảng viên
@@ -326,17 +352,18 @@ Query: `batchId` tùy chọn; `advisorId` chỉ dành cho vai trò được phé
 
 `advisingStudents` đếm thành viên đã có hiệu lực: A được tính ngay dù B còn chờ, B chỉ tính khi nhận lời. `pendingInvitationGroups` có thể giao với `advisingGroups`, không cộng hai chỉ số thành tổng nhóm. Đếm mỗi nhóm một lần; lời mời hết hạn/từ chối không loại A khỏi danh sách hay thống kê.
 
-### 5.4. API nghiệp vụ cần bổ sung cho sinh viên và Khoa
+### 5.4. API nghiệp vụ sinh viên và Khoa — trạng thái hiện tại
 
-| Method | Path đề xuất | Quyền đề xuất | Request và kết quả cần có |
-| --- | --- | --- | --- |
-| `POST` | `/api/thesis/registrations` | `Student` đủ điều kiện | Body `{ "topicId": "<uuid>", "invitedStudentId": null }` cho cá nhân; truyền B nếu kèm lời mời. Lấy A từ token, ghi nhận A ngay. Nếu nhóm đã có một người và còn chỗ thì thêm SV đăng ký cá nhân vào cùng nhóm. Nếu mời B, giữ thêm một chỗ 48h; response gồm A `Confirmed`, lời mời B `Pending`, email chỉ gửi B. |
-| `POST` | `/api/thesis/registrations/confirm-participation` | Người được mời, xác thực token gắn đúng lời mời/người nhận | Body `{ "token": "<invitation-token>" }`. Trước hạn 48h, chuyển lời mời `Pending` sang `Accepted`, chuyển chỗ giữ thành thành viên B cùng nhóm A. Không tạo nhóm mới hoặc thay đổi đăng ký đã có hiệu lực của A. |
-| `POST` | `/api/thesis/registrations/decline-participation` | Người được mời, xác thực token gắn đúng lời mời/người nhận | Body `{ "token": "<invitation-token>" }`. B chủ động không tham gia thì chuyển lời mời sang `Declined`, giải phóng ngay chỗ của B; giữ A và nhóm. |
-| `POST` | `/api/thesis/registrations/{id}/resend-invitation` | `Student` đã tạo lời mời | Chỉ gửi lại lời mời `Pending` chưa hết 48h, người nhận lấy từ hồ sơ. Có rate limit; token mới vô hiệu token cũ nhưng **không gia hạn mốc 48h ban đầu**. Không khôi phục lời mời hết hạn bằng resend. |
-| `POST` | `/api/thesis/registrations/{id}/cancel` | `Faculty` trong phạm vi quản lý; `Admin` theo quyền được cấp | Body `{ "reason": "Lý do hủy nhóm" }`, lý do bắt buộc. Lưu audit, người/thời điểm xử lý, loại nhóm khỏi danh sách hướng dẫn và cập nhật chỉ tiêu trong cùng giao tác. GV không có quyền gọi. |
+| Trạng thái | Method / Path | Request / Phạm vi |
+| --- | --- | --- |
+| Đã có | `POST /api/thesis/topic-registrations/` | `{ "topicId": "<uuid>", "partnerStudentId": null, "partnerUserCode": null }`; cá nhân được ghi nhận ngay. Truyền ID hoặc MSSV B nếu mời thêm; B có 24h để xác nhận, A không cần xác nhận lại. |
+| Đã có | `POST /api/thesis/topic-registrations/confirm` | `{ "token": "<confirmation-token>" }`; xác nhận tham gia của B. Không dùng đường dẫn đề xuất cũ `/confirm-participation`. |
+| Đã có, chỉ dành cho SV | `GET /api/thesis/topic-registrations/my-status` | Trạng thái đăng ký của SV đang đăng nhập, thời hạn xác nhận và thông tin vi phạm; không thay thế API danh sách dành cho GV. |
+| Chưa có; path đề xuất | `POST /api/thesis/registrations/decline-participation` | `{ "token": "<invitation-token>" }`; B từ chối, giải phóng chỗ B, giữ A. |
+| Chưa có; path đề xuất | `POST /api/thesis/registrations/{id}/resend-invitation` | Người tạo lời mời gửi lại; có rate limit, vô hiệu token cũ, không gia hạn mốc 24h. |
+| Chưa có; path đề xuất | `POST /api/thesis/registrations/{id}/cancel` | Khoa/Admin xử lý hủy nhóm với `{ "reason": "..." }`, lưu audit và giải phóng chỉ tiêu. GV không có quyền hủy nhóm SV tự đăng ký. |
 
-Email chứa liên kết tới trang xác nhận; việc thay đổi trạng thái thực hiện qua request `POST`, không tự xác nhận bằng `GET` khi công cụ quét email mở liên kết.
+Token xác nhận chỉ gửi B; mail thông báo cho A không yêu cầu A xác nhận. Hết hạn giải phóng chỗ B, không xóa đăng ký A. Backend hiện gửi token qua mail; liên kết xác nhận và màn hình sinh viên là phần tích hợp riêng.
 
 ### 5.5. Ràng buộc và xử lý lỗi cần có
 
@@ -345,7 +372,7 @@ Email chứa liên kết tới trang xác nhận; việc thay đổi trạng th�
 - Request kèm lời mời phải kiểm tra cả A, B và đủ chỗ trước khi ghi nhận. Lưu A, nhóm, lời mời giữ chỗ và yêu cầu gửi mail trong transaction/outbox; không ghi dở dang hoặc âm thầm bỏ B khi request không hợp lệ.
 - Đăng ký và xác nhận lời mời phải kiểm tra chỉ tiêu trong transaction với cơ chế xử lý đồng thời. Kiểm tra lại tính hợp lệ của đề tài/thành viên tại thời điểm xác nhận.
 - Ràng buộc DB và transaction/locking bảo đảm mỗi đề tài chỉ một nhóm hoạt động. Hai SV đăng ký cá nhân đồng thời vào đề tài 2 chỗ phải dùng chung một nhóm, không tạo hai nhóm riêng.
-- `invitationExpiresAt = invitedAt + 48 giờ`, theo UTC server. Tại `now >= invitationExpiresAt`, lời mời hết hạn, token không thể nhận chỗ. Phải giải phóng chỗ kể cả khi worker xử lý hết hạn chưa chạy; thao tác đọc/đăng ký dùng cùng quy tắc.
+- `invitationExpiresAt = invitedAt + 24 giờ`, theo UTC server. Tại `now >= invitationExpiresAt`, lời mời hết hạn, token không thể nhận chỗ. Phải giải phóng chỗ kể cả khi worker xử lý hết hạn chưa chạy; thao tác đọc/đăng ký dùng cùng quy tắc.
 - Xác nhận, từ chối, hết hạn và C đăng ký chỗ trống phải tuần tự hóa trong transaction. Không thêm thành viên/trừ hoặc trả chỗ hai lần, không gửi trùng do retry. B hết hạn/từ chối không hủy A hoặc nhóm.
 - Hủy đăng ký bởi Khoa là nghiệp vụ riêng với việc dừng khóa luận do không đạt cổng thẩm định; không tự đồng nhất `Cancelled` với `Stopped` hiện có.
 - Mọi API đọc kiểm tra quyền ở server. Không dựa vào `advisorId` client truyền để cho phép GV xem hồ sơ của người khác; không trả token lời mời cho GV.
@@ -368,42 +395,31 @@ Response lỗi dùng `ApiResponse` theo chuẩn dự án; mã lỗi cụ thể c
 | Đề tài chỉ tiêu 1, A đăng ký | Một nhóm chứa A có hiệu lực ngay; thành viên/chỗ giữ/chỗ trống = `1/0/0`. |
 | Đề tài chỉ tiêu 2, A đăng ký cá nhân | Một nhóm chứa A có hiệu lực ngay, còn chỗ công khai; `1/0/1`. |
 | C đăng ký cá nhân vào chỗ trống | C cùng nhóm A, `groupId` không đổi; `2/0/0`, không email xác nhận. |
-| A đăng ký kèm mời B | A có hiệu lực ngay, B giữ chỗ 48h; `1/1/0`; C chưa thể lấy chỗ của B. |
+| A đăng ký kèm mời B | A có hiệu lực ngay, B giữ chỗ 24h; `1/1/0`; C chưa thể lấy chỗ của B. |
 | B nhận lời trước hạn | B vào nhóm A; `2/0/0`; retry không thêm thành viên trùng. |
-| B không phản hồi đủ 48h hoặc từ chối | Lời mời hết hạn/bị từ chối; A vẫn có hiệu lực, `1/0/1`, C được đăng ký vào cùng nhóm. |
+| B không phản hồi đủ 24h hoặc từ chối | Lời mời hết hạn/bị từ chối; A vẫn có hiệu lực, `1/0/1`, C được đăng ký vào cùng nhóm. |
 | B mở link cũ sau hạn, C đã đăng ký | Trả lỗi hết hạn; không thêm B, không thay C, không tạo nhóm khác. |
-| Gửi lại mail ở giờ thứ 47 | Mốc hết hạn vẫn là 48h từ lời mời gốc, không cộng thêm 48h. |
+| Gửi lại mail ở giờ thứ 23 | Mốc hết hạn vẫn là 24h từ lời mời gốc, không cộng thêm 24h. |
 | Hai SV cạnh tranh chỗ cuối | Một request thành công, request còn lại lỗi hết chỗ; không vượt chỉ tiêu. |
 | GV chỉ định một SV cho đề tài chỉ tiêu 2 | Lưu chỉ định; khi có hiệu lực chỉ dùng một nhóm và một chỗ, chỗ còn lại mở theo điều kiện công bố/đăng ký. |
 
-**Đã chốt:** giữ chỗ 48h, một nhóm/đề tài, giải phóng chỗ của lời mời không thành công, đăng ký cá nhân có hiệu lực ngay và cho phép đăng ký vào chỗ còn lại, GV được chọn SV khi đề xuất.
+**Đã chốt:** giữ chỗ 24h, một nhóm/đề tài, giải phóng chỗ của lời mời không thành công, đăng ký cá nhân có hiệu lực ngay và cho phép đăng ký vào chỗ còn lại, GV được chọn SV khi đề xuất.
 
-**Còn cần thống nhất:** thời điểm chỉ định GV có hiệu lực trong vòng đời nháp/thẩm định/công bố; việc sửa chỉ định trước hiệu lực; cách tính nhóm dừng thực hiện/bảo lưu/đã bảo vệ/hoàn thành; kết hợp đăng nhập với token lời mời. Không đưa những quy tắc người dùng đã chốt trở lại danh sách câu hỏi mở.
+**Còn cần thống nhất/bổ sung:** cách tính nhóm dừng thực hiện/bảo lưu/đã bảo vệ/hoàn thành; lịch sử lời mời và hồ sơ hủy. Chỉ định GV hiện được áp dụng ngay trong giai đoạn `TOPIC_PREPARATION`; không dùng lại phương án cũ đợi công bố. Không đưa những quy tắc người dùng đã chốt trở lại danh sách câu hỏi mở.
 
-**Ưu tiên nối màn hình GV:** 3 API GET ở mục 5.3 và mở rộng 3 API đọc ở mục 5.2. **Đủ luồng nghiệp vụ:** 5 API POST ở mục 5.4, mở rộng tạo/sửa đề xuất ở mục 5.7, cùng xử lý chỉ tiêu, email, hết hạn và audit. Tất cả phần bổ sung vẫn chưa triển khai.
+**Ưu tiên bổ sung cho màn hình GV:** 3 API GET ở mục 5.3, DTO xác nhận/lời mời và chỉ tiêu ở mục 5.2. Đăng ký, xác nhận và chỉ định SV đã có backend; từ chối lời mời, gửi lại lời mời và Khoa hủy nhóm vẫn chưa có. Xem bảng trạng thái mục 5.4 và báo cáo tích hợp; không coi toàn bộ mục 5 là chưa triển khai.
 
-### 5.7. GV chỉ định sinh viên khi đề xuất — yêu cầu bổ sung
+### 5.7. GV chỉ định sinh viên khi đề xuất — API đã có
 
-Đây là thao tác GV chọn trước SV cho đề tài mình đề xuất, không phải quyền duyệt/từ chối SV tự đăng ký vào chỗ trống.
-
-| API hiện có | Mở rộng chưa triển khai |
+| API hiện có | Contract thực tế |
 | --- | --- |
-| `POST /api/topics` | Thêm `assignedStudentIds: uuid[]`, mặc định `[]`, số phần tử không vượt `studentNumber`. Lưu chỉ định cùng đề xuất. |
-| `PUT /api/topics/{id}` | Cho cập nhật `assignedStudentIds` ở `Draft`/`NeedRevision` nếu chỉ định chưa có hiệu lực. Bỏ trường thì giữ nguyên, `[]` xóa cấu hình chưa hiệu lực. Không dùng sửa đề tài để xóa SV đã có hiệu lực; phải qua Khoa. |
-| Response tạo/sửa, `GET /api/topics/my-topics`, `GET /api/topics/{id}/tracking` | Trả `assignedStudents`: ID, MSSV, họ tên, `assignmentStatus`, `assignedBy`, `assignedAt`, `effectiveAt` theo quyền GV/Khoa. Không công khai dữ liệu cá nhân qua danh mục đề tài. |
+| `POST /api/topics` | Nhận `studentIds: uuid[]` hoặc `studentCodes: string[]` bên cạnh các trường đề xuất; không dùng `assignedStudentIds`. |
+| `PUT /api/topics/{id}` | Nhận `studentIds` / `studentCodes` và `clearAssignedStudents: boolean`. |
+| `PUT /api/thesis/topic-registrations/advisor-assign` | Gán/cập nhật sinh viên cho đề tài; điều kiện chủ sở hữu, chỉ tiêu và giai đoạn `TOPIC_PREPARATION`. |
+| `DELETE /api/thesis/topic-registrations/advisor-assign/{topicId}` | Bỏ chỉ định trong giai đoạn chuẩn bị; không phải API Khoa hủy nhóm SV tự đăng ký ở giai đoạn đăng ký. |
 
-Ví dụ phần mở rộng body (không thay các trường bắt buộc khi tạo đề tài):
+Sinh viên được chỉ định có trạng thái `Confirmed` ngay, nhận email thông báo; kiểm tra chỉ tiêu và đăng ký xung đột. Đây là hành vi backend hiện tại, thay thế phương án cũ `Configured` → `Effective` khi công bố.
 
-```json
-{
-  "studentNumber": 2,
-  "assignedStudentIds": ["e48cae24-607c-4d6c-9585-ff75a87697ba"]
-}
-```
+Còn thiếu thông tin nguồn chỉ định/ai chỉ định/thời điểm hiệu lực trong DTO tracking. Nếu cần giao diện tìm SV cho Lecturer, cần nguồn tra cứu giới hạn phạm vi như `GET /api/topics/assignment-candidates?batchId=...&keyword=...&pageNumber=1&pageSize=10` (path đề xuất, chưa có), không cấp quyền đọc toàn bộ tài khoản chỉ để chọn SV.
 
-- Kiểm tra SV tồn tại, đủ điều kiện, đúng đợt, không trùng ID, không vượt chỉ tiêu và không có đăng ký/chỉ định xung đột.
-- Cần nguồn tra cứu SV cho GV chọn. Nếu endpoint người dùng hiện có không cấp đúng phạm vi cho Lecturer, đề xuất thêm `GET /api/topics/assignment-candidates?batchId=...&keyword=...&pageNumber=1&pageSize=10`, chỉ trả ID/MSSV/họ tên, khả năng chỉ định và lý do không hợp lệ; không cấp quyền đọc toàn bộ tài khoản.
-- **Đề xuất cần thống nhất, chưa phải quy tắc đã chốt:** nháp/gửi duyệt lưu chỉ định `Configured`; khi công bố, kiểm tra lại và chuyển thành viên được chỉ định sang `Effective` trong một nhóm. Nếu xung đột, không công bố/ghi nhận dở dang. Không dùng chỉ định để bỏ qua Khoa thẩm định đề tài.
-- Theo phương án này, chỉ định phải được ghi nhận trước khi mở chỗ còn lại cho SV đăng ký. Chỉ định đủ 2 người thì hết chỗ; chỉ định 1 người ở đề tài chỉ tiêu 2 thì còn 1 chỗ. Cấu hình nháp chưa mặc định là chỗ giữ 48h.
-- Không tự áp dụng lời mời A → B hoặc yêu cầu xác nhận email cho mọi SV do GV chỉ định. Nếu cần cơ chế xác nhận riêng thì phải thống nhất thêm; không suy luận thời hạn 48h của lời mời SV thành thời hạn chỉ định GV.
-- TopicCatalog và ThesisManagement cần phối hợp qua contract liên module để bảo đảm một nhóm/chỉ tiêu và ghi audit; không ghi trực tiếp bảng module khác để bỏ qua nghiệp vụ.
+Frontend Topic Advising đọc dữ liệu theo dõi. Form đề xuất đã nối `studentCodes` qua API tạo/sửa đề tài; hỗ trợ đọc lại danh sách, lưu tạm, xem trước, kiểm tra chỉ tiêu/trùng MSSV và bỏ chỉ định bằng `clearAssignedStudents` khi người dùng xóa danh sách rồi lưu. Không gửi lại chỉ định khi chỉ sửa nội dung, không sao chép sinh viên khi nhân bản đề tài. Đây là sửa chỉ định trong giai đoạn chuẩn bị, không thêm quyền GV hủy nhóm SV tự đăng ký. Các giới hạn hiện tại được ghi tại [TopicAdvisingIntegration.md](TopicAdvisingIntegration.md).

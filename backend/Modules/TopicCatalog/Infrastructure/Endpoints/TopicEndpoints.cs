@@ -27,7 +27,9 @@ public static class TopicEndpoints
             .WithSummary("Tra cứu danh sách đề tài đã được Khoa duyệt và công bố")
             .WithDescription("""
                 Lấy danh sách các đề tài KLTN đã được Văn phòng Khoa thẩm định duyệt và công bố chính thức (`IsPublished = true` / `Status = Published`) phục vụ sinh viên tra cứu thông tin cơ bản (Tên đề tài, mục tiêu, yêu cầu, chỉ tiêu).
+                Trả `confirmedStudentsCount` (SV đã có hiệu lực), `reservedSlots` (chỗ giữ cho lời mời còn hạn) và `availableSlots` (chỗ còn trống). Lời mời hết hạn không chiếm chỗ dù worker chưa dọn. Chỉ trả số lượng, không trả danh tính sinh viên hoặc token lời mời.
                 - `keyword`: Tìm kiếm theo tên tiếng Việt hoặc tiếng Anh.
+                Trả thêm `advisorName` từ tài khoản giảng viên hướng dẫn; null nếu không tìm thấy tài khoản. Không trả email hoặc số điện thoại giảng viên.
                 - `batchId`: Lọc theo đợt KLTN.
                 - `pageNumber`: Số trang (>= 1, mặc định 1).
                 - `pageSize`: Số lượng đề tài trên một trang (1 đến 100, mặc định 10).

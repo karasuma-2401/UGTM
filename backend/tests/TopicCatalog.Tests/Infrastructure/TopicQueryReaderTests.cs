@@ -331,6 +331,120 @@ public sealed class TopicQueryReaderTests
         Assert.Equal(studentLater, detail.Group.Students[1].StudentId);
     }
 
+    [Theory]
+    [InlineData(2, 0, false, null, 0, 0, 2)]
+    [InlineData(2, 1, false, null, 1, 0, 1)]
+    [InlineData(2, 2, false, null, 2, 0, 0)]
+    [InlineData(1, 1, false, null, 1, 0, 0)]
+    [InlineData(2, 1, true, 1, 1, 1, 0)]
+    [InlineData(2, 1, true, 0, 1, 0, 1)]
+    [InlineData(2, 1, true, -1, 1, 0, 1)]
+    [InlineData(2, 1, true, null, 1, 1, 0)]
+    public async Task Public_catalog_separates_confirmed_members_and_live_reservations_without_waiting_for_cleanup(
+        int capacity, int memberCount, bool pending, int? expiryMinutes,
+        int expectedConfirmed, int expectedReserved, int expectedAvailable)
+    {
+        var topic = new Topic
+        {
+            Id = Guid.NewGuid(), BatchId = Guid.NewGuid(), AdvisorId = Guid.NewGuid(),
+            TitleVi = "Public topic", Status = TopicStatus.Published,
+            StudentNumber = capacity, CreatedAt = BaseTime
+        };
+        var members = Enumerable.Range(0, memberCount)
+            .Select(_ => new TopicMemberContractDto(Guid.NewGuid(), topic.BatchId, BaseTime.AddDays(-1)))
+            .ToList();
+        if (pending)
+            members.Add(new TopicMemberContractDto(Guid.NewGuid(), topic.BatchId, BaseTime.AddDays(-1),
+                "Pending", expiryMinutes.HasValue ? BaseTime.AddMinutes(expiryMinutes.Value) : null));
+        var registration = new TopicRegistrationContractDto(Guid.NewGuid(), topic.Id, "Registered", BaseTime, members);
+        var reader = TopicQueryReader.CreateInMemory([topic],
+            new FakeRegistrationContract(new Dictionary<Guid, TopicRegistrationContractDto> { [topic.Id] = registration }),
+            new FakeStudentInfoReader(), new FixedTimeProvider(BaseTime));
+
+        var page = await reader.GetAllTopicsAsync(new GetAllTopicsQuery(null, topic.BatchId, 1, 10));
+        var item = Assert.Single(page.Items);
+        Assert.Equal((int?)expectedConfirmed, item.ConfirmedStudentsCount);
+        Assert.Equal((int?)expectedReserved, item.ReservedSlots);
+        Assert.Equal((int?)expectedAvailable, item.AvailableSlots);
+        var tracking = Assert.Single((await reader.GetMyTopicsAsync(
+            new GetMyTopicsQuery(BatchId: topic.BatchId), topic.AdvisorId, false)).Items);
+        Assert.Equal(expectedConfirmed, tracking.ConfirmedStudentsCount);
+        Assert.Equal(expectedReserved, tracking.PendingConfirmationsCount);
+        var detail = await reader.GetTopicTrackingDetailAsync(topic.Id, CancellationToken.None);
+        Assert.NotNull(detail);
+        Assert.Equal(expectedConfirmed, detail.ConfirmedStudentsCount);
+        Assert.Equal(expectedReserved, detail.PendingConfirmationsCount);
+        Assert.Equal(memberCount + (pending ? 1 : 0), registration.Members.Count);
+        Assert.Null(item.ReviewNote);
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        Assert.DoesNotContain(registration.GroupId.ToString(), json);
+        foreach (var member in members) Assert.DoesNotContain(member.StudentId.ToString(), json);
+    }
+
+    [Fact]
+    public async Task Public_catalog_does_not_invent_capacity_for_legacy_topics()
+    {
+        var topic = new Topic { Id = Guid.NewGuid(), BatchId = Guid.NewGuid(), AdvisorId = Guid.NewGuid(),
+            TitleVi = "Legacy", Status = TopicStatus.Published, StudentNumber = null, CreatedAt = BaseTime };
+        var reader = TopicQueryReader.CreateInMemory([topic], new FakeRegistrationContract(), new FakeStudentInfoReader());
+        var result = await reader.GetAllTopicsAsync(new GetAllTopicsQuery(null, null, 1, 10));
+        Assert.Null(Assert.Single(result.Items).AvailableSlots);
+    }
+
+    [Fact]
+    public async Task Public_catalog_reads_advisor_names_once_for_only_the_current_published_page()
+    {
+        var advisorId = Guid.NewGuid();
+        var missingAdvisor = Guid.NewGuid();
+        var draftAdvisor = Guid.NewGuid();
+        var offPageAdvisor = Guid.NewGuid();
+        var topics = new[] { advisorId, advisorId, missingAdvisor, offPageAdvisor, draftAdvisor }
+            .Select((id, index) => new Topic
+            {
+                Id = Guid.NewGuid(), BatchId = Guid.NewGuid(), AdvisorId = id,
+                TitleVi = $"Topic {index}", CreatedAt = BaseTime.AddMinutes(-index),
+                Status = index == 4 ? TopicStatus.Draft : TopicStatus.Published, StudentNumber = 2
+            }).ToList();
+        var names = new FakeAdvisorNameReader(advisorId);
+        var reader = TopicQueryReader.CreateInMemory(topics, new FakeRegistrationContract(),
+            new FakeStudentInfoReader(), advisorNameReader: names);
+        using var cancellation = new CancellationTokenSource();
+        var page = await reader.GetAllTopicsAsync(new GetAllTopicsQuery(null, null, 1, 3), cancellation.Token);
+
+        Assert.Equal(1, names.Calls);
+        Assert.Equal(cancellation.Token, names.Token);
+        Assert.Equal(2, names.RequestedIds.Count);
+        Assert.Contains(advisorId, names.RequestedIds);
+        Assert.Contains(missingAdvisor, names.RequestedIds);
+        Assert.Equal("Nguyễn Văn An", page.Items[0].AdvisorName);
+        Assert.Equal("Nguyễn Văn An", page.Items[1].AdvisorName);
+        Assert.Null(page.Items[2].AdvisorName);
+        var json = System.Text.Json.JsonSerializer.Serialize(page.Items[0]);
+        Assert.DoesNotContain("Email", json);
+        Assert.DoesNotContain("PhoneNumber", json);
+    }
+
+    private sealed class FakeAdvisorNameReader(Guid advisorId) : IAdvisorNameReader
+    {
+        public int Calls { get; private set; }
+        public List<Guid> RequestedIds { get; private set; } = [];
+        public CancellationToken Token { get; private set; }
+        public Task<IReadOnlyDictionary<Guid, string>> GetNamesByIdsAsync(
+            IEnumerable<Guid> advisorIds, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            RequestedIds = advisorIds.ToList();
+            Token = cancellationToken;
+            return Task.FromResult<IReadOnlyDictionary<Guid, string>>(
+                new Dictionary<Guid, string> { [advisorId] = "Nguyễn Văn An" });
+        }
+    }
+
+    private sealed class FixedTimeProvider(DateTime now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(now);
+    }
+
     private sealed class FakeRegistrationContract(
         IReadOnlyDictionary<Guid, TopicRegistrationContractDto>? data = null) : IThesisRegistrationContract
     {
