@@ -56,6 +56,7 @@ using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.SubmitFin
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportHistory;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportFileDownload;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.BeginFinalReportEvaluation;
+using UGTM.Modules.ThesisManagement.Contracts.AdvisorEvaluations;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -71,6 +72,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<ISyllabusRepository, SyllabusRepository>();
         services.AddScoped<IMidtermReportRepository, MidtermReportRepository>();
         services.AddScoped<IFinalReportRepository, FinalReportRepository>();
+        services.AddScoped<IAdvisorEvaluationWorkflowContract, AdvisorEvaluationWorkflowContract>();
         services.AddScoped<FinalReportSubmissionEligibilityChecker>();
         services.AddScoped<SubmitFinalReportHandler>();
         services.AddScoped<FinalReportReadAccessChecker>();

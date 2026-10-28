@@ -5,6 +5,8 @@ using UGTM.Modules.Identity.Infrastructure;
 using UGTM.Modules.Notifications.Infrastructure;
 using UGTM.Modules.ThesisManagement.Infrastructure;
 using UGTM.Modules.TopicCatalog.Infrastructure;
+using UGTM.Api.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
 
 namespace UGTM.Api.Modules;
 
@@ -27,6 +29,8 @@ public static class ModuleRegistration
             services.AddSingleton<IModule>(module);
             module.RegisterModule(services, configuration);
         }
+
+        services.AddScoped<IAdvisorWorkflowTransactionCoordinator, AdvisorWorkflowTransactionCoordinator>();
 
         return services;
     }

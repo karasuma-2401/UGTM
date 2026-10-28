@@ -5,6 +5,9 @@ using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.AcademicPeriods.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Contracts.Grading;
+using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Application.Persistence;
+using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
@@ -32,6 +35,9 @@ public class ModuleCompositionTests
             ["AcademicPeriods", "DefenseCouncil", "Identity", "Notifications", "ThesisManagement", "TopicCatalog"],
             provider.GetServices<IModule>().Select(x => x.Name).Order());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IGradeCalculationService>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IAdvisorWorkflowTransactionCoordinator>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IAdvisorEvaluationRepository>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IDefenseCouncilUnitOfWork>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IAcademicPeriodsAuditOutbox>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IDefenseCouncilAuditOutbox>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IThesisManagementAuditOutbox>());
