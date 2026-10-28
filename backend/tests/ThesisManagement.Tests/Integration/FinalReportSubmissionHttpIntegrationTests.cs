@@ -53,6 +53,7 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
     private readonly FixedTimeProvider _clock = new();
     private readonly TestAdvisorAssignments _advisorAssignments = new();
     private Exception? _failureAfterCommit;
+    private Func<ThesisManagementDbContext, CancellationToken, Task>? _beforeSave;
     private Guid _groupId;
     private WebApplication _app = null!;
     private HttpClient _client = null!;
@@ -83,7 +84,8 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         builder.Services.AddSingleton<ITopicAdvisorAssignmentContract>(_advisorAssignments);
         builder.Services.AddSingleton<TimeProvider>(_clock);
         builder.Services.AddScoped<IThesisUnitOfWork>(provider => new ControlledUnitOfWork(
-            provider.GetRequiredService<ThesisManagementDbContext>(), () => _failureAfterCommit));
+            provider.GetRequiredService<ThesisManagementDbContext>(), () => _failureAfterCommit,
+            (db, token) => _beforeSave?.Invoke(db, token) ?? Task.CompletedTask));
         builder.Services.AddAuthentication(TestAuthentication.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, TestAuthentication>(TestAuthentication.SchemeName, _ => { });
         builder.Services.AddAuthorization();
@@ -562,11 +564,13 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         public override DateTimeOffset GetUtcNow() => new(UtcNow);
     }
 
-    private sealed class ControlledUnitOfWork(ThesisManagementDbContext db, Func<Exception?> failureAfterCommit)
+    private sealed class ControlledUnitOfWork(ThesisManagementDbContext db, Func<Exception?> failureAfterCommit,
+        Func<ThesisManagementDbContext, CancellationToken, Task> beforeSave)
         : IThesisUnitOfWork
     {
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
+            await beforeSave(db, cancellationToken);
             var result = await db.SaveChangesAsync(cancellationToken);
             if (failureAfterCommit() is { } failure) throw failure;
             return result;

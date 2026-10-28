@@ -117,7 +117,7 @@ public sealed class SubmitFinalReportHandler(
                     return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.ConcurrencyConflict);
                 }
 
-                finalReportRepository.UpdateForResubmission(report, context.Group);
+                finalReportRepository.TrackGroupConcurrency(report, context.Group);
             }
             submissionFileRepository.Add(submissionFile);
             auditOutbox.Add(new AuditIntegrationEntry(

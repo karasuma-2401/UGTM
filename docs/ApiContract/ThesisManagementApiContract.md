@@ -1,7 +1,7 @@
 # ThesisManagement API contract
 
 Trạng thái: SCRUM-88 (báo cáo tiến độ) và SCRUM-89 (thẩm định đề cương chi tiết, báo cáo giữa kỳ) đã triển khai.
-SCRUM-102 đã triển khai đến CP5: nộp/nộp lại báo cáo cuối kỳ, xem lịch sử và tải từng phiên bản file theo quyền. Thao tác bắt đầu chấm thuộc CP6.
+SCRUM-102 đã triển khai đến CP6: nộp/nộp lại báo cáo cuối kỳ, xem lịch sử/tải từng phiên bản theo quyền và bắt đầu chấm để khóa phiên bản. Chấm điểm/duyệt phản biện thuộc SCRUM-103.
 
 Mọi endpoint trong tài liệu này yêu cầu Bearer token. Response thành công có dạng `ApiResponse<T>`; response lỗi chứa `code`, `message` và HTTP status phù hợp. Thời điểm truyền trong JSON dùng ISO 8601 UTC. Các endpoint tải tệp không trả object key nội bộ hoặc URL public.
 
@@ -13,6 +13,7 @@ Mọi endpoint trong tài liệu này yêu cầu Bearer token. Response thành c
 | Nộp hồ sơ Cổng 1/Cổng 2 | Bất kỳ sinh viên nào thuộc nhóm |
 | Nộp/nộp lại báo cáo cuối kỳ | Role `Student`, thành viên `Confirmed` của chính nhóm, đã được duyệt giữa kỳ |
 | Xem lịch sử/tải báo cáo cuối kỳ | `Student` đã `Confirmed` trong nhóm, GVHD hiện được phân công cho đề tài, `Faculty` có `thesis.review-gates.review`, hoặc `Admin` |
+| Bắt đầu chấm báo cáo cuối kỳ | GVHD hiện được phân công cho đề tài hoặc `Admin`; quyền xem của Faculty không bao gồm thao tác này |
 | Thẩm định Cổng 1/Cổng 2 | `Faculty`, `Admin` có `thesis.review-gates.review` |
 | Tạo/xem Milestone, đánh giá báo cáo tiến độ | GVHD hiện được gán cho `TopicId` của nhóm, hoặc `Admin` |
 | Nộp/xem báo cáo tiến độ | Thành viên nhóm; GVHD được gán, Khoa có quyền thẩm định và `Admin` được xem/tải |
@@ -32,6 +33,7 @@ Các file nộp chỉ chấp nhận `.pdf`, `.doc`, `.docx`, tối đa 20 MiB. S
 | `POST` | `/api/thesis/final-reports` | `FinalReportSubmissionDto` |
 | `GET` | `/api/thesis/groups/{groupId}/final-report` | `FinalReportHistoryDto` |
 | `GET` | `/api/thesis/final-report-files/{fileId}/download` | `SubmissionFileDownloadDto` |
+| `POST` | `/api/thesis/final-reports/{finalReportId}/begin-evaluation` | `FinalReportEvaluationStartedDto` |
 | `GET` | `/api/thesis/groups/{groupId}/submissions/{gateType}` | lịch sử Cổng 1/Cổng 2 |
 | `GET` | `/api/thesis/submission-files/{fileId}/download` | `SubmissionFileDownloadDto` |
 | `POST` | `/api/thesis/groups/{groupId}/progress-milestones` | `ProgressMilestoneDto` |
@@ -97,6 +99,42 @@ Cả hai endpoint chỉ cho phép Student đã Confirmed trong chính nhóm, GVH
 | `500` | Lỗi hạ tầng; không trả chi tiết nội bộ |
 
 Hệ thống kiểm tra quyền trước khi đọc lịch sử hoặc cấp URL tải; request bị từ chối không gọi storage để ký URL. Hai API đọc không thay đổi phiên bản, trạng thái nhóm/báo cáo hoặc audit nộp file.
+
+## Bắt đầu chấm báo cáo cuối kỳ (SCRUM-102 CP6)
+
+`POST /api/thesis/final-reports/{finalReportId}/begin-evaluation`, Bearer token, `Content-Type: application/json`:
+
+```json
+{
+  "expectedVersionNo": 2
+}
+```
+
+`expectedVersionNo` bắt buộc là số nguyên dương, lấy từ `currentVersionNo` của báo cáo GVHD vừa xem. Server không tự chọn phiên bản mới hơn khi sinh viên đã nộp lại; nếu số phiên bản hiện tại khác request, trả `409 FinalReport.ConcurrencyConflict` để GVHD tải lại lịch sử/file và xác nhận bản mới trước khi bắt đầu chấm.
+
+Chỉ GVHD **đang** được phân công cho `TopicId` của nhóm hoặc Admin được gọi. Chỉ có role giảng viên, quyền thẩm định của Faculty, hay là thành viên nhóm đều không đủ quyền. Nhóm phải đang `FinalReportSubmitted`; báo cáo phải thuộc loại `InitialFinal`, đang `Submitted` và có metadata file cho phiên bản hiện tại. Thao tác không bị giới hạn bởi deadline/cửa sổ nộp hoặc trạng thái Open của đợt, nên có thể bắt đầu chấm sau khi đã hết hạn nộp.
+
+Thành công trả `200 OK`, `ApiResponse<FinalReportEvaluationStartedDto>` với:
+
+- `finalReportId`, `groupId`, `versionType: "InitialFinal"`, `versionNo`, `status: "UnderEvaluation"`.
+- `startedBy`, `startedAtUtc`: tài khoản thực hiện và thời điểm bắt đầu chấm được lưu trong audit.
+- `file`: metadata của đúng phiên bản đã khóa; không chứa object key hoặc URL tải.
+
+Việc chuyển `Submitted → UnderEvaluation` và audit action `ThesisManagement.FinalReport.EvaluationStarted` được lưu cùng transaction. Audit ghi actor/thời điểm, nhóm, loại báo cáo, số phiên bản, file ID và checksum. Không tạo phiên bản/file mới, không sửa/xóa file cũ, không đổi trạng thái nhóm hoặc thời điểm nộp. `UnderEvaluation` khóa `CurrentVersionNo`; sinh viên không thể nộp lại. SCRUM-103 có thể dùng mã báo cáo, số phiên bản và file ID này để chấm đúng bản đã khóa; CP6 chưa thực hiện chấm điểm hoặc duyệt phản biện.
+
+Server kiểm tra `xmin` của cả báo cáo và nhóm khi lưu. Nếu nộp lại thắng trước, bắt đầu chấm dùng dữ liệu cũ trả `409`; nếu bắt đầu chấm thắng trước, request nộp lại đang upload bị rollback và dọn object mới. Nếu nhóm bị dừng trong lúc xử lý, bắt đầu chấm cũng trả `409`. Hai request bắt đầu chấm đồng thời chỉ lưu một lần chuyển trạng thái và một audit; request còn lại trả `409`.
+
+| HTTP | Mã lỗi / trường hợp |
+| --- | --- |
+| `400` | `FinalReport.InvalidRequest`: GUID rỗng, JSON sai/thiếu body hoặc expectedVersionNo không hợp lệ |
+| `401` | Thiếu/không hợp lệ Bearer token hoặc `FinalReport.AuthenticationRequired` |
+| `403` | `FinalReport.EvaluationAccessDenied`: không phải GVHD hiện tại/Admin |
+| `404` | `FinalReport.ReportNotFound`, `FinalReport.GroupNotFound`, `FinalReport.FileNotFound` |
+| `409` | `FinalReport.InvalidGroupState`, `FinalReport.InvalidEvaluationState` (sai loại hoặc đã bắt đầu chấm), `FinalReport.ConcurrencyConflict` |
+| `415` | Content-Type không phải JSON |
+| `500` | Lỗi hạ tầng; không trả chi tiết nội bộ |
+
+Gọi lại sau khi đã bắt đầu chấm trả `409 FinalReport.InvalidEvaluationState`, không tạo audit trùng. Lỗi database trước commit rollback cả trạng thái và audit, nên có thể thử lại sau khi lỗi được xử lý. Nếu mất phản hồi sau commit, báo cáo vẫn bị khóa và audit vẫn giữ nguyên; client cần tải lại lịch sử để kiểm tra trạng thái trước khi thao tác tiếp.
 
 ## Cấu hình deadline thẩm định
 

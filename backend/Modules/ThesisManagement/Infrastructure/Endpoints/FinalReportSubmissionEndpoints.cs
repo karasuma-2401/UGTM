@@ -9,6 +9,7 @@ using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.SubmitFinalReport;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportHistory;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportFileDownload;
+using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.BeginFinalReportEvaluation;
 using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 
@@ -87,6 +88,29 @@ public static class FinalReportSubmissionEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+
+        endpoints.MapPost("/api/thesis/final-reports/{finalReportId:guid}/begin-evaluation", BeginEvaluationAsync)
+            .WithTags("ThesisManagement.FinalReport")
+            .RequireAuthorization()
+            .Accepts<BeginFinalReportEvaluationRequest>("application/json")
+            .WithSummary("GVHD bắt đầu chấm và khóa phiên bản báo cáo cuối kỳ")
+            .WithDescription("""
+                Body JSON gồm expectedVersionNo (số nguyên dương) của phiên bản GVHD đang xem.
+                Chỉ GVHD hiện được phân công cho đề tài hoặc Admin được bắt đầu chấm báo cáo InitialFinal
+                đang Submitted; nhóm phải đang FinalReportSubmitted. Không bị giới hạn bởi deadline nộp.
+                Nếu bản hiện tại đã thay đổi, trả 409 để tải lại dữ liệu trước khi bắt đầu chấm.
+                Thành công chuyển báo cáo sang UnderEvaluation, khóa số phiên bản hiện tại và ghi audit cùng transaction.
+                Không tăng phiên bản, sửa file hoặc đổi trạng thái nhóm. Request lặp lại trả 409, không tạo audit trùng.
+                400: body/ID không hợp lệ; 401: chưa đăng nhập; 403: không phải GVHD hiện tại/Admin;
+                404: không có báo cáo/nhóm/file hiện tại; 409: sai trạng thái hoặc xung đột dữ liệu; 415: sai Content-Type.
+                """)
+            .Produces<ApiResponse<FinalReportEvaluationStartedDto>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status415UnsupportedMediaType);
         return endpoints;
     }
 
@@ -158,6 +182,32 @@ public static class FinalReportSubmissionEndpoints
             .ToHttpResult();
     }
 
+    private static async Task<IResult> BeginEvaluationAsync(Guid finalReportId, HttpRequest request,
+        BeginFinalReportEvaluationHandler handler, CancellationToken cancellationToken)
+    {
+        if (!request.HasJsonContentType()) return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+        BeginFinalReportEvaluationRequest? body;
+        try
+        {
+            body = await request.ReadFromJsonAsync<BeginFinalReportEvaluationRequest>(cancellationToken);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return InvalidRequest();
+        }
+        catch (BadHttpRequestException exception)
+        {
+            return exception.StatusCode == StatusCodes.Status413PayloadTooLarge
+                ? Results.StatusCode(StatusCodes.Status413PayloadTooLarge) : InvalidRequest();
+        }
+        catch (IOException)
+        {
+            return InvalidRequest();
+        }
+        return (await handler.HandleAsync(new BeginFinalReportEvaluationCommand(finalReportId, body?.ExpectedVersionNo ?? 0),
+            cancellationToken)).ToHttpResult();
+    }
+
     private static async Task<IResult> GetHistoryAsync(Guid groupId, GetFinalReportHistoryHandler handler,
         CancellationToken cancellationToken)
         => (await handler.HandleAsync(new GetFinalReportHistoryQuery(groupId), cancellationToken)).ToHttpResult();
@@ -176,4 +226,5 @@ public static class FinalReportSubmissionEndpoints
             statusCode: StatusCodes.Status413PayloadTooLarge);
 
     public sealed record SubmitFinalReportRequest(Guid GroupId, IFormFile File);
+    public sealed record BeginFinalReportEvaluationRequest(int ExpectedVersionNo);
 }

@@ -34,7 +34,19 @@ public static class FinalReportSubmissionErrors
 
     public static readonly Error ReportNotFound = Error.NotFound(
         "FinalReport.ReportNotFound",
-        "Nhóm chưa nộp báo cáo cuối kỳ.");
+        "Không tìm thấy báo cáo cuối kỳ.");
+
+    public static readonly Error EvaluationAccessDenied = Error.Forbidden(
+        "FinalReport.EvaluationAccessDenied",
+        "Chỉ GVHD đang được phân công hoặc Admin được bắt đầu chấm báo cáo cuối kỳ.");
+
+    public static readonly Error InvalidEvaluationGroupState = Error.Conflict(
+        "FinalReport.InvalidGroupState",
+        "Nhóm phải ở trạng thái đã nộp báo cáo cuối kỳ để bắt đầu chấm.");
+
+    public static readonly Error InvalidEvaluationState = Error.Conflict(
+        "FinalReport.InvalidEvaluationState",
+        "Chỉ được bắt đầu chấm báo cáo InitialFinal đang ở trạng thái Submitted.");
 
     public static readonly Error FileNotFound = Error.NotFound(
         "FinalReport.FileNotFound",

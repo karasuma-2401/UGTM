@@ -15,7 +15,7 @@ public interface IFinalReportRepository
     void Add(FinalReport finalReport);
 
     /// <summary>
-    /// Enlists the tracked group's concurrency token in the same save as the report revision.
+    /// Enlists the tracked group's concurrency token in the same save as a report state/version change.
     /// </summary>
-    void UpdateForResubmission(FinalReport finalReport, StudentGroup group);
+    void TrackGroupConcurrency(FinalReport finalReport, StudentGroup group);
 }
