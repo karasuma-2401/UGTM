@@ -218,6 +218,17 @@ public sealed class StudentGroup : AggregateRoot<Guid>
         return true;
     }
 
+    public bool TrySubmitFinalReport()
+    {
+        if (Status != StudentGroupStatus.InProgress)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.FinalReportSubmitted;
+        return true;
+    }
+
     public bool TryStop()
     {
         if (Status is StudentGroupStatus.Stopped

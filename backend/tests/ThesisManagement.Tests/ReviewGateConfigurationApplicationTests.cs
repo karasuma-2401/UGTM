@@ -199,6 +199,10 @@ public sealed class ReviewGateConfigurationApplicationTests
 
     private sealed class FakeBatchReader(bool exists = true) : IKltnBatchReader
     {
+        public Task<BatchFinalReportSubmissionWindowContractDto?> GetFinalReportSubmissionWindowAsync(
+            Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
         public Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default)
             => Task.FromResult(exists && batchId == BatchId);
 

@@ -2021,6 +2021,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<int>("CurrentVersionNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("current_version_no");
+
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
@@ -2037,6 +2043,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<string>("VersionType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -2046,10 +2058,14 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_final_report");
 
-                    b.HasIndex("GroupId")
-                        .HasDatabaseName("ix_final_report_group_id");
+                    b.HasIndex("GroupId", "VersionType")
+                        .IsUnique()
+                        .HasDatabaseName("ux_final_report_group_id_version_type");
 
-                    b.ToTable("final_report", "thesis");
+                    b.ToTable("final_report", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_final_report_current_version_no", "current_version_no > 0");
+                        });
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmission", b =>
@@ -2739,6 +2755,11 @@ namespace UGTM.Database.Migrations.Migrations
 
                     b.HasIndex("UploadedBy")
                         .HasDatabaseName("ix_submission_file_uploaded_by");
+
+                    b.HasIndex("EntityId", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_submission_file_final_report_entity_id_version_no")
+                        .HasFilter("entity_type = 'FinalReport'");
 
                     b.HasIndex("EntityType", "EntityId", "VersionNo")
                         .HasDatabaseName("ix_submission_file_entity_type_entity_id_version_no");

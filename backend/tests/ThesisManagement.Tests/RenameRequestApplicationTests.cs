@@ -859,6 +859,10 @@ public sealed class RenameRequestApplicationTests
 
     private sealed class FakeBatchReader(bool isWindowOpen) : IKltnBatchReader
     {
+        public Task<BatchFinalReportSubmissionWindowContractDto?> GetFinalReportSubmissionWindowAsync(
+            Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
         public Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default)
             => Task.FromResult(true);
 

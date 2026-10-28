@@ -6,6 +6,61 @@ namespace UGTM.Modules.AcademicPeriods.Infrastructure.Persistence.Repositories;
 
 public sealed class KltnBatchReader(AcademicPeriodsDbContext db) : IKltnBatchReader
 {
+    public async Task<BatchFinalReportSubmissionWindowContractDto?> GetFinalReportSubmissionWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        if (nowUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("The current time must be UTC.", nameof(nowUtc));
+        }
+
+        var batch = await db.KltnBatches
+            .AsNoTracking()
+            .Include(b => b.Stages)
+            .SingleOrDefaultAsync(b => b.Id == batchId, cancellationToken);
+        if (batch is null)
+        {
+            return null;
+        }
+
+        var stage = batch.Stages.SingleOrDefault(s => s.StageCode == "FINAL_EVALUATION");
+        var closedWindow = new BatchFinalReportSubmissionWindowContractDto(
+            batch.Id, batch.Status.ToString(), false, null, stage?.DeadlineAtUtc);
+        if (stage is null || string.IsNullOrWhiteSpace(batch.TimeZoneId))
+        {
+            return closedWindow;
+        }
+
+        DateTime opensAtUtc;
+        try
+        {
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById(batch.TimeZoneId);
+            opensAtUtc = TimeZoneInfo.ConvertTimeToUtc(
+                stage.StartDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified), timeZone);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return closedWindow;
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return closedWindow;
+        }
+        catch (ArgumentException)
+        {
+            return closedWindow;
+        }
+
+        return new BatchFinalReportSubmissionWindowContractDto(
+            batch.Id,
+            batch.Status.ToString(),
+            batch.Status == BatchStatus.Open && nowUtc >= opensAtUtc && nowUtc <= stage.DeadlineAtUtc,
+            opensAtUtc,
+            stage.DeadlineAtUtc);
+    }
+
     public Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default)
         => db.KltnBatches
             .AsNoTracking()

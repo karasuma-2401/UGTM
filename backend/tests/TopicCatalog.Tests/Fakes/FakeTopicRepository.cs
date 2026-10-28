@@ -77,6 +77,10 @@ public sealed class FakeTopicUnitOfWork : ITopicUnitOfWork
 
 public sealed class FakeKltnBatchReader(params Guid[] existingBatchIds) : IKltnBatchReader
 {
+    public Task<BatchFinalReportSubmissionWindowContractDto?> GetFinalReportSubmissionWindowAsync(
+        Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default)
+        => throw new NotSupportedException();
+
     private readonly HashSet<Guid> _batches = new(existingBatchIds);
 
     public void AddBatch(Guid batchId) => _batches.Add(batchId);
