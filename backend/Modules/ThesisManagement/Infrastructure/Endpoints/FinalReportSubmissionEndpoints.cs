@@ -7,7 +7,10 @@ using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.SubmitFinalReport;
+using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportHistory;
+using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportFileDownload;
 using UGTM.Modules.ThesisManagement.Application.Storage;
+using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Endpoints;
 
@@ -51,6 +54,39 @@ public static class FinalReportSubmissionEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
             .Produces<ApiResponse<object>>(StatusCodes.Status413PayloadTooLarge)
             .Produces(StatusCodes.Status415UnsupportedMediaType);
+        endpoints.MapGet("/api/thesis/groups/{groupId:guid}/final-report", GetHistoryAsync)
+            .WithTags("ThesisManagement.FinalReport")
+            .RequireAuthorization()
+            .WithSummary("Xem lịch sử báo cáo cuối kỳ của nhóm")
+            .WithDescription("""
+                Trả báo cáo InitialFinal, trạng thái hiện tại và các phiên bản file theo số tăng dần.
+                Chỉ Student đã Confirmed trong nhóm, GVHD hiện được phân công cho đề tài,
+                Faculty có quyền thesis.review-gates.review hoặc Admin được xem.
+                Vẫn được xem sau deadline, khi nhóm dừng hoặc báo cáo đã bắt đầu chấm.
+                Metadata không chứa object key hoặc URL tải; lấy URL bằng endpoint tải file riêng.
+                400: groupId rỗng; 401: chưa đăng nhập; 403: không có quyền; 404: không có nhóm/báo cáo.
+                """)
+            .Produces<ApiResponse<FinalReportHistoryDto>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+
+        endpoints.MapGet("/api/thesis/final-report-files/{fileId:guid}/download", DownloadAsync)
+            .WithTags("ThesisManagement.FinalReport")
+            .RequireAuthorization()
+            .WithSummary("Lấy URL tải tạm thời cho một phiên bản báo cáo cuối kỳ")
+            .WithDescription("""
+                Kiểm tra file thuộc báo cáo cuối kỳ và quyền trên đúng nhóm trước khi cấp presigned URL 5 phút.
+                Quyền tải giống quyền xem lịch sử; được tải cả phiên bản cũ sau deadline hoặc khi đã bắt đầu chấm.
+                Bucket luôn private. Response chỉ gồm fileId, downloadUrl và expiresAtUtc; không có trường objectKey.
+                400: fileId rỗng; 401: chưa đăng nhập; 403: không có quyền; 404: không có file hoặc sai loại file.
+                """)
+            .Produces<ApiResponse<SubmissionFileDownloadDto>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
         return endpoints;
     }
 
@@ -121,6 +157,14 @@ public static class FinalReportSubmissionEndpoints
         return (await handler.HandleAsync(new SubmitFinalReportCommand(groupId, file.FileName, stream), cancellationToken))
             .ToHttpResult();
     }
+
+    private static async Task<IResult> GetHistoryAsync(Guid groupId, GetFinalReportHistoryHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(new GetFinalReportHistoryQuery(groupId), cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> DownloadAsync(Guid fileId, GetFinalReportFileDownloadHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(new GetFinalReportFileDownloadQuery(fileId), cancellationToken)).ToHttpResult();
 
     private static IResult InvalidRequest()
         => Results.BadRequest(ApiResponse<FinalReportSubmissionDto>.Fail(ApiError.Create(

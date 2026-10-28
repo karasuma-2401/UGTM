@@ -35,6 +35,7 @@ using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Infrastructure;
 using UGTM.Modules.ThesisManagement.Infrastructure.Persistence;
+using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 using IdentityUser = UGTM.Modules.Identity.Domain.Entities.User;
 
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
@@ -50,6 +51,7 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
     private readonly TestBatchReader _batchReader = new();
     private readonly CapturedLogs _logs = new();
     private readonly FixedTimeProvider _clock = new();
+    private readonly TestAdvisorAssignments _advisorAssignments = new();
     private Exception? _failureAfterCommit;
     private Guid _groupId;
     private WebApplication _app = null!;
@@ -78,6 +80,7 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
         builder.Services.AddSingleton<IThesisSubmissionObjectStorage>(_storage);
         builder.Services.AddSingleton<IKltnBatchReader>(_batchReader);
+        builder.Services.AddSingleton<ITopicAdvisorAssignmentContract>(_advisorAssignments);
         builder.Services.AddSingleton<TimeProvider>(_clock);
         builder.Services.AddScoped<IThesisUnitOfWork>(provider => new ControlledUnitOfWork(
             provider.GetRequiredService<ThesisManagementDbContext>(), () => _failureAfterCommit));
@@ -532,8 +535,12 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         CREATE SCHEMA public;
         """);
 
-    private static ClaimsPrincipal Principal(Guid userId, string role) => new(new ClaimsIdentity(
-        [new Claim("sub", userId.ToString()), new Claim(ClaimTypes.Role, role)], TestAuthentication.SchemeName));
+    private static ClaimsPrincipal Principal(Guid userId, string role, string? permission = null)
+    {
+        var claims = new List<Claim> { new("sub", userId.ToString()), new(ClaimTypes.Role, role) };
+        if (permission is not null) claims.Add(new Claim("permission", permission));
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, TestAuthentication.SchemeName));
+    }
 
     private sealed class TestAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
@@ -542,9 +549,9 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             var header = Request.Headers.Authorization.ToString();
-            var parts = header.StartsWith("Bearer ", StringComparison.Ordinal) ? header[7..].Split('.') : [];
-            return Task.FromResult(parts.Length == 2 && Guid.TryParse(parts[0], out var id)
-                ? AuthenticateResult.Success(new AuthenticationTicket(Principal(id, parts[1]), SchemeName))
+            var parts = header.StartsWith("Bearer ", StringComparison.Ordinal) ? header[7..].Split('.', 3) : [];
+            return Task.FromResult(parts.Length >= 2 && Guid.TryParse(parts[0], out var id)
+                ? AuthenticateResult.Success(new AuthenticationTicket(Principal(id, parts[1], parts.Length == 3 ? parts[2] : null), SchemeName))
                 : AuthenticateResult.NoResult());
         }
     }
@@ -571,6 +578,7 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         public ConcurrentDictionary<string, byte[]> Objects { get; } = new();
         public ConcurrentQueue<ThesisSubmissionObjectWriteRequest> Uploads { get; } = new();
         public ConcurrentQueue<string> Deletes { get; } = new();
+        public ConcurrentQueue<(string ObjectKey, TimeSpan ValidFor)> Downloads { get; } = new();
         public Exception? UploadFailure { get; set; }
         public Exception? DeleteFailure { get; set; }
         public Func<CancellationToken, Task>? AfterUpload { get; set; }
@@ -594,7 +602,19 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
             return Task.CompletedTask;
         }
         public Task<Uri> CreateDownloadUriAsync(string objectKey, TimeSpan validFor, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Downloads.Enqueue((objectKey, validFor));
+            return Task.FromResult(new Uri($"https://storage.test/download/{Guid.NewGuid():N}?signature=test"));
+        }
+    }
+
+    private sealed class TestAdvisorAssignments : ITopicAdvisorAssignmentContract
+    {
+        public Dictionary<Guid, Guid> Assignments { get; } = new();
+        public Task<TopicAdvisorAssignmentContractDto?> GetByTopicIdAsync(Guid topicId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Assignments.TryGetValue(topicId, out var advisorId)
+                ? new TopicAdvisorAssignmentContractDto(topicId, advisorId) : null);
     }
 
     private sealed class TestBatchReader : IKltnBatchReader

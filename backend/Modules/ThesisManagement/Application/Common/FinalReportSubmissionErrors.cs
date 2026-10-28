@@ -18,7 +18,7 @@ public static class FinalReportSubmissionErrors
 
     public static readonly Error AuthenticationRequired = Error.Unauthorized(
         "FinalReport.AuthenticationRequired",
-        "Bạn cần đăng nhập để nộp báo cáo cuối kỳ.");
+        "Bạn cần đăng nhập để truy cập báo cáo cuối kỳ.");
 
     public static readonly Error AccessDenied = Error.Forbidden(
         "FinalReport.AccessDenied",
@@ -26,7 +26,19 @@ public static class FinalReportSubmissionErrors
 
     public static readonly Error InvalidRequest = Error.Validation(
         "FinalReport.InvalidRequest",
-        "Thông tin nộp báo cáo cuối kỳ không hợp lệ.");
+        "Thông tin yêu cầu báo cáo cuối kỳ không hợp lệ.");
+
+    public static readonly Error ReadAccessDenied = Error.Forbidden(
+        "FinalReport.AccessDenied",
+        "Bạn không có quyền xem hoặc tải báo cáo cuối kỳ của nhóm này.");
+
+    public static readonly Error ReportNotFound = Error.NotFound(
+        "FinalReport.ReportNotFound",
+        "Nhóm chưa nộp báo cáo cuối kỳ.");
+
+    public static readonly Error FileNotFound = Error.NotFound(
+        "FinalReport.FileNotFound",
+        "Không tìm thấy tệp báo cáo cuối kỳ.");
 
     public static readonly Error GroupNotFound = Error.NotFound(
         "FinalReport.GroupNotFound",
