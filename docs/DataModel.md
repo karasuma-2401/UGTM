@@ -2,6 +2,8 @@
 
 Đối chiếu source ngày 21/10/2026. Nghiệp vụ theo [Requirements.md](Requirements.md); cấu trúc dưới đây lấy từ metadata mô hình EF Core, không suy diễn từ sơ đồ kiến trúc cũ trong Word.
 
+Phạm vi SCRUM-102 (`FinalReport`, metadata `SubmissionFile`, concurrency của nhóm và trạng thái xác nhận thành viên) được đồng bộ ngày 28/10/2026. Các phần khác, bao gồm thống kê tổng hợp số bảng/FK, giữ mốc đối chiếu riêng ở trên; xem [nghiệm thu SCRUM-102](ApiContract/FinalReportSubmissionVerification.md) để biết phạm vi đã kiểm chứng.
+
 ## 1. Nguồn chuẩn
 
 Sáu DbContext runtime, mỗi context chỉ có entity/schema của module mình; [UGTMDbContext](../backend/Database.Migrations/UGTMDbContext.cs) chỉ tổng hợp mô hình để tạo migration và không được đăng ký DI runtime. Cấu trúc vật lý gồm **41 bảng nghiệp vụ, 6 schema, 55 FK vật lý**. Quy ước snake_case; enum lưu string `varchar(50)`, không phải PostgreSQL enum. Guid dùng cho phần lớn ID; Role/Permission dùng int; UserRole/RolePermission dùng khóa ghép. Bảng lịch sử `public.__ef_migrations_history` không tính trong 41 bảng nghiệp vụ; public là schema kỹ thuật ngoài 6 schema nghiệp vụ.
@@ -691,15 +693,23 @@ Index: `ix_notification_recipient_id` (recipient_id).
 | --- | --- | --- | --- | --- | --- |
 | Id | id | `Guid` | `uuid` | Không | — |
 | GroupId | group_id | `Guid` | `uuid` | Không | — |
+| CurrentVersionNo | current_version_no | `Int32` | `integer` | Không | 1 |
 | Status | status | `FinalReportStatus` | `character varying(50)` | Không | 'Submitted' |
 | SubmittedAt | submitted_at | `DateTime` | `timestamp with time zone` | Không | — |
 | VersionType | version_type | `FinalReportVersionType` | `character varying(50)` | Không | — |
+| Version | xmin | `UInt32` | `xid` | Không | PostgreSQL quản lý |
 
 PK: `id`.
 
-Index: `ix_final_report_group_id` (group_id).
+Index unique: `ux_final_report_group_id_version_type` (`group_id`, `version_type`). Check: `ck_final_report_current_version_no`: `current_version_no > 0`. `xmin` là system column/concurrency token, không phải cột được tạo/xóa thủ công trong migration.
 
 Navigation: `Group` → StudentGroup.
+
+SCRUM-102 dùng một hồ sơ `InitialFinal` cho mỗi nhóm: `CurrentVersionNo` khởi tạo 1, tăng khi nộp lại; không đổi `VersionType` thành `RevisedAfterReviewer`. `SubmittedAt` là thời điểm UTC của phiên bản hiện tại. File của mỗi lần nộp nằm tại `SubmissionFile` với `EntityType = FinalReport`, `EntityId = FinalReport.Id`, `VersionNo = CurrentVersionNo`; mọi phiên bản cũ được giữ.
+
+`Submitted → UnderEvaluation` chỉ qua thao tác bắt đầu chấm của GVHD hiện tại/Admin với số phiên bản đã xem. Khi `UnderEvaluation`, không cho nộp lại/tăng phiên bản. Không có cột riêng cho người/thời điểm bắt đầu chấm: thông tin này, file ID và checksum được lưu trong audit action `ThesisManagement.FinalReport.EvaluationStarted`. Nộp/nộp lại ghi action `ThesisManagement.FinalReport.Submitted`; trạng thái, metadata và audit outbox lưu cùng transaction. `xmin` của cả nhóm và báo cáo được kiểm tra khi nộp lại/bắt đầu chấm. Xem [API contract](ApiContract/ThesisManagementApiContract.md).
+
+Migration nền tảng: `20261027174826_AddFinalReportSubmissionFoundation`; CP2–CP7 không thêm migration mới. Migration đặt số phiên bản của hồ sơ cũ thành 1, không tự tạo file cho hồ sơ cũ thiếu metadata. Handler trả `FileNotFound` khi không có file để bắt đầu chấm; cần xử lý dữ liệu cũ trước khi sử dụng hồ sơ đó.
 
 ### thesis.final_submission — FinalSubmission
 
@@ -824,12 +834,16 @@ Navigation: `Group` → StudentGroup.
 | --- | --- | --- | --- | --- | --- |
 | Id | id | `Guid` | `uuid` | Không | — |
 | CreatedAt | created_at | `DateTime` | `timestamp with time zone` | Không | — |
+| AllowSyllabusResubmission | allow_syllabus_resubmission | `Boolean` | `boolean` | Không | false |
 | Status | status | `StudentGroupStatus` | `character varying(50)` | Không | 'Registered' |
 | TopicId | topic_id | `Guid` | `uuid` | Không | — |
+| Version | xmin | `UInt32` | `xid` | Không | PostgreSQL quản lý |
 
 PK: `id`.
 
 Index: `ix_student_group_topic_id` (topic_id).
+
+Concurrency token: `xmin`. SCRUM-102 chuyển `InProgress → FinalReportSubmitted` khi nộp lần đầu. Nộp lại và bắt đầu chấm giữ nguyên trạng thái nhưng vẫn ghi UPDATE để kiểm tra xmin, tránh lưu yêu cầu dựa trên nhóm vừa bị dừng.
 
 Navigation: `Members` → StudentGroupMember[].
 
@@ -841,13 +855,20 @@ Navigation: `Members` → StudentGroupMember[].
 | --- | --- | --- | --- | --- | --- |
 | Id | id | `Guid` | `uuid` | Không | — |
 | BatchId | batch_id | `Guid` | `uuid` | Không | — |
+| ConfirmationStatus | confirmation_status | `MemberConfirmationStatus` | `character varying(50)` | Không | 'Confirmed' |
+| ConfirmationTokenHash | confirmation_token_hash | `String` | `character varying(128)` | Có | — |
+| ConfirmationExpiresAtUtc | confirmation_expires_at_utc | `DateTime?` | `timestamp with time zone` | Có | — |
+| ConfirmedAtUtc | confirmed_at_utc | `DateTime?` | `timestamp with time zone` | Có | — |
 | GroupId | group_id | `Guid` | `uuid` | Không | — |
 | JoinedAt | joined_at | `DateTime` | `timestamp with time zone` | Không | — |
+| InvitedByStudentId | invited_by_student_id | `Guid?` | `uuid` | Có | — |
 | StudentId | student_id | `Guid` | `uuid` | Không | — |
 
 PK: `id`.
 
 Index: `ix_student_group_member_batch_id` (batch_id); `ix_student_group_member_group_id_student_id` (group_id, student_id) unique; `ix_student_group_member_student_id_batch_id` (student_id, batch_id) unique.
+
+Index bổ sung: `ix_student_group_member_confirmation_token_hash` (confirmation_token_hash); `ix_student_group_member_status_expires` (confirmation_status, confirmation_expires_at_utc); index FK `ix_student_group_member_invited_by_student_id` (invited_by_student_id) trong mô hình migration tổng hợp. SCRUM-102 chỉ chấp nhận Student có ConfirmationStatus = Confirmed để nộp hoặc đọc theo quyền thành viên; không suy ra Confirmed chỉ từ việc row thành viên đã tồn tại.
 
 Navigation: `Group` → StudentGroup.
 
@@ -860,10 +881,12 @@ Navigation: `Group` → StudentGroup.
 | Id | id | `Guid` | `uuid` | Không | — |
 | EntityId | entity_id | `Guid` | `uuid` | Không | — |
 | EntityType | entity_type | `SubmissionEntityType` | `character varying(50)` | Không | — |
+| ChecksumSha256 | checksum_sha256 | `String` | `character varying(64)` | Có | — |
+| ContentType | content_type | `String` | `character varying(100)` | Không | 'application/octet-stream' |
 | FileExtension | file_extension | `String` | `character varying(10)` | Không | — |
 | FileName | file_name | `String` | `character varying(255)` | Không | — |
 | FileSize | file_size | `Int64` | `bigint` | Không | — |
-| FileUrl | file_url | `String` | `character varying(500)` | Không | — |
+| ObjectKey | object_key | `String` | `character varying(1000)` | Không | — |
 | UploadedAt | uploaded_at | `DateTime` | `timestamp with time zone` | Không | — |
 | UploadedBy | uploaded_by | `Guid` | `uuid` | Không | — |
 | VersionNo | version_no | `Int32` | `integer` | Không | 1 |
@@ -871,6 +894,10 @@ Navigation: `Group` → StudentGroup.
 PK: `id`.
 
 Index: `ix_submission_file_uploaded_by` (uploaded_by); `ix_submission_file_entity_type_entity_id_version_no` (entity_type, entity_id, version_no).
+
+Partial unique: `ux_submission_file_final_report_entity_id_version_no` (`entity_id`, `version_no`) **WHERE `entity_type = 'FinalReport'`**: mỗi phiên bản báo cáo cuối kỳ chỉ có một file, không áp ràng buộc này cho loại hồ sơ khác. `EntityId` vẫn là liên kết đa hình không có FK tới hồ sơ; Application kiểm tra loại file, hồ sơ và quyền trên đúng nhóm trước khi cấp URL tải.
+
+File nộp SCRUM-102 chấp nhận PDF/DOC/DOCX **≤20 MiB = 20,971,520 byte**, kiểm tra chữ ký nội dung và extension; MIME/checksum do server xác định. `ObjectKey` trỏ tới bucket private, thay cho URL public; lịch sử chỉ trả metadata, tải file phải xin presigned URL 5 phút. `UploadedBy`/`UploadedAt` lưu người/thời điểm của từng bản; nộp lại không ghi đè row/object cũ. Object storage không nằm trong transaction PostgreSQL: lỗi upload/save có cơ chế xóa bù object mới, giữ object đã được database tham chiếu khi kết quả commit chưa rõ.
 
 ### thesis.syllabus — Syllabus
 
@@ -968,6 +995,7 @@ Check: `ck_topic_student_number`: `student_number IS NULL OR student_number BETW
 | thesis.student_group.topic_id | topics.topic.id | N–1 | restrict |
 | thesis.student_group_member.batch_id | academic.kltn_batch.id | N–1 | restrict |
 | thesis.student_group_member.group_id | thesis.student_group.id | N–1 | cascade |
+| thesis.student_group_member.invited_by_student_id | identity.user.id | N–1 | set null |
 | thesis.student_group_member.student_id | identity.user.id | N–1 | restrict |
 | thesis.submission_file.uploaded_by | identity.user.id | N–1 | restrict |
 | thesis.syllabus.group_id | thesis.student_group.id | 1–1 | cascade |

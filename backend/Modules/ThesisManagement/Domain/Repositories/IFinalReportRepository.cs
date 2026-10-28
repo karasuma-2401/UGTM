@@ -13,4 +13,9 @@ public interface IFinalReportRepository
         CancellationToken cancellationToken = default);
 
     void Add(FinalReport finalReport);
+
+    /// <summary>
+    /// Enlists the tracked group's concurrency token in the same save as a report state/version change.
+    /// </summary>
+    void TrackGroupConcurrency(FinalReport finalReport, StudentGroup group);
 }
