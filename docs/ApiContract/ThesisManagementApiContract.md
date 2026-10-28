@@ -3,6 +3,8 @@
 Trạng thái: SCRUM-88 (báo cáo tiến độ) và SCRUM-89 (thẩm định đề cương chi tiết, báo cáo giữa kỳ) đã triển khai.
 SCRUM-102 đã triển khai đến CP6: nộp/nộp lại báo cáo cuối kỳ, xem lịch sử/tải từng phiên bản theo quyền và bắt đầu chấm để khóa phiên bản. Chấm điểm/duyệt phản biện thuộc SCRUM-103.
 
+CP7 đồng bộ yêu cầu file và data model, kiểm tra ba bộ test ThesisManagement/AcademicPeriods/Architecture cùng luồng thực tế trên PostgreSQL/MinIO; xem [hướng dẫn và kết quả nghiệm thu](FinalReportSubmissionVerification.md). Không bao gồm triển khai frontend hoặc xác minh môi trường đang deploy.
+
 Mọi endpoint trong tài liệu này yêu cầu Bearer token. Response thành công có dạng `ApiResponse<T>`; response lỗi chứa `code`, `message` và HTTP status phù hợp. Thời điểm truyền trong JSON dùng ISO 8601 UTC. Các endpoint tải tệp không trả object key nội bộ hoặc URL public.
 
 ## Phân quyền và quy ước tệp
@@ -242,7 +244,7 @@ Chỉ thành viên nhóm và nhóm đang `InProgress` được nộp. Lần đ�
 - `409 Conflict`: deadline/quy trình không cho phép, không đúng trạng thái, hoặc optimistic-concurrency conflict.
 - `413 Payload Too Large`: multipart file vượt mức 20 MiB (cộng overhead request).
 
-Các nhóm mã lỗi nghiệp vụ hiện dùng gồm `ReviewGateConfiguration.*`, `ReviewGate.*`, `Syllabus.*`, `MidtermReport.*`, `ProgressMilestone.*`, `ProgressReport.*`, `TopicRegistration.*` và `SubmissionFile.*`. Mutation thành công được audit; các thao tác cạnh tranh không ghi đè âm thầm.
+Các nhóm mã lỗi nghiệp vụ hiện dùng gồm `ReviewGateConfiguration.*`, `ReviewGate.*`, `Syllabus.*`, `MidtermReport.*`, `ProgressMilestone.*`, `ProgressReport.*`, `FinalReport.*`, `TopicRegistration.*` và `SubmissionFile.*`. Mutation thành công được audit; các thao tác cạnh tranh không ghi đè âm thầm.
 
 ## Đăng ký đề tài khóa luận & Xác nhận ghép nhóm
 

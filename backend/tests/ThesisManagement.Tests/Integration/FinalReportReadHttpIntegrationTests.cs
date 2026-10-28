@@ -278,9 +278,17 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests
 
     private static SubmissionFile CopyFile(SubmissionFile file, SubmissionEntityType entityType, Guid entityId) => new()
     {
-        Id = Guid.NewGuid(), EntityType = entityType, EntityId = entityId, VersionNo = file.VersionNo,
-        FileName = file.FileName, ObjectKey = $"test/{Guid.NewGuid():N}.pdf", ContentType = file.ContentType,
-        ChecksumSha256 = file.ChecksumSha256, FileSize = file.FileSize, FileExtension = file.FileExtension,
-        UploadedBy = file.UploadedBy, UploadedAt = file.UploadedAt
+        Id = Guid.NewGuid(),
+        EntityType = entityType,
+        EntityId = entityId,
+        VersionNo = file.VersionNo,
+        FileName = file.FileName,
+        ObjectKey = $"test/{Guid.NewGuid():N}.pdf",
+        ContentType = file.ContentType,
+        ChecksumSha256 = file.ChecksumSha256,
+        FileSize = file.FileSize,
+        FileExtension = file.FileExtension,
+        UploadedBy = file.UploadedBy,
+        UploadedAt = file.UploadedAt
     };
 }
