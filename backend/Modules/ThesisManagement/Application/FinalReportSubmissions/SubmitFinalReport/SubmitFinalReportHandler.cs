@@ -37,12 +37,16 @@ public sealed class SubmitFinalReportHandler(
         var context = eligibility.Value;
         var existingReport = await finalReportRepository.GetByGroupAndVersionTypeAsync(
             context.Group.Id, FinalReportVersionType.InitialFinal, cancellationToken);
-        if (existingReport is not null)
+        var isFirstSubmission = existingReport is null;
+        if (existingReport is not null && existingReport.Status != FinalReportStatus.Submitted)
         {
-            return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.AlreadySubmitted);
+            return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.EvaluationStarted);
         }
 
-        if (context.Group.Status != StudentGroupStatus.InProgress)
+        var requiredGroupStatus = isFirstSubmission
+            ? StudentGroupStatus.InProgress
+            : StudentGroupStatus.FinalReportSubmitted;
+        if (context.Group.Status != requiredGroupStatus)
         {
             return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.InvalidGroupState);
         }
@@ -62,16 +66,17 @@ public sealed class SubmitFinalReportHandler(
             return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.InvalidFile);
         }
 
-        var report = FinalReport.CreateSubmitted(
+        var report = existingReport ?? FinalReport.CreateSubmitted(
             Guid.NewGuid(), context.Group.Id, FinalReportVersionType.InitialFinal, context.SubmittedAtUtc);
+        var versionNo = isFirstSubmission ? 1 : checked(report.CurrentVersionNo + 1);
         var objectKey = objectKeyFactory.Create(
-            SubmissionEntityType.FinalReport, report.Id, report.CurrentVersionNo, file.FileExtension);
+            SubmissionEntityType.FinalReport, report.Id, versionNo, file.FileExtension);
         var submissionFile = new SubmissionFile
         {
             Id = Guid.NewGuid(),
             EntityType = SubmissionEntityType.FinalReport,
             EntityId = report.Id,
-            VersionNo = report.CurrentVersionNo,
+            VersionNo = versionNo,
             FileName = file.FileName,
             ObjectKey = objectKey,
             ContentType = file.ContentType,
@@ -82,8 +87,8 @@ public sealed class SubmitFinalReportHandler(
             UploadedAt = context.SubmittedAtUtc
         };
         var response = new FinalReportSubmissionDto(
-            report.Id, report.GroupId, report.VersionType.ToString(), report.CurrentVersionNo,
-            report.Status.ToString(), report.SubmittedAt, SyllabusSubmissionMapper.ToDto(submissionFile));
+            report.Id, report.GroupId, report.VersionType.ToString(), versionNo,
+            report.Status.ToString(), context.SubmittedAtUtc, SyllabusSubmissionMapper.ToDto(submissionFile));
 
         var saveAttempted = false;
         try
@@ -93,13 +98,27 @@ public sealed class SubmitFinalReportHandler(
                 new ThesisSubmissionObjectWriteRequest(objectKey, file.ContentType, file.FileSize),
                 content, cancellationToken);
 
-            if (!context.Group.TrySubmitFinalReport())
+            if (context.Group.Status != requiredGroupStatus
+                || (isFirstSubmission && !context.Group.TrySubmitFinalReport()))
             {
                 await TryDeleteObjectAsync(objectKey);
                 return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.InvalidGroupState);
             }
 
-            finalReportRepository.Add(report);
+            if (isFirstSubmission)
+            {
+                finalReportRepository.Add(report);
+            }
+            else
+            {
+                if (!report.TrySubmitRevision(context.SubmittedAtUtc))
+                {
+                    await TryDeleteObjectAsync(objectKey);
+                    return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.ConcurrencyConflict);
+                }
+
+                finalReportRepository.UpdateForResubmission(report, context.Group);
+            }
             submissionFileRepository.Add(submissionFile);
             auditOutbox.Add(new AuditIntegrationEntry(
                 "FinalReport",
@@ -118,7 +137,7 @@ public sealed class SubmitFinalReportHandler(
                     submissionFile.FileSize,
                     submissionFile.ContentType,
                     submissionFile.ChecksumSha256,
-                    IsResubmission = false
+                    IsResubmission = !isFirstSubmission
                 }), context.SubmittedAtUtc);
 
             saveAttempted = true;

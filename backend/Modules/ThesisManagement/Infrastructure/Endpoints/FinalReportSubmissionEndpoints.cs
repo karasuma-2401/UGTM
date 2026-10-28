@@ -23,21 +23,24 @@ public static class FinalReportSubmissionEndpoints
             .DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(MaximumRequestSizeBytes))
             .Accepts<SubmitFinalReportRequest>("multipart/form-data")
-            .WithSummary("Nộp báo cáo cuối kỳ lần đầu")
+            .WithSummary("Nộp báo cáo cuối kỳ hoặc phiên bản chỉnh sửa trước khi chấm")
             .WithDescription("""
                 Gửi `multipart/form-data` gồm `groupId` và một tệp `file`. Chỉ sinh viên đã xác nhận
-                tham gia nhóm được nộp. Nhóm phải được duyệt giữa kỳ, đang `InProgress`, đợt KLTN
+                tham gia nhóm được nộp. Nhóm phải được duyệt giữa kỳ, đang `InProgress` khi nộp lần đầu,
+                hoặc `FinalReportSubmitted` khi nộp lại; đợt KLTN
                 đang `Open` và trong cửa sổ `FINAL_EVALUATION` theo lịch và múi giờ của đợt.
                 Thời điểm đúng deadline vẫn được chấp nhận.
 
                 Chấp nhận PDF, DOC hoặc DOCX tối đa 20 MiB, kiểm tra cả phần mở rộng và nội dung.
-                Thành công trả 200 với báo cáo loại `InitialFinal`, phiên bản 1, trạng thái `Submitted`
-                và metadata file; nhóm chuyển sang `FinalReportSubmitted`.
-                Báo cáo đã tồn tại trả 409; endpoint hiện chỉ hỗ trợ nộp lần đầu.
+                Thành công trả 200 với báo cáo loại `InitialFinal`, trạng thái `Submitted` và metadata file.
+                Lần đầu tạo phiên bản 1 và chuyển nhóm sang `FinalReportSubmitted`. Nộp lại trong hạn
+                tăng số phiên bản, giữ nguyên mã báo cáo, loại báo cáo và mọi file/audit cũ.
+                Chỉ được nộp lại trước khi bắt đầu chấm (`Submitted`); `UnderEvaluation` trả 409.
+                Các request dùng phiên bản dữ liệu cũ bị từ chối với 409, không ghi đè âm thầm.
 
                 Yêu cầu Bearer token. 400: form/tệp không hợp lệ; 401: chưa xác thực;
                 403: không có quyền; 404: không tìm thấy nhóm/đợt; 409: ngoài hạn, sai trạng thái,
-                chưa duyệt giữa kỳ, đã nộp hoặc xung đột dữ liệu; 413: vượt giới hạn kích thước;
+                chưa duyệt giữa kỳ, đã bắt đầu chấm hoặc xung đột dữ liệu; 413: vượt giới hạn kích thước;
                 415: Content-Type không phải multipart/form-data.
                 """)
             .Produces<ApiResponse<FinalReportSubmissionDto>>()

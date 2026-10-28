@@ -1,7 +1,7 @@
 # ThesisManagement API contract
 
 Trạng thái: SCRUM-88 (báo cáo tiến độ) và SCRUM-89 (thẩm định đề cương chi tiết, báo cáo giữa kỳ) đã triển khai.
-SCRUM-102 đã triển khai đến CP3: nộp báo cáo cuối kỳ lần đầu; nộp lại, lịch sử/tải file và bắt đầu chấm thuộc các checkpoint tiếp theo.
+SCRUM-102 đã triển khai đến CP4: nộp báo cáo cuối kỳ lần đầu và nộp lại trước khi bắt đầu chấm, giữ toàn bộ phiên bản file; API lịch sử/tải file và thao tác bắt đầu chấm thuộc các checkpoint tiếp theo.
 
 Mọi endpoint trong tài liệu này yêu cầu Bearer token. Response thành công có dạng `ApiResponse<T>`; response lỗi chứa `code`, `message` và HTTP status phù hợp. Thời điểm truyền trong JSON dùng ISO 8601 UTC. Các endpoint tải tệp không trả object key nội bộ hoặc URL public.
 
@@ -11,7 +11,7 @@ Mọi endpoint trong tài liệu này yêu cầu Bearer token. Response thành c
 | --- | --- |
 | Cấu hình deadline Cổng 1/Cổng 2 | `Admin`, `AcademicAffairs` có `thesis.review-gate-config.manage` |
 | Nộp hồ sơ Cổng 1/Cổng 2 | Bất kỳ sinh viên nào thuộc nhóm |
-| Nộp báo cáo cuối kỳ lần đầu | Role `Student`, thành viên `Confirmed` của chính nhóm, đã được duyệt giữa kỳ |
+| Nộp/nộp lại báo cáo cuối kỳ | Role `Student`, thành viên `Confirmed` của chính nhóm, đã được duyệt giữa kỳ |
 | Thẩm định Cổng 1/Cổng 2 | `Faculty`, `Admin` có `thesis.review-gates.review` |
 | Tạo/xem Milestone, đánh giá báo cáo tiến độ | GVHD hiện được gán cho `TopicId` của nhóm, hoặc `Admin` |
 | Nộp/xem báo cáo tiến độ | Thành viên nhóm; GVHD được gán, Khoa có quyền thẩm định và `Admin` được xem/tải |
@@ -40,7 +40,7 @@ Các file nộp chỉ chấp nhận `.pdf`, `.doc`, `.docx`, tối đa 20 MiB. S
 
 `{batchId}`, `{groupId}`, `{milestoneId}` và `{fileId}` là GUID. `gateType` chỉ nhận `Syllabus` hoặc `Midterm`.
 
-## Nộp báo cáo cuối kỳ lần đầu (SCRUM-102 CP3)
+## Nộp và nộp lại báo cáo cuối kỳ (SCRUM-102 CP4)
 
 `POST /api/thesis/final-reports`, Bearer token, body `multipart/form-data`:
 
@@ -49,14 +49,16 @@ Các file nộp chỉ chấp nhận `.pdf`, `.doc`, `.docx`, tối đa 20 MiB. S
 | `groupId` | GUID | Bắt buộc, đúng nhóm của sinh viên |
 | `file` | File | Bắt buộc, đúng một tệp PDF/DOC/DOCX, không rỗng, tối đa 20 MiB (20,971,520 byte) |
 
-Nhóm phải đang `InProgress`, báo cáo giữa kỳ đã `Approved`, đợt đang `Open` và thời điểm nhận nằm trong cửa sổ `FINAL_EVALUATION` theo lịch/múi giờ của đợt. Giờ mở và deadline đều được tính bao gồm chính thời điểm đó. Thiếu giai đoạn hoặc múi giờ không hợp lệ sẽ khóa nộp. Sinh viên cùng nhóm nhưng chưa `Confirmed` không được nộp.
+Lần đầu yêu cầu nhóm đang `InProgress`; nộp lại yêu cầu nhóm đang `FinalReportSubmitted` và báo cáo hiện tại còn `Submitted`. Cả hai trường hợp đều yêu cầu báo cáo giữa kỳ đã `Approved`, đợt đang `Open` và thời điểm nhận nằm trong cửa sổ `FINAL_EVALUATION` theo lịch/múi giờ của đợt. Giờ mở và deadline đều được tính bao gồm chính thời điểm đó. Thiếu giai đoạn hoặc múi giờ không hợp lệ sẽ khóa nộp. Sinh viên cùng nhóm nhưng chưa `Confirmed` không được nộp.
 
 Thành công trả `200 OK` với `ApiResponse<FinalReportSubmissionDto>`; `data` gồm:
 
-- `finalReportId`, `groupId`, `versionType: "InitialFinal"`, `versionNo: 1`, `status: "Submitted"`, `submittedAtUtc`.
+- `finalReportId`, `groupId`, `versionType: "InitialFinal"`, `versionNo` (1 ở lần đầu, tăng dần khi nộp lại), `status: "Submitted"`, `submittedAtUtc` (thời điểm nộp phiên bản hiện tại).
 - `file`: `id`, `fileName`, `contentType`, `fileSize`, `fileExtension`, `checksumSha256`, `uploadedBy`, `uploadedAtUtc`. MIME type và checksum do server xác định; không trả object key hay URL public.
 
-File được lưu trong bucket private, metadata dùng `entity_type = 'FinalReport'`. Báo cáo, metadata, trạng thái nhóm `FinalReportSubmitted` và audit action `ThesisManagement.FinalReport.Submitted` được lưu cùng transaction database. Upload lỗi không tạo hồ sơ; lỗi database đã rollback sẽ xóa bù object. Nếu save có kết quả chưa rõ, server kiểm tra bản ghi file trước khi xóa; lỗi kiểm tra/xóa được ghi log để xử lý lại.
+File được lưu trong bucket private, metadata dùng `entity_type = 'FinalReport'`. Báo cáo, metadata, trạng thái nhóm `FinalReportSubmitted` và audit action `ThesisManagement.FinalReport.Submitted` được lưu cùng transaction database. Nộp lại giữ nguyên mã báo cáo và loại `InitialFinal`, tăng `CurrentVersionNo`, cập nhật thời điểm nộp và thêm file/audit mới với `IsResubmission = true`; không đổi thành `RevisedAfterReviewer`, không ghi đè hay xóa file/audit cũ. `SubmissionFile.UploadedBy` và `UploadedAt` ghi nhận người nộp và thời điểm của từng phiên bản.
+
+Upload lỗi không tạo phiên bản. Lỗi database đã rollback sẽ xóa bù object vừa upload và giữ nguyên phiên bản trước; số phiên bản không bị bỏ trống. Nếu save có kết quả chưa rõ, server kiểm tra bản ghi file trước khi xóa; lỗi kiểm tra/xóa được ghi log để xử lý lại. Không xóa các object của phiên bản trước.
 
 | HTTP | Mã lỗi / trường hợp |
 | --- | --- |
@@ -64,12 +66,12 @@ File được lưu trong bucket private, metadata dùng `entity_type = 'FinalRep
 | `401` | Thiếu/không hợp lệ Bearer token hoặc `FinalReport.AuthenticationRequired` |
 | `403` | `FinalReport.AccessDenied`: sai role, ngoài nhóm hoặc thành viên chưa xác nhận |
 | `404` | `FinalReport.GroupNotFound`, `FinalReport.BatchNotFound` |
-| `409` | `FinalReport.MidtermNotApproved`, `FinalReport.InvalidGroupState`, `FinalReport.OutsideAllowedWindow`, `FinalReport.AlreadySubmitted`, `FinalReport.ConcurrencyConflict` |
+| `409` | `FinalReport.MidtermNotApproved`, `FinalReport.InvalidGroupState`, `FinalReport.OutsideAllowedWindow`, `FinalReport.EvaluationStarted`, `FinalReport.ConcurrencyConflict` |
 | `413` | `FinalReport.FileTooLarge`: file vượt 20 MiB hoặc request vượt 20 MiB + 64 KiB overhead, kể cả request chunked |
 | `415` | Content-Type không phải `multipart/form-data` |
 | `500` | Lỗi hạ tầng storage/database; response không chứa chi tiết nội bộ |
 
-Ở CP3, một nhóm chỉ nộp lần đầu; request sau khi đã có báo cáo trả `409`, không ghi đè bản đã nộp.
+Khi báo cáo đã chuyển sang `UnderEvaluation`, nộp lại trả `409 FinalReport.EvaluationStarted` trước khi upload. Khi hai lần nộp cùng đọc một phiên bản, chỉ một lần được lưu; request còn lại trả `409 FinalReport.ConcurrencyConflict`, rollback file metadata/audit mới và xóa object của chính request đó. Nếu nhóm bị dừng hoặc báo cáo bắt đầu chấm trong lúc upload, request dùng dữ liệu cũ cũng nhận `409`. Việc kiểm tra concurrency dùng `xmin` của cả nhóm và báo cáo trong cùng transaction; client cần tải lại dữ liệu trước khi thử lại.
 
 ## Cấu hình deadline thẩm định
 

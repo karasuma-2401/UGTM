@@ -40,7 +40,7 @@ using IdentityUser = UGTM.Modules.Identity.Domain.Entities.User;
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
 [Collection(PostgreSqlCollection.Name)]
-public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture fixture) : IAsyncLifetime
+public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture fixture) : IAsyncLifetime
 {
     private static readonly DateTime Now = new(2026, 11, 16, 0, 0, 0, DateTimeKind.Utc);
     private readonly Guid _studentId = Guid.NewGuid();
@@ -49,6 +49,7 @@ public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture 
     private readonly ControlledStorage _storage = new();
     private readonly TestBatchReader _batchReader = new();
     private readonly CapturedLogs _logs = new();
+    private readonly FixedTimeProvider _clock = new();
     private Exception? _failureAfterCommit;
     private Guid _groupId;
     private WebApplication _app = null!;
@@ -77,7 +78,7 @@ public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture 
         builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
         builder.Services.AddSingleton<IThesisSubmissionObjectStorage>(_storage);
         builder.Services.AddSingleton<IKltnBatchReader>(_batchReader);
-        builder.Services.AddSingleton<TimeProvider>(new FixedTimeProvider());
+        builder.Services.AddSingleton<TimeProvider>(_clock);
         builder.Services.AddScoped<IThesisUnitOfWork>(provider => new ControlledUnitOfWork(
             provider.GetRequiredService<ThesisManagementDbContext>(), () => _failureAfterCommit));
         builder.Services.AddAuthentication(TestAuthentication.SchemeName)
@@ -286,25 +287,6 @@ public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture 
     }
 
     [Fact]
-    public async Task A_second_initial_submission_returns_409_without_overwriting_the_first()
-    {
-        using var firstForm = Form();
-        using var first = await _client.PostAsync("/api/thesis/final-reports", firstForm);
-        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
-        using var secondForm = Form();
-        using var second = await _client.PostAsync("/api/thesis/final-reports", secondForm);
-
-        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
-        Assert.Contains(FinalReportSubmissionErrors.AlreadySubmitted.Code, await second.Content.ReadAsStringAsync());
-        await using var db = CreateThesisDbContext();
-        Assert.Equal(1, await db.FinalReports.CountAsync());
-        Assert.Equal(1, await db.SubmissionFiles.CountAsync());
-        Assert.Equal(1, await db.AuditOutboxMessages.CountAsync());
-        Assert.Single(_storage.Objects);
-        Assert.Single(_storage.Uploads);
-    }
-
-    [Fact]
     public async Task Missing_groups_return_404()
     {
         using var form = Form(groupId: Guid.NewGuid());
@@ -356,9 +338,17 @@ public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture 
         Assert.Single(_storage.Deletes);
     }
 
-    [Fact]
-    public async Task A_failure_reported_after_commit_cannot_delete_the_committed_file()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task A_failure_reported_after_commit_cannot_delete_the_committed_file(bool isResubmission)
     {
+        if (isResubmission)
+        {
+            using var firstForm = Form();
+            using var first = await _client.PostAsync("/api/thesis/final-reports", firstForm);
+            Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        }
         _failureAfterCommit = new IOException("Simulated loss of commit acknowledgement");
         using var form = Form();
         using var response = await _client.PostAsync("/api/thesis/final-reports", form);
@@ -366,10 +356,13 @@ public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         await using var db = CreateThesisDbContext();
         Assert.Equal(1, await db.FinalReports.CountAsync());
-        var file = await db.SubmissionFiles.SingleAsync();
-        Assert.Equal(1, await db.AuditOutboxMessages.CountAsync());
+        var expectedVersion = isResubmission ? 2 : 1;
+        var files = await db.SubmissionFiles.ToListAsync();
+        Assert.Equal(expectedVersion, files.Count);
+        Assert.Equal(expectedVersion, (await db.FinalReports.SingleAsync()).CurrentVersionNo);
+        Assert.Equal(expectedVersion, await db.AuditOutboxMessages.CountAsync());
         Assert.Equal(StudentGroupStatus.FinalReportSubmitted, (await db.StudentGroups.SingleAsync()).Status);
-        Assert.True(_storage.Objects.ContainsKey(file.ObjectKey));
+        Assert.All(files, file => Assert.True(_storage.Objects.ContainsKey(file.ObjectKey)));
         Assert.Empty(_storage.Deletes);
     }
 
@@ -558,7 +551,8 @@ public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture 
 
     private sealed class FixedTimeProvider : TimeProvider
     {
-        public override DateTimeOffset GetUtcNow() => new(Now);
+        public DateTime UtcNow { get; set; } = Now;
+        public override DateTimeOffset GetUtcNow() => new(UtcNow);
     }
 
     private sealed class ControlledUnitOfWork(ThesisManagementDbContext db, Func<Exception?> failureAfterCommit)
@@ -574,9 +568,9 @@ public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture 
 
     private sealed class ControlledStorage : IThesisSubmissionObjectStorage
     {
-        public Dictionary<string, byte[]> Objects { get; } = [];
-        public List<ThesisSubmissionObjectWriteRequest> Uploads { get; } = [];
-        public List<string> Deletes { get; } = [];
+        public ConcurrentDictionary<string, byte[]> Objects { get; } = new();
+        public ConcurrentQueue<ThesisSubmissionObjectWriteRequest> Uploads { get; } = new();
+        public ConcurrentQueue<string> Deletes { get; } = new();
         public Exception? UploadFailure { get; set; }
         public Exception? DeleteFailure { get; set; }
         public Func<CancellationToken, Task>? AfterUpload { get; set; }
@@ -585,8 +579,8 @@ public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture 
         {
             using var memory = new MemoryStream();
             await content.CopyToAsync(memory, cancellationToken);
-            Objects.Add(request.ObjectKey, memory.ToArray());
-            Uploads.Add(request);
+            if (!Objects.TryAdd(request.ObjectKey, memory.ToArray())) throw new InvalidOperationException("Duplicate object key.");
+            Uploads.Enqueue(request);
             if (UploadFailure is not null) throw UploadFailure;
             if (AfterUpload is not null) await AfterUpload(cancellationToken);
         }
@@ -594,9 +588,9 @@ public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture 
         {
             CleanupWasCancelled = cancellationToken.IsCancellationRequested;
             cancellationToken.ThrowIfCancellationRequested();
-            Deletes.Add(objectKey);
+            Deletes.Enqueue(objectKey);
             if (DeleteFailure is not null) throw DeleteFailure;
-            Objects.Remove(objectKey);
+            Objects.TryRemove(objectKey, out _);
             return Task.CompletedTask;
         }
         public Task<Uri> CreateDownloadUriAsync(string objectKey, TimeSpan validFor, CancellationToken cancellationToken = default)
@@ -606,8 +600,11 @@ public sealed class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture 
     private sealed class TestBatchReader : IKltnBatchReader
     {
         public bool IsOpen { get; set; } = true;
+        public DateTime OpensAtUtc { get; set; } = Now.AddDays(-1);
+        public DateTime DeadlineAtUtc { get; set; } = Now.AddDays(1);
         public Task<BatchFinalReportSubmissionWindowContractDto?> GetFinalReportSubmissionWindowAsync(Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default)
-            => Task.FromResult<BatchFinalReportSubmissionWindowContractDto?>(new(batchId, "Open", IsOpen, Now.AddDays(-1), Now.AddDays(1)));
+            => Task.FromResult<BatchFinalReportSubmissionWindowContractDto?>(new(batchId, "Open",
+                IsOpen && nowUtc >= OpensAtUtc && nowUtc <= DeadlineAtUtc, OpensAtUtc, DeadlineAtUtc));
         public Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<BatchRegistrationWindowContractDto?> GetRegistrationWindowAsync(Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<BatchTopicPreparationWindowContractDto?> GetTopicPreparationWindowAsync(Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();
