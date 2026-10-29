@@ -44,7 +44,7 @@ const success = (data) => ({ data: { success: true, data } });
 function apiFixture({ client = {}, topics = {}, users = {} } = {}) {
   return loadModule('features/topics/services/topicReviewApi.ts', {
     '@/shared/api': { httpClient: client },
-    '@/features/admin/services/userApi': { userApi: users },
+    '@/features/identity': { userApi: users },
     './topicApi': { topicApi: topics },
     '../types/topic.types': loadModule('features/topics/types/topic.types.ts'),
   }).topicReviewApi;

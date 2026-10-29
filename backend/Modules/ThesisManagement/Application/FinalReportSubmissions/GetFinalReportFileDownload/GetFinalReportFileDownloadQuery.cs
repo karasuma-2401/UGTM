@@ -1,0 +1,3 @@
+namespace UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportFileDownload;
+
+public sealed record GetFinalReportFileDownloadQuery(Guid FileId);

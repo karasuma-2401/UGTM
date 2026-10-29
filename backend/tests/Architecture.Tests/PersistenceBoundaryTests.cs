@@ -59,6 +59,8 @@ public class PersistenceBoundaryTests
         Assert.Same(context, scope.ServiceProvider.GetRequiredService<IThesisUnitOfWork>());
         Assert.Same(scope.ServiceProvider.GetRequiredService<IStudentGroupRepository>(),
             scope.ServiceProvider.GetRequiredService<IStudentGroupRepository>());
+        Assert.Same(scope.ServiceProvider.GetRequiredService<IFinalReportRepository>(),
+            scope.ServiceProvider.GetRequiredService<IFinalReportRepository>());
     }
 
     [Fact]

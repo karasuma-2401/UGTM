@@ -7,6 +7,7 @@ using UGTM.Modules.DefenseCouncil.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Contracts.Grading;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
+using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
 
 namespace UGTM.Architecture.Tests;
 
@@ -34,6 +35,7 @@ public class ModuleCompositionTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IAcademicPeriodsAuditOutbox>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IDefenseCouncilAuditOutbox>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IThesisManagementAuditOutbox>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<FinalReportSubmissionEligibilityChecker>());
         Assert.Equal(
             ["AcademicPeriods", "DefenseCouncil", "ThesisManagement"],
             scope.ServiceProvider

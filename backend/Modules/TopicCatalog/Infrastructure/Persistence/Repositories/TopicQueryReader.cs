@@ -17,32 +17,44 @@ public sealed class TopicQueryReader : ITopicQueryReader
     private readonly IReadOnlyList<Topic>? _inMemoryTopics;
     private readonly IThesisRegistrationContract _registrationContract;
     private readonly IStudentInfoReader _studentInfoReader;
+    private readonly TimeProvider _timeProvider;
+    private readonly IAdvisorNameReader? _advisorNameReader;
 
     public TopicQueryReader(
         TopicCatalogDbContext db,
         IThesisRegistrationContract registrationContract,
-        IStudentInfoReader studentInfoReader)
+        IStudentInfoReader studentInfoReader,
+        IAdvisorNameReader advisorNameReader,
+        TimeProvider? timeProvider = null)
     {
         _db = db;
         _registrationContract = registrationContract;
         _studentInfoReader = studentInfoReader;
+        _advisorNameReader = advisorNameReader;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     private TopicQueryReader(
         IReadOnlyList<Topic> inMemoryTopics,
         IThesisRegistrationContract registrationContract,
-        IStudentInfoReader studentInfoReader)
+        IStudentInfoReader studentInfoReader,
+        TimeProvider? timeProvider = null,
+        IAdvisorNameReader? advisorNameReader = null)
     {
         _inMemoryTopics = inMemoryTopics;
+        _advisorNameReader = advisorNameReader;
         _registrationContract = registrationContract;
         _studentInfoReader = studentInfoReader;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     public static TopicQueryReader CreateInMemory(
         IEnumerable<Topic> topics,
         IThesisRegistrationContract registrationContract,
-        IStudentInfoReader studentInfoReader)
-        => new(topics.ToList(), registrationContract, studentInfoReader);
+        IStudentInfoReader studentInfoReader,
+        TimeProvider? timeProvider = null,
+        IAdvisorNameReader? advisorNameReader = null)
+        => new(topics.ToList(), registrationContract, studentInfoReader, timeProvider, advisorNameReader);
 
     public async Task<PagedResult<TopicSummaryDto>> GetAllTopicsAsync(
         GetAllTopicsQuery query,
@@ -67,24 +79,38 @@ public sealed class TopicQueryReader : ITopicQueryReader
             .OrderByDescending(t => t.CreatedAt)
             .ThenByDescending(t => t.Id)
             .Skip((query.PageNumber - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .Select(t => new TopicSummaryDto(
-                t.Id,
-                t.BatchId,
-                t.AdvisorId,
-                t.TitleVi,
-                t.TitleEn,
-                t.Description,
-                t.Requirements,
-                t.Status.ToString(),
-                t.StudentNumber,
-                t.CreatedAt,
-                t.Status == TopicStatus.Published));
+            .Take(query.PageSize);
 
         var pagedTopics = await ToListSafeAsync(pagedQuery, cancellationToken);
+        var advisorNames = _advisorNameReader is null
+            ? new Dictionary<Guid, string>()
+            : await _advisorNameReader.GetNamesByIdsAsync(
+                pagedTopics.Select(topic => topic.AdvisorId).Distinct(), cancellationToken);
+        var registrations = await _registrationContract.GetRegistrationsByTopicIdsAsync(
+            pagedTopics.Select(t => t.Id), cancellationToken);
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+        var items = pagedTopics.Select(topic =>
+        {
+            registrations.TryGetValue(topic.Id, out var registration);
+            var confirmed = registration?.Members.Count(member => member.ConfirmationStatus == "Confirmed") ?? 0;
+            // Match registration-write occupancy. Expired invitations free their
+            // slot at the deadline, even before the cleanup worker removes them.
+            var reserved = registration?.Members.Count(member =>
+                member.ConfirmationStatus == "Pending" &&
+                (!member.ConfirmationExpiresAtUtc.HasValue || member.ConfirmationExpiresAtUtc.Value > nowUtc)) ?? 0;
+            int? available = topic.StudentNumber is 1 or 2
+                ? Math.Max(0, topic.StudentNumber.Value - confirmed - reserved)
+                : null;
+            return new TopicSummaryDto(
+                topic.Id, topic.BatchId, topic.AdvisorId, topic.TitleVi, topic.TitleEn,
+                topic.Description, topic.Requirements, topic.Status.ToString(),
+                topic.StudentNumber, topic.CreatedAt, IsPublished: true, ReviewNote: null,
+                ConfirmedStudentsCount: confirmed, ReservedSlots: reserved, AvailableSlots: available,
+                AdvisorName: advisorNames.GetValueOrDefault(topic.AdvisorId));
+        }).ToList();
 
         return new PagedResult<TopicSummaryDto>(
-            pagedTopics,
+            items,
             totalCount,
             query.PageNumber,
             query.PageSize);
@@ -150,7 +176,7 @@ public sealed class TopicQueryReader : ITopicQueryReader
             var items = pagedTopics.Select(t =>
             {
                 registrations.TryGetValue(t.Id, out var reg);
-                return BuildTrackingSummary(t, reg, studentsMap);
+                return BuildTrackingSummary(t, reg, studentsMap, _timeProvider.GetUtcNow().UtcDateTime);
             }).ToList();
 
             return new PagedResult<TopicTrackingSummaryDto>(
@@ -197,7 +223,7 @@ public sealed class TopicQueryReader : ITopicQueryReader
             var studentsMap = await _studentInfoReader.GetStudentsByIdsAsync(pagedStudentIds, cancellationToken);
 
             var items = pagedPairs.Select(p =>
-                BuildTrackingSummary(p.Topic, p.Registration, studentsMap)).ToList();
+                BuildTrackingSummary(p.Topic, p.Registration, studentsMap, _timeProvider.GetUtcNow().UtcDateTime)).ToList();
 
             return new PagedResult<TopicTrackingSummaryDto>(
                 items,
@@ -238,7 +264,7 @@ public sealed class TopicQueryReader : ITopicQueryReader
             studentsMap = await _studentInfoReader.GetStudentsByIdsAsync(studentIds, cancellationToken);
         }
 
-        return BuildTrackingDetail(topic, registration, studentsMap);
+        return BuildTrackingDetail(topic, registration, studentsMap, _timeProvider.GetUtcNow().UtcDateTime);
     }
 
     public static (int RegisteredCount, int RemainingSlots, string RegistrationStatus, bool HasRegistration, bool IsAvailable) ComputeRegistrationMetrics(
@@ -267,7 +293,8 @@ public sealed class TopicQueryReader : ITopicQueryReader
     public static TopicTrackingSummaryDto BuildTrackingSummary(
         Topic topic,
         TopicRegistrationContractDto? reg,
-        IReadOnlyDictionary<Guid, StudentInfoContractDto> studentsMap)
+        IReadOnlyDictionary<Guid, StudentInfoContractDto> studentsMap,
+        DateTime? nowUtc = null)
     {
         var (registeredCount, remainingSlots, regStatus, hasRegistration, isAvailable) =
             ComputeRegistrationMetrics(topic.StudentNumber, reg?.Members.Count ?? 0);
@@ -292,13 +319,16 @@ public sealed class TopicQueryReader : ITopicQueryReader
             IsAvailable: isAvailable,
             Group: groupDto,
             IsPublished: topic.IsPublished,
-            ReviewNote: topic.ReviewNote);
+            ReviewNote: topic.ReviewNote,
+            ConfirmedStudentsCount: CountConfirmedStudents(reg),
+            PendingConfirmationsCount: CountPendingConfirmations(reg, nowUtc ?? DateTime.UtcNow));
     }
 
     public static TopicTrackingDetailDto BuildTrackingDetail(
         Topic topic,
         TopicRegistrationContractDto? reg,
-        IReadOnlyDictionary<Guid, StudentInfoContractDto> studentsMap)
+        IReadOnlyDictionary<Guid, StudentInfoContractDto> studentsMap,
+        DateTime? nowUtc = null)
     {
         var (registeredCount, remainingSlots, regStatus, hasRegistration, isAvailable) =
             ComputeRegistrationMetrics(topic.StudentNumber, reg?.Members.Count ?? 0);
@@ -323,7 +353,19 @@ public sealed class TopicQueryReader : ITopicQueryReader
             IsAvailable: isAvailable,
             Group: groupDto,
             IsPublished: topic.IsPublished,
-            ReviewNote: topic.ReviewNote);
+            ReviewNote: topic.ReviewNote,
+            ConfirmedStudentsCount: CountConfirmedStudents(reg),
+            PendingConfirmationsCount: CountPendingConfirmations(reg, nowUtc ?? DateTime.UtcNow));
+    }
+
+    private static int CountConfirmedStudents(TopicRegistrationContractDto? registration)
+        => registration?.Members.Count(member => member.ConfirmationStatus == "Confirmed") ?? 0;
+
+    private static int CountPendingConfirmations(TopicRegistrationContractDto? registration, DateTime nowUtc)
+    {
+        return registration?.Members.Count(member =>
+            member.ConfirmationStatus == "Pending" &&
+            (!member.ConfirmationExpiresAtUtc.HasValue || member.ConfirmationExpiresAtUtc.Value > nowUtc)) ?? 0;
     }
 
     private static TopicGroupDto? BuildGroupDto(

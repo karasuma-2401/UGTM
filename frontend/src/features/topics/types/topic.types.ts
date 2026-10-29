@@ -40,6 +40,22 @@ export const TOPIC_STATUS_HINTS: Record<TopicStatus, string> = {
   Archived: 'Đề tài đã được lưu trữ. Nội dung chỉ được xem.',
 };
 
+export interface TopicStudent {
+  studentId: string;
+  userCode: string | null;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  joinedAt: string;
+}
+
+export interface TopicGroup {
+  groupId: string;
+  status: string;
+  createdAt: string;
+  students: TopicStudent[];
+}
+
 export interface Topic {
   id: string;
   batchId: string;
@@ -53,6 +69,7 @@ export interface Topic {
   createdAt: string;
   isPublished: boolean;
   reviewNote?: string | null;
+  group?: TopicGroup | null;
 }
 
 export interface TopicFormValues {
@@ -62,6 +79,7 @@ export interface TopicFormValues {
   description: string;
   requirements: string;
   studentNumber: 1 | 2;
+  studentCodes?: string[];
 }
 
 export interface TopicFilters {

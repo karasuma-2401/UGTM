@@ -85,7 +85,7 @@ BM2: PHIẾU THẨM ĐỊNH ĐỀ CƯƠNG
 
 ### 2.4.2.2. Quy định
 
-QĐ2.1: Đại diện nhóm nộp đề cương dưới dạng .pdf, .doc hoặc .docx, dung lượng không vượt quá 20 MB.
+QĐ2.1: Đại diện nhóm nộp đề cương dưới dạng .pdf, .doc hoặc .docx, dung lượng không vượt quá 20 MiB (20,971,520 byte).
 
 QĐ2.2: Đề cương được nộp trước hạn chót Tuần 2; nộp lại chỉ thực hiện trong thời hạn bổ sung khi Khoa yêu cầu chỉnh sửa.
 

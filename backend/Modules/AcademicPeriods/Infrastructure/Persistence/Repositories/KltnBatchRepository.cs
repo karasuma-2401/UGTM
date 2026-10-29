@@ -11,6 +11,9 @@ public sealed class KltnBatchRepository(AcademicPeriodsDbContext db) : IKltnBatc
             .Include(x => x.ScoreConfigurations)
             .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public Task ReloadAsync(KltnBatch batch, CancellationToken cancellationToken = default)
+        => db.Entry(batch).ReloadAsync(cancellationToken);
+
     public Task<bool> ExistsAsync(string academicYear, int semester, CancellationToken cancellationToken = default)
     {
         var normalizedYear = academicYear.Trim();
@@ -20,4 +23,6 @@ public sealed class KltnBatchRepository(AcademicPeriodsDbContext db) : IKltnBatc
     }
 
     public void Add(KltnBatch batch) => db.KltnBatches.Add(batch);
+
+    public void AddStages(IEnumerable<Stage> stages) => db.Stages.AddRange(stages);
 }

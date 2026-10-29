@@ -10,6 +10,11 @@ public class SubmissionFileConfiguration : IEntityTypeConfiguration<SubmissionFi
         builder.HasIndex(x => x.UploadedBy)
             .HasDatabaseName("ix_submission_file_uploaded_by");
 
+        builder.HasIndex(x => new { x.EntityId, x.VersionNo })
+            .HasDatabaseName("ux_submission_file_final_report_entity_id_version_no")
+            .HasFilter("entity_type = 'FinalReport'")
+            .IsUnique();
+
         builder.ToTable("submission_file", "thesis");
 
         builder.HasKey(x => x.Id);

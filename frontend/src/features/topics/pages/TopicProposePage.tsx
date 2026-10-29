@@ -39,11 +39,13 @@ import {
   saveLocalProposal,
   removeLocalProposal,
   sameProposal,
+  sameStudentCodes,
   type LocalProposal,
   type ProposalErrors,
 } from '../proposalEditing';
 import { TopicPreview } from '../components/TopicPreview';
 import { TopicReviewNote } from '../components/TopicReviewNote';
+import { TopicStudentAssignmentField } from '../components/TopicStudentAssignmentField';
 import { PageHeader } from '@/components/ui/page-header';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
@@ -67,6 +69,7 @@ interface SaveProposal {
   values: TopicFormValues;
   submitImmediately: boolean;
   hasChanges: boolean;
+  updateAssignedStudents?: boolean;
 }
 
 const INITIAL_FILTERS: TopicFilters = { keyword: '', batchId: '', status: '' };
@@ -153,12 +156,13 @@ export function TopicProposePage({
       description: 'topic-description',
       requirements: 'topic-requirements',
       studentNumber: 'topic-capacity-field',
+      studentCodes: 'topic-student-codes',
     };
     const frame = window.requestAnimationFrame(() => {
       const container = document.getElementById(ids[focusField]);
       const target = container?.matches('input, textarea')
         ? container
-        : container?.querySelector('button');
+        : container?.querySelector('input, button');
       if (target instanceof HTMLElement) {
         target.focus();
         target.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -248,8 +252,15 @@ export function TopicProposePage({
   });
 
   const saveMutation = useMutation({
-    mutationFn: ({ id, values, submitImmediately, hasChanges }: SaveProposal) => {
+    mutationFn: ({
+      id,
+      values,
+      submitImmediately,
+      hasChanges,
+      updateAssignedStudents,
+    }: SaveProposal) => {
       if (id && submitImmediately && !hasChanges) return topicApi.submit(id);
+      if (updateAssignedStudents) return topicApi.save(id, values, submitImmediately, true);
       return topicApi.save(id, values, submitImmediately);
     },
     onSuccess: async (topic, { submitImmediately, id }) => {
@@ -274,6 +285,8 @@ export function TopicProposePage({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['my-proposed-topics'] }),
         queryClient.invalidateQueries({ queryKey: ['topic-review'] }),
+        queryClient.invalidateQueries({ queryKey: ['topic-advising'] }),
+        queryClient.invalidateQueries({ queryKey: ['topic-advising-detail'] }),
       ]);
     },
   });
@@ -321,7 +334,12 @@ export function TopicProposePage({
   }
   function restoreRecovery() {
     if (!recovery) return;
-    setValues({ ...recovery.values, batchId: selectedTopic?.batchId ?? recovery.values.batchId });
+    setValues({
+      ...recovery.values,
+      batchId: selectedTopic?.batchId ?? recovery.values.batchId,
+      // Drafts saved before assignment support must not clear the server roster.
+      studentCodes: recovery.values.studentCodes ?? baseline.studentCodes ?? [],
+    });
     setLocalSavedAt(recovery.savedAt);
     setRecovery(null);
     setFormError('');
@@ -348,6 +366,7 @@ export function TopicProposePage({
     setFieldErrors((previous) => {
       const next = { ...previous };
       delete next[key];
+      if (key === 'studentNumber') delete next.studentCodes;
       return next;
     });
     setNotice('');
@@ -426,6 +445,25 @@ export function TopicProposePage({
     const submitImmediately =
       (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'submit';
     const errors = validateProposal(values, submitImmediately);
+    const updateAssignedStudents =
+      Boolean(selectedTopic) && !sameStudentCodes(values.studentCodes, baseline.studentCodes);
+    if (
+      updateAssignedStudents &&
+      selectedTopic?.group?.students.some((student) => !student.userCode?.trim())
+    ) {
+      errors.studentCodes = 'Chưa có đủ MSSV để thay đổi danh sách sinh viên hiện tại.';
+    }
+    // The existing backend validates assignments against the persisted quota
+    // before updating topic details. Avoid submitting a combined request it rejects.
+    if (
+      updateAssignedStudents &&
+      selectedTopic?.studentNumber &&
+      (values.studentCodes ?? []).filter((code) => code.trim()).length >
+        selectedTopic.studentNumber &&
+      values.studentNumber > selectedTopic.studentNumber
+    ) {
+      errors.studentCodes = 'Hãy lưu chỉ tiêu mới trước, sau đó chỉ định thêm sinh viên.';
+    }
     if (Object.keys(errors).length) {
       showValidation(errors);
       return;
@@ -440,6 +478,7 @@ export function TopicProposePage({
       submitImmediately,
       hasChanges:
         dirty || Boolean(selectedTopic && selectedTopic.studentNumber !== values.studentNumber),
+      ...(updateAssignedStudents ? { updateAssignedStudents: true } : {}),
     });
   }
 
@@ -833,6 +872,14 @@ export function TopicProposePage({
                           }
                         />
                       </div>
+                      <TopicStudentAssignmentField
+                        codes={values.studentCodes ?? []}
+                        capacity={values.studentNumber}
+                        currentStudents={selectedTopic?.group?.students}
+                        disabled={busy || !editable || Boolean(recovery)}
+                        error={fieldErrors.studentCodes}
+                        onChange={(codes) => updateField('studentCodes', codes)}
+                      />
                     </fieldset>
 
                     {(formError || saveMutation.isError) && (

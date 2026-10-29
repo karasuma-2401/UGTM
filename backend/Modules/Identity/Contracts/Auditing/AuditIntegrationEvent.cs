@@ -111,6 +111,12 @@ public static class IntegrationAuditActions
     public const string MidtermReportSubmitted =
         "ThesisManagement.MidtermReport.Submitted";
 
+    public const string FinalReportSubmitted =
+        "ThesisManagement.FinalReport.Submitted";
+
+    public const string FinalReportEvaluationStarted =
+        "ThesisManagement.FinalReport.EvaluationStarted";
+
     public const string MidtermReportReviewed =
         "ThesisManagement.MidtermReport.Reviewed";
 

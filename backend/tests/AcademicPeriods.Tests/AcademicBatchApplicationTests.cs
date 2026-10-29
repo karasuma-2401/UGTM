@@ -134,6 +134,37 @@ public sealed class AcademicBatchApplicationTests
     }
 
     [Fact]
+    public async Task Update_draft_batch_schedule_deletes_then_recreates_stages_in_one_transaction()
+    {
+        var batch = AcademicPeriodTestData.DraftBatch();
+        var unitOfWork = new FakeUnitOfWork();
+        var audit = new FakeAuditOutbox();
+        var repository = new FakeBatchRepository(batch);
+        var handler = new UpdateKltnBatchScheduleHandler(
+            repository,
+            audit,
+            unitOfWork,
+            AuthorizedUser(PermissionCodes.AcademicBatchesManage),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
+        var items = batch.Stages.Select(stage => new UpdateStageScheduleItem(
+            stage.OrderIndex,
+            stage.StageCode,
+            stage.StageName,
+            stage.StartDate,
+            stage.EndDate,
+            new DateTimeOffset(stage.DeadlineAtUtc))).ToArray();
+
+        var result = await handler.HandleAsync(new UpdateKltnBatchScheduleCommand(batch.Id, items, null));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, unitOfWork.SaveCount);
+        Assert.Single(audit.Entries);
+        Assert.Equal(IntegrationAuditActions.BatchScheduleUpdated, audit.Entries[0].Action);
+        Assert.Equal(7, result.Value.Stages.Count);
+        Assert.Equal(7, repository.AddedStages.Count);
+    }
+
+    [Fact]
     public async Task Open_batch_requires_an_active_score_configuration()
     {
         var batch = AcademicPeriodTestData.DraftBatch();
@@ -214,12 +245,16 @@ public sealed class AcademicBatchApplicationTests
     private sealed class FakeBatchRepository(KltnBatch? batch = null) : IKltnBatchRepository
     {
         public KltnBatch? Added { get; private set; }
+        public IReadOnlyList<Stage> AddedStages { get; private set; } = [];
         public bool Exists { get; init; }
         public Task<KltnBatch?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
             => Task.FromResult(batch?.Id == id ? batch : null);
+        public Task ReloadAsync(KltnBatch value, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
         public Task<bool> ExistsAsync(string academicYear, int semester, CancellationToken cancellationToken = default)
             => Task.FromResult(Exists);
         public void Add(KltnBatch value) => Added = value;
+        public void AddStages(IEnumerable<Stage> stages) => AddedStages = stages.ToArray();
     }
 
     private sealed class FakeTemplateRepository(ScheduleTemplateVersion? template) : IScheduleTemplateRepository

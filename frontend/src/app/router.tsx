@@ -10,13 +10,16 @@ import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { OtpPage } from '../features/auth/pages/OtpPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
-import { UsersPage } from '../features/admin/pages/UsersPage';
+import { UsersPage } from '../features/identity';
 import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
 import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
-import { IdentityLayout, IdentityIndexRedirect } from '../features/admin/layouts/IdentityLayout';
+import { StudentTopicCatalogPage } from '../features/topics/pages/StudentTopicCatalogPage';
+import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
-import { RolePermissionPage, AuditLogPage, ScoreConfigPage, PeriodPage } from '../features/admin';
+import { RolePermissionPage } from '../features/identity';
+import { AuditLogPage } from '../features/audit';
+import { ScoreConfigPage, PeriodPage, SchoolRosterPage } from '../features/academic';
 
 export const router = createBrowserRouter([
   {
@@ -39,6 +42,14 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'ui-test', element: <UiTestPage /> },
+      {
+        path: 'topics/catalog',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <StudentTopicCatalogPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: 'topics/advising',
         element: (
@@ -94,6 +105,22 @@ export const router = createBrowserRouter([
             <PeriodPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'academic/roster',
+        element: (
+          <ProtectedRoute>
+            <SchoolRosterPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'academic/school-roster',
+        element: <Navigate to="/academic/roster" replace />,
+      },
+      {
+        path: 'admin/school-roster',
+        element: <Navigate to="/academic/roster" replace />,
       },
       {
         path: 'modules/identity',

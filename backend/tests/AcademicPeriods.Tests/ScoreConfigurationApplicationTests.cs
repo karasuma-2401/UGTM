@@ -278,9 +278,12 @@ public sealed class ScoreConfigurationApplicationTests
     {
         public Task<KltnBatch?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
             => Task.FromResult(batch.Id == id ? batch : null);
+        public Task ReloadAsync(KltnBatch value, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
         public Task<bool> ExistsAsync(string academicYear, int semester, CancellationToken cancellationToken = default)
             => Task.FromResult(false);
         public void Add(KltnBatch value) => throw new NotSupportedException();
+        public void AddStages(IEnumerable<Stage> stages) => throw new NotSupportedException();
     }
 
     private sealed class FakeScoreConfigurationRepository(
