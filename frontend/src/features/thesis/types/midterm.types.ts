@@ -40,6 +40,27 @@ export interface MidtermReportSubmissionHistoryDto {
   versions: MidtermReportSubmissionHistoryItemDto[];
 }
 
+export interface MidtermReportReviewStudentDto {
+  studentId: string;
+  userCode?: string | null;
+  fullName?: string | null;
+}
+
+export interface MidtermReportReviewItemDto {
+  midtermReportId: string;
+  groupId: string;
+  topicId: string;
+  topicTitleVi: string;
+  topicTitleEn?: string | null;
+  batchId: string;
+  batchName?: string | null;
+  students: MidtermReportReviewStudentDto[];
+  advisor: { advisorId: string; fullName?: string | null };
+  currentVersionNo: number;
+  currentStatus: string;
+  latestFile?: SubmissionFileDto | null;
+}
+
 export interface ReviewMidtermGroupItemDto {
   groupId: string;
   groupCode: string;
