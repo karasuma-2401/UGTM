@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Domain\UGTM.Modules.DefenseCouncil.Domain.csproj" />
+    <ProjectReference Include="..\..\Modules\DefenseCouncil\Application\UGTM.Modules.DefenseCouncil.Application.csproj" />
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\ThesisManagement\Application\UGTM.Modules.ThesisManagement.Application.csproj" />
     <ProjectReference Include="..\..\Modules\ThesisManagement\Domain\UGTM.Modules.ThesisManagement.Domain.csproj" />

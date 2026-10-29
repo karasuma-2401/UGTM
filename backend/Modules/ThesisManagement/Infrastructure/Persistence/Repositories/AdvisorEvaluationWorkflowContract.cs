@@ -7,6 +7,51 @@ namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence.Repositories;
 internal sealed class AdvisorEvaluationWorkflowContract(ThesisManagementDbContext context)
     : IAdvisorEvaluationWorkflowContract
 {
+    public async Task<AdvisorEvaluationFinalReportContextContractDto?> GetFinalReportContextAsync(
+        Guid finalReportId,
+        CancellationToken cancellationToken = default)
+    {
+        if (finalReportId == Guid.Empty)
+        {
+            return null;
+        }
+
+        var report = await context.FinalReports.AsNoTracking()
+            .SingleOrDefaultAsync(value => value.Id == finalReportId, cancellationToken);
+        if (report is null)
+        {
+            return null;
+        }
+
+        var group = await context.StudentGroups.AsNoTracking()
+            .SingleOrDefaultAsync(value => value.Id == report.GroupId, cancellationToken);
+        if (group is null)
+        {
+            return new AdvisorEvaluationFinalReportContextContractDto(
+                report.Id, report.GroupId, Guid.Empty, false,
+                report.VersionType == FinalReportVersionType.InitialFinal,
+                report.Status == FinalReportStatus.UnderEvaluation,
+                false, report.CurrentVersionNo, null, null);
+        }
+
+        var file = await context.SubmissionFiles.AsNoTracking().SingleOrDefaultAsync(value =>
+            value.EntityType == SubmissionEntityType.FinalReport
+            && value.EntityId == report.Id
+            && value.VersionNo == report.CurrentVersionNo,
+            cancellationToken);
+        return new AdvisorEvaluationFinalReportContextContractDto(
+            report.Id,
+            group.Id,
+            group.TopicId,
+            true,
+            report.VersionType == FinalReportVersionType.InitialFinal,
+            report.Status == FinalReportStatus.UnderEvaluation,
+            group.Status == StudentGroupStatus.FinalReportSubmitted,
+            report.CurrentVersionNo,
+            file?.Id,
+            file?.ChecksumSha256);
+    }
+
     public async Task<AdvisorEvaluationLockedFinalReportContractDto?> GetLockedInitialFinalReportAsync(
         Guid finalReportId,
         CancellationToken cancellationToken = default)

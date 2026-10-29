@@ -24,4 +24,16 @@ public sealed class AdvisorWorkflowTransactionCoordinator(
         return await SharedPostgresTransactionCoordinator.ExecuteAsync(
             thesisContext, defenseContext, workflow, cancellationToken);
     }
+
+    public async Task<TResult> ExecuteWithPostSaveAsync<TResult>(
+        Func<CancellationToken, Task<TResult>> workflow,
+        Func<TResult, CancellationToken, Task<TResult>> postSave,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(workflow);
+        ArgumentNullException.ThrowIfNull(postSave);
+
+        return await SharedPostgresTransactionCoordinator.ExecuteAsync(
+            thesisContext, defenseContext, workflow, postSave, cancellationToken);
+    }
 }

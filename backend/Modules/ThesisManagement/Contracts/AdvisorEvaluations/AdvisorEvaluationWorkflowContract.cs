@@ -11,6 +11,22 @@ public sealed record AdvisorEvaluationLockedFinalReportContractDto(
     Guid SubmissionFileId,
     string SubmissionChecksumSha256);
 
+/// <summary>
+/// Read-only report details used to authorize an advisor-evaluation request and to validate it
+/// before the locked-report method marks report and group concurrency tokens for saving.
+/// </summary>
+public sealed record AdvisorEvaluationFinalReportContextContractDto(
+    Guid FinalReportId,
+    Guid GroupId,
+    Guid TopicId,
+    bool GroupExists,
+    bool IsInitialFinal,
+    bool IsUnderEvaluation,
+    bool IsGroupFinalReportSubmitted,
+    int CurrentVersionNo,
+    Guid? SubmissionFileId,
+    string? SubmissionChecksumSha256);
+
 public enum AdvisorEvaluationGroupReadinessOutcome
 {
     Succeeded,
@@ -32,6 +48,10 @@ public sealed record AdvisorEvaluationGroupReadinessResultContractDto(
 /// </summary>
 public interface IAdvisorEvaluationWorkflowContract
 {
+    Task<AdvisorEvaluationFinalReportContextContractDto?> GetFinalReportContextAsync(
+        Guid finalReportId,
+        CancellationToken cancellationToken = default);
+
     Task<AdvisorEvaluationLockedFinalReportContractDto?> GetLockedInitialFinalReportAsync(
         Guid finalReportId,
         CancellationToken cancellationToken = default);

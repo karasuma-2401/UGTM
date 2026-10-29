@@ -10,4 +10,13 @@ public interface IAdvisorWorkflowTransactionCoordinator
     Task<TResult> ExecuteAsync<TResult>(
         Func<CancellationToken, Task<TResult>> workflow,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Runs an additional callback after the first save, while the transaction remains open.
+    /// It is used when the response needs store-generated values such as PostgreSQL xmin.
+    /// </summary>
+    Task<TResult> ExecuteWithPostSaveAsync<TResult>(
+        Func<CancellationToken, Task<TResult>> workflow,
+        Func<TResult, CancellationToken, Task<TResult>> postSave,
+        CancellationToken cancellationToken = default);
 }

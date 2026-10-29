@@ -736,6 +736,56 @@ namespace UGTM.Database.Migrations.Migrations
                         });
                 });
 
+            modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.AdvisorEvaluationIdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_fingerprint");
+
+                    b.Property<string>("ResponsePayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_payload_json");
+
+                    b.Property<int>("ResponseStatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_advisor_evaluation_idempotency");
+
+                    b.HasIndex("ActorId", "Operation", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_advisor_evaluation_idempotency_actor_operation_key");
+
+                    b.ToTable("advisor_evaluation_idempotency", "councils");
+                });
+
             modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.AuditOutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")

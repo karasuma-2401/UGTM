@@ -140,4 +140,7 @@ public static class IntegrationAuditActions
 
     public const string ScoreExcluded =
         "DefenseCouncil.Score.Excluded";
+
+    public const string AdvisorEvaluationSaved =
+        "DefenseCouncil.AdvisorEvaluation.Saved";
 }

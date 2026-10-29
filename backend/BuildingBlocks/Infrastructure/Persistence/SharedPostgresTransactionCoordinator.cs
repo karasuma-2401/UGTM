@@ -14,6 +14,7 @@ public static class SharedPostgresTransactionCoordinator
         DbContext primaryContext,
         DbContext secondaryContext,
         Func<CancellationToken, Task<TResult>> workflow,
+        Func<TResult, CancellationToken, Task<TResult>>? postSave,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(primaryContext);
@@ -51,6 +52,18 @@ public static class SharedPostgresTransactionCoordinator
                 var result = await workflow(cancellationToken);
                 await secondaryContext.SaveChangesAsync(acceptAllChangesOnSuccess: false, cancellationToken);
                 await primaryContext.SaveChangesAsync(acceptAllChangesOnSuccess: false, cancellationToken);
+                if (postSave is not null)
+                {
+                    // Store-generated values (for example PostgreSQL xmin) are now available to
+                    // the callback. Accept the first EF save before the second one so already
+                    // inserted entities are not submitted again. The transaction is still open;
+                    // any failure below rolls it back and clears both trackers.
+                    secondaryContext.ChangeTracker.AcceptAllChanges();
+                    primaryContext.ChangeTracker.AcceptAllChanges();
+                    result = await postSave(result, cancellationToken);
+                    await secondaryContext.SaveChangesAsync(acceptAllChangesOnSuccess: false, cancellationToken);
+                    await primaryContext.SaveChangesAsync(acceptAllChangesOnSuccess: false, cancellationToken);
+                }
                 await primaryTransaction.CommitAsync(cancellationToken);
 
                 secondaryContext.ChangeTracker.AcceptAllChanges();
@@ -74,4 +87,11 @@ public static class SharedPostgresTransactionCoordinator
             }
         }
     }
+
+    public static Task<TResult> ExecuteAsync<TResult>(
+        DbContext primaryContext,
+        DbContext secondaryContext,
+        Func<CancellationToken, Task<TResult>> workflow,
+        CancellationToken cancellationToken = default)
+        => ExecuteAsync(primaryContext, secondaryContext, workflow, postSave: null, cancellationToken);
 }

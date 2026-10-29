@@ -76,6 +76,16 @@ public sealed class AdvisorEvaluation
         => new(id, groupId, finalReportId, reportVersionNo, submissionFileId, submissionChecksumSha256,
             score, comment, evaluatedBy, evaluatedAtUtc);
 
+    /// <summary>
+    /// Validates a draft before a workflow acquires the cross-module report lock. Keeping this
+    /// rule in the aggregate prevents invalid requests from creating a concurrency-only update.
+    /// </summary>
+    public static void ValidateEvaluationInput(decimal score, string? comment)
+    {
+        _ = NormalizeScore(score);
+        _ = NormalizeComment(comment!);
+    }
+
     public bool TryUpdate(
         decimal score,
         string comment,

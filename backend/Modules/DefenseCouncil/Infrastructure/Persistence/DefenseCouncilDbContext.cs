@@ -12,6 +12,7 @@ public sealed class DefenseCouncilDbContext(DbContextOptions<DefenseCouncilDbCon
 
     public DbSet<AuditOutboxMessage> AuditOutboxMessages => Set<AuditOutboxMessage>();
     public DbSet<AdvisorEvaluation> AdvisorEvaluations => Set<AdvisorEvaluation>();
+    public DbSet<AdvisorEvaluationIdempotencyRecord> AdvisorEvaluationIdempotencyRecords => Set<AdvisorEvaluationIdempotencyRecord>();
     public DbSet<Council> Councils => Set<Council>();
     public DbSet<CouncilAssignment> CouncilAssignments => Set<CouncilAssignment>();
     public DbSet<CouncilMember> CouncilMembers => Set<CouncilMember>();
