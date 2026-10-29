@@ -9,6 +9,7 @@ using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Database.Migrations;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
+using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Contracts.AdvisorEvaluations;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
@@ -180,6 +181,8 @@ public sealed class AdvisorWorkflowTransactionIntegrationTests(PostgreSqlFixture
         var services = new ServiceCollection();
         new UGTM.Modules.ThesisManagement.Infrastructure.ThesisManagementModule()
             .RegisterModule(services, configuration);
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUser, UnauthenticatedCurrentUser>();
         services.AddScoped<DefenseCouncilDbContext>(_ => CreateDefenseDbContext());
         return services.BuildServiceProvider();
     }
@@ -229,6 +232,15 @@ public sealed class AdvisorWorkflowTransactionIntegrationTests(PostgreSqlFixture
         Guid FileId,
         Guid ActorId,
         string ChecksumSha256);
+
+    private sealed class UnauthenticatedCurrentUser : ICurrentUser
+    {
+        public bool IsAuthenticated => false;
+        public Guid? UserId => null;
+        public Guid? SessionId => null;
+        public IReadOnlySet<string> Roles { get; } = new HashSet<string>();
+        public IReadOnlySet<string> Permissions { get; } = new HashSet<string>();
+    }
 
     private sealed class ThrowOnGroupUpdateInterceptor : DbCommandInterceptor
     {

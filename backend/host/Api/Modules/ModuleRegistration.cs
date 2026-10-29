@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.AcademicPeriods.Infrastructure;
 using UGTM.Modules.DefenseCouncil.Infrastructure;

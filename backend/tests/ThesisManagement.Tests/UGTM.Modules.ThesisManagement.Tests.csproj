@@ -18,13 +18,24 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Modules\AcademicPeriods\Infrastructure\UGTM.Modules.AcademicPeriods.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Domain\UGTM.Modules.DefenseCouncil.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Application\UGTM.Modules.DefenseCouncil.Application.csproj" />
     <ProjectReference Include="..\..\Modules\DefenseCouncil\Infrastructure\UGTM.Modules.DefenseCouncil.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\Infrastructure\UGTM.Modules.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\Infrastructure\UGTM.Modules.Notifications.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\ThesisManagement\Application\UGTM.Modules.ThesisManagement.Application.csproj" />
     <ProjectReference Include="..\..\Modules\ThesisManagement\Domain\UGTM.Modules.ThesisManagement.Domain.csproj" />
     <ProjectReference Include="..\..\Modules\ThesisManagement\Infrastructure\UGTM.Modules.ThesisManagement.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\TopicCatalog\Infrastructure\UGTM.Modules.TopicCatalog.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Database.Migrations\UGTM.Database.Migrations.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\host\Api\AdvisorEvaluations\AdvisorWorkflowTransactionCoordinator.cs"
+             Link="ProductionComposition\AdvisorWorkflowTransactionCoordinator.cs" />
+    <Compile Include="..\..\host\Api\Modules\ModuleRegistration.cs"
+             Link="ProductionComposition\ModuleRegistration.cs" />
   </ItemGroup>
 
 </Project>

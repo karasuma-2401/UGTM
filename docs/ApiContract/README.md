@@ -10,7 +10,7 @@ Mỗi module có một contract riêng. Contract chỉ mô tả endpoint đã tr
 | TopicCatalog (Topics & Tracking) | [TopicCatalogApiContract.md](TopicCatalogApiContract.md) | Mục 1–4 đã triển khai; mục 5 ghi rõ phần đã có/còn thiếu, thời hạn 24h |
 | AcademicPeriods (Batches, Timeline & Score Configuration) | [AcademicPeriodsApiContract.md](AcademicPeriodsApiContract.md) | SCRUM-81 và SCRUM-83 đã triển khai |
 | ThesisManagement (Review gates, Progress & Final reports) | [ThesisManagementApiContract.md](ThesisManagementApiContract.md) | SCRUM-88, SCRUM-89 và SCRUM-102 đã triển khai; nghiệm thu SCRUM-102 xem bên dưới |
-| Advisor evaluation & reviewer handoff | [AdvisorEvaluationApprovalApiContract.md](AdvisorEvaluationApprovalApiContract.md) | SCRUM-103 đã triển khai đến CP5: ghi/duyệt/đọc phiếu và contract eligibility cho SCRUM-104 |
+| Advisor evaluation & reviewer handoff | [AdvisorEvaluationApprovalApiContract.md](AdvisorEvaluationApprovalApiContract.md) | SCRUM-103 đã triển khai và nghiệm thu CP6: ghi/duyệt/đọc phiếu, contract eligibility và luồng PostgreSQL/MinIO production-host |
 
 Quy ước response, authentication, lỗi và hành vi đặc biệt được ghi trong contract của module đang sở hữu endpoint. Khi thay đổi request, response, status code hoặc error code, cập nhật contract trong cùng pull request.
 
@@ -19,3 +19,5 @@ Báo cáo tích hợp Topic Advising và danh sách API còn thiếu: [TopicAdvi
 Báo cáo màn hình sinh viên, API đã nối và các trường dữ liệu còn thiếu: [StudentTopicRegistrationIntegration.md](StudentTopicRegistrationIntegration.md).
 
 Nghiệm thu báo cáo cuối kỳ (SCRUM-102), ma trận test và cách kiểm tra PostgreSQL/MinIO: [FinalReportSubmissionVerification.md](FinalReportSubmissionVerification.md).
+
+Nghiệm thu phiếu chấm GVHD và bàn giao phản biện (SCRUM-103): [AdvisorEvaluationApprovalVerification.md](AdvisorEvaluationApprovalVerification.md).

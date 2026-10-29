@@ -1,6 +1,6 @@
 # Advisor evaluation & reviewer-handoff API contract — SCRUM-103
 
-Trạng thái: **Đã triển khai đến CP5 của SCRUM-103**. Hai endpoint ghi và endpoint đọc trong tài liệu này đã được map vào API; contract eligibility đã sẵn sàng để SCRUM-104 gọi ngay trước khi ghi phân công GVPB.
+Trạng thái: **Đã triển khai và nghiệm thu CP6 của SCRUM-103**. Hai endpoint ghi và endpoint đọc trong tài liệu này đã được map vào API; contract eligibility đã sẵn sàng để SCRUM-104 gọi ngay trước khi ghi phân công GVPB. Bằng chứng PostgreSQL/MinIO và cách chạy lại ở [AdvisorEvaluationApprovalVerification.md](AdvisorEvaluationApprovalVerification.md).
 
 Phạm vi là GVHD hoặc Admin chấm báo cáo cuối kỳ đã bị khóa, sau đó quyết định có cho phép phân công GVPB hay không. Không bao gồm màn hình SCRUM-112, phân công GVPB SCRUM-104, chấm phản biện SCRUM-105, xét điều kiện bảo vệ, công bố/tổng hợp điểm, hay nghiệp vụ gia hạn, chuyển đợt và mở khóa.
 
