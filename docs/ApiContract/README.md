@@ -9,7 +9,7 @@ Mỗi module có một contract riêng. Contract chỉ mô tả endpoint đã tr
 | Identity (Role & Permission) | [RolePermissionApiContract.md](RolePermissionApiContract.md) | Đã triển khai |
 | TopicCatalog (Topics & Tracking) | [TopicCatalogApiContract.md](TopicCatalogApiContract.md) | Mục 1–4 đã triển khai; mục 5 ghi rõ phần đã có/còn thiếu, thời hạn 24h |
 | AcademicPeriods (Batches, Timeline & Score Configuration) | [AcademicPeriodsApiContract.md](AcademicPeriodsApiContract.md) | SCRUM-81 và SCRUM-83 đã triển khai |
-| ThesisManagement (Groups, Review gates, Progress & Final reports) | [ThesisManagementApiContract.md](ThesisManagementApiContract.md) | SCRUM-88, SCRUM-89, SCRUM-102, chi tiết nhóm và danh sách hồ sơ đề cương đã triển khai; nghiệm thu SCRUM-102 xem bên dưới |
+| ThesisManagement (Groups, Review gates, Progress & Final reports) | [ThesisManagementApiContract.md](ThesisManagementApiContract.md) | SCRUM-88, SCRUM-89, SCRUM-102, chi tiết nhóm và danh sách hồ sơ Cổng 1/Cổng 2 đã triển khai; nghiệm thu SCRUM-102 xem bên dưới |
 | Advisor evaluation & reviewer handoff | [AdvisorEvaluationApprovalApiContract.md](AdvisorEvaluationApprovalApiContract.md) | SCRUM-103 đã triển khai và nghiệm thu CP6: ghi/duyệt/đọc phiếu, contract eligibility và luồng PostgreSQL/MinIO production-host |
 
 Quy ước response, authentication, lỗi và hành vi đặc biệt được ghi trong contract của module đang sở hữu endpoint. Khi thay đổi request, response, status code hoặc error code, cập nhật contract trong cùng pull request.
