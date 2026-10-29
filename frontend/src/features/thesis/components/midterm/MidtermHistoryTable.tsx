@@ -13,6 +13,7 @@ interface MidtermHistoryTableProps {
   groupCode?: string;
   currentStatus: MidtermReportStatus;
   canSubmit: boolean;
+  disabledReason?: string | null;
   isSubmitting: boolean;
   onSubmit: () => void;
   onDownload: (fileId: string) => void;
@@ -24,6 +25,7 @@ export function MidtermHistoryTable({
   groupCode = 'Nhóm KLTN',
   currentStatus,
   canSubmit,
+  disabledReason,
   isSubmitting,
   onSubmit,
   onDownload,
@@ -152,6 +154,13 @@ export function MidtermHistoryTable({
           )}
         </Button>
       </div>
+
+      {!canSubmit && disabledReason && (
+        <div className="flex items-center gap-2.5 p-3 rounded-lg bg-amber-50/80 border border-amber-200/70 text-xs text-amber-800">
+          <AlertCircle className="size-4 shrink-0 text-amber-600" />
+          <span>{disabledReason}</span>
+        </div>
+      )}
 
       {!canSubmit && currentStatus === 'Submitted' && (
         <div className="flex items-center gap-2.5 p-3 rounded-lg bg-blue-50 border border-blue-200/70 text-xs text-blue-800">

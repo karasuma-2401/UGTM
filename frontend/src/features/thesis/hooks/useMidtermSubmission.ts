@@ -42,6 +42,13 @@ export function useMidtermSubmission() {
     enabled: Boolean(groupId),
   });
 
+  const syllabusHistoryQuery = useQuery({
+    queryKey: ['syllabus-history', groupId],
+    queryFn: ({ signal }) => syllabusApi.getSyllabusHistory(groupId!, signal),
+    enabled: Boolean(groupId),
+    retry: false,
+  });
+
   const historyQuery = useQuery({
     queryKey: ['midterm-history', groupId],
     queryFn: ({ signal }) => midtermApi.getMidtermHistory(groupId!, signal),
@@ -95,14 +102,42 @@ export function useMidtermSubmission() {
     }
   };
 
+  const syllabusStatus = syllabusHistoryQuery.data?.currentStatus;
+  const isSyllabusApproved = syllabusStatus === 'Approved';
+
+  let notEligibleReason: string | null = null;
+  if (!syllabusHistoryQuery.isLoading && !isSyllabusApproved) {
+    if (!syllabusHistoryQuery.data) {
+      notEligibleReason =
+        'Nhóm của bạn chưa nộp Đề cương chi tiết (Cổng 1). Vui lòng hoàn thành và chờ Khoa phê duyệt Đề cương trước khi nộp Báo cáo giữa kỳ.';
+    } else if (syllabusStatus === 'Submitted') {
+      notEligibleReason =
+        'Đề cương chi tiết (Cổng 1) của nhóm đang chờ Văn phòng Khoa thẩm định. Báo cáo giữa kỳ sẽ được mở ngay sau khi Đề cương được phê duyệt.';
+    } else if (syllabusStatus === 'NeedRevision') {
+      notEligibleReason =
+        'Đề cương chi tiết (Cổng 1) của nhóm đang có yêu cầu chỉnh sửa từ Khoa. Vui lòng hoàn tất nộp lại Đề cương ở Cổng 1 trước.';
+    } else if (syllabusStatus === 'Rejected') {
+      notEligibleReason =
+        'Đề cương chi tiết (Cổng 1) của nhóm không đạt yêu cầu. Nhóm đã dừng thực hiện đề tài theo quy định.';
+    } else {
+      notEligibleReason =
+        'Nhóm chưa hoàn thành Đề cương chi tiết (Cổng 1). Cần có phê duyệt Đề cương từ Khoa để mở Cổng 2.';
+    }
+  }
+
+  const isEligibleForMidterm = Boolean(isSyllabusApproved);
+
   const currentStatus: MidtermReportStatus =
     historyQuery.data?.currentStatus || 'Draft';
 
-  const canSubmit = currentStatus === 'Draft' || currentStatus === 'NeedRevision';
+  const canSubmit =
+    isEligibleForMidterm &&
+    (currentStatus === 'Draft' || currentStatus === 'NeedRevision');
 
   return {
     statusQuery,
     groupDetailQuery,
+    syllabusHistoryQuery,
     historyQuery,
     selectedFile,
     setSelectedFile,
@@ -114,5 +149,7 @@ export function useMidtermSubmission() {
     handleDownload,
     currentStatus,
     canSubmit,
+    isEligibleForMidterm,
+    notEligibleReason,
   };
 }

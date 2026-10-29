@@ -1,19 +1,21 @@
 import { useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, UploadCloud, RefreshCw, Trash2 } from 'lucide-react';
+import { FileText, UploadCloud, RefreshCw, Trash2, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MidtermUploadCardProps {
   selectedFile: File | null;
   onFileSelect: (file: File | null) => void;
   disabled?: boolean;
+  disabledReason?: string | null;
 }
 
 export function MidtermUploadCard({
   selectedFile,
   onFileSelect,
   disabled = false,
+  disabledReason,
 }: MidtermUploadCardProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -120,19 +122,36 @@ export function MidtermUploadCard({
             className={cn(
               'border-2 border-dashed border-slate-200 rounded-xl p-8 text-center cursor-pointer transition-colors',
               'hover:border-primary/50 hover:bg-slate-50/50',
-              disabled && 'opacity-60 cursor-not-allowed hover:border-slate-200 hover:bg-transparent'
+              disabled && 'opacity-70 cursor-not-allowed hover:border-slate-200 hover:bg-slate-50/30'
             )}
           >
             <div className="flex flex-col items-center justify-center gap-2">
-              <div className="p-3 rounded-full bg-slate-100 text-slate-500">
-                <UploadCloud className="size-6 text-slate-600" />
+              <div
+                className={cn(
+                  'p-3 rounded-full',
+                  disabled ? 'bg-slate-100 text-slate-400' : 'bg-slate-100 text-slate-500'
+                )}
+              >
+                {disabled ? (
+                  <Lock className="size-6 text-slate-400" />
+                ) : (
+                  <UploadCloud className="size-6 text-slate-600" />
+                )}
               </div>
               <p className="text-sm font-medium text-slate-800">
-                Kéo thả tệp báo cáo giữa kỳ vào đây, hoặc{' '}
-                <span className="text-primary hover:underline">chọn từ máy tính</span>
+                {disabled ? (
+                  'Khu vực nộp báo cáo giữa kỳ tạm khóa'
+                ) : (
+                  <>
+                    Kéo thả tệp báo cáo giữa kỳ vào đây, hoặc{' '}
+                    <span className="text-primary hover:underline">chọn từ máy tính</span>
+                  </>
+                )}
               </p>
-              <p className="text-xs text-slate-400">
-                Chấp nhận tệp .pdf, .doc, .docx (Dung lượng không quá 20 MB)
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                {disabled && disabledReason
+                  ? disabledReason
+                  : 'Chấp nhận tệp .pdf, .doc, .docx (Dung lượng không quá 20 MB)'}
               </p>
             </div>
           </div>

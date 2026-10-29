@@ -8,7 +8,7 @@ import { SyllabusTopicInfoCard } from '../components/submission';
 import { ThesisSubmissionNavigation } from '../components/navigation';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
-import { AlertCircle, CheckCircle2, BookOpen, FileUp } from 'lucide-react';
+import { AlertCircle, CheckCircle2, BookOpen, FileUp, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function MidtermSubmissionPage() {
@@ -24,6 +24,7 @@ export function MidtermSubmissionPage() {
     handleDownload,
     currentStatus,
     canSubmit,
+    notEligibleReason,
   } = useMidtermSubmission();
 
   const groupDetail = groupDetailQuery.data;
@@ -72,8 +73,8 @@ export function MidtermSubmissionPage() {
   return (
     <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 space-y-6">
       <PageHeader
-        title="Hồ sơ khóa luận · Báo cáo & tiến độ"
-        description={`${groupCode} · ${topicCode} · GVHD: ${advisorName}`}
+        title="Hồ sơ khóa luận - Báo cáo & tiến độ"
+        description={`${groupCode} - ${topicCode} - GVHD: ${advisorName}`}
         icon={<FileUp />}
         navigation={<ThesisSubmissionNavigation />}
       >
@@ -82,6 +83,32 @@ export function MidtermSubmissionPage() {
         </span>
         <MidtermStatusBadge status={currentStatus} className="text-xs px-3 py-1.5" />
       </PageHeader>
+
+      {notEligibleReason && (
+        <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 flex items-start gap-3.5 shadow-xs">
+          <div className="p-2 rounded-lg bg-amber-100/80 text-amber-700 shrink-0 mt-0.5">
+            <Clock className="size-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm text-amber-900">
+              Chưa đến thời điểm nộp Báo cáo giữa kỳ (Cổng 2)
+            </p>
+            <p className="text-xs mt-1 text-amber-800/90 leading-relaxed">
+              {notEligibleReason}
+            </p>
+          </div>
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="border-amber-300 text-amber-900 hover:bg-amber-100/70 h-8 text-xs shrink-0 bg-white"
+          >
+            <Link to="/thesis/proposal">
+              Xem Cổng 1 - Đề cương
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {actionError && (
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
@@ -109,6 +136,7 @@ export function MidtermSubmissionPage() {
             selectedFile={selectedFile}
             onFileSelect={setSelectedFile}
             disabled={!canSubmit || submitMutation.isPending}
+            disabledReason={notEligibleReason}
           />
 
           <MidtermHistoryTable
@@ -117,6 +145,7 @@ export function MidtermSubmissionPage() {
             groupCode={groupCode}
             currentStatus={currentStatus}
             canSubmit={canSubmit}
+            disabledReason={notEligibleReason}
             isSubmitting={submitMutation.isPending}
             onSubmit={() => {
               if (selectedFile) submitMutation.mutate(selectedFile);
