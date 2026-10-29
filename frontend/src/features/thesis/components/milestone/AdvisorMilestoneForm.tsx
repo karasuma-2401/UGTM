@@ -132,7 +132,7 @@ export function AdvisorMilestoneForm({
           </label>
           <textarea
             id="milestone-products"
-            placeholder="Báo cáo · mã nguồn / link · ghi chú"
+            placeholder="Báo cáo - mã nguồn / link - ghi chú"
             value={description}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
             rows={2}

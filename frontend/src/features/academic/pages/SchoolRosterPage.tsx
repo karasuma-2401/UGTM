@@ -34,7 +34,7 @@ export const SchoolRosterPage: React.FC = () => {
   };
 
   const batchLabel = data.selectedBatch
-    ? `${data.selectedBatch.batchName} · HK${data.selectedBatch.semester} ${data.selectedBatch.academicYear}`
+    ? `${data.selectedBatch.batchName} - HK${data.selectedBatch.semester} ${data.selectedBatch.academicYear}`
     : undefined;
 
   return (

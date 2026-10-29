@@ -6,12 +6,12 @@ export function ThesisReviewNavigation() {
   const tabs = [
     {
       path: '/thesis/review/syllabus',
-      label: 'Cổng 1 · Thẩm định đề cương',
+      label: 'Cổng 1 - Thẩm định đề cương',
       icon: FileText,
     },
     {
       path: '/thesis/review/midterm',
-      label: 'Cổng 2 · Thẩm định báo cáo giữa kỳ',
+      label: 'Cổng 2 - Thẩm định báo cáo giữa kỳ',
       icon: ClipboardCheck,
     },
   ];

@@ -31,7 +31,7 @@ export function AdvisorMilestoneSetupPage() {
 
   const groupOptions = advisedGroups.map((g) => ({
     value: g.groupId,
-    label: `${g.groupCode} · ${g.studentNames}`,
+    label: `${g.groupCode} - ${g.studentNames}`,
   }));
 
   return (

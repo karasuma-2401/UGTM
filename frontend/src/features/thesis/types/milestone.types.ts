@@ -31,6 +31,19 @@ export interface CreateProgressMilestoneRequest {
   deadlineUtc: string;
 }
 
+export interface ProgressReportSubmissionDto {
+  progressReportId: string;
+  milestoneId: string;
+  groupId: string;
+  versionNo: number;
+  status: string;
+  gitUrl: string;
+  studentNote?: string | null;
+  isLate: boolean;
+  submittedAtUtc: string;
+  file: SubmissionFileDto;
+}
+
 export interface ProgressReportReviewDto {
   versionNo: number;
   decision: string;

@@ -58,7 +58,7 @@ export function ReviewMidtermTable({
                   >
                     <td className="py-3.5 pr-4">
                       <div className="font-semibold text-slate-800">
-                        {item.groupCode} · {item.studentNames}
+                        {item.groupCode} - {item.studentNames}
                       </div>
                       <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
                         {item.topicTitleVi}

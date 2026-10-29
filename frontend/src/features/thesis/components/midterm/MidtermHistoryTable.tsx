@@ -55,7 +55,7 @@ export function MidtermHistoryTable({
                 <td className="py-3 px-4 font-medium text-slate-900">
                   <div className="flex items-center gap-2">
                     <span className="text-primary font-semibold">
-                      v{versions.length + 1} ·
+                      v{versions.length + 1} -
                     </span>
                     <span className="truncate max-w-[200px] md:max-w-[280px]">
                       {selectedFile!.name}
@@ -87,7 +87,7 @@ export function MidtermHistoryTable({
                   <td className="py-3.5 px-4 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
                       <span className="text-slate-500 font-semibold">
-                        v{item.versionNo} ·
+                        v{item.versionNo} -
                       </span>
                       <span className="truncate max-w-[200px] md:max-w-[280px]">
                         {item.file.fileName}

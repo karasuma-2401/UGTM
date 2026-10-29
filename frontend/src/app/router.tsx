@@ -19,6 +19,7 @@ import {
   SyllabusReviewPage,
   MidtermSubmissionPage,
   MidtermReviewPage,
+  StudentMilestoneSubmissionPage,
   AdvisorMilestoneSetupPage,
 } from '../features/thesis';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
@@ -70,6 +71,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['Student', 'Admin']}>
             <MidtermSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/milestones',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <StudentMilestoneSubmissionPage />
           </ProtectedRoute>
         ),
       },

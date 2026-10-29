@@ -55,7 +55,7 @@ export function ReviewTopicDetailCard({
       <div className="space-y-1">
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Hồ sơ</p>
         <p className="text-sm font-semibold text-slate-800">
-          {topicCode} · {groupCode}
+          {topicCode} - {groupCode}
         </p>
         {topicTitleVi && topicTitleVi !== 'Chưa có dữ liệu' && (
           <p className="text-xs text-slate-600 line-clamp-2 mt-0.5">{topicTitleVi}</p>
@@ -120,7 +120,7 @@ export function ReviewTopicDetailCard({
         <div className="flex items-center justify-between text-xs text-slate-500 pt-0.5">
           <span>Phiên bản:</span>
           <span className="text-slate-700 font-medium">
-            v{latestVersionNo} {submittedAtUtc ? `· ${new Date(submittedAtUtc).toLocaleDateString('vi-VN')}` : ''}
+            v{latestVersionNo} {submittedAtUtc ? `- ${new Date(submittedAtUtc).toLocaleDateString('vi-VN')}` : ''}
           </span>
         </div>
       </div>

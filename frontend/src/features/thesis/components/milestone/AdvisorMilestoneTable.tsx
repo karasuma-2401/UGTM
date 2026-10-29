@@ -63,7 +63,7 @@ export function AdvisorMilestoneTable({
                   <td className="py-3.5 px-4 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
                       <span className="text-slate-500 font-semibold">
-                        {code} ·
+                        {code} -
                       </span>
                       <span className="truncate max-w-[220px] md:max-w-[300px]">
                         {item.milestone.title}

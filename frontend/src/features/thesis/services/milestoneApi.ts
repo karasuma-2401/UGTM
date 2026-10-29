@@ -5,6 +5,7 @@ import type {
   CreateProgressMilestoneRequest,
   ProgressReportHistoryDto,
   ProgressReportReviewDto,
+  ProgressReportSubmissionDto,
 } from '../types/milestone.types';
 import type { SubmissionFileDownloadDto } from '../types/syllabus.types';
 
@@ -55,6 +56,27 @@ export const milestoneApi = {
       }
       throw err;
     }
+  },
+
+  async submitProgressReport(
+    milestoneId: string,
+    data: { file: File; gitUrl?: string; studentNote?: string }
+  ): Promise<ProgressReportSubmissionDto> {
+    const formData = new FormData();
+    formData.append('file', data.file);
+    if (data.gitUrl) formData.append('gitUrl', data.gitUrl);
+    if (data.studentNote) formData.append('studentNote', data.studentNote);
+
+    const response = await httpClient.post<ApiResponse<ProgressReportSubmissionDto>>(
+      `/api/thesis/progress-milestones/${milestoneId}/report`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return unwrap(response.data);
   },
 
   async reviewProgressReport(

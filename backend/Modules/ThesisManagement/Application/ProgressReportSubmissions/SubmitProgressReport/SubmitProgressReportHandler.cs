@@ -24,7 +24,8 @@ public sealed class SubmitProgressReportHandler(
     IThesisManagementAuditOutbox auditOutbox,
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ISyllabusRepository? syllabusRepository = null)
 {
     public async Task<Result<ProgressReportSubmissionDto>> HandleAsync(
         SubmitProgressReportCommand command,
@@ -51,14 +52,37 @@ public sealed class SubmitProgressReportHandler(
         }
 
         var group = await groupRepository.GetByIdAsync(milestone.GroupId, cancellationToken);
-        if (group is null || !group.Members.Any(member => member.StudentId == currentUser.UserId.Value))
+        var isMember = group?.Members.Any(member => member.StudentId == currentUser.UserId.Value) ?? false;
+        var isAdministrator = ThesisAuthorization.IsAdministrator(currentUser);
+        if (group is null || (!isMember && !isAdministrator))
         {
             return Result.Failure<ProgressReportSubmissionDto>(ProgressReportErrors.AccessDenied);
         }
 
-        if (group.Status != StudentGroupStatus.InProgress)
+        if (group.Status != StudentGroupStatus.InProgress
+            && group.Status != StudentGroupStatus.MidtermSubmitted
+            && group.Status != StudentGroupStatus.SyllabusApproved)
         {
-            return Result.Failure<ProgressReportSubmissionDto>(ProgressReportErrors.InvalidSubmissionState);
+            var syllabus = syllabusRepository is not null
+                ? await syllabusRepository.GetByGroupIdAsync(group.Id, cancellationToken)
+                : null;
+
+            if (syllabus is not null && syllabus.Status == SyllabusStatus.Approved)
+            {
+                if (group.Status is StudentGroupStatus.Registered or StudentGroupStatus.SyllabusRevisionRequired)
+                {
+                    group.TrySubmitSyllabus();
+                }
+                if (group.Status is StudentGroupStatus.SyllabusSubmitted)
+                {
+                    group.TryApproveSyllabus();
+                }
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+            }
+            else
+            {
+                return Result.Failure<ProgressReportSubmissionDto>(ProgressReportErrors.InvalidSubmissionState);
+            }
         }
 
         var occurredAt = timeProvider.GetUtcNow().UtcDateTime;

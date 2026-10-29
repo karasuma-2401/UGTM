@@ -52,7 +52,7 @@ export function MidtermUploadCard({
       <div className="space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-500">
           <span className="font-medium text-slate-700">Tải lên</span>
-          <span>PDF / DOC / DOCX · tối đa 20 MB</span>
+          <span>PDF / DOC / DOCX - tối đa 20 MB</span>
         </div>
 
         <input
@@ -80,7 +80,7 @@ export function MidtermUploadCard({
                   </span>
                   <span className="text-slate-300">•</span>
                   <span className="text-xs font-medium text-amber-600">
-                    Tệp đã chọn · Chưa gửi
+                    Tệp đã chọn - Chưa gửi
                   </span>
                 </div>
               </div>
