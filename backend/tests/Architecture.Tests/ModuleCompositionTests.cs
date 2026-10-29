@@ -14,6 +14,8 @@ using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
 using UGTM.Modules.ThesisManagement.Application.StudentGroups.GetStudentGroupDetail;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.TopicCatalog.Contracts.Topics;
+using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusReviewQueue;
 
 namespace UGTM.Architecture.Tests;
 
@@ -49,6 +51,10 @@ public class ModuleCompositionTests
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IStudentGroupDetailReader>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<IBatchSummaryReader>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ITopicSummaryReader>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ITopicSearchReader>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IStudentSearchReader>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ISyllabusReviewQueryReader>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<GetSyllabusReviewQueueHandler>());
         Assert.Equal(
             ["AcademicPeriods", "DefenseCouncil", "ThesisManagement"],
             scope.ServiceProvider

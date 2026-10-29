@@ -60,6 +60,7 @@ using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalR
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.BeginFinalReportEvaluation;
 using UGTM.Modules.ThesisManagement.Contracts.AdvisorEvaluations;
 using UGTM.Modules.ThesisManagement.Application.StudentGroups.GetStudentGroupDetail;
+using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusReviewQueue;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -73,6 +74,8 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IStudentGroupRepository, StudentGroupRepository>();
         services.AddScoped<IStudentGroupDetailReader, StudentGroupDetailReader>();
         services.AddScoped<GetStudentGroupDetailHandler>();
+        services.AddScoped<ISyllabusReviewQueryReader, SyllabusReviewQueryReader>();
+        services.AddScoped<GetSyllabusReviewQueueHandler>();
         services.AddScoped<IReviewGateConfigurationRepository, ReviewGateConfigurationRepository>();
         services.AddScoped<ISyllabusRepository, SyllabusRepository>();
         services.AddScoped<IMidtermReportRepository, MidtermReportRepository>();

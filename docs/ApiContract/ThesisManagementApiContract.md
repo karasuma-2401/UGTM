@@ -9,13 +9,14 @@ CP7 đồng bộ yêu cầu file và data model, kiểm tra ba bộ test ThesisM
 
 Mọi endpoint trong tài liệu này yêu cầu Bearer token. Response thành công có dạng `ApiResponse<T>`; response lỗi chứa `code`, `message` và HTTP status phù hợp. Thời điểm truyền trong JSON dùng ISO 8601 UTC. Các endpoint tải tệp không trả object key nội bộ hoặc URL public.
 
-Đã bổ sung API đọc chi tiết nhóm `GET /api/thesis/groups/{groupId}/detail` theo dữ liệu BE hiện tại; không thay đổi domain, schema hoặc luồng nộp/thẩm định. API danh sách hồ sơ Cổng 1/Cổng 2 chưa được bổ sung trong thay đổi này.
+Đã bổ sung API đọc chi tiết nhóm `GET /api/thesis/groups/{groupId}/detail` và danh sách đề cương `GET /api/thesis/syllabus/submissions` theo dữ liệu BE hiện tại; không thay đổi domain, schema hoặc luồng nộp/thẩm định. API danh sách hồ sơ Cổng 2 chưa được bổ sung.
 
 ## Phân quyền và quy ước tệp
 
 | Nghiệp vụ | Chủ thể được phép |
 | --- | --- |
 | Xem chi tiết nhóm | `Student` đã `Confirmed` trong nhóm, GVHD hiện được phân công cho đề tài, `Faculty` có `thesis.review-gates.review`, hoặc `Admin` |
+| Danh sách hồ sơ đề cương Cổng 1 | Permission `thesis.review-gates.review`, hoặc `Admin` theo policy hiện tại |
 | Cấu hình deadline Cổng 1/Cổng 2 | `Admin`, `AcademicAffairs` có `thesis.review-gate-config.manage` |
 | Nộp hồ sơ Cổng 1/Cổng 2 | Bất kỳ sinh viên nào thuộc nhóm |
 | Nộp/nộp lại báo cáo cuối kỳ | Role `Student`, thành viên `Confirmed` của chính nhóm, đã được duyệt giữa kỳ |
@@ -32,6 +33,7 @@ Các file nộp chỉ chấp nhận `.pdf`, `.doc`, `.docx`, tối đa 20 MiB. S
 | Method | Route | Response |
 | --- | --- | --- |
 | `GET` | `/api/thesis/groups/{groupId}/detail` | `StudentGroupDetailDto` |
+| `GET` | `/api/thesis/syllabus/submissions` | `PagedResult<SyllabusReviewItemDto>` |
 | `PUT` | `/api/thesis/review-gate-configurations/{batchId}/{gateType}` | `ReviewGateConfigurationDto` |
 | `GET` | `/api/thesis/review-gate-configurations/{batchId}` | `IReadOnlyList<ReviewGateConfigurationDto>` |
 | `POST` | `/api/thesis/groups/{groupId}/syllabus/submissions` | `SyllabusSubmissionDto` |
@@ -52,6 +54,73 @@ Các file nộp chỉ chấp nhận `.pdf`, `.doc`, `.docx`, tối đa 20 MiB. S
 | `GET` | `/api/thesis/progress-report-files/{fileId}/download` | `SubmissionFileDownloadDto` |
 
 `{batchId}`, `{groupId}`, `{milestoneId}` và `{fileId}` là GUID. `gateType` chỉ nhận `Syllabus` hoặc `Midterm`.
+
+## Danh sách hồ sơ đề cương Cổng 1
+
+`GET /api/thesis/syllabus/submissions`, Bearer token có permission `thesis.review-gates.review` hoặc `Admin` theo policy BE hiện tại. Quyền dựa trên permission đã cấp, không thêm điều kiện role Faculty ngoài policy. Role Student/GVHD tự nó không cấp quyền xem danh sách; người được cấp permission hợp lệ được đọc theo cơ chế BE.
+
+| Query parameter | Kiểu | Quy tắc |
+| --- | --- | --- |
+| `batchId` | GUID, optional | Lọc theo `Topic.BatchId`. Bỏ trống thì không giới hạn đợt, không tự chọn `Open`. Đợt đã đóng vẫn được tra cứu; ID hợp lệ không khớp dữ liệu trả trang rỗng. GUID rỗng trả `400`. |
+| `status` | string, optional | `Submitted`, `NeedRevision`, `Approved`, `Rejected`; trim và không phân biệt hoa thường. Bỏ trống lấy cả bốn; không chấp nhận `Draft`, enum dạng số hoặc nhiều giá trị ghép. |
+| `keyword` | string, optional | Tìm chuỗi con theo tên đề tài Việt/Anh hoặc tên/MSSV thành viên hiện có, kể cả thành viên đang chờ xác nhận. Trim, không phân biệt hoa thường, có phân biệt dấu; `%`/`_` là ký tự tìm kiếm bình thường. Không tìm theo mã nhóm/đề tài không tồn tại trong BE. |
+| `pageNumber` | int, default `1` | Chuẩn hóa tối thiểu 1 theo convention phân trang BE. |
+| `pageSize` | int, default `20` | Chuẩn hóa trong khoảng 1–100. |
+
+Các filter kết hợp bằng AND; trong keyword, tên đề tài hoặc thông tin bất kỳ thành viên khớp là đủ. Tìm theo người dùng đã đổi role/trạng thái vẫn có hiệu lực nếu còn là thành viên nhóm; không lọc mất hồ sơ lịch sử theo trạng thái tài khoản. Lọc và đếm tại database trước phân trang, mỗi hồ sơ chỉ có một dòng dù nhiều thành viên cùng khớp.
+
+Response `200 OK`: `ApiResponse<PagedResult<SyllabusReviewItemDto>>`. `data` gồm `items`, `totalCount`, `pageNumber`, `pageSize`, `totalPages`, `hasNextPage`, `hasPreviousPage`. Trang vượt cuối hoặc bộ lọc không có kết quả trả `items: []`; trang vượt cuối giữ nguyên tổng số và số trang đã chuẩn hóa.
+
+Ví dụ `items[0]`:
+
+```json
+{
+  "syllabusId": "a1b07384-d113-46c9-8d7d-2b4702170f2a",
+  "groupId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "topicId": "c2b07384-d113-46c9-8d7d-2b4702170f2a",
+  "topicTitleVi": "Hệ thống quản lý khóa luận",
+  "topicTitleEn": "Thesis management system",
+  "batchId": "b1b07384-d113-46c9-8d7d-2b4702170f2b",
+  "batchName": "Đợt 1 HK1 2026–2027",
+  "students": [
+    {
+      "studentId": "e1f1c8a1-1111-4234-9e32-2c963f66afa1",
+      "userCode": "24521603",
+      "fullName": "Nguyễn Minh Đức"
+    }
+  ],
+  "advisor": {
+    "advisorId": "d3b07384-d113-46c9-8d7d-2b4702170f2d",
+    "fullName": "Trần Hoàng Long"
+  },
+  "currentVersionNo": 1,
+  "currentStatus": "Submitted",
+  "latestFile": {
+    "id": "a9a85f64-5717-4562-b3fc-2c963f66afa9",
+    "fileName": "DeCuong-v1.pdf",
+    "contentType": "application/pdf",
+    "fileSize": 2048576,
+    "fileExtension": ".pdf",
+    "checksumSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "uploadedBy": "e1f1c8a1-1111-4234-9e32-2c963f66afa1",
+    "uploadedAtUtc": "2026-10-29T08:00:00Z"
+  }
+}
+```
+
+- `currentStatus`/`currentVersionNo` lấy trực tiếp từ hồ sơ đề cương, không suy từ trạng thái nhóm. Ví dụ đề cương cập nhật sau đổi tên có thể vẫn `Approved` với version tăng lên.
+- `latestFile` dùng `SubmissionFileDto` hiện hữu: chỉ chọn `EntityType = Syllabus`, đúng ID hồ sơ và version hiện tại. Nếu có nhiều metadata cùng version, chọn `uploadedAt` mới nhất, rồi file ID giảm dần khi trùng thời gian. Không thay bằng file cũ, phiên bản tương lai hay file khác loại.
+- Sắp hồ sơ có file trước, theo `latestFile.uploadedAtUtc` giảm dần rồi `syllabusId` tăng dần. Hồ sơ thiếu file hiện tại đứng cuối, `latestFile: null`; không bỏ dòng hoặc thay đổi tổng số vì thiếu metadata.
+- `topicTitleEn`, `students[].userCode` nullable theo dữ liệu hiện tại. Thiếu bản ghi hiển thị thì `batchName`, tên GVHD, tên/MSSV sinh viên nullable, giữ ID và thành viên; server ghi log. Thiếu nhóm/đề tài hoặc đợt thành viên không khớp đề tài trong trang được trả là lỗi dữ liệu `500`, không tự sửa hoặc âm thầm bỏ dòng. Filter theo đợt/tên chỉ áp dụng được khi nguồn dữ liệu tương ứng còn tồn tại.
+- Danh sách không trả email sinh viên/GVHD, token xác nhận, object key hoặc public URL. Không có `groupCode`, `topicCode`, `academicTitle`, `isLate` từ bản nháp FE. FE đọc `data.items`, `currentStatus`, `currentVersionNo`, `latestFile.id`; tải file qua endpoint download hiện hữu.
+- GET chỉ đọc, không đổi trạng thái/phiên bản, deadline hoặc ghi audit nghiệp vụ. Không yêu cầu nhóm đang hoạt động, đợt đang mở hoặc còn hạn thẩm định.
+
+| HTTP | Error code | Ý nghĩa |
+| --- | --- | --- |
+| `400` | `SyllabusReview.InvalidRequest` | GUID đợt rỗng hoặc status không hợp lệ. Query không parse được GUID/int bị framework trả `400` theo cơ chế binding hiện tại. |
+| `401` | `SyllabusReview.AuthenticationRequired` | Token đã qua policy nhưng thiếu user ID hợp lệ; chưa đăng nhập bị middleware challenge. |
+| `403` | `SyllabusReview.AccessDenied` | Handler từ chối chủ thể không có quyền; HTTP policy có thể trả `403` trước khi handler chạy. |
+| `500` | `SyllabusReview.InconsistentData` | Dữ liệu nhóm/đề tài/đợt liên kết không hợp lệ trong trang kết quả. |
 
 ## Chi tiết nhóm khóa luận
 

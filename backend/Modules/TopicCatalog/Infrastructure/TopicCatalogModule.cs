@@ -39,6 +39,7 @@ public sealed class TopicCatalogModule : IModule
         services.AddScoped<ITopicQueryReader, TopicQueryReader>();
         services.AddScoped<ITopicAdvisorAssignmentContract, TopicAdvisorAssignmentContract>();
         services.AddScoped<ITopicSummaryReader, TopicSummaryReader>();
+        services.AddScoped<ITopicSearchReader, TopicSearchReader>();
         services.AddScoped<ITopicRenameContract, TopicRenameContract>();
 
         // Command Handlers
