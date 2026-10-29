@@ -84,6 +84,14 @@ $localConfiguration = @{
         Jwt = @{ PrivateKeyPath = $privateKeyPath }
         Email = @{ OutboxPartition = $outboxPartition }
     }
+    S3Storage = @{
+        Endpoint = 'http://localhost:9000'
+        PublicEndpoint = 'http://localhost:9000'
+        AccessKey = 'ugtm_admin'
+        SecretKey = 'ugtm_secret_pass_123'
+        BucketName = 'ugtm-thesis-submissions'
+        Region = 'us-east-1'
+    }
 }
 
 if (-not [string]::IsNullOrWhiteSpace($smtpHost)) {

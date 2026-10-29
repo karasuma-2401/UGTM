@@ -2,12 +2,13 @@ import type { ReactNode } from 'react';
 
 interface PageHeaderProps {
   title: string;
+  description?: ReactNode;
   icon?: ReactNode;
   children?: ReactNode;
   navigation?: ReactNode;
 }
 
-export function PageHeader({ title, icon, children, navigation }: PageHeaderProps) {
+export function PageHeader({ title, description, icon, children, navigation }: PageHeaderProps) {
   return (
     <header className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
       <div
@@ -24,7 +25,12 @@ export function PageHeader({ title, icon, children, navigation }: PageHeaderProp
               {icon}
             </span>
           )}
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+            {description && (
+              <div className="text-xs text-slate-500 mt-0.5">{description}</div>
+            )}
+          </div>
         </div>
         {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
       </div>

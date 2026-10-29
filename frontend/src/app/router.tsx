@@ -14,6 +14,7 @@ import { UsersPage } from '../features/identity';
 import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
 import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
 import { StudentTopicCatalogPage } from '../features/topics/pages/StudentTopicCatalogPage';
+import { SyllabusSubmissionPage, SyllabusReviewPage } from '../features/thesis';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -49,6 +50,26 @@ export const router = createBrowserRouter([
             <StudentTopicCatalogPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'thesis/proposal',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <SyllabusSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/review/syllabus',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin', 'AcademicAffairs']}>
+            <SyllabusReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/progress',
+        element: <Navigate to="/thesis/proposal" replace />,
       },
       {
         path: 'topics/advising',

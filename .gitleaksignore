@@ -1,4 +1,6 @@
 487f7bc655b500a78320bd25103da898b24e5e20:backend/tests/UGTM.Modules.Identity.Tests/Infrastructure/ClientSessionMetadataProviderTests.cs:generic-api-key:10
 58ab3ecbd6d401c5519e77c416cd07d92534ff54:docs/ApiContract/ThesisManagementApiContract.md:generic-api-key:188
+98488f1c04ba2d23b8726ce7dbf2133e75435b7b:backend/host/Api/appsettings.Development.json:generic-api-key:34
+98488f1c04ba2d23b8726ce7dbf2133e75435b7b:scripts/ConfigureDevelopment.ps1:generic-api-key:91
 e6f15b71894ad38ab01a1764b722a470a7a68950:docs/ApiContract/AdvisorEvaluationApprovalApiContract.md:generic-api-key:59
 e6f15b71894ad38ab01a1764b722a470a7a68950:docs/ApiContract/AdvisorEvaluationApprovalApiContract.md:generic-api-key:94
