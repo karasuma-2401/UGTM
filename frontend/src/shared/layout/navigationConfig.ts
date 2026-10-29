@@ -9,6 +9,7 @@ import {
   CalendarRange,
   UsersRound,
   FileText,
+  CalendarCheck,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -79,6 +80,12 @@ export const navigationSections: NavSectionConfig[] = [
         label: 'Đề tài hướng dẫn',
         path: '/topics/advising',
         icon: BookOpen,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
+        label: 'Tiến độ sinh viên',
+        path: '/advisor/milestones',
+        icon: CalendarCheck,
         roles: ['Lecturer', 'Admin'],
       },
       {

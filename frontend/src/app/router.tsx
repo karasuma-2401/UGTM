@@ -19,6 +19,7 @@ import {
   SyllabusReviewPage,
   MidtermSubmissionPage,
   MidtermReviewPage,
+  AdvisorMilestoneSetupPage,
 } from '../features/thesis';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
@@ -95,6 +96,14 @@ export const router = createBrowserRouter([
       {
         path: 'thesis/progress',
         element: <Navigate to="/thesis/proposal" replace />,
+      },
+      {
+        path: 'advisor/milestones',
+        element: (
+          <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
+            <AdvisorMilestoneSetupPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'topics/advising',
