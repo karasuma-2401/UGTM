@@ -52,13 +52,28 @@ export function AdvisorMilestoneTable({
               const status = item.report?.currentStatus || 'NotSubmitted';
               const versionNo = item.report?.currentVersionNo;
 
+              const handleRowClick = () => {
+                if (status === 'Submitted' || status === 'Accepted' || status === 'NeedRevision') {
+                  onReviewMilestone?.(item.milestone.id);
+                } else {
+                  onSelectMilestone(item);
+                }
+              };
+
               return (
                 <tr
                   key={item.milestone.id}
-                  onClick={() => onSelectMilestone(item)}
-                  className={`hover:bg-slate-50/70 transition-colors cursor-pointer ${
+                  onClick={handleRowClick}
+                  className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${
                     isSelected ? 'bg-blue-50/40' : ''
                   }`}
+                  title={
+                    status === 'Submitted'
+                      ? 'Nhấp để đánh giá báo cáo của mốc này'
+                      : status === 'Accepted' || status === 'NeedRevision'
+                      ? 'Nhấp để xem chi tiết báo cáo và đánh giá'
+                      : 'Nhấp để chỉnh sửa mốc'
+                  }
                 >
                   <td className="py-3.5 px-4 font-medium text-slate-900">
                     <div className="flex items-center gap-2">
@@ -81,14 +96,16 @@ export function AdvisorMilestoneTable({
                   <td className="py-3.5 px-4">
                     <MilestoneStatusBadge status={status} versionNo={versionNo} />
                   </td>
-                  <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                  <td className="py-3.5 px-4 text-right">
                     {status === 'Submitted' ? (
                       <Button
                         type="button"
                         size="sm"
-                        variant="ghost"
-                        className="h-8 text-xs font-semibold text-primary hover:text-primary hover:bg-blue-50"
-                        onClick={() => onReviewMilestone?.(item.milestone.id)}
+                        className="h-8 px-3 text-xs font-semibold bg-primary hover:bg-primary/90 text-white shadow-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReviewMilestone?.(item.milestone.id);
+                        }}
                       >
                         Đánh giá
                       </Button>
@@ -96,9 +113,12 @@ export function AdvisorMilestoneTable({
                       <Button
                         type="button"
                         size="sm"
-                        variant="ghost"
-                        className="h-8 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                        onClick={() => onReviewMilestone?.(item.milestone.id)}
+                        variant="outline"
+                        className="h-8 px-3 text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReviewMilestone?.(item.milestone.id);
+                        }}
                       >
                         Xem
                       </Button>
@@ -107,8 +127,11 @@ export function AdvisorMilestoneTable({
                         type="button"
                         size="sm"
                         variant="ghost"
-                        className="h-8 text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-                        onClick={() => onSelectMilestone(item)}
+                        className="h-8 px-2.5 text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectMilestone(item);
+                        }}
                       >
                         Sửa deadline
                       </Button>
