@@ -10,6 +10,7 @@ using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.SubmitM
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
+using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.GetMidtermReportReviewQueue;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Endpoints;
 
@@ -20,6 +21,29 @@ public static class MidtermReportSubmissionEndpoints
 
     public static IEndpointRouteBuilder MapMidtermReportSubmissionEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapGet("/api/thesis/midterm-report/submissions", GetReviewQueueAsync)
+            .WithTags("ThesisManagement.MidtermReport")
+            .RequireAuthorization(ReviewPolicy)
+            .WithSummary("Lấy danh sách hồ sơ báo cáo giữa kỳ Cổng 2 để thẩm định")
+            .WithDescription("""
+                Yêu cầu permission thesis.review-gates.review hoặc Admin theo policy hiện tại.
+                Lọc theo batchId, status (Submitted, NeedRevision, Approved, Rejected), keyword tên đề tài
+                Việt/Anh hoặc tên/MSSV thành viên. Không truyền batchId thì không giới hạn đợt;
+                không tự chọn Open. Keyword tìm chuỗi con không phân biệt hoa thường, có phân biệt dấu.
+
+                Mặc định pageNumber=1, pageSize=20; chuẩn hóa số trang tối thiểu 1 và kích thước 1–100.
+                Mỗi hồ sơ Cổng 2 có một dòng, trạng thái/version lấy từ MidtermReport, file đúng loại và version.
+                Sắp theo thời điểm upload file giảm dần rồi ID báo cáo; hồ sơ thiếu file đứng cuối.
+                Trả ApiResponse<PagedResult<MidtermReportReviewItemDto>>, không có mã nghiệp vụ hoặc isLate.
+                Dữ liệu hiển thị/file bị thiếu trả null, không bỏ dòng; liên kết lõi không hợp lệ trả 500.
+                400: filter không hợp lệ; 401: chưa đăng nhập; 403: không có quyền; 500: dữ liệu liên kết lỗi.
+                """)
+            .Produces<ApiResponse<PagedResult<MidtermReportReviewItemDto>>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status500InternalServerError);
+
         var group = endpoints.MapGroup("/api/thesis/groups/{groupId:guid}/midterm-report")
             .WithTags("ThesisManagement.MidtermReport");
 
@@ -88,6 +112,17 @@ public static class MidtermReportSubmissionEndpoints
 
         return endpoints;
     }
+
+    private static async Task<IResult> GetReviewQueueAsync(
+        GetMidtermReportReviewQueueHandler handler,
+        CancellationToken cancellationToken,
+        Guid? batchId = null,
+        string? status = null,
+        string? keyword = null,
+        int pageNumber = 1,
+        int pageSize = 20)
+        => (await handler.HandleAsync(new GetMidtermReportReviewQueueQuery(batchId, status, keyword, pageNumber, pageSize),
+            cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> SubmitAsync(
         Guid groupId,

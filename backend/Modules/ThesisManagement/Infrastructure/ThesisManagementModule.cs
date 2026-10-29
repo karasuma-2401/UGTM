@@ -59,6 +59,9 @@ using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalR
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportFileDownload;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.BeginFinalReportEvaluation;
 using UGTM.Modules.ThesisManagement.Contracts.AdvisorEvaluations;
+using UGTM.Modules.ThesisManagement.Application.StudentGroups.GetStudentGroupDetail;
+using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusReviewQueue;
+using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.GetMidtermReportReviewQueue;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -70,6 +73,12 @@ public sealed class ThesisManagementModule : IModule
     {
         services.AddModuleDbContext<ThesisManagementDbContext>(configuration);
         services.AddScoped<IStudentGroupRepository, StudentGroupRepository>();
+        services.AddScoped<IStudentGroupDetailReader, StudentGroupDetailReader>();
+        services.AddScoped<GetStudentGroupDetailHandler>();
+        services.AddScoped<ISyllabusReviewQueryReader, SyllabusReviewQueryReader>();
+        services.AddScoped<GetSyllabusReviewQueueHandler>();
+        services.AddScoped<IMidtermReportReviewQueryReader, MidtermReportReviewQueryReader>();
+        services.AddScoped<GetMidtermReportReviewQueueHandler>();
         services.AddScoped<IReviewGateConfigurationRepository, ReviewGateConfigurationRepository>();
         services.AddScoped<ISyllabusRepository, SyllabusRepository>();
         services.AddScoped<IMidtermReportRepository, MidtermReportRepository>();
@@ -153,6 +162,7 @@ public sealed class ThesisManagementModule : IModule
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapStudentGroupEndpoints();
         endpoints.MapReviewGateConfigurationEndpoints();
         endpoints.MapSyllabusSubmissionEndpoints();
         endpoints.MapMidtermReportSubmissionEndpoints();
