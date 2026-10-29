@@ -35,6 +35,7 @@ public sealed class AcademicPeriodsModule : IModule
     {
         services.AddModuleDbContext<AcademicPeriodsDbContext>(configuration);
         services.AddScoped<IKltnBatchReader, KltnBatchReader>();
+        services.AddScoped<IBatchSummaryReader, BatchSummaryReader>();
         services.AddScoped<IAcademicBatchQueryReader, AcademicBatchQueryReader>();
         services.AddScoped<IScoreConfigurationQueryReader, ScoreConfigurationQueryReader>();
         services.AddScoped<IKltnBatchRepository, KltnBatchRepository>();
