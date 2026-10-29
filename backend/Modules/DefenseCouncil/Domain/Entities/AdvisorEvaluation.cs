@@ -86,6 +86,13 @@ public sealed class AdvisorEvaluation
         _ = NormalizeComment(comment!);
     }
 
+    public static void ValidateDecisionInput(bool allowsReviewerAssignment, string? rejectionReason)
+    {
+        _ = allowsReviewerAssignment
+            ? EnsureNoRejectionReason(rejectionReason)
+            : NormalizeRejectionReason(rejectionReason);
+    }
+
     public bool TryUpdate(
         decimal score,
         string comment,
@@ -114,8 +121,9 @@ public sealed class AdvisorEvaluation
 
         EnsureNonempty(decidedBy, nameof(decidedBy));
         EnsureUtc(decidedAtUtc, nameof(decidedAtUtc));
+        ValidateDecisionInput(allowsReviewerAssignment, rejectionReason);
         var normalizedRejectionReason = allowsReviewerAssignment
-            ? EnsureNoRejectionReason(rejectionReason)
+            ? null
             : NormalizeRejectionReason(rejectionReason);
 
         AllowsReviewerAssignment = allowsReviewerAssignment;

@@ -1,10 +1,14 @@
 using Microsoft.EntityFrameworkCore;
+using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Contracts.AdvisorEvaluations;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence.Repositories;
 
-internal sealed class AdvisorEvaluationWorkflowContract(ThesisManagementDbContext context)
+internal sealed class AdvisorEvaluationWorkflowContract(
+    ThesisManagementDbContext context,
+    IThesisManagementAuditOutbox auditOutbox)
     : IAdvisorEvaluationWorkflowContract
 {
     public async Task<AdvisorEvaluationFinalReportContextContractDto?> GetFinalReportContextAsync(
@@ -144,6 +148,37 @@ internal sealed class AdvisorEvaluationWorkflowContract(ThesisManagementDbContex
         context.Entry(report).Property(value => value.Status).IsModified = true;
         return new AdvisorEvaluationGroupReadinessResultContractDto(
             AdvisorEvaluationGroupReadinessOutcome.Succeeded, groupId);
+    }
+
+    public void AddDecisionAudit(AdvisorEvaluationDecisionAuditContractDto decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        if (decision.EvaluationId == Guid.Empty || decision.GroupId == Guid.Empty
+            || decision.FinalReportId == Guid.Empty || decision.ReportVersionNo < 1
+            || decision.DecidedBy == Guid.Empty || decision.DecidedAtUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new ArgumentException("Advisor-evaluation decision audit data is invalid.", nameof(decision));
+        }
+
+        auditOutbox.Add(new AuditIntegrationEntry(
+            "StudentGroup",
+            decision.GroupId.ToString(),
+            decision.AllowsReviewerAssignment
+                ? IntegrationAuditActions.AdvisorEvaluationReviewerAssignmentApproved
+                : IntegrationAuditActions.AdvisorEvaluationReviewerAssignmentRejected,
+            "Succeeded",
+            decision.AllowsReviewerAssignment ? null : "AdvisorEvaluationRejected",
+            new
+            {
+                decision.EvaluationId,
+                decision.FinalReportId,
+                decision.ReportVersionNo,
+                decision.EvaluationVersion,
+                decision.AllowsReviewerAssignment,
+                decision.RejectionReason,
+                decision.DecidedBy,
+                decision.DecidedAtUtc
+            }), decision.DecidedAtUtc);
     }
 
     public async Task<bool> IsGroupReadyForReviewerAssignmentAsync(

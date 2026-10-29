@@ -106,6 +106,15 @@ public sealed class SaveAdvisorEvaluationHandler(
                 : SaveWorkflowResult.Replayed(savedResponse);
         }
 
+        // A successful approval moves the group out of FinalReportSubmitted. Check the aggregate
+        // before that state guard so every later score-edit attempt consistently reports that the
+        // evaluation itself is locked rather than suggesting the group can be made editable again.
+        var existing = await evaluationRepository.GetByGroupIdAsync(context.GroupId, cancellationToken);
+        if (existing?.IsLocked == true)
+        {
+            return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.Locked);
+        }
+
         if (!context.IsInitialFinal || !context.IsUnderEvaluation)
         {
             return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.InvalidEvaluationState);
@@ -123,7 +132,6 @@ public sealed class SaveAdvisorEvaluationHandler(
             return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.FileNotFound);
         }
 
-        var existing = await evaluationRepository.GetByGroupIdAsync(context.GroupId, cancellationToken);
         var existingError = ValidateExistingEvaluation(existing, command.ExpectedEvaluationVersion, context);
         if (existingError is not null)
         {

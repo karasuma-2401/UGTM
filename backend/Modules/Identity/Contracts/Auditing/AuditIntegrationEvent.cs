@@ -143,4 +143,16 @@ public static class IntegrationAuditActions
 
     public const string AdvisorEvaluationSaved =
         "DefenseCouncil.AdvisorEvaluation.Saved";
+
+    public const string AdvisorEvaluationApproved =
+        "DefenseCouncil.AdvisorEvaluation.Approved";
+
+    public const string AdvisorEvaluationRejected =
+        "DefenseCouncil.AdvisorEvaluation.Rejected";
+
+    public const string AdvisorEvaluationReviewerAssignmentApproved =
+        "ThesisManagement.AdvisorEvaluation.ReviewerAssignmentApproved";
+
+    public const string AdvisorEvaluationReviewerAssignmentRejected =
+        "ThesisManagement.AdvisorEvaluation.ReviewerAssignmentRejected";
 }

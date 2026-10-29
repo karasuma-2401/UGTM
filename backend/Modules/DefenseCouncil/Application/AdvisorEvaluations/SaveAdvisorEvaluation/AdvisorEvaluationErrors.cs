@@ -10,6 +10,8 @@ public static class AdvisorEvaluationErrors
         "AdvisorEvaluation.InvalidScore", "Điểm GVHD phải nằm trong khoảng từ 0 đến 10.");
     public static readonly Error InvalidComment = Error.Validation(
         "AdvisorEvaluation.InvalidComment", "Nhận xét GVHD phải có từ 1 đến 2000 ký tự.");
+    public static readonly Error InvalidDecision = Error.Validation(
+        "AdvisorEvaluation.InvalidDecision", "Quyết định duyệt không hợp lệ; từ chối phải có lý do và đồng ý không kèm lý do từ chối.");
     public static readonly Error AuthenticationRequired = Error.Unauthorized(
         "AdvisorEvaluation.AuthenticationRequired", "Bạn cần đăng nhập để chấm báo cáo cuối kỳ.");
     public static readonly Error AccessDenied = Error.Forbidden(
