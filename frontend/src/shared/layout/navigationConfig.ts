@@ -99,6 +99,12 @@ export const navigationSections: NavSectionConfig[] = [
         icon: ClipboardCheck,
         roles: ['Faculty', 'Admin'],
       },
+      {
+        label: 'Thẩm định đề cương',
+        path: '/thesis/review/syllabus',
+        icon: ClipboardCheck,
+        roles: ['Faculty', 'Admin', 'AcademicAffairs'],
+      },
     ],
   },
 ];

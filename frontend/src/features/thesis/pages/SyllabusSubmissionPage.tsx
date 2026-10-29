@@ -6,7 +6,8 @@ import {
   SyllabusTopicInfoCard,
 } from '../components/submission';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2, ChevronRight, BookOpen } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { AlertCircle, CheckCircle2, BookOpen, FileUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function SyllabusSubmissionPage() {
@@ -39,11 +40,6 @@ export function SyllabusSubmissionPage() {
       : 'KLTN');
   const batchName = groupDetail?.batchName || 'Đợt KLTN';
 
-  const memberNames =
-    groupDetail?.members && groupDetail.members.length > 0
-      ? groupDetail.members.map((m) => m.fullName).join(' / ')
-      : 'Đang cập nhật';
-
   const advisorName = groupDetail?.advisor?.fullName
     ? `${groupDetail.advisor.academicTitle || 'GV.'} ${groupDetail.advisor.fullName}`.trim()
     : 'Chưa cập nhật';
@@ -74,39 +70,16 @@ export function SyllabusSubmissionPage() {
 
   return (
     <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 space-y-6">
-      <div className="flex items-center justify-between text-xs text-slate-500">
-        <div className="flex items-center gap-1.5 font-medium">
-          <span>Khóa luận</span>
-          <ChevronRight className="size-3 text-slate-400" />
-          <span className="text-slate-800">Sinh viên</span>
-        </div>
-        <div className="font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">
+      <PageHeader
+        title="Nộp đề cương chi tiết"
+        description={`${groupCode} · ${topicCode} · GVHD: ${advisorName}`}
+        icon={<FileUp />}
+      >
+        <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
           {batchName}
-        </div>
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Nộp đề cương chi tiết
-          </h1>
-          <p className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="font-medium text-slate-700">Tuần 2</span>
-            <span>-</span>
-            <span>{groupCode}</span>
-            <span>-</span>
-            <span>{topicCode}</span>
-            <span>-</span>
-            <span>{memberNames}</span>
-            <span>-</span>
-            <span>GVHD: {advisorName}</span>
-          </p>
-        </div>
-
-        <div className="shrink-0">
-          <SyllabusStatusBadge status={currentStatus} className="text-xs px-3 py-1.5" />
-        </div>
-      </div>
+        </span>
+        <SyllabusStatusBadge status={currentStatus} className="text-xs px-3 py-1.5" />
+      </PageHeader>
 
       {actionError && (
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
