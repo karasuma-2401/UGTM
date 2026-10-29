@@ -155,7 +155,7 @@ public static class SessionEndpoints
         RefreshSessionHandler handler,
         CancellationToken cancellationToken)
     {
-        await antiforgery.ValidateRequestAsync(context);
+        await antiforgery.ValidateRequestSafelyAsync(context);
         var refreshToken = cookies.Read(context.Request);
         if (string.IsNullOrWhiteSpace(refreshToken))
         {
@@ -191,7 +191,7 @@ public static class SessionEndpoints
         LogoutHandler handler,
         CancellationToken cancellationToken)
     {
-        await antiforgery.ValidateRequestAsync(context);
+        await antiforgery.ValidateRequestSafelyAsync(context);
         var result = await handler.HandleAsync(
             new LogoutCommand(cookies.Read(context.Request)),
             cancellationToken);

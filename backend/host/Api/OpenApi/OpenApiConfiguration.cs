@@ -14,7 +14,9 @@ public static class OpenApiConfiguration
         services.AddOpenApi(options =>
         {
             options.AddDocumentTransformer<BearerSecurityDocumentTransformer>();
+            options.AddDocumentTransformer<ModuleTagOrderingDocumentTransformer>();
             options.AddOperationTransformer<BearerSecurityOperationTransformer>();
+            options.AddOperationTransformer<IdempotencyOperationTransformer>();
         });
 
         return services;
@@ -52,6 +54,56 @@ public static class OpenApiConfiguration
         }
     }
 
+    private sealed class ModuleTagOrderingDocumentTransformer : IOpenApiDocumentTransformer
+    {
+        public Task TransformAsync(
+            OpenApiDocument document,
+            OpenApiDocumentTransformerContext context,
+            CancellationToken cancellationToken)
+        {
+            if (document.Paths != null)
+            {
+                var pingPaths = document.Paths.Keys
+                    .Where(path => path.Contains("/ping", StringComparison.OrdinalIgnoreCase)
+                                   || path.Contains("/api/modules/", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                foreach (var path in pingPaths)
+                {
+                    document.Paths.Remove(path);
+                }
+            }
+
+            var allTags = (document.Paths?.Values.AsEnumerable() ?? Enumerable.Empty<IOpenApiPathItem>())
+                .Where(p => p.Operations != null)
+                .SelectMany(p => p.Operations.Values)
+                .SelectMany(op => (IEnumerable<OpenApiTagReference>?)op.Tags ?? [])
+                .Select(t => t.Name)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct()
+                .OrderBy(GetModuleOrder)
+                .ThenBy(name => name)
+                .Select(name => new OpenApiTag { Name = name! })
+                .ToList();
+
+            document.Tags = new HashSet<OpenApiTag>(allTags);
+
+            return Task.CompletedTask;
+        }
+
+        private static int GetModuleOrder(string? tagName)
+        {
+            if (string.IsNullOrWhiteSpace(tagName)) return 100;
+            if (tagName.StartsWith("Identity", StringComparison.OrdinalIgnoreCase)) return 10;
+            if (tagName.StartsWith("AcademicPeriods", StringComparison.OrdinalIgnoreCase)) return 20;
+            if (tagName.StartsWith("TopicCatalog", StringComparison.OrdinalIgnoreCase)) return 30;
+            if (tagName.StartsWith("ThesisManagement", StringComparison.OrdinalIgnoreCase)) return 40;
+            if (tagName.StartsWith("DefenseCouncil", StringComparison.OrdinalIgnoreCase)) return 50;
+            if (tagName.StartsWith("Notification", StringComparison.OrdinalIgnoreCase)) return 60;
+            return 100;
+        }
+    }
+
     private sealed class BearerSecurityOperationTransformer : IOpenApiOperationTransformer
     {
         public Task TransformAsync(
@@ -72,6 +124,43 @@ public static class OpenApiConfiguration
             {
                 [new OpenApiSecuritySchemeReference(BearerScheme, context.Document)] = []
             });
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class IdempotencyOperationTransformer : IOpenApiOperationTransformer
+    {
+        public Task TransformAsync(
+            OpenApiOperation operation,
+            OpenApiOperationTransformerContext context,
+            CancellationToken cancellationToken)
+        {
+            var relativePath = context.Description.RelativePath ?? string.Empty;
+            var isIdempotentEndpoint = relativePath.Contains("advisor-evaluations", StringComparison.OrdinalIgnoreCase)
+                                       || relativePath.Contains("approval", StringComparison.OrdinalIgnoreCase);
+
+            if (!isIdempotentEndpoint)
+            {
+                return Task.CompletedTask;
+            }
+
+            operation.Parameters ??= [];
+            if (!operation.Parameters.Any(p => string.Equals(p.Name, "Idempotency-Key", StringComparison.OrdinalIgnoreCase)))
+            {
+                operation.Parameters.Add(new OpenApiParameter
+                {
+                    Name = "Idempotency-Key",
+                    In = ParameterLocation.Header,
+                    Required = false,
+                    Description = "UUID duy nhất chống gửi trùng lặp. Ở môi trường Development, nếu để trống server sẽ tự động sinh UUID mới.",
+                    Schema = new OpenApiSchema
+                    {
+                        Type = JsonSchemaType.String,
+                        Format = "uuid"
+                    }
+                });
+            }
 
             return Task.CompletedTask;
         }

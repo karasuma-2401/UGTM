@@ -1,8 +1,8 @@
 # Mô hình dữ liệu UGTM
 
-Đối chiếu source ngày 21/10/2026. Nghiệp vụ theo [Requirements.md](Requirements.md); cấu trúc dưới đây lấy từ metadata mô hình EF Core, không suy diễn từ sơ đồ kiến trúc cũ trong Word.
+Đối chiếu source ngày 29/10/2026. Nghiệp vụ theo [Requirements.md](Requirements.md); cấu trúc dưới đây lấy từ metadata mô hình EF Core, không suy diễn từ sơ đồ kiến trúc cũ trong Word.
 
-Phạm vi SCRUM-102 (`FinalReport`, metadata `SubmissionFile`, concurrency của nhóm và trạng thái xác nhận thành viên) được đồng bộ ngày 28/10/2026. Các phần khác, bao gồm thống kê tổng hợp số bảng/FK, giữ mốc đối chiếu riêng ở trên; xem [nghiệm thu SCRUM-102](ApiContract/FinalReportSubmissionVerification.md) để biết phạm vi đã kiểm chứng.
+Phạm vi SCRUM-102 (`FinalReport`, metadata `SubmissionFile`, concurrency của nhóm và trạng thái xác nhận thành viên) và SCRUM-103 (`AdvisorEvaluation`, audit bàn giao phản biện, eligibility contract) được đồng bộ ngày 29/10/2026. Các phần khác, bao gồm thống kê tổng hợp số bảng/FK, giữ mốc đối chiếu riêng ở trên; xem [nghiệm thu SCRUM-102](ApiContract/FinalReportSubmissionVerification.md) và [nghiệm thu SCRUM-103](ApiContract/AdvisorEvaluationApprovalVerification.md) để biết phạm vi đã kiểm chứng.
 
 ## 1. Nguồn chuẩn
 
@@ -29,6 +29,7 @@ Nguồn thực thi: [EF configurations tại từng module](../backend/Modules),
 - Giữa kỳ dùng AdvisorFeedback, kết luận tiếp tục/dừng, StopReason. `faculty_feedback` cũ được rename sang `advisor_feedback` để giữ dữ liệu; policy GVHD cần triển khai.
 - Phân công nhiều phản biện bằng thứ tự phân công; lưu riêng RevisionFeedback để API có thể công khai góp ý mà bảo mật điểm/phiếu.
 - Lưu chiểu có metadata Việt/Anh, phiên bản, GVHD xác nhận và phản hồi Khoa; biên bản có người cấp mở khóa.
+- `AdvisorEvaluation` mới luôn gắn bằng snapshot với `FinalReport`, phiên bản, `SubmissionFile` và checksum đã khóa. Các giá trị này nằm ở schema DefenseCouncil nhưng được kiểm tra chéo trong transaction với ThesisManagement; không thêm FK xuyên module. Bản ghi cũ không đủ binding mang cờ `IsLegacy`, không được dùng cho workflow SCRUM-103.
 - Migration seed 6 role hệ thống; không seed tài khoản hoặc mật khẩu. Không thay đổi provider/database bằng việc sửa docs.
 
 ## 3. Ràng buộc và giới hạn
@@ -206,17 +207,27 @@ PK: `id`. Unique: `(template_version_id, order_index)` và `(template_version_id
 | Id | id | `Guid` | `uuid` | Không | — |
 | AllowsReviewerAssignment | allows_reviewer_assignment | `Boolean?` | `boolean` | Có | — |
 | Comment | comment | `String` | `text` | Có | — |
+| DecisionAt | decision_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| DecisionBy | decision_by | `Guid?` | `uuid` | Có | — |
 | EvaluatedAt | evaluated_at | `DateTime` | `timestamp with time zone` | Không | — |
+| EvaluatedBy | evaluated_by | `Guid?` | `uuid` | Có | — |
 | ExclusionReason | exclusion_reason | `String` | `text` | Có | — |
+| FinalReportId | final_report_id | `Guid?` | `uuid` | Có | — |
 | GroupId | group_id | `Guid` | `uuid` | Không | — |
 | IsIgnoredInCalculation | is_ignored_in_calculation | `Boolean` | `boolean` | Không | false |
+| IsLegacy | is_legacy | `Boolean` | `boolean` | Không | true |
+| RejectionReason | rejection_reason | `String` | `text` | Có | — |
+| ReportVersionNo | report_version_no | `Int32?` | `integer` | Có | — |
 | Score | score | `Decimal` | `numeric(4,2)` | Không | — |
+| SubmissionChecksumSha256 | submission_checksum_sha256 | `String` | `character varying(64)` | Có | — |
+| SubmissionFileId | submission_file_id | `Guid?` | `uuid` | Có | — |
+| Version | xmin | `UInt32` | `xid` | Không | PostgreSQL quản lý |
 
 PK: `id`.
 
-Index: `ix_advisor_evaluation_group_id` (group_id) unique.
+Index: `ix_advisor_evaluation_group_id` (group_id) unique; `ix_advisor_evaluation_final_report_id` (final_report_id); `ix_advisor_evaluation_submission_file_id` (submission_file_id); `ix_advisor_evaluation_evaluated_by` (evaluated_by); `ix_advisor_evaluation_decision_by` (decision_by).
 
-Check: `ck_advisor_evaluation_score`: `score BETWEEN 0 AND 10`.
+Check: `ck_advisor_evaluation_score`: `score BETWEEN 0 AND 10`. Với `is_legacy = false`, `ck_advisor_evaluation_workflow_binding` bắt buộc final report, số phiên bản dương, submission file, SHA-256 64 ký tự, actor chấm và nhận xét đã trim 1–2.000 ký tự. `ck_advisor_evaluation_reviewer_assignment_decision` buộc quyết định chưa đồng ý có lý do trim 1–1.000 ký tự, actor/thời điểm quyết định; quyết định đồng ý không có lý do. `Version` là concurrency token `xmin`; `IsLocked` là thuộc tính suy ra từ `!IsLegacy && AllowsReviewerAssignment == true`, không phải cột.
 
 ### councils.council — Council
 
@@ -707,7 +718,7 @@ Navigation: `Group` → StudentGroup.
 
 SCRUM-102 dùng một hồ sơ `InitialFinal` cho mỗi nhóm: `CurrentVersionNo` khởi tạo 1, tăng khi nộp lại; không đổi `VersionType` thành `RevisedAfterReviewer`. `SubmittedAt` là thời điểm UTC của phiên bản hiện tại. File của mỗi lần nộp nằm tại `SubmissionFile` với `EntityType = FinalReport`, `EntityId = FinalReport.Id`, `VersionNo = CurrentVersionNo`; mọi phiên bản cũ được giữ.
 
-`Submitted → UnderEvaluation` chỉ qua thao tác bắt đầu chấm của GVHD hiện tại/Admin với số phiên bản đã xem. Khi `UnderEvaluation`, không cho nộp lại/tăng phiên bản. Không có cột riêng cho người/thời điểm bắt đầu chấm: thông tin này, file ID và checksum được lưu trong audit action `ThesisManagement.FinalReport.EvaluationStarted`. Nộp/nộp lại ghi action `ThesisManagement.FinalReport.Submitted`; trạng thái, metadata và audit outbox lưu cùng transaction. `xmin` của cả nhóm và báo cáo được kiểm tra khi nộp lại/bắt đầu chấm. Xem [API contract](ApiContract/ThesisManagementApiContract.md).
+`Submitted → UnderEvaluation` chỉ qua thao tác bắt đầu chấm của GVHD hiện tại/Admin với số phiên bản đã xem. Khi `UnderEvaluation`, không cho nộp lại/tăng phiên bản. Không có cột riêng cho người/thời điểm bắt đầu chấm: thông tin này, file ID và checksum được lưu trong audit action `ThesisManagement.FinalReport.EvaluationStarted`. SCRUM-103 chụp các giá trị đó vào `councils.advisor_evaluation` và chỉ khi duyệt đồng ý mới chuyển nhóm `FinalReportSubmitted → ReadyForReviewerAssignment`; không đổi trạng thái `FinalReport` khỏi `UnderEvaluation`. Nộp/nộp lại ghi action `ThesisManagement.FinalReport.Submitted`; trạng thái, metadata và audit outbox lưu cùng transaction. `xmin` của cả nhóm và báo cáo được kiểm tra khi nộp lại/bắt đầu chấm/duyệt. Xem [API contract](ApiContract/ThesisManagementApiContract.md) và [contract phiếu GVHD](ApiContract/AdvisorEvaluationApprovalApiContract.md).
 
 Migration nền tảng: `20261027174826_AddFinalReportSubmissionFoundation`; CP2–CP7 không thêm migration mới. Migration đặt số phiên bản của hồ sơ cũ thành 1, không tự tạo file cho hồ sơ cũ thiếu metadata. Handler trả `FileNotFound` khi không có file để bắt đầu chấm; cần xử lý dữ liệu cũ trước khi sử dụng hồ sơ đó.
 

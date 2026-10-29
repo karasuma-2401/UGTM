@@ -229,6 +229,17 @@ public sealed class StudentGroup : AggregateRoot<Guid>
         return true;
     }
 
+    public bool TryMakeReadyForReviewerAssignment()
+    {
+        if (Status != StudentGroupStatus.FinalReportSubmitted)
+        {
+            return false;
+        }
+
+        Status = StudentGroupStatus.ReadyForReviewerAssignment;
+        return true;
+    }
+
     public bool TryStop()
     {
         if (Status is StudentGroupStatus.Stopped

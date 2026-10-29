@@ -35,6 +35,9 @@ using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Infrastructure;
 using UGTM.Modules.ThesisManagement.Infrastructure.Persistence;
+using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Infrastructure;
+using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 using IdentityUser = UGTM.Modules.Identity.Domain.Entities.User;
 
@@ -76,6 +79,7 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
             ["DATABASE_CONNECTION_STRING"] = fixture.ConnectionString
         });
         new ThesisManagementModule().RegisterModule(builder.Services, builder.Configuration);
+        new DefenseCouncilModule().RegisterModule(builder.Services, builder.Configuration);
         builder.Services.RemoveAll<IHostedService>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -86,6 +90,7 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         builder.Services.AddScoped<IThesisUnitOfWork>(provider => new ControlledUnitOfWork(
             provider.GetRequiredService<ThesisManagementDbContext>(), () => _failureAfterCommit,
             (db, token) => _beforeSave?.Invoke(db, token) ?? Task.CompletedTask));
+        builder.Services.AddScoped<IAdvisorWorkflowTransactionCoordinator, TestAdvisorWorkflowTransactionCoordinator>();
         builder.Services.AddAuthentication(TestAuthentication.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, TestAuthentication>(TestAuthentication.SchemeName, _ => { });
         builder.Services.AddAuthorization();
@@ -94,6 +99,7 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         _app.UseAuthentication();
         _app.UseAuthorization();
         new ThesisManagementModule().MapEndpoints(_app);
+        new DefenseCouncilModule().MapEndpoints(_app);
         await _app.StartAsync();
         _client = new HttpClient { BaseAddress = new Uri(_app.Urls.Single()) };
         Authenticate(_studentId);
@@ -519,6 +525,13 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         return new ThesisManagementDbContext(options.Options);
     }
 
+    private DefenseCouncilDbContext CreateDefenseDbContext()
+    {
+        var options = new DbContextOptionsBuilder<DefenseCouncilDbContext>();
+        DatabaseOptions.Configure(options, fixture.ConnectionString);
+        return new DefenseCouncilDbContext(options.Options);
+    }
+
     private UGTMDbContext CreateMigrationDbContext()
     {
         var options = new DbContextOptionsBuilder<UGTMDbContext>();
@@ -575,6 +588,21 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
             if (failureAfterCommit() is { } failure) throw failure;
             return result;
         }
+    }
+
+    private sealed class TestAdvisorWorkflowTransactionCoordinator(
+        ThesisManagementDbContext thesis,
+        DefenseCouncilDbContext defense) : IAdvisorWorkflowTransactionCoordinator
+    {
+        public Task<TResult> ExecuteAsync<TResult>(Func<CancellationToken, Task<TResult>> workflow,
+            CancellationToken cancellationToken = default)
+            => SharedPostgresTransactionCoordinator.ExecuteAsync(thesis, defense, workflow, cancellationToken);
+
+        public Task<TResult> ExecuteWithPostSaveAsync<TResult>(
+            Func<CancellationToken, Task<TResult>> workflow,
+            Func<TResult, CancellationToken, Task<TResult>> postSave,
+            CancellationToken cancellationToken = default)
+            => SharedPostgresTransactionCoordinator.ExecuteAsync(thesis, defense, workflow, postSave, cancellationToken);
     }
 
     private sealed class ControlledStorage : IThesisSubmissionObjectStorage

@@ -158,18 +158,34 @@ Table councils.advisor_evaluation {
   id uuid [pk, not null]
   allows_reviewer_assignment boolean [null]
   comment text [null]
+  decision_at "timestamp with time zone" [null]
+  decision_by uuid [null]
   evaluated_at "timestamp with time zone" [not null]
+  evaluated_by uuid [null]
   exclusion_reason text [null]
+  final_report_id uuid [null]
   group_id uuid [not null]
   is_ignored_in_calculation boolean [not null, default: false]
+  is_legacy boolean [not null, default: true]
+  rejection_reason text [null]
+  report_version_no integer [null]
   score numeric(4,2) [not null]
+  submission_checksum_sha256 "character varying(64)" [null]
+  submission_file_id uuid [null]
+  xmin xid [not null]
 
   indexes {
+    decision_by [name: 'ix_advisor_evaluation_decision_by']
+    evaluated_by [name: 'ix_advisor_evaluation_evaluated_by']
+    final_report_id [name: 'ix_advisor_evaluation_final_report_id']
     group_id [unique, name: 'ix_advisor_evaluation_group_id']
+    submission_file_id [name: 'ix_advisor_evaluation_submission_file_id']
   }
 
   checks {
     `score BETWEEN 0 AND 10` [name: 'ck_advisor_evaluation_score']
+    `is_legacy OR (final_report_id IS NOT NULL AND report_version_no > 0 AND submission_file_id IS NOT NULL AND submission_checksum_sha256 IS NOT NULL AND char_length(submission_checksum_sha256) = 64 AND evaluated_by IS NOT NULL AND comment IS NOT NULL AND char_length(btrim(comment)) BETWEEN 1 AND 2000)` [name: 'ck_advisor_evaluation_workflow_binding']
+    `is_legacy OR ((allows_reviewer_assignment IS NULL AND rejection_reason IS NULL AND decision_by IS NULL AND decision_at IS NULL) OR (allows_reviewer_assignment = FALSE AND rejection_reason IS NOT NULL AND char_length(btrim(rejection_reason)) BETWEEN 1 AND 1000 AND decision_by IS NOT NULL AND decision_at IS NOT NULL) OR (allows_reviewer_assignment = TRUE AND rejection_reason IS NULL AND decision_by IS NOT NULL AND decision_at IS NOT NULL))` [name: 'ck_advisor_evaluation_reviewer_assignment_decision']
   }
 }
 
