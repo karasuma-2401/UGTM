@@ -4,12 +4,14 @@ import { Separator } from '@/components/ui/separator';
 import { Download, CheckCircle2 } from 'lucide-react';
 import { SyllabusStatusBadge } from '../submission/SyllabusStatusBadge';
 import type { ReviewGroupItemDto } from '../../types/review.types';
+import type { ReviewMidtermGroupItemDto } from '../../types/midterm.types';
 
 interface ReviewTopicDetailCardProps {
-  selectedGroup: ReviewGroupItemDto | null;
+  selectedGroup: ReviewGroupItemDto | ReviewMidtermGroupItemDto | null;
   onDownloadFile: (fileId: string) => void;
   disabled?: boolean;
   hasDownloadedFile?: boolean;
+  gateTitle?: string;
 }
 
 export function ReviewTopicDetailCard({
@@ -17,6 +19,7 @@ export function ReviewTopicDetailCard({
   onDownloadFile,
   disabled = false,
   hasDownloadedFile = false,
+  gateTitle = 'Đề cương',
 }: ReviewTopicDetailCardProps) {
   if (!selectedGroup) {
     return (
@@ -44,9 +47,9 @@ export function ReviewTopicDetailCard({
     <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-4">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <h3 className="text-base font-bold text-slate-900">
-          Đề cương {groupCode}
+          {gateTitle} {groupCode}
         </h3>
-        <SyllabusStatusBadge status={currentStatus} className="text-[11px]" />
+        <SyllabusStatusBadge status={currentStatus as any} className="text-[11px]" />
       </div>
 
       <div className="space-y-1">
@@ -106,7 +109,7 @@ export function ReviewTopicDetailCard({
             className="w-full h-10 gap-2 bg-gradient-to-r from-[#2054A5] to-[#FA7921] text-white font-medium text-xs rounded-lg shadow-sm shadow-[#2054A5]/25 hover:opacity-90 active:scale-[0.99] transition-all"
           >
             <Download className="size-4 shrink-0" />
-            <span className="truncate">Tải đề cương ({latestFileName})</span>
+            <span className="truncate">Tải {gateTitle.toLowerCase()} ({latestFileName})</span>
           </Button>
         ) : (
           <div className="text-xs text-slate-400 italic bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-center">
@@ -134,7 +137,7 @@ export function ReviewTopicDetailCard({
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Kết luận</p>
         <div className="text-xs text-slate-600 leading-relaxed space-y-1 bg-slate-50 p-3 rounded-lg">
           <p>
-            <strong className="text-emerald-700">Đạt:</strong> Mở giai đoạn thực hiện.
+            <strong className="text-emerald-700">Đạt:</strong> Mở giai đoạn tiếp theo.
           </p>
           <p>
             <strong className="text-amber-700">Cần sửa:</strong> Cho nộp lại trước hạn chốt đóng cổng.

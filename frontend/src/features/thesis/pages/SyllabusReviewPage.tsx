@@ -1,5 +1,6 @@
 import { ClipboardCheck, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { ThesisReviewNavigation } from '../components/navigation';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useSyllabusReview } from '../hooks/useSyllabusReview';
 import {
@@ -38,9 +39,10 @@ export function SyllabusReviewPage() {
   return (
     <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 space-y-6">
       <PageHeader
-        title="Cổng 1 · Thẩm định đề cương"
+        title="Thẩm định các cổng khóa luận"
         description={`Khoa quyết định kết quả đề cương của ${groupCodeLabel}.`}
         icon={<ClipboardCheck />}
+        navigation={<ThesisReviewNavigation />}
       >
         <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
           {batchLabel}
@@ -105,6 +107,7 @@ export function SyllabusReviewPage() {
                 void handleDownload(selectedGroup.fileId, selectedGroup.groupId);
               }
             }}
+            gateName="đề cương"
           />
         </div>
 
@@ -114,6 +117,7 @@ export function SyllabusReviewPage() {
             onDownloadFile={(fileId) => handleDownload(fileId, selectedGroup?.groupId)}
             disabled={isAlreadyReviewed}
             hasDownloadedFile={hasDownloadedFile}
+            gateTitle="Đề cương"
           />
         </div>
       </div>

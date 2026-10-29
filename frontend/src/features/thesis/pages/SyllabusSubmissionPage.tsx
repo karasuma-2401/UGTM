@@ -5,6 +5,7 @@ import {
   SyllabusHistoryTable,
   SyllabusTopicInfoCard,
 } from '../components/submission';
+import { ThesisSubmissionNavigation } from '../components/navigation';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
 import { AlertCircle, CheckCircle2, BookOpen, FileUp } from 'lucide-react';
@@ -71,9 +72,10 @@ export function SyllabusSubmissionPage() {
   return (
     <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 space-y-6">
       <PageHeader
-        title="Nộp đề cương chi tiết"
-        description={`${groupCode} · ${topicCode} · GVHD: ${advisorName}`}
+        title="Hồ sơ khóa luận - Báo cáo & tiến độ"
+        description={`${groupCode} - ${topicCode} - GVHD: ${advisorName}`}
         icon={<FileUp />}
+        navigation={<ThesisSubmissionNavigation />}
       >
         <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
           {batchName}

@@ -14,7 +14,12 @@ import { UsersPage } from '../features/identity';
 import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
 import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
 import { StudentTopicCatalogPage } from '../features/topics/pages/StudentTopicCatalogPage';
-import { SyllabusSubmissionPage, SyllabusReviewPage } from '../features/thesis';
+import {
+  SyllabusSubmissionPage,
+  SyllabusReviewPage,
+  MidtermSubmissionPage,
+  MidtermReviewPage,
+} from '../features/thesis';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -60,12 +65,32 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'thesis/midterm',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <MidtermSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: 'thesis/review/syllabus',
         element: (
           <ProtectedRoute allowedRoles={['Faculty', 'Admin', 'AcademicAffairs']}>
             <SyllabusReviewPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'thesis/review/midterm',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin', 'AcademicAffairs']}>
+            <MidtermReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/review',
+        element: <Navigate to="/thesis/review/syllabus" replace />,
       },
       {
         path: 'thesis/progress',
