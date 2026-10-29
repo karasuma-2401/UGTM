@@ -51,7 +51,7 @@ export const ScoreConfigSummaryCard: React.FC<ScoreConfigSummaryCardProps> = ({
         <div>
           <span className="text-slate-400 font-medium block mb-0.5">Đợt áp dụng</span>
           <span className="font-semibold text-slate-800 text-sm">
-            {batch ? `${batch.batchName} · ${batch.academicYear}` : 'Chưa chọn đợt'}
+            {batch ? `${batch.batchName} - ${batch.academicYear}` : 'Chưa chọn đợt'}
           </span>
         </div>
 
@@ -69,7 +69,7 @@ export const ScoreConfigSummaryCard: React.FC<ScoreConfigSummaryCardProps> = ({
           <span className="font-semibold text-slate-800 text-sm">
             {calculationMethod === 'Percentage'
               ? `${totalWeight}% ${totalWeight === 100 ? '(Đủ 100%)' : '(Chưa đủ 100%)'}`
-              : `Tổng ${totalWeight} · Theo các nguồn thực sự áp dụng`}
+              : `Tổng ${totalWeight} - Theo các nguồn thực sự áp dụng`}
           </span>
         </div>
 
@@ -79,7 +79,7 @@ export const ScoreConfigSummaryCard: React.FC<ScoreConfigSummaryCardProps> = ({
           </span>
           <span className="font-semibold text-slate-800 text-sm">
             {reviewerMinimumScore !== null
-              ? `${reviewerMinimumScore} · Giá trị mẫu`
+              ? `${reviewerMinimumScore} - Giá trị mẫu`
               : 'Không áp dụng điểm sàn'}
           </span>
         </div>

@@ -1,12 +1,13 @@
 import { httpClient } from '@/shared/api';
-import type { ApiResponse } from '@/shared/api/types';
+import type { ApiResponse, PagedResult } from '@/shared/api/types';
 import type {
   ReviewSyllabusRequest,
   ReviewGroupItemDto,
   SubmissionReviewResultDto,
   SubmissionFileDownloadDto,
+  SyllabusReviewItemDto,
 } from '../types/review.types';
-import type { SyllabusSubmissionHistoryDto } from '../types/syllabus.types';
+import type { SyllabusStatus, SyllabusSubmissionHistoryDto } from '../types/syllabus.types';
 
 function unwrap<T>(response: ApiResponse<T>): T {
   if (!response.success) {
@@ -59,14 +60,51 @@ export const syllabusReviewApi = {
     return unwrap(response.data);
   },
 
-  async getReviewQueue(knownGroupId?: string, signal?: AbortSignal): Promise<ReviewGroupItemDto[]> {
+  async getReviewQueue(
+    query?: {
+      batchId?: string;
+      status?: string;
+      keyword?: string;
+      pageNumber?: number;
+      pageSize?: number;
+    } | string,
+    signal?: AbortSignal,
+  ): Promise<ReviewGroupItemDto[]> {
     try {
-      const response = await httpClient.get<ApiResponse<ReviewGroupItemDto[]>>(
+      const params = typeof query === 'string' ? { keyword: query } : query;
+      const response = await httpClient.get<ApiResponse<PagedResult<SyllabusReviewItemDto>>>(
         '/api/thesis/syllabus/submissions',
-        { signal },
+        {
+          params,
+          signal,
+        },
       );
-      return unwrap(response.data);
+      const paged = unwrap(response.data);
+      const items = paged?.items || [];
+      return items.map((item) => {
+        const studentNames =
+          (item.students || [])
+            .map((s) => s.fullName || s.userCode || 'Sinh viên')
+            .join(', ') || 'Chưa có thành viên';
+        const advisorName = item.advisor?.fullName || 'Chưa phân công';
+
+        return {
+          groupId: item.groupId,
+          groupCode: `Nhóm ${item.groupId.slice(0, 4).toUpperCase()}`,
+          topicCode: `KLTN-${item.topicId.slice(0, 8).toUpperCase()}`,
+          topicTitleVi: item.topicTitleVi,
+          studentNames,
+          advisorName,
+          batchName: item.batchName || 'Học kỳ hiện tại',
+          latestFileName: item.latestFile?.fileName || 'Chưa nộp tệp',
+          latestVersionNo: item.currentVersionNo || 1,
+          currentStatus: item.currentStatus as SyllabusStatus,
+          submittedAtUtc: item.latestFile?.uploadedAtUtc,
+          fileId: item.latestFile?.id,
+        };
+      });
     } catch {
+      const knownGroupId = typeof query === 'string' ? query : undefined;
       const items: ReviewGroupItemDto[] = [];
       const testGroupId = knownGroupId || '13c2a7dc-a0bc-4c6a-a560-26ad3b4fda44';
 
@@ -90,7 +128,6 @@ export const syllabusReviewApi = {
           });
         }
       } catch {
-        // Ignored if test group not found
       }
 
       return items;

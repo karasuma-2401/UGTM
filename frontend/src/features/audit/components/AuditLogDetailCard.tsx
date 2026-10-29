@@ -22,7 +22,7 @@ export const AuditLogDetailCard: React.FC<AuditLogDetailCardProps> = ({ log }) =
   const diff = parseAuditDiff(log);
   const actionTitle = formatAuditAction(log.action);
   const actorName = log.actorFullName || 'Hệ thống';
-  const actorSubtitle = log.actorEmail ? ` · ${log.actorEmail}` : '';
+  const actorSubtitle = log.actorEmail ? ` - ${log.actorEmail}` : '';
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">

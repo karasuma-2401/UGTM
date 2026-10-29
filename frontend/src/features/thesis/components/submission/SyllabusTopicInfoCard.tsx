@@ -44,7 +44,7 @@ export function SyllabusTopicInfoCard({
           Hồ sơ
         </p>
         <p className="text-sm font-semibold text-slate-800">
-          {topicCode} · {groupCode}
+          {topicCode} - {groupCode}
         </p>
         {detail?.topicTitleVi && (
           <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">

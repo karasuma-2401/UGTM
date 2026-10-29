@@ -3,14 +3,16 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Edit3, X, AlertCircle, Download, CheckCircle2 } from 'lucide-react';
 import type { ReviewDecision, ReviewGroupItemDto } from '../../types/review.types';
+import type { ReviewMidtermGroupItemDto } from '../../types/midterm.types';
 
 interface ReviewActionCardProps {
-  selectedGroup: ReviewGroupItemDto | null;
+  selectedGroup: ReviewGroupItemDto | ReviewMidtermGroupItemDto | null;
   onSubmitReview: (decision: ReviewDecision, feedback: string) => Promise<void>;
   isSubmitting?: boolean;
   disabled?: boolean;
   hasDownloadedFile?: boolean;
   onDownloadFile?: () => void;
+  gateName?: string;
 }
 
 export function ReviewActionCard({
@@ -20,6 +22,7 @@ export function ReviewActionCard({
   disabled = false,
   hasDownloadedFile = true,
   onDownloadFile,
+  gateName = 'đề cương',
 }: ReviewActionCardProps) {
   const [feedback, setFeedback] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -44,7 +47,7 @@ export function ReviewActionCard({
     }
 
     if (!hasDownloadedFile) {
-      setValidationError('Vui lòng tải tệp đề cương về đối chiếu trước khi thẩm định.');
+      setValidationError(`Vui lòng tải tệp ${gateName} về đối chiếu trước khi thẩm định.`);
       return;
     }
 
@@ -79,7 +82,7 @@ export function ReviewActionCard({
           <CheckCircle2 className="size-4 shrink-0 text-slate-500 mt-0.5" />
           <div>
             <p className="font-semibold text-slate-800">
-              Đề cương đã được thẩm định
+              Hồ sơ đã được thẩm định
             </p>
             <p className="mt-0.5 text-slate-600">
               {selectedGroup.currentStatus === 'Approved' && 'Hồ sơ đã được phê duyệt Đạt. Giai đoạn thực hiện đã mở.'}
@@ -99,10 +102,10 @@ export function ReviewActionCard({
           <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
           <div className="flex-1">
             <p className="font-semibold text-amber-800">
-              Yêu cầu tải tệp đề cương trước khi thẩm định
+              Yêu cầu tải tệp {gateName} trước khi thẩm định
             </p>
             <p className="mt-0.5 text-amber-700">
-              Vui lòng tải tệp đề cương về đối chiếu nội dung trước khi nhập nhận xét và ra quyết định thẩm định.
+              Vui lòng tải tệp {gateName} về đối chiếu nội dung trước khi nhập nhận xét và ra quyết định thẩm định.
             </p>
             {onDownloadFile && selectedGroup.fileId && (
               <button
@@ -111,7 +114,7 @@ export function ReviewActionCard({
                 className="mt-2 inline-flex items-center gap-1.5 font-semibold text-[#2054A5] underline decoration-[#2054A5]/40 hover:decoration-[#2054A5]"
               >
                 <Download className="size-3.5" />
-                Tải tệp đề cương ngay
+                Tải tệp {gateName} ngay
               </button>
             )}
           </div>
@@ -139,8 +142,8 @@ export function ReviewActionCard({
             cannotReview
               ? isAlreadyReviewed
                 ? 'Hồ sơ đã được thẩm định.'
-                : 'Vui lòng tải tệp đề cương trước để mở khóa ô nhận xét...'
-              : 'Bổ sung phương pháp đánh giá và dữ liệu thực nghiệm...'
+                : `Vui lòng tải tệp ${gateName} trước để mở khóa ô nhận xét...`
+              : 'Bổ sung nhận xét đánh giá và lưu ý cho nhóm sinh viên...'
           }
           className="w-full text-xs p-3 rounded-lg border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#2054A5] placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400"
         />

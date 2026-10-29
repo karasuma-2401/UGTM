@@ -81,34 +81,63 @@ export const syllabusApi = {
       currentUser?: { fullName?: string; userCode?: string | null; email?: string } | null;
       batchName?: string;
     },
+    signal?: AbortSignal,
   ): Promise<StudentGroupDetailDto> {
-    const members = fallbackInfo?.currentUser?.fullName
-      ? [
-          {
-            studentId: 'me',
-            userCode: fallbackInfo.currentUser.userCode || 'Chưa cập nhật',
-            fullName: fallbackInfo.currentUser.fullName,
-            email: fallbackInfo.currentUser.email || '',
-            confirmationStatus: 'Confirmed',
-          },
-        ]
-      : [];
+    try {
+      const response = await httpClient.get<ApiResponse<StudentGroupDetailDto>>(
+        `/api/thesis/groups/${groupId}/detail`,
+        { signal },
+      );
+      const data = unwrap(response.data);
+      return {
+        ...data,
+        groupCode: data.groupCode || `Nhóm ${data.groupId.slice(0, 4).toUpperCase()}`,
+        topicCode:
+          data.topicCode ||
+          (data.topicId ? `KLTN-${data.topicId.slice(0, 8).toUpperCase()}` : 'KLTN'),
+        batchName: data.batchName || fallbackInfo?.batchName || 'Học kỳ hiện tại',
+        members: (data.members || []).map((m) => ({
+          studentId: m.studentId,
+          userCode: m.userCode || 'Chưa cập nhật',
+          fullName: m.fullName || 'Chưa cập nhật',
+          email: m.email || '',
+          confirmationStatus: m.confirmationStatus,
+        })),
+        advisor: {
+          advisorId: data.advisor?.advisorId || '',
+          fullName: data.advisor?.fullName || 'Chưa phân công',
+          academicTitle: 'GV.',
+        },
+      };
+    } catch {
+      const members = fallbackInfo?.currentUser?.fullName
+        ? [
+            {
+              studentId: 'me',
+              userCode: fallbackInfo.currentUser.userCode || 'Chưa cập nhật',
+              fullName: fallbackInfo.currentUser.fullName,
+              email: fallbackInfo.currentUser.email || '',
+              confirmationStatus: 'Confirmed',
+            },
+          ]
+        : [];
 
-    return {
-      groupId,
-      groupCode: `Nhóm ${groupId.slice(0, 4).toUpperCase()}`,
-      topicId: fallbackInfo?.topicId || '',
-      topicCode: fallbackInfo?.topicId
-        ? `KLTN-${fallbackInfo.topicId.slice(0, 8).toUpperCase()}`
-        : 'KLTN',
-      topicTitleVi: fallbackInfo?.topicTitle || '',
-      batchName: fallbackInfo?.batchName || 'Học kỳ hiện tại',
-      advisor: {
-        advisorId: '',
-        fullName: 'Chưa phân công',
-        academicTitle: 'GV.',
-      },
-      members,
-    };
+      return {
+        groupId,
+        groupCode: `Nhóm ${groupId.slice(0, 4).toUpperCase()}`,
+        topicId: fallbackInfo?.topicId || '',
+        topicCode: fallbackInfo?.topicId
+          ? `KLTN-${fallbackInfo.topicId.slice(0, 8).toUpperCase()}`
+          : 'KLTN',
+        topicTitleVi: fallbackInfo?.topicTitle || '',
+        batchName: fallbackInfo?.batchName || 'Học kỳ hiện tại',
+        advisor: {
+          advisorId: '',
+          fullName: 'Chưa phân công',
+          academicTitle: 'GV.',
+        },
+        members,
+      };
+    }
   },
 };

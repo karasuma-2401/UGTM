@@ -7,6 +7,33 @@ export interface ReviewSyllabusRequest {
   feedback?: string;
 }
 
+export interface SyllabusReviewStudentDto {
+  studentId: string;
+  userCode?: string | null;
+  fullName?: string | null;
+}
+
+export interface SyllabusReviewItemDto {
+  syllabusId: string;
+  groupId: string;
+  topicId: string;
+  topicTitleVi: string;
+  topicTitleEn?: string | null;
+  batchId: string;
+  batchName?: string | null;
+  students: SyllabusReviewStudentDto[];
+  advisor: { advisorId: string; fullName?: string | null };
+  currentVersionNo: number;
+  currentStatus: string;
+  latestFile?: {
+    id: string;
+    fileName: string;
+    fileSize: number;
+    fileExtension: string;
+    uploadedAtUtc: string;
+  } | null;
+}
+
 export interface ReviewGroupItemDto {
   groupId: string;
   groupCode: string;

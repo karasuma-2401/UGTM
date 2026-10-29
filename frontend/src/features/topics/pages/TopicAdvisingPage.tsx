@@ -568,14 +568,14 @@ export function TopicAdvisingPage({
                         <p className="font-medium">
                           {student.fullName}{' '}
                           <span className="font-normal text-slate-500">
-                            · {student.userCode ?? 'Chưa có MSSV'}
+                            - {student.userCode ?? 'Chưa có MSSV'}
                           </span>
                         </p>
                         <p className="mt-1 break-all text-slate-600">
                           {student.email || 'Chưa có email'}
                         </p>
                         <p className="mt-1 text-xs text-slate-500">
-                          {student.phoneNumber || 'Chưa có số điện thoại'} · Ghi nhận:{' '}
+                          {student.phoneNumber || 'Chưa có số điện thoại'} - Ghi nhận:{' '}
                           {date(student.joinedAt)}
                         </p>
                       </div>
