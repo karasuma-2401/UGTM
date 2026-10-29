@@ -50,6 +50,8 @@ using UGTM.Modules.ThesisManagement.Application.RenameRequests.GetRenameRequests
 using UGTM.Modules.ThesisManagement.Application.RenameRequests.ReviewByAcademicAffairs;
 using UGTM.Modules.ThesisManagement.Application.RenameRequests.ReviewByAdvisor;
 using UGTM.Modules.ThesisManagement.Application.RenameRequests.ReviewByFaculty;
+using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Infrastructure.Notifications;
 using UGTM.Modules.ThesisManagement.Infrastructure.BackgroundServices;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
@@ -114,6 +116,9 @@ public sealed class ThesisManagementModule : IModule
         services.AddHostedService<ReviewGateDeadlineEnforcementWorker>();
 
         // Topic Registrations
+        services.AddOptions<ThesisEmailOptions>()
+            .Bind(configuration.GetSection(ThesisEmailOptions.SectionName));
+        services.AddSingleton<IThesisEmailTemplateRenderer, ThesisEmailTemplateRenderer>();
         services.AddScoped<ITopicRegistrationStore, TopicRegistrationStore>();
         services.AddScoped<RegisterTopicHandler>();
         services.AddScoped<ConfirmTopicRegistrationHandler>();

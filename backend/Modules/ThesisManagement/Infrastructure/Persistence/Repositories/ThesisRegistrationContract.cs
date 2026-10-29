@@ -16,6 +16,7 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
     private readonly IStudentInfoReader? _studentInfoReader;
     private readonly IEmailSender? _emailSender;
     private readonly TimeProvider? _timeProvider;
+    private readonly IThesisEmailTemplateRenderer? _emailTemplateRenderer;
     private readonly IReadOnlyList<StudentGroup>? _inMemoryGroups;
 
     public ThesisRegistrationContract(
@@ -23,13 +24,15 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
         ITopicRegistrationStore registrationStore,
         IStudentInfoReader studentInfoReader,
         IEmailSender emailSender,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IThesisEmailTemplateRenderer? emailTemplateRenderer = null)
     {
         _db = db;
         _registrationStore = registrationStore;
         _studentInfoReader = studentInfoReader;
         _emailSender = emailSender;
         _timeProvider = timeProvider;
+        _emailTemplateRenderer = emailTemplateRenderer ?? new Notifications.ThesisEmailTemplateRenderer();
     }
 
     private ThesisRegistrationContract(IReadOnlyList<StudentGroup> inMemoryGroups)
@@ -183,15 +186,12 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
                 if (string.IsNullOrWhiteSpace(student.Email)) continue;
                 try
                 {
-                    var body = $"""
-                        <h3>Thông báo: Giảng viên hướng dẫn đã đăng ký bạn vào đề tài khóa luận</h3>
-                        <p>Xin chào <strong>{student.FullName}</strong> ({student.UserCode}),</p>
-                        <p>Giảng viên hướng dẫn đã ghi nhận bạn vào nhóm đề tài khóa luận trong giai đoạn chuẩn bị đề tài.</p>
-                        <p>Trạng thái của bạn đã được <strong>xác nhận chính thức (Confirmed)</strong>.</p>
-                        """;
-                    await _emailSender.SendAsync(
-                        new EmailMessage(student.Email, "[UGTM] Thông báo gán đề tài khóa luận từ GVHD", body),
-                        cancellationToken);
+                    var renderer = _emailTemplateRenderer ?? new Notifications.ThesisEmailTemplateRenderer();
+                    var message = renderer.RenderAdvisorAssignedNotification(
+                        student.Email,
+                        student.FullName ?? string.Empty,
+                        student.UserCode ?? string.Empty);
+                    await _emailSender.SendAsync(message, cancellationToken);
                 }
                 catch { }
             }

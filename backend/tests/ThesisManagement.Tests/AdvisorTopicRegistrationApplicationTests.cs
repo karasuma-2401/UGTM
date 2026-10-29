@@ -10,6 +10,7 @@ using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.AdvisorUnassi
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
+using UGTM.Modules.ThesisManagement.Infrastructure.Notifications;
 
 namespace UGTM.Modules.ThesisManagement.Tests;
 
@@ -30,6 +31,7 @@ public sealed class AdvisorTopicRegistrationApplicationTests
     private readonly FakeStudentInfoReader _studentInfoReader = new();
     private readonly FakeEmailSender _emailSender = new();
     private readonly FakeTimeProvider _timeProvider = new(FixedNow);
+    private readonly ThesisEmailTemplateRenderer _templateRenderer = new();
 
     public AdvisorTopicRegistrationApplicationTests()
     {
@@ -90,7 +92,7 @@ public sealed class AdvisorTopicRegistrationApplicationTests
     public async Task Assign_ByAdvisor_Fails_WhenUnauthenticated()
     {
         var handler = new AdvisorAssignTopicStudentsHandler(
-            _store, _studentInfoReader, _emailSender, new FakeCurrentUser(null), _timeProvider);
+            _store, _studentInfoReader, _emailSender, new FakeCurrentUser(null), _timeProvider, _templateRenderer);
 
         var result = await handler.HandleAsync(new AdvisorAssignTopicStudentsCommand(
             TopicId1, StudentCodes: new[] { "SV001" }));
@@ -483,7 +485,8 @@ public sealed class AdvisorTopicRegistrationApplicationTests
             _studentInfoReader,
             _emailSender,
             new FakeCurrentUser(userId, role),
-            _timeProvider);
+            _timeProvider,
+            _templateRenderer);
 
     private AdvisorUnassignTopicStudentsHandler CreateUnassignHandler(Guid userId, string role)
         => new(

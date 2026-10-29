@@ -12,7 +12,8 @@ public sealed class AdvisorAssignTopicStudentsHandler(
     IStudentInfoReader studentInfoReader,
     IEmailSender emailSender,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IThesisEmailTemplateRenderer emailTemplateRenderer)
 {
     public async Task<Result<AdvisorTopicRegistrationResultDto>> HandleAsync(
         AdvisorAssignTopicStudentsCommand command,
@@ -123,17 +124,12 @@ public sealed class AdvisorAssignTopicStudentsHandler(
 
             try
             {
-                var body = $"""
-                    <h3>Thông báo: Giảng viên hướng dẫn đã đăng ký bạn vào đề tài khóa luận</h3>
-                    <p>Xin chào <strong>{student.FullName}</strong> ({student.UserCode}),</p>
-                    <p>Giảng viên hướng dẫn đã chính thức ghi nhận bạn vào nhóm đề tài khóa luận tốt nghiệp trong giai đoạn chuẩn bị đề tài.</p>
-                    <p>Trạng thái đăng ký của bạn đã được <strong>xác nhận chính thức (Confirmed)</strong> trên hệ thống.</p>
-                    <p>Vui lòng đăng nhập hệ thống UGTM để theo dõi chi tiết thông tin đề tài.</p>
-                    """;
+                var message = emailTemplateRenderer.RenderAdvisorAssignedNotification(
+                    student.Email,
+                    student.FullName ?? string.Empty,
+                    student.UserCode ?? string.Empty);
 
-                await emailSender.SendAsync(
-                    new EmailMessage(student.Email, "[UGTM] Thông báo gán đề tài khóa luận từ GVHD", body),
-                    cancellationToken);
+                await emailSender.SendAsync(message, cancellationToken);
             }
             catch
             {
