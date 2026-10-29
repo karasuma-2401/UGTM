@@ -56,7 +56,7 @@ Tạo phiếu lần đầu hoặc sửa phiếu chưa khóa. `POST` được dù
 ```http
 POST /api/thesis/advisor-evaluations
 Authorization: Bearer <token>
-Idempotency-Key: 5b572684-c98c-40fb-b4cb-16a7e4d5dc70
+Idempotency-Key: <idempotency-uuid>
 Content-Type: application/json
 ```
 
@@ -91,7 +91,7 @@ Ghi quyết định chuyển sang phản biện. Endpoint không nhận điểm 
 ```http
 PUT /api/thesis/final-reports/b4b098e4-6848-4d2f-8647-fa427c7eb0e5/approval
 Authorization: Bearer <token>
-Idempotency-Key: 8fb43923-c4d0-4ddf-9f34-76d6a45725da
+Idempotency-Key: <idempotency-uuid>
 Content-Type: application/json
 ```
 
