@@ -8,6 +8,7 @@ export function useSyllabusReview(knownGroupId?: string) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [downloadedGroupIds, setDownloadedGroupIds] = useState<Set<string>>(new Set());
   const [noticeMessage, setNoticeMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -25,6 +26,15 @@ export function useSyllabusReview(knownGroupId?: string) {
     }
     return allItems[0] || null;
   }, [allItems, selectedGroupId]);
+
+  const isAlreadyReviewed = Boolean(
+    selectedGroup && selectedGroup.currentStatus !== 'Submitted'
+  );
+
+  const hasDownloadedFile = Boolean(
+    selectedGroup &&
+      (!selectedGroup.fileId || downloadedGroupIds.has(selectedGroup.groupId))
+  );
 
   const filteredItems = useMemo(() => {
     return allItems.filter((item) => {
@@ -72,12 +82,16 @@ export function useSyllabusReview(knownGroupId?: string) {
     },
   });
 
-  const handleDownload = async (fileId: string) => {
+  const handleDownload = async (fileId: string, groupId?: string) => {
     try {
       setErrorMessage(null);
       const downloadInfo = await syllabusReviewApi.getDownloadUrl(fileId);
       if (downloadInfo?.downloadUrl) {
         window.open(downloadInfo.downloadUrl, '_blank', 'noopener,noreferrer');
+        const targetGroupId = groupId || selectedGroup?.groupId;
+        if (targetGroupId) {
+          setDownloadedGroupIds((prev) => new Set(prev).add(targetGroupId));
+        }
       }
     } catch (err: unknown) {
       const errorMsg =
@@ -110,6 +124,8 @@ export function useSyllabusReview(knownGroupId?: string) {
     handleResetFilter,
     reviewMutation,
     handleDownload,
+    hasDownloadedFile,
+    isAlreadyReviewed,
     noticeMessage,
     setNoticeMessage,
     errorMessage,

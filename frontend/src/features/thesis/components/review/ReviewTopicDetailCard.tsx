@@ -1,17 +1,22 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Download } from 'lucide-react';
+import { Download, CheckCircle2 } from 'lucide-react';
+import { SyllabusStatusBadge } from '../submission/SyllabusStatusBadge';
 import type { ReviewGroupItemDto } from '../../types/review.types';
 
 interface ReviewTopicDetailCardProps {
   selectedGroup: ReviewGroupItemDto | null;
   onDownloadFile: (fileId: string) => void;
+  disabled?: boolean;
+  hasDownloadedFile?: boolean;
 }
 
 export function ReviewTopicDetailCard({
   selectedGroup,
   onDownloadFile,
+  disabled = false,
+  hasDownloadedFile = false,
 }: ReviewTopicDetailCardProps) {
   if (!selectedGroup) {
     return (
@@ -32,13 +37,17 @@ export function ReviewTopicDetailCard({
     latestVersionNo,
     fileId,
     submittedAtUtc,
+    currentStatus,
   } = selectedGroup;
 
   return (
     <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-4">
-      <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
-        Đề cương {groupCode}
-      </h3>
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 className="text-base font-bold text-slate-900">
+          Đề cương {groupCode}
+        </h3>
+        <SyllabusStatusBadge status={currentStatus} className="text-[11px]" />
+      </div>
 
       <div className="space-y-1">
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Hồ sơ</p>
@@ -74,9 +83,22 @@ export function ReviewTopicDetailCard({
       <Separator className="bg-slate-100" />
 
       <div className="space-y-2.5">
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-          Tài liệu đối chiếu
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+            Tài liệu đối chiếu
+          </p>
+          {hasDownloadedFile ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              <CheckCircle2 className="size-3" />
+              Đã tải
+            </span>
+          ) : (
+            <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              Chưa tải
+            </span>
+          )}
+        </div>
+
         {fileId ? (
           <Button
             type="button"
@@ -101,6 +123,12 @@ export function ReviewTopicDetailCard({
       </div>
 
       <Separator className="bg-slate-100" />
+
+      {disabled && (
+        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 text-[11px] text-center">
+          Hồ sơ đã hoàn tất thẩm định và được khóa chỉnh sửa.
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Kết luận</p>

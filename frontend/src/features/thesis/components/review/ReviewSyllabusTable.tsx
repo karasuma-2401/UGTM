@@ -8,7 +8,7 @@ interface ReviewSyllabusTableProps {
   items: ReviewGroupItemDto[];
   selectedGroupId: string | null;
   onSelectGroup: (group: ReviewGroupItemDto) => void;
-  onDownloadFile: (fileId: string) => void;
+  onDownloadFile: (fileId: string, groupId?: string) => void;
   isLoading?: boolean;
 }
 
@@ -70,7 +70,7 @@ export function ReviewSyllabusTable({
                         <Button
                           type="button"
                           size="sm"
-                          onClick={() => onDownloadFile(item.fileId!)}
+                          onClick={() => onDownloadFile(item.fileId!, item.groupId)}
                           className="h-8 px-3 gap-1.5 text-xs font-medium bg-gradient-to-r from-[#2054A5] to-[#FA7921] text-white hover:opacity-90 shadow-sm shadow-[#2054A5]/20 rounded-lg transition-all"
                           title={item.latestFileName}
                         >

@@ -23,6 +23,8 @@ export function SyllabusReviewPage() {
     handleResetFilter,
     reviewMutation,
     handleDownload,
+    hasDownloadedFile,
+    isAlreadyReviewed,
     noticeMessage,
     errorMessage,
   } = useSyllabusReview();
@@ -96,13 +98,22 @@ export function SyllabusReviewPage() {
               }
             }}
             isSubmitting={reviewMutation.isPending}
+            disabled={isAlreadyReviewed}
+            hasDownloadedFile={hasDownloadedFile}
+            onDownloadFile={() => {
+              if (selectedGroup?.fileId) {
+                void handleDownload(selectedGroup.fileId, selectedGroup.groupId);
+              }
+            }}
           />
         </div>
 
         <div className="lg:col-span-4 sticky top-6">
           <ReviewTopicDetailCard
             selectedGroup={selectedGroup}
-            onDownloadFile={handleDownload}
+            onDownloadFile={(fileId) => handleDownload(fileId, selectedGroup?.groupId)}
+            disabled={isAlreadyReviewed}
+            hasDownloadedFile={hasDownloadedFile}
           />
         </div>
       </div>
