@@ -23,13 +23,15 @@ export function AdvisorMilestoneSetupPage() {
     actionError,
     actionSuccess,
     createMutation,
+    canCreateMilestones,
+    ineligibleReason,
   } = useAdvisorMilestones();
 
   const groupCode = selectedGroup?.groupCode || 'Nhóm KLTN';
 
   const groupOptions = advisedGroups.map((g) => ({
     value: g.groupId,
-    label: `${g.groupCode} - ${g.studentNames}`,
+    label: `${g.groupCode} · ${g.studentNames}`,
   }));
 
   return (
@@ -74,6 +76,22 @@ export function AdvisorMilestoneSetupPage() {
         )}
       </div>
 
+      {!canCreateMilestones && ineligibleReason && (
+        <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 flex items-start gap-3.5 shadow-xs">
+          <div className="p-2 rounded-lg bg-amber-100/80 text-amber-700 shrink-0 mt-0.5">
+            <AlertCircle className="size-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm text-amber-900">
+              Nhóm chưa ở trạng thái cho phép thiết lập mốc tiến độ
+            </p>
+            <p className="text-xs mt-1 text-amber-800/90 leading-relaxed">
+              {ineligibleReason}
+            </p>
+          </div>
+        </div>
+      )}
+
       {actionError && (
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
           <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
@@ -106,6 +124,8 @@ export function AdvisorMilestoneSetupPage() {
           <AdvisorMilestoneForm
             selectedMilestone={selectedMilestone}
             isSubmitting={createMutation.isPending}
+            disabled={!canCreateMilestones}
+            disabledReason={ineligibleReason}
             onSubmit={(data) => createMutation.mutate(data)}
             onResetForm={() => setSelectedMilestone(null)}
             onNavigateReview={() => {

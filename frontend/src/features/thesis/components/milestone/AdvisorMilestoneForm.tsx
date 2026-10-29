@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Save, CheckCircle } from 'lucide-react';
+import { PlusCircle, Save, CheckCircle, AlertCircle } from 'lucide-react';
 import type { MilestoneWithReportDto } from '../../types/milestone.types';
 
 interface AdvisorMilestoneFormProps {
   selectedMilestone?: MilestoneWithReportDto | null;
   isSubmitting?: boolean;
+  disabled?: boolean;
+  disabledReason?: string | null;
   onSubmit: (data: { title: string; description: string; deadlineUtc: string }) => void;
   onNavigateReview?: () => void;
   onResetForm?: () => void;
@@ -16,6 +18,8 @@ interface AdvisorMilestoneFormProps {
 export function AdvisorMilestoneForm({
   selectedMilestone,
   isSubmitting = false,
+  disabled = false,
+  disabledReason,
   onSubmit,
   onNavigateReview,
   onResetForm,
@@ -50,7 +54,7 @@ export function AdvisorMilestoneForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !deadlineLocal) return;
+    if (disabled || !title.trim() || !deadlineLocal) return;
 
     const dateObj = new Date(deadlineLocal);
     const deadlineUtc = dateObj.toISOString();
@@ -68,7 +72,7 @@ export function AdvisorMilestoneForm({
         <h3 className="text-base font-semibold text-slate-900">
           {selectedMilestone ? 'Chỉnh sửa mốc tiến độ' : 'Tạo / sửa mốc'}
         </h3>
-        {selectedMilestone && (
+        {selectedMilestone && !disabled && (
           <Button
             type="button"
             variant="ghost"
@@ -82,6 +86,13 @@ export function AdvisorMilestoneForm({
         )}
       </div>
 
+      {disabled && disabledReason && (
+        <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2.5">
+          <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
+          <span>{disabledReason}</span>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
@@ -94,6 +105,7 @@ export function AdvisorMilestoneForm({
               value={title}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
               required
+              disabled={disabled}
               className="h-10 text-sm bg-white"
             />
           </div>
@@ -108,6 +120,7 @@ export function AdvisorMilestoneForm({
               value={deadlineLocal}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeadlineLocal(e.target.value)}
               required
+              disabled={disabled}
               className="h-10 text-sm bg-white"
             />
           </div>
@@ -119,18 +132,19 @@ export function AdvisorMilestoneForm({
           </label>
           <textarea
             id="milestone-products"
-            placeholder="Báo cáo - mã nguồn / link - ghi chú"
+            placeholder="Báo cáo · mã nguồn / link · ghi chú"
             value={description}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
             rows={2}
-            className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+            disabled={disabled}
+            className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none disabled:opacity-60 disabled:cursor-not-allowed"
           />
         </div>
 
         <div className="flex items-center gap-3 pt-2">
           <Button
             type="submit"
-            disabled={isSubmitting || !title.trim() || !deadlineLocal}
+            disabled={disabled || isSubmitting || !title.trim() || !deadlineLocal}
             className="bg-primary hover:bg-primary/90 text-white font-medium px-5 h-10 shadow-xs"
           >
             {isSubmitting ? (

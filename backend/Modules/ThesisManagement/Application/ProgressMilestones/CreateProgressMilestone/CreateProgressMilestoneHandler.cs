@@ -19,7 +19,8 @@ public sealed class CreateProgressMilestoneHandler(
     IThesisManagementAuditOutbox auditOutbox,
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ISyllabusRepository? syllabusRepository = null)
 {
     public async Task<Result<ProgressMilestoneDto>> HandleAsync(
         CreateProgressMilestoneCommand command,
@@ -46,9 +47,29 @@ public sealed class CreateProgressMilestoneHandler(
             return Result.Failure<ProgressMilestoneDto>(ProgressMilestoneErrors.GroupNotFound);
         }
 
-        if (group.Status != StudentGroupStatus.InProgress)
+        if (group.Status != StudentGroupStatus.InProgress
+            && group.Status != StudentGroupStatus.MidtermSubmitted
+            && group.Status != StudentGroupStatus.SyllabusApproved)
         {
-            return Result.Failure<ProgressMilestoneDto>(ProgressMilestoneErrors.GateOneNotApproved);
+            var syllabus = syllabusRepository is not null
+                ? await syllabusRepository.GetByGroupIdAsync(command.GroupId, cancellationToken)
+                : null;
+
+            if (syllabus is not null && syllabus.Status == SyllabusStatus.Approved)
+            {
+                if (group.Status is StudentGroupStatus.Registered or StudentGroupStatus.SyllabusRevisionRequired)
+                {
+                    group.TrySubmitSyllabus();
+                }
+                if (group.Status is StudentGroupStatus.SyllabusSubmitted)
+                {
+                    group.TryApproveSyllabus();
+                }
+            }
+            else
+            {
+                return Result.Failure<ProgressMilestoneDto>(ProgressMilestoneErrors.GateOneNotApproved);
+            }
         }
 
         if (!await IsAssignedAdvisorOrAdministratorAsync(group.TopicId, cancellationToken))

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { advisingApi } from '@/features/topics/services/advisingApi';
+import { syllabusApi } from '../services/syllabusApi';
 import { milestoneApi } from '../services/milestoneApi';
 import type {
   AdvisedGroupOption,
@@ -47,6 +48,7 @@ export function useAdvisorMilestones() {
           topicCode: `KLTN-${t.id.slice(0, 8).toUpperCase()}`,
           topicTitleVi: t.titleVi,
           studentNames,
+          status: t.group!.status,
           students: t.group!.students || [],
         };
       });
@@ -61,6 +63,14 @@ export function useAdvisorMilestones() {
   const selectedGroup = useMemo(() => {
     return advisedGroups.find((g) => g.groupId === selectedGroupId) || null;
   }, [advisedGroups, selectedGroupId]);
+
+  const syllabusQuery = useQuery({
+    queryKey: ['advisor-group-syllabus', selectedGroupId],
+    queryFn: ({ signal }) =>
+      selectedGroupId ? syllabusApi.getSyllabusHistory(selectedGroupId, signal) : null,
+    enabled: Boolean(selectedGroupId),
+    retry: false,
+  });
 
   const milestonesQuery = useQuery({
     queryKey: ['advisor-milestones-with-reports', selectedGroupId],
@@ -81,6 +91,32 @@ export function useAdvisorMilestones() {
     },
     enabled: Boolean(selectedGroupId),
   });
+
+  const syllabusStatus = syllabusQuery.data?.currentStatus;
+  const isSyllabusApproved = syllabusStatus === 'Approved';
+  const groupStatus = selectedGroup?.status;
+
+  let ineligibleReason: string | null = null;
+  let canCreateMilestones = true;
+
+  if (groupStatus === 'Stopped') {
+    canCreateMilestones = false;
+    ineligibleReason = 'Nhóm đã dừng thực hiện đề tài. Không thể thiết lập mốc tiến độ.';
+  } else if (
+    groupStatus === 'FinalReportSubmitted' ||
+    groupStatus === 'ReadyForReviewerAssignment' ||
+    groupStatus === 'Defended' ||
+    groupStatus === 'ScoreLocked' ||
+    groupStatus === 'Completed'
+  ) {
+    canCreateMilestones = false;
+    ineligibleReason =
+      'Nhóm đã nộp báo cáo cuối kỳ hoặc đã kết thúc giai đoạn làm KLTN. Không thể tạo thêm mốc mới.';
+  } else if (!isSyllabusApproved && groupStatus !== 'InProgress' && groupStatus !== 'MidtermSubmitted' && groupStatus !== 'SyllabusApproved') {
+    canCreateMilestones = false;
+    ineligibleReason =
+      'Nhóm chưa được duyệt Đề cương chi tiết tại Cổng 1 (chưa tới giai đoạn làm KLTN). GVHD chỉ có thể thiết lập mốc sau khi Đề cương được phê duyệt.';
+  }
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateProgressMilestoneRequest) => {
@@ -109,6 +145,7 @@ export function useAdvisorMilestones() {
     batchesQuery,
     currentBatch,
     topicsQuery,
+    syllabusQuery,
     advisedGroups,
     selectedGroupId,
     setSelectedGroupId,
@@ -122,5 +159,7 @@ export function useAdvisorMilestones() {
     actionSuccess,
     setActionSuccess,
     createMutation,
+    canCreateMilestones,
+    ineligibleReason,
   };
 }

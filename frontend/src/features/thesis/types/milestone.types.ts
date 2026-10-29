@@ -72,6 +72,7 @@ export interface AdvisedGroupOption {
   topicCode: string;
   topicTitleVi: string;
   studentNames: string;
+  status?: string;
   students: {
     studentId: string;
     fullName: string;
