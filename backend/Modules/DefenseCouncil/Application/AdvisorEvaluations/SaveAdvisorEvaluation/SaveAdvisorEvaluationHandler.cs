@@ -51,7 +51,7 @@ public sealed class SaveAdvisorEvaluationHandler(
             {
                 return Result.Failure<AdvisorEvaluationDto>(workflowResult.Error);
             }
-            return Result.Success(workflowResult.Response ?? ToDto(workflowResult.Evaluation!));
+            return Result.Success(workflowResult.Response ?? AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!));
         }
         catch (DefenseCouncilConcurrencyException)
         {
@@ -208,7 +208,8 @@ public sealed class SaveAdvisorEvaluationHandler(
             return Task.FromResult(workflowResult);
         }
 
-        workflowResult.IdempotencyRecord.SetResponsePayload(JsonSerializer.Serialize(ToDto(workflowResult.Evaluation!)));
+        workflowResult.IdempotencyRecord.SetResponsePayload(
+            JsonSerializer.Serialize(AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!)));
         return Task.FromResult(workflowResult);
     }
 
@@ -243,25 +244,6 @@ public sealed class SaveAdvisorEvaluationHandler(
 
         return null;
     }
-
-    private static AdvisorEvaluationDto ToDto(AdvisorEvaluation evaluation)
-        => new(
-            evaluation.Id,
-            evaluation.GroupId,
-            evaluation.FinalReportId!.Value,
-            evaluation.ReportVersionNo!.Value,
-            evaluation.SubmissionFileId!.Value,
-            evaluation.SubmissionChecksumSha256!,
-            evaluation.Score,
-            evaluation.Comment!,
-            evaluation.EvaluatedBy!.Value,
-            evaluation.EvaluatedAt,
-            evaluation.AllowsReviewerAssignment,
-            evaluation.RejectionReason,
-            evaluation.DecisionBy,
-            evaluation.DecisionAt,
-            evaluation.Version,
-            evaluation.IsLocked);
 
     private static bool IsAdministrator(ICurrentUser user)
         => user.Roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase));

@@ -27,6 +27,14 @@ public sealed record AdvisorEvaluationFinalReportContextContractDto(
     Guid? SubmissionFileId,
     string? SubmissionChecksumSha256);
 
+/// <summary>
+/// Minimal group context used to authorize read-only advisor-evaluation access without
+/// exposing report submissions or evaluation content across the module boundary.
+/// </summary>
+public sealed record AdvisorEvaluationGroupContextContractDto(
+    Guid GroupId,
+    Guid TopicId);
+
 public enum AdvisorEvaluationGroupReadinessOutcome
 {
     Succeeded,
@@ -53,7 +61,7 @@ public sealed record AdvisorEvaluationDecisionAuditContractDto(
     int ReportVersionNo,
     uint EvaluationVersion,
     bool AllowsReviewerAssignment,
-    string? RejectionReason,
+    bool HasRejectionReason,
     Guid DecidedBy,
     DateTime DecidedAtUtc);
 
@@ -66,6 +74,10 @@ public interface IAdvisorEvaluationWorkflowContract
 {
     Task<AdvisorEvaluationFinalReportContextContractDto?> GetFinalReportContextAsync(
         Guid finalReportId,
+        CancellationToken cancellationToken = default);
+
+    Task<AdvisorEvaluationGroupContextContractDto?> GetGroupContextAsync(
+        Guid groupId,
         CancellationToken cancellationToken = default);
 
     Task<AdvisorEvaluationLockedFinalReportContractDto?> GetLockedInitialFinalReportAsync(

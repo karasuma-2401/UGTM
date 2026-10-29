@@ -1,12 +1,12 @@
 # Advisor evaluation & reviewer-handoff API contract — SCRUM-103
 
-Trạng thái: **Thiết kế đã chốt tại CP0, chưa triển khai**. Các endpoint trong tài liệu này chưa được map vào API; không dùng tài liệu này như bằng chứng endpoint đang hoạt động. CP1–CP5 sẽ triển khai domain/migration, giao dịch liên module và endpoint theo contract này.
+Trạng thái: **Đã triển khai đến CP5 của SCRUM-103**. Hai endpoint ghi và endpoint đọc trong tài liệu này đã được map vào API; contract eligibility đã sẵn sàng để SCRUM-104 gọi ngay trước khi ghi phân công GVPB.
 
 Phạm vi là GVHD hoặc Admin chấm báo cáo cuối kỳ đã bị khóa, sau đó quyết định có cho phép phân công GVPB hay không. Không bao gồm màn hình SCRUM-112, phân công GVPB SCRUM-104, chấm phản biện SCRUM-105, xét điều kiện bảo vệ, công bố/tổng hợp điểm, hay nghiệp vụ gia hạn, chuyển đợt và mở khóa.
 
 ## Quy ước chung
 
-Tất cả endpoint yêu cầu Bearer token và `Content-Type: application/json`. Response thành công theo `ApiResponse<T>`; thời điểm là ISO 8601 UTC. Endpoint không trả object key nội bộ hoặc URL public của file.
+Tất cả endpoint yêu cầu Bearer token. Hai endpoint ghi yêu cầu thêm `Content-Type: application/json`; response thành công theo `ApiResponse<T>` và thời điểm là ISO 8601 UTC. Endpoint không trả object key nội bộ hoặc URL public của file.
 
 Hai write endpoint yêu cầu header `Idempotency-Key` là UUID khác rỗng. Phạm vi một key là **endpoint + tài khoản thực hiện**.
 
@@ -99,6 +99,7 @@ Quyết định chưa đồng ý:
 
 ```json
 {
+  "expectedReportVersionNo": 2,
   "expectedEvaluationVersion": 3,
   "allowsReviewerAssignment": false,
   "rejectionReason": "Cần hoàn thiện thực nghiệm trước khi gửi phản biện."
@@ -109,6 +110,7 @@ Quyết định đồng ý:
 
 ```json
 {
+  "expectedReportVersionNo": 2,
   "expectedEvaluationVersion": 4,
   "allowsReviewerAssignment": true,
   "rejectionReason": null
@@ -117,6 +119,7 @@ Quyết định đồng ý:
 
 | Trường | Kiểu | Quy tắc |
 | --- | --- | --- |
+| `expectedReportVersionNo` | integer | Bắt buộc, dương và khớp `CurrentVersionNo` của báo cáo đã khóa |
 | `expectedEvaluationVersion` | integer | Bắt buộc, dương và khớp phiên bản phiếu vừa đọc |
 | `allowsReviewerAssignment` | boolean | Bắt buộc |
 | `rejectionReason` | string hoặc `null` | Bắt buộc và 1–1.000 ký tự sau trim khi giá trị quyết định là `false`; phải là `null` hoặc bỏ qua khi là `true` |
@@ -133,11 +136,18 @@ Thành công trả `200 OK` với `ApiResponse<AdvisorEvaluationDto>`. Không c�
 
 Thành công trả `200 OK` với `ApiResponse<AdvisorEvaluationDto>`. Không có phiếu trả `404 AdvisorEvaluation.NotFound`.
 
+### Luồng tích hợp FE
+
+1. Sau khi SCRUM-102 khóa `InitialFinal`, FE gửi `POST /api/thesis/advisor-evaluations` để tạo phiếu; các lần sửa gửi lại POST với `expectedEvaluationVersion` vừa nhận.
+2. Khi cần tải lại màn hình, mất response hoặc nhận `409`, FE gọi `GET /api/thesis/groups/{groupId}/advisor-evaluation`; dùng `evaluationVersion` và `reportVersionNo` của response làm `expectedEvaluationVersion`/`expectedReportVersionNo` cho request tiếp theo, cùng điểm, nhận xét và trạng thái khóa.
+3. Nếu chưa đồng ý, FE gửi PUT với `allowsReviewerAssignment: false` và lý do. Response vẫn có `isLocked: false`; FE có thể sửa phiếu rồi GET/PUT xét lại với phiên bản mới.
+4. Nếu đồng ý, FE gửi PUT với `allowsReviewerAssignment: true` và không có lý do. Response có `isLocked: true`; từ đó màn hình chỉ đọc, mọi POST/PUT mới với key khác nhận `409 AdvisorEvaluation.Locked`.
+
 ### `AdvisorEvaluationDto`
 
 ```json
 {
-  "advisorEvaluationId": "317af0da-5260-4f99-8173-5f8463c8897c",
+  "id": "317af0da-5260-4f99-8173-5f8463c8897c",
   "groupId": "0be0cfe1-60f0-4b6b-a7cf-5ce5a5ff5d9a",
   "finalReportId": "b4b098e4-6848-4d2f-8647-fa427c7eb0e5",
   "reportVersionNo": 2,
@@ -183,13 +193,15 @@ Thành công trả `200 OK` với `ApiResponse<AdvisorEvaluationDto>`. Không c�
 
 ## Audit, concurrency và tính nguyên tử
 
-Mỗi mutation thành công tạo đúng một audit integration event trong cùng giao dịch dữ liệu. Tên action chốt cho SCRUM-103:
+Lưu phiếu thành công tạo một audit integration event DefenseCouncil. Mỗi quyết định thành công tạo hai audit events trong cùng transaction: một ở DefenseCouncil và một ở ThesisManagement để ghi nhận bàn giao trạng thái nhóm. Tên action đang dùng:
 
 - `DefenseCouncil.AdvisorEvaluation.Saved`
-- `DefenseCouncil.AdvisorEvaluation.ReviewerAssignmentRejected`
-- `DefenseCouncil.AdvisorEvaluation.ReviewerAssignmentApproved`
+- `DefenseCouncil.AdvisorEvaluation.Rejected`
+- `DefenseCouncil.AdvisorEvaluation.Approved`
+- `ThesisManagement.AdvisorEvaluation.ReviewerAssignmentRejected`
+- `ThesisManagement.AdvisorEvaluation.ReviewerAssignmentApproved`
 
-Metadata tối thiểu: `groupId`, `finalReportId`, `reportVersionNo`, `submissionFileId`, `submissionChecksumSha256`, `advisorEvaluationId`, `evaluationVersion`, score sau làm tròn, trạng thái quyết định, actor thực tế và thời điểm. Audit không ghi nội dung nhận xét/lý do đầy đủ để tránh nhân bản dữ liệu bảo mật không cần thiết.
+Metadata quyết định chứa group/report/file binding, phiên bản phiếu, điểm sau làm tròn, trạng thái quyết định, actor và thời điểm. Audit không ghi nội dung nhận xét hoặc lý do từ chối; chỉ ghi `HasRejectionReason` khi cần thể hiện có lý do.
 
 CP2 phải dùng một transaction PostgreSQL chung để kiểm tra và commit thay đổi của phiếu DefenseCouncil, FinalReport/StudentGroup ThesisManagement, idempotency record và hai audit outbox liên quan. Nếu một phần lỗi, toàn bộ phải rollback. Không dùng hai lần `SaveChanges` độc lập để mô phỏng tính nguyên tử.
 
@@ -198,7 +210,7 @@ CP2 phải dùng một transaction PostgreSQL chung để kiểm tra và commit 
 SCRUM-104 phải kiểm tra lại điều kiện ngay trước khi phân công GVPB; không dựa trên danh sách hoặc dữ liệu FE cache. Contract đọc dự kiến từ SCRUM-103 là:
 
 ```text
-ReviewerAssignmentEligibilityDto? GetReviewerAssignmentEligibilityAsync(groupId)
+ReviewerAssignmentEligibilityContractDto? GetReviewerAssignmentEligibilityAsync(groupId)
 
 AdvisorEvaluationId
 GroupId
@@ -209,7 +221,7 @@ SubmissionChecksumSha256
 ApprovedAtUtc
 ```
 
-Contract chỉ trả dữ liệu khi cùng lúc thỏa: phiếu `allowsReviewerAssignment = true` và khóa; nhóm `ReadyForReviewerAssignment`; `InitialFinal` còn `UnderEvaluation`; phiên bản/file tham chiếu còn đúng dữ liệu đã khóa. Không thỏa điều kiện thì trả `null`/không đủ điều kiện, không phải snapshot cũ. SCRUM-104 tiếp tục chịu trách nhiệm kiểm tra GVPB không trùng GVHD hiện tại và quyền của người phân công.
+Contract chỉ trả dữ liệu khi cùng lúc thỏa: phiếu `allowsReviewerAssignment = true` và khóa; nhóm `ReadyForReviewerAssignment`; `InitialFinal` còn `UnderEvaluation`; phiên bản/file tham chiếu còn đúng dữ liệu đã khóa. Không thỏa điều kiện thì trả `null`/không đủ điều kiện, không phải snapshot cũ. Contract nằm tại `DefenseCouncil.Contracts.AdvisorEvaluations.IReviewerAssignmentEligibilityContract`; SCRUM-104 tiếp tục chịu trách nhiệm kiểm tra GVPB không trùng GVHD hiện tại và quyền của người phân công.
 
 ## Dữ liệu legacy và migration
 

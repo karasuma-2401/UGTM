@@ -72,7 +72,7 @@ public sealed class DecideAdvisorEvaluationHandler(
                 return Result.Failure<AdvisorEvaluationDto>(workflowResult.Error);
             }
 
-            return Result.Success(workflowResult.Response ?? ToDto(workflowResult.Evaluation!));
+            return Result.Success(workflowResult.Response ?? AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!));
         }
         catch (DefenseCouncilConcurrencyException)
         {
@@ -204,7 +204,7 @@ public sealed class DecideAdvisorEvaluationHandler(
         }
 
         var evaluation = workflowResult.Evaluation!;
-        var response = ToDto(evaluation);
+        var response = AdvisorEvaluationDtoMapper.ToDto(evaluation);
         workflowResult.IdempotencyRecord.SetResponsePayload(JsonSerializer.Serialize(response));
         auditOutbox.Add(new AuditIntegrationEntry(
             "AdvisorEvaluation",
@@ -222,7 +222,7 @@ public sealed class DecideAdvisorEvaluationHandler(
                 evaluation.SubmissionFileId,
                 evaluation.Score,
                 evaluation.AllowsReviewerAssignment,
-                evaluation.RejectionReason,
+                HasRejectionReason = !string.IsNullOrWhiteSpace(evaluation.RejectionReason),
                 evaluation.DecisionBy,
                 evaluation.DecisionAt,
                 evaluation.Version
@@ -234,7 +234,7 @@ public sealed class DecideAdvisorEvaluationHandler(
             evaluation.ReportVersionNo!.Value,
             evaluation.Version,
             evaluation.AllowsReviewerAssignment!.Value,
-            evaluation.RejectionReason,
+            !string.IsNullOrWhiteSpace(evaluation.RejectionReason),
             evaluation.DecisionBy!.Value,
             evaluation.DecisionAt!.Value));
         return Task.FromResult(workflowResult with { Response = response });
@@ -279,25 +279,6 @@ public sealed class DecideAdvisorEvaluationHandler(
             AdvisorEvaluationGroupReadinessOutcome.InvalidGroupState => AdvisorEvaluationErrors.InvalidGroupState,
             _ => AdvisorEvaluationErrors.ConcurrencyConflict
         };
-
-    private static AdvisorEvaluationDto ToDto(AdvisorEvaluation evaluation)
-        => new(
-            evaluation.Id,
-            evaluation.GroupId,
-            evaluation.FinalReportId!.Value,
-            evaluation.ReportVersionNo!.Value,
-            evaluation.SubmissionFileId!.Value,
-            evaluation.SubmissionChecksumSha256!,
-            evaluation.Score,
-            evaluation.Comment!,
-            evaluation.EvaluatedBy!.Value,
-            evaluation.EvaluatedAt,
-            evaluation.AllowsReviewerAssignment,
-            evaluation.RejectionReason,
-            evaluation.DecisionBy,
-            evaluation.DecisionAt,
-            evaluation.Version,
-            evaluation.IsLocked);
 
     private static bool IsAdministrator(ICurrentUser user)
         => user.Roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase));

@@ -17,6 +17,9 @@ using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence.Repositories;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.SaveAdvisorEvaluation;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.DecideAdvisorEvaluation;
+using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.GetAdvisorEvaluation;
+using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure;
@@ -34,6 +37,8 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<IAdvisorEvaluationIdempotencyRepository, AdvisorEvaluationIdempotencyRepository>();
         services.AddScoped<SaveAdvisorEvaluationHandler>();
         services.AddScoped<DecideAdvisorEvaluationHandler>();
+        services.AddScoped<GetAdvisorEvaluationHandler>();
+        services.AddScoped<IReviewerAssignmentEligibilityContract, ReviewerAssignmentEligibilityContract>();
         services.AddScoped<IDefenseCouncilUnitOfWork>(provider => provider.GetRequiredService<DefenseCouncilDbContext>());
         services.AddScoped<IDefenseCouncilAuditOutbox, DefenseCouncilAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, DefenseCouncilAuditEventSource>();

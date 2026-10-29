@@ -56,6 +56,22 @@ internal sealed class AdvisorEvaluationWorkflowContract(
             file?.ChecksumSha256);
     }
 
+    public async Task<AdvisorEvaluationGroupContextContractDto?> GetGroupContextAsync(
+        Guid groupId,
+        CancellationToken cancellationToken = default)
+    {
+        if (groupId == Guid.Empty)
+        {
+            return null;
+        }
+
+        var group = await context.StudentGroups.AsNoTracking()
+            .SingleOrDefaultAsync(value => value.Id == groupId, cancellationToken);
+        return group is null
+            ? null
+            : new AdvisorEvaluationGroupContextContractDto(group.Id, group.TopicId);
+    }
+
     public async Task<AdvisorEvaluationLockedFinalReportContractDto?> GetLockedInitialFinalReportAsync(
         Guid finalReportId,
         CancellationToken cancellationToken = default)
@@ -175,7 +191,7 @@ internal sealed class AdvisorEvaluationWorkflowContract(
                 decision.ReportVersionNo,
                 decision.EvaluationVersion,
                 decision.AllowsReviewerAssignment,
-                decision.RejectionReason,
+                decision.HasRejectionReason,
                 decision.DecidedBy,
                 decision.DecidedAtUtc
             }), decision.DecidedAtUtc);

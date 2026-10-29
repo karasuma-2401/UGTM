@@ -77,8 +77,14 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests
         Assert.True(evaluation.IsLocked);
         Assert.Equal(advisorId, evaluation.DecisionBy);
         Assert.Equal(_clock.UtcNow, evaluation.DecisionAt);
-        Assert.Single(await defense.AuditOutboxMessages.Where(value =>
-            value.Action == IntegrationAuditActions.AdvisorEvaluationRejected).ToListAsync());
+        var rejectedAudit = await defense.AuditOutboxMessages.SingleAsync(value =>
+            value.Action == IntegrationAuditActions.AdvisorEvaluationRejected);
+        Assert.DoesNotContain("Cần hoàn tất chỉnh sửa theo góp ý.", rejectedAudit.PayloadJson);
+        var rejectedEvent = JsonSerializer.Deserialize<AuditIntegrationEvent>(rejectedAudit.PayloadJson)!;
+        using (var rejectedMetadata = JsonDocument.Parse(rejectedEvent.MetadataJson!))
+        {
+            Assert.True(rejectedMetadata.RootElement.GetProperty("HasRejectionReason").GetBoolean());
+        }
         var approvedAudit = await defense.AuditOutboxMessages.SingleAsync(value =>
             value.Action == IntegrationAuditActions.AdvisorEvaluationApproved);
         var approvedEvent = JsonSerializer.Deserialize<AuditIntegrationEvent>(approvedAudit.PayloadJson)!;
@@ -88,8 +94,9 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests
         await using var thesis = CreateThesisDbContext();
         Assert.Equal(StudentGroupStatus.ReadyForReviewerAssignment,
             (await thesis.StudentGroups.SingleAsync()).Status);
-        Assert.Single(await thesis.AuditOutboxMessages.Where(value =>
-            value.Action == IntegrationAuditActions.AdvisorEvaluationReviewerAssignmentRejected).ToListAsync());
+        var rejectedThesisAudit = await thesis.AuditOutboxMessages.SingleAsync(value =>
+            value.Action == IntegrationAuditActions.AdvisorEvaluationReviewerAssignmentRejected);
+        Assert.DoesNotContain("Cần hoàn tất chỉnh sửa theo góp ý.", rejectedThesisAudit.PayloadJson);
         Assert.Single(await thesis.AuditOutboxMessages.Where(value =>
             value.Action == IntegrationAuditActions.AdvisorEvaluationReviewerAssignmentApproved).ToListAsync());
     }

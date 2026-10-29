@@ -33,7 +33,7 @@ public static class AdvisorEvaluationErrors
     public static readonly Error AlreadyExists = Error.Conflict(
         "AdvisorEvaluation.AlreadyExists", "Phiếu chấm của GVHD đã tồn tại; cần cung cấp phiên bản hiện tại để cập nhật.");
     public static readonly Error NotFound = Error.NotFound(
-        "AdvisorEvaluation.NotFound", "Không tìm thấy phiếu chấm để cập nhật.");
+        "AdvisorEvaluation.NotFound", "Không tìm thấy phiếu chấm của GVHD.");
     public static readonly Error Locked = Error.Conflict(
         "AdvisorEvaluation.Locked", "Phiếu chấm đã được duyệt và không thể chỉnh sửa.");
     public static readonly Error IdempotencyKeyReused = Error.Conflict(

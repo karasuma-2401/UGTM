@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.DecideAdvisorEvaluation;
+using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.GetAdvisorEvaluation;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.SaveAdvisorEvaluation;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
@@ -31,6 +32,21 @@ public static class AdvisorEvaluationEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
             .Produces(StatusCodes.Status415UnsupportedMediaType);
+        endpoints.MapGet("/api/thesis/groups/{groupId:guid}/advisor-evaluation", GetAsync)
+            .WithTags("DefenseCouncil.AdvisorEvaluation")
+            .RequireAuthorization()
+            .WithSummary("Xem phiếu chấm của GVHD theo nhóm")
+            .WithDescription("""
+                Chỉ GVHD đang được phân công cho đề tài hoặc Admin có thể xem phiếu chấm. Kết quả
+                chứa evaluationVersion để client dùng khi lưu hoặc quyết định tiếp theo. Đọc phiếu
+                không tạo audit hay thay đổi trạng thái.
+                """)
+            .Produces<ApiResponse<AdvisorEvaluationDto>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
         endpoints.MapPut("/api/thesis/final-reports/{finalReportId:guid}/approval", DecideAsync)
             .WithTags("DefenseCouncil.AdvisorEvaluation")
             .RequireAuthorization()
@@ -97,6 +113,12 @@ public static class AdvisorEvaluationEndpoints
             body?.Comment,
             idempotencyKey), cancellationToken)).ToHttpResult();
     }
+
+    private static async Task<IResult> GetAsync(
+        Guid groupId,
+        GetAdvisorEvaluationHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(groupId, cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> DecideAsync(
         Guid finalReportId,
