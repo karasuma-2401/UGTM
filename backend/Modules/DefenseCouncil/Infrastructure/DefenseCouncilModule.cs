@@ -50,6 +50,7 @@ public sealed class DefenseCouncilModule : IModule
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
-            .WithName($"{Name}.Ping");
+            .WithName($"{Name}.Ping")
+            .ExcludeFromDescription();
     }
 }

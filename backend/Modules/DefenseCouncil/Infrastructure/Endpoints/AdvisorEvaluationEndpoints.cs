@@ -2,6 +2,8 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.DecideAdvisorEvaluation;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.GetAdvisorEvaluation;
@@ -167,10 +169,22 @@ public static class AdvisorEvaluationEndpoints
     private static bool TryGetIdempotencyKey(HttpRequest request, out Guid idempotencyKey)
     {
         idempotencyKey = Guid.Empty;
-        return request.Headers.TryGetValue("Idempotency-Key", out var values)
-               && values.Count == 1
-               && Guid.TryParse(values[0], out idempotencyKey)
-               && idempotencyKey != Guid.Empty;
+        if (request.Headers.TryGetValue("Idempotency-Key", out var values)
+            && values.Count == 1
+            && Guid.TryParse(values[0], out idempotencyKey)
+            && idempotencyKey != Guid.Empty)
+        {
+            return true;
+        }
+
+        var env = request.HttpContext.RequestServices.GetService<IHostEnvironment>();
+        if (env?.IsDevelopment() == true && (!request.Headers.ContainsKey("Idempotency-Key") || string.IsNullOrWhiteSpace(request.Headers["Idempotency-Key"])))
+        {
+            idempotencyKey = Guid.NewGuid();
+            return true;
+        }
+
+        return false;
     }
 
     private static IResult InvalidRequest()

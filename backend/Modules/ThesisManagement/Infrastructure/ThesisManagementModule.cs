@@ -165,6 +165,7 @@ public sealed class ThesisManagementModule : IModule
                 endpoint có thể phục vụ request. Endpoint này không kiểm tra database,
                 object storage hoặc trạng thái deadline của các cổng thẩm định.
                 """)
-            .WithName($"{Name}.Ping");
+            .WithName($"{Name}.Ping")
+            .ExcludeFromDescription();
     }
 }
