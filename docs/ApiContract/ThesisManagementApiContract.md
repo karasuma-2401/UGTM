@@ -9,10 +9,13 @@ CP7 đồng bộ yêu cầu file và data model, kiểm tra ba bộ test ThesisM
 
 Mọi endpoint trong tài liệu này yêu cầu Bearer token. Response thành công có dạng `ApiResponse<T>`; response lỗi chứa `code`, `message` và HTTP status phù hợp. Thời điểm truyền trong JSON dùng ISO 8601 UTC. Các endpoint tải tệp không trả object key nội bộ hoặc URL public.
 
+Đã bổ sung API đọc chi tiết nhóm `GET /api/thesis/groups/{groupId}/detail` theo dữ liệu BE hiện tại; không thay đổi domain, schema hoặc luồng nộp/thẩm định. API danh sách hồ sơ Cổng 1/Cổng 2 chưa được bổ sung trong thay đổi này.
+
 ## Phân quyền và quy ước tệp
 
 | Nghiệp vụ | Chủ thể được phép |
 | --- | --- |
+| Xem chi tiết nhóm | `Student` đã `Confirmed` trong nhóm, GVHD hiện được phân công cho đề tài, `Faculty` có `thesis.review-gates.review`, hoặc `Admin` |
 | Cấu hình deadline Cổng 1/Cổng 2 | `Admin`, `AcademicAffairs` có `thesis.review-gate-config.manage` |
 | Nộp hồ sơ Cổng 1/Cổng 2 | Bất kỳ sinh viên nào thuộc nhóm |
 | Nộp/nộp lại báo cáo cuối kỳ | Role `Student`, thành viên `Confirmed` của chính nhóm, đã được duyệt giữa kỳ |
@@ -28,6 +31,7 @@ Các file nộp chỉ chấp nhận `.pdf`, `.doc`, `.docx`, tối đa 20 MiB. S
 
 | Method | Route | Response |
 | --- | --- | --- |
+| `GET` | `/api/thesis/groups/{groupId}/detail` | `StudentGroupDetailDto` |
 | `PUT` | `/api/thesis/review-gate-configurations/{batchId}/{gateType}` | `ReviewGateConfigurationDto` |
 | `GET` | `/api/thesis/review-gate-configurations/{batchId}` | `IReadOnlyList<ReviewGateConfigurationDto>` |
 | `POST` | `/api/thesis/groups/{groupId}/syllabus/submissions` | `SyllabusSubmissionDto` |
@@ -48,6 +52,61 @@ Các file nộp chỉ chấp nhận `.pdf`, `.doc`, `.docx`, tối đa 20 MiB. S
 | `GET` | `/api/thesis/progress-report-files/{fileId}/download` | `SubmissionFileDownloadDto` |
 
 `{batchId}`, `{groupId}`, `{milestoneId}` và `{fileId}` là GUID. `gateType` chỉ nhận `Syllabus` hoặc `Midterm`.
+
+## Chi tiết nhóm khóa luận
+
+`GET /api/thesis/groups/{groupId}/detail`, Bearer token, không có body hoặc query parameter.
+Sinh viên có thể lấy `groupId` từ `GET /api/thesis/topic-registrations/my-status`, sau đó gọi endpoint này; không thêm alias `my-group`.
+
+Quyền xem: `Admin`; `Faculty` có permission `thesis.review-gates.review`; role `Student` đã `Confirmed` trong chính nhóm; hoặc GVHD hiện tại của đề tài. Chỉ có permission nhưng không thuộc Faculty, role giảng viên không được phân công, hoặc thành viên `Pending` đều không đủ quyền. Quyền được kiểm tra trước khi đọc/trả tên và email thành viên. GVHD cũ mất quyền khi đổi phân công. Quyền xem chi tiết không cấp thêm quyền tải hồ sơ tại các endpoint hiện có.
+
+Không giới hạn theo deadline, trạng thái nhóm hoặc trạng thái đợt; nhóm chưa nộp hồ sơ hoặc đã dừng vẫn được đọc theo cùng quyền. Đây là truy vấn chỉ đọc, không đổi trạng thái và không ghi audit nghiệp vụ.
+
+Response `200 OK` (`ApiResponse<StudentGroupDetailDto>`):
+
+```json
+{
+  "success": true,
+  "data": {
+    "groupId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "topicId": "c2b07384-d113-46c9-8d7d-2b4702170f2a",
+    "topicTitleVi": "Hệ thống quản lý khóa luận",
+    "topicTitleEn": "Thesis management system",
+    "batchId": "b1b07384-d113-46c9-8d7d-2b4702170f2b",
+    "batchName": "Đợt 1 HK1 2026–2027",
+    "advisor": {
+      "advisorId": "d3b07384-d113-46c9-8d7d-2b4702170f2d",
+      "fullName": "Trần Hoàng Long"
+    },
+    "members": [
+      {
+        "studentId": "e1f1c8a1-1111-4234-9e32-2c963f66afa1",
+        "userCode": "24521603",
+        "fullName": "Nguyễn Minh Đức",
+        "email": "24521603@gm.uit.edu.vn",
+        "confirmationStatus": "Confirmed"
+      }
+    ],
+    "groupStatus": "Registered"
+  }
+}
+```
+
+- `groupStatus` là `StudentGroup.Status` hiện tại; `confirmationStatus` nhận `Confirmed` hoặc `Pending`. Người được phép xem nhận toàn bộ thành viên hiện có, gồm cả thành viên đang chờ xác nhận; thành viên `Pending` không tự có quyền đọc.
+- Thành viên được sắp theo thời điểm tham gia tăng dần, rồi `studentId`. Nhóm không còn thành viên trả `members: []` cho chủ thể vẫn có quyền như GVHD/Admin.
+- `topicTitleEn`, `members[].userCode` nullable theo source. Khi thiếu bản ghi hiển thị, `batchName`, `advisor.fullName` hoặc `members[].fullName`/`email`/`userCode` là `null`; giữ ID, trạng thái và thành viên, đồng thời ghi log phía server. Không tạo tên/mã giả.
+- Đợt lấy từ `Topic.BatchId`; thành viên phải thuộc cùng đợt. Thiếu đề tài hoặc liên kết đợt của thành viên không nhất quán trả lỗi dữ liệu `500` cho người đã có quyền xem, không tự sửa dữ liệu.
+- Contract không có `groupCode`, `topicCode`, `academicTitle`, email GVHD hoặc `isLate` trong bản nháp FE. FE dùng ID/tên thực và điều chỉnh hiển thị; API không trả token xác nhận, hash, thông tin bảo mật hoặc object key.
+
+| HTTP | Error code | Ý nghĩa |
+| --- | --- | --- |
+| `400` | `StudentGroup.InvalidRequest` | `groupId` là GUID rỗng. |
+| `401` | `StudentGroup.AuthenticationRequired` | Token đã qua xác thực nhưng không có user ID hợp lệ; request chưa đăng nhập bị middleware challenge theo cơ chế hiện tại. |
+| `403` | `StudentGroup.AccessDenied` | Không có quyền xem nhóm. |
+| `404` | `StudentGroup.NotFound` | Nhóm không tồn tại. |
+| `500` | `StudentGroup.InconsistentData` | Thiếu liên kết đề tài hoặc đợt của thành viên không khớp đợt đề tài. |
+
+Route có constraint `:guid`: chuỗi không phải GUID không khớp route và trả `404` theo quy ước endpoint hiện tại. Lỗi handler dùng envelope `ApiResponse` và `EndpointResultMapper` hiện có.
 
 ## Nộp và nộp lại báo cáo cuối kỳ (SCRUM-102 CP4)
 
