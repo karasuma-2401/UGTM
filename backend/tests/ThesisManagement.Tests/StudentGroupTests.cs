@@ -91,6 +91,24 @@ public class StudentGroupTests
     }
 
     [Fact]
+    public void A_group_can_become_ready_for_reviewer_assignment_only_after_final_report_submission()
+    {
+        var group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Timestamp);
+
+        Assert.False(group.TryMakeReadyForReviewerAssignment());
+        Assert.True(group.TrySubmitSyllabus());
+        Assert.True(group.TryApproveSyllabus());
+        Assert.True(group.TrySubmitMidtermReport());
+        Assert.True(group.TryApproveMidtermReport());
+        Assert.True(group.TrySubmitFinalReport());
+
+        Assert.True(group.TryMakeReadyForReviewerAssignment());
+        Assert.Equal(StudentGroupStatus.ReadyForReviewerAssignment, group.Status);
+        Assert.False(group.TryMakeReadyForReviewerAssignment());
+        Assert.False(group.TrySubmitFinalReport());
+    }
+
+    [Fact]
     public void A_group_cannot_submit_a_final_report_during_registration_or_a_pending_gate()
     {
         var group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Timestamp);

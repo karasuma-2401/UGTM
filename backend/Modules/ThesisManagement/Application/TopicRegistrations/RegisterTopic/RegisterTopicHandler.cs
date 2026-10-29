@@ -14,7 +14,8 @@ public sealed class RegisterTopicHandler(
     IStudentInfoReader studentInfoReader,
     IEmailSender emailSender,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IThesisEmailTemplateRenderer emailTemplateRenderer)
 {
     private static readonly TimeSpan DefaultConfirmationWindow = TimeSpan.FromHours(24);
 
@@ -116,35 +117,26 @@ public sealed class RegisterTopicHandler(
 
             if (!string.IsNullOrWhiteSpace(partner.Email))
             {
-                var inviteBody = $"""
-                    <h3>Yêu cầu xác nhận tham gia đề tài khóa luận tốt nghiệp</h3>
-                    <p>Xin chào <strong>{partner.FullName}</strong>,</p>
-                    <p>Sinh viên <strong>{studentAName}</strong> đã đăng ký đề tài khóa luận và chỉ định bạn là thành viên cùng nhóm.</p>
-                    <p>Vui lòng đăng nhập hệ thống và xác nhận tham gia hoặc sử dụng mã xác nhận bên dưới:</p>
-                    <p style="font-size: 18px; font-weight: bold; color: #1a73e8; background: #e8f0fe; padding: 10px; display: inline-block;">
-                        {rawToken}
-                    </p>
-                    <p><strong>Thời hạn xác nhận:</strong> {expiresAtUtc:yyyy-MM-dd HH:mm:ss} UTC (trong vòng 24 giờ).</p>
-                    <p><em>Lưu ý: Nếu quá hạn trên mà bạn chưa xác nhận, yêu cầu sẽ bị hủy bỏ và hệ thống sẽ ghi nhận 1 lần vi phạm cảnh cáo.</em></p>
-                    """;
+                var message = emailTemplateRenderer.RenderTopicRegistrationInvite(
+                    partner.Email,
+                    partner.FullName ?? string.Empty,
+                    studentAName,
+                    rawToken,
+                    expiresAtUtc);
 
-                await emailSender.SendAsync(
-                    new EmailMessage(partner.Email, "[UGTM] Xác nhận tham gia nhóm đăng ký đề tài KLTN", inviteBody),
-                    cancellationToken);
+                await emailSender.SendAsync(message, cancellationToken);
             }
 
             if (!string.IsNullOrWhiteSpace(studentAInfo.Email))
             {
-                var notifyBody = $"""
-                    <h3>Đăng ký đề tài khóa luận thành công</h3>
-                    <p>Xin chào <strong>{studentAInfo.FullName}</strong>,</p>
-                    <p>Bạn đã đăng ký đề tài khóa luận thành công kèm bạn cùng nhóm <strong>{partner.FullName}</strong> ({partner.UserCode}).</p>
-                    <p>Hệ thống đang tạm giữ chỗ đề tài cho nhóm của bạn. Yêu cầu tham gia đã được gửi tới email của bạn cùng nhóm và đang chờ xác nhận trước <strong>{expiresAtUtc:yyyy-MM-dd HH:mm:ss} UTC</strong>.</p>
-                    """;
+                var message = emailTemplateRenderer.RenderTopicRegistrationConfirmationForInviter(
+                    studentAInfo.Email,
+                    studentAInfo.FullName ?? string.Empty,
+                    partner.FullName ?? string.Empty,
+                    partner.UserCode ?? string.Empty,
+                    expiresAtUtc);
 
-                await emailSender.SendAsync(
-                    new EmailMessage(studentAInfo.Email, "[UGTM] Thông báo đăng ký đề tài khóa luận", notifyBody),
-                    cancellationToken);
+                await emailSender.SendAsync(message, cancellationToken);
             }
         }
         catch

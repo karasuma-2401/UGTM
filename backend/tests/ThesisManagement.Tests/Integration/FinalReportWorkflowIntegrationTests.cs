@@ -20,6 +20,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using UGTM.Api.Modules;
 using UGTM.BuildingBlocks.Infrastructure.Middlewares;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Database.Migrations;
@@ -29,6 +30,8 @@ using UGTM.Modules.AcademicPeriods.Domain.Grading;
 using UGTM.Modules.AcademicPeriods.Domain.Scheduling;
 using UGTM.Modules.AcademicPeriods.Infrastructure;
 using UGTM.Modules.AcademicPeriods.Infrastructure.Persistence;
+using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Domain.Enums;
@@ -58,6 +61,7 @@ public sealed class FinalReportWorkflowIntegrationTests(PostgreSqlFixture databa
     private readonly Guid _partnerId = Guid.NewGuid();
     private readonly Guid _advisorId = Guid.NewGuid();
     private readonly Guid _replacementAdvisorId = Guid.NewGuid();
+    private readonly Guid _adminId = Guid.NewGuid();
     private readonly string _bucket = $"final-report-workflow-{Guid.NewGuid():N}";
     private readonly WorkflowClock _clock = new();
     private Guid _groupId;
@@ -86,11 +90,25 @@ public sealed class FinalReportWorkflowIntegrationTests(PostgreSqlFixture databa
             ["S3Storage:AccessKey"] = "test-access-key",
             ["S3Storage:SecretKey"] = "test-secret-key",
             ["S3Storage:BucketName"] = _bucket,
-            ["S3Storage:Region"] = "us-east-1"
+            ["S3Storage:Region"] = "us-east-1",
+            ["ASPNETCORE_ENVIRONMENT"] = Environments.Development,
+            ["Identity:Jwt:Issuer"] = "workflow-test",
+            ["Identity:Jwt:Audience"] = "workflow-test-client",
+            ["Identity:Jwt:PrivateKeyPath"] = "workflow-test-private-key.pem",
+            ["Identity:Jwt:KeyId"] = "workflow-test-key",
+            ["Identity:Jwt:AccessTokenMinutes"] = "10",
+            ["Identity:Email:PublicWebBaseUrl"] = "https://workflow.test",
+            ["Identity:Email:OutboxPartition"] = "workflow-test",
+            ["Identity:ClientMetadata:IpHashKey"] = "workflow-test-client-metadata-hash-key",
+            ["Identity:ClientMetadata:UserAgentMaxLength"] = "300",
+            ["Notifications:Smtp:Host"] = "localhost",
+            ["Notifications:Smtp:Port"] = "1025",
+            ["Notifications:Smtp:FromAddress"] = "workflow@test.example",
+            ["Notifications:Smtp:FromName"] = "Workflow Test",
+            ["Notifications:Smtp:Security"] = "None",
+            ["Notifications:Smtp:TimeoutSeconds"] = "5"
         });
-        new AcademicPeriodsModule().RegisterModule(builder.Services, builder.Configuration);
-        new TopicCatalogModule().RegisterModule(builder.Services, builder.Configuration);
-        new ThesisManagementModule().RegisterModule(builder.Services, builder.Configuration);
+        builder.Services.AddUgtmModules(builder.Configuration);
         builder.Services.RemoveAll<IHostedService>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -102,7 +120,7 @@ public sealed class FinalReportWorkflowIntegrationTests(PostgreSqlFixture databa
         _app.UseMiddleware<GlobalExceptionMiddleware>();
         _app.UseAuthentication();
         _app.UseAuthorization();
-        new ThesisManagementModule().MapEndpoints(_app);
+        _app.MapUgtmModules();
         await _app.Services.GetRequiredService<IAmazonS3>().PutBucketAsync(new PutBucketRequest { BucketName = _bucket });
         await _app.StartAsync();
         _client = new HttpClient { BaseAddress = new Uri(_app.Urls.Single()) };
@@ -248,11 +266,133 @@ public sealed class FinalReportWorkflowIntegrationTests(PostgreSqlFixture databa
         await AssertDownloadAsync(originalFile.Id, Document("pdf"), _studentId, "Student");
     }
 
+    [Fact]
+    public async Task Real_workflow_hands_off_only_an_approved_locked_evaluation_across_all_modules()
+    {
+        using var firstSubmission = await SubmitAsync("pdf", _studentId);
+        using var secondSubmission = await SubmitAsync("docx", _partnerId);
+        Assert.Equal(HttpStatusCode.OK, firstSubmission.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, secondSubmission.StatusCode);
+
+        Guid reportId;
+        Guid submissionFileId;
+        string submissionChecksum;
+        await using (var thesis = Db<ThesisManagementDbContext>())
+        {
+            var report = await thesis.FinalReports.SingleAsync();
+            var file = await thesis.SubmissionFiles.SingleAsync(value => value.VersionNo == 2);
+            reportId = report.Id;
+            submissionFileId = file.Id;
+            submissionChecksum = file.ChecksumSha256
+                ?? throw new InvalidOperationException("The locked submission must have a checksum.");
+        }
+
+        using var started = await BeginAsync(reportId, 2, _advisorId);
+        Assert.Equal(HttpStatusCode.OK, started.StatusCode);
+        _clock.UtcNow = _clock.UtcNow.AddMinutes(1);
+
+        using var savedByAdmin = await SaveAdvisorEvaluationAsync(
+            reportId, 2, null, 8.345m, "  Đủ điều kiện nhưng cần kiểm tra lần cuối.  ",
+            Guid.NewGuid(), _adminId, "Admin");
+        var savedContent = await savedByAdmin.Content.ReadAsStringAsync();
+        Assert.True(savedByAdmin.StatusCode == HttpStatusCode.OK, savedContent);
+        Assert.Contains("8.35", savedContent);
+        var savedVersion = EvaluationVersion(savedContent);
+
+        using var studentHistory = await SendAsync(HttpMethod.Get, HistoryRoute, _studentId, "Student");
+        using var studentEvaluation = await GetAdvisorEvaluationAsync(_studentId, "Student");
+        using var facultyHistory = await SendAsync(
+            HttpMethod.Get, HistoryRoute, Guid.NewGuid(), "Faculty", permission: PermissionCodes.ThesisReviewGatesReview);
+        using var facultyEvaluation = await GetAdvisorEvaluationAsync(
+            Guid.NewGuid(), "Faculty", PermissionCodes.ThesisReviewGatesReview);
+        Assert.Equal(HttpStatusCode.OK, studentHistory.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, studentEvaluation.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, facultyHistory.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, facultyEvaluation.StatusCode);
+
+        await using (var topics = Db<TopicCatalogDbContext>())
+        {
+            (await topics.Topics.SingleAsync()).AdvisorId = _replacementAdvisorId;
+            await topics.SaveChangesAsync();
+        }
+        using var formerAdvisorRead = await GetAdvisorEvaluationAsync(_advisorId, "Lecturer");
+        using var currentAdvisorRead = await GetAdvisorEvaluationAsync(_replacementAdvisorId, "Lecturer");
+        Assert.Equal(HttpStatusCode.Forbidden, formerAdvisorRead.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, currentAdvisorRead.StatusCode);
+
+        _clock.UtcNow = _clock.UtcNow.AddMinutes(1);
+        using var rejected = await DecideAdvisorEvaluationAsync(
+            reportId, 2, savedVersion, false, "Cần xác nhận lại tài liệu tham khảo.", Guid.NewGuid(), _adminId, "Admin");
+        var rejectedContent = await rejected.Content.ReadAsStringAsync();
+        Assert.True(rejected.StatusCode == HttpStatusCode.OK, rejectedContent);
+        var rejectedVersion = EvaluationVersion(rejectedContent);
+
+        await using (var defense = Db<DefenseCouncilDbContext>())
+        {
+            var audit = await defense.AuditOutboxMessages.SingleAsync(value =>
+                value.Action == IntegrationAuditActions.AdvisorEvaluationRejected);
+            var auditEvent = JsonSerializer.Deserialize<AuditIntegrationEvent>(audit.PayloadJson)!;
+            Assert.Equal(_adminId, auditEvent.ActorUserId);
+            Assert.DoesNotContain("Cần xác nhận lại tài liệu tham khảo.", audit.PayloadJson);
+        }
+
+        using (var scope = _app.Services.CreateScope())
+        {
+            var eligibility = scope.ServiceProvider.GetRequiredService<IReviewerAssignmentEligibilityContract>();
+            Assert.Null(await eligibility.GetReviewerAssignmentEligibilityAsync(_groupId));
+        }
+
+        _clock.UtcNow = _clock.UtcNow.AddMinutes(1);
+        using var revised = await SaveAdvisorEvaluationAsync(
+            reportId, 2, rejectedVersion, 9m, "Đã xác nhận tài liệu tham khảo.", Guid.NewGuid(),
+            _replacementAdvisorId, "Lecturer");
+        var revisedContent = await revised.Content.ReadAsStringAsync();
+        Assert.True(revised.StatusCode == HttpStatusCode.OK, revisedContent);
+        var revisedVersion = EvaluationVersion(revisedContent);
+
+        _clock.UtcNow = _clock.UtcNow.AddMinutes(1);
+        using var approved = await DecideAdvisorEvaluationAsync(
+            reportId, 2, revisedVersion, true, null, Guid.NewGuid(), _replacementAdvisorId, "Lecturer");
+        var approvedContent = await approved.Content.ReadAsStringAsync();
+        Assert.True(approved.StatusCode == HttpStatusCode.OK, approvedContent);
+        var approvedVersion = EvaluationVersion(approvedContent);
+        Assert.Contains("\"isLocked\":true", approvedContent);
+
+        using (var scope = _app.Services.CreateScope())
+        {
+            var eligibility = scope.ServiceProvider.GetRequiredService<IReviewerAssignmentEligibilityContract>();
+            var result = await eligibility.GetReviewerAssignmentEligibilityAsync(_groupId);
+            Assert.NotNull(result);
+            Assert.Equal(reportId, result.FinalReportId);
+            Assert.Equal(submissionFileId, result.SubmissionFileId);
+            Assert.Equal(submissionChecksum, result.SubmissionChecksumSha256);
+            Assert.Equal(_clock.UtcNow, result.ApprovedAtUtc);
+        }
+
+        using var editAfterApproval = await SaveAdvisorEvaluationAsync(
+            reportId, 2, approvedVersion, 10m, "Không được ghi đè.", Guid.NewGuid(), _adminId, "Admin");
+        Assert.Equal(HttpStatusCode.Conflict, editAfterApproval.StatusCode);
+        Assert.Contains("AdvisorEvaluation.Locked", await editAfterApproval.Content.ReadAsStringAsync());
+
+        await using var verificationThesis = Db<ThesisManagementDbContext>();
+        await using var verificationDefense = Db<DefenseCouncilDbContext>();
+        Assert.Equal(StudentGroupStatus.ReadyForReviewerAssignment,
+            (await verificationThesis.StudentGroups.SingleAsync()).Status);
+        var evaluation = await verificationDefense.AdvisorEvaluations.SingleAsync();
+        Assert.True(evaluation.IsLocked);
+        Assert.Equal(9m, evaluation.Score);
+        Assert.Equal(_replacementAdvisorId, evaluation.DecisionBy);
+        Assert.Equal(1, await verificationDefense.AuditOutboxMessages.CountAsync(value =>
+            value.Action == IntegrationAuditActions.AdvisorEvaluationApproved));
+        Assert.Equal(1, await verificationThesis.AuditOutboxMessages.CountAsync(value =>
+            value.Action == IntegrationAuditActions.AdvisorEvaluationReviewerAssignmentApproved));
+    }
+
     private async Task SeedAsync()
     {
         await using (var identity = Db<IdentityDbContext>())
         {
-            var ids = new[] { _studentId, _partnerId, _advisorId, _replacementAdvisorId };
+            var ids = new[] { _studentId, _partnerId, _advisorId, _replacementAdvisorId, _adminId };
             identity.Users.AddRange(ids.Select((id, index) => IdentityUser.Create(id,
                 $"workflow{index}@test.example", $"WORKFLOW{index}@TEST.EXAMPLE", $"Workflow {index}",
                 $"WF{index:D3}", null, null, AccountStatus.Active, SeedTime)));
@@ -318,6 +458,9 @@ public sealed class FinalReportWorkflowIntegrationTests(PostgreSqlFixture databa
 
     private string HistoryRoute => $"/api/thesis/groups/{_groupId}/final-report";
     private static string DownloadRoute(Guid fileId) => $"/api/thesis/final-report-files/{fileId}/download";
+    private static string AdvisorApprovalRoute(Guid finalReportId)
+        => $"/api/thesis/final-reports/{finalReportId}/approval";
+    private string AdvisorEvaluationReadRoute => $"/api/thesis/groups/{_groupId}/advisor-evaluation";
     private Task<HttpResponseMessage> BeginAsync(Guid reportId, int version, Guid advisorId)
         => SendAsync(HttpMethod.Post, $"/api/thesis/final-reports/{reportId}/begin-evaluation", advisorId, "Lecturer",
             JsonContent.Create(new { expectedVersionNo = version }));
@@ -330,12 +473,77 @@ public sealed class FinalReportWorkflowIntegrationTests(PostgreSqlFixture databa
         return await SendAsync(HttpMethod.Post, "/api/thesis/final-reports", studentId, "Student", form);
     }
 
+    private async Task<HttpResponseMessage> SaveAdvisorEvaluationAsync(
+        Guid finalReportId,
+        int expectedReportVersionNo,
+        uint? expectedEvaluationVersion,
+        decimal score,
+        string comment,
+        Guid idempotencyKey,
+        Guid actorId,
+        string role)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/thesis/advisor-evaluations")
+        {
+            Content = JsonContent.Create(new
+            {
+                finalReportId,
+                expectedReportVersionNo,
+                expectedEvaluationVersion,
+                score,
+                comment
+            })
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", $"{actorId:N}.{role}");
+        request.Headers.Add("Idempotency-Key", idempotencyKey.ToString());
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> DecideAdvisorEvaluationAsync(
+        Guid finalReportId,
+        int expectedReportVersionNo,
+        uint expectedEvaluationVersion,
+        bool allowsReviewerAssignment,
+        string? rejectionReason,
+        Guid idempotencyKey,
+        Guid actorId,
+        string role)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, AdvisorApprovalRoute(finalReportId))
+        {
+            Content = JsonContent.Create(new
+            {
+                expectedReportVersionNo,
+                expectedEvaluationVersion,
+                allowsReviewerAssignment,
+                rejectionReason
+            })
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", $"{actorId:N}.{role}");
+        request.Headers.Add("Idempotency-Key", idempotencyKey.ToString());
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> GetAdvisorEvaluationAsync(
+        Guid actorId,
+        string role,
+        string? permission = null)
+        => await SendAsync(HttpMethod.Get, AdvisorEvaluationReadRoute, actorId, role, permission: permission);
+
     private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string route, Guid userId, string role,
-        HttpContent? content = null)
+        HttpContent? content = null,
+        string? permission = null)
     {
         using var request = new HttpRequestMessage(method, route) { Content = content };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", $"{userId:N}.{role}");
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer", $"{userId:N}.{role}" + (permission is null ? string.Empty : $"|{permission}"));
         return await _client.SendAsync(request);
+    }
+
+    private static uint EvaluationVersion(string responseContent)
+    {
+        using var json = JsonDocument.Parse(responseContent);
+        return json.RootElement.GetProperty("data").GetProperty("evaluationVersion").GetUInt32();
     }
 
     private async Task AssertDownloadAsync(Guid fileId, byte[] expected, Guid userId, string role)
@@ -416,10 +624,30 @@ public sealed class FinalReportWorkflowIntegrationTests(PostgreSqlFixture databa
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             var value = Request.Headers.Authorization.ToString();
-            var parts = value.StartsWith("Bearer ", StringComparison.Ordinal) ? value[7..].Split('.') : [];
-            if (parts.Length != 2 || !Guid.TryParse(parts[0], out var id)) return Task.FromResult(AuthenticateResult.NoResult());
-            var principal = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim("sub", id.ToString()), new Claim(ClaimTypes.Role, parts[1])], SchemeName));
+            var token = value.StartsWith("Bearer ", StringComparison.Ordinal) ? value[7..] : string.Empty;
+            var separator = token.IndexOf('.');
+            if (separator < 1 || !Guid.TryParse(token[..separator], out var id))
+            {
+                return Task.FromResult(AuthenticateResult.NoResult());
+            }
+
+            var roleAndPermission = token[(separator + 1)..].Split('|', 2);
+            if (string.IsNullOrWhiteSpace(roleAndPermission[0]))
+            {
+                return Task.FromResult(AuthenticateResult.NoResult());
+            }
+
+            var claims = new List<Claim>
+            {
+                new("sub", id.ToString()),
+                new(ClaimTypes.Role, roleAndPermission[0])
+            };
+            if (roleAndPermission.Length == 2 && !string.IsNullOrWhiteSpace(roleAndPermission[1]))
+            {
+                claims.Add(new Claim("permission", roleAndPermission[1]));
+            }
+
+            var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName)));
         }
     }

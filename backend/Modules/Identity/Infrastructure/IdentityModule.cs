@@ -256,6 +256,7 @@ public sealed class IdentityModule : IModule
                 Không cần xác thực hoặc body. Trả 200 với module Identity và status ok khi endpoint có thể phục vụ request.
                 Endpoint này không kiểm tra kết nối database, SMTP hoặc các dịch vụ phụ trợ.
                 """)
-            .WithName($"{Name}.Ping");
+            .WithName($"{Name}.Ping")
+            .ExcludeFromDescription();
     }
 }

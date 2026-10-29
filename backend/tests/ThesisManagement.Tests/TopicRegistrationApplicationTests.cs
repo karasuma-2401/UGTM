@@ -16,6 +16,7 @@ using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.RegisterTopic
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Infrastructure.BackgroundServices;
+using UGTM.Modules.ThesisManagement.Infrastructure.Notifications;
 
 namespace UGTM.Modules.ThesisManagement.Tests;
 
@@ -33,6 +34,7 @@ public sealed class TopicRegistrationApplicationTests
     private readonly FakeStudentInfoReader _studentInfoReader = new();
     private readonly FakeEmailSender _emailSender = new();
     private readonly FakeTimeProvider _timeProvider = new(FixedNow);
+    private readonly ThesisEmailTemplateRenderer _templateRenderer = new();
 
     public TopicRegistrationApplicationTests()
     {
@@ -567,7 +569,8 @@ public sealed class TopicRegistrationApplicationTests
             _studentInfoReader,
             _emailSender,
             customUser ?? new FakeCurrentUser(currentUserId),
-            _timeProvider);
+            _timeProvider,
+            _templateRenderer);
 
     private sealed class UnauthenticatedCurrentUser : ICurrentUser
     {
