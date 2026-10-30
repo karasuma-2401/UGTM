@@ -6,6 +6,11 @@ namespace UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments;
 public static class ReviewerAssignmentErrors
 {
     public static readonly Error InvalidRequest = Error.Validation("ReviewerAssignment.InvalidRequest", "Thông tin phân công hoặc Idempotency-Key không hợp lệ.");
+    public static readonly Error InvalidCancellationReason = Error.Validation("ReviewerAssignment.InvalidCancellationReason", "Lý do hủy phải có từ 1 đến 1000 ký tự sau khi loại bỏ khoảng trắng đầu/cuối.");
+    public static readonly Error NotFound = Error.NotFound("ReviewerAssignment.NotFound", "Không tìm thấy phân công phản biện.");
+    public static readonly Error AlreadyCancelled = Error.Conflict("ReviewerAssignment.AlreadyCancelled", "Phân công đã được hủy. Vui lòng tải lại dữ liệu trước khi thao tác.");
+    public static readonly Error VersionConflict = Error.Conflict("ReviewerAssignment.VersionConflict", "Phân công đã thay đổi. Vui lòng tải lại phiên bản hiện tại.");
+    public static readonly Error EvaluationExists = Error.Conflict("ReviewerAssignment.EvaluationExists", "Không thể hủy phân công đã có phiếu chấm phản biện.");
     public static readonly Error AuthenticationRequired = Error.Unauthorized("ReviewerAssignment.AuthenticationRequired", "Bạn cần đăng nhập để phân công phản biện.");
     public static readonly Error AccessDenied = Error.Forbidden("ReviewerAssignment.AccessDenied", "Bạn không có quyền quản lý phân công phản biện.");
     public static readonly Error GroupNotFound = Error.NotFound("ReviewerAssignment.GroupNotFound", "Không tìm thấy nhóm khóa luận.");

@@ -1,4 +1,3 @@
-using UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.TopicCatalog.Contracts.ReviewerAssignments;
 
@@ -14,8 +13,8 @@ public sealed record ReviewerAssignmentDto(
 internal static class ReviewerAssignmentDtoMapper
 {
     public static ReviewerAssignmentDto ToDto(ReviewerAssignment assignment,
-        ReviewerAssignmentBindingContractDto binding, ReviewerAssignmentTopicContractDto topic, string? reviewerName)
-        => new(assignment.Id, assignment.GroupId, binding.TopicId, binding.BatchId, topic.TitleVi, topic.TitleEn,
+        ReviewerAssignmentTopicContractDto topic, string? reviewerName)
+        => new(assignment.Id, assignment.GroupId, topic.TopicId, topic.BatchId, topic.TitleVi, topic.TitleEn,
             assignment.ReviewerId, reviewerName, assignment.AdvisorIdAtAssignment, assignment.AdvisorEvaluationId,
             assignment.FinalReportId, assignment.ReportVersionNo, assignment.SubmissionFileId, assignment.SubmissionChecksumSha256,
             assignment.AssignmentOrder, assignment.IsActive, assignment.IsLegacy, assignment.Version, assignment.AssignedBy,

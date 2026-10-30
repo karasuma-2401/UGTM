@@ -1,6 +1,6 @@
 # Reviewer assignment API contract — SCRUM-104
 
-Trạng thái: **CP0–CP2 đã có nền tảng; CP3 đã triển khai POST tạo phân công; DELETE, API đọc và tích hợp tải file thuộc CP4–CP6, chưa triển khai**. Cập nhật 30/10/2026. Nền tảng CP1/CP2 ở mục 12/13; implementation POST ở mục 14. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
+Trạng thái: **CP0–CP2 đã có nền tảng; CP3 có POST tạo phân công; CP4 có DELETE hủy mềm và phân công lại; API đọc và tích hợp tải file chờ CP5–CP6**. Cập nhật 30/10/2026. Nền tảng CP1/CP2 ở mục 12/13; implementation POST/DELETE ở mục 14/15. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
 
 Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ quản trị và nhiệm vụ của GVPB; cấp link tải đúng bản báo cáo đã duyệt. Không gồm UI SCRUM-113, nhập điểm/phiếu SCRUM-105, phản biện thứ hai/xử lý không đồng thuận, tổng hợp/công bố điểm, lưu chiểu, phân công hàng loạt, email/in-app hay API thay GVHD.
 
@@ -17,7 +17,7 @@ Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ q
 
 ## 2. Quyền và bảo mật
 
-Permission **đã khai báo và có seed trong migration CP1**: `thesis.reviewer-assignments.read` và `thesis.reviewer-assignments.manage`. Khi áp migration, seed mặc định cả hai cho Faculty, AcademicAffairs, Admin. CP3 thực thi quyền POST ở cả endpoint và application; các endpoint còn lại tiếp tục theo quy tắc dưới đây khi triển khai:
+Permission **đã khai báo và có seed trong migration CP1**: `thesis.reviewer-assignments.read` và `thesis.reviewer-assignments.manage`. Khi áp migration, seed mặc định cả hai cho Faculty, AcademicAffairs, Admin. CP3/CP4 thực thi quyền POST/DELETE ở cả endpoint và application; các endpoint đọc tiếp tục theo quy tắc dưới đây khi triển khai:
 
 - Admin theo bypass permission hiện có của Identity; không bypass điều kiện nghiệp vụ, giới hạn một active, concurrency hoặc chặn hủy khi có phiếu.
 - Faculty/AcademicAffairs: ghi cần `.manage`; đọc quản trị cần `.read` **hoặc** `.manage`. Role cho biết đối tượng nghiệp vụ; có permission nhưng không thuộc ba role quản trị thì vẫn không được quản trị phân công.
@@ -54,7 +54,7 @@ Server tạo ID mới, lưu snapshot approval/report/version/file/checksum/GVHD 
 
 Chỉ hủy assignment active, đúng `expectedAssignmentVersion` và **chưa có bất kỳ ReviewerEvaluation nào**. Chỉ cần tồn tại phiếu là chặn, bất kể điểm, kết luận, trạng thái công bố hay cờ loại khỏi tính điểm; Admin không ngoại lệ. Không hard delete hoặc xóa phiếu để thay người.
 
-Lý do sau trim phải từ 1 đến 1.000 ký tự theo giới hạn string của backend. Lưu `CancelledBy`, `CancelledAt`, `CancellationReason`; giữ AssignedBy/AssignedAt và toàn bộ snapshot. Hủy không cần batch Open/eligibility/khung thời gian tạo còn hợp lệ và không đòi reviewer vẫn Active; nhờ đó Khoa có thể sửa phân công sai, kể cả khi nhóm đã đổi trạng thái hoặc reviewer bị khóa. Thao tác này không mở lại hoặc thay đổi trạng thái nhóm/báo cáo/workflow đã kết thúc.
+Lý do sau trim phải từ 1 đến 1.000 Unicode scalar values (runes), nhất quán với domain CP1 và `char_length` PostgreSQL; một emoji ngoài BMP tính một ký tự. Lưu `CancelledBy`, `CancelledAt`, `CancellationReason`; giữ AssignedBy/AssignedAt và toàn bộ snapshot. Hủy không cần batch Open/eligibility/khung thời gian tạo còn hợp lệ và không đòi reviewer vẫn Active; nhờ đó Khoa có thể sửa phân công sai, kể cả khi nhóm đã đổi trạng thái hoặc reviewer bị khóa. Thao tác này không mở lại hoặc thay đổi trạng thái nhóm/báo cáo/workflow đã kết thúc.
 
 Hủy xong không có active: có thể POST lại cùng hoặc khác giảng viên bằng **ID và idempotency key mới**, kiểm tra lại đầy đủ điều kiện tạo. Không bật lại dòng cũ. DELETE lần nữa bằng key mới trả 409 `ReviewerAssignment.AlreadyCancelled`; retry cùng key thành công trước đó trả kết quả cũ.
 
@@ -124,7 +124,7 @@ await httpClient.delete(`/api/thesis/reviewer-assignments/${assignment.id}`, {
 });
 ```
 
-Đây là ví dụ ý định mới; khi retry do mất response phải **giữ lại key/body gốc**, không gọi randomUUID lần nữa. Client HTTP hiện tại là Axios, CORS cho mọi method/header và Caddy chuyển tiếp `/api/*`; source chưa có cấu hình loại body DELETE. Đây là lựa chọn contract dựa trên source, chưa phải bằng chứng gateway đang deploy đã chạy thành công. CP4/CP6 phải kiểm chứng request body qua HTTP/gateway trước nghiệm thu; không tự đổi sang POST hủy mà không cập nhật contract.
+Đây là ví dụ ý định mới; khi retry do mất response phải **giữ lại key/body gốc**, không gọi randomUUID lần nữa. Client HTTP hiện tại là Axios, CORS cho mọi method/header và Caddy chuyển tiếp `/api/*`; source không có cấu hình loại body DELETE. CP4 đã kiểm chứng request body qua Kestrel và Caddy container dùng cấu hình/image production tại mục 15. Gateway đang deploy, TLS/domain và đường frontend thực tế tiếp tục kiểm chứng ở CP6; không tự đổi sang POST hủy mà không cập nhật contract.
 
 ### 4.3. Idempotency và thứ tự lỗi
 
@@ -240,7 +240,7 @@ Hủy ngăn cấp URL **mới** từ assignment đó. URL đã cấp vẫn có t
 
 ## 6. Mã lỗi
 
-Các code `ReviewerAssignment.*` dưới đây là **contract mới cần triển khai**, không phải code đã tồn tại. `FinalReport.AccessDenied` và lỗi tải khác giữ theo SCRUM-102.
+Các code cho POST/DELETE đã triển khai ở CP3/CP4. Những trường hợp dành cho API đọc/tải sẽ được nối ở CP5. `FinalReport.AccessDenied` và lỗi tải khác giữ theo SCRUM-102.
 
 | HTTP | Code | Ý nghĩa |
 | --- | --- | --- |
@@ -262,7 +262,7 @@ Các code `ReviewerAssignment.*` dưới đây là **contract mới cần triể
 | 409 | `ReviewerAssignment.VersionConflict` | expectedAssignmentVersion cũ |
 | 409 | `ReviewerAssignment.EvaluationExists` | Không cho hủy vì đã có phiếu |
 | 409 | `ReviewerAssignment.IdempotencyKeyReused` | Cùng actor/operation/key nhưng khác ý định |
-| 409 | `ReviewerAssignment.ConcurrencyConflict` | Race dữ liệu, guard không còn hợp lệ, serialization/deadlock sau retry nội bộ có giới hạn |
+| 409 | `ReviewerAssignment.ConcurrencyConflict` | Race dữ liệu, lock timeout, serialization/deadlock; server không tự chạy lại callback, client retry cùng key |
 | 415 | — | Write Content-Type không phải application/json; không bắt buộc envelope |
 | 500 | — | Lỗi hạ tầng không dự kiến; không trả SQL, connection string hoặc stack trace |
 
@@ -432,5 +432,35 @@ dotnet build UGTM.sln --configuration Release --artifacts-path artifacts/scrum10
 dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp3 --no-build --no-restore --filter FullyQualifiedName~ReviewerAssignmentTransactionIntegrationTests --logger 'trx;LogFileName=reviewer-cp3.trx' --results-directory artifacts/scrum104-cp3/test-results
 dotnet test backend/tests/DefenseCouncil.Tests/UGTM.Modules.DefenseCouncil.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp3 --no-build --no-restore
 dotnet test backend/tests/Architecture.Tests/UGTM.Architecture.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp3 --no-build --no-restore
+dotnet format UGTM.sln --no-restore --verify-no-changes
+```
+
+## 15. CP4: DELETE hủy mềm và phân công lại
+
+[CancelReviewerAssignmentHandler](../../backend/Modules/DefenseCouncil/Application/ReviewerAssignments/CancelReviewerAssignmentHandler.cs) được map vào `DELETE /api/thesis/reviewer-assignments/{id}` qua endpoint production. Endpoint và handler cùng kiểm tra quyền quản lý như POST. DELETE nhận JSON body, `expectedAssignmentVersion` là số nguyên JSON thuộc uint và khác 0; ID/key khác rỗng. Lý do được trim, kiểm tra giới hạn runes trước khi vào transaction. Không nhận người/thời điểm hủy hoặc trường điều khiển assignment từ client.
+
+Thứ tự trong transaction: khóa actor/operation/key → replay hoặc kiểm tra fingerprint → khóa assignment bằng `FOR UPDATE` → tồn tại → còn active → expected version → tồn tại **bất kỳ** ReviewerEvaluation → hủy mềm và ghi audit/receipt. Writer chấm phải dùng primitive CP2 giữ cùng khóa parent đến commit; việc kiểm tra phiếu không chỉ dựa vào navigation. Operation Cancel tách khỏi Create, fingerprint chứa route ID, version và lý do đã trim. Receipt lưu DTO có xmin mới sau save đầu, chỉ trả 200 sau commit; retry không cập nhật thêm assignment/audit. Lỗi save đầu hoặc save receipt phải rollback cả metadata hủy và outbox.
+
+Hủy không gọi guard tạo và không khóa group/batch/topic/account để kiểm tra eligibility. Context nhóm/topic và tên giảng viên chỉ là projection cho DTO; state, đợt, approval/report binding, tài khoản hoặc Lecturer grant thay đổi không tự cấm hủy. Shared DTO mapper hỗ trợ snapshot nullable của legacy mà không tạo binding giả; legacy giữ nguyên order. Nếu context nhóm/topic bị thiếu bất thường, trả ContextInvalid thay vì bịa metadata. Nhóm/báo cáo/phiếu GVHD giữ nguyên; thời điểm hủy lấy UTC server.
+
+Sau hủy, POST hiện có tạo dòng mới cùng hoặc khác GVPB, vẫn kiểm tra đầy đủ eligibility/Open. Dòng cũ và receipt cũ giữ nguyên: replay POST cũ không bật lại assignment, replay DELETE cũ không hủy assignment mới. Key mới trên assignment đã hủy trả AlreadyCancelled; cùng key nhưng đổi route/version/lý do trả IdempotencyKeyReused. Admin vẫn bị chặn hủy khi có phiếu, kể cả phiếu 0 điểm, bị loại khỏi tính điểm hoặc chưa công bố.
+
+Kiểm thử CP4 nằm ở [HTTP cancellation](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerAssignmentCancellationHttpIntegrationTests.cs), [concurrency](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerAssignmentCancellationConcurrencyIntegrationTests.cs) và [Caddy gateway](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerAssignmentCancellationGatewayIntegrationTests.cs). Các ca race dùng PostgreSQL thật, các connection độc lập, barrier và `pg_blocking_pids`: writer chấm thắng thì DELETE trả EvaluationExists; DELETE thắng thì writer không được chèn phiếu. Tạo trong lúc hủy chưa commit thấy active cũ và bị từ chối; sau commit có thể tạo bằng key chưa bị tiêu thụ. Không dùng sleep như bằng chứng race.
+
+Test gateway dùng đúng image từ `docker/docker-compose.prod.yml` và nội dung `docker/Caddyfile`, thay upstream sang Kestrel của test, cấu hình HTTP trên cổng ngẫu nhiên. Giữ matcher `/api/*`, reverse proxy, header và encoding của source; kiểm tra JSON reason có Unicode/xuống dòng cùng receipt replay. Phạm vi này kiểm chứng proxy trong container local; TLS/domain và hạ tầng deployment thực tế thuộc CP6. Không có migration mới hoặc thay đổi database ứng dụng tại CP4; API đọc và tích hợp cấp link tải mới chờ CP5.
+
+### Kết quả kiểm chứng CP4 ngày 30/10/2026
+
+- Lượt cuối **75/75 pass** trên source cuối: **40 ca CP4** (37 HTTP, gồm Caddy và race thực; 3 gọi handler trực tiếp) và **35 ca hồi quy CP3**. Kiểm chứng lưu/hủy/phân công lại, quyền và thứ tự lỗi, Unicode/legacy, idempotency/replay/mất response, rollback cả hai lần save, hủy đua chấm theo cả hai thứ tự khóa và hủy đua tạo. Đây là bộ mục tiêu POST/DELETE, không phải toàn bộ suite ThesisManagement hoặc nghiệm thu CP5–CP6.
+- DefenseCouncil **55/55**, Architecture **74/74** pass. Build Release toàn solution tuần tự **0 error**; còn warning OpenAPI `CS8602` và xung đột EF Core của Architecture.Tests ở phần không đổi. Lượt build song song gặp MSBuild child node thoát đột ngột; build lại với `-m:1 -nr:false -p:UseSharedCompilation=false` thành công. Format solution `--verify-no-changes` và `git diff --check` pass.
+- Artifact local bị Git ignore: `artifacts/scrum104-cp4/test-results/reviewer-cp4-final.trx`, `defense-cp4.trx`, `architecture-cp4.trx`; log build cuối `build-final-serial.log`, format `format-final.log`. Các lượt chẩn đoán fixture timestamp và readiness Caddy được giữ riêng; báo cáo cuối đã chạy lại đầy đủ 75 ca sau khi sửa. Không stage/commit hoặc migrate database ứng dụng.
+
+Chạy lại từ root với Docker Desktop Linux engine:
+
+```powershell
+dotnet build UGTM.sln --configuration Release --artifacts-path artifacts/scrum104-cp4 -m:1 -nr:false -p:UseSharedCompilation=false
+dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp4 --no-build --no-restore --filter 'FullyQualifiedName~Cancellation_http|FullyQualifiedName~Cancellation_handler|FullyQualifiedName~Creation_http|FullyQualifiedName~Creation_handler' --logger 'trx;LogFileName=reviewer-cp4-final.trx' --results-directory artifacts/scrum104-cp4/test-results
+dotnet test backend/tests/DefenseCouncil.Tests/UGTM.Modules.DefenseCouncil.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp4 --no-build --no-restore
+dotnet test backend/tests/Architecture.Tests/UGTM.Architecture.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp4 --no-build --no-restore
 dotnet format UGTM.sln --no-restore --verify-no-changes
 ```

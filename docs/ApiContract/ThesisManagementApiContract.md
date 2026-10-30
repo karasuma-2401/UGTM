@@ -5,7 +5,7 @@ SCRUM-102 đã triển khai đến CP6: nộp/nộp lại báo cáo cuối kỳ,
 
 SCRUM-103 đã triển khai phiếu chấm GVHD, duyệt chuyển phản biện, quyền riêng với phiếu và điều kiện bàn giao SCRUM-104 ở [AdvisorEvaluationApprovalApiContract.md](AdvisorEvaluationApprovalApiContract.md). Phiếu chỉ gắn với bản báo cáo `UnderEvaluation` đã khóa của SCRUM-102; xem [nghiệm thu SCRUM-103](AdvisorEvaluationApprovalVerification.md).
 
-SCRUM-104 đã triển khai POST tạo phân công ở CP3 trên nền CP0–CP2 tại [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md). DELETE, API đọc và tích hợp quyền tải mới chờ CP4–CP6. Thiết kế bổ sung quyền tải đúng file được phân công cho GVPB; không mở toàn bộ lịch sử báo cáo hoặc phiếu GVHD. Các bảng quyền/endpoint bên dưới vẫn mô tả API hiện có.
+SCRUM-104 có POST tạo phân công và DELETE hủy mềm/phân công lại ở CP3/CP4 tại [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md). API đọc và tích hợp quyền tải mới chờ CP5–CP6. Thiết kế bổ sung quyền tải đúng file được phân công cho GVPB; không mở toàn bộ lịch sử báo cáo hoặc phiếu GVHD. Các bảng quyền/endpoint bên dưới vẫn mô tả API hiện có.
 
 CP7 đồng bộ yêu cầu file và data model, kiểm tra ba bộ test ThesisManagement/AcademicPeriods/Architecture cùng luồng thực tế trên PostgreSQL/MinIO; xem [hướng dẫn và kết quả nghiệm thu](FinalReportSubmissionVerification.md). Không bao gồm triển khai frontend hoặc xác minh môi trường đang deploy.
 

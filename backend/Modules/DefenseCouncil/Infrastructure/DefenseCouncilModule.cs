@@ -47,6 +47,7 @@ public sealed class DefenseCouncilModule : IModule
             UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.ReviewerAssignmentWorkflowContract>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.ReviewerAssignmentAudit>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.CreateReviewerAssignmentHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.CancelReviewerAssignmentHandler>();
         services.AddScoped<IDefenseCouncilUnitOfWork>(provider => provider.GetRequiredService<DefenseCouncilDbContext>());
         services.AddScoped<IDefenseCouncilAuditOutbox, DefenseCouncilAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, DefenseCouncilAuditEventSource>();

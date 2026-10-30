@@ -207,7 +207,7 @@ CP2 phải dùng một transaction PostgreSQL chung để kiểm tra và commit 
 
 ## Contract cho SCRUM-104
 
-Thiết kế tiếp nhận phân công, hủy mềm và quyền tải đúng bản cho GVPB được chốt ở [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md). SCRUM-104 đã triển khai POST tạo phân công ở CP3 trên nền CP1/CP2; DELETE, API đọc và tích hợp quyền tải mới chờ CP4–CP6. Quyền xem phiếu GVHD và semantics eligibility của SCRUM-103 giữ nguyên.
+Thiết kế tiếp nhận phân công, hủy mềm và quyền tải đúng bản cho GVPB được chốt ở [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md). SCRUM-104 có POST tạo phân công và DELETE hủy mềm/phân công lại ở CP3/CP4; API đọc và tích hợp quyền tải mới chờ CP5–CP6. Quyền xem phiếu GVHD và semantics eligibility của SCRUM-103 giữ nguyên.
 
 SCRUM-104 phải kiểm tra lại điều kiện ngay trước khi phân công GVPB; không dựa trên danh sách hoặc dữ liệu FE cache. Contract đọc dự kiến từ SCRUM-103 là:
 

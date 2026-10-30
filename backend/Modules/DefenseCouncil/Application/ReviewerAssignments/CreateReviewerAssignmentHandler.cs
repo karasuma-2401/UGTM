@@ -95,13 +95,13 @@ public sealed class CreateReviewerAssignmentHandler(
         receipts.Add(receipt);
         audit.AddCreated(assignment);
         return ReviewerAssignmentTransactionResult<CreationResult>.Commit(new(Assignment: assignment, Receipt: receipt,
-            Binding: binding, Topic: topic, ReviewerName: reviewerNames.GetValueOrDefault(command.ReviewerId)));
+            Topic: topic, ReviewerName: reviewerNames.GetValueOrDefault(command.ReviewerId)));
     }
 
     private static Task<CreationResult> CompleteReceiptAsync(CreationResult result, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
-        var response = ReviewerAssignmentDtoMapper.ToDto(result.Assignment!, result.Binding!, result.Topic!, result.ReviewerName);
+        var response = ReviewerAssignmentDtoMapper.ToDto(result.Assignment!, result.Topic!, result.ReviewerName);
         result.Receipt!.SetResponsePayload(JsonSerializer.Serialize(response));
         return Task.FromResult(result with { Response = response });
     }
@@ -111,6 +111,6 @@ public sealed class CreateReviewerAssignmentHandler(
 
     private sealed record CreationResult(Error? Error = null, ReviewerAssignmentDto? Response = null,
         ReviewerAssignment? Assignment = null, ReviewerAssignmentIdempotencyRecord? Receipt = null,
-        ReviewerAssignmentBindingContractDto? Binding = null, ReviewerAssignmentTopicContractDto? Topic = null,
+        ReviewerAssignmentTopicContractDto? Topic = null,
         string? ReviewerName = null);
 }
