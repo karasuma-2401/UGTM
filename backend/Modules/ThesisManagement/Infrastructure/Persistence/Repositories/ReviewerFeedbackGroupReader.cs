@@ -6,6 +6,18 @@ namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence.Repositories;
 
 internal sealed class ReviewerFeedbackGroupReader(ThesisManagementDbContext context) : IReviewerFeedbackGroupReader
 {
+    public Task<bool> IsReportSnapshotValidAsync(ReviewerFeedbackReportSnapshotContractDto snapshot, CancellationToken cancellationToken = default)
+    {
+        var checksum = snapshot.SubmissionChecksumSha256.ToLowerInvariant();
+        return (from report in context.FinalReports.AsNoTracking()
+                join file in context.SubmissionFiles.AsNoTracking() on report.Id equals file.EntityId
+                where report.Id == snapshot.FinalReportId && report.GroupId == snapshot.GroupId
+                    && report.VersionType == FinalReportVersionType.InitialFinal
+                    && file.Id == snapshot.SubmissionFileId && file.EntityType == SubmissionEntityType.FinalReport
+                    && file.VersionNo == snapshot.ReportVersionNo && file.ChecksumSha256 != null && file.ChecksumSha256.ToLower() == checksum
+                select report.Id).AnyAsync(cancellationToken);
+    }
+
     public async Task<ReviewerFeedbackGroupContractDto?> GetAsync(Guid groupId, Guid actorId, CancellationToken cancellationToken = default)
     {
         var group = await context.StudentGroups.AsNoTracking().Where(value => value.Id == groupId)

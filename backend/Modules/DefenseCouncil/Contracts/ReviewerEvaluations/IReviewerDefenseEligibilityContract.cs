@@ -12,7 +12,6 @@ public sealed record ReviewerDefenseEligibilityContractDto(Guid GroupId, Guid? B
     int? ScoreConfigurationVersionNo, decimal? MinimumReviewerScore, bool CanProceed,
     ReviewerDefenseEligibilityReason? ReasonCode);
 
-// Implementation is CP3; no stub is registered in the foundation checkpoint.
 public interface IReviewerDefenseEligibilityContract
 {
     Task<ReviewerDefenseEligibilityContractDto?> GetAsync(Guid groupId, CancellationToken cancellationToken = default);

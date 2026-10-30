@@ -10,6 +10,7 @@ public sealed record ReviewerDefenseRuleContractDto(Guid BatchId, string BatchSt
 
 public interface IReviewerDefenseRuleReader
 {
+    Task<string?> GetBatchStatusAsync(Guid batchId, CancellationToken cancellationToken = default);
     Task<ReviewerDefenseRuleContractDto?> GetActiveAsync(Guid batchId, CancellationToken cancellationToken = default);
     /// <summary>Requires the shared transaction; retains the current Active config lock until caller commit.</summary>
     Task<ReviewerDefenseRuleContractDto?> LockActiveAsync(Guid batchId, CancellationToken cancellationToken = default);

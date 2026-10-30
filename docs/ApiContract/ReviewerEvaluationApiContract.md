@@ -1,6 +1,6 @@
 # Reviewer evaluation, defense eligibility & student feedback — SCRUM-105
 
-Trạng thái: **CP1 đã được review/commit tại `676d9bd`; CP2 hoàn thành POST lưu nháp/chốt và GET phiếu riêng tư, sẵn sàng review; gate/feedback thuộc CP3**. Ngày 30/10/2026. Nền tảng CP1 ở mục 13; triển khai và bằng chứng CP2 ở mục 14. Các mục gate/feedback vẫn là contract đích cho CP3; CP4 nghiệm thu tích hợp.
+Trạng thái: **CP2 đã được người dùng review/commit tại `ba5afa8`; CP3 hoàn thành GET gate/feedback và contract scheduling Get/Lock, sẵn sàng review**. Ngày 30/10/2026. Nền tảng CP1 ở mục 13, CP2 ở mục 14 và triển khai/bằng chứng CP3 ở mục 15. CP4 nghiệm thu toàn task vẫn chưa thực hiện.
 
 Phạm vi: GVPB/Admin lưu nháp, sửa và chốt phiếu phản biện; Khoa/PĐT đọc để điều phối; sinh viên xem góp ý đã chốt; cung cấp điều kiện chuyên môn ra Hội đồng cho workflow kế tiếp. Hai endpoint Jira là POST reviewer-evaluations và GET group feedback; hai GET bổ sung phục vụ đọc phiếu/gate đã nằm trong plan được người dùng chấp thuận.
 
@@ -358,8 +358,8 @@ Actor/key/operation unique bảo vệ scope trong DB; PG advisory transaction lo
 | Owner | Boundary đích |
 | --- | --- |
 | DefenseCouncil | Repository phiếu/receipt; domain lifecycle; audit; `IReviewerDefenseEligibilityContract` có GetAsync(groupId) và LockForSchedulingAsync(groupId); projection không có phiếu GVHD/URL |
-| AcademicPeriods | `IReviewerDefenseRuleReader` GetActiveAsync/LockActiveAsync(batchId), trả batchId/batchStatus và configId/version/components tối thiểu cùng outcome của rule; thiếu config vẫn giữ batch context, thiếu batch trả context not found. Lock cần transaction dùng chung; không sửa DTO batch reader SCRUM-104 để thêm trường cho gate mới |
-| ThesisManagement | Tái sử dụng report/group guard SCRUM-104; thêm `IReviewerFeedbackGroupReader` trả context tồn tại/group/topic/batch và Confirmed membership của actor, không trả scores hoặc gọi save |
+| AcademicPeriods | `IReviewerDefenseRuleReader` GetActiveAsync/LockActiveAsync(batchId), trả batchId/batchStatus và configId/version/components tối thiểu cùng outcome của rule; GetBatchStatusAsync đọc status riêng để early reason không cần đọc rule. Thiếu config vẫn giữ batch context, thiếu batch trả context not found. Lock cần transaction dùng chung; không sửa DTO batch reader SCRUM-104 |
+| ThesisManagement | Tái sử dụng report/group guard SCRUM-104; `IReviewerFeedbackGroupReader` trả context tồn tại/group/topic/batch và Confirmed membership của actor, đồng thời kiểm tra report/file/version/checksum gốc qua IsReportSnapshotValidAsync, độc lập current version/status. Không trả scores hoặc gọi save |
 | TopicCatalog | GVHD/topic/batch hiện tại qua contract Get/Lock đã có |
 | Identity | Lecturer/account hiện tại qua candidate contract; permission constant/seed; không coi name reader là kiểm tra eligibility |
 | Composition root | Tái sử dụng reviewer coordinator transaction ReadCommitted/năm context; chỉ DefenseCouncil ghi. Không dùng migration context runtime hoặc import DbContext module khác vào application |
@@ -538,4 +538,56 @@ Release build solution 0 error, còn 4 warning nền (CS8602 OpenApiConfiguratio
 
 Lượt trước có 63/64 pass: Accepts metadata khiến request chưa đăng nhập với text/plain bị routing trả 415 trước authentication. Đã chuyển body metadata sang operation transformer, giữ kiểm tra content-type trong handler sau policy, rồi build/rerun đủ 64 ca thành công. Các lượt smoke/lỗi/lặp giữ trong artifacts nhưng không cộng vào bảng trên. Các ca rollback kiểm tra cả insert và cập nhật/chốt nháp, ở save đầu và save hai; ca replay kiểm tra quyền live sau khi chờ key, ca race kiểm tra cả chốt thắng sửa và sửa thắng chốt.
 
-TRX/log/filter/plan local bị Git ignore. CP2 không thêm hoặc áp migration vào DB ứng dụng, không stage/commit; sẵn sàng để người dùng review và tự commit. CP3 gate/feedback và nghiệm thu toàn task CP4 vẫn chưa thực hiện.
+TRX/log/filter/plan local bị Git ignore. CP2 không thêm hoặc áp migration vào DB ứng dụng, không stage/commit. Người dùng sau đó đã review và tự commit CP2 tại `ba5afa8`; gate/feedback CP3 xem mục 15. Nghiệm thu toàn task CP4 vẫn chưa thực hiện.
+
+## 15. CP3 — gate Hội đồng và góp ý sinh viên
+
+Baseline `ba5afa8` (CP2 đã được người dùng review/commit). CP3 dùng nguyên lifecycle, schema, POST/receipt/private DTO và coordinator đã có; không thêm migration, persist ReadyForDefense hoặc đổi StudentGroup/report.
+
+- [ReviewerDefenseEligibilityContract](../../backend/Modules/DefenseCouncil/Application/ReviewerEvaluations/ReviewerDefenseEligibilityContract.cs) đã đăng ký GetAsync/LockForSchedulingAsync thật. Thứ tự reason ở mục 6.3; BatchStatus là thông tin, group/report phải ở trạng thái chuẩn bị phản biện, binding/approval/assignment/evaluation được kiểm tra trước rule. Submitted hỏng nội dung fail closed ContextInvalid, không coi score null là 0. Rule dùng Active hiện tại qua reader/resolver CP1; không hard-code 5.0, không chọn nhánh tùy tiện, không phụ thuộc live account cho giá trị phiếu đã chốt.
+- LockForSchedulingAsync yêu cầu transaction đã enlist owner contexts; khóa group/membership/report/file → topic → batch → approval → parent → evaluation → Active config tới commit. Nếu publisher đã retire row đang chờ, owner reader reselect Active bằng SQL mới theo bounded retry có sẵn. Hết retry được bọc thành DefenseCouncilConcurrencyException để caller Abort, HTTP reader map ConcurrencyConflict. Không gọi write guard có live-account flag để xét giá trị phiếu đã chốt.
+- [GetReviewerDefenseEligibilityHandler](../../backend/Modules/DefenseCouncil/Application/ReviewerEvaluations/GetReviewerDefenseEligibilityHandler.cs) kiểm tra role + read permission/own active assignment + account Active/Lecturer trước khi xuất gate. Chưa đủ điều kiện chuyên môn trả 200 với reason đầu tiên; DTO 11 field không có raw grade/comment GVPB/GVHD. Student không được đọc gate.
+- [GetReviewerFeedbackHandler](../../backend/Modules/DefenseCouncil/Application/ReviewerEvaluations/GetReviewerFeedbackHandler.cs) chỉ chấp nhận nhánh Student và Confirmed membership đúng group, không có override quản trị. ReviewerFeedbackDto chỉ có comment, JsonIgnoreCondition.Never giữ explicit null kể cả serializer global bỏ null. Nháp/legacy/chưa phát hành trả cùng 200/null; không xuất score/decision/status/version/ngưỡng hoặc fallback RevisionFeedback.
+- [Publication reader](../../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Repositories/ReviewerFeedbackPublicationReader.cs) dùng projection whitelist trong một query DefenseCouncil, Take(2) phát hiện nhiều nguồn active; chỉ chọn comment Published trên assignment/evaluation nonlegacy và liên kết phiếu GVHD/snapshot hợp lệ. Không select score, defense_approval, revision_feedback, evaluated_by hoặc exclusion_reason. Owner [feedback reader](../../backend/Modules/ThesisManagement/Infrastructure/Persistence/Repositories/ReviewerFeedbackGroupReader.cs) xác minh report/group và file/version/checksum gốc, không dùng current version/status để nối lại góp ý. Góp ý đã phát hành không tự mất khi đổi giai đoạn/đóng đợt/GVPB nghỉ hoặc điểm bị loại tính điểm.
+- [Read endpoints](../../backend/Modules/DefenseCouncil/Infrastructure/Endpoints/ReviewerEvaluationReadEndpoints.cs) khai báo hai GET, policies/response/status/route parameter, từ chối mọi query selector; không có body/header idempotency. [Schema transformer](../../backend/host/Api/OpenApi/ReviewerEvaluationSchemaTransformer.cs) tách FeedbackDto khỏi private DTO và mô tả reason canonical; không đổi global JSON setting.
+
+Kiểm thử mới ở [read/role/rule/lifecycle/query](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerEvaluationReadIntegrationTests.cs), [security/corruption](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerEvaluationReadSecurityIntegrationTests.cs), [scheduling writer/publisher races](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerDefenseSchedulingIntegrationTests.cs), [bounded churn outcome](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerDefenseChurnIntegrationTests.cs), [real workflow/OpenAPI](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerEvaluationOutputsRealWorkflowIntegrationTests.cs) và [DTO serialization](../../backend/tests/DefenseCouncil.Tests/ReviewerFeedbackSerializationTests.cs).
+
+Writer đại diện ghi CouncilAssignment thật trong coordinator transaction, chỉ khi gate khóa hợp lệ và policy riêng BatchStatus=Open. Test quan sát pg_blocking_pids ở cả hai thứ tự với PublishScoreConfigurationHandler production và các writer sửa owner/parent/evaluation; publisher thắng phải dùng config mới trước khi ghi, gate thắng giữ rule cũ ổn định tới commit. Test no-account-lock xác nhận reviewer nghỉ không ngầm thu hồi giá trị phiếu. Ca exhausted-retry dùng lỗi owner được inject có mục tiêu để kiểm tra mapping/rollback, không được tính thành bằng chứng SQL churn ba lần. Chưa có endpoint scheduling SCRUM-107.
+
+Luồng MinIO thật đi từ nộp v1/v2, khóa/duyệt GVHD, phân công, nháp, chốt GVPB/Admin tới feedback/gate; sinh viên chỉ thấy comment sau chốt, config publish mới đổi gate nhưng không đổi evaluationVersion/comment, quyền tải đúng byte v2 và phiếu GVHD giữ nguyên. OpenAPI được kiểm tra qua HTTP từ host production composition; query-count test xác nhận feedback có số query cố định dù thêm lịch sử assignment.
+
+Lệnh chạy từ root (cần restore trước nếu dùng checkout mới):
+
+```powershell
+dotnet build UGTM.sln --no-restore --configuration Release --artifacts-path artifacts/scrum105-cp3 -m:1 -nr:false -p:UseSharedCompilation=false
+$cp3Filter = @(
+    'FullyQualifiedName~Evaluation_cp3_'
+    'FullyQualifiedName~Reviewer_evaluation_foundation_'
+    'FullyQualifiedName~Evaluation_cp2_real_report_'
+    'FullyQualifiedName~Evaluation_cp2_private_read_role_matrix'
+    'FullyQualifiedName~Evaluation_cp2_draft_replace_submit'
+    'FullyQualifiedName~Evaluation_cp2_http_save_and_cancel'
+    'FullyQualifiedName~Evaluation_cp2_replay_canonicalizes'
+    'FullyQualifiedName~Real_reviewer_workflow'
+    'FullyQualifiedName~Cancellation_http_blocks_any_evaluation'
+    'FullyQualifiedName~Reviewer_reads_has_evaluation'
+) -join '|'
+dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --no-build --no-restore --configuration Release --artifacts-path artifacts/scrum105-cp3 --filter $cp3Filter --logger 'trx;LogFileName=gate-feedback-and-affected-regression.trx' --results-directory artifacts/scrum105-cp3/test-results
+dotnet format UGTM.sln --no-restore --verify-no-changes --verbosity quiet
+```
+
+DefenseCouncil.Tests/Architecture.Tests dùng cùng options test, bỏ filter để chạy toàn project. Kết quả ngày 30/10/2026:
+
+| Phạm vi | Kết quả mới nhất theo từng test duy nhất | Bằng chứng trong `artifacts/scrum105-cp3/test-results/` |
+| --- | --- | --- |
+| ThesisManagement filtered: 60 ca CP3 mới + 24 hồi quy liên quan | 84/84 pass | gate-feedback-and-affected-regression.trx + gate-feedback-fixture-retry.trx |
+| DefenseCouncil, toàn project (có 2 ca DTO mới) | 92/92 pass | defense-final.trx |
+| Architecture, toàn project | 74/74 pass | architecture-final.trx |
+| **Tổng phạm vi duy nhất đã chọn** | **250 pass; kết quả mới nhất fail 0/skip 0** | validation-final.log |
+
+Lượt integration đầu có 75/84 pass; 9 ca dừng tại fixture do chọn Single schedule template chưa scope đúng template của batch hoặc thiếu changeReason khi tạo version cấu hình sau version đầu. Đã sửa fixture, giữ nguyên domain/validation/mã nghiệp vụ; chạy lại 11 ca thuộc các method bị ảnh hưởng và pass 11/11. Validation lấy outcome mới nhất theo testName, thay 9 failure cũ và không cộng trùng 2 ca đã pass trong lượt retry. Không cộng kết quả CP1/CP2 hoặc lượt lặp vào tổng CP3. Filter retry local ở `retry-filter.txt`.
+
+Release build solution cuối thành công, 0 error/3 warning nền (CS8602 OpenApiConfiguration source-linked test và MSB3277 EF Core Architecture.Tests); không warning mới của mã CP3. Format verify toàn solution, sáu JSON examples/36 RV IDs, 216 link Markdown local, whitespace/fences và git diff --check pass; index trống. Feedback dùng ≤5 query cố định và một query whitelist DefenseCouncil dù có thêm 12 assignment lịch sử. OpenAPI HTTP export ở `artifacts/scrum105-cp3/bin/UGTM.Modules.ThesisManagement.Tests/release/reviewer-outputs-openapi.json`, gồm feedback schema chỉ comment, bắt buộc nhưng nullable, và gate reason canonical.
+
+Log build/format, filter/TRX, `Validate-Checkpoint.ps1` và plan local đều bị Git ignore. CP3 không sửa lifecycle/schema/POST/receipt của CP1–CP2, không thêm hoặc áp migration DB ứng dụng; chưa stage/commit. Sẵn sàng để người dùng review và tự commit; CP4 nghiệm thu toàn task chưa triển khai.

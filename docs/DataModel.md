@@ -4,7 +4,7 @@
 
 Phạm vi SCRUM-102/103 được đồng bộ ngày 29/10/2026. SCRUM-104 (`ReviewerAssignment`, receipt idempotency và FK phiếu phản biện) được đồng bộ ngày 30/10/2026 theo migration `20261030022105_AddReviewerAssignmentWorkflowFoundation`; xem [nghiệm thu phân công](ApiContract/ReviewerAssignmentVerification.md). Các thống kê tổng số bảng/FK dưới đây giữ mốc đối chiếu cũ, không bao gồm các bảng kỹ thuật outbox/receipt mới; không dùng chúng làm tổng số hiện tại của database. Xem thêm [SCRUM-102](ApiContract/FinalReportSubmissionVerification.md) và [SCRUM-103](ApiContract/AdvisorEvaluationApprovalVerification.md).
 
-Phạm vi SCRUM-105 CP1 được đồng bộ ngày 30/10/2026: lifecycle/metadata/xmin của ReviewerEvaluation và receipt. CP2 dùng trực tiếp schema này cho POST nháp/chốt và GET phiếu riêng tư, không thêm migration; gate/feedback thuộc CP3.
+Phạm vi SCRUM-105 CP1 được đồng bộ ngày 30/10/2026: lifecycle/metadata/xmin của ReviewerEvaluation và receipt. CP2–CP3 dùng trực tiếp schema này cho chấm/đọc/gate/feedback, không thêm migration. CP3 derive eligibility theo rule Active hiện tại, không persist ReadyForDefense; feedback chỉ projection comment đã phát hành trên snapshot gốc, không dùng report current version để nối lại góp ý.
 
 ## 1. Nguồn chuẩn
 
@@ -422,7 +422,7 @@ Unique `ux_reviewer_assignment_idempotency_actor_operation_key` trên (actor_id,
 
 ### councils.reviewer_evaluation — ReviewerEvaluation
 
-[Entity](../backend/Modules/DefenseCouncil/Domain/Entities/ReviewerEvaluation.cs) · [EF configuration](../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Configurations/ReviewerEvaluationConfiguration.cs). Schema SCRUM-105 CP1, migration `20261030113753_AddReviewerEvaluationWorkflowFoundation`; CP2 đã có HTTP nháp/chốt/đọc riêng tư, gate/feedback thuộc CP3. [Contract đầy đủ](ApiContract/ReviewerEvaluationApiContract.md).
+[Entity](../backend/Modules/DefenseCouncil/Domain/Entities/ReviewerEvaluation.cs) · [EF configuration](../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Configurations/ReviewerEvaluationConfiguration.cs). Schema SCRUM-105 CP1, migration `20261030113753_AddReviewerEvaluationWorkflowFoundation`; CP2–CP3 đã có HTTP nháp/chốt/đọc riêng tư và gate/feedback. [Contract đầy đủ](ApiContract/ReviewerEvaluationApiContract.md).
 
 | Thuộc tính | Cột | Kiểu CLR | Kiểu PostgreSQL | Nullable | SQL default |
 | --- | --- | --- | --- | --- | --- |

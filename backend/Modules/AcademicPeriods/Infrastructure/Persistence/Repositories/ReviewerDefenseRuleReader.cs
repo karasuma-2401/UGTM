@@ -7,6 +7,13 @@ namespace UGTM.Modules.AcademicPeriods.Infrastructure.Persistence.Repositories;
 
 internal sealed class ReviewerDefenseRuleReader(AcademicPeriodsDbContext context) : IReviewerDefenseRuleReader
 {
+    public async Task<string?> GetBatchStatusAsync(Guid batchId, CancellationToken cancellationToken = default)
+    {
+        var batch = await context.KltnBatches.AsNoTracking().Where(value => value.Id == batchId)
+            .Select(value => new { value.Status }).SingleOrDefaultAsync(cancellationToken);
+        return batch?.Status.ToString();
+    }
+
     public Task<ReviewerDefenseRuleContractDto?> GetActiveAsync(Guid batchId, CancellationToken cancellationToken = default)
         => ReadAsync(batchId, false, cancellationToken);
     public Task<ReviewerDefenseRuleContractDto?> LockActiveAsync(Guid batchId, CancellationToken cancellationToken = default)

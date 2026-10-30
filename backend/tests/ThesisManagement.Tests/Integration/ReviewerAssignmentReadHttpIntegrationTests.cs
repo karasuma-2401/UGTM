@@ -41,6 +41,7 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         services.RemoveAll<IThesisSubmissionObjectStorage>();
         services.AddSingleton<IThesisSubmissionObjectStorage>(_reviewerStorage);
         services.ConfigureDbContext<DefenseCouncilDbContext>(options => options.AddInterceptors(_readCommands));
+        services.ConfigureDbContext<DefenseCouncilDbContext>(options => options.AddInterceptors(_cp3Queries));
         services.ConfigureDbContext<ThesisManagementDbContext>(options => options.AddInterceptors(_readCommands));
         services.ConfigureDbContext<TopicCatalogDbContext>(options => options.AddInterceptors(_readCommands));
         services.ConfigureDbContext<IdentityDbContext>(options => options.AddInterceptors(_readCommands));

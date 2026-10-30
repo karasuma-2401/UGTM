@@ -12,6 +12,7 @@ public static class ReviewerEvaluationErrors
     public static readonly Error AccessDenied = Error.Forbidden("ReviewerEvaluation.AccessDenied", "Bạn không có quyền thực hiện thao tác với phiếu này.");
     public static readonly Error AssignmentNotFound = Error.NotFound("ReviewerEvaluation.AssignmentNotFound", "Không tìm thấy phân công phản biện.");
     public static readonly Error NotFound = Error.NotFound("ReviewerEvaluation.NotFound", "Chưa có phiếu phản biện của phân công này.");
+    public static readonly Error GroupNotFound = Error.NotFound("ReviewerEvaluation.GroupNotFound", "Không tìm thấy nhóm đề tài.");
     public static readonly Error LegacyRecordNeedsResolution = Error.Conflict("ReviewerEvaluation.LegacyRecordNeedsResolution", "Dữ liệu cũ cần được xử lý theo quy trình riêng.");
     public static readonly Error Locked = Error.Conflict("ReviewerEvaluation.Locked", "Phiếu đã chốt; không thể sửa hoặc chốt lại bằng ý định mới.");
     public static readonly Error AssignmentVersionConflict = Error.Conflict("ReviewerEvaluation.AssignmentVersionConflict", "Phân công đã thay đổi. Vui lòng tải lại dữ liệu.");

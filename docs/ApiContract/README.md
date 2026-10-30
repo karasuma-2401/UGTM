@@ -12,7 +12,7 @@ Mỗi module có một contract riêng. Contract chỉ mô tả endpoint đã tr
 | ThesisManagement (Groups, Review gates, Progress & Final reports) | [ThesisManagementApiContract.md](ThesisManagementApiContract.md) | SCRUM-88, SCRUM-89, SCRUM-102, chi tiết nhóm và danh sách hồ sơ Cổng 1/Cổng 2 đã triển khai; nghiệm thu SCRUM-102 xem bên dưới |
 | Advisor evaluation & reviewer handoff | [AdvisorEvaluationApprovalApiContract.md](AdvisorEvaluationApprovalApiContract.md) | SCRUM-103 đã triển khai và nghiệm thu CP6: ghi/duyệt/đọc phiếu, contract eligibility và luồng PostgreSQL/MinIO production-host |
 | Reviewer assignment & bound report access | [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md) | SCRUM-104 có POST/DELETE, bốn API đọc và quyền tải đúng báo cáo được duyệt; phạm vi/bằng chứng CP6 tại [ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md) |
-| Reviewer evaluation, defense eligibility & student feedback | [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md) | SCRUM-105 CP2: POST lưu nháp/chốt và GET phiếu riêng tư; gate/feedback sinh viên thuộc CP3 |
+| Reviewer evaluation, defense eligibility & student feedback | [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md) | SCRUM-105 CP3: nháp/chốt/đọc phiếu, gate theo Active hiện tại và feedback sinh viên chỉ comment; có contract khóa cho scheduling |
 
 Quy ước response, authentication, lỗi và hành vi đặc biệt được ghi trong contract của module đang sở hữu endpoint. Khi thay đổi request, response, status code hoặc error code, cập nhật contract trong cùng pull request.
 
