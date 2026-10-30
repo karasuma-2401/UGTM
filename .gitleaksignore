@@ -4,3 +4,5 @@
 98488f1c04ba2d23b8726ce7dbf2133e75435b7b:scripts/ConfigureDevelopment.ps1:generic-api-key:91
 e6f15b71894ad38ab01a1764b722a470a7a68950:docs/ApiContract/AdvisorEvaluationApprovalApiContract.md:generic-api-key:59
 e6f15b71894ad38ab01a1764b722a470a7a68950:docs/ApiContract/AdvisorEvaluationApprovalApiContract.md:generic-api-key:94
+# Historical SCRUM-105 documentation example: an Idempotency-Key UUID for request deduplication.
+5076627f5f7981457f5d14cac881fde358f87e89:docs/ApiContract/ReviewerEvaluationApiContract.md:generic-api-key:75

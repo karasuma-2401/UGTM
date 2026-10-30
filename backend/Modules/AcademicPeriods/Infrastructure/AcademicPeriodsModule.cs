@@ -35,6 +35,7 @@ public sealed class AcademicPeriodsModule : IModule
     {
         services.AddModuleDbContext<AcademicPeriodsDbContext>(configuration);
         services.AddScoped<IKltnBatchReader, KltnBatchReader>();
+        services.AddScoped<UGTM.Modules.AcademicPeriods.Contracts.ReviewerEvaluations.IReviewerDefenseRuleReader, ReviewerDefenseRuleReader>();
         services.AddScoped<UGTM.Modules.AcademicPeriods.Contracts.ReviewerAssignments.IReviewerAssignmentBatchReader,
             Persistence.Repositories.ReviewerAssignmentBatchReader>();
         services.AddScoped<IBatchSummaryReader, BatchSummaryReader>();

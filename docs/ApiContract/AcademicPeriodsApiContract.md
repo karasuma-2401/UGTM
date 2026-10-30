@@ -2,6 +2,8 @@
 
 Trạng thái: quản lý đợt KLTN/lịch 7 giai đoạn (SCRUM-81) và cấu hình điểm có version (SCRUM-83) đã triển khai.
 
+Luồng sử dụng cấu hình Active để xét gate phản biện được thiết kế tại [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md) (SCRUM-105 CP0, chưa triển khai). Resolver lấy component Source=Reviewer, kiểm tra bao phủ/cùng ngưỡng giữa các nhánh Applicability; thiếu/mâu thuẫn chỉ chặn gate, không tự mặc định 5.0 hoặc chặn chốt phiếu. Đây là consumer contract, không bổ sung luật bắt buộc MinimumScore cho mọi cấu hình điểm trong API AcademicPeriods hiện tại.
+
 Base route: `/api/academic-periods/batches`.
 
 Tất cả endpoint yêu cầu Bearer token. Batch dùng `academic.batches.read/manage`; cấu hình điểm dùng `academic.score-config.read/manage`. Migration mặc định cấp quyền đọc batch cho sáu vai trò hệ thống. Quyền đọc và quản lý cấu hình điểm chỉ được cấp mặc định cho `Admin`, `AcademicAffairs`.

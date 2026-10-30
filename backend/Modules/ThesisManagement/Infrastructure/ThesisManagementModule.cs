@@ -73,6 +73,7 @@ public sealed class ThesisManagementModule : IModule
     {
         services.AddModuleDbContext<ThesisManagementDbContext>(configuration);
         services.AddScoped<IStudentGroupRepository, StudentGroupRepository>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.ReviewerEvaluations.IReviewerFeedbackGroupReader, ReviewerFeedbackGroupReader>();
         services.AddScoped<IStudentGroupDetailReader, StudentGroupDetailReader>();
         services.AddScoped<GetStudentGroupDetailHandler>();
         services.AddScoped<ISyllabusReviewQueryReader, SyllabusReviewQueryReader>();

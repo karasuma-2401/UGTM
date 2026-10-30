@@ -41,6 +41,7 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         services.RemoveAll<IThesisSubmissionObjectStorage>();
         services.AddSingleton<IThesisSubmissionObjectStorage>(_reviewerStorage);
         services.ConfigureDbContext<DefenseCouncilDbContext>(options => options.AddInterceptors(_readCommands));
+        services.ConfigureDbContext<DefenseCouncilDbContext>(options => options.AddInterceptors(_cp3Queries));
         services.ConfigureDbContext<ThesisManagementDbContext>(options => options.AddInterceptors(_readCommands));
         services.ConfigureDbContext<TopicCatalogDbContext>(options => options.AddInterceptors(_readCommands));
         services.ConfigureDbContext<IdentityDbContext>(options => options.AddInterceptors(_readCommands));
@@ -246,16 +247,9 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
     {
         var original = await CreateForCancellationAsync();
         await using var db = Db<DefenseCouncilDbContext>();
-        db.ReviewerEvaluations.Add(new ReviewerEvaluation
-        {
-            Id = Guid.NewGuid(),
-            AssignmentId = original.Id,
-            Score = 0m,
-            Comment = "PHIẾU RIÊNG",
-            IsIgnoredInCalculation = true,
-            DefenseApproval = DefenseApprovalStatus.Rejected,
-            EvaluatedAt = Now
-        });
+        var sheet = ReviewerEvaluation.CreateDraft(Guid.NewGuid(), original.Id, 0m, "PHIẾU RIÊNG", DefenseApprovalStatus.Rejected, _reviewer, Now);
+        db.ReviewerEvaluations.Add(sheet);
+        db.Entry(sheet).Property(value => value.IsIgnoredInCalculation).CurrentValue = true;
         await db.SaveChangesAsync();
         using var list = await ReadPageAsync(CreationRoute);
         var item = Assert.Single(Items(list));

@@ -176,3 +176,22 @@ Quy tắc công thức chấm điểm được quản lý tập trung tại [Req
 | Ngoại lệ | Trùng active, binding/GVHD đã đổi, phiên bản cũ hoặc key trùng nhưng khác ý định trả 409; thiếu quyền 403. Mọi phiếu GVPB, kể cả điểm 0/ẩn/bị loại khỏi tính điểm, đều chặn hủy. Retry cùng ý định/key trả receipt gốc, không ghi thêm audit hoặc kích hoạt lại dòng đã hủy. |
 | Hậu điều kiện | Nhóm vẫn ReadyForReviewerAssignment, báo cáo vẫn khóa; giữ lịch sử và audit. Hủy chặn cấp URL mới; URL đã cấp còn dùng tới TTL 5 phút. Quyền Student/GVHD/FacultyGate/Admin độc lập theo SCRUM-102 vẫn áp dụng. |
 | Giới hạn | Quyền GVPB không mở lịch sử báo cáo hoặc phiếu/điểm GVHD. Nhập điểm SCRUM-105, phản biện thứ hai, thông báo và tổng hợp điểm thuộc task khác. Xem [contract](ApiContract/ReviewerAssignmentApiContract.md) và [bằng chứng nghiệm thu](ApiContract/ReviewerAssignmentVerification.md). |
+
+## Chấm GVPB — phạm vi triển khai SCRUM-105 CP2
+
+| Nội dung | Mô tả |
+| --- | --- |
+| Tác nhân | GVPB Active/Lecturer của assignment hoặc Admin nhập/chốt; Admin ghi actor thật. Faculty/AcademicAffairs có role + thesis.reviewer-evaluations.read và Admin đọc để điều phối. |
+| Tiền điều kiện ghi | Đợt Open; assignment active/nonlegacy; group/report/phiếu duyệt GVHD/file/version/checksum còn khớp; reviewer hợp lệ, khác GVHD hiện tại. Không dùng FINAL_EVALUATION/hạn nộp bài hoặc cấu hình ngưỡng để chặn ghi. |
+| Luồng chính | 1. GET phiếu riêng tư theo assignmentId; chưa có trả 404, không tạo nháp.<br>2. Gửi POST SaveDraft cùng version/key; nội dung thiếu được null, toàn bộ form thay thế nháp cũ.<br>3. GET/lưu tiếp nháp bằng evaluationVersion mới.<br>4. POST Submit đủ điểm/góp ý/kết luận; lần tạo 201, sửa/chốt nháp 200.<br>5. Server khóa phiếu, đặt visibility cho comment và commit phiếu/receipt/audit nguyên tử. |
+| Ngoại lệ | Version cũ, key khác ý định, binding sai hoặc đợt đóng trả 409; thiếu quyền 403; JSON/score/comment/nội dung Submit sai trả 400. Đã chốt Approved/Rejected đều không sửa hoặc thu hồi. Retry key/ý định cũ trả DTO/status gốc theo quyền hiện tại, không audit đôi hoặc mở lại nháp. |
+| Hậu điều kiện và giới hạn | Mọi phiếu chặn hủy assignment. Đọc riêng tư theo quyền vẫn được sau đóng đợt/chuyển giai đoạn; không mở điểm GVHD hoặc tải file khác. CP2 chưa có GET feedback/gate hoặc xếp Hội đồng; chưa công bố điểm cho sinh viên. Xem [contract và bằng chứng CP2](ApiContract/ReviewerEvaluationApiContract.md#14-cp2--lưu-nháp-chốt-và-đọc-phiếu-riêng-tư). |
+
+## Xem điều kiện bảo vệ và góp ý — phạm vi SCRUM-105 CP3
+
+| Nội dung | Mô tả |
+| --- | --- |
+| Điều phối gate | Admin, Faculty/PĐT có read permission hoặc own reviewer Active/Lecturer đọc GET defense-eligibility. Group/report/binding hợp lệ, Submitted/nonlegacy không bị loại, Approved và score >= ngưỡng Reviewer Active hiện tại mới canProceed=true. Thiếu/mâu thuẫn config chặn gate, không mặc định 5.0, không sửa phiếu đã chốt. |
+| Góp ý sinh viên | Student Confirmed đúng group đọc GET feedback. Chỉ nhận comment đã phát hành hoặc null; không có điểm, kết luận, lifecycle, gate hoặc metadata chấm. Quản trị không có override; tài khoản đa vai trò chỉ đọc qua nhánh Student thực sự hợp lệ. |
+| Hậu điều kiện | Không mutation/audit hoặc tự chuyển trạng thái nhóm. Góp ý gắn snapshot gốc, còn sau đóng đợt/GVPB nghỉ/giai đoạn sau/loại tính điểm; không dùng current version để ghép lại. Nháp/legacy không tự công khai và RevisionFeedback không phải fallback. |
+| Writer kế tiếp | GET/canProceed cache không là bằng chứng ghi Hội đồng. SCRUM-107 phải gọi LockForSchedulingAsync trong coordinator transaction và giữ khóa tới commit, đồng thời kiểm tra policy riêng. CP3 có writer đại diện kiểm thử, chưa có HTTP scheduling. [Contract/bằng chứng CP3](ApiContract/ReviewerEvaluationApiContract.md#15-cp3--gate-hội-đồng-và-góp-ý-sinh-viên). |

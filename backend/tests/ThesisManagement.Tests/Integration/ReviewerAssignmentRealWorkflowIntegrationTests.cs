@@ -107,17 +107,11 @@ public sealed partial class FinalReportWorkflowIntegrationTests
                 var access = await services.GetRequiredService<IReviewerAssignmentWorkflowContract>()
                     .LockForEvaluationAsync(secondId, nextReviewer, token);
                 Assert.NotNull(access);
-                services.GetRequiredService<DefenseCouncilDbContext>().ReviewerEvaluations.Add(new ReviewerEvaluation
-                {
-                    Id = Guid.NewGuid(),
-                    AssignmentId = access.AssignmentId,
-                    Score = 0m,
-                    Comment = "Phiếu đã lưu",
-                    IsIgnoredInCalculation = true,
-                    ExclusionReason = "Không tính điểm",
-                    DefenseApproval = DefenseApprovalStatus.Approved,
-                    EvaluatedAt = _clock.UtcNow
-                });
+                var defense = services.GetRequiredService<DefenseCouncilDbContext>();
+                var sheet = ReviewerEvaluation.CreateDraft(Guid.NewGuid(), access.AssignmentId, 0m, "Phiếu đã lưu", DefenseApprovalStatus.Approved, nextReviewer, _clock.UtcNow);
+                defense.ReviewerEvaluations.Add(sheet);
+                defense.Entry(sheet).Property(value => value.IsIgnoredInCalculation).CurrentValue = true;
+                defense.Entry(sheet).Property(value => value.ExclusionReason).CurrentValue = "Không tính điểm";
                 return ReviewerAssignmentTransactionResult<bool>.Commit(true);
             }));
         }

@@ -146,6 +146,8 @@ public static class IntegrationAuditActions
 
     public const string ReviewerAssignmentCreated = "DefenseCouncil.ReviewerAssignment.Created";
     public const string ReviewerAssignmentCancelled = "DefenseCouncil.ReviewerAssignment.Cancelled";
+    public const string ReviewerEvaluationDraftSaved = "DefenseCouncil.ReviewerEvaluation.DraftSaved";
+    public const string ReviewerEvaluationSubmitted = "DefenseCouncil.ReviewerEvaluation.Submitted";
 
     public const string AdvisorEvaluationApproved =
         "DefenseCouncil.AdvisorEvaluation.Approved";
