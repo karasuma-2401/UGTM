@@ -36,6 +36,8 @@
              Link="ProductionComposition\AdvisorWorkflowTransactionCoordinator.cs" />
     <Compile Include="..\..\host\Api\Modules\ModuleRegistration.cs"
              Link="ProductionComposition\ModuleRegistration.cs" />
+    <Compile Include="..\..\host\Api\ReviewerAssignments\ReviewerAssignmentTransactionCoordinator.cs"
+             Link="ProductionComposition\ReviewerAssignmentTransactionCoordinator.cs" />
   </ItemGroup>
 
 </Project>

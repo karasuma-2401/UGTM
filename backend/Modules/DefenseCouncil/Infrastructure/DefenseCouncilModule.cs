@@ -39,6 +39,13 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<DecideAdvisorEvaluationHandler>();
         services.AddScoped<GetAdvisorEvaluationHandler>();
         services.AddScoped<IReviewerAssignmentEligibilityContract, ReviewerAssignmentEligibilityContract>();
+        services.AddScoped<IReviewerAssignmentRepository, ReviewerAssignmentRepository>();
+        services.AddScoped<IReviewerAssignmentIdempotencyRepository, ReviewerAssignmentIdempotencyRepository>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.IReviewerAssignmentApprovalReader,
+            ReviewerAssignmentApprovalReader>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments.IReviewerAssignmentWorkflowContract,
+            UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.ReviewerAssignmentWorkflowContract>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.ReviewerAssignmentAudit>();
         services.AddScoped<IDefenseCouncilUnitOfWork>(provider => provider.GetRequiredService<DefenseCouncilDbContext>());
         services.AddScoped<IDefenseCouncilAuditOutbox, DefenseCouncilAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, DefenseCouncilAuditEventSource>();

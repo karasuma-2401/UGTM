@@ -84,6 +84,8 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IMidtermReportRepository, MidtermReportRepository>();
         services.AddScoped<IFinalReportRepository, FinalReportRepository>();
         services.AddScoped<IAdvisorEvaluationWorkflowContract, AdvisorEvaluationWorkflowContract>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.ReviewerAssignments.IReviewerAssignmentThesisReader,
+            Persistence.Repositories.ReviewerAssignmentThesisReader>();
         services.AddScoped<FinalReportSubmissionEligibilityChecker>();
         services.AddScoped<SubmitFinalReportHandler>();
         services.AddScoped<FinalReportReadAccessChecker>();

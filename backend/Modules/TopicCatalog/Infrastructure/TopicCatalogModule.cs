@@ -38,6 +38,8 @@ public sealed class TopicCatalogModule : IModule
         services.AddScoped<ITopicUnitOfWork>(provider => provider.GetRequiredService<TopicCatalogDbContext>());
         services.AddScoped<ITopicQueryReader, TopicQueryReader>();
         services.AddScoped<ITopicAdvisorAssignmentContract, TopicAdvisorAssignmentContract>();
+        services.AddScoped<UGTM.Modules.TopicCatalog.Contracts.ReviewerAssignments.IReviewerAssignmentTopicReader,
+            Persistence.Repositories.ReviewerAssignmentTopicReader>();
         services.AddScoped<ITopicSummaryReader, TopicSummaryReader>();
         services.AddScoped<ITopicSearchReader, TopicSearchReader>();
         services.AddScoped<ITopicRenameContract, TopicRenameContract>();

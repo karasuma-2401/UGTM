@@ -1,6 +1,6 @@
 # Reviewer assignment API contract — SCRUM-104
 
-Trạng thái: **CP0 đã chốt; CP1 đã bổ sung domain, mapping, migration và seed permission; chưa triển khai endpoint SCRUM-104**. Cập nhật 30/10/2026. Các hành vi API/giao dịch trong tài liệu vẫn là contract cho CP2–CP6, không phải xác nhận API đã hoạt động. Nền tảng CP1 ở mục 12. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
+Trạng thái: **CP0 đã chốt; CP1 có nền tảng dữ liệu; CP2 có contracts, repository và coordinator giữ điều kiện trong transaction; chưa triển khai endpoint SCRUM-104**. Cập nhật 30/10/2026. API vẫn là contract cho CP3–CP6, không phải xác nhận endpoint đã hoạt động. Nền tảng CP1/CP2 ở mục 12/13. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
 
 Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ quản trị và nhiệm vụ của GVPB; cấp link tải đúng bản báo cáo đã duyệt. Không gồm UI SCRUM-113, nhập điểm/phiếu SCRUM-105, phản biện thứ hai/xử lý không đồng thuận, tổng hợp/công bố điểm, lưu chiểu, phân công hàng loạt, email/in-app hay API thay GVHD.
 
@@ -293,13 +293,13 @@ Không tạo audit ThesisManagement riêng vì SCRUM-104 không đổi trạng t
 | Identity | Projection candidate theo lô/phân trang, xác minh Active + Lecturer và bảo vệ điều kiện khi ghi; không dùng reader tên làm validation |
 | Composition root | Transaction/coordinator cho participant cần thiết, thứ tự khóa cố định, rollback; module application không dùng DbContext của module khác hoặc migration context |
 
-Điều kiện POST phải được giữ ổn định trong giao dịch đến commit bằng locks/conditional concurrency hợp lệ. GET eligibility hoặc SELECT lại ngay trước SaveChanges trên các connection độc lập không đủ. CP2 lựa chọn cơ chế cụ thể và chứng minh bằng PostgreSQL, không thay architectural boundary chỉ để giảm số query.
+Điều kiện POST phải được giữ ổn định trong giao dịch đến commit. GET eligibility hoặc SELECT lại ngay trước SaveChanges trên các connection độc lập không đủ. CP2 đã chọn row locks trên một PostgreSQL transaction `ReadCommitted` dùng chung cho năm module, giữ architectural boundary; chi tiết triển khai và bằng chứng ở mục 13.
 
 Nếu thay đổi xảy ra sau commit theo một thứ tự serial hợp lệ, assignment trước đó vẫn là một thao tác hợp lệ; không hứa đóng băng GVHD/account/batch mãi mãi. Read/download kiểm tra điều kiện hiện tại và fail closed khi cần. Group/report không bị update ngầm để mở lại eligibility.
 
 DELETE phải serialize với writer ReviewerEvaluation trên cùng assignment. SCRUM-105 bắt buộc dùng primitive/contract xác minh active + binding trong cùng transaction ghi phiếu; không chỉ GET assignment rồi save phiếu ở transaction khác. CP2/CP4 chưa tạo endpoint chấm nhưng phải thử writer đại diện theo đúng primitive này: phiếu thắng → hủy 409; hủy thắng → writer không lưu phiếu. CAS/xmin chỉ trên assignment không tự bảo vệ được một lần insert phiếu độc lập không tuân guard.
 
-CP2 phải kiểm tra ít nhất: hai Create khác key; hai Create cùng key; đổi GVHD thành reviewer; dừng nhóm/đổi report binding; đóng batch; đổi eligibility tài khoản; hủy đua ghi phiếu; lỗi sau insert assignment nhưng trước audit/idempotency hoàn tất. Chấp nhận kết quả tương đương một thứ tự serial; không chấp nhận hai active, assignment commit trên context bị thay trước đó hoặc phiếu mới trên assignment đã hủy. Error path không được commit một phần dữ liệu đã track.
+CP2 kiểm tra ít nhất: hai Create khác key; hai Create cùng key; đổi GVHD thành reviewer; dừng nhóm/đổi report binding; đóng batch; đổi eligibility tài khoản; hủy đua ghi phiếu; lỗi sau insert assignment nhưng trước audit/idempotency hoàn tất. Chấp nhận kết quả tương đương một thứ tự serial; không chấp nhận hai active, assignment commit trên context bị thay trước đó hoặc phiếu mới trên assignment đã hủy. Error path không được commit một phần dữ liệu đã track.
 
 ## 9. Luồng tích hợp FE
 
@@ -361,12 +361,48 @@ Tại CP0 chỉ thêm/cập nhật tài liệu. Các ca nghiệm thu toàn luồ
 - Downgrade chặn nếu lịch sử phân công lại không còn thỏa hai unique index cũ; không tự xóa lịch sử để rollback. Rollback/reapply của dữ liệu legacy tương thích được kiểm tra riêng. Permission/grant đã tùy chỉnh được giữ khi rollback theo convention repository; reapply không ghi đè tên hoặc thời điểm grant có sẵn.
 - Test domain ở [ReviewerAssignmentTests](../../backend/tests/DefenseCouncil.Tests/ReviewerAssignmentTests.cs); PostgreSQL thật ở [ReviewerAssignmentWorkflowPersistenceIntegrationTests](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerAssignmentWorkflowPersistenceIntegrationTests.cs), với FK hiện có hoạt động. Snapshot GUID trong test persistence kiểm tra lưu trữ/constraint; xác minh approval/report tồn tại và đủ eligibility thuộc contract/giao dịch CP2.
 
-CP1 chưa triển khai API đọc/ghi/tải mới, chưa áp migration vào database ứng dụng và chưa thay đổi workflow SCRUM-103. Cách chạy kiểm thử mục tiêu từ root:
+CP1 chưa triển khai API đọc/ghi/tải mới, chưa áp migration vào database ứng dụng và chưa thay đổi workflow SCRUM-103.
 
-Kết quả 30/10/2026: DefenseCouncil **55/55** (31 ca mới), PostgreSQL persistence CP1 **10/10**, Architecture **74/74**, regression migration SCRUM-103 **2/2** và permission Identity **1/1** pass. Build Release solution có 0 error; còn hai warning ở OpenAPI (`CS8602`) và xung đột EF Core `10.0.4`/`10.0.12` của Architecture.Tests thuộc mã không đổi. Format solution `--verify-no-changes` và `git diff --check` pass. Đây là kết quả các suite mục tiêu, không phải toàn bộ suite ThesisManagement/Identity hoặc nghiệm thu API CP2–CP6.
+Kết quả CP1 ngày 30/10/2026: DefenseCouncil **55/55** (31 ca mới), PostgreSQL persistence CP1 **10/10**, Architecture **74/74**, regression migration SCRUM-103 **2/2** và permission Identity **1/1** pass. Build Release solution có 0 error; còn hai warning ở OpenAPI (`CS8602`) và xung đột EF Core `10.0.4`/`10.0.12` của Architecture.Tests thuộc mã không đổi. Format solution `--verify-no-changes` và `git diff --check` pass. Đây là kết quả các suite mục tiêu tại CP1, không phải toàn bộ suite ThesisManagement/Identity hoặc nghiệm thu API CP3–CP6. Cách chạy lại phần CP1:
 
 ```powershell
 dotnet build UGTM.sln --configuration Release --artifacts-path artifacts/scrum104-cp1
 dotnet test backend/tests/DefenseCouncil.Tests/UGTM.Modules.DefenseCouncil.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp1 --no-build --no-restore
 dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp1 --no-build --no-restore --filter FullyQualifiedName~ReviewerAssignmentWorkflowPersistenceIntegrationTests
+```
+
+## 13. Nền tảng CP2: contracts và giao dịch liên module
+
+### Contracts và phạm vi trách nhiệm
+
+- [IReviewerAssignmentWorkflowContract](../../backend/Modules/DefenseCouncil/Contracts/ReviewerAssignments/IReviewerAssignmentWorkflowContract.cs): `LockForCreationAsync` trả outcome/binding có guard; `GetActiveReportAccessAsync` kiểm tra đúng file theo assignment active, không trả điểm/nhận xét; `LockForEvaluationAsync` giữ khóa cho writer SCRUM-105 trong cùng transaction. Chưa nối contract đọc vào HTTP tải file ở CP2.
+- [IReviewerAssignmentTransactionCoordinator](../../backend/Modules/DefenseCouncil/Contracts/ReviewerAssignments/IReviewerAssignmentTransactionCoordinator.cs): callback trả `Commit(value)` hoặc `Abort(value)` rõ ràng. Abort rollback và clear tracker dù không có exception; không dựa vào việc handler nhớ ném lỗi sau khi đã track dữ liệu.
+- Reader thuộc owner: [ThesisManagement](../../backend/Modules/ThesisManagement/Contracts/ReviewerAssignments/IReviewerAssignmentThesisReader.cs) cho group/membership/report/file; [TopicCatalog](../../backend/Modules/TopicCatalog/Contracts/ReviewerAssignments/IReviewerAssignmentTopicReader.cs) cho GVHD/batch; [AcademicPeriods](../../backend/Modules/AcademicPeriods/Contracts/ReviewerAssignments/IReviewerAssignmentBatchReader.cs) cho trạng thái đợt; [Identity](../../backend/Modules/Identity/Contracts/ReviewerAssignments/IReviewerCandidateReader.cs) cho account và Lecturer grant. Candidate search đếm/lọc/sort/page tại database, escape ký tự `%`/`_`, chỉ trả ID/tên/mã.
+- Repository assignment/idempotency được đăng ký cùng `IDefenseCouncilUnitOfWork` và audit outbox hiện có. [ReviewerAssignmentAudit](../../backend/Modules/DefenseCouncil/Application/ReviewerAssignments/ReviewerAssignmentAudit.cs) kiểm tra actor đúng dòng tạo/hủy, ghi action chuẩn và không chép raw lý do/phiếu vào outbox. HTTP authorization và so sánh expected fields vẫn thuộc CP3/CP4.
+
+### Transaction và thứ tự khóa
+
+[Coordinator production](../../backend/host/Api/ReviewerAssignments/ReviewerAssignmentTransactionCoordinator.cs) enlists DefenseCouncil, ThesisManagement, TopicCatalog, AcademicPeriods và Identity trên **một connection/transaction PostgreSQL ReadCommitted**. Chỉ save DefenseCouncil; bốn context còn lại giữ read locks và bị từ chối nếu callback track thay đổi để ghi schema khác. Coordinator hai-context của SCRUM-103 được giữ nguyên.
+
+Thứ tự dùng khi tạo: khóa idempotency request → group (`FOR UPDATE`) → membership → report → file → topic → batch → advisor approval → account và Lecturer grant/role. Các dòng guard sau group dùng `FOR SHARE`, nên UPDATE/DELETE liên quan phải chờ transaction kết thúc. Group lock serialize việc kiểm tra slot active khi chưa có assignment để khóa. Dữ liệu được đọc mới dưới khóa, không dựa vào entity tracker hoặc cache của GET trước đó.
+
+- Khóa idempotency là `pg_advisory_xact_lock` theo SHA-256 rút gọn của actor/operation/key; chỉ serialize việc tra receipt, không thay unique index/fingerprint. Hai request cùng key chờ nhau rồi đọc receipt đã commit. Hash collision chỉ làm chờ thêm; không dùng hash để nhận diện replay.
+- `ExecuteWithPostSaveAsync` save lần đầu để nhận `xmin`, rồi hoàn tất JSON receipt và save lần hai **trước commit**. Lỗi save/audit/post-save rollback cả hai lần; receipt không phản ánh version chưa commit.
+- Lock timeout, deadlock hoặc serialization error PostgreSQL được chuyển thành `DefenseCouncilConcurrencyException`, kể cả khi nằm trong DbUpdateException. Coordinator không tự chạy lại callback; HTTP handler ở CP3/CP4 phải map 409 theo contract và client retry cùng key khi phù hợp.
+- Hủy khóa assignment bằng `IReviewerAssignmentRepository.LockByIdAsync`, sau đó kiểm tra phiếu trong cùng transaction. Chấm dùng `LockForEvaluationAsync` (guard group/report/GVHD/account trước, assignment lock sau) rồi insert phiếu trước commit. Ở ReadCommitted, bên chờ lấy được khóa sẽ đọc trạng thái đã commit của bên thắng; không dùng snapshot cũ để ghi.
+- Các hàm Lock từ chối khi context không có transaction; caller phải dùng coordinator để các context cùng enlisted trên một transaction. Các hàm Get chỉ là read projection; không dùng `GetActiveReportAccessAsync` làm bằng chứng để lưu phiếu trong transaction khác. Hủy không cần batch còn Open; đọc/chấm theo binding không lấy hạn nộp bài hoặc trạng thái Open làm hạn đọc.
+
+### Bằng chứng CP2
+
+[ReviewerAssignmentTransactionIntegrationTests](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerAssignmentTransactionIntegrationTests.cs) dùng `AddUgtmModules` và source coordinator production, PostgreSQL Testcontainers với FK hoạt động. Fixture không start worker/email/storage; không tạo endpoint SCRUM-104 hoặc endpoint chấm giả. Writer ReviewerEvaluation đại diện cho SCRUM-105 thực hiện insert database thật qua primitive khóa đã công bố.
+
+Lượt CP2 **24/24** test PostgreSQL pass ngày 30/10/2026: cùng backend PID giữa năm context; sáu loại thay đổi theo cả hai thứ tự khóa/commit (GVHD, batch, nhóm, file binding, account status, Lecturer grant); hai request khác key/cùng key; hai thứ tự hủy/chấm; explicit abort; lỗi DB sau save đầu; ownership/lock timeout; candidate và quyền đọc binding. Test concurrency dùng hai connection và quan sát `pg_blocking_pids`, không dùng việc chưa hoàn tất sau sleep làm bằng chứng khóa. `jsonb` chuẩn hóa field order/whitespace, nên receipt được so sánh theo dữ liệu JSON và status, không so chuỗi byte.
+
+Kiểm tra source cuối: **14/14** ca bổ sung/hồi quy pass (10 persistence CP1, 2 transaction SCRUM-103, 1 toàn luồng SCRUM-103 với PostgreSQL/MinIO và chạy lại 1 ca ownership đã bổ sung assignment/receipt/audit vào tracker trước abort); DefenseCouncil **55/55**, Architecture **74/74** pass. Build Release solution 0 error; còn warning OpenAPI và xung đột phiên bản EF Core ở Architecture.Tests thuộc mã/package version không đổi. `dotnet format UGTM.sln --no-restore --verify-no-changes` và `git diff --check` pass. Không tuyên bố đã chạy toàn bộ suite ThesisManagement hoặc nghiệm thu API CP3–CP6.
+
+Source CP2 không có migration mới và chưa triển khai HTTP tạo/hủy/đọc/tải. Artifact/TRX nằm trong `artifacts/scrum104-cp2/` bị Git ignore. Chạy lại từ root với Docker Desktop Linux engine:
+
+```powershell
+dotnet build UGTM.sln --configuration Release --artifacts-path artifacts/scrum104-cp2
+dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp2 --no-build --no-restore --filter FullyQualifiedName~ReviewerAssignmentTransactionIntegrationTests
 ```
