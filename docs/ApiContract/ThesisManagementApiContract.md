@@ -7,7 +7,7 @@ SCRUM-103 đã triển khai phiếu chấm GVHD, duyệt chuyển phản biện,
 
 SCRUM-104 có POST/DELETE và bốn API đọc tại [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md). Endpoint download đã thêm nhánh cấp quyền tải đúng file được duyệt cho GVPB Active có Lecturer và assignment/binding hợp lệ; không mở toàn bộ lịch sử báo cáo hoặc phiếu GVHD. Xem [nghiệm thu SCRUM-104 CP6](ReviewerAssignmentVerification.md).
 
-SCRUM-105 mới chốt thiết kế CP0 tại [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md), chưa triển khai API: phiếu GVPB có nháp/chốt, gate theo cấu hình Active và `GET /api/thesis/groups/{groupId}/feedback` với DTO chỉ có comment đã chốt. Feedback không dùng quyền đọc báo cáo chung để mở phiếu/điểm hoặc kết luận cho sinh viên; không thay luật nộp/khóa/tải file SCRUM-102/104.
+SCRUM-105 CP2 tại [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md) đã có POST nháp/chốt phiếu GVPB và GET phiếu riêng tư. Gate theo cấu hình Active và `GET /api/thesis/groups/{groupId}/feedback` với DTO chỉ có comment đã chốt thuộc CP3, chưa có runtime. Feedback không dùng quyền đọc báo cáo chung để mở phiếu/điểm hoặc kết luận cho sinh viên; không thay luật nộp/khóa/tải file SCRUM-102/104.
 
 CP7 đồng bộ yêu cầu file và data model, kiểm tra ba bộ test ThesisManagement/AcademicPeriods/Architecture cùng luồng thực tế trên PostgreSQL/MinIO; xem [hướng dẫn và kết quả nghiệm thu](FinalReportSubmissionVerification.md). Không bao gồm triển khai frontend hoặc xác minh môi trường đang deploy.
 

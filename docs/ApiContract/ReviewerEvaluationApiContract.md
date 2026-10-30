@@ -1,6 +1,6 @@
 # Reviewer evaluation, defense eligibility & student feedback — SCRUM-105
 
-Trạng thái: **CP0 đã được review/commit tại `5076627`; CP1 có lifecycle/persistence/migration, permission read và owner contracts/resolver; chưa triển khai HTTP API SCRUM-105**. Ngày 30/10/2026. Phần nền tảng hiện có ở mục 13; endpoint/DTO HTTP ở các mục trước vẫn là contract đích cho CP2–CP3. CP4 nghiệm thu tích hợp; không coi thiết kế endpoint là runtime đã triển khai.
+Trạng thái: **CP1 đã được review/commit tại `676d9bd`; CP2 hoàn thành POST lưu nháp/chốt và GET phiếu riêng tư, sẵn sàng review; gate/feedback thuộc CP3**. Ngày 30/10/2026. Nền tảng CP1 ở mục 13; triển khai và bằng chứng CP2 ở mục 14. Các mục gate/feedback vẫn là contract đích cho CP3; CP4 nghiệm thu tích hợp.
 
 Phạm vi: GVPB/Admin lưu nháp, sửa và chốt phiếu phản biện; Khoa/PĐT đọc để điều phối; sinh viên xem góp ý đã chốt; cung cấp điều kiện chuyên môn ra Hội đồng cho workflow kế tiếp. Hai endpoint Jira là POST reviewer-evaluations và GET group feedback; hai GET bổ sung phục vụ đọc phiếu/gate đã nằm trong plan được người dùng chấp thuận.
 
@@ -24,7 +24,7 @@ Nền bàn giao: [báo cáo và file SCRUM-102](ThesisManagementApiContract.md),
 | Student đã Confirmed trong group | Không theo vai trò Student | Không theo vai trò Student | Không theo vai trò Student | Có, chỉ group của mình |
 | Student Pending, người ngoài group, anonymous | Không | Không | Không | 403; anonymous 401 |
 
-Permission CP1 sẽ bổ sung/seed: `thesis.reviewer-evaluations.read` cho Faculty, AcademicAffairs, Admin. Role **và** permission cần đồng thời đúng với nhánh quản trị; Lecturer/Student có riêng permission này không được đọc phiếu toàn hệ thống. Admin bypass permission đọc, không bypass guard nghiệp vụ hoặc khóa Submitted. Không thêm quyền ghi cho Faculty/PĐT, không tái sử dụng `thesis.reviewer-assignments.manage` để sửa điểm. Tài khoản đa vai trò được xét từng nhánh quyền rõ ràng; không suy luận quyền từ tên hoặc actorId client gửi.
+Permission CP1 đã bổ sung/seed: `thesis.reviewer-evaluations.read` cho Faculty, AcademicAffairs, Admin. Role **và** permission cần đồng thời đúng với nhánh quản trị; Lecturer/Student có riêng permission này không được đọc phiếu toàn hệ thống. Admin bypass permission đọc, không bypass guard nghiệp vụ hoặc khóa Submitted. Không thêm quyền ghi cho Faculty/PĐT, không tái sử dụng `thesis.reviewer-assignments.manage` để sửa điểm. Tài khoản đa vai trò được xét từng nhánh quyền rõ ràng; không suy luận quyền từ tên hoặc actorId client gửi.
 
 GVPB được xác minh account Active/Lecturer trong DB, không chỉ dựa vào claim cũ. Admin không cần Lecturer nhưng reviewer của assignment vẫn phải hợp lệ khi ghi. Quyền tải file tiếp tục theo SCRUM-104; đọc phiếu không tự cấp quyền xem lịch sử file, phiếu GVHD hoặc tải một file khác snapshot.
 
@@ -491,4 +491,51 @@ Release build solution thành công, 0 error; lượt build cuối ghi 2 warning
 
 Lượt regression trước phát hiện ba test lỗi vì projection raw SQL dùng alias PascalCase trong khi EF áp snake_case cho DTO; đã sửa projection và chạy lại đủ 55 cases thành công. Validation domain cũng chặn NUL/UTF-16 lỗi trước persistence, tránh PostgreSQL từ chối public comment. Không cộng lượt lỗi hoặc các lượt lặp vào bảng trên.
 
-Các API CP2–CP3 và nghiệm thu toàn task CP4 vẫn chưa thực hiện. Artifacts local ở `artifacts/scrum105-cp1/`, bị Git ignore; migration chỉ được áp vào DB container kiểm thử, không áp vào DB ứng dụng. Không stage/commit; CP1 sẵn sàng để người dùng review và tự commit.
+Tại thời điểm kết thúc CP1, các API CP2–CP3 và nghiệm thu toàn task CP4 chưa thực hiện. Artifacts CP1 ở `artifacts/scrum105-cp1/`, bị Git ignore; migration chỉ được áp vào DB container kiểm thử, không áp vào DB ứng dụng. Người dùng sau đó đã review và tự commit CP1 tại `676d9bd`; kết quả triển khai CP2 xem mục 14.
+
+## 14. CP2 — lưu nháp, chốt và đọc phiếu riêng tư
+
+Baseline `676d9bd` (CP1 đã được người dùng review/commit). CP2 dùng trực tiếp domain/schema/coordinator của CP1 và guard parent SCRUM-104; không thêm migration, không sửa DTO phân công hoặc mở quyền ghi schema owner khác.
+
+- [SaveReviewerEvaluationHandler](../../backend/Modules/DefenseCouncil/Application/ReviewerEvaluations/SaveReviewerEvaluationHandler.cs) thực hiện thứ tự mục 3.3: coarse authorization/normalization, ownership/account, request-key lock và replay, early Legacy/Locked, parent workflow guard, version/Open, child lock/reload, mutation và hai save nguyên tử. Sau khi chờ request key, kiểm tra lại quyền live trước receipt lookup; Admin dùng reviewer của assignment cho guard, audit ghi actor Admin thật.
+- [ReviewerEvaluationInput](../../backend/Modules/DefenseCouncil/Application/ReviewerEvaluations/SaveReviewerEvaluationCommand.cs) kiểm tra GUID/version/action/decision, score trước rounding, Unicode/rune/NUL, completeness và fingerprint JSON array có marker null. Operation `ReviewerEvaluation.Save`, receipt riêng actor/operation/key, 201 tạo lần đầu và 200 sửa/chốt nháp. Replay giữ status/DTO gốc, không trả state hiện tại hoặc gate động.
+- [GetReviewerEvaluationHandler](../../backend/Modules/DefenseCouncil/Application/ReviewerEvaluations/GetReviewerEvaluationHandler.cs) kiểm tra quyền riêng tư bằng [authorization](../../backend/Modules/DefenseCouncil/Application/ReviewerEvaluations/ReviewerEvaluationAuthorization.cs), trả [DTO](../../backend/Modules/DefenseCouncil/Application/ReviewerEvaluations/ReviewerEvaluationDto.cs) mục 3.2. Không tạo nháp/audit hoặc gọi write guard; đọc quản trị còn hiệu lực sau batch close/reviewer inactive, own reviewer vẫn phải Active/Lecturer. Context group/topic/batch mâu thuẫn trả 409.
+- [Endpoints](../../backend/Modules/DefenseCouncil/Infrastructure/Endpoints/ReviewerEvaluationEndpoints.cs) có POST và GET riêng tư. Parser JSON kiểm tra field bắt buộc, chấp nhận omitted/null đúng contract và từ chối field lạ/lặp bất kể casing, enum integer/numeric string, version/UUID/key/query sai; body parser không dùng setting global để nới dữ liệu. Nháp rỗng không được tự điền score/decision. Coarse policy chạy trước content-type/body/resource; không dùng routing Accepts metadata để vô tình trả 415 trước authentication.
+- [Operation transformer](../../backend/host/Api/OpenApi/ReviewerEvaluationOperationTransformer.cs) khai báo body/header đầy đủ cho handler HttpRequest, required/nonnullable inputs, canonical enums, nullable nội dung và response statuses. [Schema transformer](../../backend/host/Api/OpenApi/ReviewerEvaluationSchemaTransformer.cs) mô tả status/decision dạng string của DTO; scope đúng type, không sửa global JSON hoặc schema endpoint cũ.
+- [HTTP tests](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerEvaluationHttpIntegrationTests.cs), [write/replay/rollback/concurrency](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerEvaluationWriteIntegrationTests.cs), [owner guard retention](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerEvaluationGuardLockIntegrationTests.cs) và [real workflow/OpenAPI](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerEvaluationRealWorkflowIntegrationTests.cs) dùng production registration/coordinator/reader và PostgreSQL/FK thật. Trigger test chỉ giữ writer ở boundary save; quan sát pg_blocking_pids để xác nhận writer khác đang chờ, không dùng delay làm bằng chứng race.
+
+Luồng MinIO mới đi từ nộp v1/v2 → khóa/duyệt GVHD → phân công → nháp → chốt bằng GVPB/Admin, tải byte đúng v2 và chặn hủy sau nháp. OpenAPI được lấy qua HTTP từ host thật và kiểm tra hai route, header, body, statuses và schema private. Gate/feedback sinh viên chưa được triển khai/đăng ký trong CP2; việc đặt visibility khi chốt là nền tảng để CP3 đọc đúng dữ liệu, chưa phải mở endpoint sinh viên.
+
+Lệnh build và lượt PostgreSQL/MinIO từ root:
+
+```powershell
+dotnet build UGTM.sln --no-restore --configuration Release --artifacts-path artifacts/scrum105-cp2 -m:1 -nr:false -p:UseSharedCompilation=false
+$cp2Filter = @(
+    'FullyQualifiedName~Evaluation_cp2_'
+    'FullyQualifiedName~Reviewer_evaluation_foundation_'
+    'FullyQualifiedName~Cancellation_http_blocks_any_evaluation'
+    'FullyQualifiedName~Cancellation_http_serializes_with_a_real_grading_writer'
+    'FullyQualifiedName~Reviewer_reads_has_evaluation'
+    'FullyQualifiedName~Real_reviewer_workflow'
+    'FullyQualifiedName~Creation_http_commits_the_approved_snapshot'
+) -join '|'
+dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --no-build --no-restore --configuration Release --artifacts-path artifacts/scrum105-cp2 --filter $cp2Filter --logger 'trx;LogFileName=http-and-affected-regression-final.trx' --results-directory artifacts/scrum105-cp2/test-results
+dotnet format UGTM.sln --no-restore --verify-no-changes --verbosity quiet
+```
+
+DefenseCouncil.Tests và Architecture.Tests dùng cùng options test, bỏ filter để chạy toàn project. Không cộng smoke/lượt lặp hoặc bằng chứng CP1 vào tổng CP2.
+
+Kết quả ngày 30/10/2026:
+
+| Phạm vi | Pass / tổng | TRX trong `artifacts/scrum105-cp2/test-results/` |
+| --- | --- | --- |
+| ThesisManagement filtered: 45 ca CP2 mới + 19 ca hồi quy liên quan, PostgreSQL/MinIO thật | 64/64 | http-and-affected-regression-final.trx |
+| DefenseCouncil, toàn project | 90/90 | defense-final.trx |
+| Architecture, toàn project | 74/74 | architecture-final.trx |
+| **Tổng phạm vi đã chọn, không cộng lượt lặp** | **228/228; fail 0, skip 0** | |
+
+Release build solution 0 error, còn 4 warning nền (CS8602 OpenApiConfiguration tại host/source-linked test, MSB3277 phiên bản EF Core tại Architecture.Tests); không có warning mới của CP2. Format verify toàn solution, JSON examples/36 acceptance IDs, link/whitespace/fences và diff check pass; index trống. Log `build-final.log`, `format-final.log`, filter và `Validate-Checkpoint.ps1` nằm trong artifacts local; OpenAPI HTTP export ở `artifacts/scrum105-cp2/bin/UGTM.Modules.ThesisManagement.Tests/release/reviewer-evaluation-openapi.json`.
+
+Lượt trước có 63/64 pass: Accepts metadata khiến request chưa đăng nhập với text/plain bị routing trả 415 trước authentication. Đã chuyển body metadata sang operation transformer, giữ kiểm tra content-type trong handler sau policy, rồi build/rerun đủ 64 ca thành công. Các lượt smoke/lỗi/lặp giữ trong artifacts nhưng không cộng vào bảng trên. Các ca rollback kiểm tra cả insert và cập nhật/chốt nháp, ở save đầu và save hai; ca replay kiểm tra quyền live sau khi chờ key, ca race kiểm tra cả chốt thắng sửa và sửa thắng chốt.
+
+TRX/log/filter/plan local bị Git ignore. CP2 không thêm hoặc áp migration vào DB ứng dụng, không stage/commit; sẵn sàng để người dùng review và tự commit. CP3 gate/feedback và nghiệm thu toàn task CP4 vẫn chưa thực hiện.

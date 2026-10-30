@@ -476,6 +476,8 @@ Ví dụ kiểm chứng với GVHD=8, GVPB=7, Chủ tịch=9, Thư ký=8, Ủy v
 
 Ví dụ không đặt quy tắc làm tròn. Điểm tham chiếu để phát hiện sai biệt, thời hạn quyền sửa và thủ tục khóa lại vẫn là nội dung Word chưa định nghĩa đầy đủ; không suy ra từ các công thức đã chốt.
 
+Phần chấm GVPB của FR-FIN-02 đã có backend SCRUM-105 CP2: GVPB Active/Lecturer đang được phân công hoặc Admin lưu toàn bộ nội dung nháp/chốt khi đợt Open và snapshot còn hợp lệ. Nháp cho phép thiếu nội dung; Submit bắt buộc điểm 0–10 (AwayFromZero hai chữ số), góp ý 1–2.000 Unicode rune sau trim và Approved/Rejected. Cả hai kết luận đều khóa phiếu sau chốt; mọi nháp đã tồn tại cũng chặn hủy phân công. Faculty/PĐT có role và permission đọc riêng chỉ được tra cứu. Ghi actor thực tế, xmin, receipt và audit trong một transaction; không dùng hạn sinh viên hoặc cấu hình ngưỡng để chặn chốt. Không mở phiếu/điểm GVHD qua quyền chấm GVPB. Gate/feedback sinh viên tiếp tục thuộc CP3; xem [contract và bằng chứng theo checkpoint](ApiContract/ReviewerEvaluationApiContract.md).
+
 ## 7. Tài liệu liên quan
 
 [Use Case](UseCases.md) · [Luồng dữ liệu](DataFlows.md) · [Tuần tự](../backend/docs/Architecture/Sequences.md) · [Kiến trúc](../backend/docs/Architecture/Architecture.md) · [Dữ liệu](DataModel.md).
