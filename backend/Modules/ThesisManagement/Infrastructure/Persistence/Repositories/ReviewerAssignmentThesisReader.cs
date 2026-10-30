@@ -7,6 +7,52 @@ namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence.Repositories;
 
 internal sealed class ReviewerAssignmentThesisReader(ThesisManagementDbContext context) : IReviewerAssignmentThesisReader
 {
+    public async Task<IReadOnlyList<ReviewerAssignmentGroupLinkContractDto>> GetGroupLinksAsync(
+        IReadOnlyCollection<Guid>? groupIds, IReadOnlyCollection<Guid>? topicIds, CancellationToken cancellationToken = default)
+    {
+        if (groupIds is null && topicIds is null) throw new ArgumentException("A group or topic scope is required.");
+        var query = context.StudentGroups.AsNoTracking().AsQueryable();
+        if (groupIds is not null) query = query.Where(group => groupIds.Contains(group.Id));
+        if (topicIds is not null) query = query.Where(group => topicIds.Contains(group.TopicId));
+        return await query.Select(group => new ReviewerAssignmentGroupLinkContractDto(group.Id, group.TopicId)).ToListAsync(cancellationToken);
+    }
+
+    public Task<IReadOnlyList<ReviewerAssignmentThesisContractDto>> GetManyAsync(IReadOnlyCollection<Guid> groupIds,
+        CancellationToken cancellationToken = default)
+        => ReadManyAsync(context.StudentGroups.AsNoTracking().Where(group => groupIds.Contains(group.Id)), cancellationToken);
+
+    public Task<IReadOnlyList<ReviewerAssignmentThesisContractDto>> GetByTopicIdsAsync(IReadOnlyCollection<Guid> topicIds,
+        CancellationToken cancellationToken = default)
+        => ReadManyAsync(context.StudentGroups.AsNoTracking().Where(group => topicIds.Contains(group.TopicId)), cancellationToken);
+
+    private async Task<IReadOnlyList<ReviewerAssignmentThesisContractDto>> ReadManyAsync(IQueryable<StudentGroup> query, CancellationToken token)
+    {
+        var groups = await query.Select(group => new { group.Id, group.TopicId, group.Status }).ToListAsync(token);
+        if (groups.Count == 0) return [];
+        var ids = groups.Select(group => group.Id).ToArray();
+        var members = await context.StudentGroupMembers.AsNoTracking().Where(member => ids.Contains(member.GroupId))
+            .Select(member => new { member.GroupId, member.BatchId }).Distinct().ToListAsync(token);
+        var batches = members.GroupBy(member => member.GroupId).ToDictionary(group => group.Key, group => group.Select(member => member.BatchId).ToArray());
+        var reports = await context.FinalReports.AsNoTracking().Where(report => ids.Contains(report.GroupId)
+                && report.VersionType == FinalReportVersionType.InitialFinal)
+            .Select(report => new { report.Id, report.GroupId, report.CurrentVersionNo, report.Status }).ToDictionaryAsync(report => report.GroupId, token);
+        var files = await (from file in context.SubmissionFiles.AsNoTracking()
+                           join report in context.FinalReports.AsNoTracking() on file.EntityId equals report.Id
+                           where ids.Contains(report.GroupId) && report.VersionType == FinalReportVersionType.InitialFinal
+                               && file.EntityType == SubmissionEntityType.FinalReport && file.VersionNo == report.CurrentVersionNo
+                           select new { report.GroupId, file.Id, file.FileName, file.ContentType, file.FileSize, file.VersionNo, file.ChecksumSha256 })
+            .ToDictionaryAsync(file => file.GroupId, token);
+        return groups.Select(group =>
+        {
+            var report = reports.GetValueOrDefault(group.Id);
+            var file = files.GetValueOrDefault(group.Id);
+            var batchIds = batches.GetValueOrDefault(group.Id);
+            return new ReviewerAssignmentThesisContractDto(group.Id, group.TopicId, batchIds is { Length: 1 } ? batchIds[0] : null,
+                group.Status == StudentGroupStatus.ReadyForReviewerAssignment, report?.Id,
+                report?.Status == FinalReportStatus.UnderEvaluation, report?.CurrentVersionNo, file?.Id, file?.ChecksumSha256,
+                file is null ? null : new(file.Id, file.FileName, file.ContentType, file.FileSize, file.VersionNo));
+        }).ToArray();
+    }
     public Task<ReviewerAssignmentThesisContractDto?> GetAsync(Guid groupId, CancellationToken cancellationToken = default)
         => ReadAsync(groupId, false, cancellationToken);
 

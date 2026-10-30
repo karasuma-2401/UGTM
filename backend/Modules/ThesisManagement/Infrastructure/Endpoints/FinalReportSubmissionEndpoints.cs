@@ -79,7 +79,9 @@ public static class FinalReportSubmissionEndpoints
             .WithSummary("Lấy URL tải tạm thời cho một phiên bản báo cáo cuối kỳ")
             .WithDescription("""
                 Kiểm tra file thuộc báo cáo cuối kỳ và quyền trên đúng nhóm trước khi cấp presigned URL 5 phút.
-                Quyền tải giống quyền xem lịch sử; được tải cả phiên bản cũ sau deadline hoặc khi đã bắt đầu chấm.
+                Quyền độc lập như xem lịch sử vẫn tải được các phiên bản cũ sau deadline hoặc khi đã bắt đầu chấm.
+                GVPB Active có Lecturer được tải thêm đúng file đã duyệt trong phân công active hợp lệ;
+                nhánh này kiểm tra lại binding, không mở lịch sử và hủy phân công sẽ chặn cấp link mới.
                 Bucket luôn private. Response chỉ gồm fileId, downloadUrl và expiresAtUtc; không có trường objectKey.
                 400: fileId rỗng; 401: chưa đăng nhập; 403: không có quyền; 404: không có file hoặc sai loại file.
                 """)

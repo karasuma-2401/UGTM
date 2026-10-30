@@ -6,6 +6,11 @@ namespace UGTM.Modules.AcademicPeriods.Infrastructure.Persistence.Repositories;
 
 internal sealed class ReviewerAssignmentBatchReader(AcademicPeriodsDbContext context) : IReviewerAssignmentBatchReader
 {
+    public async Task<IReadOnlyList<ReviewerAssignmentBatchContractDto>> GetManyAsync(IReadOnlyCollection<Guid> batchIds,
+        CancellationToken cancellationToken = default)
+        => await context.KltnBatches.AsNoTracking().Where(batch => batchIds.Contains(batch.Id))
+            .Select(batch => new ReviewerAssignmentBatchContractDto(batch.Id, batch.Status == BatchStatus.Open))
+            .ToListAsync(cancellationToken);
     public async Task<ReviewerAssignmentBatchContractDto?> GetAsync(Guid batchId, CancellationToken cancellationToken = default)
     {
         var batch = await context.KltnBatches.AsNoTracking().SingleOrDefaultAsync(value => value.Id == batchId, cancellationToken);

@@ -5,6 +5,9 @@ public sealed record ReviewerAssignmentTopicContractDto(Guid TopicId, Guid Batch
 
 public interface IReviewerAssignmentTopicReader
 {
+    Task<IReadOnlyList<ReviewerAssignmentTopicContractDto>> GetManyAsync(IReadOnlyCollection<Guid> topicIds,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Guid>> FindIdsAsync(Guid? batchId, string? keyword, CancellationToken cancellationToken = default);
     Task<ReviewerAssignmentTopicContractDto?> GetAsync(Guid topicId, CancellationToken cancellationToken = default);
 
     /// <summary>Requires the caller's shared transaction; locks the current advisor and batch binding.</summary>

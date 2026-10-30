@@ -7,6 +7,8 @@ public sealed record ReviewerCandidatePageContractDto(
 
 public interface IReviewerCandidateReader
 {
+    /// <summary>Search names/codes across account states for management history; does not confer eligibility.</summary>
+    Task<IReadOnlyList<Guid>> FindUserIdsAsync(string keyword, CancellationToken cancellationToken = default);
     Task<ReviewerAccountContractDto?> GetAsync(Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>Requires the caller's shared transaction; locks account and existing Lecturer grant/role.</summary>

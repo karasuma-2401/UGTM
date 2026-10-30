@@ -32,7 +32,7 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
             .WithEnvironment("ACME_EMAIL", "gateway@test.example")
             .WithResourceMapping(Encoding.UTF8.GetBytes(caddyfile), "/etc/caddy/Caddyfile")
             .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(probe =>
-                probe.ForPort(8080).ForPath(CreationRoute).ForStatusCode(HttpStatusCode.MethodNotAllowed),
+                probe.ForPort(8080).ForPath("/api/modules/DefenseCouncil/ping").ForStatusCode(HttpStatusCode.OK),
                 wait => wait.WithTimeout(TimeSpan.FromSeconds(45))))
             .Build();
         await gateway.StartAsync();

@@ -3,14 +3,14 @@ using UGTM.Modules.TopicCatalog.Contracts.ReviewerAssignments;
 
 namespace UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments;
 
-public sealed record ReviewerAssignmentDto(
+public record ReviewerAssignmentDto(
     Guid Id, Guid GroupId, Guid TopicId, Guid BatchId, string TopicTitleVi, string? TopicTitleEn,
     Guid ReviewerId, string? ReviewerFullName, Guid? AdvisorIdAtAssignment, Guid? AdvisorEvaluationId,
     Guid? FinalReportId, int? ReportVersionNo, Guid? SubmissionFileId, string? SubmissionChecksumSha256,
     int AssignmentOrder, bool IsActive, bool IsLegacy, uint AssignmentVersion, Guid AssignedBy,
     DateTime AssignedAtUtc, Guid? CancelledBy, DateTime? CancelledAtUtc, string? CancellationReason);
 
-internal static class ReviewerAssignmentDtoMapper
+public static class ReviewerAssignmentDtoMapper
 {
     public static ReviewerAssignmentDto ToDto(ReviewerAssignment assignment,
         ReviewerAssignmentTopicContractDto topic, string? reviewerName)

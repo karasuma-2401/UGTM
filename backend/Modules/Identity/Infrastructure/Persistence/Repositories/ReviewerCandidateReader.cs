@@ -6,6 +6,15 @@ namespace UGTM.Modules.Identity.Infrastructure.Persistence.Repositories;
 
 internal sealed class ReviewerCandidateReader(IdentityDbContext context) : IReviewerCandidateReader
 {
+    public async Task<IReadOnlyList<Guid>> FindUserIdsAsync(string keyword, CancellationToken cancellationToken = default)
+    {
+        keyword = keyword.Trim();
+        if (keyword.Length > 200) throw new ArgumentOutOfRangeException(nameof(keyword));
+        var pattern = "%" + keyword.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+        return await context.Users.AsNoTracking().Where(user => EF.Functions.ILike(user.FullName, pattern, "\\")
+                || (user.UserCode != null && EF.Functions.ILike(user.UserCode, pattern, "\\")))
+            .Select(user => user.Id).ToListAsync(cancellationToken);
+    }
     public async Task<ReviewerAccountContractDto?> GetAsync(Guid userId, CancellationToken cancellationToken = default)
         => await context.Users.AsNoTracking().Where(value => value.Id == userId)
             .Select(value => new ReviewerAccountContractDto(value.Id, value.Status == AccountStatus.Active,

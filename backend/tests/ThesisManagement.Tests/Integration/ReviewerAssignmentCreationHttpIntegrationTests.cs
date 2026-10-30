@@ -45,6 +45,7 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
             options.DefaultChallengeScheme = CreationAuthentication.Scheme;
             options.DefaultForbidScheme = CreationAuthentication.Scheme;
         }).AddScheme<AuthenticationSchemeOptions, CreationAuthentication>(CreationAuthentication.Scheme, _ => { });
+        ConfigureReviewerReads(builder.Services);
     }
 
     private async Task<HttpClient> HttpAsync()
@@ -67,7 +68,8 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
             }
             finally { context.Response.Body = stream; }
         });
-        _app.MapReviewerAssignmentEndpoints();
+        new UGTM.Modules.DefenseCouncil.Infrastructure.DefenseCouncilModule().MapEndpoints(_app);
+        new UGTM.Modules.ThesisManagement.Infrastructure.ThesisManagementModule().MapEndpoints(_app);
         await _app.StartAsync();
         return _httpClient = new HttpClient { BaseAddress = new Uri(_app.Urls.Single()) };
     }
@@ -79,7 +81,7 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         {
             groupId = _group,
             reviewerId = reviewer ?? _reviewer,
-            expectedAdvisorEvaluationId = evaluation ?? (await db.AdvisorEvaluations.SingleAsync()).Id,
+            expectedAdvisorEvaluationId = evaluation ?? (await db.AdvisorEvaluations.SingleAsync(value => value.GroupId == _group)).Id,
             expectedReportVersionNo = version
         };
     }

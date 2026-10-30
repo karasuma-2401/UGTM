@@ -5,7 +5,7 @@ SCRUM-102 đã triển khai đến CP6: nộp/nộp lại báo cáo cuối kỳ,
 
 SCRUM-103 đã triển khai phiếu chấm GVHD, duyệt chuyển phản biện, quyền riêng với phiếu và điều kiện bàn giao SCRUM-104 ở [AdvisorEvaluationApprovalApiContract.md](AdvisorEvaluationApprovalApiContract.md). Phiếu chỉ gắn với bản báo cáo `UnderEvaluation` đã khóa của SCRUM-102; xem [nghiệm thu SCRUM-103](AdvisorEvaluationApprovalVerification.md).
 
-SCRUM-104 có POST tạo phân công và DELETE hủy mềm/phân công lại ở CP3/CP4 tại [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md). API đọc và tích hợp quyền tải mới chờ CP5–CP6. Thiết kế bổ sung quyền tải đúng file được phân công cho GVPB; không mở toàn bộ lịch sử báo cáo hoặc phiếu GVHD. Các bảng quyền/endpoint bên dưới vẫn mô tả API hiện có.
+SCRUM-104 có POST/DELETE và bốn API đọc ở CP3–CP5 tại [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md). Endpoint download đã thêm nhánh cấp quyền tải đúng file được duyệt cho GVPB Active có Lecturer và assignment/binding hợp lệ; không mở toàn bộ lịch sử báo cáo hoặc phiếu GVHD. Nghiệm thu toàn luồng thuộc CP6.
 
 CP7 đồng bộ yêu cầu file và data model, kiểm tra ba bộ test ThesisManagement/AcademicPeriods/Architecture cùng luồng thực tế trên PostgreSQL/MinIO; xem [hướng dẫn và kết quả nghiệm thu](FinalReportSubmissionVerification.md). Không bao gồm triển khai frontend hoặc xác minh môi trường đang deploy.
 
@@ -24,6 +24,7 @@ Mọi endpoint trong tài liệu này yêu cầu Bearer token. Response thành c
 | Nộp hồ sơ Cổng 1/Cổng 2 | Bất kỳ sinh viên nào thuộc nhóm |
 | Nộp/nộp lại báo cáo cuối kỳ | Role `Student`, thành viên `Confirmed` của chính nhóm, đã được duyệt giữa kỳ |
 | Xem lịch sử/tải báo cáo cuối kỳ | `Student` đã `Confirmed` trong nhóm, GVHD hiện được phân công cho đề tài, `Faculty` có `thesis.review-gates.review`, hoặc `Admin` |
+| Tải đúng file được phân công phản biện (SCRUM-104 CP5) | Tài khoản Active có Lecturer, sở hữu assignment active không legacy và binding hiện tại hợp lệ; không mở quyền xem lịch sử nhóm/phiếu GVHD |
 | Bắt đầu chấm báo cáo cuối kỳ | GVHD hiện được phân công cho đề tài hoặc `Admin`; quyền xem của Faculty không bao gồm thao tác này |
 | Thẩm định Cổng 1/Cổng 2 | `Faculty`, `Admin` có `thesis.review-gates.review` |
 | Tạo/xem Milestone, đánh giá báo cáo tiến độ | GVHD hiện được gán cho `TopicId` của nhóm, hoặc `Admin` |
@@ -289,9 +290,9 @@ Khi báo cáo đã chuyển sang `UnderEvaluation`, nộp lại trả `409 Final
 - `versions`: danh sách tăng dần theo `versionNo`; mỗi phần tử gồm `versionNo` và `file` với cùng metadata như response nộp báo cáo. `file.uploadedBy` và `file.uploadedAtUtc` ghi nhận người nộp/thời điểm của từng phiên bản. Response lịch sử không chứa object key hoặc URL tải.
 - `currentStatus` là trạng thái hiện tại của toàn báo cáo, không phải trạng thái riêng của mỗi phiên bản file. Khi có nộp lại đồng thời với truy vấn, response không đưa vào file có số phiên bản mới hơn `currentVersionNo` đã đọc.
 
-`GET /api/thesis/final-report-files/{fileId}/download` trả `ApiResponse<SubmissionFileDownloadDto>` gồm `fileId`, `downloadUrl`, `expiresAtUtc`. URL là presigned GET hiệu lực 5 phút cho đúng file được yêu cầu; bucket vẫn private, không có trường `objectKey` riêng trong response. Được tải cả bản hiện tại lẫn bản cũ. Endpoint không nhận file thuộc Syllabus/MidtermReport/ProgressReport; các endpoint tải loại hồ sơ khác cũng không dùng thay cho báo cáo cuối kỳ.
+`GET /api/thesis/final-report-files/{fileId}/download` trả `ApiResponse<SubmissionFileDownloadDto>` gồm `fileId`, `downloadUrl`, `expiresAtUtc`. URL là presigned GET hiệu lực 5 phút cho đúng file được yêu cầu; bucket vẫn private, không có trường `objectKey` riêng trong response. Quyền độc lập SCRUM-102 được tải cả bản hiện tại lẫn bản cũ. Nhánh GVPB SCRUM-104 CP5 chỉ cho tải file/version/checksum đúng snapshot đã duyệt khi assignment/account/binding còn hợp lệ; hủy chặn cấp URL mới, URL đã cấp vẫn theo TTL. Endpoint không nhận file thuộc Syllabus/MidtermReport/ProgressReport; các endpoint tải loại hồ sơ khác cũng không dùng thay cho báo cáo cuối kỳ.
 
-Cả hai endpoint chỉ cho phép Student đã Confirmed trong chính nhóm, GVHD hiện được phân công cho `TopicId` của nhóm, Faculty có quyền `thesis.review-gates.review`, hoặc Admin. Chỉ có role Faculty hoặc chỉ có permission nhưng không phải Faculty đều không đủ quyền; sinh viên đang chờ xác nhận, người ngoài nhóm và GVHD cũ không được xem/tải. Phân công GVHD được tra cứu lại mỗi request. Quyền đọc không phụ thuộc cửa sổ nộp: vẫn được xem sau deadline, khi đợt đóng, nhóm đã dừng hoặc báo cáo đã chuyển sang `UnderEvaluation`.
+Quyền độc lập SCRUM-102 cho cả hai endpoint gồm Student đã Confirmed trong chính nhóm, GVHD hiện được phân công cho `TopicId` của nhóm, Faculty có quyền `thesis.review-gates.review`, hoặc Admin. Chỉ có role Faculty hoặc chỉ có permission nhưng không phải Faculty đều không đủ quyền; sinh viên đang chờ xác nhận, người ngoài nhóm và GVHD cũ không được xem/tải qua quyền này. Phân công GVHD được tra cứu lại mỗi request. Quyền đọc độc lập không phụ thuộc cửa sổ nộp: vẫn được xem sau deadline, khi đợt đóng, nhóm đã dừng hoặc báo cáo đã chuyển sang `UnderEvaluation`. Nhánh bổ sung cho GVPB chỉ áp dụng endpoint download với đúng binding theo SCRUM-104, không mở API lịch sử nhóm.
 
 | HTTP | Mã lỗi / trường hợp |
 | --- | --- |

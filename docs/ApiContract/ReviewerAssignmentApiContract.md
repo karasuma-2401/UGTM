@@ -1,6 +1,6 @@
 # Reviewer assignment API contract — SCRUM-104
 
-Trạng thái: **CP0–CP2 đã có nền tảng; CP3 có POST tạo phân công; CP4 có DELETE hủy mềm và phân công lại; API đọc và tích hợp tải file chờ CP5–CP6**. Cập nhật 30/10/2026. Nền tảng CP1/CP2 ở mục 12/13; implementation POST/DELETE ở mục 14/15. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
+Trạng thái: **CP0–CP4 đã có nền tảng và API ghi; CP5 có bốn API đọc và tích hợp quyền tải đúng file cho GVPB; nghiệm thu toàn luồng/tài liệu tổng thể thuộc CP6**. Cập nhật 30/10/2026. Nền tảng CP1/CP2 ở mục 12/13; POST/DELETE ở mục 14/15; API đọc/tải ở mục 16. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
 
 Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ quản trị và nhiệm vụ của GVPB; cấp link tải đúng bản báo cáo đã duyệt. Không gồm UI SCRUM-113, nhập điểm/phiếu SCRUM-105, phản biện thứ hai/xử lý không đồng thuận, tổng hợp/công bố điểm, lưu chiểu, phân công hàng loạt, email/in-app hay API thay GVHD.
 
@@ -17,7 +17,7 @@ Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ q
 
 ## 2. Quyền và bảo mật
 
-Permission **đã khai báo và có seed trong migration CP1**: `thesis.reviewer-assignments.read` và `thesis.reviewer-assignments.manage`. Khi áp migration, seed mặc định cả hai cho Faculty, AcademicAffairs, Admin. CP3/CP4 thực thi quyền POST/DELETE ở cả endpoint và application; các endpoint đọc tiếp tục theo quy tắc dưới đây khi triển khai:
+Permission **đã khai báo và có seed trong migration CP1**: `thesis.reviewer-assignments.read` và `thesis.reviewer-assignments.manage`. Khi áp migration, seed mặc định cả hai cho Faculty, AcademicAffairs, Admin. CP3–CP5 thực thi quyền quản trị ở endpoint và application; nhiệm vụ cá nhân/tải theo assignment còn kiểm tra account Active và Lecturer grant hiện tại trong database:
 
 - Admin theo bypass permission hiện có của Identity; không bypass điều kiện nghiệp vụ, giới hạn một active, concurrency hoặc chặn hủy khi có phiếu.
 - Faculty/AcademicAffairs: ghi cần `.manage`; đọc quản trị cần `.read` **hoặc** `.manage`. Role cho biết đối tượng nghiệp vụ; có permission nhưng không thuộc ba role quản trị thì vẫn không được quản trị phân công.
@@ -240,7 +240,7 @@ Hủy ngăn cấp URL **mới** từ assignment đó. URL đã cấp vẫn có t
 
 ## 6. Mã lỗi
 
-Các code cho POST/DELETE đã triển khai ở CP3/CP4. Những trường hợp dành cho API đọc/tải sẽ được nối ở CP5. `FinalReport.AccessDenied` và lỗi tải khác giữ theo SCRUM-102.
+Các code cho POST/DELETE và API đọc đã triển khai ở CP3–CP5. `FinalReport.AccessDenied` và lỗi tải khác giữ theo SCRUM-102; accessBlockCode của từng nhiệm vụ theo mục 5.5.
 
 | HTTP | Code | Ý nghĩa |
 | --- | --- | --- |
@@ -462,5 +462,37 @@ dotnet build UGTM.sln --configuration Release --artifacts-path artifacts/scrum10
 dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp4 --no-build --no-restore --filter 'FullyQualifiedName~Cancellation_http|FullyQualifiedName~Cancellation_handler|FullyQualifiedName~Creation_http|FullyQualifiedName~Creation_handler' --logger 'trx;LogFileName=reviewer-cp4-final.trx' --results-directory artifacts/scrum104-cp4/test-results
 dotnet test backend/tests/DefenseCouncil.Tests/UGTM.Modules.DefenseCouncil.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp4 --no-build --no-restore
 dotnet test backend/tests/Architecture.Tests/UGTM.Architecture.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp4 --no-build --no-restore
+dotnet format UGTM.sln --no-restore --verify-no-changes
+```
+
+## 16. CP5: API đọc và quyền tải đúng báo cáo
+
+[ReviewerAssignmentReadEndpoints](../../backend/Modules/DefenseCouncil/Infrastructure/Endpoints/ReviewerAssignmentReadEndpoints.cs) map đầy đủ bốn GET ở mục 5.2–5.5, trả `ApiResponse<PagedResult<T>>`. Endpoint quản trị dùng role + read/manage policy; [ReviewerAssignmentReadHandler](../../backend/Modules/DefenseCouncil/Application/ReviewerAssignments/ReviewerAssignmentReadHandler.cs) kiểm tra lại quyền trước context lookup. Endpoint me lấy ID từ tài khoản xác thực và kiểm tra account Active/Lecturer thực tế, không dựa riêng vào role claim còn hạn trong token. Parse query từ chối kiểu sai/lặp giá trị; me từ chối các selector giả danh/lịch sử đã nêu. Pagination chuẩn hóa và dùng phép tính long trước Skip để trang rất lớn vẫn trả trang rỗng có count đúng.
+
+[ReviewerAssignmentReadRepository](../../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Repositories/ReviewerAssignmentReadRepository.cs) chỉ truy vấn schema DefenseCouncil của mình. Lookup context, tên/code, topic và batch qua contracts owner với các phép đọc theo lô. Admin keyword được chuyển thành tập group/user ID rồi lọc SQL trước count/page; page mới hydrate DTO/name và cờ phiếu. Eligibility giới hạn theo batch/topic, đọc cả tập context phù hợp theo lô, ghép approval hiện tại và active assignment rồi lọc/sort **trước** count/page. Không lấy trước một trang group rồi bỏ nhóm không hợp lệ, không dùng tên làm quyền hoặc miễn guard POST. Tên người không Active vẫn tìm được trong lịch sử; candidate chỉ trả Active Lecturer khác GVHD hiện tại.
+
+Me lọc owner + active trong SQL trước count/page; lookup context/approval/file metadata cho page theo lô, giữ các dòng bị chặn với mã cờ đúng thứ tự. Không cấp URL trong danh sách, không trả phiếu/điểm, object key, metadata bản khác, lý do hủy hoặc lịch sử quản trị. `hasEvaluation/canCancel/canAssign/canDownloadReport` là projection tại thời điểm đọc; write/download vẫn xác minh lại. GET không gọi SaveChanges, không tạo audit hoặc thay xmin.
+
+[GetFinalReportFileDownloadHandler](../../backend/Modules/ThesisManagement/Application/FinalReportSubmissions/GetFinalReportFileDownload/GetFinalReportFileDownloadHandler.cs) giữ quyền độc lập SCRUM-102, sau đó mới xét nhánh GVPB qua `IReviewerAssignmentWorkflowContract.GetActiveReportAccessAsync`. Server đối chiếu group/report/file/version/checksum một lần nữa trước khi gọi storage ký URL. Nhánh GVPB không mở GET lịch sử nhóm hoặc phiếu GVHD, không phụ thuộc batch Open/deadline; sai owner/legacy/role/account/binding hoặc đã hủy bị từ chối. TTL vẫn 5 phút; URL đã ký trước đó hết hiệu lực theo TTL, không hứa thu hồi tức thì. Composition production đăng ký contract đầy đủ; khi contract không được cung cấp trong host dùng module độc lập, nhánh GVPB từ chối quyền, các quyền độc lập cũ vẫn hoạt động.
+
+Kiểm thử [read HTTP](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerAssignmentReadHttpIntegrationTests.cs) và [report access HTTP](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerAssignmentReportAccessHttpIntegrationTests.cs) dùng `AddUgtmModules`, Kestrel/PostgreSQL thật và FK hoạt động, không mock handler/reader nghiệp vụ. Storage kiểm soát được để kiểm tra điểm cấp URL, TTL và số lần gọi; đọc byte qua MinIO thật/toàn workflow được nghiệm thu riêng ở CP6. Test đếm SQL qua interceptor so sánh trang 1 dòng với 13 dòng để phát hiện N+1; fixture SCRUM-102/103 chỉ có hai module tiếp tục kiểm tra quyền độc lập, fixture production riêng kiểm tra nhánh GVPB.
+
+Không có migration/permission seed mới, không thay guard giao dịch tạo/hủy hoặc schema owner. CP6 tiếp tục nghiệm thu luồng nộp/duyệt/phân công/tải/hủy/phân công lại với MinIO, gateway/deployment và đồng bộ tài liệu nghiệp vụ tổng thể.
+
+### Kết quả kiểm chứng CP5 ngày 30/10/2026
+
+- Lượt cuối **113/113 pass**: **38 ca CP5** (35 HTTP, 3 gọi handler trực tiếp) và **75 hồi quy CP3–CP4**, gồm DELETE qua Caddy sau khi chuyển readiness probe sang ping. Kiểm tra đủ role/read/manage, account/grant database dù token cũ, selector bị cấm, keyword literal/case, paging/count/overflow, eligibility trước page, legacy/cờ ưu tiên và quyền tải đúng file. Thử trang 1 và 13 dòng chứng minh số SQL không tăng theo số item cho cả quản trị và me; GET không ký URL/audit hoặc đổi xmin.
+- **23/23** ca hồi quy đọc/tải SCRUM-102 pass: quyền độc lập Student/GVHD/Faculty/Admin, lịch sử/nhiều phiên bản, đổi GVHD, deadline/stopped/evaluation state và lỗi loại file/ID. Nhánh reviewer riêng được kiểm tra bằng production module registration, PostgreSQL/FK thật và storage kiểm soát TTL/số lần ký; MinIO toàn luồng vẫn thuộc CP6. Không tuyên bố đã chạy toàn bộ suite ThesisManagement.
+- DefenseCouncil **55/55**, Architecture **74/74** pass. Build Release toàn solution tuần tự **0 error**; còn warning OpenAPI `CS8602` và xung đột EF Core Architecture.Tests ở phần không đổi. Format toàn solution `--verify-no-changes` và `git diff --check` pass.
+- TRX/log local bị Git ignore ở `artifacts/scrum104-cp5/`: `test-results/reviewer-cp5-final.trx`, `final-report-read-regression.trx`, `defense-cp5.trx`, `architecture-cp5.trx`, `build-final.log`, `format-final.log`. Hai lỗi helper fixture nhiều nhóm đã sửa và toàn bộ 113 ca chạy lại thành công trên source cuối. Không stage/commit hoặc migrate database ứng dụng.
+
+Chạy lại từ root với Docker Desktop Linux engine:
+
+```powershell
+dotnet build UGTM.sln --configuration Release --artifacts-path artifacts/scrum104-cp5 -m:1 -nr:false -p:UseSharedCompilation=false
+dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp5 --no-build --no-restore --filter 'FullyQualifiedName~Reviewer_reads|FullyQualifiedName~Creation_http|FullyQualifiedName~Creation_handler|FullyQualifiedName~Cancellation_http|FullyQualifiedName~Cancellation_handler' --logger 'trx;LogFileName=reviewer-cp5-final.trx' --results-directory artifacts/scrum104-cp5/test-results
+dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp5 --no-build --no-restore --filter 'FullyQualifiedName~FinalReportSubmissionHttpIntegrationTests.History_|FullyQualifiedName~FinalReportSubmissionHttpIntegrationTests.Reads_remain|FullyQualifiedName~FinalReportSubmissionHttpIntegrationTests.Read_endpoints_require|FullyQualifiedName~FinalReportSubmissionHttpIntegrationTests.Missing_groups_reports_files|FullyQualifiedName~FinalReportSubmissionHttpIntegrationTests.Download_rejects_files|FullyQualifiedName~FinalReportSubmissionHttpIntegrationTests.Advisor_reassignment_revokes|FullyQualifiedName~FinalReportSubmissionHttpIntegrationTests.Other_download_endpoints|FullyQualifiedName~FinalReportSubmissionHttpIntegrationTests.A_file_without' --logger 'trx;LogFileName=final-report-read-regression.trx' --results-directory artifacts/scrum104-cp5/test-results
+dotnet test backend/tests/DefenseCouncil.Tests/UGTM.Modules.DefenseCouncil.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp5 --no-build --no-restore
+dotnet test backend/tests/Architecture.Tests/UGTM.Architecture.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp5 --no-build --no-restore
 dotnet format UGTM.sln --no-restore --verify-no-changes
 ```

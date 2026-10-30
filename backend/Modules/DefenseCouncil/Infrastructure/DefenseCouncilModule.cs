@@ -48,6 +48,8 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.ReviewerAssignmentAudit>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.CreateReviewerAssignmentHandler>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.CancelReviewerAssignmentHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.IReviewerAssignmentReadRepository, ReviewerAssignmentReadRepository>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.ReviewerAssignmentReadHandler>();
         services.AddScoped<IDefenseCouncilUnitOfWork>(provider => provider.GetRequiredService<DefenseCouncilDbContext>());
         services.AddScoped<IDefenseCouncilAuditOutbox, DefenseCouncilAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, DefenseCouncilAuditEventSource>();
@@ -57,6 +59,7 @@ public sealed class DefenseCouncilModule : IModule
     {
         endpoints.MapAdvisorEvaluationEndpoints();
         endpoints.MapReviewerAssignmentEndpoints();
+        endpoints.MapReviewerAssignmentReadEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
