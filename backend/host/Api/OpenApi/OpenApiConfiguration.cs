@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
 
 namespace UGTM.Api.OpenApi;
@@ -17,6 +18,7 @@ public static class OpenApiConfiguration
             options.AddDocumentTransformer<ModuleTagOrderingDocumentTransformer>();
             options.AddOperationTransformer<BearerSecurityOperationTransformer>();
             options.AddOperationTransformer<IdempotencyOperationTransformer>();
+            options.AddOperationTransformer<ReviewerAssignmentOperationTransformer>();
         });
 
         return services;

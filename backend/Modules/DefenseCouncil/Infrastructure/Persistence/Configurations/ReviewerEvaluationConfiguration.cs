@@ -36,6 +36,6 @@ public class ReviewerEvaluationConfiguration : IEntityTypeConfiguration<Reviewer
             .WithOne(a => a.Evaluation)
             .HasForeignKey<ReviewerEvaluation>(x => x.AssignmentId)
             .HasConstraintName("fk_reviewer_evaluation_reviewer_assignment_assignment_id")
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

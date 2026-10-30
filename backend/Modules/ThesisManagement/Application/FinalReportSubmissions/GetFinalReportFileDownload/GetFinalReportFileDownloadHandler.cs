@@ -1,4 +1,5 @@
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.Storage;
@@ -15,7 +16,8 @@ public sealed class GetFinalReportFileDownloadHandler(
     FinalReportReadAccessChecker accessChecker,
     IThesisSubmissionObjectStorage objectStorage,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IReviewerAssignmentWorkflowContract? reviewerWorkflow = null)
 {
     private static readonly TimeSpan DownloadUriLifetime = TimeSpan.FromMinutes(5);
 
@@ -44,7 +46,11 @@ public sealed class GetFinalReportFileDownloadHandler(
         }
         if (!await accessChecker.CanReadAsync(group, cancellationToken))
         {
-            return Result.Failure<SubmissionFileDownloadDto>(FinalReportSubmissionErrors.ReadAccessDenied);
+            var access = reviewerWorkflow is null ? null : await reviewerWorkflow.GetActiveReportAccessAsync(currentUser.UserId.Value, file.Id, cancellationToken);
+            if (access is null || access.Binding.GroupId != group.Id || access.Binding.FinalReportId != report.Id
+                || access.Binding.SubmissionFileId != file.Id || access.Binding.ReportVersionNo != file.VersionNo
+                || !string.Equals(access.Binding.SubmissionChecksumSha256, file.ChecksumSha256, StringComparison.OrdinalIgnoreCase))
+                return Result.Failure<SubmissionFileDownloadDto>(FinalReportSubmissionErrors.ReadAccessDenied);
         }
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;

@@ -207,6 +207,8 @@ CP2 phải dùng một transaction PostgreSQL chung để kiểm tra và commit 
 
 ## Contract cho SCRUM-104
 
+Phân công, hủy mềm và quyền tải đúng bản cho GVPB được mô tả ở [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md). SCRUM-104 có POST/DELETE, bốn API đọc và quyền tải đúng bản được duyệt; phạm vi/kết quả nghiệm thu CP6 xem [ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md). GVPB không được cấp quyền xem phiếu/điểm GVHD; semantics eligibility của SCRUM-103 giữ nguyên.
+
 SCRUM-104 phải kiểm tra lại điều kiện ngay trước khi phân công GVPB; không dựa trên danh sách hoặc dữ liệu FE cache. Contract đọc dự kiến từ SCRUM-103 là:
 
 ```text

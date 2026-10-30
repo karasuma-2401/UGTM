@@ -80,6 +80,9 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         });
         new ThesisManagementModule().RegisterModule(builder.Services, builder.Configuration);
         new DefenseCouncilModule().RegisterModule(builder.Services, builder.Configuration);
+        // This SCRUM-102/103 component fixture has only two modules and stubbed advisor contracts.
+        // Reviewer authorization is exercised separately with production AddUgtmModules in SCRUM-104.
+        builder.Services.RemoveAll<UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments.IReviewerAssignmentWorkflowContract>();
         builder.Services.RemoveAll<IHostedService>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
