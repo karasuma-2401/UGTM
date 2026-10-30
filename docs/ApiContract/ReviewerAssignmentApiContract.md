@@ -1,6 +1,6 @@
 # Reviewer assignment API contract — SCRUM-104
 
-Trạng thái: **Đã chốt thiết kế CP0; chưa triển khai endpoint, permission hoặc migration SCRUM-104**. Cập nhật 30/10/2026. Tài liệu này là contract cần thực hiện ở CP1–CP6, không phải xác nhận API đã hoạt động. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
+Trạng thái: **CP0 đã chốt; CP1 đã bổ sung domain, mapping, migration và seed permission; chưa triển khai endpoint SCRUM-104**. Cập nhật 30/10/2026. Các hành vi API/giao dịch trong tài liệu vẫn là contract cho CP2–CP6, không phải xác nhận API đã hoạt động. Nền tảng CP1 ở mục 12. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
 
 Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ quản trị và nhiệm vụ của GVPB; cấp link tải đúng bản báo cáo đã duyệt. Không gồm UI SCRUM-113, nhập điểm/phiếu SCRUM-105, phản biện thứ hai/xử lý không đồng thuận, tổng hợp/công bố điểm, lưu chiểu, phân công hàng loạt, email/in-app hay API thay GVHD.
 
@@ -17,7 +17,7 @@ Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ q
 
 ## 2. Quyền và bảo mật
 
-Permission **sẽ bổ sung**: `thesis.reviewer-assignments.read` và `thesis.reviewer-assignments.manage`. Seed mặc định cả hai cho Faculty, AcademicAffairs, Admin ở CP1. Quy tắc được thực thi ở cả endpoint lẫn application:
+Permission **đã khai báo và có seed trong migration CP1**: `thesis.reviewer-assignments.read` và `thesis.reviewer-assignments.manage`. Khi áp migration, seed mặc định cả hai cho Faculty, AcademicAffairs, Admin. CP1 chưa map endpoint/policy nghiệp vụ mới; các quy tắc dưới đây phải được thực thi ở cả endpoint lẫn application khi triển khai API:
 
 - Admin theo bypass permission hiện có của Identity; không bypass điều kiện nghiệp vụ, giới hạn một active, concurrency hoặc chặn hủy khi có phiếu.
 - Faculty/AcademicAffairs: ghi cần `.manage`; đọc quản trị cần `.read` **hoặc** `.manage`. Role cho biết đối tượng nghiệp vụ; có permission nhưng không thuộc ba role quản trị thì vẫn không được quản trị phân công.
@@ -350,4 +350,23 @@ CP2 phải kiểm tra ít nhất: hai Create khác key; hai Create cùng key; đ
 - [x] Chốt quyền tải đúng file và TTL; không mở lịch sử/phiếu GVHD; quyền độc lập SCRUM-102 được giữ.
 - [x] Có điều kiện atomicity/race cho CP2, boundary writer SCRUM-105 và ma trận nghiệm thu tái hiện được.
 
-CP0 chỉ thêm/cập nhật tài liệu. Permission, DTO, migration, OpenAPI runtime và test nghiệp vụ sẽ được thực hiện ở checkpoint tương ứng; không đánh dấu các ca trên là đã chạy.
+Tại CP0 chỉ thêm/cập nhật tài liệu. Các ca nghiệm thu toàn luồng không được xem là đã pass chỉ vì contract đã chốt; phần đã thực hiện trong CP1 được ghi riêng dưới đây.
+
+## 12. Nền tảng CP1 đã triển khai
+
+- [ReviewerAssignment](../../backend/Modules/DefenseCouncil/Domain/Entities/ReviewerAssignment.cs) tạo snapshot đầy đủ, chặn reviewer trùng advisor snapshot, giữ AssignmentOrder 1 cho dòng mới; hủy có lý do, UTC/actor thật và giữ metadata tạo/binding. `TryCancel` kiểm tra cả cờ đã có phiếu do caller cung cấp và navigation đã load; kiểm tra phiếu dưới lock/transaction liên quan là phạm vi CP2, chưa có API hủy ở CP1.
+- [Mapping](../../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Configurations/ReviewerAssignmentConfiguration.cs) có unique partial một active/nhóm, index lịch sử, check binding/cancellation và concurrency `xmin`. FK ReviewerEvaluation → assignment đổi sang Restrict; xóa nhóm cũng bị chặn nếu cascade sẽ xóa assignment có phiếu. Không thêm FK vật lý cho các snapshot mới.
+- [ReviewerAssignmentIdempotencyRecord](../../backend/Modules/DefenseCouncil/Domain/Entities/ReviewerAssignmentIdempotencyRecord.cs) và mapping lưu receipt status 201/200, fingerprint, JSON object và unique theo actor/operation/key. Repository/coordinator hoàn tất receipt trước commit sẽ được bổ sung ở CP2; CP1 không tự tạo audit hoặc xử lý replay HTTP.
+- [Migration 20261030022105](../../backend/Database.Migrations/Migrations/20261030022105_AddReviewerAssignmentWorkflowFoundation.cs) giữ dòng cũ là legacy, không backfill binding/actor hủy. Preflight khóa bảng và chặn nhiều active/nhóm hoặc phiếu orphan trước đổi schema. Dữ liệu cũ đã inactive giữ metadata hủy null; legacy chưa có phiếu có thể hủy bằng domain khi caller đủ guard.
+- Downgrade chặn nếu lịch sử phân công lại không còn thỏa hai unique index cũ; không tự xóa lịch sử để rollback. Rollback/reapply của dữ liệu legacy tương thích được kiểm tra riêng. Permission/grant đã tùy chỉnh được giữ khi rollback theo convention repository; reapply không ghi đè tên hoặc thời điểm grant có sẵn.
+- Test domain ở [ReviewerAssignmentTests](../../backend/tests/DefenseCouncil.Tests/ReviewerAssignmentTests.cs); PostgreSQL thật ở [ReviewerAssignmentWorkflowPersistenceIntegrationTests](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerAssignmentWorkflowPersistenceIntegrationTests.cs), với FK hiện có hoạt động. Snapshot GUID trong test persistence kiểm tra lưu trữ/constraint; xác minh approval/report tồn tại và đủ eligibility thuộc contract/giao dịch CP2.
+
+CP1 chưa triển khai API đọc/ghi/tải mới, chưa áp migration vào database ứng dụng và chưa thay đổi workflow SCRUM-103. Cách chạy kiểm thử mục tiêu từ root:
+
+Kết quả 30/10/2026: DefenseCouncil **55/55** (31 ca mới), PostgreSQL persistence CP1 **10/10**, Architecture **74/74**, regression migration SCRUM-103 **2/2** và permission Identity **1/1** pass. Build Release solution có 0 error; còn hai warning ở OpenAPI (`CS8602`) và xung đột EF Core `10.0.4`/`10.0.12` của Architecture.Tests thuộc mã không đổi. Format solution `--verify-no-changes` và `git diff --check` pass. Đây là kết quả các suite mục tiêu, không phải toàn bộ suite ThesisManagement/Identity hoặc nghiệm thu API CP2–CP6.
+
+```powershell
+dotnet build UGTM.sln --configuration Release --artifacts-path artifacts/scrum104-cp1
+dotnet test backend/tests/DefenseCouncil.Tests/UGTM.Modules.DefenseCouncil.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp1 --no-build --no-restore
+dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp1 --no-build --no-restore --filter FullyQualifiedName~ReviewerAssignmentWorkflowPersistenceIntegrationTests
+```
