@@ -207,6 +207,8 @@ CP2 phải dùng một transaction PostgreSQL chung để kiểm tra và commit 
 
 ## Contract cho SCRUM-104
 
+Thiết kế tiếp nhận phân công, hủy mềm và quyền tải đúng bản cho GVPB được chốt ở [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md). SCRUM-104 mới ở CP0, chưa triển khai API; không thay đổi quyền xem phiếu GVHD hoặc semantics eligibility của SCRUM-103.
+
 SCRUM-104 phải kiểm tra lại điều kiện ngay trước khi phân công GVPB; không dựa trên danh sách hoặc dữ liệu FE cache. Contract đọc dự kiến từ SCRUM-103 là:
 
 ```text
