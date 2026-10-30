@@ -1,6 +1,7 @@
 namespace UGTM.Modules.TopicCatalog.Contracts.ReviewerAssignments;
 
-public sealed record ReviewerAssignmentTopicContractDto(Guid TopicId, Guid BatchId, Guid AdvisorId);
+public sealed record ReviewerAssignmentTopicContractDto(Guid TopicId, Guid BatchId, Guid AdvisorId,
+    string TitleVi, string? TitleEn);
 
 public interface IReviewerAssignmentTopicReader
 {

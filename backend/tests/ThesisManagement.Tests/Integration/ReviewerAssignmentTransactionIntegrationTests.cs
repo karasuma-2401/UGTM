@@ -40,7 +40,7 @@ using UGTM.Modules.TopicCatalog.Infrastructure.Persistence;
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
 [Collection(PostgreSqlCollection.Name)]
-public sealed class ReviewerAssignmentTransactionIntegrationTests(PostgreSqlFixture fixture) : IAsyncLifetime
+public sealed partial class ReviewerAssignmentTransactionIntegrationTests(PostgreSqlFixture fixture) : IAsyncLifetime
 {
     private static readonly DateTime Now = new(2026, 10, 30, 5, 0, 0, DateTimeKind.Utc);
     private const string Checksum = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -93,13 +93,14 @@ public sealed class ReviewerAssignmentTransactionIntegrationTests(PostgreSqlFixt
         builder.Services.AddUgtmModules(builder.Configuration);
         builder.Services.RemoveAll<IHostedService>();
         builder.Services.RemoveAll<ICurrentUser>();
-        builder.Services.AddScoped<ICurrentUser>(_ => new Actor(_actor));
         builder.Services.AddHttpContextAccessor();
+        ConfigureHttp(builder);
         _app = builder.Build();
     }
 
     public async Task DisposeAsync()
     {
+        _httpClient?.Dispose();
         if (_app is not null) await _app.DisposeAsync();
         await using var db = Db<UGTMDbContext>();
         await ResetAsync(db);

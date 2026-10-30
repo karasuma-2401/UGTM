@@ -8,7 +8,7 @@ internal sealed class ReviewerAssignmentTopicReader(TopicCatalogDbContext contex
     public async Task<ReviewerAssignmentTopicContractDto?> GetAsync(Guid topicId, CancellationToken cancellationToken = default)
     {
         var topic = await context.Topics.AsNoTracking().SingleOrDefaultAsync(value => value.Id == topicId, cancellationToken);
-        return topic is null ? null : new(topic.Id, topic.BatchId, topic.AdvisorId);
+        return topic is null ? null : new(topic.Id, topic.BatchId, topic.AdvisorId, topic.TitleVi, topic.TitleEn);
     }
 
     public async Task<ReviewerAssignmentTopicContractDto?> LockAsync(Guid topicId, CancellationToken cancellationToken = default)
@@ -17,6 +17,6 @@ internal sealed class ReviewerAssignmentTopicReader(TopicCatalogDbContext contex
         var topic = await context.Topics.FromSqlInterpolated($"""
             SELECT t.* FROM topics.topic t WHERE t.id = {topicId} FOR SHARE
             """).AsNoTracking().SingleOrDefaultAsync(cancellationToken);
-        return topic is null ? null : new(topic.Id, topic.BatchId, topic.AdvisorId);
+        return topic is null ? null : new(topic.Id, topic.BatchId, topic.AdvisorId, topic.TitleVi, topic.TitleEn);
     }
 }

@@ -18,8 +18,17 @@ public sealed class ReviewerAssignmentWorkflowContract(
 {
     public async Task<ReviewerAssignmentEligibilityResultContractDto> LockForCreationAsync(Guid groupId, Guid reviewerId,
         CancellationToken cancellationToken = default)
+        => await LockCreationAsync(groupId, reviewerId, null, null, cancellationToken);
+
+    public async Task<ReviewerAssignmentEligibilityResultContractDto> LockForCreationAsync(Guid groupId, Guid reviewerId,
+        Guid expectedAdvisorEvaluationId, int expectedReportVersionNo, CancellationToken cancellationToken = default)
+        => await LockCreationAsync(groupId, reviewerId, expectedAdvisorEvaluationId, expectedReportVersionNo, cancellationToken);
+
+    private async Task<ReviewerAssignmentEligibilityResultContractDto> LockCreationAsync(Guid groupId, Guid reviewerId,
+        Guid? expectedAdvisorEvaluationId, int? expectedReportVersionNo, CancellationToken cancellationToken)
     {
-        var result = await ReadBindingAsync(groupId, reviewerId, true, true, cancellationToken);
+        var result = await ReadBindingAsync(groupId, reviewerId, true, true, cancellationToken,
+            expectedAdvisorEvaluationId, expectedReportVersionNo);
         if (result.Outcome != ReviewerAssignmentEligibilityOutcome.Succeeded) return result;
         return await assignments.GetActiveByGroupAsync(groupId, cancellationToken) is not null
             ? new(ReviewerAssignmentEligibilityOutcome.AlreadyAssigned) : result;
@@ -51,7 +60,8 @@ public sealed class ReviewerAssignmentWorkflowContract(
     }
 
     private async Task<ReviewerAssignmentEligibilityResultContractDto> ReadBindingAsync(Guid groupId, Guid reviewerId,
-        bool locked, bool requireOpen, CancellationToken token)
+        bool locked, bool requireOpen, CancellationToken token,
+        Guid? expectedAdvisorEvaluationId = null, int? expectedReportVersionNo = null)
     {
         var thesis = locked ? await thesisReader.LockAsync(groupId, token) : await thesisReader.GetAsync(groupId, token);
         if (thesis is null) return new(ReviewerAssignmentEligibilityOutcome.GroupNotFound);
@@ -67,6 +77,9 @@ public sealed class ReviewerAssignmentWorkflowContract(
             || !string.Equals(approval.SubmissionChecksumSha256, thesis.SubmissionChecksumSha256, StringComparison.OrdinalIgnoreCase))
             return new(ReviewerAssignmentEligibilityOutcome.NotEligible);
         if (requireOpen && !batch.IsOpen) return new(ReviewerAssignmentEligibilityOutcome.BatchNotOpen);
+        if ((expectedAdvisorEvaluationId.HasValue && expectedAdvisorEvaluationId != approval.AdvisorEvaluationId)
+            || (expectedReportVersionNo.HasValue && expectedReportVersionNo != approval.ReportVersionNo))
+            return new(ReviewerAssignmentEligibilityOutcome.BindingConflict);
         var reviewer = locked ? await candidateReader.LockAsync(reviewerId, token) : await candidateReader.GetAsync(reviewerId, token);
         if (reviewer is null) return new(ReviewerAssignmentEligibilityOutcome.ReviewerNotFound);
         if (!reviewer.IsActive || !reviewer.IsLecturer) return new(ReviewerAssignmentEligibilityOutcome.ReviewerNotEligible);

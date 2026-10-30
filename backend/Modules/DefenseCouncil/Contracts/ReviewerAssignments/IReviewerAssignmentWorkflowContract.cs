@@ -10,7 +10,8 @@ public enum ReviewerAssignmentEligibilityOutcome
     ReviewerNotFound,
     ReviewerNotEligible,
     AdvisorConflict,
-    AlreadyAssigned
+    AlreadyAssigned,
+    BindingConflict
 }
 
 public sealed record ReviewerAssignmentBindingContractDto(
@@ -29,6 +30,10 @@ public interface IReviewerAssignmentWorkflowContract
     /// <summary>Requires coordinator transaction. Locks all creation guards; does not create a row.</summary>
     Task<ReviewerAssignmentEligibilityResultContractDto> LockForCreationAsync(Guid groupId, Guid reviewerId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Also validates the client's approved binding before checking the reviewer account.</summary>
+    Task<ReviewerAssignmentEligibilityResultContractDto> LockForCreationAsync(Guid groupId, Guid reviewerId,
+        Guid expectedAdvisorEvaluationId, int expectedReportVersionNo, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Read-only authorization projection for an exact file, never a proof for a later write.

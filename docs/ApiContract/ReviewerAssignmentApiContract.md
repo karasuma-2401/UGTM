@@ -1,6 +1,6 @@
 # Reviewer assignment API contract — SCRUM-104
 
-Trạng thái: **CP0 đã chốt; CP1 có nền tảng dữ liệu; CP2 có contracts, repository và coordinator giữ điều kiện trong transaction; chưa triển khai endpoint SCRUM-104**. Cập nhật 30/10/2026. API vẫn là contract cho CP3–CP6, không phải xác nhận endpoint đã hoạt động. Nền tảng CP1/CP2 ở mục 12/13. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
+Trạng thái: **CP0–CP2 đã có nền tảng; CP3 đã triển khai POST tạo phân công; DELETE, API đọc và tích hợp tải file thuộc CP4–CP6, chưa triển khai**. Cập nhật 30/10/2026. Nền tảng CP1/CP2 ở mục 12/13; implementation POST ở mục 14. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
 
 Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ quản trị và nhiệm vụ của GVPB; cấp link tải đúng bản báo cáo đã duyệt. Không gồm UI SCRUM-113, nhập điểm/phiếu SCRUM-105, phản biện thứ hai/xử lý không đồng thuận, tổng hợp/công bố điểm, lưu chiểu, phân công hàng loạt, email/in-app hay API thay GVHD.
 
@@ -17,7 +17,7 @@ Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ q
 
 ## 2. Quyền và bảo mật
 
-Permission **đã khai báo và có seed trong migration CP1**: `thesis.reviewer-assignments.read` và `thesis.reviewer-assignments.manage`. Khi áp migration, seed mặc định cả hai cho Faculty, AcademicAffairs, Admin. CP1 chưa map endpoint/policy nghiệp vụ mới; các quy tắc dưới đây phải được thực thi ở cả endpoint lẫn application khi triển khai API:
+Permission **đã khai báo và có seed trong migration CP1**: `thesis.reviewer-assignments.read` và `thesis.reviewer-assignments.manage`. Khi áp migration, seed mặc định cả hai cho Faculty, AcademicAffairs, Admin. CP3 thực thi quyền POST ở cả endpoint và application; các endpoint còn lại tiếp tục theo quy tắc dưới đây khi triển khai:
 
 - Admin theo bypass permission hiện có của Identity; không bypass điều kiện nghiệp vụ, giới hạn một active, concurrency hoặc chặn hủy khi có phiếu.
 - Faculty/AcademicAffairs: ghi cần `.manage`; đọc quản trị cần `.read` **hoặc** `.manage`. Role cho biết đối tượng nghiệp vụ; có permission nhưng không thuộc ba role quản trị thì vẫn không được quản trị phân công.
@@ -405,4 +405,32 @@ Source CP2 không có migration mới và chưa triển khai HTTP tạo/hủy/đ
 ```powershell
 dotnet build UGTM.sln --configuration Release --artifacts-path artifacts/scrum104-cp2
 dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp2 --no-build --no-restore --filter FullyQualifiedName~ReviewerAssignmentTransactionIntegrationTests
+```
+
+## 14. CP3: POST tạo phân công
+
+[ReviewerAssignmentEndpoints](../../backend/Modules/DefenseCouncil/Infrastructure/Endpoints/ReviewerAssignmentEndpoints.cs) đã map POST đúng mục 4.1 vào module production. Endpoint kiểm tra role và permission trước khi đọc request. [CreateReviewerAssignmentHandler](../../backend/Modules/DefenseCouncil/Application/ReviewerAssignments/CreateReviewerAssignmentHandler.cs) kiểm tra lại quyền, UUID/header/body, lấy actor từ `ICurrentUser` và thời điểm UTC từ `TimeProvider`. Header bắt buộc cả trong Development; không tự sinh key. Các trường ngoài request DTO không điều khiển entity. Thành công trả 201 cùng DTO, không đặt Location tới route chưa có.
+
+Handler khóa key trước, replay receipt tương đương hoặc trả `IdempotencyKeyReused` trước khi kiểm tra nghiệp vụ. Request mới dùng overload có expected binding của guard CP2: context → eligibility/Open → expected evaluation/version → tài khoản Active Lecturer → khác GVHD hiện tại → chưa có active. Giữ nguyên cơ chế khóa tới commit, không thêm điều kiện giai đoạn/hạn nộp và không đổi trạng thái nhóm/báo cáo. Topic contract bổ sung title; tên GVPB lấy qua Identity contract. Các projection chỉ phục vụ DTO, không dùng tên/title để quyết định quyền.
+
+Assignment, snapshot, receipt và audit cùng transaction; receipt chỉ hoàn tất sau khi database cấp `assignmentVersion`. Lỗi unique active trả `AlreadyAssigned`; lỗi concurrency/unique còn lại trả `ConcurrencyConflict`, không upsert hoặc tự retry callback. Replay trả DTO lúc tạo, kể cả sau khi phân công đã hủy; không kích hoạt lại bản ghi. Permission hiện tại vẫn phải hợp lệ khi replay.
+
+[ReviewerAssignmentCreationHttpIntegrationTests](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerAssignmentCreationHttpIntegrationTests.cs) mở Kestrel khi cần, dùng production module registration/coordinator, PostgreSQL Testcontainers và FK thật của fixture CP2. Authentication trong test dùng claims kiểm soát được; không thay handler hoặc guard bằng mock. Bộ test gồm quyền Faculty/PĐT/Admin và handler trực tiếp; JSON/header/body không hợp lệ; đủ eligibility ngoài lịch sinh viên; chưa duyệt/legacy/binding lỗi/tài khoản không hợp lệ/trùng GVHD; request cùng/khác key; scope actor, chuẩn hóa JSON/GUID; replay sau hủy; mất response sau commit và rollback lỗi cả hai lần save rồi retry. Hủy trong test replay thực hiện qua domain/persistence để kiểm tra receipt, chưa phải nghiệm thu DELETE CP4. Các ca race có barrier và quan sát khóa ở CP2 vẫn chạy hồi quy.
+
+Không có migration mới hoặc thay đổi database ứng dụng tại CP3. DELETE, danh sách/candidate/nhiệm vụ và quyền cấp link tải mới vẫn chờ checkpoint tiếp theo; chưa nghiệm thu toàn bộ SCRUM-104.
+
+### Kết quả kiểm chứng CP3 ngày 30/10/2026
+
+- **59 ca khác nhau đã có kết quả pass**: 35 ca CP3 (32 HTTP và 3 kiểm tra handler trực tiếp), 24 hồi quy transaction CP2. Lượt gộp có 58/59 pass; một ca lỗi ở SQL dựng constraint của fixture trước khi gọi API. Sau sửa fixture, chạy lại cả hai nhánh lỗi save và validation hình thức trên source cuối: **3/3 pass**, bao gồm từ chối version là chuỗi JSON. Đây là kết quả gộp theo ca của hai lượt, không phải một lượt 59/59 hoặc toàn bộ suite ThesisManagement.
+- DefenseCouncil **55/55**, Architecture **74/74** pass. Build Release solution **0 error**; còn warning OpenAPI `CS8602` và xung đột phiên bản EF Core của Architecture.Tests ở mã/package không đổi. Format solution `--verify-no-changes` và `git diff --check` pass.
+- Bằng chứng local bị Git ignore: `artifacts/scrum104-cp3/test-results/reviewer-cp3.trx`, `reviewer-cp3-final.trx`, `defense-cp3.trx`, `architecture-cp3.trx`; log build/format ở cùng thư mục CP3. Không stage/commit hoặc migrate database ứng dụng.
+
+Chạy lại từ root với Docker Desktop Linux engine:
+
+```powershell
+dotnet build UGTM.sln --configuration Release --artifacts-path artifacts/scrum104-cp3
+dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp3 --no-build --no-restore --filter FullyQualifiedName~ReviewerAssignmentTransactionIntegrationTests --logger 'trx;LogFileName=reviewer-cp3.trx' --results-directory artifacts/scrum104-cp3/test-results
+dotnet test backend/tests/DefenseCouncil.Tests/UGTM.Modules.DefenseCouncil.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp3 --no-build --no-restore
+dotnet test backend/tests/Architecture.Tests/UGTM.Architecture.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp3 --no-build --no-restore
+dotnet format UGTM.sln --no-restore --verify-no-changes
 ```
