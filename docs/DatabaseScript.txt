@@ -353,23 +353,53 @@ Table councils.reviewer_evaluation {
   id uuid [pk, not null]
   assignment_id uuid [not null]
   comment text [null]
-  defense_approval "character varying(50)" [not null]
+  score numeric(4,2) [null]
+  defense_approval "character varying(50)" [null]
+  status "character varying(50)" [null]
+  is_legacy boolean [not null, default: true]
+  created_by uuid [null]
+  created_at_utc "timestamp with time zone" [null]
+  evaluated_by uuid [null]
   evaluated_at "timestamp with time zone" [not null]
-  exclusion_reason text [null]
+  submitted_by uuid [null]
+  submitted_at_utc "timestamp with time zone" [null]
   is_ignored_in_calculation boolean [not null, default: false]
   is_visible_to_student boolean [not null, default: false]
+  exclusion_reason text [null]
   revision_feedback text [null]
-  score numeric(4,2) [not null]
+  xmin xid [not null, note: 'PostgreSQL system concurrency column']
 
   indexes {
     assignment_id [unique, name: 'ix_reviewer_evaluation_assignment_id']
   }
-
   checks {
     `score BETWEEN 0 AND 10` [name: 'ck_reviewer_evaluation_score']
+    `status IS NULL OR status IN ('Draft', 'Submitted')` [name: 'ck_reviewer_evaluation_status']
+    `defense_approval IS NULL OR defense_approval IN ('Approved', 'Rejected')` [name: 'ck_reviewer_evaluation_defense_approval']
+    `is_legacy OR ( id <> '00000000-0000-0000-0000-000000000000'::uuid AND assignment_id <> '00000000-0000-0000-0000-000000000000'::uuid AND status IS NOT NULL AND created_by IS NOT NULL AND created_by <> '00000000-0000-0000-0000-000000000000'::uuid AND evaluated_by IS NOT NULL AND evaluated_by <> '00000000-0000-0000-0000-000000000000'::uuid AND created_at_utc IS NOT NULL AND created_at_utc <= evaluated_at AND (comment IS NULL OR (char_length(btrim(comment)) BETWEEN 1 AND 2000 AND comment = btrim(comment))) AND ( (status = 'Draft' AND submitted_by IS NULL AND submitted_at_utc IS NULL AND NOT is_visible_to_student) OR (status = 'Submitted' AND score IS NOT NULL AND comment IS NOT NULL AND defense_approval IS NOT NULL AND submitted_by IS NOT NULL AND submitted_by = evaluated_by AND submitted_at_utc IS NOT NULL AND submitted_at_utc = evaluated_at AND is_visible_to_student) ) )` [name: 'ck_reviewer_evaluation_workflow']
   }
+  Note: 'SCRUM-105 CP1: one draft or submitted evaluation per assignment. Legacy is not automatically submitted or public. Parent assignment lock is required through commit; any evaluation blocks cancellation.'
 }
 
+Table councils.reviewer_evaluation_idempotency {
+  id uuid [pk, not null]
+  actor_id uuid [not null]
+  operation "character varying(100)" [not null]
+  idempotency_key uuid [not null]
+  request_fingerprint "character varying(64)" [not null]
+  response_status_code integer [not null]
+  response_payload_json jsonb [not null]
+  created_at_utc "timestamp with time zone" [not null]
+
+  indexes {
+    (actor_id, operation, idempotency_key) [unique, name: 'ux_reviewer_evaluation_idempotency_actor_operation_key']
+  }
+  checks {
+    `response_status_code IN (200, 201)` [name: 'ck_reviewer_evaluation_idempotency_status']
+    `request_fingerprint ~ '^[0-9a-f]{64}$'` [name: 'ck_reviewer_evaluation_idempotency_fingerprint']
+    `char_length(btrim(operation)) BETWEEN 1 AND 100 AND operation = btrim(operation)` [name: 'ck_reviewer_evaluation_idempotency_operation']
+  }
+}
 Table councils.score_summary {
   id uuid [pk, not null]
   advisor_score numeric(4,2) [null]

@@ -40,15 +40,7 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
                     gradingHeld.TrySetResult(true);
                     await releaseGrading.Task.WaitAsync(TimeSpan.FromSeconds(20), token);
                 }
-                services.GetRequiredService<DefenseCouncilDbContext>().ReviewerEvaluations.Add(new ReviewerEvaluation
-                {
-                    Id = Guid.NewGuid(),
-                    AssignmentId = original.Id,
-                    Score = 8m,
-                    Comment = "Phiếu phản biện",
-                    DefenseApproval = DefenseApprovalStatus.Approved,
-                    EvaluatedAt = DateTime.UtcNow
-                });
+                services.GetRequiredService<DefenseCouncilDbContext>().ReviewerEvaluations.Add(ReviewerEvaluation.CreateDraft(Guid.NewGuid(), original.Id, 8m, "Phiếu phản biện", DefenseApprovalStatus.Approved, _reviewer, DateTime.UtcNow));
                 return ReviewerAssignmentTransactionResult<bool>.Commit(true);
             });
         }

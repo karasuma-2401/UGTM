@@ -23,6 +23,7 @@ public sealed class DefenseCouncilDbContext(DbContextOptions<DefenseCouncilDbCon
     public DbSet<ReviewerAssignment> ReviewerAssignments => Set<ReviewerAssignment>();
     public DbSet<ReviewerAssignmentIdempotencyRecord> ReviewerAssignmentIdempotencyRecords => Set<ReviewerAssignmentIdempotencyRecord>();
     public DbSet<ReviewerEvaluation> ReviewerEvaluations => Set<ReviewerEvaluation>();
+    public DbSet<ReviewerEvaluationIdempotencyRecord> ReviewerEvaluationIdempotencyRecords => Set<ReviewerEvaluationIdempotencyRecord>();
     public DbSet<ScoreSummary> ScoreSummarys => Set<ScoreSummary>();
     public DbSet<ScoreSummaryComponent> ScoreSummaryComponents => Set<ScoreSummaryComponent>();
 

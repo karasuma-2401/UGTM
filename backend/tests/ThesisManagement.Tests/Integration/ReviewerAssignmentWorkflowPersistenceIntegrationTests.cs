@@ -24,7 +24,7 @@ using IdentityUser = UGTM.Modules.Identity.Domain.Entities.User;
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
 [Collection(PostgreSqlCollection.Name)]
-public sealed class ReviewerAssignmentWorkflowPersistenceIntegrationTests(PostgreSqlFixture fixture) : IAsyncLifetime
+public sealed partial class ReviewerAssignmentWorkflowPersistenceIntegrationTests(PostgreSqlFixture fixture) : IAsyncLifetime
 {
     private const string PreviousMigration = "20261028180816_AddAdvisorEvaluationIdempotency";
     private const string CurrentMigration = "20261030022105_AddReviewerAssignmentWorkflowFoundation";

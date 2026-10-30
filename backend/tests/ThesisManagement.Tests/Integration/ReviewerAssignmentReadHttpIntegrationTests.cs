@@ -246,16 +246,9 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
     {
         var original = await CreateForCancellationAsync();
         await using var db = Db<DefenseCouncilDbContext>();
-        db.ReviewerEvaluations.Add(new ReviewerEvaluation
-        {
-            Id = Guid.NewGuid(),
-            AssignmentId = original.Id,
-            Score = 0m,
-            Comment = "PHIẾU RIÊNG",
-            IsIgnoredInCalculation = true,
-            DefenseApproval = DefenseApprovalStatus.Rejected,
-            EvaluatedAt = Now
-        });
+        var sheet = ReviewerEvaluation.CreateDraft(Guid.NewGuid(), original.Id, 0m, "PHIẾU RIÊNG", DefenseApprovalStatus.Rejected, _reviewer, Now);
+        db.ReviewerEvaluations.Add(sheet);
+        db.Entry(sheet).Property(value => value.IsIgnoredInCalculation).CurrentValue = true;
         await db.SaveChangesAsync();
         using var list = await ReadPageAsync(CreationRoute);
         var item = Assert.Single(Items(list));

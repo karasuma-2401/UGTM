@@ -1349,8 +1349,15 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("comment");
 
+                    b.Property<DateTime?>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
                     b.Property<string>("DefenseApproval")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("defense_approval");
@@ -1358,6 +1365,10 @@ namespace UGTM.Database.Migrations.Migrations
                     b.Property<DateTime>("EvaluatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("evaluated_at");
+
+                    b.Property<Guid?>("EvaluatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("evaluated_by");
 
                     b.Property<string>("ExclusionReason")
                         .HasColumnType("text")
@@ -1369,6 +1380,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_ignored_in_calculation");
 
+                    b.Property<bool>("IsLegacy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_legacy");
+
                     b.Property<bool>("IsVisibleToStudent")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1379,10 +1396,29 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("revision_feedback");
 
-                    b.Property<decimal>("Score")
+                    b.Property<decimal?>("Score")
                         .HasPrecision(4, 2)
                         .HasColumnType("numeric(4,2)")
                         .HasColumnName("score");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at_utc");
+
+                    b.Property<Guid?>("SubmittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_reviewer_evaluation");
@@ -1393,7 +1429,70 @@ namespace UGTM.Database.Migrations.Migrations
 
                     b.ToTable("reviewer_evaluation", "councils", t =>
                         {
+                            t.HasCheckConstraint("ck_reviewer_evaluation_defense_approval", "defense_approval IS NULL OR defense_approval IN ('Approved', 'Rejected')");
+
                             t.HasCheckConstraint("ck_reviewer_evaluation_score", "score BETWEEN 0 AND 10");
+
+                            t.HasCheckConstraint("ck_reviewer_evaluation_status", "status IS NULL OR status IN ('Draft', 'Submitted')");
+
+                            t.HasCheckConstraint("ck_reviewer_evaluation_workflow", "is_legacy OR (\r\n    id <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND assignment_id <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND status IS NOT NULL\r\n    AND created_by IS NOT NULL AND created_by <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND evaluated_by IS NOT NULL AND evaluated_by <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND created_at_utc IS NOT NULL AND created_at_utc <= evaluated_at\r\n    AND (comment IS NULL OR (char_length(btrim(comment)) BETWEEN 1 AND 2000 AND comment = btrim(comment)))\r\n    AND (\r\n        (status = 'Draft' AND submitted_by IS NULL AND submitted_at_utc IS NULL AND NOT is_visible_to_student)\r\n        OR (status = 'Submitted' AND score IS NOT NULL AND comment IS NOT NULL AND defense_approval IS NOT NULL\r\n            AND submitted_by IS NOT NULL AND submitted_by = evaluated_by\r\n            AND submitted_at_utc IS NOT NULL AND submitted_at_utc = evaluated_at AND is_visible_to_student)\r\n    )\r\n)");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.ReviewerEvaluationIdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_fingerprint");
+
+                    b.Property<string>("ResponsePayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_payload_json");
+
+                    b.Property<int>("ResponseStatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reviewer_evaluation_idempotency");
+
+                    b.HasIndex("ActorId", "Operation", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_reviewer_evaluation_idempotency_actor_operation_key");
+
+                    b.ToTable("reviewer_evaluation_idempotency", "councils", t =>
+                        {
+                            t.HasCheckConstraint("ck_reviewer_evaluation_idempotency_fingerprint", "request_fingerprint ~ '^[0-9a-f]{64}$'");
+
+                            t.HasCheckConstraint("ck_reviewer_evaluation_idempotency_operation", "char_length(btrim(operation)) BETWEEN 1 AND 100 AND operation = btrim(operation)");
+
+                            t.HasCheckConstraint("ck_reviewer_evaluation_idempotency_status", "response_status_code IN (200, 201)");
                         });
                 });
 

@@ -237,18 +237,11 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
     {
         var original = await CreateForCancellationAsync();
         await using var db = Db<DefenseCouncilDbContext>();
-        var sheet = new ReviewerEvaluation
-        {
-            Id = Guid.NewGuid(),
-            AssignmentId = original.Id,
-            Score = 0m,
-            IsIgnoredInCalculation = ignored,
-            ExclusionReason = ignored ? "Không tính điểm" : null,
-            IsVisibleToStudent = false,
-            DefenseApproval = DefenseApprovalStatus.Rejected,
-            EvaluatedAt = Now
-        };
+        var sheet = ReviewerEvaluation.CreateDraft(Guid.NewGuid(), original.Id, 0m, null, DefenseApprovalStatus.Rejected, _reviewer, Now);
         db.ReviewerEvaluations.Add(sheet);
+        // Seed council exclusion metadata; the grading API cannot write these fields.
+        db.Entry(sheet).Property(value => value.IsIgnoredInCalculation).CurrentValue = ignored;
+        db.Entry(sheet).Property(value => value.ExclusionReason).CurrentValue = ignored ? "Không tính điểm" : null;
         await db.SaveChangesAsync();
         using (var stale = await DeleteAsync(original.Id, original.Version + 1))
             await AssertErrorAsync(stale, HttpStatusCode.Conflict, "VersionConflict");

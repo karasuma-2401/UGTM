@@ -40,6 +40,9 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<GetAdvisorEvaluationHandler>();
         services.AddScoped<IReviewerAssignmentEligibilityContract, ReviewerAssignmentEligibilityContract>();
         services.AddScoped<IReviewerAssignmentRepository, ReviewerAssignmentRepository>();
+        services.AddScoped<IReviewerEvaluationRepository, ReviewerEvaluationRepository>();
+        services.AddScoped<IReviewerEvaluationIdempotencyRepository, ReviewerEvaluationIdempotencyRepository>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations.ReviewerEvaluationAudit>();
         services.AddScoped<IReviewerAssignmentIdempotencyRepository, ReviewerAssignmentIdempotencyRepository>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.IReviewerAssignmentApprovalReader,
             ReviewerAssignmentApprovalReader>();

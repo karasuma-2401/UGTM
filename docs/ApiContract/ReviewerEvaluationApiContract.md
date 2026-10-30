@@ -1,6 +1,6 @@
 # Reviewer evaluation, defense eligibility & student feedback — SCRUM-105
 
-Trạng thái: **CP0 — contract và thiết kế đã chốt; chưa triển khai migration, permission, contract C# hoặc HTTP API SCRUM-105**. Ngày 30/10/2026; đối chiếu source tại `ba31145`. CP1 triển khai nền tảng; CP2 triển khai POST/GET phiếu; CP3 triển khai gate/feedback; CP4 nghiệm thu tích hợp. Tất cả tên DTO/cột/contract mới dưới đây là thiết kế đích, không khẳng định đã có trong source.
+Trạng thái: **CP0 đã được review/commit tại `5076627`; CP1 có lifecycle/persistence/migration, permission read và owner contracts/resolver; chưa triển khai HTTP API SCRUM-105**. Ngày 30/10/2026. Phần nền tảng hiện có ở mục 13; endpoint/DTO HTTP ở các mục trước vẫn là contract đích cho CP2–CP3. CP4 nghiệm thu tích hợp; không coi thiết kế endpoint là runtime đã triển khai.
 
 Phạm vi: GVPB/Admin lưu nháp, sửa và chốt phiếu phản biện; Khoa/PĐT đọc để điều phối; sinh viên xem góp ý đã chốt; cung cấp điều kiện chuyên môn ra Hội đồng cho workflow kế tiếp. Hai endpoint Jira là POST reviewer-evaluations và GET group feedback; hai GET bổ sung phục vụ đọc phiếu/gate đã nằm trong plan được người dùng chấp thuận.
 
@@ -448,3 +448,47 @@ Phiếu, receipt và audit cùng transaction; lỗi save đầu/save receipt/aud
 | CP4 | Nghiệm thu source cuối, report RV-xx → test/lệnh/TRX | Broad targeted regression/Release/format/diff; ghi full/filter/pass/fail/skip rõ ràng |
 
 Không có permission seed, migration hoặc runtime proof SCRUM-105 ở CP0. Chưa xác nhận serialization/SQL locks bằng chạy code cho các API mới. Kết quả SCRUM-104 trong [ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md) là baseline lịch sử, không tính thành test đã chạy cho task này. OpenAPI và tài liệu liên quan phải hoàn chỉnh cùng checkpoint triển khai API; CP4 không dùng để bổ sung chức năng đã biết nhưng bị bỏ sót.
+
+## 13. CP1 — nền tảng đã triển khai
+
+Baseline `5076627`, cập nhật 30/10/2026. Không có endpoint chấm/feedback/gate mới ở CP1; không đăng ký một implementation giả cho IReviewerDefenseEligibilityContract.
+
+- [ReviewerEvaluation](../../backend/Modules/DefenseCouncil/Domain/Entities/ReviewerEvaluation.cs) encapsulate lifecycle, Draft nullable/full replacement, Unicode trim/rune validation, score kiểm tra trước rounding, Submit đầy đủ và khóa cả Approved/Rejected; created/updated/submitted actor/time, visibility và xmin. IsLocked suy ra, không phải cột.
+- [Mapping](../../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Configurations/ReviewerEvaluationConfiguration.cs), receipt, repository và audit primitive đã có. Repository lock yêu cầu transaction, refresh entity đang tracked Unchanged và không chấp nhận row đã sửa trước lock. Caller vẫn giữ parent lock trước evaluation lock theo mục 9.
+- Migration [20261030113753_AddReviewerEvaluationWorkflowFoundation](../../backend/Database.Migrations/Migrations/20261030113753_AddReviewerEvaluationWorkflowFoundation.cs) giữ unique/FK Restrict, bảo toàn legacy/cờ visibility/loại/feedback/điểm, relax nullability cho nháp, thêm CHECK/receipt và seed read. Up preflight chặn dữ liệu lịch sử sai; Down chặn row workflow/metadata mới hoặc receipt, không điền điểm 0. Không add/drop cột xmin vật lý; permission/custom grants giữ khi Down/Up.
+- [IReviewerDefenseRuleReader](../../backend/Modules/AcademicPeriods/Contracts/ReviewerEvaluations/IReviewerDefenseRuleReader.cs) và implementation AcademicPeriods trả batch/config/components, khóa parent Active FOR SHARE, reselect SQL mới nếu row vừa Retired, tối đa ba lượt acquire/recheck. Contract exception riêng báo churn để consumer map conflict mà không tham chiếu AcademicPeriods.Application.
+- [Resolver](../../backend/Modules/DefenseCouncil/Application/ReviewerEvaluations/ReviewerDefenseRuleResolver.cs) kiểm tra coverage hai nhánh, missing/invalid/ambiguous, ngưỡng 0 và metadata; không default 5. Components đọc theo Source=Reviewer, projection Applicability raw string để dữ liệu enum cũ không hợp lệ được resolver chặn thay vì EF enum converter ném lỗi trước khi resolve.
+- [IReviewerFeedbackGroupReader](../../backend/Modules/ThesisManagement/Contracts/ReviewerEvaluations/IReviewerFeedbackGroupReader.cs) và implementation chỉ đọc group/topic/batch/membership Confirmed của actor, không xuất roster/điểm và không áp stage/group readiness của write lên đọc góp ý.
+- [ReviewerEvaluationAudit](../../backend/Modules/DefenseCouncil/Application/ReviewerEvaluations/ReviewerEvaluationAudit.cs) kiểm tra actor xác thực/row đã save có xmin, stage DraftSaved/Submitted metadata không có raw score/comment; writer CP2 sẽ gọi sau save đầu trong coordinator có sẵn. Header/parser/fingerprint/replay handler thực tế thuộc CP2.
+- IReviewerDefenseEligibilityContract đã khai báo DTO/reason/Get/Lock signatures để CP3 triển khai; chưa có gate consumer/scheduling writer HTTP. Owner readers/resolver không tự đổi StudentGroup hoặc báo cáo, không thêm Open vào quyền tải SCRUM-104.
+- Các caller seed phiếu CP2/CP4/CP5/CP6 SCRUM-104 đã chuyển sang factory Draft; các fixture kiểm tra điểm 0/ẩn/ignored vẫn seed đúng cờ bằng persistence trong test, không mở setter hoặc endpoint sửa cờ. Model/DBML đồng bộ ngay tại CP1 để CP2/CP3 không phải thêm lại schema đã biết.
+
+Kiểm thử mới: [domain lifecycle](../../backend/tests/DefenseCouncil.Tests/ReviewerEvaluationTests.cs), [receipt](../../backend/tests/DefenseCouncil.Tests/ReviewerEvaluationReceiptTests.cs), [resolver](../../backend/tests/DefenseCouncil.Tests/ReviewerDefenseRuleResolverTests.cs), [PostgreSQL foundation](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerEvaluationFoundationIntegrationTests.cs), [migration](../../backend/tests/ThesisManagement.Tests/Integration/ReviewerEvaluationMigrationIntegrationTests.cs). Các test PostgreSQL dùng composition/reader/coordinator thật và FK thật; race publisher gọi handler production, dùng gate/trigger chỉ để giữ đúng thứ tự commit và quan sát pg_blocking_pids.
+
+Lệnh build/format từ root; artifacts riêng để không đụng DLL của API đang chạy:
+
+```powershell
+dotnet build UGTM.sln --no-restore --configuration Release --artifacts-path artifacts/scrum105-cp1 -m:1 -nr:false -p:UseSharedCompilation=false
+dotnet format UGTM.sln --no-restore --verify-no-changes --verbosity quiet
+$cp1Filter = Get-Content artifacts/scrum105-cp1/regression-filter.txt -Raw
+dotnet test backend/tests/ThesisManagement.Tests/UGTM.Modules.ThesisManagement.Tests.csproj --no-build --no-restore --configuration Release --artifacts-path artifacts/scrum105-cp1 --filter $cp1Filter.Trim() --logger 'trx;LogFileName=foundation-and-affected-regression-final.trx' --results-directory artifacts/scrum105-cp1/test-results
+```
+
+Filter local chọn 13 method gốc của ReviewerAssignmentTransactionIntegrationTests (24 theory/fact cases), 9 foundation cases mới, toàn bộ ReviewerAssignmentWorkflowPersistenceIntegrationTests (15 cases), cùng các method Cancellation_http_blocks_any_evaluation, Cancellation_http_serializes_with_a_real_grading_writer, Reviewer_reads_has_evaluation và Real_reviewer_workflow (7 cases). Không tính các lần chạy lặp vào tổng nghiệm thu. Bốn project/phạm vi còn lại dùng cùng options test; filter Identity là `FullyQualifiedName~IdentityPermissionMigrationTests.Permission_migrations_preserve_existing_data`.
+
+Kết quả kiểm chứng CP1 ngày 30/10/2026:
+
+| Phạm vi | Pass / tổng | TRX trong `artifacts/scrum105-cp1/test-results/` |
+| --- | --- | --- |
+| DefenseCouncil, toàn project | 90/90 | defense-final.trx |
+| AcademicPeriods, toàn project | 45/45 | academic-final.trx |
+| Architecture, toàn project | 74/74 | architecture-final.trx |
+| ThesisManagement, filter nêu trên; PostgreSQL/MinIO thật | 55/55 | foundation-and-affected-regression-final.trx |
+| Identity, filter permission migration | 1/1 | identity-permission-final.trx |
+| **Tổng phạm vi đã chọn, không cộng lượt lặp** | **265/265; fail 0, skip 0** | |
+
+Release build solution thành công, 0 error; lượt build cuối ghi 2 warning MSB3277 đã có về phiên bản EF Core của Architecture.Tests. Lượt build đầu còn ghi CS8602 tại OpenApiConfiguration hiện hữu; không có warning mới từ mã CP1. `dotnet format --verify-no-changes` toàn solution, git diff --check, JSON examples, 36 acceptance IDs, 123 link Markdown local và whitespace/code fences của 40 file thay đổi đều pass; index vẫn trống. Log build/format và script `Validate-Foundation.ps1` nằm trong artifacts local.
+
+Lượt regression trước phát hiện ba test lỗi vì projection raw SQL dùng alias PascalCase trong khi EF áp snake_case cho DTO; đã sửa projection và chạy lại đủ 55 cases thành công. Validation domain cũng chặn NUL/UTF-16 lỗi trước persistence, tránh PostgreSQL từ chối public comment. Không cộng lượt lỗi hoặc các lượt lặp vào bảng trên.
+
+Các API CP2–CP3 và nghiệm thu toàn task CP4 vẫn chưa thực hiện. Artifacts local ở `artifacts/scrum105-cp1/`, bị Git ignore; migration chỉ được áp vào DB container kiểm thử, không áp vào DB ứng dụng. Không stage/commit; CP1 sẵn sàng để người dùng review và tự commit.
