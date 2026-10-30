@@ -72,7 +72,7 @@ Retry đúng key/ý định thành công cũ trả receipt gốc, không thực 
 | comment | string? | Quy tắc mục 2.3 |
 | defenseApproval | string? | Null được ở Draft; Approved/Rejected khi Submit |
 
-Header ví dụ: `Idempotency-Key: f1266dc3-2552-4fd7-9636-6be89e89bd2f`.
+Header ví dụ (UUID minh họa): `Idempotency-Key: 22222222-2222-4222-8222-222222222222`.
 
 Tạo nháp chưa đủ nội dung:
 
