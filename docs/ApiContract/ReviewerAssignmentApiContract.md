@@ -4,6 +4,8 @@ Trạng thái: **CP0–CP5 đã có nền tảng, POST/DELETE, bốn API đọc 
 
 Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ quản trị và nhiệm vụ của GVPB; cấp link tải đúng bản báo cáo đã duyệt. Không gồm UI SCRUM-113, nhập điểm/phiếu SCRUM-105, phản biện thứ hai/xử lý không đồng thuận, tổng hợp/công bố điểm, lưu chiểu, phân công hàng loạt, email/in-app hay API thay GVHD.
 
+Phần tiếp nhận chấm GVPB được thiết kế tại [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md) (SCRUM-105 CP0, chưa triển khai). Nháp GVPB cũng là một ReviewerEvaluation nên chặn hủy phân công. Writer phải dùng `LockForEvaluationAsync` trong coordinator đến commit; nhánh ghi SCRUM-105 kiểm tra Open riêng, không thêm guard Open vào quyền tải/đọc SCRUM-104. Không đổi DTO phân công hoặc tự chuyển trạng thái nhóm để biểu diễn gate Hội đồng.
+
 ## 1. Quy ước HTTP, authentication và phân trang
 
 - Tất cả endpoint yêu cầu Bearer token; hai endpoint ghi nhận JSON `Content-Type: application/json` và header `Idempotency-Key` UUID khác rỗng.
