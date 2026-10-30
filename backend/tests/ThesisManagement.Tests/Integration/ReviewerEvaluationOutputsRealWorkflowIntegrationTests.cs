@@ -56,8 +56,13 @@ public sealed partial class FinalReportWorkflowIntegrationTests
         var draftData = await ReadDataAsync(draft); await FeedbackAsync(null);
         using (var draftGate = await SendAsync(HttpMethod.Get, $"/api/thesis/groups/{_groupId}/defense-eligibility", _adminId, "Admin"))
             Assert.Equal("EvaluationNotSubmitted", (await ReadDataAsync(draftGate)).GetProperty("reasonCode").GetString());
-        using var final = await WriteGradeAsync(draftData.GetProperty("evaluationVersion").GetUInt32(), true); Assert.Equal(HttpStatusCode.OK, final.StatusCode);
+        using var edited = await WriteGradeAsync(draftData.GetProperty("evaluationVersion").GetUInt32(), false, 5.49m);
+        Assert.Equal(HttpStatusCode.OK, edited.StatusCode); var editedData = await ReadDataAsync(edited);
+        Assert.Equal(draftData.GetProperty("id").GetGuid(), editedData.GetProperty("id").GetGuid());
+        Assert.Equal(5.49m, editedData.GetProperty("score").GetDecimal()); await FeedbackAsync(null);
+        using var final = await WriteGradeAsync(editedData.GetProperty("evaluationVersion").GetUInt32(), true); Assert.Equal(HttpStatusCode.OK, final.StatusCode);
         var version = (await ReadDataAsync(final)).GetProperty("evaluationVersion").GetUInt32(); await FeedbackAsync("Chỉnh sửa phần thực nghiệm.");
+        using (var lockedAgain = await WriteGradeAsync(version, true, 10)) Assert.Equal(HttpStatusCode.Conflict, lockedAgain.StatusCode);
         using (var missing = await SendAsync(HttpMethod.Get, $"/api/thesis/groups/{_groupId}/defense-eligibility", _adminId, "Admin"))
             Assert.Equal("ConfigurationMissing", (await ReadDataAsync(missing)).GetProperty("reasonCode").GetString());
         await PublishAsync(5.5m);
@@ -74,10 +79,10 @@ public sealed partial class FinalReportWorkflowIntegrationTests
         using (var privateRead = await SendAsync(HttpMethod.Get, $"/api/thesis/reviewer-assignments/{assignmentId}/evaluation", _studentId, "Student")) Assert.Equal(HttpStatusCode.Forbidden, privateRead.StatusCode);
         using (var advisorRead = await GetAdvisorEvaluationAsync(_replacementAdvisorId, "Lecturer")) Assert.Equal(HttpStatusCode.Forbidden, advisorRead.StatusCode);
         await using var defense = Db<DefenseCouncilDbContext>(); Assert.Equal(version, (await defense.ReviewerEvaluations.SingleAsync()).Version);
-        Assert.Equal(2, await defense.ReviewerEvaluationIdempotencyRecords.CountAsync());
+        Assert.Equal(3, await defense.ReviewerEvaluationIdempotencyRecords.CountAsync());
         if (!admin) await AssertReviewerOutputsOpenApiAsync();
 
-        async Task<HttpResponseMessage> WriteGradeAsync(uint? expected, bool submit)
+        async Task<HttpResponseMessage> WriteGradeAsync(uint? expected, bool submit, decimal score = 5.5m)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, "/api/thesis/reviewer-evaluations")
             {
@@ -87,7 +92,7 @@ public sealed partial class FinalReportWorkflowIntegrationTests
                     expectedAssignmentVersion = parent.GetProperty("assignmentVersion").GetUInt32(),
                     expectedEvaluationVersion = expected,
                     action = submit ? "Submit" : "SaveDraft",
-                    score = (decimal?)5.5m,
+                    score = (decimal?)score,
                     comment = "Chỉnh sửa phần thực nghiệm.",
                     defenseApproval = "Approved"
                 })

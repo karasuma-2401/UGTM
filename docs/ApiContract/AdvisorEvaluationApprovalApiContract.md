@@ -209,7 +209,7 @@ CP2 phải dùng một transaction PostgreSQL chung để kiểm tra và commit 
 
 Phân công, hủy mềm và quyền tải đúng bản cho GVPB được mô tả ở [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md). SCRUM-104 có POST/DELETE, bốn API đọc và quyền tải đúng bản được duyệt; phạm vi/kết quả nghiệm thu CP6 xem [ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md). GVPB không được cấp quyền xem phiếu/điểm GVHD; semantics eligibility của SCRUM-103 giữ nguyên.
 
-Tiếp nhận phiếu GVPB tại [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md) đã có POST nháp/chốt, GET riêng tư và gate/feedback trong SCRUM-105 CP2–CP3. Gate vẫn cần approval GVHD của đúng snapshot; DTO góp ý sinh viên chỉ có comment đã chốt theo membership, không nhận phiếu/điểm/kết luận GVHD. Việc khóa Submitted của phiếu GVPB không tạo API thu hồi quyết định SCRUM-103.
+Tiếp nhận phiếu GVPB tại [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md) đã có POST nháp/chốt, GET riêng tư và gate/feedback trong SCRUM-105; nghiệm thu CP4 tại [ReviewerEvaluationVerification.md](ReviewerEvaluationVerification.md). Gate vẫn cần approval GVHD của đúng snapshot; DTO góp ý sinh viên chỉ có comment đã chốt theo membership, không nhận phiếu/điểm/kết luận GVHD. Việc khóa Submitted của phiếu GVPB không tạo API thu hồi quyết định SCRUM-103.
 
 SCRUM-104 phải kiểm tra lại điều kiện ngay trước khi phân công GVPB; không dựa trên danh sách hoặc dữ liệu FE cache. Contract đọc dự kiến từ SCRUM-103 là:
 

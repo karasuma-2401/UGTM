@@ -1,6 +1,6 @@
 # Reviewer evaluation, defense eligibility & student feedback — SCRUM-105
 
-Trạng thái: **CP2 đã được người dùng review/commit tại `ba5afa8`; CP3 hoàn thành GET gate/feedback và contract scheduling Get/Lock, sẵn sàng review**. Ngày 30/10/2026. Nền tảng CP1 ở mục 13, CP2 ở mục 14 và triển khai/bằng chứng CP3 ở mục 15. CP4 nghiệm thu toàn task vẫn chưa thực hiện.
+Trạng thái: **CP3 đã được người dùng review/commit tại `0e9dd57`; CP4 đã nghiệm thu source cuối, sẵn sàng review và người dùng tự commit**. Ngày 30/10/2026. Nền tảng CP1 ở mục 13, CP2 ở mục 14, triển khai/bằng chứng CP3 ở mục 15. Phạm vi và đối chiếu RV-01–RV-36 của CP4 ở [ReviewerEvaluationVerification.md](ReviewerEvaluationVerification.md).
 
 Phạm vi: GVPB/Admin lưu nháp, sửa và chốt phiếu phản biện; Khoa/PĐT đọc để điều phối; sinh viên xem góp ý đã chốt; cung cấp điều kiện chuyên môn ra Hội đồng cho workflow kế tiếp. Hai endpoint Jira là POST reviewer-evaluations và GET group feedback; hai GET bổ sung phục vụ đọc phiếu/gate đã nằm trong plan được người dùng chấp thuận.
 
@@ -396,7 +396,7 @@ Phiếu, receipt và audit cùng transaction; lỗi save đầu/save receipt/aud
 
 ## 11. Ma trận nghiệm thu bắt buộc CP1–CP4
 
-**Đây là acceptance đích; CP0 chưa chạy test nghiệp vụ và chưa có API/migration mới.** Các ID duy nhất RV-01–RV-36 để báo cáo CP4 đối chiếu test thực tế.
+Các ID duy nhất RV-01–RV-36 được đối chiếu với test thực tế trong [báo cáo nghiệm thu CP4](ReviewerEvaluationVerification.md). CP0 chỉ xác lập acceptance, không phải bằng chứng runtime; kết quả CP1–CP3 bên dưới được giữ riêng theo checkpoint.
 
 | ID | Ca nghiệm thu | Kết quả bắt buộc |
 | --- | --- | --- |
@@ -447,7 +447,7 @@ Phiếu, receipt và audit cùng transaction; lỗi save đầu/save receipt/aud
 | CP3 | Gate Get/Lock, GET gate/feedback, quyền đọc/DTO và docs mô hình | Config publisher race/writer đại diện, security allowlist, lifecycle đọc, workflow đầu ra |
 | CP4 | Nghiệm thu source cuối, report RV-xx → test/lệnh/TRX | Broad targeted regression/Release/format/diff; ghi full/filter/pass/fail/skip rõ ràng |
 
-Không có permission seed, migration hoặc runtime proof SCRUM-105 ở CP0. Chưa xác nhận serialization/SQL locks bằng chạy code cho các API mới. Kết quả SCRUM-104 trong [ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md) là baseline lịch sử, không tính thành test đã chạy cho task này. OpenAPI và tài liệu liên quan phải hoàn chỉnh cùng checkpoint triển khai API; CP4 không dùng để bổ sung chức năng đã biết nhưng bị bỏ sót.
+CP0 không có permission seed, migration hoặc runtime proof SCRUM-105; serialization/SQL locks được kiểm tra khi triển khai CP1–CP3. Kết quả SCRUM-104 trong [ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md) là baseline lịch sử, không tính thành test đã chạy cho task này. OpenAPI và tài liệu liên quan hoàn chỉnh cùng checkpoint triển khai API; CP4 tập trung nghiệm thu source cuối và hồi quy.
 
 ## 13. CP1 — nền tảng đã triển khai
 
@@ -538,7 +538,7 @@ Release build solution 0 error, còn 4 warning nền (CS8602 OpenApiConfiguratio
 
 Lượt trước có 63/64 pass: Accepts metadata khiến request chưa đăng nhập với text/plain bị routing trả 415 trước authentication. Đã chuyển body metadata sang operation transformer, giữ kiểm tra content-type trong handler sau policy, rồi build/rerun đủ 64 ca thành công. Các lượt smoke/lỗi/lặp giữ trong artifacts nhưng không cộng vào bảng trên. Các ca rollback kiểm tra cả insert và cập nhật/chốt nháp, ở save đầu và save hai; ca replay kiểm tra quyền live sau khi chờ key, ca race kiểm tra cả chốt thắng sửa và sửa thắng chốt.
 
-TRX/log/filter/plan local bị Git ignore. CP2 không thêm hoặc áp migration vào DB ứng dụng, không stage/commit. Người dùng sau đó đã review và tự commit CP2 tại `ba5afa8`; gate/feedback CP3 xem mục 15. Nghiệm thu toàn task CP4 vẫn chưa thực hiện.
+TRX/log/filter/plan local bị Git ignore. CP2 không thêm hoặc áp migration vào DB ứng dụng, không stage/commit. Người dùng sau đó đã review và tự commit CP2 tại `ba5afa8`; gate/feedback CP3 xem mục 15, nghiệm thu toàn task CP4 xem mục 16.
 
 ## 15. CP3 — gate Hội đồng và góp ý sinh viên
 
@@ -590,4 +590,10 @@ Lượt integration đầu có 75/84 pass; 9 ca dừng tại fixture do chọn S
 
 Release build solution cuối thành công, 0 error/3 warning nền (CS8602 OpenApiConfiguration source-linked test và MSB3277 EF Core Architecture.Tests); không warning mới của mã CP3. Format verify toàn solution, sáu JSON examples/36 RV IDs, 216 link Markdown local, whitespace/fences và git diff --check pass; index trống. Feedback dùng ≤5 query cố định và một query whitelist DefenseCouncil dù có thêm 12 assignment lịch sử. OpenAPI HTTP export ở `artifacts/scrum105-cp3/bin/UGTM.Modules.ThesisManagement.Tests/release/reviewer-outputs-openapi.json`, gồm feedback schema chỉ comment, bắt buộc nhưng nullable, và gate reason canonical.
 
-Log build/format, filter/TRX, `Validate-Checkpoint.ps1` và plan local đều bị Git ignore. CP3 không sửa lifecycle/schema/POST/receipt của CP1–CP2, không thêm hoặc áp migration DB ứng dụng; chưa stage/commit. Sẵn sàng để người dùng review và tự commit; CP4 nghiệm thu toàn task chưa triển khai.
+Log build/format, filter/TRX, `Validate-Checkpoint.ps1` và plan local đều bị Git ignore. CP3 không sửa lifecycle/schema/POST/receipt của CP1–CP2, không thêm hoặc áp migration DB ứng dụng. Người dùng đã review và commit CP3 tại `0e9dd57`; số liệu mục 15 là kết quả lịch sử CP3, không cộng vào tổng CP4.
+
+## 16. CP4 — nghiệm thu tích hợp và bàn giao
+
+Báo cáo cuối tại [ReviewerEvaluationVerification.md](ReviewerEvaluationVerification.md), gồm từng RV-xx → test thực thi, phạm vi full/filtered, lệnh chạy lại, log/TRX/OpenAPI và giới hạn. Bốn ca bổ sung kiểm tra Draft/Archived và chốt với cấu hình mâu thuẫn/invalid; workflow Kestrel/PostgreSQL/MinIO được mở rộng sửa nháp và khóa sau chốt. CP4 chỉ bổ sung test/tài liệu, không đổi schema hoặc mã nghiệp vụ.
+
+Kết quả trên baseline `0e9dd57` cùng bổ sung test CP4: **782/782 unique selected cases pass, fail 0/skip 0**, mỗi bộ một lượt, không cộng test cũ hoặc lượt lặp. Thesis filtered 441/441 (bao gồm 123 ca integration có tiền tố SCRUM-105), Identity filtered 130/130, AcademicPeriods full 45/45, DefenseCouncil full 92/92, Architecture full 74/74. Release solution cuối 0 error/3 warning nền CS8602/MSB3277; format verify, JSON/links/36 RV IDs ở hai ma trận, OpenAPI HTTP exports và diff pass. Bằng chứng tại `artifacts/scrum105-cp4/` bị Git ignore; không migrate DB ứng dụng, không stage/commit hoặc deploy.
