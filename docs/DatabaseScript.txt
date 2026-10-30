@@ -304,15 +304,51 @@ Table councils.reviewer_assignment {
   group_id uuid [not null]
   is_active boolean [not null, default: true]
   reviewer_id uuid [not null]
+  advisor_id_at_assignment uuid [null]
+  advisor_evaluation_id uuid [null]
+  final_report_id uuid [null]
+  report_version_no integer [null]
+  submission_file_id uuid [null]
+  submission_checksum_sha256 "character varying(64)" [null]
+  is_legacy boolean [not null, default: true]
+  cancelled_by uuid [null]
+  cancelled_at "timestamp with time zone" [null]
+  cancellation_reason text [null]
+  xmin xid [not null, note: 'PostgreSQL system concurrency column']
 
   indexes {
     assigned_by [name: 'ix_reviewer_assignment_assigned_by']
     reviewer_id [name: 'ix_reviewer_assignment_reviewer_id']
-    (group_id, assignment_order) [unique, name: 'ix_reviewer_assignment_group_id_assignment_order']
-    (group_id, reviewer_id) [unique, name: 'ix_reviewer_assignment_group_id_reviewer_id']
+    (group_id, assigned_at) [name: 'ix_reviewer_assignment_group_id_assigned_at']
+    group_id [unique, name: 'ux_reviewer_assignment_active_group', note: 'PARTIAL: WHERE is_active = true; inactive history is not unique']
   }
+
+  checks {
+    `is_legacy OR ( id <> '00000000-0000-0000-0000-000000000000'::uuid AND group_id <> '00000000-0000-0000-0000-000000000000'::uuid AND reviewer_id <> '00000000-0000-0000-0000-000000000000'::uuid AND assigned_by <> '00000000-0000-0000-0000-000000000000'::uuid AND advisor_id_at_assignment IS NOT NULL AND advisor_id_at_assignment <> '00000000-0000-0000-0000-000000000000'::uuid AND reviewer_id <> advisor_id_at_assignment AND advisor_evaluation_id IS NOT NULL AND advisor_evaluation_id <> '00000000-0000-0000-0000-000000000000'::uuid AND final_report_id IS NOT NULL AND final_report_id <> '00000000-0000-0000-0000-000000000000'::uuid AND report_version_no IS NOT NULL AND report_version_no > 0 AND submission_file_id IS NOT NULL AND submission_file_id <> '00000000-0000-0000-0000-000000000000'::uuid AND submission_checksum_sha256 IS NOT NULL AND submission_checksum_sha256 ~ '^[0-9a-f]{64}$' AND assignment_order = 1 )` [name: 'ck_reviewer_assignment_workflow_binding']
+    `(is_active AND cancelled_by IS NULL AND cancelled_at IS NULL AND cancellation_reason IS NULL) OR (NOT is_active AND ( (is_legacy AND cancelled_by IS NULL AND cancelled_at IS NULL AND cancellation_reason IS NULL) OR (cancelled_by IS NOT NULL AND cancelled_by <> '00000000-0000-0000-0000-000000000000'::uuid AND cancelled_at IS NOT NULL AND cancelled_at >= assigned_at AND cancellation_reason IS NOT NULL AND char_length(btrim(cancellation_reason)) BETWEEN 1 AND 1000 AND cancellation_reason = btrim(cancellation_reason)) ))` [name: 'ck_reviewer_assignment_cancellation']
+  }
+  Note: 'SCRUM-104: one active reviewer per group; new AssignmentOrder = 1. Snapshot validated by owner contracts in shared transaction. DELETE is soft cancellation. DBML index note carries the PostgreSQL partial predicate.'
 }
 
+Table councils.reviewer_assignment_idempotency {
+  id uuid [pk, not null]
+  actor_id uuid [not null]
+  operation "character varying(100)" [not null]
+  idempotency_key uuid [not null]
+  request_fingerprint "character varying(64)" [not null]
+  response_status_code integer [not null]
+  response_payload_json jsonb [not null]
+  created_at_utc "timestamp with time zone" [not null]
+
+  indexes {
+    (actor_id, operation, idempotency_key) [unique, name: 'ux_reviewer_assignment_idempotency_actor_operation_key']
+  }
+  checks {
+    `response_status_code IN (200, 201)` [name: 'ck_reviewer_assignment_idempotency_status']
+    `request_fingerprint ~ '^[0-9a-f]{64}$'` [name: 'ck_reviewer_assignment_idempotency_fingerprint']
+    `char_length(btrim(operation)) BETWEEN 1 AND 100 AND operation = btrim(operation)` [name: 'ck_reviewer_assignment_idempotency_operation']
+  }
+}
 Table councils.reviewer_evaluation {
   id uuid [pk, not null]
   assignment_id uuid [not null]
@@ -782,7 +818,7 @@ Ref fk_grading_criteria_kltn_batch_batch_id: councils.grading_criteria.batch_id 
 Ref fk_reviewer_assignment_users_assigned_by: councils.reviewer_assignment.assigned_by > identity.user.id [delete: restrict]
 Ref fk_reviewer_assignment_student_groups_group_id: councils.reviewer_assignment.group_id > thesis.student_group.id [delete: cascade]
 Ref fk_reviewer_assignment_users_reviewer_id: councils.reviewer_assignment.reviewer_id > identity.user.id [delete: restrict]
-Ref fk_reviewer_evaluation_reviewer_assignment_assignment_id: councils.reviewer_assignment.id - councils.reviewer_evaluation.assignment_id [delete: cascade]
+Ref fk_reviewer_evaluation_reviewer_assignment_assignment_id: councils.reviewer_assignment.id - councils.reviewer_evaluation.assignment_id [delete: restrict]
 Ref fk_score_summary_student_groups_group_id: thesis.student_group.id - councils.score_summary.group_id [delete: cascade]
 Ref fk_score_summary_users_published_by: councils.score_summary.published_by > identity.user.id [delete: set null]
 Ref fk_score_summary_component_score_summaries_summary_id: councils.score_summary_component.summary_id > councils.score_summary.id [delete: cascade]

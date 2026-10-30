@@ -339,3 +339,13 @@ B10: Khoa/PĐT chọn xuất báo cáo tổng hợp Excel hoặc PDF (D5); hệ 
 Biểu đồ tuần tự cho các Use Case chính
 
 Các xác nhận chấm điểm của nhóm ngày 10/10/2026 đã được bổ sung vào QĐ5.3 và các bước loại điểm; nguồn quy tắc tập trung tại [Requirements.md](Requirements.md).
+
+### Luồng phân công phản biện đã triển khai — SCRUM-104
+
+1. Faculty/AcademicAffairs có permission read/manage hoặc Admin đọc danh sách quản lý, nhóm đủ điều kiện và ứng viên. Owner contracts cung cấp projection batch/topic/group/account; không truy cập chéo bảng từ module application.
+2. POST nhận group/reviewer, expected approval/report version và UUID key. Coordinator tại composition root mở một PostgreSQL transaction dùng chung; khóa request key, group/report, topic/GVHD, batch, tài khoản/grant và kiểm tra lại approval/binding. Chỉ tạo khi batch Open, một GVPB Active/Lecturer khác GVHD hiện tại và chưa có phân công active. Không dùng hạn nộp bài/giai đoạn để chặn phân công.
+3. DefenseCouncil lưu assignment với snapshot phiếu duyệt/report/version/file/checksum, assigned_by/at thực tế, receipt và audit outbox cùng commit. Partial unique index bảo vệ một active/nhóm. Không đổi trạng thái nhóm hoặc bản báo cáo đã khóa.
+4. GVPB đọc nhiệm vụ active của chính mình; endpoint download của ThesisManagement hỏi contract kiểm tra assignment/binding/account hiện tại rồi ký URL MinIO/S3 đúng file với TTL 5 phút. Không cấp quyền đọc lịch sử nhóm hoặc phiếu/điểm GVHD; metadata không có object key/URL sẵn. Quyền độc lập của SCRUM-102 vẫn có hiệu lực.
+5. DELETE nhận JSON version/lý do và UUID key. Server khóa assignment, từ chối nếu có bất kỳ ReviewerEvaluation; nếu chưa chấm thì lưu cancellation actor/time/reason, receipt và audit trong một transaction, kể cả batch đã đóng. Audit chỉ có cờ có lý do, không sao chép nội dung lý do/điểm/nhận xét.
+6. Hủy chặn cấp URL mới; URL đã ký không bị thu hồi trước TTL. Phân công lại tạo dòng mới bằng POST và kiểm tra lại đầy đủ điều kiện tạo, kể cả chọn lại cùng người. Giữ lịch sử và giữ nhóm ReadyForReviewerAssignment.
+7. Writer SCRUM-105 phải dùng coordinator + LockForEvaluationAsync và giữ khóa parent tới commit để tuần tự hóa với DELETE; SCRUM-104 chưa có API nhập phiếu. Bằng chứng race, rollback và lưu trữ thật tại [ReviewerAssignmentVerification.md](ApiContract/ReviewerAssignmentVerification.md).

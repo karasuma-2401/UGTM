@@ -52,7 +52,7 @@ namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 // Unlike the focused HTTP tests, this host uses real batch/advisor readers, unit of work and S3 storage.
 // Only authentication and the business clock are controlled by the test.
 [Collection(PostgreSqlCollection.Name)]
-public sealed class FinalReportWorkflowIntegrationTests(PostgreSqlFixture database, MinioFixture minio)
+public sealed partial class FinalReportWorkflowIntegrationTests(PostgreSqlFixture database, MinioFixture minio)
     : IClassFixture<MinioFixture>, IAsyncLifetime
 {
     private static readonly DateTime SeedTime = new(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -109,6 +109,7 @@ public sealed class FinalReportWorkflowIntegrationTests(PostgreSqlFixture databa
             ["Notifications:Smtp:TimeoutSeconds"] = "5"
         });
         builder.Services.AddUgtmModules(builder.Configuration);
+        UGTM.Api.OpenApi.OpenApiConfiguration.AddUgtmOpenApi(builder.Services);
         builder.Services.RemoveAll<IHostedService>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -121,6 +122,7 @@ public sealed class FinalReportWorkflowIntegrationTests(PostgreSqlFixture databa
         _app.UseAuthentication();
         _app.UseAuthorization();
         _app.MapUgtmModules();
+        _app.MapOpenApi();
         await _app.Services.GetRequiredService<IAmazonS3>().PutBucketAsync(new PutBucketRequest { BucketName = _bucket });
         await _app.StartAsync();
         _client = new HttpClient { BaseAddress = new Uri(_app.Urls.Single()) };

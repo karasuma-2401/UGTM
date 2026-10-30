@@ -1,6 +1,6 @@
 # Reviewer assignment API contract — SCRUM-104
 
-Trạng thái: **CP0–CP4 đã có nền tảng và API ghi; CP5 có bốn API đọc và tích hợp quyền tải đúng file cho GVPB; nghiệm thu toàn luồng/tài liệu tổng thể thuộc CP6**. Cập nhật 30/10/2026. Nền tảng CP1/CP2 ở mục 12/13; POST/DELETE ở mục 14/15; API đọc/tải ở mục 16. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
+Trạng thái: **CP0–CP5 đã có nền tảng, POST/DELETE, bốn API đọc và quyền tải đúng file cho GVPB; phạm vi/kết quả nghiệm thu CP6 tại [ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md)**. Cập nhật 30/10/2026. Nền tảng CP1/CP2 ở mục 12/13; POST/DELETE ở mục 14/15; API đọc/tải ở mục 16. Nền bàn giao đã có ở [SCRUM-103](AdvisorEvaluationApprovalApiContract.md); báo cáo/file thuộc [SCRUM-102](ThesisManagementApiContract.md).
 
 Phạm vi: phân công/hủy một GVPB cho mỗi nhóm; tra cứu phục vụ quản trị và nhiệm vụ của GVPB; cấp link tải đúng bản báo cáo đã duyệt. Không gồm UI SCRUM-113, nhập điểm/phiếu SCRUM-105, phản biện thứ hai/xử lý không đồng thuận, tổng hợp/công bố điểm, lưu chiểu, phân công hàng loạt, email/in-app hay API thay GVHD.
 
@@ -124,7 +124,7 @@ await httpClient.delete(`/api/thesis/reviewer-assignments/${assignment.id}`, {
 });
 ```
 
-Đây là ví dụ ý định mới; khi retry do mất response phải **giữ lại key/body gốc**, không gọi randomUUID lần nữa. Client HTTP hiện tại là Axios, CORS cho mọi method/header và Caddy chuyển tiếp `/api/*`; source không có cấu hình loại body DELETE. CP4 đã kiểm chứng request body qua Kestrel và Caddy container dùng cấu hình/image production tại mục 15. Gateway đang deploy, TLS/domain và đường frontend thực tế tiếp tục kiểm chứng ở CP6; không tự đổi sang POST hủy mà không cập nhật contract.
+Đây là ví dụ ý định mới; khi retry do mất response phải **giữ lại key/body gốc**, không gọi randomUUID lần nữa. Client HTTP hiện tại là Axios, CORS cho mọi method/header và Caddy chuyển tiếp `/api/*`; source không có cấu hình loại body DELETE. CP4/CP6 kiểm chứng request body qua Kestrel và Caddy container dùng cấu hình/image production tại mục 15. Domain/TLS và frontend trên hạ tầng đang deploy chưa được nghiệm thu trong phiên local này; không tự đổi sang POST hủy mà không cập nhật contract.
 
 ### 4.3. Idempotency và thứ tự lỗi
 
@@ -496,3 +496,11 @@ dotnet test backend/tests/DefenseCouncil.Tests/UGTM.Modules.DefenseCouncil.Tests
 dotnet test backend/tests/Architecture.Tests/UGTM.Architecture.Tests.csproj --configuration Release --artifacts-path artifacts/scrum104-cp5 --no-build --no-restore
 dotnet format UGTM.sln --no-restore --verify-no-changes
 ```
+
+## 17. CP6: nghiệm thu xuyên module và OpenAPI
+
+[ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md) ghi nguồn test, lệnh chạy lại, kết quả cuối và giới hạn môi trường. Hai ca mới dùng production composition, PostgreSQL/FK và MinIO thật để đi từ nộp v1/v2, khóa/duyệt v2 đến phân công, tải byte thật, hủy, mất quyền cấp URL mới và phân công lại cùng/khác giảng viên. Writer test dùng contract khóa SCRUM-105 để lưu phiếu 0/ẩn/bị loại rồi xác nhận Admin không thể hủy; chưa có API chấm phản biện.
+
+OpenAPI production bổ sung query của bốn GET (GUID, bool, keyword, paging và selector bắt buộc) cùng header UUID `Idempotency-Key` bắt buộc ở mọi môi trường cho POST/DELETE. Giữ parser runtime nghiêm ngặt và JSON DELETE; metadata không thay đổi luật nghiệp vụ. Test gọi document thật và xác nhận schema list phẳng, body/header/query. Không có migration mới ở CP6.
+
+Requirements, UseCases, DataFlows, DataModel và DBML đã đồng bộ một active/nhóm, lịch sử/phân công lại, snapshot/legacy/xmin, receipt, FK Restrict và giao thức khóa chấm–hủy. DBML ghi predicate partial index trong note; không dùng DBML export thay migration. Các mục CP1–CP5 phía trên là bằng chứng lịch sử tại checkpoint tương ứng; kết quả/nghiệm thu hiện tại xem tài liệu CP6. Caddy được kiểm tra trong container local; domain/TLS/frontend đang deploy chưa được kiểm chứng trong phiên này.

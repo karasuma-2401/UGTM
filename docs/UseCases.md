@@ -164,3 +164,15 @@ Các đặc tả dưới đây dựa trên mục 2.3.2 của bản final, bổ s
 
 
 Quy tắc công thức chấm điểm được quản lý tập trung tại [Requirements.md](Requirements.md). Đây là đặc tả nghiệp vụ cần triển khai, không xác nhận API đã tồn tại. Hai công thức chia 6/chia 7, việc GVPB kiêm ủy viên không chấm Hội đồng và loại cả điểm/hệ số khi điểm không được công nhận đã được nhóm xác nhận ngày 10/10/2026.
+
+## Phân công GVPB — phạm vi triển khai SCRUM-104
+
+| Thuộc tính | Nội dung |
+| --- | --- |
+| Tác nhân | Faculty/Khoa và AcademicAffairs/PĐT có permission read/manage tương ứng; Admin được bỏ qua permission. Phạm vi toàn hệ thống. GVPB có tài khoản Active và Lecturer. |
+| Tiên quyết tạo | Đợt Open; phiếu GVHD đã đồng ý/khóa và khớp bản InitialFinal đang UnderEvaluation; nhóm ReadyForReviewerAssignment. Không phụ thuộc cửa sổ nộp bài của sinh viên. |
+| Luồng chính | 1. Người quản lý tra cứu nhóm đủ điều kiện và ứng viên Active/Lecturer khác GVHD hiện tại.<br>2. Gửi POST với group/reviewer, expectedAdvisorEvaluationId, expectedReportVersionNo và UUID Idempotency-Key.<br>3. Server khóa các điều kiện trong transaction, kiểm tra lại, tạo một phân công active, snapshot và audit/receipt cùng commit.<br>4. GVPB đọc nhiệm vụ của chính mình và xin URL tải đúng file đã duyệt; server kiểm tra lại quyền ngay khi cấp URL. |
+| Hủy/đổi người | Quản lý gửi DELETE JSON gồm expectedAssignmentVersion và lý do trim 1–1000 Unicode rune, UUID key. Nếu chưa có bất kỳ phiếu GVPB nào, hủy mềm và audit người/thời điểm thực tế; không yêu cầu đợt Open. Phân công lại dùng POST/key mới, giữ dòng cũ; có thể chọn lại cùng người. |
+| Ngoại lệ | Trùng active, binding/GVHD đã đổi, phiên bản cũ hoặc key trùng nhưng khác ý định trả 409; thiếu quyền 403. Mọi phiếu GVPB, kể cả điểm 0/ẩn/bị loại khỏi tính điểm, đều chặn hủy. Retry cùng ý định/key trả receipt gốc, không ghi thêm audit hoặc kích hoạt lại dòng đã hủy. |
+| Hậu điều kiện | Nhóm vẫn ReadyForReviewerAssignment, báo cáo vẫn khóa; giữ lịch sử và audit. Hủy chặn cấp URL mới; URL đã cấp còn dùng tới TTL 5 phút. Quyền Student/GVHD/FacultyGate/Admin độc lập theo SCRUM-102 vẫn áp dụng. |
+| Giới hạn | Quyền GVPB không mở lịch sử báo cáo hoặc phiếu/điểm GVHD. Nhập điểm SCRUM-105, phản biện thứ hai, thông báo và tổng hợp điểm thuộc task khác. Xem [contract](ApiContract/ReviewerAssignmentApiContract.md) và [bằng chứng nghiệm thu](ApiContract/ReviewerAssignmentVerification.md). |

@@ -7,6 +7,8 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
     <PackageReference Include="Testcontainers" Version="4.16.0" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -32,6 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\host\Api\OpenApi\*.cs" Link="ProductionComposition\OpenApi\%(Filename)%(Extension)" />
     <Compile Include="..\..\host\Api\AdvisorEvaluations\AdvisorWorkflowTransactionCoordinator.cs"
              Link="ProductionComposition\AdvisorWorkflowTransactionCoordinator.cs" />
     <Compile Include="..\..\host\Api\Modules\ModuleRegistration.cs"
