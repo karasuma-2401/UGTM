@@ -1,8 +1,12 @@
+using Microsoft.EntityFrameworkCore;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
+using UGTM.Modules.DefenseCouncil.Application.Persistence;
+using UGTM.Modules.DefenseCouncil.Domain.Entities;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
 
-public sealed class DefenseCouncilDbContext(DbContextOptions<DefenseCouncilDbContext> options) : ModuleDbContext(options)
+public sealed class DefenseCouncilDbContext(DbContextOptions<DefenseCouncilDbContext> options)
+    : ModuleDbContext(options), IDefenseCouncilUnitOfWork
 {
     public override string Schema => "councils";
 
