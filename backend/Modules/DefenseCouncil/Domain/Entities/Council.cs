@@ -19,4 +19,38 @@ public class Council
 
     public ICollection<CouncilMember> Members { get; set; } = [];
     public ICollection<CouncilAssignment> Assignments { get; set; } = [];
+
+    public static Council Create(
+        Guid batchId,
+        string councilCode,
+        DateOnly defenseDate,
+        string timeSlot,
+        string room)
+    {
+        return new Council
+        {
+            Id = Guid.NewGuid(),
+            BatchId = batchId,
+            CouncilCode = councilCode.Trim(),
+            DefenseDate = defenseDate,
+            TimeSlot = timeSlot.Trim(),
+            Room = room.Trim(),
+            Status = CouncilStatus.Draft
+        };
+    }
+
+    public void Approve(
+        string decisionNumber,
+        DateOnly? signedDate,
+        string? decisionFileUrl,
+        Guid approvedBy,
+        DateTime approvedAt)
+    {
+        Status = CouncilStatus.Active;
+        DecisionNumber = decisionNumber.Trim();
+        SignedDate = signedDate;
+        DecisionFileUrl = string.IsNullOrWhiteSpace(decisionFileUrl) ? null : decisionFileUrl.Trim();
+        ApprovedBy = approvedBy;
+        ApprovedAt = approvedAt;
+    }
 }
