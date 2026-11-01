@@ -101,3 +101,58 @@ public sealed record CouncilScheduleResponseDto(
     DateOnly? SignedDate,
     IReadOnlyList<CouncilScheduleMemberDto> Members,
     IReadOnlyList<CouncilScheduleGroupDto> Groups);
+
+public sealed record CriterionScoreInputDto(
+    Guid CriteriaId,
+    decimal Score);
+
+public sealed record SubmitCouncilScoreInputDto(
+    IReadOnlyList<CriterionScoreInputDto> Details,
+    string? Feedback = null);
+
+public sealed record EvaluationDetailResponseDto(
+    Guid Id,
+    Guid CriteriaId,
+    string CriteriaCode,
+    string CriteriaName,
+    decimal Score,
+    decimal MaxScore);
+
+public sealed record CouncilScoreResponseDto(
+    Guid Id,
+    Guid CouncilAssignmentId,
+    Guid CouncilMemberId,
+    Guid UserId,
+    decimal Score,
+    string? Feedback,
+    DateTime EvaluatedAt,
+    IReadOnlyList<EvaluationDetailResponseDto> Details);
+
+public sealed record MemberScoreDetailDto(
+    Guid CouncilMemberId,
+    Guid UserId,
+    string FullName,
+    string Email,
+    string? UserCode,
+    string Role,
+    decimal? Score,
+    string? Feedback,
+    DateTime? EvaluatedAt,
+    bool IsReviewerInCouncil,
+    bool IsBlockedFromScoring);
+
+public sealed record CouncilDiscrepancyResponseDto(
+    Guid AssignmentId,
+    Guid CouncilId,
+    Guid GroupId,
+    bool IsDiscrepancyDetected,
+    decimal WarningThreshold,
+    decimal? ScoreDifference,
+    decimal? MaxScore,
+    decimal? MinScore,
+    string? WarningMessage,
+    bool AllScoresSubmitted,
+    decimal? AverageCouncilScore,
+    decimal? FinalScore,
+    IReadOnlyList<MemberScoreDetailDto> MemberScores);
+
