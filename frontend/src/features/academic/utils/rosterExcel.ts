@@ -270,7 +270,7 @@ export function validateRosterRows(
           phoneNumber: row.phoneNumber,
           status: 'Valid',
           statusLabel: 'Hợp lệ',
-          note: 'Đã có · chờ kích hoạt',
+          note: 'Đã có - chờ kích hoạt',
         };
       }
 
@@ -282,7 +282,7 @@ export function validateRosterRows(
         phoneNumber: row.phoneNumber,
         status: 'Valid',
         statusLabel: 'Hợp lệ',
-        note: 'Đã có · giữ tài khoản hiện tại',
+        note: 'Đã có - giữ tài khoản hiện tại',
       };
     }
 

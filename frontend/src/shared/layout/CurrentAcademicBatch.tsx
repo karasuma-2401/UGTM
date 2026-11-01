@@ -54,7 +54,7 @@ export function CurrentAcademicBatch() {
                   {batch.batchName}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-500">
-                  HK{batch.semester} · {batch.academicYear}
+                  HK{batch.semester} - {batch.academicYear}
                 </p>
               </li>
             ))}

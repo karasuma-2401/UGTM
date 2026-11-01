@@ -66,7 +66,19 @@ public sealed class S3ThesisSubmissionObjectStorage : IThesisSubmissionObjectSto
             AutoResetStreamPosition = false
         };
 
-        await _s3Client.PutObjectAsync(putObjectRequest, cancellationToken);
+        try
+        {
+            await _s3Client.PutObjectAsync(putObjectRequest, cancellationToken);
+        }
+        catch (AmazonS3Exception ex) when (string.Equals(ex.ErrorCode, "NoSuchBucket", StringComparison.OrdinalIgnoreCase))
+        {
+            await _s3Client.PutBucketAsync(_options.BucketName, cancellationToken);
+            if (content.CanSeek)
+            {
+                content.Position = 0;
+            }
+            await _s3Client.PutObjectAsync(putObjectRequest, cancellationToken);
+        }
     }
 
     public Task<Uri> CreateDownloadUriAsync(

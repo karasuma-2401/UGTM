@@ -33,7 +33,8 @@ public sealed class GetProgressMilestonesHandler(
             return Result.Failure<IReadOnlyList<ProgressMilestoneDto>>(ProgressMilestoneErrors.GroupNotFound);
         }
 
-        if (!ThesisAuthorization.IsAdministrator(currentUser))
+        var isMember = group.Members.Any(member => member.StudentId == currentUser.UserId.Value);
+        if (!isMember && !ThesisAuthorization.IsAdministrator(currentUser))
         {
             var assignment = await advisorAssignmentContract.GetByTopicIdAsync(group.TopicId, cancellationToken);
             if (assignment?.AdvisorId != currentUser.UserId.Value)

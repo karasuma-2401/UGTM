@@ -76,11 +76,11 @@ export const RosterPreviewTable: React.FC<RosterPreviewTableProps> = ({
 
         <div className="flex items-center gap-2 text-xs font-medium text-slate-600">
           <span>{summary.total} dòng</span>
-          <span>·</span>
+          <span>-</span>
           <span className="text-emerald-700 font-semibold">{summary.valid} hợp lệ</span>
           {(summary.needsFix > 0 || summary.duplicate > 0) && (
             <>
-              <span>·</span>
+              <span>-</span>
               <span className="text-rose-700 font-semibold">
                 {summary.needsFix + summary.duplicate} cần sửa
               </span>

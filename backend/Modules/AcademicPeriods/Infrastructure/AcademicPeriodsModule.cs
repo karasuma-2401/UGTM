@@ -35,6 +35,10 @@ public sealed class AcademicPeriodsModule : IModule
     {
         services.AddModuleDbContext<AcademicPeriodsDbContext>(configuration);
         services.AddScoped<IKltnBatchReader, KltnBatchReader>();
+        services.AddScoped<UGTM.Modules.AcademicPeriods.Contracts.ReviewerEvaluations.IReviewerDefenseRuleReader, ReviewerDefenseRuleReader>();
+        services.AddScoped<UGTM.Modules.AcademicPeriods.Contracts.ReviewerAssignments.IReviewerAssignmentBatchReader,
+            Persistence.Repositories.ReviewerAssignmentBatchReader>();
+        services.AddScoped<IBatchSummaryReader, BatchSummaryReader>();
         services.AddScoped<IAcademicBatchQueryReader, AcademicBatchQueryReader>();
         services.AddScoped<IScoreConfigurationQueryReader, ScoreConfigurationQueryReader>();
         services.AddScoped<IKltnBatchRepository, KltnBatchRepository>();
@@ -68,6 +72,7 @@ public sealed class AcademicPeriodsModule : IModule
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
-            .WithName($"{Name}.Ping");
+            .WithName($"{Name}.Ping")
+            .ExcludeFromDescription();
     }
 }

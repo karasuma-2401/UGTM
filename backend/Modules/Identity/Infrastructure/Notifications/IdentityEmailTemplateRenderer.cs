@@ -120,7 +120,7 @@ public sealed class IdentityEmailTemplateRenderer(IOptions<IdentityEmailOptions>
                       <tr>
                         <td style="padding:21px 34px;background:#F7F9FC;border-top:1px solid #E8EDF4;color:#697E9F;font-size:12px;line-height:1.6;text-align:center;">
                           Email được gửi tự động từ UGTM. Vui lòng không trả lời email này.<br>
-                          © {{DateTime.UtcNow.Year}} UGTM · {{ProductName}}
+                          © {{DateTime.UtcNow.Year}} UGTM - {{ProductName}}
                         </td>
                       </tr>
                     </table>

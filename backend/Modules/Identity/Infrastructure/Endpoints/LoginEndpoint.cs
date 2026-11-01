@@ -19,7 +19,7 @@ public static class LoginEndpoint
         RefreshCookieService cookies,
         CancellationToken cancellationToken)
     {
-        await antiforgery.ValidateRequestAsync(httpContext);
+        await antiforgery.ValidateRequestSafelyAsync(httpContext);
 
         var metadata = clientMetadata.Capture(httpContext);
 

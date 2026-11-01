@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\DefenseCouncil\Contracts\UGTM.Modules.DefenseCouncil.Contracts.csproj" />
     <ProjectReference Include="..\Contracts\UGTM.Modules.ThesisManagement.Contracts.csproj" />
     <ProjectReference Include="..\Domain\UGTM.Modules.ThesisManagement.Domain.csproj" />
     <ProjectReference Include="..\..\AcademicPeriods\Contracts\UGTM.Modules.AcademicPeriods.Contracts.csproj" />

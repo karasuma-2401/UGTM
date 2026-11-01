@@ -10,6 +10,7 @@ public enum StudentGroupStatus
     MidtermSubmitted,
     Stopped,
     FinalReportSubmitted,
+    ReadyForReviewerAssignment,
     Defended,
     ScoreLocked,
     Completed

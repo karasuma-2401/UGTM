@@ -56,7 +56,7 @@ export function TopicStudentAssignmentField({
         <div className="space-y-1 text-xs text-slate-600" aria-label="Sinh viên đang được ghi nhận">
           {currentStudents.map((student) => (
             <p key={student.studentId} className="break-words">
-              {student.fullName} · {student.userCode || student.studentId}
+              {student.fullName} - {student.userCode || student.studentId}
             </p>
           ))}
         </div>

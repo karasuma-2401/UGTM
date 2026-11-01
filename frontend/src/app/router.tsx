@@ -14,6 +14,15 @@ import { UsersPage } from '../features/identity';
 import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
 import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
 import { StudentTopicCatalogPage } from '../features/topics/pages/StudentTopicCatalogPage';
+import {
+  SyllabusSubmissionPage,
+  SyllabusReviewPage,
+  MidtermSubmissionPage,
+  MidtermReviewPage,
+  StudentMilestoneSubmissionPage,
+  AdvisorMilestoneSetupPage,
+  AdvisorMilestoneReviewPage,
+} from '../features/thesis';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -47,6 +56,70 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['Student', 'Admin']}>
             <StudentTopicCatalogPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/proposal',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <SyllabusSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/midterm',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <MidtermSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/milestones',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <StudentMilestoneSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/review/syllabus',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin', 'AcademicAffairs']}>
+            <SyllabusReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/review/midterm',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin', 'AcademicAffairs']}>
+            <MidtermReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/review',
+        element: <Navigate to="/thesis/review/syllabus" replace />,
+      },
+      {
+        path: 'thesis/progress',
+        element: <Navigate to="/thesis/proposal" replace />,
+      },
+      {
+        path: 'advisor/milestones',
+        element: (
+          <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
+            <AdvisorMilestoneSetupPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'advisor/milestones/:milestoneId/review',
+        element: (
+          <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
+            <AdvisorMilestoneReviewPage />
           </ProtectedRoute>
         ),
       },

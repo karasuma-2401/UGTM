@@ -16,6 +16,22 @@ internal static class CrossModuleForeignKeys
             .WithOne().HasForeignKey<AdvisorEvaluation>(x => x.GroupId)
             .HasConstraintName("fk_advisor_evaluation_student_groups_group_id")
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<AdvisorEvaluation>().HasOne<FinalReport>()
+            .WithMany().HasForeignKey(x => x.FinalReportId)
+            .HasConstraintName("fk_advisor_evaluation_final_reports_final_report_id")
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdvisorEvaluation>().HasOne<SubmissionFile>()
+            .WithMany().HasForeignKey(x => x.SubmissionFileId)
+            .HasConstraintName("fk_advisor_evaluation_submission_files_submission_file_id")
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdvisorEvaluation>().HasOne<User>()
+            .WithMany().HasForeignKey(x => x.EvaluatedBy)
+            .HasConstraintName("fk_advisor_evaluation_users_evaluated_by")
+            .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdvisorEvaluation>().HasOne<User>()
+            .WithMany().HasForeignKey(x => x.DecisionBy)
+            .HasConstraintName("fk_advisor_evaluation_users_decision_by")
+            .OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<Council>().HasOne<User>()
             .WithMany().HasForeignKey(x => x.ApprovedBy)
             .HasConstraintName("fk_council_users_approved_by")

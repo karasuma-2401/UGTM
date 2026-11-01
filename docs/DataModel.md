@@ -1,18 +1,20 @@
 # Mô hình dữ liệu UGTM
 
-Đối chiếu source ngày 21/10/2026. Nghiệp vụ theo [Requirements.md](Requirements.md); cấu trúc dưới đây lấy từ metadata mô hình EF Core, không suy diễn từ sơ đồ kiến trúc cũ trong Word.
+Đối chiếu source ngày 29/10/2026. Nghiệp vụ theo [Requirements.md](Requirements.md); cấu trúc dưới đây lấy từ metadata mô hình EF Core, không suy diễn từ sơ đồ kiến trúc cũ trong Word.
 
-Phạm vi SCRUM-102 (`FinalReport`, metadata `SubmissionFile`, concurrency của nhóm và trạng thái xác nhận thành viên) được đồng bộ ngày 28/10/2026. Các phần khác, bao gồm thống kê tổng hợp số bảng/FK, giữ mốc đối chiếu riêng ở trên; xem [nghiệm thu SCRUM-102](ApiContract/FinalReportSubmissionVerification.md) để biết phạm vi đã kiểm chứng.
+Phạm vi SCRUM-102/103 được đồng bộ ngày 29/10/2026. SCRUM-104 (`ReviewerAssignment`, receipt idempotency và FK phiếu phản biện) được đồng bộ ngày 30/10/2026 theo migration `20261030022105_AddReviewerAssignmentWorkflowFoundation`; xem [nghiệm thu phân công](ApiContract/ReviewerAssignmentVerification.md). Các thống kê tổng số bảng/FK dưới đây giữ mốc đối chiếu cũ, không bao gồm các bảng kỹ thuật outbox/receipt mới; không dùng chúng làm tổng số hiện tại của database. Xem thêm [SCRUM-102](ApiContract/FinalReportSubmissionVerification.md) và [SCRUM-103](ApiContract/AdvisorEvaluationApprovalVerification.md).
+
+Phạm vi SCRUM-105 CP1 được đồng bộ ngày 30/10/2026: lifecycle/metadata/xmin của ReviewerEvaluation và receipt. CP2–CP3 dùng trực tiếp schema này cho chấm/đọc/gate/feedback, không thêm migration. CP3 derive eligibility theo rule Active hiện tại, không persist ReadyForDefense; feedback chỉ projection comment đã phát hành trên snapshot gốc, không dùng report current version để nối lại góp ý.
 
 ## 1. Nguồn chuẩn
 
-Sáu DbContext runtime, mỗi context chỉ có entity/schema của module mình; [UGTMDbContext](../backend/Database.Migrations/UGTMDbContext.cs) chỉ tổng hợp mô hình để tạo migration và không được đăng ký DI runtime. Cấu trúc vật lý gồm **41 bảng nghiệp vụ, 6 schema, 55 FK vật lý**. Quy ước snake_case; enum lưu string `varchar(50)`, không phải PostgreSQL enum. Guid dùng cho phần lớn ID; Role/Permission dùng int; UserRole/RolePermission dùng khóa ghép. Bảng lịch sử `public.__ef_migrations_history` không tính trong 41 bảng nghiệp vụ; public là schema kỹ thuật ngoài 6 schema nghiệp vụ.
+Sáu DbContext runtime, mỗi context chỉ có entity/schema của module mình; [UGTMDbContext](../backend/Database.Migrations/UGTMDbContext.cs) chỉ tổng hợp mô hình để tạo migration và không được đăng ký DI runtime. Thống kê lịch sử trước các bảng kỹ thuật outbox/receipt SCRUM-103/104: **41 bảng nghiệp vụ, 6 schema, 55 FK vật lý**. Quy ước snake_case; enum lưu string `varchar(50)`, không phải PostgreSQL enum. Guid dùng cho phần lớn ID; Role/Permission dùng int; UserRole/RolePermission dùng khóa ghép. Bảng lịch sử `public.__ef_migrations_history` không tính trong 41 bảng nghiệp vụ; public là schema kỹ thuật ngoài 6 schema nghiệp vụ.
 
 Nguồn thực thi: [EF configurations tại từng module](../backend/Modules), [migrations](../backend/Database.Migrations/Migrations), [snapshot](../backend/Database.Migrations/Migrations/UGTMDbContextModelSnapshot.cs). [DatabaseScript.txt](DatabaseScript.txt) là DBML đồng bộ theo mô hình này để xem bằng dbdiagram; không chứa comment dư thừa và không phải SQL để update Neon. PK, nullability, kiểu PostgreSQL, SQL default, index, check và FK đều được lấy từ EF metadata. Seed dữ liệu và chi tiết provider vẫn xem migration. Cú pháp theo [DBML chính thức](https://dbml.dbdiagram.io/docs/).
 
 [Sơ đồ schema](../backend/docs/Architecture/PlantUML/MultiSchema_Database.puml); [quyền sở hữu bảng/module và hướng triển khai](../backend/docs/Architecture/Architecture.md#6-migrations-và-neon). Nhóm sinh viên nằm ở thesis; identity giữ audit quản trị; notification có schema notifications riêng. Schema shared đã được loại bỏ. Sáu schema được tổ chức theo chủ sở hữu dữ liệu, không dùng số lượng schema để chứng minh bounded context DDD.
 
-| Schema | Số bảng | Entity |
+| Schema | Số bảng (mốc cũ) | Entity |
 | --- | --- | --- |
 | identity | 10 | AuditLog, AuthenticationSession, IdentityOutboxMessage, OneTimeChallenge, Permission, RefreshToken, Role, RolePermission, User, UserRole |
 | academic | 7 | AuditOutboxMessage, KltnBatch, ScheduleTemplateVersion, ScoreComponentConfig, ScoreWeightConfig, Stage, StageTemplateDefinition |
@@ -27,13 +29,14 @@ Nguồn thực thi: [EF configurations tại từng module](../backend/Modules),
 - `ScoreSummaryComponent` lưu điểm/trọng số/nguồn và cờ loại; `ScoreSummary` có tổng trọng số, thời điểm tính và snapshot cấu hình. Snapshot cần được use case ghi cùng kết quả, chưa có API lưu tự động.
 - Các nguồn GVHD/GVPB/Hội đồng có cờ loại điểm và lý do; không tự loại điểm do cảnh báo sai biệt. Công thức chia 6/7 và loại cả hệ số đã được xây dựng trong Domain; xem [Architecture.md#6-migrations-và-neon](../backend/docs/Architecture/Architecture.md#6-migrations-và-neon).
 - Giữa kỳ dùng AdvisorFeedback, kết luận tiếp tục/dừng, StopReason. `faculty_feedback` cũ được rename sang `advisor_feedback` để giữ dữ liệu; policy GVHD cần triển khai.
-- Phân công nhiều phản biện bằng thứ tự phân công; lưu riêng RevisionFeedback để API có thể công khai góp ý mà bảo mật điểm/phiếu.
+- SCRUM-104 chỉ cho một phân công phản biện active/nhóm, AssignmentOrder mới luôn 1. Giữ cột này cho dữ liệu legacy và task phản biện thứ hai về sau; không cho tạo phản biện thứ hai qua API hiện tại. RevisionFeedback vẫn thuộc mô hình phiếu điểm của task tiếp theo.
 - Lưu chiểu có metadata Việt/Anh, phiên bản, GVHD xác nhận và phản hồi Khoa; biên bản có người cấp mở khóa.
+- `AdvisorEvaluation` mới luôn gắn bằng snapshot với `FinalReport`, phiên bản, `SubmissionFile` và checksum đã khóa. Các giá trị này nằm ở schema DefenseCouncil nhưng được kiểm tra chéo trong transaction với ThesisManagement; không thêm FK xuyên module. Bản ghi cũ không đủ binding mang cờ `IsLegacy`, không được dùng cho workflow SCRUM-103.
 - Migration seed 6 role hệ thống; không seed tài khoản hoặc mật khẩu. Không thay đổi provider/database bằng việc sửa docs.
 
 ## 3. Ràng buộc và giới hạn
 
-Unique `(StudentId, BatchId)` của StudentGroupMember ngăn sinh viên ở hai nhóm cùng đợt. Unique `(GroupId, StudentId)` ngăn thành viên lặp. Unique `(CouncilAssignmentId, CouncilMemberId)` ngăn hai phiếu Hội đồng của cùng người cho cùng phân công. ReviewerAssignment unique `(GroupId, AssignmentOrder)` và `(GroupId, ReviewerId)` cho phép phản biện thứ hai.
+Unique `(StudentId, BatchId)` của StudentGroupMember ngăn sinh viên ở hai nhóm cùng đợt. Unique `(GroupId, StudentId)` ngăn thành viên lặp. Unique `(CouncilAssignmentId, CouncilMemberId)` ngăn hai phiếu Hội đồng của cùng người cho cùng phân công. ReviewerAssignment dùng partial unique `GroupId WHERE is_active = true`; hai unique lịch sử `(GroupId, AssignmentOrder)`/`(GroupId, ReviewerId)` đã được bỏ để cho phép hủy rồi tạo lại cùng giảng viên/thứ tự bằng dòng mới.
 
 AcademicPeriods bảo đảm một đợt cho mỗi `(AcademicYear, Semester)`, đúng bảy stage liên tục và deadline UTC sinh từ lịch mẫu theo `Asia/Ho_Chi_Minh`. Lịch mẫu và cấu hình điểm đều có version bất biến sau khi publish; partial unique index chỉ cho phép một `Active` và một `Draft` phù hợp. `xmin` bảo vệ cập nhật đồng thời của batch/cấu hình điểm, còn audit outbox được ghi cùng transaction nghiệp vụ. Topic.StudentNumber có check 1–2 khi có giá trị. Aggregate StudentGroup giới hạn 2 thành viên, không trùng và cùng đợt qua AddMember; đăng ký đồng thời, chỉ tiêu đề tài và thời hạn cần Application kiểm soát trong transaction. Các phiếu điểm có check 0–10; precision trong DB không thay quy định nhập một chữ số thập phân ở API.
 
@@ -206,17 +209,27 @@ PK: `id`. Unique: `(template_version_id, order_index)` và `(template_version_id
 | Id | id | `Guid` | `uuid` | Không | — |
 | AllowsReviewerAssignment | allows_reviewer_assignment | `Boolean?` | `boolean` | Có | — |
 | Comment | comment | `String` | `text` | Có | — |
+| DecisionAt | decision_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| DecisionBy | decision_by | `Guid?` | `uuid` | Có | — |
 | EvaluatedAt | evaluated_at | `DateTime` | `timestamp with time zone` | Không | — |
+| EvaluatedBy | evaluated_by | `Guid?` | `uuid` | Có | — |
 | ExclusionReason | exclusion_reason | `String` | `text` | Có | — |
+| FinalReportId | final_report_id | `Guid?` | `uuid` | Có | — |
 | GroupId | group_id | `Guid` | `uuid` | Không | — |
 | IsIgnoredInCalculation | is_ignored_in_calculation | `Boolean` | `boolean` | Không | false |
+| IsLegacy | is_legacy | `Boolean` | `boolean` | Không | true |
+| RejectionReason | rejection_reason | `String` | `text` | Có | — |
+| ReportVersionNo | report_version_no | `Int32?` | `integer` | Có | — |
 | Score | score | `Decimal` | `numeric(4,2)` | Không | — |
+| SubmissionChecksumSha256 | submission_checksum_sha256 | `String` | `character varying(64)` | Có | — |
+| SubmissionFileId | submission_file_id | `Guid?` | `uuid` | Có | — |
+| Version | xmin | `UInt32` | `xid` | Không | PostgreSQL quản lý |
 
 PK: `id`.
 
-Index: `ix_advisor_evaluation_group_id` (group_id) unique.
+Index: `ix_advisor_evaluation_group_id` (group_id) unique; `ix_advisor_evaluation_final_report_id` (final_report_id); `ix_advisor_evaluation_submission_file_id` (submission_file_id); `ix_advisor_evaluation_evaluated_by` (evaluated_by); `ix_advisor_evaluation_decision_by` (decision_by).
 
-Check: `ck_advisor_evaluation_score`: `score BETWEEN 0 AND 10`.
+Check: `ck_advisor_evaluation_score`: `score BETWEEN 0 AND 10`. Với `is_legacy = false`, `ck_advisor_evaluation_workflow_binding` bắt buộc final report, số phiên bản dương, submission file, SHA-256 64 ký tự, actor chấm và nhận xét đã trim 1–2.000 ký tự. `ck_advisor_evaluation_reviewer_assignment_decision` buộc quyết định chưa đồng ý có lý do trim 1–1.000 ký tự, actor/thời điểm quyết định; quyết định đồng ý không có lý do. `Version` là concurrency token `xmin`; `IsLocked` là thuộc tính suy ra từ `!IsLegacy && AllowsReviewerAssignment == true`, không phải cột.
 
 ### councils.council — Council
 
@@ -370,38 +383,90 @@ Index: `ix_grading_criteria_batch_id_criteria_code` (batch_id, criteria_code) un
 | GroupId | group_id | `Guid` | `uuid` | Không | — |
 | IsActive | is_active | `Boolean` | `boolean` | Không | true |
 | ReviewerId | reviewer_id | `Guid` | `uuid` | Không | — |
+| AdvisorIdAtAssignment | advisor_id_at_assignment | `Guid?` | `uuid` | Có | — |
+| AdvisorEvaluationId | advisor_evaluation_id | `Guid?` | `uuid` | Có | — |
+| FinalReportId | final_report_id | `Guid?` | `uuid` | Có | — |
+| ReportVersionNo | report_version_no | `Int32?` | `integer` | Có | — |
+| SubmissionFileId | submission_file_id | `Guid?` | `uuid` | Có | — |
+| SubmissionChecksumSha256 | submission_checksum_sha256 | `String?` | `character varying(64)` | Có | — |
+| IsLegacy | is_legacy | `Boolean` | `boolean` | Không | true |
+| CancelledBy | cancelled_by | `Guid?` | `uuid` | Có | — |
+| CancelledAt | cancelled_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| CancellationReason | cancellation_reason | `String?` | `text` | Có | — |
+| Version | xmin | `UInt32` | `xid` (system column) | Không | PostgreSQL |
 
 PK: `id`.
 
-Index: `ix_reviewer_assignment_assigned_by` (assigned_by); `ix_reviewer_assignment_reviewer_id` (reviewer_id); `ix_reviewer_assignment_group_id_assignment_order` (group_id, assignment_order) unique; `ix_reviewer_assignment_group_id_reviewer_id` (group_id, reviewer_id) unique.
+Index: `ix_reviewer_assignment_assigned_by` (assigned_by); `ix_reviewer_assignment_reviewer_id` (reviewer_id); `ix_reviewer_assignment_group_id_assigned_at` (group_id, assigned_at); **`ux_reviewer_assignment_active_group` (group_id) unique WHERE is_active = true**.
+
+`ck_reviewer_assignment_workflow_binding`: dòng mới (`!IsLegacy`) bắt buộc các UUID không rỗng, snapshot đầy đủ, version dương, checksum 64 hex thường, ReviewerId khác AdvisorIdAtAssignment và AssignmentOrder = 1. `ck_reviewer_assignment_cancellation`: active không có metadata hủy; inactive mới phải có actor/time (không trước AssignedAt), reason đã trim 1–1000 ký tự. Legacy inactive được giữ nguyên metadata null; không bịa binding/actor. `xmin` bảo vệ optimistic concurrency. Snapshot không thêm FK xuyên module; các FK cũ group/reviewer/assigned_by vẫn giữ. Migration preflight từ chối dữ liệu nhiều active hoặc phiếu mồ côi, không tự xóa/chọn dòng.
+
+DELETE nghiệp vụ là hủy mềm. Application khóa parent và kiểm tra bất kỳ phiếu chấm nào trước hủy; writer chấm phải dùng `LockForEvaluationAsync` trong coordinator tới commit. DB CHECK/FK không thay cho giao thức khóa này. Không chuyển nhóm khỏi ReadyForReviewerAssignment, không mở lại báo cáo.
 
 Navigation: `Evaluation` → ReviewerEvaluation.
 
+### councils.reviewer_assignment_idempotency — ReviewerAssignmentIdempotencyRecord
+
+| Thuộc tính | Cột | Kiểu PostgreSQL | Nullable |
+| --- | --- | --- | --- |
+| Id | id | uuid (PK) | Không |
+| ActorId | actor_id | uuid | Không |
+| Operation | operation | character varying(100) | Không |
+| IdempotencyKey | idempotency_key | uuid | Không |
+| RequestFingerprint | request_fingerprint | character varying(64) | Không |
+| ResponseStatusCode | response_status_code | integer | Không |
+| ResponsePayloadJson | response_payload_json | jsonb | Không |
+| CreatedAtUtc | created_at_utc | timestamp with time zone | Không |
+
+Unique `ux_reviewer_assignment_idempotency_actor_operation_key` trên (actor_id, operation, idempotency_key). CHECK status IN (200,201), fingerprint 64 hex thường, operation trim 1–100. Không có FK receipt. Chỉ lưu receipt thành công cùng assignment/audit; sau save lấy xmin rồi hoàn thiện JSON trước commit. Replay không chạy lại mutation hoặc ghi thêm audit. Operations `ReviewerAssignment.Create`/`ReviewerAssignment.Cancel` có scope riêng, gắn actor thực tế.
+
 ### councils.reviewer_evaluation — ReviewerEvaluation
 
-[Entity](../backend/Modules/DefenseCouncil/Domain/Entities/ReviewerEvaluation.cs) · [EF configuration](../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Configurations/ReviewerEvaluationConfiguration.cs).
+[Entity](../backend/Modules/DefenseCouncil/Domain/Entities/ReviewerEvaluation.cs) · [EF configuration](../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Configurations/ReviewerEvaluationConfiguration.cs). Schema SCRUM-105 CP1, migration `20261030113753_AddReviewerEvaluationWorkflowFoundation`; CP2–CP3 đã có HTTP nháp/chốt/đọc riêng tư và gate/feedback. [Contract đầy đủ](ApiContract/ReviewerEvaluationApiContract.md).
 
 | Thuộc tính | Cột | Kiểu CLR | Kiểu PostgreSQL | Nullable | SQL default |
 | --- | --- | --- | --- | --- | --- |
 | Id | id | `Guid` | `uuid` | Không | — |
 | AssignmentId | assignment_id | `Guid` | `uuid` | Không | — |
-| Comment | comment | `String` | `text` | Có | — |
-| DefenseApproval | defense_approval | `DefenseApprovalStatus` | `character varying(50)` | Không | — |
+| Comment | comment | `String?` | `text` | Có | — |
+| Score | score | `Decimal?` | `numeric(4,2)` | Có | — |
+| DefenseApproval | defense_approval | `DefenseApprovalStatus?` | `character varying(50)` | Có | — |
+| Status | status | `ReviewerEvaluationStatus?` | `character varying(50)` | Có (legacy) | — |
+| IsLegacy | is_legacy | `Boolean` | `boolean` | Không | true |
+| CreatedBy | created_by | `Guid?` | `uuid` | Có (legacy) | — |
+| CreatedAtUtc | created_at_utc | `DateTime?` | `timestamp with time zone` | Có (legacy) | — |
+| EvaluatedBy | evaluated_by | `Guid?` | `uuid` | Có (legacy) | — |
 | EvaluatedAt | evaluated_at | `DateTime` | `timestamp with time zone` | Không | — |
-| ExclusionReason | exclusion_reason | `String` | `text` | Có | — |
-| IsIgnoredInCalculation | is_ignored_in_calculation | `Boolean` | `boolean` | Không | false |
+| SubmittedBy | submitted_by | `Guid?` | `uuid` | Có | — |
+| SubmittedAtUtc | submitted_at_utc | `DateTime?` | `timestamp with time zone` | Có | — |
 | IsVisibleToStudent | is_visible_to_student | `Boolean` | `boolean` | Không | false |
-| RevisionFeedback | revision_feedback | `String` | `text` | Có | — |
-| Score | score | `Decimal` | `numeric(4,2)` | Không | — |
+| IsIgnoredInCalculation | is_ignored_in_calculation | `Boolean` | `boolean` | Không | false |
+| ExclusionReason | exclusion_reason | `String?` | `text` | Có | — |
+| RevisionFeedback | revision_feedback | `String?` | `text` | Có | — |
+| Version | xmin | `UInt32` | `xid` (system column) | Không | PostgreSQL |
 
-PK: `id`.
+Unique `ix_reviewer_evaluation_assignment_id`; FK `fk_reviewer_evaluation_reviewer_assignment_assignment_id` đến assignment dùng **Restrict**. Binding report/version/file/checksum đi qua assignment bất biến, không nhân đôi snapshot hoặc thêm FK xuyên module cho actor mới. Mọi phiếu, kể cả Draft/điểm 0/ẩn/bị loại tính điểm, đều chặn hủy phân công.
 
-Index: `ix_reviewer_evaluation_assignment_id` (assignment_id) unique.
+CHECK score 0–10 khi có giá trị; status null/Draft/Submitted và decision null/Approved/Rejected. `ck_reviewer_evaluation_workflow` buộc dòng mới có actor/time/UUID đầy đủ, created ≤ evaluated, comment trim/rune tối đa 2.000. Draft cho phép thiếu nội dung và visibility=false/submission metadata null. Submitted phải đủ score/comment/decision, submitted actor/time bằng lần lưu cuối và visibility=true. `IsLocked` suy ra từ !IsLegacy && Status=Submitted, không phải cột; không có API mở khóa.
 
-Check: `ck_reviewer_evaluation_score`: `score BETWEEN 0 AND 10`.
+CreatedBy/At giữ nguyên khi sửa, EvaluatedBy/At là người/lúc lưu gần nhất, SubmittedBy/At là người/lúc chốt. Comment là góp ý công khai sau Submit; RevisionFeedback giữ dữ liệu cũ, không fallback để xuất góp ý. Cờ loại điểm không được sửa qua luồng chấm. Domain trim Unicode/đếm rune, làm tròn AwayFromZero hai số sau khi kiểm tra khoảng; DB btrim/char_length bảo vệ persistence. `xmin` ngăn lost update; parent assignment lock serialize với hủy.
 
-Navigation: `Assignment` → ReviewerAssignment.
+Legacy giữ nguyên điểm/nhận xét/cờ công khai/cờ loại/thời gian cũ, IsLegacy=true và metadata workflow null; không tự chốt/công khai qua API mới. Down preflight chặn workflow rows/receipt/null score-decision; không xóa phiếu hoặc điền 0 để downgrade. Permission read seed giữ custom metadata/grants cả khi rollback/reapply.
 
+### councils.reviewer_evaluation_idempotency — ReviewerEvaluationIdempotencyRecord
+
+| Thuộc tính | Cột | Kiểu PostgreSQL | Nullable |
+| --- | --- | --- | --- |
+| Id | id | uuid (PK) | Không |
+| ActorId | actor_id | uuid | Không |
+| Operation | operation | character varying(100) | Không |
+| IdempotencyKey | idempotency_key | uuid | Không |
+| RequestFingerprint | request_fingerprint | character varying(64) | Không |
+| ResponseStatusCode | response_status_code | integer | Không |
+| ResponsePayloadJson | response_payload_json | jsonb | Không |
+| CreatedAtUtc | created_at_utc | timestamp with time zone | Không |
+
+Unique `ux_reviewer_evaluation_idempotency_actor_operation_key` trên (actor_id, operation, idempotency_key). CHECK success status IN (200,201), fingerprint SHA-256 64 hex thường và operation trim 1–100 ký tự. Không có FK cascade receipt. Phiếu/receipt/audit cùng transaction; save đầu lấy xmin rồi hoàn thiện receipt/audit trước commit. Payload không có gate động; resolver dùng cấu hình Active hiện tại, không persist ReadyForDefense vào phiếu hoặc StudentGroup.
 ### councils.score_summary — ScoreSummary
 
 [Entity](../backend/Modules/DefenseCouncil/Domain/Entities/ScoreSummary.cs) · [EF configuration](../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Configurations/ScoreSummaryConfiguration.cs).
@@ -707,7 +772,7 @@ Navigation: `Group` → StudentGroup.
 
 SCRUM-102 dùng một hồ sơ `InitialFinal` cho mỗi nhóm: `CurrentVersionNo` khởi tạo 1, tăng khi nộp lại; không đổi `VersionType` thành `RevisedAfterReviewer`. `SubmittedAt` là thời điểm UTC của phiên bản hiện tại. File của mỗi lần nộp nằm tại `SubmissionFile` với `EntityType = FinalReport`, `EntityId = FinalReport.Id`, `VersionNo = CurrentVersionNo`; mọi phiên bản cũ được giữ.
 
-`Submitted → UnderEvaluation` chỉ qua thao tác bắt đầu chấm của GVHD hiện tại/Admin với số phiên bản đã xem. Khi `UnderEvaluation`, không cho nộp lại/tăng phiên bản. Không có cột riêng cho người/thời điểm bắt đầu chấm: thông tin này, file ID và checksum được lưu trong audit action `ThesisManagement.FinalReport.EvaluationStarted`. Nộp/nộp lại ghi action `ThesisManagement.FinalReport.Submitted`; trạng thái, metadata và audit outbox lưu cùng transaction. `xmin` của cả nhóm và báo cáo được kiểm tra khi nộp lại/bắt đầu chấm. Xem [API contract](ApiContract/ThesisManagementApiContract.md).
+`Submitted → UnderEvaluation` chỉ qua thao tác bắt đầu chấm của GVHD hiện tại/Admin với số phiên bản đã xem. Khi `UnderEvaluation`, không cho nộp lại/tăng phiên bản. Không có cột riêng cho người/thời điểm bắt đầu chấm: thông tin này, file ID và checksum được lưu trong audit action `ThesisManagement.FinalReport.EvaluationStarted`. SCRUM-103 chụp các giá trị đó vào `councils.advisor_evaluation` và chỉ khi duyệt đồng ý mới chuyển nhóm `FinalReportSubmitted → ReadyForReviewerAssignment`; không đổi trạng thái `FinalReport` khỏi `UnderEvaluation`. Nộp/nộp lại ghi action `ThesisManagement.FinalReport.Submitted`; trạng thái, metadata và audit outbox lưu cùng transaction. `xmin` của cả nhóm và báo cáo được kiểm tra khi nộp lại/bắt đầu chấm/duyệt. Xem [API contract](ApiContract/ThesisManagementApiContract.md) và [contract phiếu GVHD](ApiContract/AdvisorEvaluationApprovalApiContract.md).
 
 Migration nền tảng: `20261027174826_AddFinalReportSubmissionFoundation`; CP2–CP7 không thêm migration mới. Migration đặt số phiên bản của hồ sơ cũ thành 1, không tự tạo file cho hồ sơ cũ thiếu metadata. Handler trả `FileNotFound` khi không có file để bắt đầu chấm; cần xử lý dữ liệu cũ trước khi sử dụng hồ sơ đó.
 

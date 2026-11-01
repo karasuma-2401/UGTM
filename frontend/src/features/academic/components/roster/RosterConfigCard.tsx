@@ -80,7 +80,7 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
           >
             {batches.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.batchName} · HK{b.semester} {b.academicYear}
+                {b.batchName} - HK{b.semester} {b.academicYear}
               </option>
             ))}
           </select>
@@ -118,7 +118,7 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
                 {fileInfo.name}
               </p>
               <p className="text-[11px] text-slate-500 mt-0.5">
-                Excel .xlsx · {fileInfo.sizeLabel} · {fileInfo.statusText}
+                Excel .xlsx - {fileInfo.sizeLabel} - {fileInfo.statusText}
               </p>
             </div>
           </div>

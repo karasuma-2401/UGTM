@@ -58,6 +58,10 @@ using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.SubmitFin
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportHistory;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportFileDownload;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.BeginFinalReportEvaluation;
+using UGTM.Modules.ThesisManagement.Contracts.AdvisorEvaluations;
+using UGTM.Modules.ThesisManagement.Application.StudentGroups.GetStudentGroupDetail;
+using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusReviewQueue;
+using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.GetMidtermReportReviewQueue;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure;
 
@@ -69,10 +73,20 @@ public sealed class ThesisManagementModule : IModule
     {
         services.AddModuleDbContext<ThesisManagementDbContext>(configuration);
         services.AddScoped<IStudentGroupRepository, StudentGroupRepository>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.ReviewerEvaluations.IReviewerFeedbackGroupReader, ReviewerFeedbackGroupReader>();
+        services.AddScoped<IStudentGroupDetailReader, StudentGroupDetailReader>();
+        services.AddScoped<GetStudentGroupDetailHandler>();
+        services.AddScoped<ISyllabusReviewQueryReader, SyllabusReviewQueryReader>();
+        services.AddScoped<GetSyllabusReviewQueueHandler>();
+        services.AddScoped<IMidtermReportReviewQueryReader, MidtermReportReviewQueryReader>();
+        services.AddScoped<GetMidtermReportReviewQueueHandler>();
         services.AddScoped<IReviewGateConfigurationRepository, ReviewGateConfigurationRepository>();
         services.AddScoped<ISyllabusRepository, SyllabusRepository>();
         services.AddScoped<IMidtermReportRepository, MidtermReportRepository>();
         services.AddScoped<IFinalReportRepository, FinalReportRepository>();
+        services.AddScoped<IAdvisorEvaluationWorkflowContract, AdvisorEvaluationWorkflowContract>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.ReviewerAssignments.IReviewerAssignmentThesisReader,
+            Persistence.Repositories.ReviewerAssignmentThesisReader>();
         services.AddScoped<FinalReportSubmissionEligibilityChecker>();
         services.AddScoped<SubmitFinalReportHandler>();
         services.AddScoped<FinalReportReadAccessChecker>();
@@ -152,6 +166,7 @@ public sealed class ThesisManagementModule : IModule
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapStudentGroupEndpoints();
         endpoints.MapReviewGateConfigurationEndpoints();
         endpoints.MapSyllabusSubmissionEndpoints();
         endpoints.MapMidtermReportSubmissionEndpoints();
@@ -169,6 +184,7 @@ public sealed class ThesisManagementModule : IModule
                 endpoint có thể phục vụ request. Endpoint này không kiểm tra database,
                 object storage hoặc trạng thái deadline của các cổng thẩm định.
                 """)
-            .WithName($"{Name}.Ping");
+            .WithName($"{Name}.Ping")
+            .ExcludeFromDescription();
     }
 }

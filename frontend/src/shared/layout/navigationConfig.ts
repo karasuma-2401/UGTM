@@ -8,6 +8,8 @@ import {
   BookOpen,
   CalendarRange,
   UsersRound,
+  FileText,
+  CalendarCheck,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -81,9 +83,21 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Lecturer', 'Admin'],
       },
       {
+        label: 'Tiến độ sinh viên',
+        path: '/advisor/milestones',
+        icon: CalendarCheck,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
         label: 'Đề tài & đăng ký',
         path: '/topics/catalog',
         icon: BookOpen,
+        roles: ['Student', 'Admin'],
+      },
+      {
+        label: 'Báo cáo & tiến độ',
+        path: '/thesis/proposal',
+        icon: FileText,
         roles: ['Student', 'Admin'],
       },
       {
@@ -91,6 +105,12 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/topics/review',
         icon: ClipboardCheck,
         roles: ['Faculty', 'Admin'],
+      },
+      {
+        label: 'Thẩm định quy trình',
+        path: '/thesis/review/syllabus',
+        icon: ClipboardCheck,
+        roles: ['Faculty', 'Admin', 'AcademicAffairs'],
       },
     ],
   },

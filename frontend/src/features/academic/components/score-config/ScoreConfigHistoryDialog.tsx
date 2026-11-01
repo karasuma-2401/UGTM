@@ -55,7 +55,7 @@ export const ScoreConfigHistoryDialog: React.FC<ScoreConfigHistoryDialogProps> =
                       <Badge variant={statusInfo.badgeVariant} className="text-[10px]">
                         {statusInfo.label}
                       </Badge>
-                      <span className="text-slate-400">·</span>
+                      <span className="text-slate-400">-</span>
                       <span className="text-slate-600 font-medium">
                         {CALCULATION_METHOD_LABELS[config.calculationMethod]}
                       </span>

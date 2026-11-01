@@ -140,4 +140,24 @@ public static class IntegrationAuditActions
 
     public const string ScoreExcluded =
         "DefenseCouncil.Score.Excluded";
+
+    public const string AdvisorEvaluationSaved =
+        "DefenseCouncil.AdvisorEvaluation.Saved";
+
+    public const string ReviewerAssignmentCreated = "DefenseCouncil.ReviewerAssignment.Created";
+    public const string ReviewerAssignmentCancelled = "DefenseCouncil.ReviewerAssignment.Cancelled";
+    public const string ReviewerEvaluationDraftSaved = "DefenseCouncil.ReviewerEvaluation.DraftSaved";
+    public const string ReviewerEvaluationSubmitted = "DefenseCouncil.ReviewerEvaluation.Submitted";
+
+    public const string AdvisorEvaluationApproved =
+        "DefenseCouncil.AdvisorEvaluation.Approved";
+
+    public const string AdvisorEvaluationRejected =
+        "DefenseCouncil.AdvisorEvaluation.Rejected";
+
+    public const string AdvisorEvaluationReviewerAssignmentApproved =
+        "ThesisManagement.AdvisorEvaluation.ReviewerAssignmentApproved";
+
+    public const string AdvisorEvaluationReviewerAssignmentRejected =
+        "ThesisManagement.AdvisorEvaluation.ReviewerAssignmentRejected";
 }

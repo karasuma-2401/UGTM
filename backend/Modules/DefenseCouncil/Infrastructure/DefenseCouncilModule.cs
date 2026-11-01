@@ -5,6 +5,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
+using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.DecideAdvisorEvaluation;
+using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.GetAdvisorEvaluation;
+using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.SaveAdvisorEvaluation;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Application.Councils.AddCouncilMembers;
 using UGTM.Modules.DefenseCouncil.Application.Councils.ApproveCouncil;
@@ -13,6 +17,7 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
 using UGTM.Modules.DefenseCouncil.Application.Grading;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
+using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
 using UGTM.Modules.DefenseCouncil.Contracts.Grading;
 using UGTM.Modules.DefenseCouncil.Domain.Grading;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
@@ -35,6 +40,35 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<IDefenseCouncilUnitOfWork>(sp => sp.GetRequiredService<DefenseCouncilDbContext>());
         services.AddSingleton<ThesisGradeCalculator>();
         services.AddScoped<IGradeCalculationService, GradeCalculationService>();
+        services.AddScoped<IAdvisorEvaluationRepository, AdvisorEvaluationRepository>();
+        services.AddScoped<IAdvisorEvaluationIdempotencyRepository, AdvisorEvaluationIdempotencyRepository>();
+        services.AddScoped<SaveAdvisorEvaluationHandler>();
+        services.AddScoped<DecideAdvisorEvaluationHandler>();
+        services.AddScoped<GetAdvisorEvaluationHandler>();
+        services.AddScoped<IReviewerAssignmentEligibilityContract, ReviewerAssignmentEligibilityContract>();
+        services.AddScoped<IReviewerAssignmentRepository, ReviewerAssignmentRepository>();
+        services.AddScoped<IReviewerEvaluationRepository, ReviewerEvaluationRepository>();
+        services.AddScoped<IReviewerEvaluationIdempotencyRepository, ReviewerEvaluationIdempotencyRepository>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations.ReviewerEvaluationAudit>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations.ReviewerEvaluationAuthorization>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations.SaveReviewerEvaluationHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations.GetReviewerEvaluationHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.ReviewerEvaluations.IReviewerDefenseEligibilityContract,
+            UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations.ReviewerDefenseEligibilityContract>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations.IReviewerFeedbackPublicationReader, ReviewerFeedbackPublicationReader>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations.GetReviewerFeedbackHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations.GetReviewerDefenseEligibilityHandler>();
+        services.AddScoped<IReviewerAssignmentIdempotencyRepository, ReviewerAssignmentIdempotencyRepository>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.IReviewerAssignmentApprovalReader,
+            ReviewerAssignmentApprovalReader>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments.IReviewerAssignmentWorkflowContract,
+            UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.ReviewerAssignmentWorkflowContract>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.ReviewerAssignmentAudit>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.CreateReviewerAssignmentHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.CancelReviewerAssignmentHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.IReviewerAssignmentReadRepository, ReviewerAssignmentReadRepository>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments.ReviewerAssignmentReadHandler>();
+        services.AddScoped<IDefenseCouncilUnitOfWork>(provider => provider.GetRequiredService<DefenseCouncilDbContext>());
         services.AddScoped<IDefenseCouncilAuditOutbox, DefenseCouncilAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, DefenseCouncilAuditEventSource>();
 
@@ -49,10 +83,15 @@ public sealed class DefenseCouncilModule : IModule
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapCouncilEndpoints();
-
+        endpoints.MapAdvisorEvaluationEndpoints();
+        endpoints.MapReviewerAssignmentEndpoints();
+        endpoints.MapReviewerAssignmentReadEndpoints();
+        endpoints.MapReviewerEvaluationEndpoints();
+        endpoints.MapReviewerEvaluationReadEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
-            .WithName($"{Name}.Ping");
+            .WithName($"{Name}.Ping")
+            .ExcludeFromDescription();
     }
 }

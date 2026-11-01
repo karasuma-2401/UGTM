@@ -74,7 +74,7 @@ export function TopicPreview({
             {values.studentCodes
               .map((code) => code.trim())
               .filter(Boolean)
-              .join(' · ')}
+              .join(' - ')}
           </p>
         </section>
       )}

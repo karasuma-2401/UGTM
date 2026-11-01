@@ -699,7 +699,7 @@ export function TopicProposePage({
                           options={batches.map((batch) => ({
                             value: batch.id,
                             label: batch.batchName,
-                            description: `${batch.academicYear} · HK${batch.semester}`,
+                            description: `${batch.academicYear} - HK${batch.semester}`,
                           }))}
                           onChange={(value: string) => updateField('batchId', value)}
                           placeholder={

@@ -21,6 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 using UGTM.Modules.TopicCatalog.Contracts.RenameRequests;
+using UGTM.Modules.TopicCatalog.Contracts.Topics;
 
 namespace UGTM.Modules.TopicCatalog.Infrastructure;
 
@@ -37,6 +38,10 @@ public sealed class TopicCatalogModule : IModule
         services.AddScoped<ITopicUnitOfWork>(provider => provider.GetRequiredService<TopicCatalogDbContext>());
         services.AddScoped<ITopicQueryReader, TopicQueryReader>();
         services.AddScoped<ITopicAdvisorAssignmentContract, TopicAdvisorAssignmentContract>();
+        services.AddScoped<UGTM.Modules.TopicCatalog.Contracts.ReviewerAssignments.IReviewerAssignmentTopicReader,
+            Persistence.Repositories.ReviewerAssignmentTopicReader>();
+        services.AddScoped<ITopicSummaryReader, TopicSummaryReader>();
+        services.AddScoped<ITopicSearchReader, TopicSearchReader>();
         services.AddScoped<ITopicRenameContract, TopicRenameContract>();
         services.AddScoped<UGTM.Modules.TopicCatalog.Contracts.DefenseCouncils.ITopicDefenseContract, TopicDefenseContract>();
 
@@ -60,6 +65,7 @@ public sealed class TopicCatalogModule : IModule
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
-            .WithName($"{Name}.Ping");
+            .WithName($"{Name}.Ping")
+            .ExcludeFromDescription();
     }
 }
