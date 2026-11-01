@@ -6,9 +6,11 @@ using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.DefenseCouncil.Application.Councils.AddCouncilMembers;
 using UGTM.Modules.DefenseCouncil.Application.Councils.ApproveCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
+using UGTM.Modules.DefenseCouncil.Application.Councils.CheckCouncilDiscrepancy;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
 
@@ -296,6 +298,112 @@ public static class CouncilEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
             .WithName("DefenseCouncil.Councils.GetSchedule");
 
+        // 6. POST /api/councils/assignments/{assignmentId}/scores
+        group.MapPost("/assignments/{assignmentId:guid}/scores", SubmitCouncilScoreAsync)
+            .RequireAuthorization()
+            .WithSummary("Chấm điểm chi tiết theo tiêu chí barem cho nhóm đề tài trong hội đồng")
+            .WithDescription("""
+                Cho phép thành viên hội đồng nhập điểm đánh giá chi tiết theo từng tiêu chí barem (`EvaluationDetail`) và nhận xét đánh giá (`feedback`) cho nhóm sinh viên bảo vệ khóa luận.
+                
+                ### Tham số URL:
+                - `assignmentId`: GUID định danh phân công nhóm đề tài trong hội đồng bảo vệ (`CouncilAssignment`).
+                
+                ### Tham số Request Body (`SubmitCouncilScoreInputDto`):
+                - `details`: Danh sách điểm chi tiết theo tiêu chí barem (bắt buộc, không được để trống). Mỗi phần tử gồm:
+                  - `criteriaId`: GUID định danh tiêu chí đánh giá (`GradingCriteria`). Tiêu chí phải thuộc đợt KLTN của hội đồng.
+                  - `score`: Điểm số đạt được của tiêu chí (số thực, `0 <= score <= criteria.MaxScore`).
+                - `feedback`: Nhận xét, đánh giá chuyên môn của thành viên hội đồng (tùy chọn, chuỗi văn bản tự do).
+                
+                ### Quy tắc nghiệp vụ & Ràng buộc cứng:
+                1. **Nhận diện thành viên & Phân quyền:**
+                   - Hệ thống tự động nhận diện thành viên hội đồng từ tài khoản đang đăng nhập (`CurrentUser.UserId`).
+                   - Người dùng bắt buộc phải là một thành viên có tên trong Hội đồng bảo vệ (`CouncilMember`). Nếu không thuộc hội đồng, bị từ chối với lỗi 403 Forbidden (`Council.UserNotCouncilMember`).
+                2. **Trạng thái hội đồng:**
+                   - Hội đồng bắt buộc phải đang ở trạng thái đã được phê duyệt hoạt động (`Active`). Nếu hội đồng đang ở trạng thái dự thảo (`Draft`) hoặc đã hủy, bị từ chối với lỗi 409 Conflict (`Council.NotActiveForScoring`).
+                3. **Xử lý đặc thù GVPB kiêm Ủy viên Hội đồng (TH1 - BR-07):**
+                   - Nếu thành viên hội đồng đồng thời là **Giảng viên phản biện (GVPB)** của nhóm đề tài này, hệ thống tự động nhận diện và **chặn không cho phép nhập điểm hội đồng lần thứ hai**, tránh việc chấm trùng lặp gây sai lệch kết quả.
+                   - Vi phạm quy tắc này sẽ lập tức trả về lỗi **409 Conflict** (`Council.ReviewerCouncilMemberCannotScoreTwice`).
+                   - Điểm đánh giá tại buổi bảo vệ của giảng viên này sẽ được tự động sử dụng từ phiếu đánh giá phản biện (`ReviewerEvaluation`) để đưa vào công thức tính điểm tổng kết.
+                4. **Kiểm tra tiêu chí barem:**
+                   - Điểm của từng tiêu chí không được nhỏ hơn 0 và không được vượt quá `MaxScore` tương ứng.
+                   - Bắt buộc phải nhập đầy đủ tất cả các tiêu chí trong barem đánh giá của đợt KLTN.
+                   - Tổng điểm của thành viên (`CouncilScore.Score`) bằng tổng điểm các tiêu chí thành phần: `totalScore = Sum(details.Score)` (làm tròn 2 chữ số thập phân, `0 <= totalScore <= 10`).
+                5. **Cập nhật điểm & Khóa biên bản:**
+                   - Thành viên được phép gọi lại API để cập nhật lại điểm (Rescore/Idempotent update) khi biên bản hội đồng chưa bị khóa.
+                   - Nếu biên bản đã bị khóa (`CouncilMinute.LockStatus == Locked`), mọi hành động chấm hoặc sửa điểm đều bị chặn với mã 409 Conflict (`Council.MinuteLocked`).
+                6. **Tự động tổng kết & Đồng bộ ScoreSummary:**
+                   - Khi tất cả thành viên bắt buộc của hội đồng đã chấm xong, hệ thống tự động cập nhật trạng thái biên bản sang `AllScoresEntered`, tính điểm trung bình của Hội đồng (`AverageCouncilScore`), và tính điểm tổng kết cuối cùng (`FinalScore`) theo công thức chuẩn (`ThesisGradeCalculator`), đồng bộ vào bảng tổng kết điểm `ScoreSummary`.
+                
+                ### Mã lỗi và phản hồi:
+                - **200 OK:** Chấm điểm thành công, trả về `ApiResponse<CouncilScoreResponseDto>` chứa tổng điểm và chi tiết từng tiêu chí.
+                - **400 Bad Request:**
+                  - `Council.CriteriaRequired`: Danh sách tiêu chí bị để trống.
+                  - `Council.CriteriaNotFound`: Tiêu chí không tồn tại hoặc không thuộc đợt KLTN của hội đồng.
+                  - `Council.CriteriaScoreNegative`: Điểm tiêu chí nhỏ hơn 0.
+                  - `Council.ScoreExceedsMaxScore`: Điểm tiêu chí vượt quá điểm tối đa cho phép.
+                  - `Council.MissingRequiredCriteria`: Thiếu điểm của tiêu chí bắt buộc trong barem.
+                - **401 Unauthorized:** Người dùng chưa đăng nhập hoặc thiếu Bearer token.
+                - **403 Forbidden:**
+                  - `Council.Forbidden`: Người dùng không đủ quyền hạn.
+                  - `Council.UserNotCouncilMember`: Người dùng không phải thành viên của hội đồng này.
+                - **404 Not Found:**
+                  - `Council.AssignmentNotFound`: Không tìm thấy phân công nhóm đề tài trong hội đồng.
+                - **409 Conflict:**
+                  - `Council.NotActiveForScoring`: Hội đồng chưa được phê duyệt Active để chấm điểm.
+                  - `Council.ReviewerCouncilMemberCannotScoreTwice`: GVPB kiêm thành viên hội đồng bị chặn chấm điểm lần thứ hai.
+                  - `Council.MinuteLocked`: Biên bản hội đồng đã bị khóa, không thể chấm hoặc sửa điểm.
+                """)
+            .Produces<ApiResponse<CouncilScoreResponseDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .WithName("DefenseCouncil.Councils.SubmitScore");
+
+        // 7. GET /api/councils/assignments/{assignmentId}/discrepancy-check
+        group.MapGet("/assignments/{assignmentId:guid}/discrepancy-check", CheckCouncilDiscrepancyAsync)
+            .RequireAuthorization()
+            .WithSummary("Kiểm tra sai lệch điểm giữa các thành viên hội đồng tại buổi bảo vệ")
+            .WithDescription("""
+                Tính toán và kiểm tra độ lệch điểm số giữa các thành viên tham gia đánh giá tại buổi bảo vệ của nhóm đề tài.
+                Nếu khoảng cách giữa điểm cao nhất và điểm thấp nhất từ 2.0 điểm trở lên (>= 2.0), hệ thống sẽ bật cờ cảnh báo (Warning flag) để Thư ký và Hội đồng tiến hành thảo luận lại trước khi chốt biên bản.
+                
+                ### Tham số URL:
+                - `assignmentId`: GUID định danh phân công nhóm đề tài trong hội đồng bảo vệ (`CouncilAssignment`).
+                
+                ### Quy tắc tính toán & Cảnh báo sai lệch điểm (Discrepancy Warning):
+                1. **Tập điểm đánh giá buổi bảo vệ:**
+                   - Gồm điểm số của tất cả các thành viên hội đồng đã chấm (`CouncilScore`).
+                   - Trong trường hợp Giảng viên phản biện kiêm nhiệm thành viên hội đồng: Điểm phản biện (`ReviewerEvaluation.Score`) của giảng viên này sẽ được tự động đưa vào tập điểm so sánh tại buổi bảo vệ.
+                2. **Điều kiện kích hoạt cảnh báo:**
+                   - Độ lệch điểm: `scoreDifference = Math.Round(maxScore - minScore, 2)`.
+                   - Ngưỡng cảnh báo: `warningThreshold = 2.0` điểm.
+                   - Khi có từ 2 điểm số trở lên và `scoreDifference >= 2.0`:
+                     - Cờ `isDiscrepancyDetected = true`.
+                     - Kèm theo thông báo cảnh báo rõ ràng `warningMessage` để Thư ký và Hội đồng thảo luận lại.
+                   - Nếu `scoreDifference < 2.0`: Cờ `isDiscrepancyDetected = false` và `warningMessage = null`.
+                3. **Thông tin tiến độ chấm điểm:**
+                   - Trả về cờ `allScoresSubmitted` xác định tất cả thành viên bắt buộc đã chấm xong hay chưa.
+                   - Trả về điểm trung bình Hội đồng `averageCouncilScore` và điểm tổng kết cuối cùng `finalScore` (nếu đã đủ điều kiện tính toán).
+                   - Trả về danh sách chi tiết điểm của từng thành viên (`memberScores`), gồm họ tên, vai trò trong hội đồng, điểm đã chấm, nhận xét, và cờ đánh dấu GVPB kiêm nhiệm (`isBlockedFromScoring = true`).
+                
+                ### Phân quyền truy cập (RBAC):
+                Yêu cầu Bearer token của người dùng đã xác thực (Thành viên Hội đồng, Thư ký, Khoa, Phòng Đào tạo hoặc Quản trị viên).
+                
+                ### Mã lỗi và phản hồi:
+                - **200 OK:** Tra cứu thành công, trả về `ApiResponse<CouncilDiscrepancyResponseDto>` chứa trạng thái cảnh báo và bảng điểm chi tiết.
+                - **401 Unauthorized:** Người dùng chưa đăng nhập hoặc token không hợp lệ.
+                - **403 Forbidden:** Không có quyền truy cập.
+                - **404 Not Found:**
+                  - `Council.AssignmentNotFound`: Không tìm thấy phân công nhóm đề tài trong hội đồng.
+                """)
+            .Produces<ApiResponse<CouncilDiscrepancyResponseDto>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .WithName("DefenseCouncil.Councils.CheckDiscrepancy");
+
         return endpoints;
     }
 
@@ -379,6 +487,31 @@ public static class CouncilEndpoints
         CancellationToken cancellationToken)
     {
         var query = new GetCouncilScheduleQuery(id);
+        var result = await handler.HandleAsync(query, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> SubmitCouncilScoreAsync(
+        [FromRoute] Guid assignmentId,
+        [FromBody] SubmitCouncilScoreInputDto body,
+        [FromServices] SubmitCouncilScoreHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var command = new SubmitCouncilScoreCommand(
+            assignmentId,
+            body.Details,
+            body.Feedback);
+
+        var result = await handler.HandleAsync(command, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> CheckCouncilDiscrepancyAsync(
+        [FromRoute] Guid assignmentId,
+        [FromServices] CheckCouncilDiscrepancyHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var query = new CheckCouncilDiscrepancyQuery(assignmentId);
         var result = await handler.HandleAsync(query, cancellationToken);
         return result.ToHttpResult();
     }
