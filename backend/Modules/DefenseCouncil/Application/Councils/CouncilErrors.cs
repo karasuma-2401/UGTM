@@ -78,4 +78,37 @@ public static class CouncilErrors
 
     public static Error Forbidden =>
         Error.Forbidden("Council.Forbidden", "Bạn không có quyền thực hiện thao tác này.");
+
+    public static Error AssignmentNotFound =>
+        Error.NotFound("Council.AssignmentNotFound", "Không tìm thấy phân công nhóm đề tài trong hội đồng.");
+
+    public static Error UserNotCouncilMember =>
+        Error.Forbidden("Council.UserNotCouncilMember", "Người dùng không phải là thành viên của hội đồng này.");
+
+    public static Error NotActiveForScoring =>
+        Error.Conflict("Council.NotActiveForScoring", "Hội đồng phải ở trạng thái đã phê duyệt (Active) mới có thể thực hiện chấm điểm.");
+
+    public static Error ReviewerCouncilMemberCannotScoreTwice =>
+        Error.Conflict("Council.ReviewerCouncilMemberCannotScoreTwice", "Thành viên hội đồng đồng thời là Giảng viên phản biện của nhóm đề tài này, không được nhập điểm hội đồng lần thứ hai.");
+
+    public static Error MinuteLocked =>
+        Error.Conflict("Council.MinuteLocked", "Biên bản hội đồng đã bị khóa, không thể nhập hoặc chỉnh sửa điểm.");
+
+    public static Error CriteriaRequired =>
+        Error.Validation("Council.CriteriaRequired", "Danh sách điểm tiêu chí không được để trống.");
+
+    public static Error DuplicateCriteriaInRequest =>
+        Error.Validation("Council.DuplicateCriteriaInRequest", "Phát hiện tiêu chí đánh giá bị lặp lại trong yêu cầu chấm điểm.");
+
+    public static Error CriteriaNotFound(Guid criteriaId) =>
+        Error.Validation("Council.CriteriaNotFound", $"Tiêu chí đánh giá không tồn tại hoặc không thuộc đợt KLTN này (Id: {criteriaId}).");
+
+    public static Error ScoreExceedsMaxScore(string criteriaName, decimal score, decimal maxScore) =>
+        Error.Validation("Council.ScoreExceedsMaxScore", $"Điểm tiêu chí '{criteriaName}' ({score:F2}) vượt quá điểm tối đa cho phép ({maxScore:F2}).");
+
+    public static Error CriteriaScoreNegative(string criteriaName) =>
+        Error.Validation("Council.CriteriaScoreNegative", $"Điểm tiêu chí '{criteriaName}' không được nhỏ hơn 0.");
+
+    public static Error MissingRequiredCriteria(string criteriaName) =>
+        Error.Validation("Council.MissingRequiredCriteria", $"Chưa nhập điểm cho tiêu chí bắt buộc: '{criteriaName}'.");
 }
