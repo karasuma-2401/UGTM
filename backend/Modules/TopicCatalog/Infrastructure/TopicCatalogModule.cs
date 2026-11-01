@@ -43,6 +43,7 @@ public sealed class TopicCatalogModule : IModule
         services.AddScoped<ITopicSummaryReader, TopicSummaryReader>();
         services.AddScoped<ITopicSearchReader, TopicSearchReader>();
         services.AddScoped<ITopicRenameContract, TopicRenameContract>();
+        services.AddScoped<UGTM.Modules.TopicCatalog.Contracts.DefenseCouncils.ITopicDefenseContract, TopicDefenseContract>();
 
         // Command Handlers
         services.AddScoped<CreateTopicHandler>();

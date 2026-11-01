@@ -1,26 +1,31 @@
-using UGTM.BuildingBlocks.Infrastructure.Persistence;
-using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
-using UGTM.Modules.DefenseCouncil.Application.Grading;
-using UGTM.Modules.DefenseCouncil.Application.Auditing;
-using UGTM.Modules.DefenseCouncil.Contracts.Grading;
-using UGTM.Modules.DefenseCouncil.Domain.Grading;
-using UGTM.Modules.DefenseCouncil.Infrastructure.Auditing;
-using UGTM.Modules.DefenseCouncil.Application.Persistence;
-using UGTM.Modules.DefenseCouncil.Domain.Repositories;
-using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence.Repositories;
-using UGTM.Modules.Identity.Contracts.Auditing;
-using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.SaveAdvisorEvaluation;
+using UGTM.BuildingBlocks.Infrastructure.Persistence;
+using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.DecideAdvisorEvaluation;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.GetAdvisorEvaluation;
-using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.SaveAdvisorEvaluation;
+using UGTM.Modules.DefenseCouncil.Application.Auditing;
+using UGTM.Modules.DefenseCouncil.Application.Councils.AddCouncilMembers;
+using UGTM.Modules.DefenseCouncil.Application.Councils.ApproveCouncil;
+using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
+using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Grading;
+using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Contracts.Grading;
+using UGTM.Modules.DefenseCouncil.Domain.Grading;
+using UGTM.Modules.DefenseCouncil.Domain.Repositories;
+using UGTM.Modules.DefenseCouncil.Infrastructure.Auditing;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
+using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
+using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence.Repositories;
+using UGTM.Modules.Identity.Contracts.Auditing;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure;
 
@@ -31,6 +36,8 @@ public sealed class DefenseCouncilModule : IModule
     public void RegisterModule(IServiceCollection services, IConfiguration configuration)
     {
         services.AddModuleDbContext<DefenseCouncilDbContext>(configuration);
+        services.AddScoped<ICouncilRepository, CouncilRepository>();
+        services.AddScoped<IDefenseCouncilUnitOfWork>(sp => sp.GetRequiredService<DefenseCouncilDbContext>());
         services.AddSingleton<ThesisGradeCalculator>();
         services.AddScoped<IGradeCalculationService, GradeCalculationService>();
         services.AddScoped<IAdvisorEvaluationRepository, AdvisorEvaluationRepository>();
@@ -64,10 +71,18 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<IDefenseCouncilUnitOfWork>(provider => provider.GetRequiredService<DefenseCouncilDbContext>());
         services.AddScoped<IDefenseCouncilAuditOutbox, DefenseCouncilAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, DefenseCouncilAuditEventSource>();
+
+        // Council Use Cases
+        services.AddScoped<CreateCouncilHandler>();
+        services.AddScoped<AddCouncilMembersHandler>();
+        services.AddScoped<AssignCouncilGroupsHandler>();
+        services.AddScoped<ApproveCouncilHandler>();
+        services.AddScoped<GetCouncilScheduleHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapCouncilEndpoints();
         endpoints.MapAdvisorEvaluationEndpoints();
         endpoints.MapReviewerAssignmentEndpoints();
         endpoints.MapReviewerAssignmentReadEndpoints();

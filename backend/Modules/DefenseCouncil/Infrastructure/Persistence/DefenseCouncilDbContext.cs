@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
+using UGTM.Modules.DefenseCouncil.Domain.Entities;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
 
