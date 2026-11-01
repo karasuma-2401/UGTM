@@ -13,8 +13,10 @@ using UGTM.Modules.DefenseCouncil.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Application.Councils.AddCouncilMembers;
 using UGTM.Modules.DefenseCouncil.Application.Councils.ApproveCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
+using UGTM.Modules.DefenseCouncil.Application.Councils.CheckCouncilDiscrepancy;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
 using UGTM.Modules.DefenseCouncil.Application.Grading;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
@@ -78,6 +80,8 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<AssignCouncilGroupsHandler>();
         services.AddScoped<ApproveCouncilHandler>();
         services.AddScoped<GetCouncilScheduleHandler>();
+        services.AddScoped<SubmitCouncilScoreHandler>();
+        services.AddScoped<CheckCouncilDiscrepancyHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

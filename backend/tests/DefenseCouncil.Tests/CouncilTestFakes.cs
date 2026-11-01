@@ -149,6 +149,14 @@ public sealed class FakeCouncilRepository : ICouncilRepository
     public List<CouncilAssignment> Assignments { get; } = [];
     public HashSet<Guid> RejectedGroupIds { get; } = [];
     public Dictionary<Guid, Guid> ActiveReviewers { get; } = [];
+    public List<CouncilScore> Scores { get; } = [];
+    public List<EvaluationDetail> EvaluationDetails { get; } = [];
+    public List<GradingCriteria> GradingCriteriaList { get; } = [];
+    public List<CouncilMinute> Minutes { get; } = [];
+    public Dictionary<Guid, ReviewerAssignment> ActiveReviewerAssignments { get; } = [];
+    public Dictionary<Guid, AdvisorEvaluation> AdvisorEvaluations { get; } = [];
+    public Dictionary<Guid, ScoreSummary> ScoreSummaries { get; } = [];
+    public List<ScoreSummaryComponent> ScoreSummaryComponents { get; } = [];
 
     public Task<Council?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => Task.FromResult(Councils.FirstOrDefault(c => c.Id == id));
@@ -265,6 +273,120 @@ public sealed class FakeCouncilRepository : ICouncilRepository
     public Task AddAssignmentsAsync(IEnumerable<CouncilAssignment> assignments, CancellationToken ct = default)
     {
         Assignments.AddRange(assignments);
+        return Task.CompletedTask;
+    }
+
+    public Task<CouncilAssignment?> GetAssignmentWithCouncilAndMembersAsync(Guid assignmentId, CancellationToken ct = default)
+    {
+        var assignment = Assignments.FirstOrDefault(a => a.Id == assignmentId);
+        if (assignment is null) return Task.FromResult<CouncilAssignment?>(null);
+
+        var council = Councils.FirstOrDefault(c => c.Id == assignment.CouncilId);
+        if (council is not null)
+        {
+            council.Members = Members.Where(m => m.CouncilId == council.Id).ToList();
+            assignment.Council = council;
+        }
+
+        assignment.Minute = Minutes.FirstOrDefault(m => m.CouncilAssignmentId == assignmentId);
+        return Task.FromResult<CouncilAssignment?>(assignment);
+    }
+
+    public Task<IReadOnlyList<GradingCriteria>> GetGradingCriteriaByBatchIdAsync(Guid batchId, CancellationToken ct = default)
+    {
+        var result = GradingCriteriaList.Where(g => g.BatchId == batchId).OrderBy(g => g.OrderIndex).ToList();
+        return Task.FromResult<IReadOnlyList<GradingCriteria>>(result);
+    }
+
+    public Task<IReadOnlyList<CouncilScore>> GetCouncilScoresWithDetailsByAssignmentIdAsync(Guid assignmentId, CancellationToken ct = default)
+    {
+        var result = Scores.Where(s => s.CouncilAssignmentId == assignmentId).ToList();
+        foreach (var s in result)
+        {
+            s.CouncilMember = Members.FirstOrDefault(m => m.Id == s.CouncilMemberId)!;
+        }
+        return Task.FromResult<IReadOnlyList<CouncilScore>>(result);
+    }
+
+    public Task<IReadOnlyList<EvaluationDetail>> GetEvaluationDetailsByEvaluationIdAsync(Guid evaluationId, CancellationToken ct = default)
+    {
+        var result = EvaluationDetails.Where(d => d.EvaluationId == evaluationId).ToList();
+        foreach (var d in result)
+        {
+            d.Criteria = GradingCriteriaList.FirstOrDefault(c => c.Id == d.CriteriaId)!;
+        }
+        return Task.FromResult<IReadOnlyList<EvaluationDetail>>(result);
+    }
+
+    public Task<CouncilScore?> GetCouncilScoreAsync(Guid assignmentId, Guid councilMemberId, CancellationToken ct = default)
+    {
+        var result = Scores.FirstOrDefault(s => s.CouncilAssignmentId == assignmentId && s.CouncilMemberId == councilMemberId);
+        return Task.FromResult(result);
+    }
+
+    public Task SaveCouncilScoreAsync(CouncilScore score, IEnumerable<EvaluationDetail> details, CancellationToken ct = default)
+    {
+        var existing = Scores.FirstOrDefault(s => s.CouncilAssignmentId == score.CouncilAssignmentId && s.CouncilMemberId == score.CouncilMemberId);
+        if (existing != null)
+        {
+            existing.Score = score.Score;
+            existing.Feedback = score.Feedback;
+            existing.EvaluatedAt = score.EvaluatedAt;
+            score.Id = existing.Id;
+        }
+        else
+        {
+            Scores.Add(score);
+        }
+
+        EvaluationDetails.RemoveAll(d => d.EvaluationId == score.Id);
+        foreach (var d in details)
+        {
+            d.EvaluationId = score.Id;
+            EvaluationDetails.Add(d);
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task<ReviewerAssignment?> GetActiveReviewerAssignmentByGroupIdAsync(Guid groupId, CancellationToken ct = default)
+    {
+        return Task.FromResult(ActiveReviewerAssignments.GetValueOrDefault(groupId));
+    }
+
+    public Task<AdvisorEvaluation?> GetAdvisorEvaluationByGroupIdAsync(Guid groupId, CancellationToken ct = default)
+    {
+        return Task.FromResult(AdvisorEvaluations.GetValueOrDefault(groupId));
+    }
+
+    public Task<ScoreSummary?> GetScoreSummaryByGroupIdAsync(Guid groupId, CancellationToken ct = default)
+    {
+        return Task.FromResult(ScoreSummaries.GetValueOrDefault(groupId));
+    }
+
+    public Task SaveScoreSummaryAsync(ScoreSummary summary, IEnumerable<ScoreSummaryComponent> components, CancellationToken ct = default)
+    {
+        ScoreSummaries[summary.GroupId] = summary;
+        ScoreSummaryComponents.RemoveAll(c => c.SummaryId == summary.Id);
+        ScoreSummaryComponents.AddRange(components);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateMinuteLockStatusAsync(Guid assignmentId, CouncilMinuteLockStatus status, CancellationToken ct = default)
+    {
+        var minute = Minutes.FirstOrDefault(m => m.CouncilAssignmentId == assignmentId);
+        if (minute != null)
+        {
+            minute.LockStatus = status;
+        }
+        else
+        {
+            Minutes.Add(new CouncilMinute
+            {
+                Id = Guid.NewGuid(),
+                CouncilAssignmentId = assignmentId,
+                LockStatus = status
+            });
+        }
         return Task.CompletedTask;
     }
 }
