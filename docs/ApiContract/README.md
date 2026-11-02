@@ -13,6 +13,9 @@ Mỗi module có một contract riêng. Contract chỉ mô tả endpoint đã tr
 | Advisor evaluation & reviewer handoff | [AdvisorEvaluationApprovalApiContract.md](AdvisorEvaluationApprovalApiContract.md) | SCRUM-103 đã triển khai và nghiệm thu CP6: ghi/duyệt/đọc phiếu, contract eligibility và luồng PostgreSQL/MinIO production-host |
 | Reviewer assignment & bound report access | [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md) | SCRUM-104 có POST/DELETE, bốn API đọc và quyền tải đúng báo cáo được duyệt; phạm vi/bằng chứng CP6 tại [ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md) |
 | Reviewer evaluation, defense eligibility & student feedback | [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md) | SCRUM-105: nháp/chốt/đọc phiếu, gate theo Active hiện tại, feedback chỉ comment và contract khóa cho scheduling; nghiệm thu CP4 tại [ReviewerEvaluationVerification.md](ReviewerEvaluationVerification.md) |
+| Final submission archival & verification | [FinalSubmissionApiContract.md](FinalSubmissionApiContract.md) | SCRUM-106 CP0 đã sửa theo review: package version, hai bước xác nhận, archive proof; chưa triển khai runtime/migration |
+| Thesis score calculation & publication | [ScoreCalculationPublicationApiContract.md](ScoreCalculationPublicationApiContract.md) | SCRUM-110 CP0 đã sửa theo review: tính động, atomic selected publication và published snapshot; chưa triển khai runtime/migration |
+| Shared archival/score design | [ArchivalScoreWorkflowDesign.md](ArchivalScoreWorkflowDesign.md) | CP0: schema/FK/history, owner contracts, coordinator, lock protocol, cleanup và legacy handoff cho CP1–CP4 |
 
 Quy ước response, authentication, lỗi và hành vi đặc biệt được ghi trong contract của module đang sở hữu endpoint. Khi thay đổi request, response, status code hoặc error code, cập nhật contract trong cùng pull request.
 

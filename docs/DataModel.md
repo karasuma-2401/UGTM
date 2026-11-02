@@ -494,6 +494,8 @@ Index: `ix_score_summary_group_id` (group_id) unique; `ix_score_summary_publishe
 
 Navigation: `Components` → ScoreSummaryComponent[].
 
+Thiết kế SCRUM-110 CP0, **chưa triển khai schema/runtime**: `ScoreSummary` là nơi duy nhất ghi kết quả tổng kết chính thức; CP3 gỡ nhánh tự tổng hợp trong `SubmitCouncilScoreHandler`. Vòng đời `Pending` → `Calculated` → `PublishedToStudent`; mỗi lần tính tạo revision bất biến gắn config ID/version, nguồn điểm và archive proof. Aggregate có xmin, active/published revision FK, input fingerprint và snapshot legacy; components gắn đúng revision, giữ raw decimal thay vì round trung gian. Migration CP3 tạo đủ nền cho CP4, gồm calculation revisions và idempotency receipt. Publish so lại snapshot nguồn/config dưới khóa; thay đổi thì 409 và yêu cầu tính lại. Sau công bố đọc published revision, không tính lại theo config mới. Writer điểm/biên bản phải tham gia guard Published trong cùng transaction. Thứ tự khóa và ràng buộc/FK đầy đủ tại [thiết kế chung](ApiContract/ArchivalScoreWorkflowDesign.md), request/DTO tại [contract điểm](ApiContract/ScoreCalculationPublicationApiContract.md).
+
 ### councils.score_summary_component — ScoreSummaryComponent
 
 [Entity](../backend/Modules/DefenseCouncil/Domain/Entities/ScoreSummaryComponent.cs) · [EF configuration](../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Configurations/ScoreSummaryComponentConfiguration.cs).
@@ -801,6 +803,8 @@ PK: `id`.
 Index: `ix_final_submission_advisor_confirmed_by` (advisor_confirmed_by); `ix_final_submission_archived_confirmed_by` (archived_confirmed_by); `ix_final_submission_group_id` (group_id) unique.
 
 Navigation: `Group` → StudentGroup.
+
+Thiết kế SCRUM-106 CP0, **chưa triển khai schema/runtime**: vòng đời `NotSubmitted` → `Submitted` → `AdvisorConfirmed` → `ArchiveConfirmed`, có `NeedRevision` khi yêu cầu sửa. Cho nộp lại ở Submitted/NeedRevision; AdvisorConfirmed phải được yêu cầu sửa trước, ArchiveConfirmed bất biến. Mỗi lần nộp là package mới gồm PDF + DOCX (mỗi file ≤20 MiB) và Abstract/Keywords Việt–Anh. Migration CP1 tạo đủ aggregate xmin/current package FK/snapshot legacy, package bất biến, package-file links có role ThesisPdf/ThesisDocx, review history, receipt và upload-attempt cleanup; CP2 dùng cùng schema cho xác nhận hai bước. Role nằm trên package-file link, không thêm vào mọi SubmissionFile; giữ partial unique của FinalReport. ArchiveProof Succeeded phải xác minh package/version/manifest/hai file/hai review cùng actor/time và provenance; không suy từ status hoặc boolean. Các cột hiện hữu bên trên vẫn là baseline. Xem [schema/FK/protocol chung](ApiContract/ArchivalScoreWorkflowDesign.md) và [contract lưu chiểu](ApiContract/FinalSubmissionApiContract.md).
 
 ### thesis.midterm_report — MidtermReport
 
