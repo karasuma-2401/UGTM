@@ -15,7 +15,7 @@ Mỗi module có một contract riêng. Contract chỉ mô tả endpoint đã tr
 | Reviewer evaluation, defense eligibility & student feedback | [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md) | SCRUM-105: nháp/chốt/đọc phiếu, gate theo Active hiện tại, feedback chỉ comment và contract khóa cho scheduling; nghiệm thu CP4 tại [ReviewerEvaluationVerification.md](ReviewerEvaluationVerification.md) |
 | Final submission archival & verification | [FinalSubmissionApiContract.md](FinalSubmissionApiContract.md) | SCRUM-106 CP1–CP2: POST/sáu GET, hai bước xác nhận/trả sửa, khóa hồ sơ và Get/Lock ArchiveProof; không thêm migration CP2. [Bằng chứng](FinalSubmissionVerification.md) |
 | Thesis score calculation & publication | [ScoreCalculationPublicationApiContract.md](ScoreCalculationPublicationApiContract.md) | SCRUM-110 CP3–CP4: calculate/private reads, publish nguyên tử và Student GET theo snapshot. [Bằng chứng CP3](ScoreCalculationVerification.md), [CP4](ScorePublicationVerification.md) |
-| Shared archival/score design | [ArchivalScoreWorkflowDesign.md](ArchivalScoreWorkflowDesign.md) | CP0: schema/FK/history, owner contracts, coordinator, lock protocol, cleanup và legacy handoff cho CP1–CP4 |
+| Shared archival/score design | [ArchivalScoreWorkflowDesign.md](ArchivalScoreWorkflowDesign.md) | CP0: schema/FK/history, owner contracts, coordinator, lock protocol, cleanup và legacy handoff; [nghiệm thu CP5](ArchivalScoreAcceptance.md) |
 
 Quy ước response, authentication, lỗi và hành vi đặc biệt được ghi trong contract của module đang sở hữu endpoint. Khi thay đổi request, response, status code hoặc error code, cập nhật contract trong cùng pull request.
 
