@@ -21,5 +21,8 @@ public sealed record FinalSubmissionSummaryDto(Guid SubmissionId, Guid GroupId, 
     string Status, int CurrentVersionNo, uint SubmissionVersion, DateTime? SubmittedAt, DateTime? AdvisorConfirmedAt, DateTime? ArchivedConfirmedAt);
 public sealed record FinalSubmissionPageDto(IReadOnlyList<FinalSubmissionSummaryDto> Items, int TotalCount, int PageNumber, int PageSize);
 public sealed record FinalSubmissionWriteResult(FinalSubmissionDto Data, int StatusCode);
+public sealed record FinalSubmissionConfirmationDto(Guid SubmissionId, Guid GroupId, string Status, int CurrentVersionNo,
+    uint SubmissionVersion, Guid? AdvisorConfirmedBy, DateTime? AdvisorConfirmedAt, Guid? ArchivedConfirmedBy,
+    DateTime? ArchivedConfirmedAt, string? FacultyFeedback, DateTime UpdatedAt);
 public sealed record FinalSubmissionPackageGraph(IReadOnlyList<FinalSubmissionPackage> Packages,
     IReadOnlyList<FinalSubmissionPackageFile> Links, IReadOnlyList<SubmissionFile> Files, IReadOnlyList<FinalSubmissionReview> Reviews);

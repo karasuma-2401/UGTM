@@ -9,7 +9,7 @@ internal sealed class FinalSubmissionOperationTransformer : IOpenApiOperationTra
     {
         var path = context.Description.RelativePath?.Trim('/');
         if (path is null || !path.StartsWith("api/thesis/final-submissions", StringComparison.Ordinal)) return Task.CompletedTask;
-        if (context.Description.HttpMethod == "POST")
+        if (context.Description.HttpMethod is "POST" or "PUT")
             Add("Idempotency-Key", JsonSchemaType.String, true, "uuid", ParameterLocation.Header);
         if (context.Description.HttpMethod == "GET")
         {

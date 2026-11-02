@@ -1,6 +1,6 @@
 # SCRUM-106/110 — schema, proof và transaction contract CP0
 
-Ngày 02/11/2026. **CP1 đã tạo schema lưu chiểu, nộp/đọc package, durable cleanup, coordinator và reader defense/window/authority. Các phần xác nhận/ArchiveProof và bảng điểm vẫn là thiết kế cho CP2–CP4.** Áp dụng cùng [FinalSubmissionApiContract](FinalSubmissionApiContract.md) và [ScoreCalculationPublicationApiContract](ScoreCalculationPublicationApiContract.md). Baseline CP0 `767b8e8`; CP0 chỉ sửa tài liệu. [Bằng chứng CP1](FinalSubmissionVerification.md) phân biệt phần đã có với handoff còn lại.
+Ngày 02/11/2026. **CP1–CP2 đã triển khai schema lưu chiểu, nộp/đọc package, cleanup, coordinator, hai bước xác nhận/trả sửa và producer Get/Lock ArchiveProof. Bảng điểm vẫn là thiết kế cho CP3–CP4.** Áp dụng cùng [FinalSubmissionApiContract](FinalSubmissionApiContract.md) và [ScoreCalculationPublicationApiContract](ScoreCalculationPublicationApiContract.md). Baseline CP0 `767b8e8`; CP0 chỉ sửa tài liệu. [Bằng chứng theo checkpoint](FinalSubmissionVerification.md) phân biệt phần đã có với handoff còn lại.
 
 ## 1. Các quyết định dùng chung
 
@@ -184,7 +184,7 @@ Các thứ tự này là ràng buộc triển khai, không phải khẳng địn
 | 401 / 403 | AuthenticationRequired / AccessDenied dưới prefix owner | Anonymous; hoặc role/permission/membership/owner scope không hợp lệ. Middleware có thể không có envelope. |
 | 404 | FinalSubmission.NotFound / ScoreSummary.NotFound | Reader đã được authorize nhưng không có row; readiness của group hợp lệ vẫn trả 200 với Missing reason. |
 | 409 | FinalSubmission.BatchNotWritable / SubmissionWindowClosed / DefenseNotLocked / ContextInvalid | Guard hiện tại không cho nộp/xác nhận. Staff bỏ window guard, vẫn kiểm tra batch Open/Closed. |
-| 409 | FinalSubmission.VersionConflict / Locked / Legacy | Stale xmin/package; AdvisorConfirmed chặn nộp mới, ArchiveConfirmed khóa; legacy không đủ proof/không được suy diễn xác nhận. |
+| 409 | FinalSubmission.VersionConflict / InvalidState / Locked / Legacy | Stale xmin/package hoặc sai bước/action; AdvisorConfirmed chặn nộp mới, ArchiveConfirmed khóa; legacy không đủ proof/không được suy diễn xác nhận. |
 | 409 | ScoreSummary.ConfigurationInvalid / UnsupportedSource / AmbiguousSource / MissingRequiredSource / NoPositiveWeight | Thiếu/invalid nguồn hoặc config, công thức không xác định. Không trả kết quả một phần hoặc fallback. |
 | 409 | ScoreSummary.NotEligible / Stale / VersionConflict / AlreadyPublished / Legacy | Defense/archive chưa đủ; snapshot/xmin không khớp; không ghi đè Published. |
 | 409 | IdempotencyConflict / ConcurrencyConflict dưới prefix owner | Cùng key khác ý định; timeout/deadlock/churn. Không để một nhóm đã Published khi selection thất bại. |

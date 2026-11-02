@@ -1,6 +1,6 @@
 # Final submission archival API contract — SCRUM-106
 
-Trạng thái: **CP1 đã triển khai POST nộp/nộp lại, sáu GET, schema/history/receipts và cleanup; xác nhận hai bước và producer ArchiveProof thuộc CP2**. Ngày 02/11/2026. Nền tảng kế thừa: [báo cáo cuối kỳ SCRUM-102](ThesisManagementApiContract.md), [duyệt GVHD SCRUM-103](AdvisorEvaluationApprovalApiContract.md), [phân công GVPB SCRUM-104](ReviewerAssignmentApiContract.md), [chấm GVPB và điều kiện bảo vệ SCRUM-105](ReviewerEvaluationApiContract.md). [Thiết kế schema/transaction/handoff](ArchivalScoreWorkflowDesign.md) là phần bắt buộc của contract này. Phạm vi và bằng chứng theo checkpoint tại [FinalSubmissionVerification](FinalSubmissionVerification.md). Plan local vẫn ngoài Git.
+Trạng thái: **CP2 đã triển khai xác nhận hai bước, trả sửa và producer Get/Lock ArchiveProof trên schema CP1; POST, sáu GET và cleanup được giữ nguyên**. Ngày 02/11/2026. Nền tảng kế thừa: [báo cáo cuối kỳ SCRUM-102](ThesisManagementApiContract.md), [duyệt GVHD SCRUM-103](AdvisorEvaluationApprovalApiContract.md), [phân công GVPB SCRUM-104](ReviewerAssignmentApiContract.md), [chấm GVPB và điều kiện bảo vệ SCRUM-105](ReviewerEvaluationApiContract.md). [Thiết kế schema/transaction/handoff](ArchivalScoreWorkflowDesign.md) là phần bắt buộc của contract này. Phạm vi và bằng chứng theo checkpoint tại [FinalSubmissionVerification](FinalSubmissionVerification.md). Plan local vẫn ngoài Git.
 
 Phạm vi SCRUM-106:
 - Sinh viên Confirmed của đúng nhóm nộp bộ hồ sơ lưu chiểu hoàn thiện sau bảo vệ gồm đúng một file PDF và đúng một file DOCX, mỗi file tối đa 20 MiB, kèm Abstract (Việt/Anh, tối đa 10.000 runes) và Keywords (Việt/Anh, tối đa 1.000 runes).
@@ -175,7 +175,7 @@ Nộp lần đầu hoặc nộp lại bộ hồ sơ lưu chiểu hoàn thiện (
 ### 3.2. `PUT /api/thesis/final-submissions/{id}/confirm-archive`
 Thực hiện hành động xác nhận hoặc yêu cầu chỉnh sửa hồ sơ lưu chiểu.
 
-**Thiết kế CP2; CP1 chưa map endpoint này.** Schema review/actor/time/proof đã được tạo ở migration CP1, không tạo xác nhận giả để mở luồng tính điểm.
+**Đã triển khai CP2**, dùng schema review/actor/time/proof và receipt của migration CP1, không thêm migration. Body JSON tối đa 16 KiB; từ chối query, field lạ/trùng (kể cả khác hoa/thường), số dưới dạng chuỗi, enum số/sai case, JSON sai kiểu hoặc reason UTF-16/NUL/độ dài không hợp lệ. Action phải là một trong ba chuỗi chính xác dưới đây.
 
 **Headers:**
 - `Authorization: Bearer <token>`
@@ -212,6 +212,14 @@ Thực hiện hành động xác nhận hoặc yêu cầu chỉnh sửa hồ sơ
    - Chủ thể: GVHD khi hồ sơ ở `Submitted` hoặc `AdvisorConfirmed`; Faculty khi hồ sơ ở `AdvisorConfirmed`; Admin ở cả hai trường hợp.
    - Bắt buộc có `reason` (1–1.000 runes).
    - Kết quả: Chuyển sang `NeedRevision`, lưu `faculty_feedback = reason`, ghi nhận vào lịch sử review.
+
+Mỗi action dùng operation receipt `FinalSubmission.Confirm`; fingerprint gồm submissionId, action, hai expected version và reason đã trim. Cùng key/actor nhưng khác action hoặc body trả 409 `FinalSubmission.IdempotencyConflict`. Replay hợp lệ kiểm tra role/permission và ownership hiện tại sau khi chờ key, rồi trả DTO/xmin gốc, không ghi review/audit lần hai; vẫn replay được sau khi đợt Archived hoặc hồ sơ đã ArchiveConfirmed. Bị thu hồi quyền hoặc không còn là GVHD thì bị 403.
+
+Staff chỉ ghi khi đợt Open/Closed, không áp deadline hay stage nộp của SV. Handler khóa group/context/authority, aggregate, package/link/files/reviews và defense proof đến commit. Hai bước xác nhận kiểm tra manifest của đủ PDF + DOCX; Khoa so context topic/batch/GVHD và toàn bộ Locked proof với snapshot bước GVHD. Thay đổi giữa hai bước trả 409 `FinalSubmission.ContextInvalid` (hoặc DefenseNotLocked), không tự ký lại trên bằng chứng mới.
+
+RequestRevision là đường sửa sai khi context GVHD/biên bản đổi: vẫn có thể yêu cầu sửa ở đúng state/quyền khi Open/Closed dù biên bản hiện tại không còn Locked. Review lưu cả kết quả kiểm tra proof hiện tại; action này không tạo ArchiveProof. Projection actor/time xác nhận được xóa, lịch sử giữ nguyên; SV nộp lại phải vượt lại đầy đủ gate nộp và tạo package mới. Khi đã ArchiveConfirmed, mọi ý định mới trả 409 `FinalSubmission.Locked`, kể cả Admin. Thứ tự bước sai trả InvalidState; hồ sơ legacy chưa có package trả Legacy.
+
+Audit dùng `ThesisManagement.FinalSubmission.AdvisorConfirmed`, `.ArchiveConfirmed`, `.RevisionRequested`, ghi actor thực tế, IDs/version/manifest và cờ có lý do; không đưa nguyên lý do/abstract/keywords vào audit. Aggregate/review, xmin trong receipt và audit commit cùng transaction; lỗi save/commit rollback toàn bộ.
 
 **Response (200 OK):**
 ```json
@@ -381,6 +389,7 @@ public interface IFinalSubmissionArchiveProofContract
 3. Lock giữ `FOR SHARE` trên aggregate, current package, hai file/link và hai review rows tới calculate/publish commit. Parent group lock bảo vệ cả thiếu row/phantom. Không mutate hoặc tăng xmin của owner.
 4. Succeeded chỉ khi nonlegacy, group–batch nhất quán, current package thuộc đúng submission/version, manifest khớp metadata và hai file, đủ đúng role PDF/DOCX có MIME/size/checksum hợp lệ; hai review AdvisorConfirm/FacultyConfirm đúng package và manifest, actor/time có thật, đúng thứ tự, không bị RequestRevision/nộp version mới làm mất hiệu lực. Mọi trường nullable trong DTO phải có giá trị hợp lệ khi Succeeded.
 5. Bản ghi cũ có status ArchiveConfirmed nhưng thiếu package/file/review bằng chứng trả Legacy/ContextInvalid, không phải Succeeded. Chi tiết hậu điều kiện, schema và binding trong [thiết kế chung](ArchivalScoreWorkflowDesign.md).
+6. Proof là bằng chứng lịch sử của package đã khóa. Reader không kiểm tra lại quyền tài khoản người từng xác nhận, GVHD hay minute hiện tại; thay đổi những dữ liệu đó sau ArchiveConfirmed không làm mất proof. SCRUM-110 phải kiểm tra nguồn điểm/biên bản hiện tại bằng contract riêng trước calculate/publish. Owner Lock không lấy lại các khóa group/topic/batch ở pha muộn; caller giữ các khóa sớm theo thứ tự toàn cục.
 
 ---
 

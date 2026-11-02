@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.ThesisManagement.Application.FinalSubmissions;
+using UGTM.Modules.ThesisManagement.Domain.Enums;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Endpoints;
 
@@ -15,6 +17,14 @@ public static class FinalSubmissionEndpoints
     public static IEndpointRouteBuilder MapFinalSubmissionEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/thesis/final-submissions").RequireAuthorization().WithTags("ThesisManagement.FinalSubmission");
+        group.MapPut("/{id}/confirm-archive", ConfirmAsync)
+            .Accepts<ConfirmFinalSubmissionRequest>("application/json")
+            .WithMetadata(new RequestSizeLimitAttribute(16 * 1024))
+            .WithSummary("GVHD/Khoa xác nhận đúng package hoặc yêu cầu sửa có lý do")
+            .WithDescription("Action AdvisorConfirm, FacultyConfirm hoặc RequestRevision; không suy luận bước từ role. Idempotency-Key UUID bắt buộc; expectedSubmissionVersion là xmin và expectedPackageVersion là version đã xem. GVHD hiện tại/Admin bước 1, Faculty + manage/Admin bước 2. Đợt Open hoặc Closed. Hai xác nhận cùng package/manifest và Locked defense proof; ArchiveConfirmed khóa ý định mới. Replay vẫn kiểm tra quyền hiện tại, trả kết quả gốc.")
+            .Produces<ApiResponse<FinalSubmissionConfirmationDto>>()
+            .Produces<ApiResponse<object>>(400).Produces(401).Produces<ApiResponse<object>>(403)
+            .Produces<ApiResponse<object>>(404).Produces<ApiResponse<object>>(409).Produces(413).Produces(415);
         group.MapPost("", SubmitAsync).DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitAttribute(MaximumRequestSizeBytes))
             .Accepts<SubmitFinalSubmissionRequest>("multipart/form-data")
@@ -85,6 +95,50 @@ public static class FinalSubmissionEndpoints
             form["keywordsVi"], form["keywordsEn"], pdf[0].FileName, pdfStream, docx[0].FileName, docxStream), token);
         return result.IsFailure ? result.ToHttpResult() : Results.Json(ApiResponse<FinalSubmissionDto>.Ok(result.Value.Data), statusCode: result.Value.StatusCode);
     }
+    private static async Task<IResult> ConfirmAsync(string id, HttpRequest request, ConfirmFinalSubmissionHandler handler, CancellationToken token)
+    {
+        if (!await handler.CanReviewAsync(token)) return Failure(FinalSubmissionErrors.AccessDenied.Code, FinalSubmissionErrors.AccessDenied.Message, 403);
+        if (!Id(id, out var submission) || request.Query.Count != 0 || request.Headers["Idempotency-Key"].Count != 1
+            || !Id(request.Headers["Idempotency-Key"], out var key)) return Invalid();
+        if (!request.HasJsonContentType()) return Results.StatusCode(415);
+        if (request.ContentLength > 16 * 1024) return Results.StatusCode(413);
+        ConfirmFinalSubmissionCommand command;
+        try
+        {
+            using var body = new MemoryStream();
+            var buffer = new byte[4096];
+            int read;
+            while ((read = await request.Body.ReadAsync(buffer, token)) > 0)
+            {
+                if (body.Length + read > 16 * 1024) return Results.StatusCode(413);
+                await body.WriteAsync(buffer.AsMemory(0, read), token);
+            }
+            using var json = JsonDocument.Parse(body.ToArray(), new JsonDocumentOptions { MaxDepth = 8 });
+            if (json.RootElement.ValueKind != JsonValueKind.Object) return Invalid();
+            var fields = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+            foreach (var p in json.RootElement.EnumerateObject())
+                if (!new[] { "action", "expectedSubmissionVersion", "expectedPackageVersion", "reason" }.Contains(p.Name, StringComparer.OrdinalIgnoreCase)
+                    || !fields.TryAdd(p.Name, p.Value)) return Invalid();
+            if (!fields.TryGetValue("action", out var a) || a.ValueKind != JsonValueKind.String
+                || !Enum.TryParse<FinalSubmissionReviewAction>(a.GetString(), false, out var action) || !Enum.IsDefined(action)
+                || a.GetString() != action.ToString()
+                || !fields.TryGetValue("expectedSubmissionVersion", out var v) || v.ValueKind != JsonValueKind.Number || !v.TryGetUInt32(out var version) || version == 0
+                || !fields.TryGetValue("expectedPackageVersion", out var pversion) || pversion.ValueKind != JsonValueKind.Number || !pversion.TryGetInt32(out var package) || package < 1)
+                return Invalid();
+            string? reason = null;
+            if (fields.TryGetValue("reason", out var r))
+            {
+                if (r.ValueKind is not (JsonValueKind.String or JsonValueKind.Null)) return Invalid();
+                reason = r.ValueKind == JsonValueKind.String ? r.GetString() : null;
+            }
+            command = new(submission, action, version, package, key, reason);
+        }
+        catch (BadHttpRequestException e) { return e.StatusCode == 413 ? Results.StatusCode(413) : Invalid(); }
+        catch (JsonException) { return Invalid(); }
+        catch (InvalidOperationException) { return Invalid(); }
+        return (await handler.HandleAsync(command, token)).ToHttpResult();
+    }
+    public sealed record ConfirmFinalSubmissionRequest(string Action, uint ExpectedSubmissionVersion, int ExpectedPackageVersion, string? Reason);
     private static async Task<IResult> ListAsync(HttpRequest request, FinalSubmissionReadHandler handler, CancellationToken token)
     {
         if (!Query(request, ["batchId", "status", "searchTerm", "pageNumber", "pageSize"])) return Invalid();

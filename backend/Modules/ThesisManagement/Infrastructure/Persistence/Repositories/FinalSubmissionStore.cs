@@ -45,6 +45,18 @@ internal sealed class FinalSubmissionStore(ThesisManagementDbContext db) : IFina
         var reviews = await db.FinalSubmissionReviews.AsNoTracking().Where(r => r.SubmissionId == id).OrderBy(r => r.DecidedAtUtc).ThenBy(r => r.Id).ToListAsync(token);
         return new(packages, links, files, reviews);
     }
+    public async Task<FinalSubmissionPackageGraph> LockCurrentPackageAsync(Guid id, Guid packageId, CancellationToken token)
+    {
+        RequireTransaction();
+        var packages = await db.FinalSubmissionPackages.FromSqlInterpolated($"SELECT p.* FROM thesis.final_submission_package p WHERE p.submission_id={id} AND p.id={packageId} FOR SHARE").AsNoTracking().ToListAsync(token);
+        var links = await db.FinalSubmissionPackageFiles.FromSqlInterpolated($"SELECT l.* FROM thesis.final_submission_package_file l WHERE l.submission_id={id} AND l.package_id={packageId} ORDER BY l.file_role FOR SHARE").AsNoTracking().ToListAsync(token);
+        var files = await db.SubmissionFiles.FromSqlInterpolated($"""
+            SELECT f.* FROM thesis.submission_file f JOIN thesis.final_submission_package_file l ON l.submission_file_id=f.id
+            WHERE l.submission_id={id} AND l.package_id={packageId} ORDER BY f.id FOR SHARE OF f
+            """).AsNoTracking().ToListAsync(token);
+        var reviews = await db.FinalSubmissionReviews.FromSqlInterpolated($"SELECT r.* FROM thesis.final_submission_review r WHERE r.submission_id={id} AND r.package_id={packageId} ORDER BY r.id FOR SHARE").AsNoTracking().ToListAsync(token);
+        return new(packages, links, files, reviews);
+    }
     public async Task<(IReadOnlyList<FinalSubmission> Rows, int Count)> ListAsync(IReadOnlyCollection<Guid> topicIds, Guid? groupId,
         string? status, int page, int size, CancellationToken token)
     {
@@ -72,6 +84,7 @@ internal sealed class FinalSubmissionStore(ThesisManagementDbContext db) : IFina
         db.FinalSubmissionPackageFiles.AddRange(links);
     }
     public void Add(FinalSubmissionIdempotency receipt) => db.FinalSubmissionIdempotencyRecords.Add(receipt);
+    public void Add(FinalSubmissionReview review) => db.FinalSubmissionReviews.Add(review);
     public async Task CreateAttemptAsync(FinalSubmissionUploadAttempt attempt, CancellationToken token)
     {
         if (db.ChangeTracker.HasChanges()) throw new InvalidOperationException("Attempt creation requires a clean context.");

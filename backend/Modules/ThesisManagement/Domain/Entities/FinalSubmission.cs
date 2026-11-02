@@ -1,3 +1,4 @@
+using System.Text;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 
 namespace UGTM.Modules.ThesisManagement.Domain.Entities;
@@ -46,4 +47,45 @@ public class FinalSubmission
     }
 
     public StudentGroup Group { get; set; } = null!;
+
+    public void RecordReview(FinalSubmissionReviewAction action, Guid actor, DateTime atUtc, string? reason)
+    {
+        if (IsLegacy || CurrentPackageId is null || SubmittedAtUtc is null || Status == FinalSubmissionStatus.ArchiveConfirmed)
+            throw new InvalidOperationException("A nonlegacy, mutable package is required.");
+        if (actor == Guid.Empty || atUtc.Kind != DateTimeKind.Utc || atUtc < SubmittedAtUtc
+            || (AdvisorConfirmedAt.HasValue && atUtc < AdvisorConfirmedAt))
+            throw new ArgumentException("Invalid review actor/time.");
+        if (!Enum.IsDefined(action)) throw new ArgumentOutOfRangeException(nameof(action));
+        if (action == FinalSubmissionReviewAction.RequestRevision)
+        {
+            if (Status is not (FinalSubmissionStatus.Submitted or FinalSubmissionStatus.AdvisorConfirmed))
+                throw new InvalidOperationException("Revision cannot be requested in this state.");
+            if (string.IsNullOrWhiteSpace(reason) || reason != reason.Trim() || reason.Contains('\0')
+                || reason.EnumerateRunes().Count() > 1000)
+                throw new ArgumentException("A bounded revision reason is required.", nameof(reason));
+            for (var i = 0; i < reason.Length; i++)
+                if (char.IsSurrogate(reason[i]) && (!char.IsHighSurrogate(reason[i]) || i + 1 >= reason.Length || !char.IsLowSurrogate(reason[++i])))
+                    throw new ArgumentException("Invalid revision reason encoding.", nameof(reason));
+            FacultyFeedback = reason;
+            AdvisorConfirmedBy = ArchivedConfirmedBy = null;
+            AdvisorConfirmedAt = ArchivedConfirmedAt = null;
+            Status = FinalSubmissionStatus.NeedRevision;
+            return;
+        }
+        if (reason is not null) throw new ArgumentException("Confirmation cannot contain a revision reason.", nameof(reason));
+        if (action == FinalSubmissionReviewAction.AdvisorConfirm && Status == FinalSubmissionStatus.Submitted)
+        {
+            AdvisorConfirmedBy = actor;
+            AdvisorConfirmedAt = atUtc;
+            FacultyFeedback = null;
+            Status = FinalSubmissionStatus.AdvisorConfirmed;
+        }
+        else if (action == FinalSubmissionReviewAction.FacultyConfirm && Status == FinalSubmissionStatus.AdvisorConfirmed)
+        {
+            ArchivedConfirmedBy = actor;
+            ArchivedConfirmedAt = atUtc;
+            Status = FinalSubmissionStatus.ArchiveConfirmed;
+        }
+        else throw new InvalidOperationException("Invalid archival review transition.");
+    }
 }

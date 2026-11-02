@@ -198,14 +198,14 @@ Quy tắc công thức chấm điểm được quản lý tập trung tại [Req
 
 ## Lưu chiểu sau bảo vệ — phạm vi triển khai SCRUM-106
 
-CP1 đã có nộp/nộp lại và sáu GET; xác nhận hai bước và producer ArchiveProof là phần CP2. [Bằng chứng hiện tại](ApiContract/FinalSubmissionVerification.md).
+CP1–CP2 đã có nộp/nộp lại, sáu GET, xác nhận hai bước/trả sửa và producer Get/Lock ArchiveProof. [Bằng chứng hiện tại](ApiContract/FinalSubmissionVerification.md).
 
 | Nội dung | Mô tả |
 | --- | --- |
 | Tác nhân | Sinh viên Confirmed của nhóm nộp/nộp lại hồ sơ. GVHD (hoặc Admin) xác nhận bước 1 (`AdvisorConfirm`) hoặc yêu cầu sửa (`RequestRevision`). Văn phòng Khoa (hoặc Admin) xác nhận bước 2 (`FacultyConfirm` -> `ArchiveConfirmed`) hoặc yêu cầu sửa (`RequestRevision`). AcademicAffairs và Admin đọc để điều phối. |
 | Tiền điều kiện nộp | Student Active, Confirmed đúng groupId bắt buộc; đợt Open, trong cửa sổ `ARCHIVAL_AND_PUBLICATION` hiệu lực từ AcademicPeriods; defense proof từ CouncilMinute Locked hợp lệ; hồ sơ chưa có hoặc ở NotSubmitted/Submitted/NeedRevision. |
 | Luồng chính | 1. Sinh viên gửi groupId, expected xmin và trọn bộ PDF + DOCX ≤20 MiB mỗi file cùng Abstract/Keywords Việt–Anh qua POST. Sau upload, server khóa và kiểm tra lại membership/window/minute/state trước commit package version mới, chuyển Submitted và reset hiệu lực xác nhận cũ.<br>2. GVHD hiện tại/Admin gửi PUT /api/thesis/final-submissions/{id}/confirm-archive với AdvisorConfirm cho đúng package/version/manifest đã xem, chuyển AdvisorConfirmed.<br>3. Faculty/Admin kiểm tra lại bằng chứng và gửi FacultyConfirm, chuyển ArchiveConfirmed.<br>4. GVHD/Admin yêu cầu sửa khi Submitted hoặc AdvisorConfirmed; Faculty yêu cầu sửa khi AdvisorConfirmed. RequestRevision phải có lý do; giữ lịch sử, chuyển NeedRevision. Nộp lại ở Submitted cũng tạo package mới, không ghi đè bản cũ. |
-| Hậu điều kiện và giới hạn | Staff xác nhận khi đợt Open/Closed, không áp hạn SV; Archived chỉ đọc. ArchiveConfirmed bất biến và chỉ cung cấp ArchiveProof Succeeded khi đủ package/hai file/hai review hợp lệ. Quyền tải theo contract, không tự cấp cho GVPB. API khóa biên bản thuộc task Hội đồng, không được tạo Locked giả trong 106/110. Runtime CP1 mới có nộp/đọc; xem [contract](ApiContract/FinalSubmissionApiContract.md) và [handoff](ApiContract/ArchivalScoreWorkflowDesign.md). |
+| Hậu điều kiện và giới hạn | Staff xác nhận khi đợt Open/Closed, không áp hạn SV; Archived chỉ đọc và replay đã thành công sau kiểm tra quyền. ArchiveConfirmed bất biến và chỉ cung cấp ArchiveProof Succeeded khi đủ package/hai file/hai review hợp lệ. Quyền tải theo contract, không tự cấp cho GVPB. API khóa biên bản thuộc task Hội đồng, không được tạo Locked giả trong 106/110. Runtime CP2 hoàn tất luồng lưu chiểu; xem [contract](ApiContract/FinalSubmissionApiContract.md) và [handoff](ApiContract/ArchivalScoreWorkflowDesign.md). |
 
 ## Tổng hợp và công bố điểm KLTN — phạm vi triển khai SCRUM-110
 

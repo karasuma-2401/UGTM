@@ -8,6 +8,7 @@ public interface IFinalSubmissionStore
     Task<FinalSubmission?> GetByGroupAsync(Guid groupId, bool locked, CancellationToken token);
     Task<FinalSubmission?> GetByIdAsync(Guid id, CancellationToken token);
     Task<FinalSubmissionPackageGraph> GetPackagesAsync(Guid submissionId, CancellationToken token);
+    Task<FinalSubmissionPackageGraph> LockCurrentPackageAsync(Guid submissionId, Guid packageId, CancellationToken token);
     Task<IReadOnlyDictionary<Guid, Guid>> GetGroupTopicsAsync(IReadOnlyCollection<Guid> groupIds, CancellationToken token);
     Task<(IReadOnlyList<FinalSubmission> Rows, int Count)> ListAsync(IReadOnlyCollection<Guid> topicIds, Guid? groupId,
         string? status, int page, int size, CancellationToken token);
@@ -16,6 +17,7 @@ public interface IFinalSubmissionStore
     void Add(FinalSubmission submission);
     void Add(FinalSubmissionPackage package, IReadOnlyList<SubmissionFile> files, IReadOnlyList<FinalSubmissionPackageFile> links);
     void Add(FinalSubmissionIdempotency receipt);
+    void Add(FinalSubmissionReview review);
     Task CreateAttemptAsync(FinalSubmissionUploadAttempt attempt, CancellationToken token);
     Task<FinalSubmissionUploadAttempt?> LockAttemptAsync(Guid attemptId, CancellationToken token);
 }

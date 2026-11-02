@@ -23,7 +23,13 @@ public sealed class FinalSubmissionAccess(IFinalSubmissionStore store, ICurrentU
     public static bool IsManager(FinalSubmissionAuthorityDto? actor)
         => HasRole(actor, "Admin") || ((HasRole(actor, "Faculty") || HasRole(actor, "AcademicAffairs"))
             && actor!.Permissions.Contains(PermissionCodes.ThesisFinalSubmissionsRead));
+    public static bool CanManage(FinalSubmissionAuthorityDto? actor)
+        => HasRole(actor, "Admin") || (HasRole(actor, "Faculty") && actor!.Permissions.Contains(PermissionCodes.ThesisFinalSubmissionsManage));
     public async Task<Result<ArchivalContext>> ContextAsync(Guid groupId, bool studentOnly, bool locked, CancellationToken token)
+        => await ContextCoreAsync(groupId, studentOnly, false, locked, token);
+    public Task<Result<ArchivalContext>> ReviewContextAsync(Guid groupId, bool locked, CancellationToken token)
+        => ContextCoreAsync(groupId, false, true, locked, token);
+    private async Task<Result<ArchivalContext>> ContextCoreAsync(Guid groupId, bool studentOnly, bool review, bool locked, CancellationToken token)
     {
         if (AuthenticationError is { } authError) return Result.Failure<ArchivalContext>(authError);
         if (groupId == Guid.Empty) return Result.Failure<ArchivalContext>(FinalSubmissionErrors.InvalidRequest);
@@ -35,7 +41,7 @@ public sealed class FinalSubmissionAccess(IFinalSubmissionStore store, ICurrentU
         var actor = await ActorAsync(locked, token);
         var ownStudent = HasRole(actor, "Student") && group.Members.Any(m => m.StudentId == ActorId && m.ConfirmationStatus == MemberConfirmationStatus.Confirmed);
         var advisor = topic is not null && topic.AdvisorId == ActorId && HasRole(actor, "Lecturer");
-        if (studentOnly ? !ownStudent : !(ownStudent || advisor || IsManager(actor)))
+        if (review ? !(advisor || CanManage(actor)) : studentOnly ? !ownStudent : !(ownStudent || advisor || IsManager(actor)))
             return Result.Failure<ArchivalContext>(FinalSubmissionErrors.AccessDenied);
         var batchIds = group.Members.Select(m => m.BatchId).Distinct().ToArray();
         if (topic is null || batchIds.Length != 1 || batchIds[0] != topic.BatchId)

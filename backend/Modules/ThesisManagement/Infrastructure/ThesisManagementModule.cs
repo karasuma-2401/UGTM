@@ -92,6 +92,8 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.FinalSubmissionAccess>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.SubmitFinalSubmissionHandler>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.FinalSubmissionReadHandler>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.ConfirmFinalSubmissionHandler>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.FinalSubmissions.IFinalSubmissionArchiveProofContract, FinalSubmissionArchiveProofContract>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.IFinalSubmissionUploadCleanup, FinalSubmissionUploadCleanup>();
         services.AddHostedService<FinalSubmissionUploadCleanupWorker>();
         services.AddScoped<SubmitFinalReportHandler>();

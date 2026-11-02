@@ -482,7 +482,7 @@ SCRUM-105 CP3 đã bổ sung đầu ra của FR-FIN-02: gate dùng cấu hình A
 
 ### 6.2. Thiết kế lưu chiểu và công bố điểm — SCRUM-106/110 CP0
 
-Thiết kế CP0 ngày 02/11/2026 được triển khai theo checkpoint: **CP1 đã có schema, POST nộp/nộp lại và API đọc/tải package; xác nhận lưu chiểu và tính/công bố điểm chưa triển khai**. Các công thức mục 6.1 được giữ nguyên; SCRUM-110 đọc cấu hình Active của đợt, không hard-code mẫu số 6/7 hoặc tự thêm luật đạt/rớt. Phạm vi/bằng chứng hiện tại ở [FinalSubmissionVerification](ApiContract/FinalSubmissionVerification.md).
+Thiết kế CP0 ngày 02/11/2026 được triển khai theo checkpoint: **CP1–CP2 đã có schema, nộp/đọc/tải package, xác nhận lưu chiểu hai bước, trả sửa và producer Get/Lock ArchiveProof; tính/công bố điểm vẫn thuộc CP3–CP4**. Các công thức mục 6.1 được giữ nguyên; SCRUM-110 đọc cấu hình Active của đợt, không hard-code mẫu số 6/7 hoặc tự thêm luật đạt/rớt. Phạm vi/bằng chứng hiện tại ở [FinalSubmissionVerification](ApiContract/FinalSubmissionVerification.md).
 
 - SCRUM-106 nhận package mới nguyên vẹn gồm PDF + DOCX ≤20 MiB mỗi file, Abstract/Keywords Việt–Anh. Student Active/Confirmed chọn groupId và được nộp lại khi Submitted/NeedRevision, trong cửa sổ ARCHIVAL_AND_PUBLICATION của đợt Open. Mỗi lần nộp tăng version và giữ lịch sử. GVHD/Admin xác nhận bước 1, Faculty/Admin bước 2; yêu cầu sửa phải có lý do. ArchiveConfirmed bất biến.
 - CouncilMinute Locked có actor/time và đúng group/assignment là bằng chứng bảo vệ bắt buộc; AllScoresEntered không thay thế được. API khóa biên bản thuộc task Hội đồng. Archive proof phải có package/manifest/hai file/hai review hợp lệ, không tin riêng status legacy.

@@ -302,7 +302,7 @@ public sealed partial class FinalReportWorkflowIntegrationTests
         Assert.Empty(await thesis.FinalSubmissionPackages.ToListAsync());
     }
     [Fact]
-    public async Task Archival_openapi_describes_multipart_key_and_group_selectors_without_CP2_confirmation_endpoint()
+    public async Task Archival_openapi_describes_multipart_confirmation_keys_and_group_selectors()
     {
         using var response = await _client.GetAsync("/openapi/v1.json");
         response.EnsureSuccessStatusCode();
@@ -314,6 +314,14 @@ public sealed partial class FinalReportWorkflowIntegrationTests
         foreach (var suffix in new[] { "/my-group", "/submission-eligibility" })
             Assert.Contains(paths.GetProperty(ArchivalRoute + suffix).GetProperty("get").GetProperty("parameters").EnumerateArray(),
                 p => p.GetProperty("name").GetString() == "groupId" && p.GetProperty("required").GetBoolean());
-        Assert.DoesNotContain(paths.EnumerateObject(), p => p.Name.StartsWith(ArchivalRoute, StringComparison.Ordinal) && p.Name.EndsWith("confirm-archive", StringComparison.Ordinal));
+        var put = paths.GetProperty(ArchivalRoute + "/{id}/confirm-archive").GetProperty("put");
+        Assert.True(put.GetProperty("requestBody").GetProperty("content").TryGetProperty("application/json", out _));
+        Assert.Contains(put.GetProperty("parameters").EnumerateArray(), p => p.GetProperty("name").GetString() == "Idempotency-Key" && p.GetProperty("required").GetBoolean());
+        foreach (var code in new[] { "200", "400", "401", "403", "404", "409", "413", "415" }) Assert.True(put.GetProperty("responses").TryGetProperty(code, out _));
+        var confirmationSchema = json.RootElement.GetProperty("components").GetProperty("schemas").EnumerateObject()
+            .Single(s => s.Name.EndsWith("ConfirmFinalSubmissionRequest", StringComparison.Ordinal)).Value;
+        Assert.False(confirmationSchema.GetProperty("additionalProperties").GetBoolean());
+        Assert.Equal(new[] { "AdvisorConfirm", "FacultyConfirm", "RequestRevision" },
+            confirmationSchema.GetProperty("properties").GetProperty("action").GetProperty("enum").EnumerateArray().Select(e => e.GetString()));
     }
 }
