@@ -10,7 +10,8 @@ internal sealed class ScoreSummaryOperationTransformer : IOpenApiOperationTransf
     {
         var path = context.Description.RelativePath?.Trim('/');
         if (path is null || !path.StartsWith("api/thesis/scores", StringComparison.Ordinal)) return Task.CompletedTask;
-        if (context.Description.HttpMethod == "POST") Add("Idempotency-Key", JsonSchemaType.String, true, "uuid", ParameterLocation.Header);
+        if (context.Description.HttpMethod is "POST" or "PUT") Add("Idempotency-Key", JsonSchemaType.String, true, "uuid", ParameterLocation.Header);
+        if (path == "api/thesis/scores/my-group") Add("groupId", JsonSchemaType.String, true, "uuid");
         if (path == "api/thesis/scores")
         {
             Add("batchId", JsonSchemaType.String, true, "uuid"); Add("status", JsonSchemaType.String);
@@ -36,6 +37,24 @@ internal sealed class ScoreSummarySchemaTransformer : IOpenApiSchemaTransformer
             schema.AdditionalPropertiesAllowed = false;
             p["expectedSummaryVersion"] = new OpenApiSchema { Type = JsonSchemaType.Integer | JsonSchemaType.Null, Minimum = "1", Maximum = "4294967295", Description = "xmin khi summary tồn tại; null/omit chỉ khi chưa có row." };
             p["expectedActiveConfigVersion"] = new OpenApiSchema { Type = JsonSchemaType.Integer | JsonSchemaType.Null, Minimum = "1", Maximum = "2147483647", Description = "Kỳ vọng version Active, tùy chọn; server luôn xác minh nguồn cấu hình." };
+        }
+        if (context.JsonTypeInfo.Type == typeof(ScoreSummaryEndpoints.PublishRequest))
+        {
+            schema.AdditionalPropertiesAllowed = false;
+            schema.Required = new HashSet<string> { "batchId", "selections" };
+            if (schema.Properties is { } publish && publish["selections"] is OpenApiSchema selections)
+            {
+                selections.Type = JsonSchemaType.Array;
+                selections.MinItems = 1;
+                selections.MaxItems = 100;
+            }
+        }
+        if (context.JsonTypeInfo.Type == typeof(UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ScorePublicationSelection))
+        {
+            schema.AdditionalPropertiesAllowed = false;
+            schema.Required = new HashSet<string> { "groupId", "expectedSummaryVersion" };
+            if (schema.Properties is { } selection)
+                selection["expectedSummaryVersion"] = new OpenApiSchema { Type = JsonSchemaType.Integer, Format = "int64", Minimum = "1", Maximum = "4294967295" };
         }
         return Task.CompletedTask;
     }

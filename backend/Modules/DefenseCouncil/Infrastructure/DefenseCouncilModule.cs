@@ -90,6 +90,8 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ScoreSummaryInputLoader>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.CalculateScoreSummaryHandler>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ReadScoreSummaryHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.PublishScoreSummaryHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.StudentScoreSummaryHandler>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilScoreWriteGuard, UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.CouncilScoreWriteGuard>();
     }
 

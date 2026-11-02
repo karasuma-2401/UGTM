@@ -48,5 +48,15 @@ public class ScoreSummary
         PublishedAt = null;
     }
 
+    public void Publish(Guid actor, DateTime publishedAtUtc)
+    {
+        if (IsLegacy || Status != ScoreSummaryStatus.Calculated || ActiveRevisionId is null || actor == Guid.Empty || publishedAtUtc.Kind != DateTimeKind.Utc || publishedAtUtc < CalculatedAt)
+            throw new InvalidOperationException("Only a verified calculation can be published.");
+        PublishedRevisionId = ActiveRevisionId;
+        PublishedBy = actor;
+        PublishedAt = publishedAtUtc;
+        Status = ScoreSummaryStatus.PublishedToStudent;
+    }
+
     public ICollection<ScoreSummaryComponent> Components { get; set; } = [];
 }

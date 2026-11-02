@@ -1,6 +1,6 @@
 # Thesis score calculation & publication API contract — SCRUM-110
 
-Trạng thái: **CP3 đã triển khai migration/lịch sử, POST calculate, ba GET quản trị, resolver động, stale/provenance và guards nguồn điểm; PUT publish và GET sinh viên thuộc CP4, chưa map**. Ngày 02/11/2026. Nền tảng kế thừa: [báo cáo cuối kỳ SCRUM-102](ThesisManagementApiContract.md), [duyệt GVHD SCRUM-103](AdvisorEvaluationApprovalApiContract.md), [phân công GVPB SCRUM-104](ReviewerAssignmentApiContract.md), [chấm GVPB và điều kiện bảo vệ SCRUM-105](ReviewerEvaluationApiContract.md), [lưu chiểu SCRUM-106](FinalSubmissionApiContract.md), [cấu hình điểm đợt](AcademicPeriodsApiContract.md). [Thiết kế schema/transaction/handoff](ArchivalScoreWorkflowDesign.md) là phần bắt buộc của contract này; [bằng chứng CP3](ScoreCalculationVerification.md) ghi phạm vi đã kiểm tra. Plan local vẫn ngoài Git.
+Trạng thái: **CP3–CP4 đã triển khai calculate/private reads, publish nguyên tử và Student GET**. Ngày 02/11/2026. Nền tảng kế thừa: [báo cáo cuối kỳ SCRUM-102](ThesisManagementApiContract.md), [duyệt GVHD SCRUM-103](AdvisorEvaluationApprovalApiContract.md), [phân công GVPB SCRUM-104](ReviewerAssignmentApiContract.md), [chấm GVPB và điều kiện bảo vệ SCRUM-105](ReviewerEvaluationApiContract.md), [lưu chiểu SCRUM-106](FinalSubmissionApiContract.md), [cấu hình điểm đợt](AcademicPeriodsApiContract.md). [Thiết kế schema/transaction/handoff](ArchivalScoreWorkflowDesign.md) là phần bắt buộc của contract này; [bằng chứng CP3](ScoreCalculationVerification.md) ghi phạm vi đã kiểm tra. Plan local vẫn ngoài Git.
 
 Phạm vi SCRUM-110:
 - Văn phòng Khoa (Faculty) hoặc Admin thực hiện tính điểm tổng kết dự thảo cho đề tài (`POST /api/thesis/scores/calculate/{groupId}`) dựa trên cấu hình điểm Active động của đợt và các nguồn dữ liệu chấm đã hoàn tất.
@@ -266,7 +266,7 @@ Mỗi lần tính thành công tạo revision bất biến, giữ toàn bộ l�
 ### 5.2. `PUT /api/thesis/scores/publish`
 Công bố kết quả điểm chính thức cho danh sách nhóm được chọn trong cùng một đợt.
 
-**Thiết kế CP4, chưa map ở CP3.** Schema published pointer/actor/time, receipt operation Publish và các guards đã được tạo ở CP3; không coi dữ liệu Published dựng trong test là bằng chứng endpoint này đã chạy.
+**Đã triển khai CP4.** Publish dùng schema/guards CP3, xác minh lại quyền, version và fingerprint trong transaction. Lỗi từng nhóm được trả trong `error.errors` theo groupId.
 
 **Headers:**
 - `Authorization: Bearer <token>`
@@ -330,7 +330,7 @@ Công bố kết quả điểm chính thức cho danh sách nhóm được chọ
 ### 5.3. `GET /api/thesis/scores/my-group?groupId={groupId}`
 Tra cứu bảng điểm chính thức của nhóm sinh viên đang đăng nhập.
 
-**Thiết kế CP4, chưa map ở CP3.** Ba GET CP3 là private, không mở nhánh Student để thay endpoint này.
+**Đã triển khai CP4.** Ba GET quản trị vẫn là private; GET này kiểm tra account Student Active và membership Confirmed của đúng group trước khi đọc snapshot.
 
 **Quyền truy cập:** Sinh viên có tài khoản Active và là thành viên `Confirmed` của một nhóm đề tài.
 
@@ -416,7 +416,7 @@ Kiểm tra các điều kiện sẵn sàng để tính hoặc công bố điểm
 
 Chỉ management read theo ma trận; GET không mutate, không giữ khóa và không cấp quyền cho POST/PUT. `blockingReasons` dùng error code chuẩn theo thiết kế chung; `Calculated` nonlegacy, không stale và mọi guard hợp lệ thì isReadyForPublication=true.
 
-Readiness phản ánh điều kiện của bước công bố dự kiến, không có nghĩa CP3 đã thực hiện công bố. Flags điểm/Locked/archive/config được đọc riêng; Stale/Legacy có thể chặn publication dù vẫn cho phép calculate mới. Danh sách bắt đầu từ nhóm của đợt, lấy context, grade facts, archive proofs và histories theo lô trước filter/count/page; không query từng nhóm hoặc tạo Pending row.
+Readiness chỉ là thông tin tham khảo, publish vẫn kiểm tra lại trong transaction. Flags điểm/Locked/archive/config được đọc riêng; Stale/Legacy có thể chặn publication dù vẫn cho phép calculate mới. Danh sách bắt đầu từ nhóm của đợt, lấy context, grade facts, archive proofs và histories theo lô trước filter/count/page; không query từng nhóm hoặc tạo Pending row.
 
 **Response (200 OK):**
 ```json

@@ -1,6 +1,6 @@
 # SCRUM-106/110 — schema, proof và transaction contract CP0
 
-Ngày 02/11/2026. **CP1–CP2 đã hoàn tất lưu chiểu/ArchiveProof; CP3 đã triển khai schema summary/revision/receipt, calculate và private reads/stale, shared lock pipeline và frozen source guards. Publish/Student GET vẫn là thiết kế CP4.** Áp dụng cùng [FinalSubmissionApiContract](FinalSubmissionApiContract.md) và [ScoreCalculationPublicationApiContract](ScoreCalculationPublicationApiContract.md). Baseline CP0 `767b8e8`; CP0 chỉ sửa tài liệu. [Bằng chứng lưu chiểu](FinalSubmissionVerification.md) và [CP3 điểm](ScoreCalculationVerification.md) phân biệt phần đã có với handoff còn lại.
+Ngày 02/11/2026. **CP1–CP2 đã hoàn tất lưu chiểu/ArchiveProof; CP3 đã triển khai schema summary/revision/receipt, calculate và private reads/stale, shared lock pipeline và frozen source guards. CP4 bổ sung publish nguyên tử và Student GET trên snapshot bất biến.** Áp dụng cùng [FinalSubmissionApiContract](FinalSubmissionApiContract.md) và [ScoreCalculationPublicationApiContract](ScoreCalculationPublicationApiContract.md). Baseline CP0 `767b8e8`; CP0 chỉ sửa tài liệu. [Bằng chứng lưu chiểu](FinalSubmissionVerification.md) và [CP3 điểm](ScoreCalculationVerification.md) phân biệt phần đã có với handoff còn lại.
 
 ## 1. Các quyết định dùng chung
 

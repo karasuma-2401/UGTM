@@ -180,7 +180,15 @@ public sealed partial class FinalReportWorkflowIntegrationTests
         var paths = document.RootElement.GetProperty("paths"); var calculate = paths.GetProperty(ScoresRoute + "/calculate/{groupId}").GetProperty("post");
         Assert.Contains(calculate.GetProperty("parameters").EnumerateArray(), p => p.GetProperty("name").GetString() == "Idempotency-Key" && p.GetProperty("required").GetBoolean());
         Assert.True(calculate.GetProperty("requestBody").GetProperty("content").TryGetProperty("application/json", out _));
-        Assert.False(paths.TryGetProperty(ScoresRoute + "/publish", out _)); Assert.False(paths.TryGetProperty(ScoresRoute + "/my-group", out _));
+        var publish = paths.GetProperty(ScoresRoute + "/publish").GetProperty("put");
+        Assert.Contains(publish.GetProperty("parameters").EnumerateArray(), p => p.GetProperty("name").GetString() == "Idempotency-Key" && p.GetProperty("required").GetBoolean());
+        var student = paths.GetProperty(ScoresRoute + "/my-group").GetProperty("get");
+        Assert.Contains(student.GetProperty("parameters").EnumerateArray(), p => p.GetProperty("name").GetString() == "groupId" && p.GetProperty("required").GetBoolean());
+        var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+        var requestSchema = schemas.EnumerateObject().Single(s => s.Value.TryGetProperty("properties", out var properties)
+            && properties.TryGetProperty("batchId", out _) && properties.TryGetProperty("selections", out _)).Value;
+        var selections = requestSchema.GetProperty("properties").GetProperty("selections");
+        Assert.Equal(1, selections.GetProperty("minItems").GetInt32()); Assert.Equal(100, selections.GetProperty("maxItems").GetInt32());
     }
     [Fact]
     public async Task ScoreSummary_frozen_source_and_history_guards_are_ready_for_future_publication_writer()
