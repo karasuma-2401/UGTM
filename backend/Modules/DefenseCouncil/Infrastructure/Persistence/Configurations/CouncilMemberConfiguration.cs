@@ -14,6 +14,7 @@ public class CouncilMemberConfiguration : IEntityTypeConfiguration<CouncilMember
         builder.ToTable("council_member", "councils");
 
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Version).IsRowVersion();
 
         builder.Property(x => x.RoleInCouncil)
             .IsRequired();

@@ -37,6 +37,8 @@ public sealed class DefenseCouncilModule : IModule
 
     public void RegisterModule(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.FinalSubmissions.ILockedDefenseProofReader,
+            Persistence.Repositories.LockedDefenseProofReader>();
         services.AddModuleDbContext<DefenseCouncilDbContext>(configuration);
         services.AddScoped<ICouncilRepository, CouncilRepository>();
         services.AddScoped<IDefenseCouncilUnitOfWork>(sp => sp.GetRequiredService<DefenseCouncilDbContext>());
@@ -82,11 +84,21 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<GetCouncilScheduleHandler>();
         services.AddScoped<SubmitCouncilScoreHandler>();
         services.AddScoped<CheckCouncilDiscrepancyHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.IScoreSummaryStore, ScoreSummaryStore>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ScoreSummaryAccess>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ScoreSummaryResolver>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ScoreSummaryInputLoader>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.CalculateScoreSummaryHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ReadScoreSummaryHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.PublishScoreSummaryHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.StudentScoreSummaryHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilScoreWriteGuard, UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.CouncilScoreWriteGuard>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapCouncilEndpoints();
+        endpoints.MapScoreSummaryEndpoints();
         endpoints.MapAdvisorEvaluationEndpoints();
         endpoints.MapReviewerAssignmentEndpoints();
         endpoints.MapReviewerAssignmentReadEndpoints();

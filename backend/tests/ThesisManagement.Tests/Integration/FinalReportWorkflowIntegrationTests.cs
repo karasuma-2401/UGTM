@@ -82,6 +82,7 @@ public sealed partial class FinalReportWorkflowIntegrationTests(PostgreSqlFixtur
         await SeedAsync();
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
         builder.Logging.ClearProviders();
+        builder.Logging.AddProvider(new ArchivalTestLogProvider(_archivalErrors));
         builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -114,6 +115,7 @@ public sealed partial class FinalReportWorkflowIntegrationTests(PostgreSqlFixtur
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
         builder.Services.AddSingleton<TimeProvider>(_clock);
+        ConfigureArchivalStorage(builder.Services);
         builder.Services.AddAuthentication(WorkflowAuthentication.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, WorkflowAuthentication>(WorkflowAuthentication.SchemeName, _ => { });
         builder.Services.AddAuthorization();

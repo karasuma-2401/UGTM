@@ -480,6 +480,17 @@ Phần chấm GVPB của FR-FIN-02 đã có backend SCRUM-105 CP2: GVPB Active/L
 
 SCRUM-105 CP3 đã bổ sung đầu ra của FR-FIN-02: gate dùng cấu hình Active hiện tại và thứ tự reason, yêu cầu Submitted/Approved/score đạt sàn/binding hợp lệ, không dùng account nghỉ để ngầm thu hồi giá trị phiếu. Gate không persist trạng thái ReadyForDefense hoặc tự xếp Hội đồng. Feedback Student Confirmed đúng group chỉ có comment đã phát hành hoặc explicit null, không có điểm/kết luận/gate/metadata, không có override quản trị. Liên kết report/file/version/checksum gốc phải hợp lệ nhưng không áp write readiness, current report version hoặc thời hạn sinh viên lên đọc góp ý. Writer scheduling phải kiểm tra gate khóa trong transaction của chính lần ghi; GET không cấp quyền scheduling. Chi tiết và bằng chứng ở [CP3](ApiContract/ReviewerEvaluationApiContract.md#15-cp3--gate-hội-đồng-và-góp-ý-sinh-viên).
 
+### 6.2. Thiết kế lưu chiểu và công bố điểm — SCRUM-106/110 CP0
+
+Thiết kế CP0 ngày 02/11/2026 được triển khai theo checkpoint: **CP1–CP2 đã hoàn tất lưu chiểu/ArchiveProof; CP3 đã có schema/lịch sử summary, POST calculate, ba GET private/readiness/list, resolver động và bảo vệ nguồn; CP4 bổ sung publish và Student GET**. Các công thức mục 6.1 được giữ nguyên; SCRUM-110 đọc cấu hình Active của đợt, không hard-code mẫu số 6/7 hoặc tự thêm luật đạt/rớt. Phạm vi/bằng chứng tại [lưu chiểu](ApiContract/FinalSubmissionVerification.md) và [điểm CP3](ApiContract/ScoreCalculationVerification.md).
+
+- SCRUM-106 nhận package mới nguyên vẹn gồm PDF + DOCX ≤20 MiB mỗi file, Abstract/Keywords Việt–Anh. Student Active/Confirmed chọn groupId và được nộp lại khi Submitted/NeedRevision, trong cửa sổ ARCHIVAL_AND_PUBLICATION của đợt Open. Mỗi lần nộp tăng version và giữ lịch sử. GVHD/Admin xác nhận bước 1, Faculty/Admin bước 2; yêu cầu sửa phải có lý do. ArchiveConfirmed bất biến.
+- CouncilMinute Locked có actor/time và đúng group/assignment là bằng chứng bảo vệ bắt buộc; AllScoresEntered không thay thế được. API khóa biên bản thuộc task Hội đồng. Archive proof phải có package/manifest/hai file/hai review hợp lệ, không tin riêng status legacy.
+- Faculty/Admin tính/công bố khi đợt Open hoặc Closed; PĐT chỉ đọc. Tính cần đủ nguồn đã hoàn tất và archive proof hợp lệ; nguồn/ánh xạ nhiều UV hoặc Custom chưa rõ thì từ chối. Decimal, chỉ round kết quả cuối hai chữ số AwayFromZero theo quyết định thiết kế. Nguồn bị loại kéo theo loại trọng số và chuẩn hóa phần còn lại.
+- Publish chọn 1–100 nhóm cùng đợt, tất cả thành công hoặc tất cả rollback. Cấu hình/nguồn thay đổi trước công bố yêu cầu tính lại; sau công bố khóa kết quả và writer liên quan. Sinh viên chỉ xem published snapshot của đúng nhóm qua DTO allowlist. Xuất Excel/PDF, email và thu hồi/điều chỉnh sau công bố thuộc task riêng.
+
+Request, permission, acceptance và schema/handoff tại [contract lưu chiểu](ApiContract/FinalSubmissionApiContract.md), [contract điểm](ApiContract/ScoreCalculationPublicationApiContract.md) và [thiết kế chung](ApiContract/ArchivalScoreWorkflowDesign.md). Các consumer phải tham gia shared transaction/lock protocol; seed Locked chỉ kiểm thử consumer, không chứng minh đã có E2E API khóa biên bản.
+
 ## 7. Tài liệu liên quan
 
 [Use Case](UseCases.md) · [Luồng dữ liệu](DataFlows.md) · [Tuần tự](../backend/docs/Architecture/Sequences.md) · [Kiến trúc](../backend/docs/Architecture/Architecture.md) · [Dữ liệu](DataModel.md).

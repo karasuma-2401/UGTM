@@ -87,11 +87,11 @@ internal static class CrossModuleForeignKeys
         modelBuilder.Entity<FinalSubmission>().HasOne<User>()
             .WithMany().HasForeignKey(x => x.AdvisorConfirmedBy)
             .HasConstraintName("fk_final_submission_user_advisor_confirmed_by")
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<FinalSubmission>().HasOne<User>()
             .WithMany().HasForeignKey(x => x.ArchivedConfirmedBy)
             .HasConstraintName("fk_final_submission_user_archived_confirmed_by")
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<MidtermReport>().HasOne<User>()
             .WithMany().HasForeignKey(x => x.ReviewedBy)
             .HasConstraintName("fk_midterm_report_user_reviewed_by")

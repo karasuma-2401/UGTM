@@ -14,6 +14,7 @@ public class CouncilMinute
     public string? OverrideReason { get; set; }
     public DateTime? UnlockedAt { get; set; }
     public Guid? UnlockedBy { get; set; }
+    public uint Version { get; set; }
 
     public CouncilAssignment Assignment { get; set; } = null!;
 }

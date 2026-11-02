@@ -19,8 +19,12 @@ public static class OpenApiConfiguration
             options.AddOperationTransformer<BearerSecurityOperationTransformer>();
             options.AddOperationTransformer<IdempotencyOperationTransformer>();
             options.AddOperationTransformer<ReviewerAssignmentOperationTransformer>();
+            options.AddOperationTransformer<FinalSubmissionOperationTransformer>();
             options.AddOperationTransformer<ReviewerEvaluationOperationTransformer>();
             options.AddSchemaTransformer<ReviewerEvaluationSchemaTransformer>();
+            options.AddSchemaTransformer<FinalSubmissionSchemaTransformer>();
+            options.AddOperationTransformer<ScoreSummaryOperationTransformer>();
+            options.AddSchemaTransformer<ScoreSummarySchemaTransformer>();
         });
 
         return services;
