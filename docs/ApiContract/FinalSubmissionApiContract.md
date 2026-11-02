@@ -1,6 +1,6 @@
 # Final submission archival API contract — SCRUM-106
 
-Trạng thái: **Thiết kế CP0 đã sửa theo review, sẵn sàng review để triển khai CP1–CP2; chưa có runtime/migration mới**. Ngày 02/11/2026. Nền tảng kế thừa: [báo cáo cuối kỳ SCRUM-102](ThesisManagementApiContract.md), [duyệt GVHD SCRUM-103](AdvisorEvaluationApprovalApiContract.md), [phân công GVPB SCRUM-104](ReviewerAssignmentApiContract.md), [chấm GVPB và điều kiện bảo vệ SCRUM-105](ReviewerEvaluationApiContract.md). [Thiết kế schema/transaction/handoff CP0](ArchivalScoreWorkflowDesign.md) là phần bắt buộc của contract này. Plan local: `artifacts/plans/SCRUM-106-110-ImplementationPlan.md`.
+Trạng thái: **CP1 đã triển khai POST nộp/nộp lại, sáu GET, schema/history/receipts và cleanup; xác nhận hai bước và producer ArchiveProof thuộc CP2**. Ngày 02/11/2026. Nền tảng kế thừa: [báo cáo cuối kỳ SCRUM-102](ThesisManagementApiContract.md), [duyệt GVHD SCRUM-103](AdvisorEvaluationApprovalApiContract.md), [phân công GVPB SCRUM-104](ReviewerAssignmentApiContract.md), [chấm GVPB và điều kiện bảo vệ SCRUM-105](ReviewerEvaluationApiContract.md). [Thiết kế schema/transaction/handoff](ArchivalScoreWorkflowDesign.md) là phần bắt buộc của contract này. Phạm vi và bằng chứng theo checkpoint tại [FinalSubmissionVerification](FinalSubmissionVerification.md). Plan local vẫn ngoài Git.
 
 Phạm vi SCRUM-106:
 - Sinh viên Confirmed của đúng nhóm nộp bộ hồ sơ lưu chiểu hoàn thiện sau bảo vệ gồm đúng một file PDF và đúng một file DOCX, mỗi file tối đa 20 MiB, kèm Abstract (Việt/Anh, tối đa 10.000 runes) và Keywords (Việt/Anh, tối đa 1.000 runes).
@@ -121,7 +121,7 @@ Nộp lần đầu hoặc nộp lại bộ hồ sơ lưu chiểu hoàn thiện (
    - Hồ sơ chưa có/NotSubmitted, Submitted hoặc NeedRevision mới được nộp. AdvisorConfirmed và ArchiveConfirmed chặn ý định nộp mới với 409. Nộp lại Submitted vẫn tăng package version và giữ lịch sử.
 3. Tạo durable upload attempt có lease và keys riêng sau khi preflight đạt; chưa tạo package hoặc thay hồ sơ hiện tại. Những kiểm tra bước 2 không thay thế lần kiểm tra dưới khóa sau upload.
 4. Tải file lên Object Storage (MinIO / S3):
-   - Sinh `ObjectKey` duy nhất theo mẫu: `submissions/{batchId}/{groupId}/final-submission/v{version}/{fileRole}_{guid}.{ext}`.
+   - Dùng object-key factory hiện hữu: `thesis-submissions/finalsubmission/{submissionId:N}/v{version}/{randomGuid:N}.{ext}`. Mỗi attempt có hai keys riêng; role được lưu trong package-file link, không suy quyền từ đường dẫn.
    - Upload stream đã validate; checksum là SHA-256 đã tính từ đúng bytes được spool, không dùng checksum do client gửi.
    - Upload vào object key riêng của attempt, chưa có package visible. Nếu upload/DB fail thì compensation theo attempt; cleanup lỗi được ghi durable để retry. Khi commit có kết quả chưa rõ, phải kiểm tra receipt/attempt trước khi xóa, không xóa file của transaction đã thành công. Không có distributed transaction DB/S3; chi tiết ở thiết kế chung.
 5. Giao dịch cơ sở dữ liệu:
@@ -174,6 +174,8 @@ Nộp lần đầu hoặc nộp lại bộ hồ sơ lưu chiểu hoàn thiện (
 
 ### 3.2. `PUT /api/thesis/final-submissions/{id}/confirm-archive`
 Thực hiện hành động xác nhận hoặc yêu cầu chỉnh sửa hồ sơ lưu chiểu.
+
+**Thiết kế CP2; CP1 chưa map endpoint này.** Schema review/actor/time/proof đã được tạo ở migration CP1, không tạo xác nhận giả để mở luồng tính điểm.
 
 **Headers:**
 - `Authorization: Bearer <token>`
@@ -328,7 +330,7 @@ Tra cứu danh sách hồ sơ lưu chiểu phục vụ quản trị và điều 
 **Query Parameters:**
 - `batchId`: GUID (tùy chọn)
 - `status`: String (tùy chọn, thuộc `FinalSubmissionStatus`)
-- `searchTerm`: String (tùy chọn, tìm theo tên đề tài, mã nhóm)
+- `searchTerm`: String (tùy chọn, trim tối đa 200 ký tự; tìm literal trong tên đề tài Việt/Anh, hoặc đúng GUID nhóm khi truyền định danh nhóm)
 - `pageNumber`: Int >= 1 (mặc định 1)
 - `pageSize`: Int từ 1 đến 100 (mặc định 20)
 
@@ -341,6 +343,8 @@ Faculty/PĐT cần role + read; Admin được đọc; GVHD Active/Lecturer ch�
 ## 4. Handoff Contract: Archive Proof cho Module DefenseCouncil
 
 Module `DefenseCouncil` không được truy cập trực tiếp bảng hay DbContext của `ThesisManagement`. Thay vào đó, `ThesisManagement` cung cấp contract giao tiếp sau trong project `Contracts`:
+
+**Contract đích của CP2.** CP1 mới triển khai consumer `ILockedDefenseProofReader` và `IFinalSubmissionBatchReader`, chưa đăng ký producer ArchiveProof cho SCRUM-110.
 
 ```csharp
 namespace UGTM.Modules.ThesisManagement.Contracts.FinalSubmissions;

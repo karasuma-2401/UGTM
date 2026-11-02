@@ -18,6 +18,8 @@ public class SubmissionFileConfiguration : IEntityTypeConfiguration<SubmissionFi
         builder.ToTable("submission_file", "thesis");
 
         builder.HasKey(x => x.Id);
+        builder.HasAlternateKey(x => new { x.Id, x.EntityType, x.EntityId, x.VersionNo })
+            .HasName("ak_submission_file_archival_binding");
 
         builder.Property(x => x.EntityType)
             .IsRequired();

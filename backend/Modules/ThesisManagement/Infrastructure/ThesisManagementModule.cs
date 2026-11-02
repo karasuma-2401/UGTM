@@ -88,6 +88,12 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.ReviewerAssignments.IReviewerAssignmentThesisReader,
             Persistence.Repositories.ReviewerAssignmentThesisReader>();
         services.AddScoped<FinalReportSubmissionEligibilityChecker>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.IFinalSubmissionStore, FinalSubmissionStore>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.FinalSubmissionAccess>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.SubmitFinalSubmissionHandler>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.FinalSubmissionReadHandler>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.IFinalSubmissionUploadCleanup, FinalSubmissionUploadCleanup>();
+        services.AddHostedService<FinalSubmissionUploadCleanupWorker>();
         services.AddScoped<SubmitFinalReportHandler>();
         services.AddScoped<FinalReportReadAccessChecker>();
         services.AddScoped<GetFinalReportHistoryHandler>();
@@ -171,6 +177,7 @@ public sealed class ThesisManagementModule : IModule
         endpoints.MapSyllabusSubmissionEndpoints();
         endpoints.MapMidtermReportSubmissionEndpoints();
         endpoints.MapFinalReportSubmissionEndpoints();
+        endpoints.MapFinalSubmissionEndpoints();
         endpoints.MapProgressMilestoneEndpoints();
         endpoints.MapProgressReportSubmissionEndpoints();
         endpoints.MapTopicRegistrationEndpoints();

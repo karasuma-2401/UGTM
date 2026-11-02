@@ -37,6 +37,8 @@ public sealed class DefenseCouncilModule : IModule
 
     public void RegisterModule(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.FinalSubmissions.ILockedDefenseProofReader,
+            Persistence.Repositories.LockedDefenseProofReader>();
         services.AddModuleDbContext<DefenseCouncilDbContext>(configuration);
         services.AddScoped<ICouncilRepository, CouncilRepository>();
         services.AddScoped<IDefenseCouncilUnitOfWork>(sp => sp.GetRequiredService<DefenseCouncilDbContext>());

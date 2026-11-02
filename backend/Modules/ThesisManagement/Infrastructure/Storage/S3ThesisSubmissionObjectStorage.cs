@@ -85,6 +85,18 @@ public sealed class S3ThesisSubmissionObjectStorage : IThesisSubmissionObjectSto
         string objectKey,
         TimeSpan validFor,
         CancellationToken cancellationToken = default)
+        => CreateDownloadUriCoreAsync(objectKey, validFor, null, cancellationToken);
+
+    public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(downloadFileName) || downloadFileName.Length > 255
+            || downloadFileName.Any(char.IsControl) || downloadFileName.IndexOfAny(['/', '\\']) >= 0)
+            throw new ArgumentException("Invalid download filename.", nameof(downloadFileName));
+        return CreateDownloadUriCoreAsync(objectKey, validFor, downloadFileName, cancellationToken);
+    }
+
+    private Task<Uri> CreateDownloadUriCoreAsync(string objectKey, TimeSpan validFor, string? fileName, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ValidateObjectKey(objectKey);
@@ -106,6 +118,15 @@ public sealed class S3ThesisSubmissionObjectStorage : IThesisSubmissionObjectSto
                 : Protocol.HTTPS,
             Expires = DateTime.UtcNow.Add(validFor)
         };
+        if (fileName is not null)
+        {
+            var disposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("attachment")
+            {
+                FileName = fileName.All(c => c <= 127) ? fileName : "download" + Path.GetExtension(fileName),
+                FileNameStar = fileName
+            };
+            request.ResponseHeaderOverrides = new ResponseHeaderOverrides { ContentDisposition = disposition.ToString() };
+        }
 
         return Task.FromResult(new Uri(_presigningClient.GetPreSignedURL(request)));
     }

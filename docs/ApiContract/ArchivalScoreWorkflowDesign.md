@@ -1,6 +1,6 @@
 # SCRUM-106/110 — schema, proof và transaction contract CP0
 
-Ngày 02/11/2026. **Thiết kế để review, chưa phải schema/API đã triển khai.** Áp dụng cùng [FinalSubmissionApiContract](FinalSubmissionApiContract.md) và [ScoreCalculationPublicationApiContract](ScoreCalculationPublicationApiContract.md). Baseline runtime `be0d7e9`. CP1 tạo nền lưu chiểu đủ cho CP2; CP3 tạo nền bảng điểm đủ cho CP4. Không tạo migration hoặc sửa runtime ở CP0.
+Ngày 02/11/2026. **CP1 đã tạo schema lưu chiểu, nộp/đọc package, durable cleanup, coordinator và reader defense/window/authority. Các phần xác nhận/ArchiveProof và bảng điểm vẫn là thiết kế cho CP2–CP4.** Áp dụng cùng [FinalSubmissionApiContract](FinalSubmissionApiContract.md) và [ScoreCalculationPublicationApiContract](ScoreCalculationPublicationApiContract.md). Baseline CP0 `767b8e8`; CP0 chỉ sửa tài liệu. [Bằng chứng CP1](FinalSubmissionVerification.md) phân biệt phần đã có với handoff còn lại.
 
 ## 1. Các quyết định dùng chung
 
@@ -40,7 +40,7 @@ Chốt invariant kiểm tra lúc commit (deferred constraint trigger cho aggrega
 - Sau upload, vào coordinator: key lock → recheck quyền → receipt; nếu chưa replay, lấy toàn bộ guards theo mục 5 rồi đọc lại state/xmin/window/minute/membership. Thời điểm nộp quyết định dùng TimeProvider sau khi lấy guards; qua hạn trong lúc upload thì không commit hồ sơ mới.
 - Khi hợp lệ, ghi aggregate/package/file links/review projection, save lấy xmin; post-save thêm audit/receipt và mark attempt Committed trỏ đúng package trong **cùng** transaction. Response sau commit, không expose nửa package hoặc AttemptId/object key.
 - Khi Abort/lỗi, chỉ cleanup keys của attempt này; uncertain commit phải tra attempt/receipt bằng context mới trước khi xóa. Committed hoặc có package tham chiếu thì không xóa. Lost response retry không sinh thêm version/audit.
-- Cleanup thất bại để CleanupPending với retry/backoff. Worker claim Cleaning bằng row lock/CAS, không đụng attempt Committed và không claim lease upload còn hiệu lực. Final commit cũng phải kiểm tra attempt vẫn Uploading và lease hợp lệ, không commit sau khi worker đã claim. Worker xóa idempotent rồi mark Cleaned, lỗi được retry; private orphan tạm thời không phải package hợp lệ. Không hứa atomic vật lý DB/S3.
+- Cleanup thất bại để CleanupPending với retry/backoff. Worker claim Cleaning bằng row lock/CAS, không đụng attempt Committed và không claim lease upload còn hiệu lực. Final commit cũng phải kiểm tra attempt vẫn Uploading và lease hợp lệ, không commit sau khi worker đã claim. Request đã kết thúc upload kiểm tra lại cả attempt Cleaned để dọn file đến muộn; nếu worker còn Cleaning thì đặt CleanupPending cho lượt sweep tiếp, worker cũ không được ghi đè bằng CAS. Worker xóa idempotent rồi mark Cleaned, lỗi được retry; private orphan tạm thời không phải package hợp lệ. Không hứa atomic vật lý DB/S3.
 
 ## 3. Schema SCRUM-110 — migration CP3, đủ cho CP4
 
