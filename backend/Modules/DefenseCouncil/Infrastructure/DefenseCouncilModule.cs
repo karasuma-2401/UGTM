@@ -84,11 +84,19 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<GetCouncilScheduleHandler>();
         services.AddScoped<SubmitCouncilScoreHandler>();
         services.AddScoped<CheckCouncilDiscrepancyHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.IScoreSummaryStore, ScoreSummaryStore>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ScoreSummaryAccess>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ScoreSummaryResolver>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ScoreSummaryInputLoader>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.CalculateScoreSummaryHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ReadScoreSummaryHandler>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilScoreWriteGuard, UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.CouncilScoreWriteGuard>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapCouncilEndpoints();
+        endpoints.MapScoreSummaryEndpoints();
         endpoints.MapAdvisorEvaluationEndpoints();
         endpoints.MapReviewerAssignmentEndpoints();
         endpoints.MapReviewerAssignmentReadEndpoints();

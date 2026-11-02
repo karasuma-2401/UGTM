@@ -1,6 +1,6 @@
 # SCRUM-106/110 — schema, proof và transaction contract CP0
 
-Ngày 02/11/2026. **CP1–CP2 đã triển khai schema lưu chiểu, nộp/đọc package, cleanup, coordinator, hai bước xác nhận/trả sửa và producer Get/Lock ArchiveProof. Bảng điểm vẫn là thiết kế cho CP3–CP4.** Áp dụng cùng [FinalSubmissionApiContract](FinalSubmissionApiContract.md) và [ScoreCalculationPublicationApiContract](ScoreCalculationPublicationApiContract.md). Baseline CP0 `767b8e8`; CP0 chỉ sửa tài liệu. [Bằng chứng theo checkpoint](FinalSubmissionVerification.md) phân biệt phần đã có với handoff còn lại.
+Ngày 02/11/2026. **CP1–CP2 đã hoàn tất lưu chiểu/ArchiveProof; CP3 đã triển khai schema summary/revision/receipt, calculate và private reads/stale, shared lock pipeline và frozen source guards. Publish/Student GET vẫn là thiết kế CP4.** Áp dụng cùng [FinalSubmissionApiContract](FinalSubmissionApiContract.md) và [ScoreCalculationPublicationApiContract](ScoreCalculationPublicationApiContract.md). Baseline CP0 `767b8e8`; CP0 chỉ sửa tài liệu. [Bằng chứng lưu chiểu](FinalSubmissionVerification.md) và [CP3 điểm](ScoreCalculationVerification.md) phân biệt phần đã có với handoff còn lại.
 
 ## 1. Các quyết định dùng chung
 
@@ -43,6 +43,10 @@ Chốt invariant kiểm tra lúc commit (deferred constraint trigger cho aggrega
 - Cleanup thất bại để CleanupPending với retry/backoff. Worker claim Cleaning bằng row lock/CAS, không đụng attempt Committed và không claim lease upload còn hiệu lực. Final commit cũng phải kiểm tra attempt vẫn Uploading và lease hợp lệ, không commit sau khi worker đã claim. Request đã kết thúc upload kiểm tra lại cả attempt Cleaned để dọn file đến muộn; nếu worker còn Cleaning thì đặt CleanupPending cho lượt sweep tiếp, worker cũ không được ghi đè bằng CAS. Worker xóa idempotent rồi mark Cleaned, lỗi được retry; private orphan tạm thời không phải package hợp lệ. Không hứa atomic vật lý DB/S3.
 
 ## 3. Schema SCRUM-110 — migration CP3, đủ cho CP4
+
+Đã triển khai bằng migration `20261102141732_AddScoreSummaryWorkflow`; chỉ áp trong container test. Thêm xmin cho summary, CouncilAssignment/CouncilMember/CouncilScore để nhận ra cả thay đổi rồi trả về cùng giá trị. Không tạo/drop physical xmin trong Up/Down. FK active/published revision deferred qua SQL; lịch sử/components có trigger bất biến và projection được kiểm tra deferred lúc commit. Down từ chối khi có workflow data/precision không biểu diễn được ở schema cũ; giữ nguyên permission/grants tùy chỉnh.
+
+SubmitCouncilScore dùng coordinator/root guard, không còn writer summary cũ. Trigger backstop cho các source tables kiểm tra cả binding OLD và NEW, gom/sort tất cả group IDs và chặn Published; API writer lấy root trước grade rows để tránh nâng khóa ngược pha. Các API roster/approve hiện chỉ sửa Draft. Task khóa/mở khóa/loại điểm chưa có endpoint trong phạm vi này; writer đó vẫn phải dùng cùng protocol trước khi nghiệm thu E2E thật.
 
 | Bảng | Cột/kiểu và nguồn dữ liệu | Khóa và ràng buộc |
 | --- | --- | --- |

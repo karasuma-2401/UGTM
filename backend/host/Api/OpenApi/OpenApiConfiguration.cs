@@ -23,6 +23,8 @@ public static class OpenApiConfiguration
             options.AddOperationTransformer<ReviewerEvaluationOperationTransformer>();
             options.AddSchemaTransformer<ReviewerEvaluationSchemaTransformer>();
             options.AddSchemaTransformer<FinalSubmissionSchemaTransformer>();
+            options.AddOperationTransformer<ScoreSummaryOperationTransformer>();
+            options.AddSchemaTransformer<ScoreSummarySchemaTransformer>();
         });
 
         return services;

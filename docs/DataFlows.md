@@ -342,7 +342,7 @@ Các xác nhận chấm điểm của nhóm ngày 10/10/2026 đã được bổ 
 
 ### Thiết kế luồng lưu chiểu và công bố — SCRUM-106/110 CP0
 
-Trạng thái: CP1–CP2 đã triển khai nộp/đọc package, xác nhận hai bước/trả sửa và producer Get/Lock ArchiveProof; tính/công bố vẫn thuộc CP3–CP4. Luồng chi tiết thay cho việc suy diễn từ sơ đồ tổng quát phía trên trong phạm vi hai task này. Xem [bằng chứng theo checkpoint](ApiContract/FinalSubmissionVerification.md).
+Trạng thái: CP1–CP2 đã hoàn tất lưu chiểu/ArchiveProof; CP3 đã có calculate/private reads/stale và shared lock pipeline. Publish/Student GET (bước 4–5) vẫn thuộc CP4, chưa map. Luồng chi tiết thay cho sơ đồ tổng quát phía trên trong phạm vi hai task. Xem [lưu chiểu](ApiContract/FinalSubmissionVerification.md) và [bằng chứng CP3](ApiContract/ScoreCalculationVerification.md).
 
 1. Student Active/Confirmed gửi groupId và package PDF + DOCX cùng Abstract/Keywords Việt–Anh. Server validate/hash, kiểm tra receipt theo quyền hiện tại, preflight ý định mới, rồi upload keys riêng của durable attempt ngoài transaction nghiệp vụ. Sau upload mở shared transaction, khóa toàn bộ guards và kiểm tra lại thời gian/membership/Locked minute/state/xmin trước khi ghi package mới, audit và receipt. Lỗi không làm lộ package nửa vời; cleanup có lease/retry, không xóa object của commit đã thành công.
 2. GVHD/Admin xác nhận đúng package/manifest; Faculty/Admin kiểm tra lại và xác nhận ArchiveConfirmed. RequestRevision có lý do; nộp lại từ Submitted/NeedRevision tạo version mới, giữ lịch sử. ArchiveConfirmed không sửa/thu hồi trong hai task. Owner trả archive proof gồm provenance và hai file/hai review đã xác minh.

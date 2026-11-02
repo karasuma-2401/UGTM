@@ -1,6 +1,6 @@
 # Thesis score calculation & publication API contract — SCRUM-110
 
-Trạng thái: **Thiết kế CP0 đã sửa theo review, sẵn sàng review để triển khai CP3–CP4; chưa có runtime/migration mới**. Ngày 02/11/2026. Nền tảng kế thừa: [báo cáo cuối kỳ SCRUM-102](ThesisManagementApiContract.md), [duyệt GVHD SCRUM-103](AdvisorEvaluationApprovalApiContract.md), [phân công GVPB SCRUM-104](ReviewerAssignmentApiContract.md), [chấm GVPB và điều kiện bảo vệ SCRUM-105](ReviewerEvaluationApiContract.md), [lưu chiểu SCRUM-106](FinalSubmissionApiContract.md), [cấu hình điểm đợt](AcademicPeriodsApiContract.md). [Thiết kế schema/transaction/handoff CP0](ArchivalScoreWorkflowDesign.md) là phần bắt buộc của contract này. Plan local: `artifacts/plans/SCRUM-106-110-ImplementationPlan.md`.
+Trạng thái: **CP3 đã triển khai migration/lịch sử, POST calculate, ba GET quản trị, resolver động, stale/provenance và guards nguồn điểm; PUT publish và GET sinh viên thuộc CP4, chưa map**. Ngày 02/11/2026. Nền tảng kế thừa: [báo cáo cuối kỳ SCRUM-102](ThesisManagementApiContract.md), [duyệt GVHD SCRUM-103](AdvisorEvaluationApprovalApiContract.md), [phân công GVPB SCRUM-104](ReviewerAssignmentApiContract.md), [chấm GVPB và điều kiện bảo vệ SCRUM-105](ReviewerEvaluationApiContract.md), [lưu chiểu SCRUM-106](FinalSubmissionApiContract.md), [cấu hình điểm đợt](AcademicPeriodsApiContract.md). [Thiết kế schema/transaction/handoff](ArchivalScoreWorkflowDesign.md) là phần bắt buộc của contract này; [bằng chứng CP3](ScoreCalculationVerification.md) ghi phạm vi đã kiểm tra. Plan local vẫn ngoài Git.
 
 Phạm vi SCRUM-110:
 - Văn phòng Khoa (Faculty) hoặc Admin thực hiện tính điểm tổng kết dự thảo cho đề tài (`POST /api/thesis/scores/calculate/{groupId}`) dựa trên cấu hình điểm Active động của đợt và các nguồn dữ liệu chấm đã hoàn tất.
@@ -47,6 +47,7 @@ Không bao gồm: UI SCRUM-115, xuất báo cáo tổng hợp Excel/PDF phục v
    - Nhóm đã hoàn thành nộp lưu chiểu: `FinalSubmission` có trạng thái `ArchiveConfirmed`.
 4. Rà soát các kênh có thể làm rò rỉ điểm trước công bố:
    - Endpoint `CheckCouncilDiscrepancy`: authorization ở endpoint và handler; Faculty/PĐT có permission đọc hoặc Admin, hay người tham gia có vai trò giảng viên/Hội đồng hợp lệ và đúng Council. Không tin chỉ một row roster hoặc token đăng nhập. Nhánh Student không cấp quyền đọc private dù có permission không phù hợp; multi-role phải thực sự thỏa một nhánh được phép.
+   - `finalScore` trong discrepancy chỉ trả summary nonlegacy Calculated/Published của SCRUM-110; phép tính Pending/legacy cũ không được trình bày như điểm đã xác minh.
    - Endpoint Góp ý sinh viên SCRUM-105: Chỉ trả về nội dung góp ý (`comment`), tuyệt đối không đính kèm điểm số hay quyết định thông qua.
    - DTO trả về cho sinh viên tại `/my-group` là một Allowlist DTO riêng biệt, chỉ chứa điểm tổng kết và các điểm thành phần được phép công khai; không chứa S3 object key, audit metadata, hay thông tin cá nhân của người chấm.
 
@@ -145,6 +146,7 @@ Khi thực hiện thao tác **Công bố (`PUT publish`)**, hệ thống bắt b
 
 - Owner Lock methods tham gia ambient shared transaction, không nhận coordinator/DbTransaction qua contract. GET/readiness thông thường không khóa và không cấp proof để ghi.
 - Bổ sung group root protocol vào các writer chấm/mở khóa/loại điểm hiện hữu; chốt guard trước save trong cùng transaction, giữ tới receipt/audit commit. Chỉ kiểm tra Published ở preflight rồi SaveChanges riêng không đủ chống publish-vs-rescore.
+- CP3 dùng chung `ScoreSummaryInputLoader.LockManyAsync` cho pipeline khóa: hoàn thành mỗi pha trên toàn bộ nhóm đã sort trước khi sang pha tiếp. Calculate gọi một nhóm; CP4 dùng lại để công bố selection, không gọi trọn chuỗi từng nhóm rồi mới lấy root tiếp. Host coordinator chỉ ghi DefenseCouncil, bốn module còn lại là reader cùng backend/transaction.
 - Config Active dùng FOR SHARE, reselect bằng statement mới khi publisher thắng/retire row trong lúc chờ; tối đa ba lượt, hết lượt trả conflict và Abort. Không lấy snapshot cũ đã retired làm proof.
 
 **Bảo vệ các Writer hiện hữu sau khi điểm đã công bố:**
@@ -158,6 +160,12 @@ Khi thực hiện thao tác **Công bố (`PUT publish`)**, hệ thống bắt b
 
 ### 5.1. `POST /api/thesis/scores/calculate/{groupId}`
 Tính hoặc tính lại điểm tổng kết dự thảo cho một nhóm đề tài.
+
+**Đã triển khai CP3.** JSON tối đa 16 KiB; authorize bằng account/role/permission live trước parse body và trong handler, recheck sau khi chờ key và giữ authority guards trong transaction mới. Reject field lạ/trùng case-fold, số dạng chuỗi/phân số/ngoài khoảng, query và actor/score/weight do client gửi. Có thể omit cả hai kỳ vọng; summary đã tồn tại vẫn bắt buộc đúng xmin khi thực hiện ý định mới.
+
+Tính cần nguồn Advisor/Reviewer hoàn tất và khớp đúng InitialFinal report/file/checksum, không dùng trạng thái nhóm ReadyForDefense/ReadyForReviewerAssignment thay completeness. CouncilScore phải thuộc đúng assignment/roster, có chi tiết tiêu chí và tổng phù hợp; current minute Locked đúng actor/time/xmin, không có timestamp tương lai so với TimeProvider dưới guards. ArchiveProof lấy thật từ owner CP2. Unsupported Custom, nhiều UV hoặc source overlap trả lỗi 409; không chọn First hoặc fallback/gán 0.
+
+Mỗi lần tính thành công tạo revision bất biến, giữ toàn bộ lịch sử/components, source/config snapshots và fingerprint canonical; chỉ round final hai số AwayFromZero. Config/nguồn không đổi vẫn có thể chủ động tạo revision mới bằng key mới và xmin hiện tại. Retry đúng key/actor/ý định trả DTO/xmin gốc sau kiểm tra quyền, kể cả đợt đã Archived hoặc state đã đổi; không audit/revision lần hai. Cùng key khác ý định trả IdempotencyConflict.
 
 **Headers:**
 - `Authorization: Bearer <token>`
@@ -258,6 +266,8 @@ Tính hoặc tính lại điểm tổng kết dự thảo cho một nhóm đề 
 ### 5.2. `PUT /api/thesis/scores/publish`
 Công bố kết quả điểm chính thức cho danh sách nhóm được chọn trong cùng một đợt.
 
+**Thiết kế CP4, chưa map ở CP3.** Schema published pointer/actor/time, receipt operation Publish và các guards đã được tạo ở CP3; không coi dữ liệu Published dựng trong test là bằng chứng endpoint này đã chạy.
+
 **Headers:**
 - `Authorization: Bearer <token>`
 - `Content-Type: application/json`
@@ -320,6 +330,8 @@ Công bố kết quả điểm chính thức cho danh sách nhóm được chọ
 ### 5.3. `GET /api/thesis/scores/my-group?groupId={groupId}`
 Tra cứu bảng điểm chính thức của nhóm sinh viên đang đăng nhập.
 
+**Thiết kế CP4, chưa map ở CP3.** Ba GET CP3 là private, không mở nhánh Student để thay endpoint này.
+
 **Quyền truy cập:** Sinh viên có tài khoản Active và là thành viên `Confirmed` của một nhóm đề tài.
 
 Query groupId bắt buộc, kiểm tra membership của đúng group ở đúng đợt kể cả Closed/Archived; không tự lấy nhóm ở đợt mới nhất. Thiếu/sai/trùng selector 400; ngoài nhóm 403 trước khi trả thông tin publication. Admin/Faculty/PĐT chỉ vào endpoint này qua nhánh Student thực sự hợp lệ.
@@ -380,6 +392,8 @@ Tra cứu chi tiết bảng điểm phục vụ quản trị (Faculty, AcademicA
 
 Faculty/PĐT cần role + `councils.score-summaries.read`; Admin theo ma trận. Không trả audit payload thô hoặc object key/URL; audit metadata ở đây là calculatedBy/At, publishedBy/At và revision IDs. Summary chưa có: 404; chưa tính nhưng có row Pending/legacy: trả status/version/legacy và không coi điểm cũ là kết quả chính thức. DTO chi tiết giữ shape calculation response, thêm activeRevisionId/publishedRevisionId, source references và revisions theo thiết kế chung.
 
+CP3 trả `ScoreSummaryDto` gồm components của đúng active revision (legacy chỉ components revision null), revisions giảm dần và các cờ version/legacy/stale. Mỗi revision có IDs/version, raw/final/weight, actor/time, fingerprint và đủ SourceSnapshot/ConfigSnapshot; snapshots là chuỗi JSON để quản trị rà soát, SourceReferences của component là chuỗi JSON IDs nguồn. Snapshot nguồn có prefix `ThesisScoreInputs:v1`, danh tính group/topic/batch/GVHD và tiêu đề Việt/Anh, tiếp theo các source/proof arrays theo code resolver. Fingerprint gắn policy `ThesisScore:v1`, AwayFromZero/2 và hai snapshot canonical; không hash thời điểm gọi calculate. Không ghép components nhiều revision thành một phép tính. GET không tạo row/ghi stale; đổi nguồn/config/tiêu đề trước publish làm isStale=true, giữ kết quả cũ để rà soát. Published đọc snapshot cũ, không tự stale vì live config/tiêu đề đổi.
+
 ---
 
 ### 5.5. `GET /api/thesis/scores`
@@ -401,6 +415,8 @@ Faculty/PĐT + read hoặc Admin; không có Student/lecturer ownership override
 Kiểm tra các điều kiện sẵn sàng để tính hoặc công bố điểm cho một nhóm đề tài.
 
 Chỉ management read theo ma trận; GET không mutate, không giữ khóa và không cấp quyền cho POST/PUT. `blockingReasons` dùng error code chuẩn theo thiết kế chung; `Calculated` nonlegacy, không stale và mọi guard hợp lệ thì isReadyForPublication=true.
+
+Readiness phản ánh điều kiện của bước công bố dự kiến, không có nghĩa CP3 đã thực hiện công bố. Flags điểm/Locked/archive/config được đọc riêng; Stale/Legacy có thể chặn publication dù vẫn cho phép calculate mới. Danh sách bắt đầu từ nhóm của đợt, lấy context, grade facts, archive proofs và histories theo lô trước filter/count/page; không query từng nhóm hoặc tạo Pending row.
 
 **Response (200 OK):**
 ```json

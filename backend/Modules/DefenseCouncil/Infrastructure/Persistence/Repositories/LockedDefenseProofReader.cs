@@ -24,8 +24,8 @@ internal sealed class LockedDefenseProofReader(DefenseCouncilDbContext db) : ILo
             : await db.Councils.AsNoTracking().SingleOrDefaultAsync(c => c.Id == councilId, token);
         if (locked)
         {
-            links = await db.CouncilAssignments.FromSqlInterpolated($"SELECT a.* FROM councils.council_assignment a WHERE a.group_id={id} ORDER BY a.id FOR SHARE").AsNoTracking().ToListAsync(token);
-            await db.CouncilMembers.FromSqlInterpolated($"SELECT m.* FROM councils.council_member m WHERE m.council_id={councilId} ORDER BY m.id FOR SHARE").AsNoTracking().ToListAsync(token);
+            links = await db.CouncilAssignments.FromSqlInterpolated($"SELECT a.*,a.xmin FROM councils.council_assignment a WHERE a.group_id={id} ORDER BY a.id FOR SHARE").AsNoTracking().ToListAsync(token);
+            await db.CouncilMembers.FromSqlInterpolated($"SELECT m.*,m.xmin FROM councils.council_member m WHERE m.council_id={councilId} ORDER BY m.id FOR SHARE").AsNoTracking().ToListAsync(token);
         }
         if (council is null || links.Count != 1 || links[0].CouncilId != councilId || council.BatchId == Guid.Empty)
             return Failed(LockedDefenseOutcome.ContextInvalid);

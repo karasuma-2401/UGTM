@@ -102,10 +102,10 @@ public sealed class CouncilScoringTests
     }
 
     private SubmitCouncilScoreHandler CreateSubmitHandler() =>
-        new(_councilRepo, _uow, _currentUser, _gradeCalculator);
+        new(_councilRepo, _uow, _currentUser, new TestCouncilScoreWriteGuard(), TimeProvider.System);
 
     private CheckCouncilDiscrepancyHandler CreateCheckHandler() =>
-        new(_councilRepo, _userInfoReader);
+        new(_councilRepo, _userInfoReader, _currentUser, new TestScoreAuthority(_currentUser));
 
     // =========================================================================
     // 1. SubmitCouncilScoreHandler Tests
@@ -336,7 +336,7 @@ public sealed class CouncilScoringTests
     }
 
     [Fact]
-    public async Task SubmitScore_WhenAllMembersScored_UpdatesMinuteStatusAndSyncsScoreSummary()
+    public async Task SubmitScore_WhenAllMembersScored_UpdatesMinuteStatusWithoutWritingScoreSummary()
     {
         var handler = CreateSubmitHandler();
 
@@ -375,15 +375,8 @@ public sealed class CouncilScoringTests
         Assert.NotNull(minute);
         Assert.Equal(CouncilMinuteLockStatus.AllScoresEntered, minute.LockStatus);
 
-        // ScoreSummary should be created
-        var summary = _councilRepo.ScoreSummaries.GetValueOrDefault(_groupId);
-        Assert.NotNull(summary);
-        Assert.Equal(8.0m, summary.AdvisorScore);
-        Assert.Equal(8.5m, summary.ReviewerScore);
-        // Average council = (9.0 + 8.5 + 8.0) / 3 = 8.5
-        Assert.Equal(8.5m, summary.CouncilScore);
-        // Final score: (8.0*2 + 8.5*2 + 9.0*1 + 8.5*1 + 8.0*1) / 7 = (16 + 17 + 9 + 8.5 + 8) / 7 = 58.5 / 7 ≈ 8.36
-        Assert.Equal(8.36m, summary.FinalScore);
+        Assert.Empty(_councilRepo.ScoreSummaries);
+        Assert.Empty(_councilRepo.ScoreSummaryComponents);
     }
 
     // =========================================================================

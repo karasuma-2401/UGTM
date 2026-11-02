@@ -27,6 +27,8 @@ public sealed class DefenseCouncilDbContext(DbContextOptions<DefenseCouncilDbCon
     public DbSet<ReviewerEvaluationIdempotencyRecord> ReviewerEvaluationIdempotencyRecords => Set<ReviewerEvaluationIdempotencyRecord>();
     public DbSet<ScoreSummary> ScoreSummarys => Set<ScoreSummary>();
     public DbSet<ScoreSummaryComponent> ScoreSummaryComponents => Set<ScoreSummaryComponent>();
+    public DbSet<ScoreSummaryRevision> ScoreSummaryRevisions => Set<ScoreSummaryRevision>();
+    public DbSet<ScoreSummaryIdempotency> ScoreSummaryIdempotencyRecords => Set<ScoreSummaryIdempotency>();
 
     public override async Task<int> SaveChangesAsync(
         bool acceptAllChangesOnSuccess,

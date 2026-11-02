@@ -69,7 +69,5 @@ public interface ICouncilRepository
 
     Task<ScoreSummary?> GetScoreSummaryByGroupIdAsync(Guid groupId, CancellationToken ct = default);
 
-    Task SaveScoreSummaryAsync(ScoreSummary summary, IEnumerable<ScoreSummaryComponent> components, CancellationToken ct = default);
-
     Task UpdateMinuteLockStatusAsync(Guid assignmentId, UGTM.Modules.DefenseCouncil.Domain.Enums.CouncilMinuteLockStatus status, CancellationToken ct = default);
 }

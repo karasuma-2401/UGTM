@@ -377,6 +377,10 @@ public interface IFinalSubmissionArchiveProofContract
         Guid groupId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<FinalSubmissionArchiveProofContractDto>> GetManyArchiveProofsAsync(
+        IReadOnlyCollection<Guid> groupIds,
+        CancellationToken cancellationToken = default);
+
     Task<FinalSubmissionArchiveProofContractDto> LockArchiveProofForCalculationAsync(
         Guid groupId,
         CancellationToken cancellationToken = default);
@@ -390,6 +394,7 @@ public interface IFinalSubmissionArchiveProofContract
 4. Succeeded chỉ khi nonlegacy, group–batch nhất quán, current package thuộc đúng submission/version, manifest khớp metadata và hai file, đủ đúng role PDF/DOCX có MIME/size/checksum hợp lệ; hai review AdvisorConfirm/FacultyConfirm đúng package và manifest, actor/time có thật, đúng thứ tự, không bị RequestRevision/nộp version mới làm mất hiệu lực. Mọi trường nullable trong DTO phải có giá trị hợp lệ khi Succeeded.
 5. Bản ghi cũ có status ArchiveConfirmed nhưng thiếu package/file/review bằng chứng trả Legacy/ContextInvalid, không phải Succeeded. Chi tiết hậu điều kiện, schema và binding trong [thiết kế chung](ArchivalScoreWorkflowDesign.md).
 6. Proof là bằng chứng lịch sử của package đã khóa. Reader không kiểm tra lại quyền tài khoản người từng xác nhận, GVHD hay minute hiện tại; thay đổi những dữ liệu đó sau ArchiveConfirmed không làm mất proof. SCRUM-110 phải kiểm tra nguồn điểm/biên bản hiện tại bằng contract riêng trước calculate/publish. Owner Lock không lấy lại các khóa group/topic/batch ở pha muộn; caller giữ các khóa sớm theo thứ tự toàn cục.
+7. CP3 thêm GetManyArchiveProofsAsync cho danh sách điểm: owner nạp group/submission/packages/links/files/reviews theo lô, dùng cùng package validator và outcomes/nullability như Get, không khóa hoặc ghi DB. Consumer chịu trách nhiệm phân quyền; không dùng kết quả GET làm proof để commit.
 
 ---
 

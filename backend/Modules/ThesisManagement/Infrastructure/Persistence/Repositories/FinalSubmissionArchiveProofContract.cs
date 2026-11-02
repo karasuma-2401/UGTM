@@ -12,6 +12,35 @@ internal sealed class FinalSubmissionArchiveProofContract(ThesisManagementDbCont
         => ReadAsync(groupId, false, cancellationToken);
     public Task<FinalSubmissionArchiveProofContractDto> LockArchiveProofForCalculationAsync(Guid groupId, CancellationToken cancellationToken = default)
         => ReadAsync(groupId, true, cancellationToken);
+    public async Task<IReadOnlyList<FinalSubmissionArchiveProofContractDto>> GetManyArchiveProofsAsync(IReadOnlyCollection<Guid> groupIds, CancellationToken cancellationToken = default)
+    {
+        var groups = await db.StudentGroups.AsNoTracking().Include(g => g.Members).Where(g => groupIds.Contains(g.Id)).ToDictionaryAsync(g => g.Id, cancellationToken);
+        var rows = await db.FinalSubmissions.AsNoTracking().Where(s => groupIds.Contains(s.GroupId)).ToDictionaryAsync(s => s.GroupId, cancellationToken);
+        var ids = rows.Values.Select(s => s.Id).ToArray();
+        var packages = await db.FinalSubmissionPackages.AsNoTracking().Where(p => ids.Contains(p.SubmissionId)).ToListAsync(cancellationToken);
+        var links = await db.FinalSubmissionPackageFiles.AsNoTracking().Where(p => ids.Contains(p.SubmissionId)).ToListAsync(cancellationToken);
+        var fileIds = links.Select(l => l.SubmissionFileId).ToArray();
+        var files = await db.SubmissionFiles.AsNoTracking().Where(f => fileIds.Contains(f.Id)).ToListAsync(cancellationToken);
+        var reviews = await db.FinalSubmissionReviews.AsNoTracking().Where(r => ids.Contains(r.SubmissionId)).ToListAsync(cancellationToken);
+        return groupIds.Select(id =>
+        {
+            var group = groups.GetValueOrDefault(id);
+            var batches = group?.Members.Select(m => m.BatchId).Distinct().ToArray() ?? [];
+            var batch = batches.Length == 1 ? batches[0] : Guid.Empty;
+            var row = rows.GetValueOrDefault(id);
+            var outcome = group is null || row is null ? ArchiveProofOutcome.Missing : batch == Guid.Empty ? ArchiveProofOutcome.ContextInvalid
+                : row.IsLegacy || row.CurrentPackageId is null ? ArchiveProofOutcome.Legacy
+                : row.Status != FinalSubmissionStatus.ArchiveConfirmed ? ArchiveProofOutcome.NotConfirmed : ArchiveProofOutcome.Succeeded;
+            if (outcome != ArchiveProofOutcome.Succeeded) return new FinalSubmissionArchiveProofContractDto(outcome, id, batch, null, null, null, null, null, null, null, null, null, null, null, []);
+            var graph = new FinalSubmissionPackageGraph(packages.Where(p => p.SubmissionId == row!.Id).ToArray(), links.Where(l => l.SubmissionId == row!.Id).ToArray(), files, reviews.Where(r => r.SubmissionId == row!.Id).ToArray());
+            if (!FinalSubmissionPackageValidation.TryValidate(row!, graph, batch, group!.TopicId, out var verified))
+                return new FinalSubmissionArchiveProofContractDto(ArchiveProofOutcome.ContextInvalid, id, batch, null, null, null, null, null, null, null, null, null, null, null, []);
+            var p = verified!.Package;
+            return new FinalSubmissionArchiveProofContractDto(ArchiveProofOutcome.Succeeded, id, batch, row!.Id, row.Version, p.Id, p.VersionNo, p.ManifestSha256,
+                verified.AdvisorReview!.Id, verified.FacultyReview!.Id, row.AdvisorConfirmedBy, row.AdvisorConfirmedAt, row.ArchivedConfirmedBy, row.ArchivedConfirmedAt,
+                verified.Files.OrderBy(FinalSubmissionMapping.Role, StringComparer.Ordinal).Select(f => new ArchiveFileProofContractDto(f.Id, p.Id, p.VersionNo, FinalSubmissionMapping.Role(f), f.ContentType, f.FileSize, f.ChecksumSha256!)).ToArray());
+        }).ToArray();
+    }
     private async Task<FinalSubmissionArchiveProofContractDto> ReadAsync(Guid groupId, bool locked, CancellationToken token)
     {
         if (locked && db.Database.CurrentTransaction is null) throw new InvalidOperationException("Shared archival transaction and caller-held group/context guards required.");

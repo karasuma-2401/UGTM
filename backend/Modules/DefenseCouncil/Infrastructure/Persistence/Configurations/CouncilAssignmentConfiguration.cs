@@ -14,6 +14,7 @@ public class CouncilAssignmentConfiguration : IEntityTypeConfiguration<CouncilAs
         builder.ToTable("council_assignment", "councils");
 
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Version).IsRowVersion();
 
         builder.Property(x => x.OrderNumber)
             .HasDefaultValue(1)

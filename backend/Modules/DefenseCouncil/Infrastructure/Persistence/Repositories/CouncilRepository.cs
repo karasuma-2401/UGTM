@@ -208,43 +208,6 @@ public sealed class CouncilRepository(DefenseCouncilDbContext db) : ICouncilRepo
             .Include(s => s.Components)
             .FirstOrDefaultAsync(s => s.GroupId == groupId, ct);
 
-    public async Task SaveScoreSummaryAsync(ScoreSummary summary, IEnumerable<ScoreSummaryComponent> components, CancellationToken ct = default)
-    {
-        var existingSummary = await db.ScoreSummarys
-            .FirstOrDefaultAsync(s => s.GroupId == summary.GroupId, ct);
-
-        if (existingSummary != null)
-        {
-            existingSummary.AdvisorScore = summary.AdvisorScore;
-            existingSummary.ReviewerScore = summary.ReviewerScore;
-            existingSummary.CouncilScore = summary.CouncilScore;
-            existingSummary.FinalScore = summary.FinalScore;
-            existingSummary.TotalWeight = summary.TotalWeight;
-            existingSummary.CalculationFormula = summary.CalculationFormula;
-            existingSummary.CalculatedAt = summary.CalculatedAt;
-            summary.Id = existingSummary.Id;
-        }
-        else
-        {
-            await db.ScoreSummarys.AddAsync(summary, ct);
-        }
-
-        var existingComponents = await db.ScoreSummaryComponents
-            .Where(c => c.SummaryId == summary.Id)
-            .ToListAsync(ct);
-
-        if (existingComponents.Count > 0)
-        {
-            db.ScoreSummaryComponents.RemoveRange(existingComponents);
-        }
-
-        foreach (var component in components)
-        {
-            component.SummaryId = summary.Id;
-            await db.ScoreSummaryComponents.AddAsync(component, ct);
-        }
-    }
-
     public async Task UpdateMinuteLockStatusAsync(Guid assignmentId, CouncilMinuteLockStatus status, CancellationToken ct = default)
     {
         var minute = await db.CouncilMinutes
