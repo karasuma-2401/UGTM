@@ -107,6 +107,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<GetPlagiarismReportHandler>();
         services.AddScoped<RetryPlagiarismScanHandler>();
         services.AddScoped<ResumePendingPlagiarismScansHandler>();
+        services.AddHostedService<PlagiarismScanWorker>();
         services.AddScoped<IAdvisorEvaluationWorkflowContract, AdvisorEvaluationWorkflowContract>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.ReviewerAssignments.IReviewerAssignmentThesisReader,
             Persistence.Repositories.ReviewerAssignmentThesisReader>();
@@ -202,6 +203,7 @@ public sealed class ThesisManagementModule : IModule
         endpoints.MapSyllabusSubmissionEndpoints();
         endpoints.MapMidtermReportSubmissionEndpoints();
         endpoints.MapFinalReportSubmissionEndpoints();
+        endpoints.MapPlagiarismScanEndpoints();
         endpoints.MapFinalSubmissionEndpoints();
         endpoints.MapProgressMilestoneEndpoints();
         endpoints.MapProgressReportSubmissionEndpoints();

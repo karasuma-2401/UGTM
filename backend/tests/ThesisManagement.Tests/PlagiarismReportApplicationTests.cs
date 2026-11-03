@@ -200,6 +200,88 @@ public sealed class PlagiarismReportApplicationTests
         Assert.Equal(SampleReportJson, scan.RawReportJson);
     }
 
+    [Fact]
+    public async Task RetryPlagiarismScanHandler_Rejects_Student_With_AccessDenied()
+    {
+        var (report, scan) = CreateCompletedReportWithScan();
+        var reportRepo = new FakeFinalReportRepository(report);
+        var scanRepo = new FakeScanRepository(scan);
+        var group = new StudentGroup(GroupId, TopicId, Now);
+        group.AddConfirmedMember(StudentId, Guid.NewGuid(), Now);
+        var groupRepo = new FakeStudentGroupRepository(group);
+        var advisorContract = new FakeAdvisorAssignmentContract(TopicId, AdvisorId);
+        var getReportHandler = CreateGetReportHandler(report, scan, StudentUser(StudentId));
+
+        var handler = new RetryPlagiarismScanHandler(
+            reportRepo,
+            scanRepo,
+            groupRepo,
+            StudentUser(StudentId),
+            advisorContract,
+            null!,
+            getReportHandler);
+
+        var result = await handler.HandleAsync(new RetryPlagiarismScanCommand(report.Id));
+        Assert.False(result.IsSuccess);
+        Assert.Equal(PlagiarismScanErrors.AccessDenied.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task RetryPlagiarismScanHandler_Rejects_When_Scan_Is_Already_Processing()
+    {
+        var report = FinalReport.CreateSubmitted(Guid.NewGuid(), GroupId, FinalReportVersionType.InitialFinal, Now);
+        var scan = FinalReportPlagiarismScan.Create(Guid.NewGuid(), report.Id, Guid.NewGuid(), 1, Now);
+        scan.MarkProcessing(Now);
+
+        var reportRepo = new FakeFinalReportRepository(report);
+        var scanRepo = new FakeScanRepository(scan);
+        var group = new StudentGroup(GroupId, TopicId, Now);
+        group.AddConfirmedMember(StudentId, Guid.NewGuid(), Now);
+        var groupRepo = new FakeStudentGroupRepository(group);
+        var advisorContract = new FakeAdvisorAssignmentContract(TopicId, AdvisorId);
+        var getReportHandler = CreateGetReportHandler(report, scan, AdvisorUser(AdvisorId));
+
+        var handler = new RetryPlagiarismScanHandler(
+            reportRepo,
+            scanRepo,
+            groupRepo,
+            AdvisorUser(AdvisorId),
+            advisorContract,
+            null!,
+            getReportHandler);
+
+        var result = await handler.HandleAsync(new RetryPlagiarismScanCommand(report.Id));
+        Assert.False(result.IsSuccess);
+        Assert.Equal(PlagiarismScanErrors.RescanNotAllowed.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task ResumePendingPlagiarismScansHandler_Rejects_Student_And_Advisor()
+    {
+        var (report, scan) = CreateCompletedReportWithScan();
+        var scanRepo = new FakeScanRepository(scan);
+
+        var studentHandler = new ResumePendingPlagiarismScansHandler(
+            scanRepo,
+            StudentUser(StudentId),
+            null!,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ResumePendingPlagiarismScansHandler>.Instance);
+
+        var studentResult = await studentHandler.HandleAsync(new ResumePendingPlagiarismScansCommand());
+        Assert.False(studentResult.IsSuccess);
+        Assert.Equal("PlagiarismScan.ResumeNotAllowed", studentResult.Error.Code);
+
+        var advisorHandler = new ResumePendingPlagiarismScansHandler(
+            scanRepo,
+            AdvisorUser(AdvisorId),
+            null!,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ResumePendingPlagiarismScansHandler>.Instance);
+
+        var advisorResult = await advisorHandler.HandleAsync(new ResumePendingPlagiarismScansCommand());
+        Assert.False(advisorResult.IsSuccess);
+        Assert.Equal("PlagiarismScan.ResumeNotAllowed", advisorResult.Error.Code);
+    }
+
     private static (FinalReport report, FinalReportPlagiarismScan scan) CreateCompletedReportWithScan()
     {
         var report = FinalReport.CreateSubmitted(Guid.NewGuid(), GroupId, FinalReportVersionType.InitialFinal, Now);

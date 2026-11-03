@@ -46,7 +46,7 @@ public sealed class RetryPlagiarismScanHandler(
 
         if (!isAdmin && !isAssignedAdvisor)
         {
-            return Result.Failure<PlagiarismReportResultDto>(PlagiarismScanErrors.RescanNotAllowed);
+            return Result.Failure<PlagiarismReportResultDto>(PlagiarismScanErrors.AccessDenied);
         }
 
         var scan = command.VersionNo.HasValue
@@ -58,12 +58,20 @@ public sealed class RetryPlagiarismScanHandler(
             return Result.Failure<PlagiarismReportResultDto>(PlagiarismScanErrors.NotFound);
         }
 
+        if (scan.Status is PlagiarismScanStatus.Queued or PlagiarismScanStatus.Processing)
+        {
+            return Result.Failure<PlagiarismReportResultDto>(PlagiarismScanErrors.RescanNotAllowed);
+        }
+
         // Reset state for retry
         var nowUtc = DateTime.UtcNow;
         scan.ResetForRetry(nowUtc);
 
-        // Execute scan dispatch immediately
-        await executeScanHandler.ExecuteAsync(scan, cancellationToken);
+        // Execute scan dispatch immediately if handler available
+        if (executeScanHandler is not null)
+        {
+            await executeScanHandler.ExecuteAsync(scan, cancellationToken);
+        }
 
         // Return latest report view
         return await getReportHandler.HandleAsync(
