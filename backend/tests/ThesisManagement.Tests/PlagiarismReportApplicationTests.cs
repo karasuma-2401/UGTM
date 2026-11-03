@@ -3,6 +3,7 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
+using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportHistory;
 using UGTM.Modules.ThesisManagement.Application.PlagiarismAI;
 using UGTM.Modules.ThesisManagement.Application.PlagiarismAI.Dtos;
 using UGTM.Modules.ThesisManagement.Application.PlagiarismAI.Handlers;
@@ -282,6 +283,119 @@ public sealed class PlagiarismReportApplicationTests
         Assert.Equal("PlagiarismScan.ResumeNotAllowed", advisorResult.Error.Code);
     }
 
+    [Fact]
+    public async Task GetFinalReportHistoryHandler_Attaches_PlagiarismStatus_And_Masks_Score_For_Student()
+    {
+        var (report, scan) = CreateCompletedReportWithScan();
+        var file = new SubmissionFile
+        {
+            Id = scan.SubmissionFileId,
+            EntityType = SubmissionEntityType.FinalReport,
+            EntityId = report.Id,
+            VersionNo = 1,
+            FileName = "thesis.pdf",
+            ObjectKey = "key-1",
+            ContentType = "application/pdf",
+            ChecksumSha256 = "abc",
+            FileSize = 1024,
+            FileExtension = ".pdf",
+            UploadedBy = StudentId,
+            UploadedAt = Now
+        };
+
+        var reportRepo = new FakeFinalReportRepository(report);
+        var scanRepo = new FakeScanRepository(scan);
+        var fileRepo = new FakeSubmissionFileRepository(file);
+        var group = new StudentGroup(GroupId, TopicId, Now);
+        group.AddConfirmedMember(StudentId, Guid.NewGuid(), Now);
+        var groupRepo = new FakeStudentGroupRepository(group);
+        var advisorContract = new FakeAdvisorAssignmentContract(TopicId, AdvisorId);
+        var accessChecker = new FinalReportReadAccessChecker(StudentUser(StudentId), advisorContract);
+
+        var handler = new GetFinalReportHistoryHandler(
+            groupRepo,
+            reportRepo,
+            fileRepo,
+            scanRepo,
+            accessChecker,
+            StudentUser(StudentId));
+
+        var result = await handler.HandleAsync(new GetFinalReportHistoryQuery(GroupId));
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value.Versions);
+        var version = result.Value.Versions[0];
+        Assert.Equal(PlagiarismScanStatus.Completed.ToString(), version.PlagiarismStatus);
+        Assert.Null(version.SimilarityCoverage); // Strictly masked for students
+    }
+
+    [Fact]
+    public async Task GetFinalReportHistoryHandler_Exposes_SimilarityScore_For_Advisor()
+    {
+        var (report, scan) = CreateCompletedReportWithScan();
+        var file = new SubmissionFile
+        {
+            Id = scan.SubmissionFileId,
+            EntityType = SubmissionEntityType.FinalReport,
+            EntityId = report.Id,
+            VersionNo = 1,
+            FileName = "thesis.pdf",
+            ObjectKey = "key-1",
+            ContentType = "application/pdf",
+            ChecksumSha256 = "abc",
+            FileSize = 1024,
+            FileExtension = ".pdf",
+            UploadedBy = StudentId,
+            UploadedAt = Now
+        };
+
+        var reportRepo = new FakeFinalReportRepository(report);
+        var scanRepo = new FakeScanRepository(scan);
+        var fileRepo = new FakeSubmissionFileRepository(file);
+        var group = new StudentGroup(GroupId, TopicId, Now);
+        group.AddConfirmedMember(StudentId, Guid.NewGuid(), Now);
+        var groupRepo = new FakeStudentGroupRepository(group);
+        var advisorContract = new FakeAdvisorAssignmentContract(TopicId, AdvisorId);
+        var accessChecker = new FinalReportReadAccessChecker(AdvisorUser(AdvisorId), advisorContract);
+
+        var handler = new GetFinalReportHistoryHandler(
+            groupRepo,
+            reportRepo,
+            fileRepo,
+            scanRepo,
+            accessChecker,
+            AdvisorUser(AdvisorId));
+
+        var result = await handler.HandleAsync(new GetFinalReportHistoryQuery(GroupId));
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value.Versions);
+        var version = result.Value.Versions[0];
+        Assert.Equal(PlagiarismScanStatus.Completed.ToString(), version.PlagiarismStatus);
+        Assert.Equal(0.185, version.SimilarityCoverage); // Available for advisor
+    }
+
+    [Fact]
+    public async Task IndexFinalReportToCorpusHandler_Rejects_Student_With_AccessDenied()
+    {
+        var (report, scan) = CreateCompletedReportWithScan();
+        var reportRepo = new FakeFinalReportRepository(report);
+        var fileRepo = new FakeSubmissionFileRepository(null);
+
+        var handler = new IndexFinalReportToCorpusHandler(
+            reportRepo,
+            fileRepo,
+            null!,
+            Microsoft.Extensions.Options.Options.Create(new PlagiarismAiOptions()),
+            StudentUser(StudentId),
+            null!,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<IndexFinalReportToCorpusHandler>.Instance);
+
+        var result = await handler.HandleAsync(new IndexFinalReportToCorpusCommand(report.Id));
+        Assert.False(result.IsSuccess);
+        Assert.Equal(PlagiarismScanErrors.AccessDenied.Code, result.Error.Code);
+    }
+
     private static (FinalReport report, FinalReportPlagiarismScan scan) CreateCompletedReportWithScan()
     {
         var report = FinalReport.CreateSubmitted(Guid.NewGuid(), GroupId, FinalReportVersionType.InitialFinal, Now);
@@ -339,7 +453,7 @@ public sealed class PlagiarismReportApplicationTests
             Guid groupId,
             FinalReportVersionType versionType,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<FinalReport?>(null);
+            Task.FromResult(report.GroupId == groupId && report.VersionType == versionType ? report : null);
 
         public void Add(FinalReport finalReport) { }
         public void TrackGroupConcurrency(FinalReport finalReport, StudentGroup group) { }
@@ -360,6 +474,11 @@ public sealed class PlagiarismReportApplicationTests
             Guid finalReportId,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(scan.FinalReportId == finalReportId ? scan : null);
+
+        public Task<IReadOnlyList<FinalReportPlagiarismScan>> GetByReportIdAsync(
+            Guid finalReportId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<FinalReportPlagiarismScan>>(scan.FinalReportId == finalReportId ? [scan] : []);
 
         public Task<FinalReportPlagiarismScan?> GetByJobIdAsync(
             Guid jobId,
@@ -402,5 +521,19 @@ public sealed class PlagiarismReportApplicationTests
 
             return Task.FromResult<TopicAdvisorAssignmentContractDto?>(null);
         }
+    }
+
+    private sealed class FakeSubmissionFileRepository(SubmissionFile? file) : ISubmissionFileRepository
+    {
+        public Task<SubmissionFile?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(file?.Id == id ? file : null);
+
+        public Task<IReadOnlyList<SubmissionFile>> GetByEntityAsync(
+            SubmissionEntityType entityType,
+            Guid entityId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SubmissionFile>>(file is not null ? [file] : []);
+
+        public void Add(SubmissionFile submissionFile) { }
     }
 }

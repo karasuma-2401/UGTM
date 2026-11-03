@@ -34,6 +34,16 @@ internal sealed class FinalReportPlagiarismScanRepository(ThesisManagementDbCont
             .OrderByDescending(scan => scan.VersionNo)
             .FirstOrDefaultAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<FinalReportPlagiarismScan>> GetByReportIdAsync(
+        Guid finalReportId,
+        CancellationToken cancellationToken = default)
+        => await context.FinalReportPlagiarismScans
+            .Include(x => x.FinalReport)
+            .Include(x => x.SubmissionFile)
+            .Where(scan => scan.FinalReportId == finalReportId)
+            .OrderBy(scan => scan.VersionNo)
+            .ToListAsync(cancellationToken);
+
     public Task<FinalReportPlagiarismScan?> GetByJobIdAsync(
         Guid jobId,
         CancellationToken cancellationToken = default)

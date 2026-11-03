@@ -61,6 +61,22 @@ public static class PlagiarismScanEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden);
 
+        endpoints.MapPost("/api/thesis/final-reports/{finalReportId:guid}/index-corpus", IndexCorpusAsync)
+            .WithTags("ThesisManagement.Plagiarism")
+            .RequireAuthorization()
+            .WithSummary("Đánh chỉ mục luận văn cuối kỳ vào kho ngữ văn AI phục vụ đối chiếu tương đồng")
+            .WithDescription("""
+                Đưa tệp luận văn đã qua thẩm định/bảo vệ vào kho ngữ văn (Corpus) của hệ thống AI.
+                Chỉ Quản trị viên hoặc Trưởng khoa có quyền thực hiện.
+                400: finalReportId rỗng; 401: chưa đăng nhập; 403: không có quyền; 404: không tìm thấy báo cáo/tệp; 415: định dạng không hỗ trợ.
+                """)
+            .Produces<ApiResponse<IndexFinalReportToCorpusResult>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status415UnsupportedMediaType);
+
         return endpoints;
     }
 
@@ -123,6 +139,23 @@ public static class PlagiarismScanEndpoints
     {
         var limit = request?.Limit ?? 50;
         var result = await handler.HandleAsync(new ResumePendingPlagiarismScansCommand(limit), cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> IndexCorpusAsync(
+        [FromRoute] Guid finalReportId,
+        [FromQuery] int? versionNo,
+        [FromServices] IndexFinalReportToCorpusHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (finalReportId == Guid.Empty)
+        {
+            return Results.Json(
+                ApiResponse<object>.Fail(ApiError.Create("PlagiarismScan.InvalidRequest", "Mã báo cáo cuối kỳ không được rỗng.")),
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var result = await handler.HandleAsync(new IndexFinalReportToCorpusCommand(finalReportId, versionNo), cancellationToken);
         return result.ToHttpResult();
     }
 }

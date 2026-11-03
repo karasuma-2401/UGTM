@@ -16,6 +16,10 @@ public interface IFinalReportPlagiarismScanRepository
         Guid finalReportId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<FinalReportPlagiarismScan>> GetByReportIdAsync(
+        Guid finalReportId,
+        CancellationToken cancellationToken = default);
+
     Task<FinalReportPlagiarismScan?> GetByJobIdAsync(
         Guid jobId,
         CancellationToken cancellationToken = default);
