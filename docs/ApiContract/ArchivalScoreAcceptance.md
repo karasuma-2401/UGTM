@@ -1,4 +1,4 @@
-# SCRUM-106/110 — nghiệm thu chung checkpoint 5
+4# SCRUM-106/110 — nghiệm thu chung checkpoint 5
 
 Baseline CP4: `aa5432e`. Contract: [lưu chiểu](FinalSubmissionApiContract.md), [điểm](ScoreCalculationPublicationApiContract.md), [transaction và handoff](ArchivalScoreWorkflowDesign.md). Kết quả CP1–CP4 là bằng chứng từng giai đoạn, không cộng vào kết quả chạy CP5: [lưu chiểu](FinalSubmissionVerification.md), [tính điểm](ScoreCalculationVerification.md), [công bố](ScorePublicationVerification.md).
 
@@ -45,4 +45,8 @@ Tên trong bảng chỉ các test trong [upload/lifecycle](../../backend/tests/T
 
 ## Kết quả và giới hạn
 
-Kết quả các lượt chạy CP5 và lệnh được ghi sau khi hoàn tất kiểm tra. TRX/log nằm trong `artifacts/scrum106-110-cp5/`, ngoài Git. Chỉ migrate DB trong container test; không migrate DB ứng dụng, không tự commit/push/deploy. Không gồm export, email hoặc thu hồi/điều chỉnh điểm sau công bố.
+Ngày 03/11/2026, sau khi sửa deadlock hủy/chấm phân công GVPB, chạy `dotnet test UGTM.sln -c Release --no-build --no-restore -m:1` trên build Release của source hiện tại. **1.676/1.676 ca đạt, không skip**: Architecture 74, AcademicPeriods 45, DefenseCouncil 245, ThesisManagement 845, Identity 220 và TopicCatalog 247. Trong đó có năm ca `ArchivalScore_` CP5, gồm E2E và hai thứ tự cạnh tranh cấu hình/công bố. Đây là một lượt toàn solution; không cộng lượt tái hiện 9 ca trước và sau sửa vào tổng.
+
+Trước sửa, test tập trung tái hiện đúng bốn ca fail của GitHub Actions (5/9 đạt); sau sửa cả 9/9 đạt và bốn ca đó cũng đạt trong lượt toàn solution. Build Release và `dotnet format UGTM.sln --no-restore --verify-no-changes` thành công; build còn warning nullable OpenAPI và xung đột patch version EF ở Architecture.Tests. Gitleaks v8.24.3 quét các file sửa lỗi cục bộ không phát hiện secret; kết quả này không thay thế CI GitHub trên commit tiếp theo.
+
+TRX/log của lượt toàn solution và tái hiện nằm trong `artifacts/ci-reviewer-deadlock/`, ngoài Git. Chỉ migrate DB trong container test; không migrate DB ứng dụng, không tự commit/push/deploy. Biên bản Locked và các đầu điểm upstream được seed như nêu trên; chưa xác minh E2E qua API khóa biên bản. Không gồm export, email hoặc thu hồi/điều chỉnh điểm sau công bố.

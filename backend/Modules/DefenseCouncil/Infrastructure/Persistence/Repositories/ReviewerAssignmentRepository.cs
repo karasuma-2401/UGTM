@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
+using UGTM.Modules.ThesisManagement.Contracts.ReviewerAssignments;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Persistence.Repositories;
 
-internal sealed class ReviewerAssignmentRepository(DefenseCouncilDbContext context) : IReviewerAssignmentRepository
+internal sealed class ReviewerAssignmentRepository(DefenseCouncilDbContext context, IReviewerAssignmentThesisReader thesis) : IReviewerAssignmentRepository
 {
     public Task<ReviewerAssignment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         => context.ReviewerAssignments.AsNoTracking().SingleOrDefaultAsync(value => value.Id == id, cancellationToken);
@@ -27,9 +29,17 @@ internal sealed class ReviewerAssignmentRepository(DefenseCouncilDbContext conte
         {
             throw new InvalidOperationException("Acquire the assignment lock before making changes.");
         }
+        // Grade-source triggers lock the group root on assignment writes. Taking that root
+        // before the assignment prevents a cycle with evaluation/score writers, which already
+        // acquire the same root before accessing the assignment.
+        var groupId = await context.ReviewerAssignments.AsNoTracking().Where(a => a.Id == id)
+            .Select(a => (Guid?)a.GroupId).SingleOrDefaultAsync(cancellationToken);
+        if (groupId is null || await thesis.LockAsync(groupId.Value, cancellationToken) is null) return null;
         var value = await context.ReviewerAssignments.FromSqlInterpolated($"""
             SELECT a.*, a.xmin FROM councils.reviewer_assignment a WHERE a.id = {id} FOR UPDATE
             """).AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+        if (value is not null && value.GroupId != groupId.Value)
+            throw new DefenseCouncilConcurrencyException(new InvalidOperationException("The assignment group changed while acquiring locks."));
         if (existing is not null) existing.State = EntityState.Detached;
         if (value is not null) context.ReviewerAssignments.Attach(value);
         return value;
