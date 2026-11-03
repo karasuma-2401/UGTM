@@ -111,4 +111,13 @@ public static class CouncilErrors
 
     public static Error MissingRequiredCriteria(string criteriaName) =>
         Error.Validation("Council.MissingRequiredCriteria", $"Chưa nhập điểm cho tiêu chí bắt buộc: '{criteriaName}'.");
+
+    public static Error OnlySecretaryCanSaveMinute =>
+        Error.Forbidden("Council.OnlySecretaryCanSaveMinute", "Chỉ Thư ký của hội đồng (hoặc Admin) mới có quyền lưu nháp biên bản.");
+
+    public static Error TargetComponentRequiredForRejection =>
+        Error.Validation("Council.TargetComponentRequiredForRejection", "Bắt buộc phải chỉ định mã đầu điểm/vai trò cần loại (target_component_code) khi chọn không công nhận theo biên bản (RejectedAsPerMinute).");
+
+    public static Error InvalidTargetComponent(string componentCode) =>
+        Error.Validation("Council.InvalidTargetComponent", $"Mã đầu điểm/vai trò cần loại không hợp lệ hoặc không tồn tại trong hội đồng: '{componentCode}'.");
 }
