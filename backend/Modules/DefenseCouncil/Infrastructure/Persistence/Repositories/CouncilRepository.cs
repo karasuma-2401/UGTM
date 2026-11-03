@@ -264,4 +264,38 @@ public sealed class CouncilRepository(DefenseCouncilDbContext db) : ICouncilRepo
             }, ct);
         }
     }
+
+    public Task<CouncilMinute?> GetMinuteByAssignmentIdAsync(Guid assignmentId, CancellationToken ct = default)
+        => db.CouncilMinutes.FirstOrDefaultAsync(m => m.CouncilAssignmentId == assignmentId, ct);
+
+    public async Task SaveCouncilMinuteDraftAsync(Guid assignmentId, string? studentFeedback, string? overrideMarker, CancellationToken ct = default)
+    {
+        var minute = await db.CouncilMinutes
+            .FirstOrDefaultAsync(m => m.CouncilAssignmentId == assignmentId, ct);
+
+        var feedback = string.IsNullOrWhiteSpace(studentFeedback) ? null : studentFeedback.Trim();
+        var marker = string.IsNullOrWhiteSpace(overrideMarker) ? null : overrideMarker.Trim();
+
+        if (minute != null)
+        {
+            minute.RequiredRevisions = feedback;
+            minute.GeneralFeedback = feedback;
+            if (marker != null)
+            {
+                minute.OverrideReason = marker;
+            }
+        }
+        else
+        {
+            await db.CouncilMinutes.AddAsync(new CouncilMinute
+            {
+                Id = Guid.NewGuid(),
+                CouncilAssignmentId = assignmentId,
+                RequiredRevisions = feedback,
+                GeneralFeedback = feedback,
+                OverrideReason = marker,
+                LockStatus = CouncilMinuteLockStatus.Open
+            }, ct);
+        }
+    }
 }
