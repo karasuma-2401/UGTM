@@ -35,10 +35,14 @@
 
   <ItemGroup>
     <Compile Include="..\..\host\Api\OpenApi\*.cs" Link="ProductionComposition\OpenApi\%(Filename)%(Extension)" />
+    <Compile Include="..\..\host\Api\ScoreSummaries\ScoreSummaryWorkflowTransactionCoordinator.cs"
+             Link="ProductionComposition\ScoreSummaryWorkflowTransactionCoordinator.cs" />
     <Compile Include="..\..\host\Api\AdvisorEvaluations\AdvisorWorkflowTransactionCoordinator.cs"
              Link="ProductionComposition\AdvisorWorkflowTransactionCoordinator.cs" />
     <Compile Include="..\..\host\Api\Modules\ModuleRegistration.cs"
              Link="ProductionComposition\ModuleRegistration.cs" />
+    <Compile Include="..\..\host\Api\FinalSubmissions\FinalSubmissionWorkflowTransactionCoordinator.cs"
+             Link="ProductionComposition\FinalSubmissionWorkflowTransactionCoordinator.cs" />
     <Compile Include="..\..\host\Api\ReviewerAssignments\ReviewerAssignmentTransactionCoordinator.cs"
              Link="ProductionComposition\ReviewerAssignmentTransactionCoordinator.cs" />
   </ItemGroup>

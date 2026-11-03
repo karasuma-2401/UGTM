@@ -90,18 +90,20 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         var cancelling = DeleteAsync(original.Id, original.Version);
         var key = Guid.NewGuid();
         var body = await BodyAsync(_otherReviewer);
+        Task<HttpResponseMessage> creating;
         try
         {
-            await FindAssignmentWaiterAsync(backend);
-            using var tooEarly = await PostAsync(body, key);
-            await AssertErrorAsync(tooEarly, HttpStatusCode.Conflict, "AlreadyAssigned");
+            var cancelBackend = await FindAssignmentWaiterAsync(backend);
+            creating = PostAsync(body, key);
+            await FindBlockedEvaluationBackendAsync(cancelBackend);
+            Assert.False(creating.IsCompleted);
             await AssertCountsAsync(1, 1, 1);
         }
         finally { await gate.RollbackAsync(); }
         using var cancelled = await cancelling.WaitAsync(TimeSpan.FromSeconds(20));
         Assert.Equal(HttpStatusCode.OK, cancelled.StatusCode);
-        // The unsuccessful create did not consume its key; it can proceed after the cancellation commits.
-        using var replacement = await PostAsync(body, key);
+        // Creation waits for the group root; it can proceed after cancellation commits.
+        using var replacement = await creating.WaitAsync(TimeSpan.FromSeconds(20));
         Assert.Equal(HttpStatusCode.Created, replacement.StatusCode);
         await using var verify = Db<DefenseCouncilDbContext>();
         var active = await verify.ReviewerAssignments.SingleAsync(value => value.IsActive);
@@ -118,7 +120,8 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         {
             var backends = await observer.Database.SqlQuery<int>($"""
                 SELECT pid AS "Value" FROM pg_stat_activity
-                WHERE {blocker} = ANY(pg_blocking_pids(pid)) AND query LIKE '%councils.reviewer_assignment%'
+                WHERE {blocker} = ANY(pg_blocking_pids(pid))
+                  AND (query LIKE '%councils.reviewer_assignment%' OR query LIKE '%thesis.student_group%')
                 ORDER BY pid LIMIT 1
                 """).ToListAsync(timeout.Token);
             if (backends.Count > 0) return backends[0];

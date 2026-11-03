@@ -10,6 +10,10 @@ public class ScoreSummaryComponent
     public decimal Weight { get; set; }
     public bool IsIgnoredInCalculation { get; set; }
     public string? ExclusionReason { get; set; }
+    public Guid? RevisionId { get; set; }
+    public string? Source { get; set; }
+    public string? ComponentName { get; set; }
+    public string? SourceReferences { get; set; }
 
     public ScoreSummary Summary { get; set; } = null!;
 }

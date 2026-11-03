@@ -154,6 +154,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<UGTM.Modules.Identity.Contracts.Users.IAdvisorNameReader, AdvisorNameReader>();
         services.AddScoped<UGTM.Modules.Identity.Contracts.Users.ICouncilUserInfoReader, CouncilUserInfoReader>();
         services.AddScoped<UGTM.Modules.Identity.Contracts.ReviewerAssignments.IReviewerCandidateReader, ReviewerCandidateReader>();
+        services.AddScoped<UGTM.Modules.Identity.Contracts.FinalSubmissions.IFinalSubmissionAuthorityReader, FinalSubmissionAuthorityReader>();
         services.AddScoped<IUserImportFileReader, ClosedXmlUserImportFileReader>();
         services.AddSingleton<IUserImportTemplateGenerator, ClosedXmlUserImportTemplateGenerator>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();

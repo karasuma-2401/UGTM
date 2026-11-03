@@ -333,8 +333,9 @@ public static class CouncilEndpoints
                 5. **Cập nhật điểm & Khóa biên bản:**
                    - Thành viên được phép gọi lại API để cập nhật lại điểm (Rescore/Idempotent update) khi biên bản hội đồng chưa bị khóa.
                    - Nếu biên bản đã bị khóa (`CouncilMinute.LockStatus == Locked`), mọi hành động chấm hoặc sửa điểm đều bị chặn với mã 409 Conflict (`Council.MinuteLocked`).
-                6. **Tự động tổng kết & Đồng bộ ScoreSummary:**
-                   - Khi tất cả thành viên bắt buộc của hội đồng đã chấm xong, hệ thống tự động cập nhật trạng thái biên bản sang `AllScoresEntered`, tính điểm trung bình của Hội đồng (`AverageCouncilScore`), và tính điểm tổng kết cuối cùng (`FinalScore`) theo công thức chuẩn (`ThesisGradeCalculator`), đồng bộ vào bảng tổng kết điểm `ScoreSummary`.
+                6. **Cập nhật tiến độ chấm:**
+                   - Khi tất cả thành viên bắt buộc đã chấm xong, cập nhật biên bản sang `AllScoresEntered`. API này chỉ ghi điểm/chi tiết và tiến độ; SCRUM-110 tính tổng kết riêng sau Locked và xác nhận lưu chiểu, theo cấu hình Active của đợt.
+                   - Khóa nhóm và nguồn điểm được giữ đến commit. Đã Published trả `Council.ScoresAlreadyPublished`; không ghi hoặc ghi đè ScoreSummary.
                 
                 ### Mã lỗi và phản hồi:
                 - **200 OK:** Chấm điểm thành công, trả về `ApiResponse<CouncilScoreResponseDto>` chứa tổng điểm và chi tiết từng tiêu chí.
@@ -370,6 +371,7 @@ public static class CouncilEndpoints
             .WithDescription("""
                 Tính toán và kiểm tra độ lệch điểm số giữa các thành viên tham gia đánh giá tại buổi bảo vệ của nhóm đề tài.
                 Nếu khoảng cách giữa điểm cao nhất và điểm thấp nhất từ 2.0 điểm trở lên (>= 2.0), hệ thống sẽ bật cờ cảnh báo (Warning flag) để Thư ký và Hội đồng tiến hành thảo luận lại trước khi chốt biên bản.
+                Quyền private được kiểm tra bằng tài khoản/role/permission hiện tại: Admin, Faculty/PĐT + councils.score-summaries.read, hoặc Lecturer Active có roster hợp lệ của đúng Hội đồng. Chỉ token đăng nhập/role Student hoặc một row roster không tự cấp quyền.
                 
                 ### Tham số URL:
                 - `assignmentId`: GUID định danh phân công nhóm đề tài trong hội đồng bảo vệ (`CouncilAssignment`).
@@ -387,7 +389,7 @@ public static class CouncilEndpoints
                    - Nếu `scoreDifference < 2.0`: Cờ `isDiscrepancyDetected = false` và `warningMessage = null`.
                 3. **Thông tin tiến độ chấm điểm:**
                    - Trả về cờ `allScoresSubmitted` xác định tất cả thành viên bắt buộc đã chấm xong hay chưa.
-                   - Trả về điểm trung bình Hội đồng `averageCouncilScore` và điểm tổng kết cuối cùng `finalScore` (nếu đã đủ điều kiện tính toán).
+                   - Trả về điểm trung bình Hội đồng `averageCouncilScore`; `finalScore` chỉ lấy summary nonlegacy Calculated/Published đã tính ở SCRUM-110, không trả phép tính Pending/legacy cũ như kết quả xác minh.
                    - Trả về danh sách chi tiết điểm của từng thành viên (`memberScores`), gồm họ tên, vai trò trong hội đồng, điểm đã chấm, nhận xét, và cờ đánh dấu GVPB kiêm nhiệm (`isBlockedFromScoring = true`).
                 
                 ### Phân quyền truy cập (RBAC):

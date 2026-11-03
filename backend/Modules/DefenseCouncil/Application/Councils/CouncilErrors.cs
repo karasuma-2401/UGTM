@@ -4,6 +4,7 @@ namespace UGTM.Modules.DefenseCouncil.Application.Councils;
 
 public static class CouncilErrors
 {
+    public static Error ScoresAlreadyPublished => Error.Conflict("Council.ScoresAlreadyPublished", "Điểm đã công bố; không được sửa đầu điểm hoặc biên bản.");
     public static Error NotFound =>
         Error.NotFound("Council.NotFound", "Không tìm thấy hội đồng bảo vệ.");
 

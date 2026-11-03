@@ -340,6 +340,18 @@ Biểu đồ tuần tự cho các Use Case chính
 
 Các xác nhận chấm điểm của nhóm ngày 10/10/2026 đã được bổ sung vào QĐ5.3 và các bước loại điểm; nguồn quy tắc tập trung tại [Requirements.md](Requirements.md).
 
+### Thiết kế luồng lưu chiểu và công bố — SCRUM-106/110 CP0
+
+Trạng thái: CP1–CP2 đã hoàn tất lưu chiểu/ArchiveProof; CP3 đã có calculate/private reads/stale và shared lock pipeline. CP4 đã map publish và Student GET ở bước 4–5. Luồng chi tiết thay cho sơ đồ tổng quát phía trên trong phạm vi hai task. Xem [lưu chiểu](ApiContract/FinalSubmissionVerification.md) và [bằng chứng CP3](ApiContract/ScoreCalculationVerification.md).
+
+1. Student Active/Confirmed gửi groupId và package PDF + DOCX cùng Abstract/Keywords Việt–Anh. Server validate/hash, kiểm tra receipt theo quyền hiện tại, preflight ý định mới, rồi upload keys riêng của durable attempt ngoài transaction nghiệp vụ. Sau upload mở shared transaction, khóa toàn bộ guards và kiểm tra lại thời gian/membership/Locked minute/state/xmin trước khi ghi package mới, audit và receipt. Lỗi không làm lộ package nửa vời; cleanup có lease/retry, không xóa object của commit đã thành công.
+2. GVHD/Admin xác nhận đúng package/manifest; Faculty/Admin kiểm tra lại và xác nhận ArchiveConfirmed. RequestRevision có lý do; nộp lại từ Submitted/NeedRevision tạo version mới, giữ lịch sử. ArchiveConfirmed không sửa/thu hồi trong hai task. Owner trả archive proof gồm provenance và hai file/hai review đã xác minh.
+3. Faculty/Admin gọi calculate: shared transaction giữ group/context/authority/archive/grade/config/summary locks theo thứ tự thống nhất, kiểm tra Locked minute và đủ nguồn rõ ràng. Resolver dùng Active config, lưu revision/config/source snapshots + fingerprint; chỉ round final score. Chấm Hội đồng chỉ lưu điểm/tiến độ, không tự ghi ScoreSummary.
+4. Publish chọn các nhóm cùng đợt, lấy tất cả group roots tăng dần trước các owner locks. Revalidate nguồn/config/proof/xmin của cả selection, stale/lỗi thì rollback toàn bộ. Thành công gắn published revision bất biến, actor/time/audit/receipt cùng commit; writer điểm/mở khóa phải kiểm tra Published trong cùng protocol.
+5. GET /api/thesis/scores/my-group?groupId={groupId} kiểm tra Student Active/Confirmed đúng nhóm, chỉ trả revision đã công bố gắn archive proof hợp lệ. Đọc không ghi DB và không chạy lại phép tính theo live config. Excel/PDF/email là phạm vi task sau; API khóa biên bản là phụ thuộc ngoài 106/110, không coi seed Locked là E2E production.
+
+Xem [contract lưu chiểu](ApiContract/FinalSubmissionApiContract.md), [contract điểm](ApiContract/ScoreCalculationPublicationApiContract.md) và [schema/lock protocol](ApiContract/ArchivalScoreWorkflowDesign.md).
+
 ### Luồng phân công phản biện đã triển khai — SCRUM-104
 
 1. Faculty/AcademicAffairs có permission read/manage hoặc Admin đọc danh sách quản lý, nhóm đủ điều kiện và ứng viên. Owner contracts cung cấp projection batch/topic/group/account; không truy cập chéo bảng từ module application.

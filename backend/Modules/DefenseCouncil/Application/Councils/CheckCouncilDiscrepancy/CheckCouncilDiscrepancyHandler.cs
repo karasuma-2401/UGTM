@@ -3,12 +3,15 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Identity.Contracts.FinalSubmissions;
+using UGTM.Modules.DefenseCouncil.Application.ScoreSummaries;
 
 namespace UGTM.Modules.DefenseCouncil.Application.Councils.CheckCouncilDiscrepancy;
 
 public sealed class CheckCouncilDiscrepancyHandler(
     ICouncilRepository councilRepository,
-    ICouncilUserInfoReader councilUserInfoReader)
+    ICouncilUserInfoReader councilUserInfoReader, ICurrentUser currentUser, IFinalSubmissionAuthorityReader authority)
 {
     private const decimal WarningThreshold = 2.0m;
 
@@ -16,11 +19,20 @@ public sealed class CheckCouncilDiscrepancyHandler(
         CheckCouncilDiscrepancyQuery query,
         CancellationToken ct = default)
     {
+        if (!currentUser.IsAuthenticated || currentUser.UserId is not { } actorId)
+            return Result.Failure<CouncilDiscrepancyResponseDto>(CouncilErrors.Forbidden);
+        var actor = await authority.GetAsync(actorId, ct);
+        var management = ScoreSummaryAccess.Allowed(actor, ScoreSummaryAccess.Read);
+        if (!management && !ScoreSummaryAccess.Role(actor, "Lecturer"))
+            return Result.Failure<CouncilDiscrepancyResponseDto>(CouncilErrors.Forbidden);
         var assignment = await councilRepository.GetAssignmentWithCouncilAndMembersAsync(query.AssignmentId, ct);
         if (assignment == null)
         {
             return Result.Failure<CouncilDiscrepancyResponseDto>(CouncilErrors.AssignmentNotFound);
         }
+
+        if (!management && !assignment.Council.Members.Any(m => m.UserId == actorId && Enum.IsDefined(m.RoleInCouncil)))
+            return Result.Failure<CouncilDiscrepancyResponseDto>(CouncilErrors.Forbidden);
 
         var councilScores = await councilRepository.GetCouncilScoresWithDetailsByAssignmentIdAsync(query.AssignmentId, ct);
         var scoreMap = councilScores.ToDictionary(s => s.CouncilMemberId);
@@ -115,7 +127,7 @@ public sealed class CheckCouncilDiscrepancyHandler(
             : null;
 
         var summary = await councilRepository.GetScoreSummaryByGroupIdAsync(assignment.GroupId, ct);
-        decimal? finalScore = summary?.FinalScore;
+        decimal? finalScore = summary is { IsLegacy: false, Status: ScoreSummaryStatus.Calculated or ScoreSummaryStatus.PublishedToStudent } ? summary.FinalScore : null;
 
         return Result.Success(new CouncilDiscrepancyResponseDto(
             query.AssignmentId,

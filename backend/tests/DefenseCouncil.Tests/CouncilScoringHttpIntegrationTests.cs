@@ -108,6 +108,9 @@ public sealed class CouncilScoringHttpIntegrationTests : IAsyncLifetime
         builder.Services.AddScoped<CheckCouncilDiscrepancyHandler>();
         builder.Services.AddScoped<GetCouncilMinuteWorkspaceHandler>();
         builder.Services.AddScoped<SaveCouncilMinuteHandler>();
+        builder.Services.AddSingleton<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilScoreWriteGuard, TestCouncilScoreWriteGuard>();
+        builder.Services.AddScoped<UGTM.Modules.Identity.Contracts.FinalSubmissions.IFinalSubmissionAuthorityReader, TestScoreAuthority>();
+        builder.Services.AddSingleton(TimeProvider.System);
 
         builder.Services.AddAuthentication(TestScoringAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, TestScoringAuthHandler>(TestScoringAuthHandler.SchemeName, _ => { });

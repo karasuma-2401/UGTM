@@ -22,5 +22,10 @@ public interface IThesisSubmissionObjectStorage
         TimeSpan validFor,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Signs an attachment response with the validated original file name.</summary>
+    Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor,
+        CancellationToken cancellationToken = default)
+        => throw new NotSupportedException("The storage provider does not support named attachment downloads.");
+
     Task DeleteAsync(string objectKey, CancellationToken cancellationToken = default);
 }

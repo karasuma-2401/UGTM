@@ -16,6 +16,10 @@ public class ScoreSummaryConfiguration : IEntityTypeConfiguration<ScoreSummary>
         builder.ToTable("score_summary", "councils");
 
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Version).IsRowVersion();
+        builder.Property(x => x.IsLegacy).HasDefaultValue(true);
+        builder.Property(x => x.InputFingerprint).HasMaxLength(64);
+        builder.Property(x => x.LegacySnapshot).HasColumnType("jsonb");
         builder.Property(x => x.TotalWeight).HasPrecision(12, 4);
         builder.Property(x => x.CalculationConfigSnapshot).HasColumnType("jsonb");
 

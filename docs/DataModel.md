@@ -494,6 +494,10 @@ Index: `ix_score_summary_group_id` (group_id) unique; `ix_score_summary_publishe
 
 Navigation: `Components` → ScoreSummaryComponent[].
 
+SCRUM-110 **CP3 đã triển khai** migration `20261102141732_AddScoreSummaryWorkflow`, calculate và private reads/history/stale. `ScoreSummary` là nơi duy nhất ghi tổng kết; đã bỏ nhánh tự tổng hợp trong SubmitCouncilScoreHandler. Aggregate bổ sung IsLegacy, xmin, ConfigId/CalculatedBy, ActiveRevisionId/PublishedRevisionId, InputFingerprint và LegacySnapshot. FK ghép tới revision deferred qua SQL; projection/rounding/tổng trọng số được kiểm tra lúc commit. `score_summary_revision` lưu raw/final decimal, công thức, source/config snapshots, actor/time, fingerprint và AwayFromZero/precision2, unique(summary,revisionNo), bất biến sau insert. Component thêm RevisionId, Source/ComponentName/SourceReferences; Score là numeric không scale cố định, index legacy chỉ revision null, index mới theo revision/code/sourceKey. Receipt unique(actor,operation,key), bao gồm operation Publish từ CP4. CouncilAssignment/Member/Score có xmin để nhận diện cả thay đổi rồi trả về cùng giá trị. Không tạo/drop physical xmin, không tự áp migration vào DB ứng dụng.
+
+CP4 dùng snapshot/guard đã tạo ở CP3 cho publish và Student GET. Revision/source/config thay đổi trước publish buộc tính lại; Published bất biến. Trigger source guard kiểm tra cả binding OLD/NEW và các group IDs đã sort; writer API chấm điểm lấy root trước grade rows. Thứ tự khóa, schema và giới hạn upstream tại [thiết kế chung](ApiContract/ArchivalScoreWorkflowDesign.md), DTO tại [contract điểm](ApiContract/ScoreCalculationPublicationApiContract.md), kiểm tra tại [báo cáo CP3](ApiContract/ScoreCalculationVerification.md).
+
 ### councils.score_summary_component — ScoreSummaryComponent
 
 [Entity](../backend/Modules/DefenseCouncil/Domain/Entities/ScoreSummaryComponent.cs) · [EF configuration](../backend/Modules/DefenseCouncil/Infrastructure/Persistence/Configurations/ScoreSummaryComponentConfiguration.cs).
@@ -801,6 +805,12 @@ PK: `id`.
 Index: `ix_final_submission_advisor_confirmed_by` (advisor_confirmed_by); `ix_final_submission_archived_confirmed_by` (archived_confirmed_by); `ix_final_submission_group_id` (group_id) unique.
 
 Navigation: `Group` → StudentGroup.
+
+SCRUM-106 CP1 đã tạo migration `20261102061935_AddFinalSubmissionArchivalWorkflow`, chưa tự áp vào DB ứng dụng. Aggregate bổ sung `IsLegacy` (default true cho dữ liệu cũ), `CurrentPackageId`, `SubmittedBy`, `SubmittedAtUtc`, `LegacySnapshot jsonb` và `Version uint` ánh xạ system xmin. FK nhóm chuyển Restrict; confirmation actor FKs hiện hữu cũng Restrict để giữ quyết định lịch sử. Current package có FK ghép deferred tới `(id,submission_id,version_no)` qua SQL migration, tránh vòng phụ thuộc insert trong EF.
+
+Năm bảng mới đã có schema: `thesis.final_submission_package`, `final_submission_package_file`, `final_submission_review`, `final_submission_idempotency`, `final_submission_upload_attempt`. Package/link/review và file đã gắn package là bất biến; constraint trigger deferred kiểm tra toàn bộ PDF + DOCX/metadata/projection lúc commit, review proof bắt buộc cho trạng thái xác nhận. Role ThesisPdf/ThesisDocx nằm trên link, không thêm role vào mọi SubmissionFile; giữ partial unique FinalReport và thêm alternate unique để FK binding file. Receipt unique actor/operation/key; attempt giữ keys riêng, lease và trạng thái cleanup durable. Migration Down từ chối khi có dữ liệu workflow, không drop system xmin; không tạo review/package giả cho legacy. Chi tiết cột/FK tại [thiết kế chung](ApiContract/ArchivalScoreWorkflowDesign.md).
+
+Runtime CP1–CP2 nộp/nộp lại ở Submitted/NeedRevision bằng full package + expected xmin, giữ lịch sử và reset xác nhận cho version mới; AdvisorConfirmed/ArchiveConfirmed chặn ý định nộp mới. PUT xác nhận hai bước/trả sửa và producer Get/Lock ArchiveProof dùng schema CP1, không thêm migration CP2. Hai review gắn package/manifest/context và Locked proof; ArchiveConfirmed là projection bất biến. Proof lịch sử không phụ thuộc tài khoản/GVHD/biên bản hiện tại; owner Lock giữ aggregate/package/links/files/reviews tới consumer commit, không đổi xmin. Consumer Locked-defense đọc `CouncilMinute.Version` bằng xmin, chỉ tin minute Locked có actor/time/binding hợp lệ; không có API production giả lập khóa biên bản. Xem [contract](ApiContract/FinalSubmissionApiContract.md) và [bằng chứng theo checkpoint](ApiContract/FinalSubmissionVerification.md).
 
 ### thesis.midterm_report — MidtermReport
 

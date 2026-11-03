@@ -281,32 +281,6 @@ public sealed class SaveCouncilMinuteHandler(
                 overrideMarker,
                 ct);
 
-            // 3. Đồng bộ ScoreSummary & ScoreSummaryComponent nếu đủ điều kiện
-            var summary = await councilRepository.GetScoreSummaryByGroupIdAsync(assignment.GroupId, ct);
-            if (summary != null && calculationPreview.FinalRoundedScore.HasValue)
-            {
-                summary.FinalScore = calculationPreview.FinalRoundedScore.Value;
-                summary.TotalWeight = calculationPreview.AdjustedDivisor;
-                summary.CalculatedAt = DateTime.UtcNow;
-
-                var components = scoreItems
-                    .Where(i => i.Weight > 0 && i.Score.HasValue)
-                    .Select(i => new ScoreSummaryComponent
-                    {
-                        Id = Guid.NewGuid(),
-                        SummaryId = summary.Id,
-                        ComponentCode = i.ComponentCode,
-                        SourceKey = i.ComponentCode,
-                        Score = i.Score!.Value,
-                        Weight = i.Weight,
-                        IsIgnoredInCalculation = i.IsIgnoredInCalculation,
-                        ExclusionReason = i.IsIgnoredInCalculation ? "RejectedAsPerMinute" : null
-                    })
-                    .ToList();
-
-                await councilRepository.SaveScoreSummaryAsync(summary, components, ct);
-            }
-
             await unitOfWork.SaveChangesAsync(ct);
         }
 

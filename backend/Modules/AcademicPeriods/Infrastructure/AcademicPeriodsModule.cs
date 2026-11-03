@@ -33,8 +33,10 @@ public sealed class AcademicPeriodsModule : IModule
 
     public void RegisterModule(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<UGTM.Modules.AcademicPeriods.Contracts.ScoreSummaries.IScoreSummaryConfigurationReader, Persistence.Repositories.ScoreSummaryConfigurationReader>();
         services.AddModuleDbContext<AcademicPeriodsDbContext>(configuration);
         services.AddScoped<IKltnBatchReader, KltnBatchReader>();
+        services.AddScoped<UGTM.Modules.AcademicPeriods.Contracts.FinalSubmissions.IFinalSubmissionBatchReader, FinalSubmissionBatchReader>();
         services.AddScoped<UGTM.Modules.AcademicPeriods.Contracts.ReviewerEvaluations.IReviewerDefenseRuleReader, ReviewerDefenseRuleReader>();
         services.AddScoped<UGTM.Modules.AcademicPeriods.Contracts.ReviewerAssignments.IReviewerAssignmentBatchReader,
             Persistence.Repositories.ReviewerAssignmentBatchReader>();
