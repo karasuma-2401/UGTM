@@ -19,7 +19,9 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CheckCouncilDiscrepancy;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
 using UGTM.Modules.DefenseCouncil.Application.Grading;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
@@ -104,6 +106,8 @@ public sealed class CouncilScoringHttpIntegrationTests : IAsyncLifetime
         builder.Services.AddScoped<GetCouncilScheduleHandler>();
         builder.Services.AddScoped<SubmitCouncilScoreHandler>();
         builder.Services.AddScoped<CheckCouncilDiscrepancyHandler>();
+        builder.Services.AddScoped<GetCouncilMinuteWorkspaceHandler>();
+        builder.Services.AddScoped<SaveCouncilMinuteHandler>();
 
         builder.Services.AddAuthentication(TestScoringAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, TestScoringAuthHandler>(TestScoringAuthHandler.SchemeName, _ => { });

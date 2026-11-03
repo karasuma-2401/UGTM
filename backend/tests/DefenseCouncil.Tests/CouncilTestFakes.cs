@@ -389,4 +389,39 @@ public sealed class FakeCouncilRepository : ICouncilRepository
         }
         return Task.CompletedTask;
     }
+
+    public Task<CouncilMinute?> GetMinuteByAssignmentIdAsync(Guid assignmentId, CancellationToken ct = default)
+    {
+        return Task.FromResult(Minutes.FirstOrDefault(m => m.CouncilAssignmentId == assignmentId));
+    }
+
+    public Task SaveCouncilMinuteDraftAsync(Guid assignmentId, string? studentFeedback, string? overrideMarker, CancellationToken ct = default)
+    {
+        var minute = Minutes.FirstOrDefault(m => m.CouncilAssignmentId == assignmentId);
+        var feedback = string.IsNullOrWhiteSpace(studentFeedback) ? null : studentFeedback.Trim();
+        var marker = string.IsNullOrWhiteSpace(overrideMarker) ? null : overrideMarker.Trim();
+
+        if (minute != null)
+        {
+            minute.RequiredRevisions = feedback;
+            minute.GeneralFeedback = feedback;
+            if (marker != null)
+            {
+                minute.OverrideReason = marker;
+            }
+        }
+        else
+        {
+            Minutes.Add(new CouncilMinute
+            {
+                Id = Guid.NewGuid(),
+                CouncilAssignmentId = assignmentId,
+                RequiredRevisions = feedback,
+                GeneralFeedback = feedback,
+                OverrideReason = marker,
+                LockStatus = CouncilMinuteLockStatus.Open
+            });
+        }
+        return Task.CompletedTask;
+    }
 }
