@@ -424,6 +424,7 @@ function uiFixture(file, exportName, props = {}, options = {}) {
     'selectable-table-row': 'SelectableTableRow',
   }))
     dependencies[`@/components/ui/${file}`] = { [name]: name };
+  dependencies['@/components/ui/confirm-dialog'] = { ConfirmDialog: 'ConfirmDialog' };
   const component = load(source(file), dependencies)[exportName];
   return {
     render() {
@@ -463,12 +464,16 @@ test('solo dialog requires review, snapshots the request and prevents duplicate 
   const completed = [];
   const ui = dialog({ onRegistered: (...args) => completed.push(args) }, { api: api.api });
   let tree = ui.render();
-  assert.equal(find(tree, (node) => node.type === 'TopicPreview').props.advisorName, published.advisorName);
+  assert.equal(
+    find(tree, (node) => node.type === 'TopicPreview').props.advisorName,
+    published.advisorName,
+  );
   assert.equal(api.posts().length, 0);
   button(tree, 'Đăng ký đề tài').props.onClick();
   tree = ui.render();
-  assert.match(text(tree), /Đăng ký cá nhân/);
-  const confirm = button(tree, 'Xác nhận đăng ký').props.onClick;
+  const popup = find(tree, (node) => node.type === 'ConfirmDialog' && node.props.open);
+  assert.match(text(popup.props.description), /Đăng ký cá nhân/);
+  const confirm = popup.props.onConfirm;
   confirm();
   confirm();
   assert.equal(ui.submitted.length, 1);
@@ -493,15 +498,16 @@ test('pair dialog requires a partner; switching back to solo omits the old invit
   tree = ui.render();
   button(tree, 'Đăng ký đề tài').props.onClick();
   tree = ui.render();
-  assert.match(text(tree), /SV02/);
-  assert.match(text(tree), /24 giờ/);
-  button(tree, 'Quay lại').props.onClick();
+  const popup = find(tree, (node) => node.type === 'ConfirmDialog' && node.props.open);
+  assert.match(text(popup.props.description), /SV02/);
+  assert.match(text(popup.props.description), /24 giờ/);
+  popup.props.onClose();
   tree = ui.render();
   button(tree, 'Cá nhân').props.onClick();
   tree = ui.render();
   button(tree, 'Đăng ký đề tài').props.onClick();
   tree = ui.render();
-  button(tree, 'Xác nhận đăng ký').props.onClick();
+  find(tree, (node) => node.type === 'ConfirmDialog' && node.props.open).props.onConfirm();
   assert.equal(ui.submitted[0].partnerUserCode, '');
   await ui.settle();
 });
@@ -782,7 +788,10 @@ test('an availability refresh replaces the selected snapshot and full rows remai
   find(tree, (node) => node.type === 'SelectableTableRow').props.onSelect();
   tree = ui.render();
   assert.equal(find(tree, (node) => node.type === 'SelectableTableRow').props.selected, true);
-  assert.equal(nodes(tree).some((node) => node.type === 'StudentTopicRegistrationDialog'), false);
+  assert.equal(
+    nodes(tree).some((node) => node.type === 'StudentTopicRegistrationDialog'),
+    false,
+  );
   button(tree, 'Chi tiết').props.onClick({ stopPropagation() {} });
   const full = { ...published, confirmedStudentsCount: 2, reservedSlots: 0, availableSlots: 0 };
   ui.controls.queryState['student-topics'] = {

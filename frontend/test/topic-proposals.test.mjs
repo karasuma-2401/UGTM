@@ -568,6 +568,7 @@ function proposalPageFixture(options = {}) {
     'Input',
     'Select',
     'Dialog',
+    'ConfirmDialog',
     'StatisticsBar',
     'Card',
     'CardContent',
@@ -681,6 +682,7 @@ function proposalPageFixture(options = {}) {
       '@/components/ui/input': dependency('Input'),
       '@/components/ui/select': dependency('Select'),
       '@/components/ui/dialog': dependency('Dialog'),
+      '@/components/ui/confirm-dialog': dependency('ConfirmDialog'),
       '@/components/ui/statistics-bar': dependency('StatisticsBar'),
       '@/components/ui/list-card-header': dependency('ListCardHeader'),
       '@/components/ui/card': Object.fromEntries(
@@ -740,6 +742,8 @@ function proposalPageFixture(options = {}) {
     button: (label) =>
       findElement(tree, (node) => node.type === components.Button && node.props.children === label),
     component: (name) => findElement(tree, (node) => node.type === components[name]),
+    confirm: () =>
+      findElement(tree, (node) => node.type === components.ConfirmDialog && node.props.open),
     query: () => listQuery,
     listOptions: () => listQueryOptions,
     unload: (event) => beforeUnload(event),
@@ -921,12 +925,12 @@ test('preview preserves unsaved input and leaving/reloading requires a decision'
   assert.equal(page.mutationCalls(), 0);
   page.block();
   page.render();
-  page.button('Tiếp tục soạn').props.onClick();
+  page.confirm().props.onClose();
   page.render();
   assert.equal(page.shouldBlock(), true);
   page.block();
   page.render();
-  page.button('Bỏ thay đổi và rời trang').props.onClick();
+  page.confirm().props.onConfirm();
   page.render();
   assert.equal(page.proceeds(), 1);
   assert.equal(page.shouldBlock(), false);
@@ -1042,6 +1046,8 @@ test('legacy drafts with no capacity save the displayed capacity before table or
   const shortcut = proposalPageFixture({ listedTopic: legacy });
   shortcut.component('TopicsTable').props.onSubmit(legacy);
   await shortcut.settle();
+  shortcut.render();
+  shortcut.confirm().props.onConfirm();
   assert.equal(shortcut.saveCalls()[0].hasChanges, true);
   await shortcut.executeSave();
   assert.equal(shortcut.apiCalls[0][0], 'save');
@@ -1052,6 +1058,8 @@ test('legacy drafts with no capacity save the displayed capacity before table or
   await form.settle();
   form.render();
   submitProposal(form, 'submit');
+  form.render();
+  form.confirm().props.onConfirm();
   await form.executeSave();
   assert.equal(form.apiCalls[0][0], 'save');
   assert.equal(form.apiCalls[0][2].studentNumber, 2);
@@ -1063,6 +1071,8 @@ test('saving from a later filtered page resets pagination and refreshes both pro
   page.render();
   page.component('TopicsTable').props.onSubmit(fullTopic);
   await page.settle();
+  page.render();
+  page.confirm().props.onConfirm();
   await page.completeSave({ ...fullTopic, status: 'Submitted' });
   page.render();
   assert.equal(page.query()[3], 1);
@@ -1200,6 +1210,8 @@ test('send from table validates fresh content, opens missing fields, and submits
   const complete = proposalPageFixture({ listedTopic: fullTopic });
   complete.component('TopicsTable').props.onSubmit(fullTopic);
   await complete.settle();
+  complete.render();
+  complete.confirm().props.onConfirm();
   assert.deepEqual(complete.saveCalls()[0], {
     id: fullTopic.id,
     values: complete.editing.topicToValues(fullTopic),
@@ -1294,6 +1306,8 @@ test('discarding a form cancels pending autosave so it cannot recreate a deleted
   const page = draftPage();
   page.button('Đóng').props.onClick();
   page.render();
+  page.confirm().props.onConfirm();
+  page.render();
   page.flushTimers();
   assert.equal(page.editing.readLocalProposal('lecturer-1', null), null);
 });
@@ -1352,6 +1366,10 @@ test('sending becomes available only after all three additional fields have cont
       .props.onChange({ target: { value: 'Nội dung đầy đủ' } });
     page.render();
     submitProposal(page, 'submit');
+    if (index === 2) {
+      page.render();
+      page.confirm().props.onConfirm();
+    }
     assert.equal(page.mutationCalls(), index === 2 ? 1 : 0);
   }
   assert.equal(page.mutationVariables()[0].submitImmediately, true);

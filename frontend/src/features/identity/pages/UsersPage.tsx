@@ -1,13 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  UsersRound,
-  GraduationCap,
-  UserPlus,
-  Clock3,
-  ShieldOff,
-  Upload,
-  X,
-} from 'lucide-react';
+import { UsersRound, GraduationCap, UserPlus, Clock3, ShieldOff, Upload, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,6 +8,7 @@ import { ListCardHeader } from '@/components/ui/list-card-header';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
 import {
   UserFormDialog,
@@ -89,7 +82,9 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
           key={modals.editingUser?.id || 'create'}
           user={modals.editingUser}
           isSaving={actions.saveMutation.isPending}
-          error={actions.saveMutation.error ? getUserErrorMessage(actions.saveMutation.error) : null}
+          error={
+            actions.saveMutation.error ? getUserErrorMessage(actions.saveMutation.error) : null
+          }
           onClose={() => modals.setIsFormOpen(false)}
           onSave={(values) => {
             actions.saveMutation.mutate({
@@ -113,6 +108,21 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(actions.pendingStatusUser)}
+        onClose={actions.cancelChangeStatus}
+        onConfirm={actions.confirmChangeStatus}
+        type="warning"
+        title={
+          actions.pendingStatusUser?.status === 'Active'
+            ? 'Vô hiệu hóa tài khoản?'
+            : 'Khôi phục tài khoản?'
+        }
+        description={actions.pendingStatusUser?.fullName}
+        confirmText={actions.pendingStatusUser?.status === 'Active' ? 'Vô hiệu hóa' : 'Khôi phục'}
+        isConfirming={actions.statusMutation.isPending}
+      />
 
       <UserFilterBar
         isStudent={isStudent}
@@ -143,7 +153,8 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                 {
                   key: 'total',
                   onClick: () => filters.quickFilter(''),
-                  active: !filters.filters.status && !filters.filters.keyword && !filters.filters.role,
+                  active:
+                    !filters.filters.status && !filters.filters.keyword && !filters.filters.role,
                   label: 'Tổng tài khoản',
                   value: data.formatCount(data.statistics?.total),
                   icon: <UsersRound />,
@@ -222,7 +233,11 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"
             >
               <p className="text-sm text-rose-600">{getUserErrorMessage(data.usersQuery.error)}</p>
-              <Button type="button" variant="outline" onClick={() => void data.usersQuery.refetch()}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void data.usersQuery.refetch()}
+              >
                 Thử lại
               </Button>
             </div>
@@ -245,7 +260,12 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-sm text-slate-500">
               <p>Không có tài khoản phù hợp.</p>
               {filters.hasFilters && (
-                <Button type="button" variant="outline" leftIcon={<X />} onClick={filters.clearFilters}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  leftIcon={<X />}
+                  onClick={filters.clearFilters}
+                >
                   Bỏ lọc
                 </Button>
               )}

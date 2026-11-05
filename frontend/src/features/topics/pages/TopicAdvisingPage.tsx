@@ -36,6 +36,14 @@ import { GROUP_STATUS_LABELS, type AdvisingTab, type TrackingTopic } from '../ty
 import { advisingApi } from '../services/advisingApi';
 import { getTopicErrorMessage } from '../services/topicApi';
 import { getAdvisingRows, getConfirmationStatistics, isAdvisingGroup } from '../advising';
+import { syllabusApi } from '@/features/thesis/services/syllabusApi';
+import { midtermApi } from '@/features/thesis/services/midtermApi';
+import { finalReportApi } from '@/features/thesis/services/finalReportApi';
+import { milestoneApi } from '@/features/thesis/services/milestoneApi';
+import { PROGRESS_REPORT_STATUS_LABELS } from '@/features/thesis/types/milestone.types';
+import { SYLLABUS_STATUS_LABELS } from '@/features/thesis/types/syllabus.types';
+import { MIDTERM_STATUS_LABELS } from '@/features/thesis/types/midterm.types';
+import { FINAL_REPORT_STATUS_LABELS } from '@/features/thesis/types/finalReport.types';
 
 const PAGE_SIZES = [10, 20, 50] as const;
 const tabs: { id: AdvisingTab; label: string }[] = [
@@ -111,6 +119,32 @@ export function TopicAdvisingPage({
     queryFn: ({ signal }) => advisingApi.getDetail(user!.id, detailId!, signal),
     enabled: Boolean(user?.id && detailId),
     staleTime: 0,
+  });
+  const detailGroupId =
+    detailId && detailQuery.data?.id === detailId ? detailQuery.data.group?.groupId ?? '' : '';
+  const groupDetailQuery = useQuery({
+    queryKey: ['topic-advising-group-detail', detailGroupId],
+    queryFn: ({ signal }) => advisingApi.getGroupDetail(detailGroupId, signal),
+    enabled: Boolean(detailGroupId),
+  });
+  const progressQuery = useQuery({
+    queryKey: ['topic-advising-group-progress', detailGroupId],
+    queryFn: async ({ signal }) => {
+      const [syllabus, midterm, finalReport, milestones] = await Promise.all([
+        syllabusApi.getSyllabusHistory(detailGroupId, signal),
+        midtermApi.getMidtermHistory(detailGroupId, signal),
+        finalReportApi.getFinalReportHistory(detailGroupId, signal),
+        milestoneApi.getMilestones(detailGroupId, signal),
+      ]);
+      const progressReports = await Promise.all(
+        milestones.map(async (milestone) => ({
+          milestone,
+          report: await milestoneApi.getProgressReport(milestone.id, signal),
+        })),
+      );
+      return { syllabus, midterm, finalReport, progressReports };
+    },
+    enabled: Boolean(detailGroupId),
   });
   // Do not present stale counts as current data after a failed refresh.
   const topics = query.isError ? undefined : query.data;
@@ -560,26 +594,61 @@ export function TopicAdvisingPage({
                       </div>
                       <GroupStatusBadge status={detail.group.status} />
                     </div>
-                    <p className="text-xs text-slate-500">
-                      Chưa có trạng thái xác nhận riêng của từng thành viên.
-                    </p>
-                    {detail.group.students.map((student) => (
+                    {groupDetailQuery.isPending ? (
+                      <p className="text-xs text-slate-500">Đang tải trạng thái xác nhận thành viên…</p>
+                    ) : groupDetailQuery.isError ? (
+                      <p role="alert" className="text-xs text-rose-700">
+                        Không tải được trạng thái xác nhận thành viên: {getTopicErrorMessage(groupDetailQuery.error)}
+                      </p>
+                    ) : null}
+                    {(groupDetailQuery.data?.members ?? detail.group.students).map((student) => (
                       <div key={student.studentId} className="rounded-lg bg-slate-50 p-3 text-sm">
                         <p className="font-medium">
                           {student.fullName}{' '}
                           <span className="font-normal text-slate-500">
-                            - {student.userCode ?? 'Chưa có MSSV'}
+                            - {student.userCode || 'Chưa có MSSV'}
                           </span>
                         </p>
-                        <p className="mt-1 break-all text-slate-600">
-                          {student.email || 'Chưa có email'}
+                        <p className="mt-1 text-xs text-slate-600">
+                          Xác nhận: {('confirmationStatus' in student && student.confirmationStatus) || 'Không có dữ liệu'}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          {student.phoneNumber || 'Chưa có số điện thoại'} - Ghi nhận:{' '}
-                          {date(student.joinedAt)}
-                        </p>
+                        {'email' in student && <p className="mt-1 break-all text-xs text-slate-500">{student.email || 'Chưa có email'}</p>}
+                        {'joinedAt' in student && <p className="mt-1 text-xs text-slate-500">Ghi nhận: {date(student.joinedAt)}</p>}
                       </div>
                     ))}
+                    <div className="space-y-3 border-t border-slate-100 pt-4">
+                      <h3 className="text-sm font-semibold">Tiến độ hồ sơ</h3>
+                      {progressQuery.isPending ? (
+                        <p className="text-xs text-slate-500">Đang tải tiến độ…</p>
+                      ) : progressQuery.isError ? (
+                        <p role="alert" className="text-xs text-rose-700">
+                          Không tải được tiến độ nhóm: {getTopicErrorMessage(progressQuery.error)}
+                        </p>
+                      ) : (
+                        <>
+                          <div className="grid gap-2 text-sm sm:grid-cols-3">
+                            <div className="rounded-lg bg-slate-50 p-3">Đề cương: <strong>{progressQuery.data.syllabus ? SYLLABUS_STATUS_LABELS[progressQuery.data.syllabus.currentStatus] ?? progressQuery.data.syllabus.currentStatus : 'Chưa nộp'}</strong></div>
+                            <div className="rounded-lg bg-slate-50 p-3">Giữa kỳ: <strong>{progressQuery.data.midterm ? MIDTERM_STATUS_LABELS[progressQuery.data.midterm.currentStatus] ?? progressQuery.data.midterm.currentStatus : 'Chưa nộp'}</strong></div>
+                            <div className="rounded-lg bg-slate-50 p-3">Báo cáo cuối: <strong>{progressQuery.data.finalReport ? FINAL_REPORT_STATUS_LABELS[progressQuery.data.finalReport.currentStatus as keyof typeof FINAL_REPORT_STATUS_LABELS] ?? progressQuery.data.finalReport.currentStatus : 'Chưa nộp'}</strong></div>
+                          </div>
+                          {progressQuery.data.progressReports.length > 0 && (
+                            <div className="space-y-2">
+                              <h4 className="text-xs font-semibold text-slate-600">Mốc tiến độ</h4>
+                              {progressQuery.data.progressReports.map(({ milestone, report }) => (
+                                <div key={milestone.id} className="flex flex-wrap justify-between gap-2 rounded-lg bg-slate-50 p-3 text-sm">
+                                  <span>{milestone.title}</span>
+                                  <span className="text-slate-600">
+                                    {report
+                                      ? PROGRESS_REPORT_STATUS_LABELS[report.currentStatus as keyof typeof PROGRESS_REPORT_STATUS_LABELS] ?? report.currentStatus
+                                      : 'Chưa nộp'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                     {isAdvisingGroup(detail) && (
                       <Button
                         variant="outline"
