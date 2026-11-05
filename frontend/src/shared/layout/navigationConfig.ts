@@ -10,6 +10,7 @@ import {
   UsersRound,
   FileText,
   CalendarCheck,
+  UserCheck,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -110,6 +111,12 @@ export const navigationSections: NavSectionConfig[] = [
         label: 'Thẩm định quy trình',
         path: '/thesis/review/syllabus',
         icon: ClipboardCheck,
+        roles: ['Faculty', 'Admin', 'AcademicAffairs'],
+      },
+      {
+        label: 'Phân công giảng viên',
+        path: '/councils/reviewer-assignments',
+        icon: UserCheck,
         roles: ['Faculty', 'Admin', 'AcademicAffairs'],
       },
     ],
