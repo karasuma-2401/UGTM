@@ -84,7 +84,7 @@ public sealed class GetStudentGroupDetailHandler(
     {
         bool HasRole(string role) => currentUser.Roles.Any(value => string.Equals(value, role, StringComparison.OrdinalIgnoreCase));
         return ThesisAuthorization.IsAdministrator(currentUser)
-            || (HasRole("Faculty") && ThesisAuthorization.CanReviewRenameRequestFaculty(currentUser))
+            || (HasRole("Faculty") && ThesisAuthorization.CanReviewGates(currentUser))
             || ThesisAuthorization.CanReviewRenameRequestAcademicAffairs(currentUser)
             || (HasRole("Student") && group.Members.Any(member =>
                 member.StudentId == currentUser.UserId && member.ConfirmationStatus == MemberConfirmationStatus.Confirmed))
