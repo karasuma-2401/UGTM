@@ -15,7 +15,9 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.ApproveCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CheckCouncilDiscrepancy;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
 using UGTM.Modules.DefenseCouncil.Application.Grading;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
@@ -84,6 +86,8 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<GetCouncilScheduleHandler>();
         services.AddScoped<SubmitCouncilScoreHandler>();
         services.AddScoped<CheckCouncilDiscrepancyHandler>();
+        services.AddScoped<GetCouncilMinuteWorkspaceHandler>();
+        services.AddScoped<SaveCouncilMinuteHandler>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.IScoreSummaryStore, ScoreSummaryStore>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ScoreSummaryAccess>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ScoreSummaryResolver>();

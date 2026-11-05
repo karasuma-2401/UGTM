@@ -116,6 +116,26 @@ public sealed class AddCouncilMembersHandler(
                         CouncilErrors.MemberIsGroupAdvisor(advisorName, topic.TitleVi));
                 }
             }
+
+            // Reviewer in Council role check: If a member is a Reviewer for any assigned group, they CAN ONLY be a Member
+            var activeReviewers = await councilRepository.GetActiveReviewerIdsByGroupIdsAsync(assignedGroupIds, cancellationToken);
+            foreach (var memberInput in command.Members)
+            {
+                if (memberInput.Role != CouncilMemberRole.Member)
+                {
+                    var matchedAssignment = activeReviewers.FirstOrDefault(kvp => kvp.Value == memberInput.UserId);
+                    if (matchedAssignment.Key != Guid.Empty)
+                    {
+                        var reviewerName = usersInfo.TryGetValue(memberInput.UserId, out var u) ? u.FullName : memberInput.UserId.ToString();
+                        var topicTitle = groups.TryGetValue(matchedAssignment.Key, out var grp) && topics.TryGetValue(grp.TopicId, out var top)
+                            ? top.TitleVi
+                            : matchedAssignment.Key.ToString();
+
+                        return Result.Failure<IReadOnlyList<CouncilMemberResponseDto>>(
+                            CouncilErrors.MemberIsGroupReviewerWithInvalidRole(reviewerName, topicTitle));
+                    }
+                }
+            }
         }
 
         // 2. Schedule conflict validation: check if lecturer is busy in another council on same date + timeSlot

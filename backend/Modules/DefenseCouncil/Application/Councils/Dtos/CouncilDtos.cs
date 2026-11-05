@@ -156,3 +156,66 @@ public sealed record CouncilDiscrepancyResponseDto(
     decimal? FinalScore,
     IReadOnlyList<MemberScoreDetailDto> MemberScores);
 
+public sealed record MinuteWorkspaceAssignmentInfoDto(
+    Guid AssignmentId,
+    Guid CouncilId,
+    string CouncilCode,
+    Guid GroupId,
+    string GroupCode,
+    string? ChairmanName,
+    string? SecretaryName,
+    string LockStatus,
+    string? StudentFeedback);
+
+public sealed record MinuteScoreItemDto(
+    string ComponentCode,
+    string RoleLabel,
+    string LecturerName,
+    decimal? Score,
+    decimal Weight,
+    string StatusText,
+    string Category,
+    bool IsDualRoleReviewer,
+    bool IsIgnoredInCalculation);
+
+public sealed record MinuteDiscrepancySummaryDto(
+    bool HasDiscrepancy,
+    decimal? ScoreDifference,
+    string? ChairmanConclusion,
+    string? SecretaryMarking,
+    string? IgnoredComponentCode,
+    bool IsIgnoredInCalculation);
+
+public sealed record MinuteCalculationPreviewDto(
+    decimal RawTotal,
+    decimal RawDivisor,
+    decimal RawAverage,
+    decimal AdjustedTotal,
+    decimal AdjustedDivisor,
+    decimal AdjustedAverage,
+    decimal? FinalRoundedScore,
+    string FormulaExplanation,
+    bool IsReadyToLock);
+
+public sealed record CouncilMinuteWorkspaceResponseDto(
+    MinuteWorkspaceAssignmentInfoDto AssignmentInfo,
+    IReadOnlyList<MinuteScoreItemDto> ScoreItems,
+    MinuteDiscrepancySummaryDto DiscrepancySummary,
+    MinuteCalculationPreviewDto CalculationPreview);
+
+public sealed record SaveCouncilMinuteInputDto(
+    string? SecretaryMarking = null,
+    string? TargetComponentCode = null,
+    string? StudentFeedback = null,
+    string? ChairmanConclusion = null);
+
+public sealed record SaveCouncilMinuteResponseDto(
+    Guid AssignmentId,
+    string LockStatus,
+    string? StudentFeedback,
+    bool IsPreview,
+    MinuteDiscrepancySummaryDto DiscrepancySummary,
+    MinuteCalculationPreviewDto CalculationPreview,
+    IReadOnlyList<MinuteScoreItemDto> ScoreItems);
+
+

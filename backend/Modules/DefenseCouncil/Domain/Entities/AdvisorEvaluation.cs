@@ -58,6 +58,12 @@ public sealed class AdvisorEvaluation
     public bool IsLegacy { get; private set; }
     public bool IsIgnoredInCalculation { get; private set; }
     public string? ExclusionReason { get; private set; }
+
+    public void SetCalculationExclusion(bool isIgnored, string? reason)
+    {
+        IsIgnoredInCalculation = isIgnored;
+        ExclusionReason = isIgnored ? reason?.Trim() : null;
+    }
     public uint Version { get; private set; }
 
     public bool IsLocked => !IsLegacy && AllowsReviewerAssignment is true;

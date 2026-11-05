@@ -14,6 +14,12 @@ public sealed class ReviewerEvaluation
     public string? RevisionFeedback { get; private set; }
     public bool IsIgnoredInCalculation { get; private set; }
     public string? ExclusionReason { get; private set; }
+
+    public void SetCalculationExclusion(bool isIgnored, string? reason)
+    {
+        IsIgnoredInCalculation = isIgnored;
+        ExclusionReason = isIgnored ? reason?.Trim() : null;
+    }
     public DefenseApprovalStatus? DefenseApproval { get; private set; }
     public bool IsVisibleToStudent { get; private set; }
     public DateTime EvaluatedAt { get; private set; }
