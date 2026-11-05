@@ -1,23 +1,28 @@
 import { NavLink } from 'react-router-dom';
-import { FileText, ClipboardCheck, Flag } from 'lucide-react';
+import { FileText, ClipboardCheck, Flag, FileCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function ThesisSubmissionNavigation() {
   const tabs = [
     {
+      path: '/thesis/milestones',
+      label: 'Báo cáo tiến độ',
+      icon: Flag,
+    },
+    {
       path: '/thesis/proposal',
-      label: 'Cổng 1 - Đề cương chi tiết',
+      label: 'Đề cương chi tiết',
       icon: FileText,
     },
     {
       path: '/thesis/midterm',
-      label: 'Cổng 2 - Báo cáo giữa kỳ',
+      label: 'Báo cáo giữa kỳ',
       icon: ClipboardCheck,
     },
     {
-      path: '/thesis/milestones',
-      label: 'Báo cáo tiến độ',
-      icon: Flag,
+      path: '/thesis/final-report',
+      label: 'Báo cáo cuối kỳ',
+      icon: FileCheck,
     },
   ];
 
