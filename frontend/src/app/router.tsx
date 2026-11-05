@@ -14,6 +14,8 @@ import { UsersPage } from '../features/identity';
 import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
 import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
 import { StudentTopicCatalogPage } from '../features/topics/pages/StudentTopicCatalogPage';
+import { StudentRenameRequestPage } from '../features/topics/pages/StudentRenameRequestPage';
+import { RenameReviewEntryPage, RenameReviewPage } from '../features/topics/pages/RenameReviewPage';
 import {
   SyllabusSubmissionPage,
   SyllabusReviewPage,
@@ -60,6 +62,26 @@ export const router = createBrowserRouter([
             <StudentTopicCatalogPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'topics/rename',
+        element: <ProtectedRoute allowedRoles={['Student']}><StudentRenameRequestPage /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review',
+        element: <ProtectedRoute allowedRoles={['Lecturer', 'Faculty', 'AcademicAffairs', 'Admin']}><RenameReviewEntryPage /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review/advisor',
+        element: <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}><RenameReviewPage level="advisor" /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review/faculty',
+        element: <ProtectedRoute allowedRoles={['Faculty', 'Admin']}><RenameReviewPage level="faculty" /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review/academic-affairs',
+        element: <ProtectedRoute allowedRoles={['AcademicAffairs', 'Admin']}><RenameReviewPage level="academic-affairs" /></ProtectedRoute>,
       },
       {
         path: 'thesis/proposal',

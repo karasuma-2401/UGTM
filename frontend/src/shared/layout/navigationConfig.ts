@@ -11,6 +11,7 @@ import {
   FileText,
   CalendarCheck,
   UserCheck,
+  FilePenLine,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -94,6 +95,18 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/topics/catalog',
         icon: BookOpen,
         roles: ['Student', 'Admin'],
+      },
+      {
+        label: 'Xin đổi tên đề tài',
+        path: '/topics/rename',
+        icon: FilePenLine,
+        roles: ['Student'],
+      },
+      {
+        label: 'Duyệt đổi tên đề tài',
+        path: '/topics/rename/review',
+        icon: FilePenLine,
+        roles: ['Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
       },
       {
         label: 'Báo cáo & tiến độ',

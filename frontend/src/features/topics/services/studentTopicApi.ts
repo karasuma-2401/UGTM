@@ -8,6 +8,7 @@ import type {
   ParticipationResult,
   RegistrationRequest,
   RegistrationTimeline,
+  StudentTopicGroupDetail,
 } from '../types/studentTopic.types';
 import { validateStudentRegistration } from '../studentRegistration';
 
@@ -41,6 +42,13 @@ export const studentTopicApi = {
   async getMyStatus(signal?: AbortSignal): Promise<StudentRegistrationStatus> {
     const response = await httpClient.get<ApiResponse<StudentRegistrationStatus>>(
       '/api/thesis/topic-registrations/my-status',
+      { signal },
+    );
+    return unwrap(response.data);
+  },
+  async getGroupDetail(groupId: string, signal?: AbortSignal): Promise<StudentTopicGroupDetail> {
+    const response = await httpClient.get<ApiResponse<StudentTopicGroupDetail>>(
+      `/api/thesis/groups/${groupId}/detail`,
       { signal },
     );
     return unwrap(response.data);
