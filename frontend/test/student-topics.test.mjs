@@ -136,6 +136,14 @@ test('solo registration refreshes personal status before posting only topicId', 
   assert.deepEqual(calls[1][2], { topicId: 'topic-1' });
 });
 
+test('confirmed student group detail uses its scoped API', async () => {
+  const detail = { groupId: 'group-1', topicId: 'topic-1', members: [] };
+  const { api, calls } = apiFixture({ get: () => success(detail) });
+  const signal = new AbortController().signal;
+  assert.equal(await api.getGroupDetail('group-1', signal), detail);
+  assert.deepEqual(calls, [['GET', '/api/thesis/groups/group-1/detail', { signal }]]);
+});
+
 test('pair registration sends only the invited MSSV, never a user-supplied registrant or confirmation', async () => {
   const { api, posts } = apiFixture();
   const response = await api.register({ topic: published, partnerUserCode: ' sv02 ' }, 'SV01');
@@ -404,6 +412,7 @@ function uiFixture(file, exportName, props = {}, options = {}) {
     'StudentRegistrationStatusCard',
     'StudentTopicRegistrationDialog',
     'StudentParticipationDialog',
+    'StudentTopicGroupDialog',
   ]) {
     dependencies[`../components/${name}`] = { [name]: name };
   }
@@ -673,6 +682,52 @@ test('personal registration states distinguish assigned/confirmed, pending, expi
   );
 });
 
+test('confirmed registration opens group tracking; pending invitation does not', () => {
+  const confirmed = uiFixture(
+    'pages/StudentTopicCatalogPage.tsx',
+    'StudentTopicCatalogContent',
+    {},
+    {
+      status: {
+        ...emptyStatus,
+        hasRegistered: true,
+        groupId: 'group-1',
+        topicId: 'topic-1',
+        confirmationStatus: 'Confirmed',
+      },
+    },
+  );
+  let tree = confirmed.render();
+  find(tree, (node) => node.type === 'StudentRegistrationStatusCard').props.onViewGroup();
+  tree = confirmed.render();
+  assert.equal(
+    find(tree, (node) => node.type === 'StudentTopicGroupDialog').props.groupId,
+    'group-1',
+  );
+
+  const pending = uiFixture(
+    'pages/StudentTopicCatalogPage.tsx',
+    'StudentTopicCatalogContent',
+    {},
+    {
+      status: {
+        ...emptyStatus,
+        hasRegistered: true,
+        groupId: 'group-1',
+        topicId: 'topic-1',
+        confirmationStatus: 'Pending',
+      },
+    },
+  );
+  tree = pending.render();
+  find(tree, (node) => node.type === 'StudentRegistrationStatusCard').props.onViewGroup();
+  tree = pending.render();
+  assert.equal(
+    nodes(tree).some((node) => node.type === 'StudentTopicGroupDialog'),
+    false,
+  );
+});
+
 test('catalog route and sidebar allow Student and Admin; account-owned UI remounts by identity', () => {
   const config = load('shared/layout/navigationConfig.ts', {
     'lucide-react': icons,
@@ -802,5 +857,5 @@ test('an availability refresh replaces the selected snapshot and full rows remai
     find(tree, (node) => node.type === 'StudentTopicRegistrationDialog').props.topic.availableSlots,
     0,
   );
-  assert.equal(button(tree, 'Chỉ xem').props.disabled, false);
+  assert.equal(button(tree, 'Chi tiết').props.disabled, false);
 });
