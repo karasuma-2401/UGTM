@@ -103,6 +103,27 @@ public sealed class CouncilRepository(DefenseCouncilDbContext db) : ICouncilRepo
         return rejected.ToHashSet();
     }
 
+    public async Task<IReadOnlySet<Guid>> GetDefenseEligibleGroupIdsAsync(
+        IEnumerable<Guid> groupIds,
+        CancellationToken ct = default)
+    {
+        var idList = groupIds.Distinct().ToList();
+        if (idList.Count == 0) return new HashSet<Guid>();
+
+        var eligible = await db.ReviewerAssignments
+            .Where(r => r.IsActive
+                        && idList.Contains(r.GroupId)
+                        && r.Evaluation != null
+                        && r.Evaluation.Status == ReviewerEvaluationStatus.Submitted
+                        && r.Evaluation.DefenseApproval == DefenseApprovalStatus.Approved
+                        && r.Evaluation.Score >= 4.0m)
+            .Select(r => r.GroupId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return eligible.ToHashSet();
+    }
+
     public Task<Council?> GetCouncilByGroupIdAsync(Guid groupId, CancellationToken ct = default)
         => db.CouncilAssignments
             .Where(a => a.GroupId == groupId)

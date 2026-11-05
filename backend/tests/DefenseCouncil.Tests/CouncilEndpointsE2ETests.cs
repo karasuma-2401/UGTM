@@ -377,19 +377,21 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
     #region 3. University Special Case E2E (Reviewer as Member / 0 independent Members)
 
     [Fact]
-    public async Task E2E_UniversitySpecialCase_CouncilWithOnlyChairmanAndSecretary_AndReviewerAsMember_Succeeds()
+    public async Task E2E_UniversitySpecialCase_CouncilWithReviewerAsMember_Succeeds()
     {
         var facultyId = Guid.NewGuid();
         var aaUserId = Guid.NewGuid();
         var chairmanId = Guid.NewGuid();
+        var secretaryId = Guid.NewGuid();
         var reviewerAndMemberId = Guid.NewGuid();
         var advisorId = Guid.NewGuid();
         var groupId = Guid.NewGuid();
         var topicId = Guid.NewGuid();
 
         _userInfoReader.Users[chairmanId] = new CouncilUserInfoContractDto(chairmanId, "Chủ tịch Hội đồng", "ct@uit.edu.vn", "CB021", true);
-        _userInfoReader.Users[reviewerAndMemberId] = new CouncilUserInfoContractDto(reviewerAndMemberId, "GVPB kiêm Thư ký", "pb@uit.edu.vn", "CB022", true);
-        _userInfoReader.Users[advisorId] = new CouncilUserInfoContractDto(advisorId, "GVHD Độc lập", "hd@uit.edu.vn", "CB023", true);
+        _userInfoReader.Users[secretaryId] = new CouncilUserInfoContractDto(secretaryId, "Thư ký Hội đồng", "sec@uit.edu.vn", "CB022", true);
+        _userInfoReader.Users[reviewerAndMemberId] = new CouncilUserInfoContractDto(reviewerAndMemberId, "GVPB kiêm Ủy viên", "pb@uit.edu.vn", "CB023", true);
+        _userInfoReader.Users[advisorId] = new CouncilUserInfoContractDto(advisorId, "GVHD Độc lập", "hd@uit.edu.vn", "CB024", true);
 
         _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
         _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, advisorId, "Đề tài BigData", null);
@@ -402,11 +404,12 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
             new CreateCouncilInputDto(_batchId, "HD-SPEC-01", _defenseDate, TimeSlotMorning, RoomA101));
         var councilId = (await ReadDataAsync(createResponse)).GetProperty("id").GetGuid();
 
-        // 2. Add members: ONLY Chairman and Secretary (0 independent Member)
+        // 2. Add members: Chairman, Secretary, and Reviewer as Member
         var addMemberResponse = await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
             new AddCouncilMembersInputDto(Members: [
                 new(chairmanId, CouncilMemberRole.Chairman),
-                new(reviewerAndMemberId, CouncilMemberRole.Secretary) // Reviewer is Secretary/Member
+                new(secretaryId, CouncilMemberRole.Secretary),
+                new(reviewerAndMemberId, CouncilMemberRole.Member) // Reviewer is Member
             ]));
         Assert.Equal(HttpStatusCode.OK, addMemberResponse.StatusCode);
 
@@ -415,7 +418,7 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
             new AssignCouncilGroupsInputDto(Assignments: [new(groupId, 1)]));
         Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
 
-        // 4. Academic Affairs approves council with 0 independent Member -> 200 OK
+        // 4. Academic Affairs approves council -> 200 OK
         Authenticate(aaUserId, "AcademicAffairs");
         var approveResponse = await _client.PutAsJsonAsync($"/api/councils/{councilId}/approve",
             new ApproveCouncilInputDto("QD-SPEC-01"));
@@ -426,11 +429,86 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, scheduleResponse.StatusCode);
         var schedule = await ReadDataAsync(scheduleResponse);
         Assert.Equal("Active", schedule.GetProperty("status").GetString());
-        Assert.Equal(2, schedule.GetProperty("members").GetArrayLength()); // Only 2 members in council
+        Assert.Equal(3, schedule.GetProperty("members").GetArrayLength()); // 3 members in council
 
         var group = schedule.GetProperty("groups")[0];
         Assert.True(group.GetProperty("isReviewerInCouncil").GetBoolean());
         Assert.Equal(reviewerAndMemberId, group.GetProperty("reviewerId").GetGuid());
+    }
+
+    [Fact]
+    public async Task E2E_AssignGroup_Fails_WhenReviewerIsSecretaryInCouncil()
+    {
+        var facultyId = Guid.NewGuid();
+        var chairmanId = Guid.NewGuid();
+        var reviewerAndSecretaryId = Guid.NewGuid();
+        var advisorId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+
+        _userInfoReader.Users[chairmanId] = new CouncilUserInfoContractDto(chairmanId, "Chủ tịch Hội đồng", "ct@uit.edu.vn", "CB031", true);
+        _userInfoReader.Users[reviewerAndSecretaryId] = new CouncilUserInfoContractDto(reviewerAndSecretaryId, "GVPB xếp làm Thư ký", "pbsec@uit.edu.vn", "CB032", true);
+
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, advisorId, "Đề tài IoT", null);
+        _councilRepo.ActiveReviewers[groupId] = reviewerAndSecretaryId;
+
+        Authenticate(facultyId, "Faculty");
+
+        var createResponse = await _client.PostAsJsonAsync("/api/councils",
+            new CreateCouncilInputDto(_batchId, "HD-SPEC-02", _defenseDate, TimeSlotMorning, RoomB202));
+        var councilId = (await ReadDataAsync(createResponse)).GetProperty("id").GetGuid();
+
+        var addMemberResponse = await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [
+                new(chairmanId, CouncilMemberRole.Chairman),
+                new(reviewerAndSecretaryId, CouncilMemberRole.Secretary)
+            ]));
+        Assert.Equal(HttpStatusCode.OK, addMemberResponse.StatusCode);
+
+        var assignResponse = await _client.PostAsJsonAsync($"/api/councils/{councilId}/assignments",
+            new AssignCouncilGroupsInputDto(Assignments: [new(groupId, 1)]));
+        Assert.Equal(HttpStatusCode.Conflict, assignResponse.StatusCode);
+        var error = await ReadErrorAsync(assignResponse);
+        Assert.Equal("Council.ReviewerIsChairmanOrSecretaryInCouncil", error.Code);
+    }
+
+    [Fact]
+    public async Task E2E_AssignGroup_Fails_WhenGroupIsNotEligibleForDefense()
+    {
+        var facultyId = Guid.NewGuid();
+        var chairmanId = Guid.NewGuid();
+        var secretaryId = Guid.NewGuid();
+        var advisorId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+
+        _userInfoReader.Users[chairmanId] = new CouncilUserInfoContractDto(chairmanId, "Chủ tịch Hội đồng", "ct@uit.edu.vn", "CB041", true);
+        _userInfoReader.Users[secretaryId] = new CouncilUserInfoContractDto(secretaryId, "Thư ký Hội đồng", "sec@uit.edu.vn", "CB042", true);
+
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, advisorId, "Đề tài chưa đủ điều kiện", null);
+
+        // Nhóm chưa hoàn thành phản biện
+        _councilRepo.IneligibleDefenseGroupIds.Add(groupId);
+
+        Authenticate(facultyId, "Faculty");
+
+        var createResponse = await _client.PostAsJsonAsync("/api/councils",
+            new CreateCouncilInputDto(_batchId, "HD-SPEC-03", _defenseDate, TimeSlotMorning, RoomA101));
+        var councilId = (await ReadDataAsync(createResponse)).GetProperty("id").GetGuid();
+
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [
+                new(chairmanId, CouncilMemberRole.Chairman),
+                new(secretaryId, CouncilMemberRole.Secretary)
+            ]));
+
+        var assignResponse = await _client.PostAsJsonAsync($"/api/councils/{councilId}/assignments",
+            new AssignCouncilGroupsInputDto(Assignments: [new(groupId, 1)]));
+        Assert.Equal(HttpStatusCode.Conflict, assignResponse.StatusCode);
+        var error = await ReadErrorAsync(assignResponse);
+        Assert.Equal("Council.GroupNotEligibleForDefense", error.Code);
     }
 
     #endregion

@@ -148,6 +148,8 @@ public sealed class FakeCouncilRepository : ICouncilRepository
     public List<CouncilMember> Members { get; } = [];
     public List<CouncilAssignment> Assignments { get; } = [];
     public HashSet<Guid> RejectedGroupIds { get; } = [];
+    public HashSet<Guid> IneligibleDefenseGroupIds { get; } = [];
+    public HashSet<Guid>? ExplicitEligibleGroupIds { get; set; }
     public Dictionary<Guid, Guid> ActiveReviewers { get; } = [];
     public List<CouncilScore> Scores { get; } = [];
     public List<EvaluationDetail> EvaluationDetails { get; } = [];
@@ -231,6 +233,22 @@ public sealed class FakeCouncilRepository : ICouncilRepository
     public Task<IReadOnlySet<Guid>> GetRejectedDefenseGroupIdsAsync(IEnumerable<Guid> groupIds, CancellationToken ct = default)
     {
         var result = groupIds.Where(id => RejectedGroupIds.Contains(id)).ToHashSet();
+        return Task.FromResult<IReadOnlySet<Guid>>(result);
+    }
+
+    public Task<IReadOnlySet<Guid>> GetDefenseEligibleGroupIdsAsync(IEnumerable<Guid> groupIds, CancellationToken ct = default)
+    {
+        var idList = groupIds.Distinct().ToList();
+        if (ExplicitEligibleGroupIds != null)
+        {
+            var filtered = idList.Where(id => ExplicitEligibleGroupIds.Contains(id)).ToHashSet();
+            return Task.FromResult<IReadOnlySet<Guid>>(filtered);
+        }
+
+        var result = idList
+            .Where(id => !RejectedGroupIds.Contains(id) && !IneligibleDefenseGroupIds.Contains(id))
+            .ToHashSet();
+
         return Task.FromResult<IReadOnlySet<Guid>>(result);
     }
 
