@@ -26,7 +26,7 @@ import {
   AdvisorMilestoneReviewPage,
   FinalReportSubmissionPage,
 } from '../features/thesis';
-import { ReviewerAssignmentPage } from '../features/councils';
+import { ReviewerAssignmentPage, CouncilApprovalPage } from '../features/councils';
 import { CouncilSimilarityReportsPage } from '../features/thesis/pages/CouncilSimilarityReportsPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
@@ -151,6 +151,14 @@ export const router = createBrowserRouter([
       {
         path: 'councils/similarity-reports',
         element: <ProtectedRoute allowedRoles={['CouncilMember']}><CouncilSimilarityReportsPage /></ProtectedRoute>,
+      },
+      {
+        path: 'councils/approval',
+        element: (
+          <ProtectedRoute allowedRoles={['AcademicAffairs', 'Admin']}>
+            <CouncilApprovalPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'advisor/milestones',
