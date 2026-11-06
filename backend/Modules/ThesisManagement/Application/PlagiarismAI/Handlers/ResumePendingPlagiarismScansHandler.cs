@@ -39,15 +39,11 @@ public sealed class ResumePendingPlagiarismScansHandler(
 
         var resumedIds = new List<Guid>();
         var successCount = 0;
-        var nowUtc = DateTime.UtcNow;
-
         foreach (var scan in pendingScans)
         {
             logger.LogInformation("Resuming scan {ScanId} for FinalReport {ReportId} v{Version}", scan.Id, scan.FinalReportId, scan.VersionNo);
-            scan.ResetForRetry(nowUtc);
-            var success = await executeScanHandler.ExecuteAsync(scan, cancellationToken);
-            resumedIds.Add(scan.Id);
-            if (success) successCount++;
+            var success = await executeScanHandler.RetryAsync(scan, cancellationToken);
+            if (success) { resumedIds.Add(scan.Id); successCount++; }
         }
 
         return Result.Success(new ResumePendingPlagiarismScansResult(

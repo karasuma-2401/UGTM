@@ -56,26 +56,26 @@ public sealed class ExecutePlagiarismScanHandler(
                 return await HandleActivePollAsync(scan, nowUtc, cancellationToken);
             }
 
-            // 4. If ComputeUnavailable: auto-check if AI is back and Colab is alive
-            if (scan.Status == PlagiarismScanStatus.ComputeUnavailable)
-            {
-                var isHealthy = await plagiarismAiClient.CheckHealthAsync(cancellationToken);
-                if (isHealthy)
-                {
-                    logger.LogInformation("AI service is healthy; auto-rescuing scan {ScanId} from ComputeUnavailable", scan.Id);
-                    scan.ResetForRetry(nowUtc);
-                    await unitOfWork.SaveChangesAsync(cancellationToken);
-                    return await HandlePendingSubmissionAsync(scan, nowUtc, cancellationToken);
-                }
-            }
-
             return false;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
             logger.LogError(ex, "Unexpected error executing plagiarism scan {ScanId}", scan.Id);
             return false;
         }
+    }
+
+    public async Task<bool> RetryAsync(FinalReportPlagiarismScan scan, CancellationToken cancellationToken = default)
+    {
+        var jobId = scan.JobId;
+        if (jobId.HasValue && jobId.Value != Guid.Empty && !await plagiarismAiClient.RetryJobAsync(jobId.Value, cancellationToken))
+            return false;
+        scan.ResetForRetry(DateTime.UtcNow);
+        if (jobId.HasValue && jobId.Value != Guid.Empty)
+            scan.MarkQueued(jobId.Value, DateTime.UtcNow);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     private async Task<bool> HandlePendingSubmissionAsync(
@@ -110,7 +110,7 @@ public sealed class ExecutePlagiarismScanHandler(
             // Backoff retry when service is temporarily down
             var nextCheck = nowUtc.AddSeconds(Math.Min(30 * Math.Pow(2, Math.Min(scan.AttemptCount, 5)), 600));
             scan.RecordPollAttempt(nowUtc, nextCheck);
-            scan.MarkWaitingForCompute(nowUtc, nextCheck, "Dịch vụ AI đang tạm ngoại tuyến. Tự động gửi lại khi dịch vụ sẵn sàng.");
+            // No remote job exists yet: stay pending and retry submission after the backoff.
         }
         else
         {
@@ -126,7 +126,7 @@ public sealed class ExecutePlagiarismScanHandler(
         DateTime nowUtc,
         CancellationToken cancellationToken)
     {
-        if (!scan.JobId.HasValue)
+        if (!scan.JobId.HasValue || scan.JobId == Guid.Empty)
         {
             scan.ResetForRetry(nowUtc);
             await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -167,17 +167,21 @@ public sealed class ExecutePlagiarismScanHandler(
                 scan.MarkComputeUnavailable(
                     nowUtc,
                     statusDto.ErrorCode,
-                    "Cụm tính toán GPU (Google Colab) đang tạm dừng. Hệ thống sẽ tự động quét lại khi GPU sẵn sàng.");
+                    "Tác vụ đã hết số lần thử GPU. Vui lòng yêu cầu quét lại khi GPU sẵn sàng.");
             }
             else
             {
                 scan.MarkFailed(statusDto.ErrorCode ?? "SCAN_FAILED", "Quá trình phân tích tài liệu thất bại.", nowUtc);
             }
         }
+        else if (status == "cancelled")
+        {
+            scan.MarkFailed("SCAN_CANCELLED", "Tác vụ phân tích đã bị hủy.", nowUtc);
+        }
         else if (status == "completed")
         {
             var rawJson = await plagiarismAiClient.GetReportRawJsonAsync(scan.JobId.Value, schema: 3, ct: cancellationToken);
-            if (rawJson.HasValue)
+            if (rawJson.HasValue && PlagiarismReportParser.Parse(rawJson.Value).Summary is not null)
             {
                 var parsed = PlagiarismReportParser.Parse(rawJson.Value);
                 var summary = parsed.Summary;

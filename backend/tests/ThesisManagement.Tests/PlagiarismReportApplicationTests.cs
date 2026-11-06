@@ -3,6 +3,7 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
+using UGTM.Modules.DefenseCouncil.Contracts.Councils;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportHistory;
 using UGTM.Modules.ThesisManagement.Application.PlagiarismAI;
 using UGTM.Modules.ThesisManagement.Application.PlagiarismAI.Dtos;
@@ -153,6 +154,10 @@ public sealed class PlagiarismReportApplicationTests
         var allowedResult = await handler.HandleAsync(new GetPlagiarismReportQuery(report.Id));
         Assert.True(allowedResult.IsSuccess);
         Assert.NotNull(allowedResult.Value.FullReport);
+        var unassigned = CreateGetReportHandler(report, scan, CouncilMemberUser(Guid.NewGuid()));
+        var denied = await unassigned.HandleAsync(new GetPlagiarismReportQuery(report.Id));
+        Assert.False(denied.IsSuccess);
+        Assert.Equal(PlagiarismScanErrors.AccessDenied.Code, denied.Error.Code);
     }
 
     [Fact]
@@ -199,6 +204,10 @@ public sealed class PlagiarismReportApplicationTests
         Assert.Equal(0.185, scan.SimilarityCoverage);
         Assert.Equal(0.82, scan.MaxRerankerScore);
         Assert.Equal(SampleReportJson, scan.RawReportJson);
+        scan.ResetForRetry(Now.AddMinutes(13));
+        Assert.Null(scan.RawReportJson);
+        Assert.Null(scan.SimilarityCoverage);
+        Assert.Null(scan.CompletedAt);
     }
 
     [Fact]
@@ -318,7 +327,8 @@ public sealed class PlagiarismReportApplicationTests
             fileRepo,
             scanRepo,
             accessChecker,
-            StudentUser(StudentId));
+            StudentUser(StudentId),
+            advisorContract);
 
         var result = await handler.HandleAsync(new GetFinalReportHistoryQuery(GroupId));
 
@@ -364,7 +374,8 @@ public sealed class PlagiarismReportApplicationTests
             fileRepo,
             scanRepo,
             accessChecker,
-            AdvisorUser(AdvisorId));
+            AdvisorUser(AdvisorId),
+            advisorContract);
 
         var result = await handler.HandleAsync(new GetFinalReportHistoryQuery(GroupId));
 
@@ -423,7 +434,14 @@ public sealed class PlagiarismReportApplicationTests
             groupRepo,
             accessChecker,
             currentUser,
-            advisorContract);
+            advisorContract,
+            new FakeCouncilReportAccess());
+    }
+
+    private sealed class FakeCouncilReportAccess : ICouncilReportAccess
+    {
+        public Task<bool> IsAssignedAsync(Guid groupId, Guid userId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(groupId == GroupId && userId == CouncilMemberId);
     }
 
     private static ICurrentUser StudentUser(Guid studentId) =>

@@ -108,6 +108,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<RetryPlagiarismScanHandler>();
         services.AddScoped<ResumePendingPlagiarismScansHandler>();
         services.AddScoped<IndexFinalReportToCorpusHandler>();
+        services.AddScoped<GetCorpusIndexStatusHandler>();
         services.AddHostedService<PlagiarismScanWorker>();
         services.AddScoped<IAdvisorEvaluationWorkflowContract, AdvisorEvaluationWorkflowContract>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.ReviewerAssignments.IReviewerAssignmentThesisReader,

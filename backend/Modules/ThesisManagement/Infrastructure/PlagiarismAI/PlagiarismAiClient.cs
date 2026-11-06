@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using UGTM.Modules.ThesisManagement.Application.PlagiarismAI;
@@ -11,6 +12,10 @@ namespace UGTM.Modules.ThesisManagement.Infrastructure.PlagiarismAI;
 
 public sealed class PlagiarismAiClient : IPlagiarismAiClient
 {
+    private static readonly JsonSerializerOptions AiJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+    };
     private readonly HttpClient _httpClient;
     private readonly ILogger<PlagiarismAiClient> _logger;
 
@@ -46,8 +51,10 @@ public sealed class PlagiarismAiClient : IPlagiarismAiClient
 
             if (response.StatusCode == HttpStatusCode.Accepted)
             {
-                var payload = await response.Content.ReadFromJsonAsync<ScanJobAcceptedDto>(cancellationToken: ct);
-                return new ScanJobSubmissionResult(payload?.JobId ?? Guid.Empty, payload?.Status ?? "queued", IsSuccess: true);
+                var payload = await response.Content.ReadFromJsonAsync<ScanJobAcceptedDto>(AiJsonOptions, ct);
+                if (payload is null || payload.JobId == Guid.Empty)
+                    return new ScanJobSubmissionResult(Guid.Empty, "failed", false, "INVALID_AI_RESPONSE", "Dịch vụ AI không trả mã tác vụ hợp lệ.");
+                return new ScanJobSubmissionResult(payload.JobId, payload.Status ?? "queued", IsSuccess: true);
             }
 
             if (response.StatusCode == HttpStatusCode.UnsupportedMediaType)
@@ -72,6 +79,9 @@ public sealed class PlagiarismAiClient : IPlagiarismAiClient
                     ErrorMessage: "Phiên bản bài nộp đã tồn tại với mã băm nội dung khác.");
             }
 
+            if ((int)response.StatusCode >= 500 || response.StatusCode == HttpStatusCode.TooManyRequests)
+                return new ScanJobSubmissionResult(Guid.Empty, "unavailable", false, "AI_SERVICE_UNAVAILABLE", "Dịch vụ AI tạm thời không sẵn sàng.");
+
             var errorBody = await response.Content.ReadAsStringAsync(ct);
             _logger.LogError("AI scan submission failed: {Status} - {Body}", response.StatusCode, errorBody);
 
@@ -92,6 +102,11 @@ public sealed class PlagiarismAiClient : IPlagiarismAiClient
                 ErrorCode: "AI_SERVICE_UNAVAILABLE",
                 ErrorMessage: "Không thể kết nối đến dịch vụ AI (mạng hoặc dịch vụ đang offline).");
         }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return new ScanJobSubmissionResult(Guid.Empty, "timeout", false, "AI_SERVICE_UNAVAILABLE", "Dịch vụ AI không phản hồi kịp thời.");
+        }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error submitting scan job to AI service");
@@ -108,7 +123,7 @@ public sealed class PlagiarismAiClient : IPlagiarismAiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/v1/jobs/{jobId:D}", ct);
+            using var response = await _httpClient.GetAsync($"/api/v1/jobs/{jobId:D}", ct);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
                 return null;
@@ -116,7 +131,7 @@ public sealed class PlagiarismAiClient : IPlagiarismAiClient
 
             response.EnsureSuccessStatusCode();
 
-            var json = await response.Content.ReadFromJsonAsync<JobStatusRawResponse>(cancellationToken: ct);
+            var json = await response.Content.ReadFromJsonAsync<JobStatusRawResponse>(AiJsonOptions, ct);
             if (json is null) return null;
 
             return new PlagiarismJobStatusDto(
@@ -134,6 +149,22 @@ public sealed class PlagiarismAiClient : IPlagiarismAiClient
             _logger.LogWarning(ex, "Could not fetch status for AI job {JobId}", jobId);
             return null;
         }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return null; }
+    }
+
+    public async Task<bool> RetryJobAsync(Guid jobId, CancellationToken ct = default)
+    {
+        try
+        {
+            using var response = await _httpClient.PostAsync($"/api/v1/jobs/{jobId:D}/retry", null, ct);
+            return response.IsSuccessStatusCode;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "Could not retry AI job {JobId}", jobId);
+            return false;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return false; }
     }
 
     public async Task<JsonElement?> GetReportRawJsonAsync(
@@ -145,22 +176,39 @@ public sealed class PlagiarismAiClient : IPlagiarismAiClient
     {
         try
         {
-            var url = $"/api/v1/reports/{jobId:D}?schema={schema}&page={page}&page_size={pageSize}";
-            var response = await _httpClient.GetAsync(url, ct);
-
-            if (response.StatusCode == HttpStatusCode.NotFound || response.StatusCode == HttpStatusCode.Conflict)
+            JsonObject? report = null;
+            JsonArray? findings = null;
+            var currentPage = page;
+            while (true)
             {
-                return null;
+                var url = $"/api/v1/reports/{jobId:D}?schema={schema}&page={currentPage}&page_size={pageSize}";
+                using var response = await _httpClient.GetAsync(url, ct);
+                if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Conflict) return null;
+                response.EnsureSuccessStatusCode();
+                var part = await response.Content.ReadFromJsonAsync<JsonObject>(cancellationToken: ct);
+                if (part is null) return null;
+                if (report is null)
+                {
+                    report = part;
+                    findings = report["findings"] as JsonArray;
+                }
+                else if (findings is not null && part["findings"] is JsonArray nextFindings)
+                {
+                    foreach (var finding in nextFindings) findings.Add(finding?.DeepClone());
+                }
+                if (part["pagination"]?["has_next"]?.GetValue<bool>() != true) break;
+                currentPage++;
             }
-
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
+            if (report["summary"] is JsonObject summary && findings is not null)
+                summary["findings_returned"] = findings.Count;
+            return JsonSerializer.SerializeToElement(report);
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Could not fetch report for AI job {JobId}", jobId);
             return null;
         }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested) { return null; }
     }
 
     public async Task<ScanJobSubmissionResult> IndexCorpusDocumentAsync(
@@ -189,8 +237,10 @@ public sealed class PlagiarismAiClient : IPlagiarismAiClient
 
             if (response.StatusCode == HttpStatusCode.Accepted)
             {
-                var payload = await response.Content.ReadFromJsonAsync<ScanJobAcceptedDto>(cancellationToken: ct);
-                return new ScanJobSubmissionResult(payload?.JobId ?? Guid.Empty, payload?.Status ?? "queued", IsSuccess: true);
+                var payload = await response.Content.ReadFromJsonAsync<ScanJobAcceptedDto>(AiJsonOptions, ct);
+                if (payload is null || payload.JobId == Guid.Empty)
+                    return new ScanJobSubmissionResult(Guid.Empty, "failed", false, "INVALID_AI_RESPONSE", "Dịch vụ AI không trả mã tác vụ hợp lệ.");
+                return new ScanJobSubmissionResult(payload.JobId, payload.Status ?? "queued", IsSuccess: true);
             }
 
             var errorBody = await response.Content.ReadAsStringAsync(ct);

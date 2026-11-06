@@ -168,6 +168,16 @@ public sealed class FinalReportPlagiarismScan
         LastPolledAt = nowUtc;
         NextCheckAfterUtc = null;
         AttemptCount = 0;
+        SimilarityCoverage = null;
+        MaxRerankerScore = null;
+        ScannedChunks = null;
+        ScannedCharacters = null;
+        MatchedCharacters = null;
+        CitedFindingsCount = null;
+        UncitedFindingsCount = null;
+        SuspectedFindingsCount = null;
+        RawReportJson = null;
+        CompletedAt = null;
     }
 }
 

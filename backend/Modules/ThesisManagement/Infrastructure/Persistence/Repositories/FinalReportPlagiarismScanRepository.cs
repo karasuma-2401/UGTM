@@ -82,7 +82,6 @@ internal sealed class FinalReportPlagiarismScanRepository(ThesisManagementDbCont
     {
         var resumableStatuses = new[]
         {
-            PlagiarismScanStatus.WaitingForCompute,
             PlagiarismScanStatus.ComputeUnavailable
         };
 

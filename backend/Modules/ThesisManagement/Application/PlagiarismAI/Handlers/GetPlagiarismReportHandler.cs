@@ -8,6 +8,7 @@ using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
+using UGTM.Modules.DefenseCouncil.Contracts.Councils;
 
 namespace UGTM.Modules.ThesisManagement.Application.PlagiarismAI.Handlers;
 
@@ -24,7 +25,8 @@ public sealed class GetPlagiarismReportHandler(
     IStudentGroupRepository studentGroupRepository,
     FinalReportReadAccessChecker readAccessChecker,
     ICurrentUser currentUser,
-    ITopicAdvisorAssignmentContract advisorAssignmentContract)
+    ITopicAdvisorAssignmentContract advisorAssignmentContract,
+    ICouncilReportAccess councilReportAccess)
 {
     public async Task<Result<PlagiarismReportResultDto>> HandleAsync(
         GetPlagiarismReportQuery query,
@@ -57,6 +59,11 @@ public sealed class GetPlagiarismReportHandler(
 
         if (isCouncil)
         {
+            if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue || currentUser.UserId == Guid.Empty
+                || !await councilReportAccess.IsAssignedAsync(group.Id, currentUser.UserId.Value, cancellationToken))
+            {
+                return Result.Failure<PlagiarismReportResultDto>(PlagiarismScanErrors.AccessDenied);
+            }
             if (report.Status != FinalReportStatus.UnderEvaluation)
             {
                 return Result.Failure<PlagiarismReportResultDto>(PlagiarismScanErrors.CouncilNotReady);
@@ -172,7 +179,7 @@ public sealed class GetPlagiarismReportHandler(
         PlagiarismScanStatus.WaitingForCompute =>
             "Đang chờ cụm tính toán GPU (Google Colab) sẵn sàng. Bài nộp được bảo lưu an toàn và sẽ tự động tiếp tục khi GPU kết nối lại.",
         PlagiarismScanStatus.ComputeUnavailable =>
-            "Cụm tính toán GPU (Google Colab) đang tạm dừng. Hệ thống sẽ tự động quét lại ngay khi máy chủ GPU được kích hoạt lại.",
+            "Tác vụ đã hết số lần thử tài nguyên GPU. Vui lòng yêu cầu quét lại khi GPU sẵn sàng.",
         PlagiarismScanStatus.Completed =>
             "Hoàn tất đối chiếu tương đồng và đã tạo báo cáo bằng chứng.",
         PlagiarismScanStatus.UnsupportedFormat =>

@@ -16,6 +16,8 @@ public sealed record IndexFinalReportToCorpusResult(
     int VersionNo,
     string FileName,
     string CorpusName,
+    Guid JobId,
+    string Status,
     bool Success,
     string Message);
 
@@ -97,8 +99,10 @@ public sealed class IndexFinalReportToCorpusHandler(
                 targetVersion,
                 file.FileName,
                 corpusName,
+                indexResult.JobId,
+                indexResult.Status,
                 Success: true,
-                Message: $"Đã đánh chỉ mục tệp {file.FileName} vào kho ngữ văn '{corpusName}' thành công."));
+                Message: $"Yêu cầu đánh chỉ mục tệp {file.FileName} đã được tiếp nhận hoặc đã tồn tại. Hãy kiểm tra trạng thái tác vụ để xác nhận kết quả."));
         }
         catch (Exception ex)
         {

@@ -43,36 +43,9 @@ public sealed class PlagiarismScanWorker(
         try
         {
             await using var scope = scopeFactory.CreateAsyncScope();
-            var aiClient = scope.ServiceProvider.GetRequiredService<IPlagiarismAiClient>();
             var scanRepository = scope.ServiceProvider.GetRequiredService<IFinalReportPlagiarismScanRepository>();
             var executeHandler = scope.ServiceProvider.GetRequiredService<ExecutePlagiarismScanHandler>();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IThesisUnitOfWork>();
-
-            // 1. Health check to detect if Colab GPU / AI service is online
-            var isAiHealthy = await aiClient.CheckHealthAsync(cancellationToken);
-
-            // 2. If healthy, auto-rescue any ComputeUnavailable or WaitingForCompute scans
-            if (isAiHealthy)
-            {
-                var batchSize = Math.Clamp(options.Value.BatchResumeSize, 1, 100);
-                var resumableScans = await scanRepository.GetResumableScansAsync(batchSize, cancellationToken);
-                if (resumableScans.Count > 0)
-                {
-                    logger.LogInformation(
-                        "AI service is online. Auto-resuming {Count} stalled or compute-unavailable scans.",
-                        resumableScans.Count);
-
-                    var nowUtc = DateTime.UtcNow;
-                    foreach (var scan in resumableScans)
-                    {
-                        scan.ResetForRetry(nowUtc);
-                    }
-
-                    await unitOfWork.SaveChangesAsync(cancellationToken);
-                }
-            }
-
-            // 3. Process active or pending scans ready for execution or poll
+            // AI schedules its own waiting jobs. Poll them without discarding their job IDs.
             var activeScans = await scanRepository.GetActiveOrPendingScansAsync(limit: 20, cancellationToken);
             foreach (var scan in activeScans)
             {

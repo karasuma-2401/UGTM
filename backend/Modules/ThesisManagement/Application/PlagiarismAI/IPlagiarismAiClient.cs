@@ -17,6 +17,8 @@ public interface IPlagiarismAiClient
         Guid jobId,
         CancellationToken ct = default);
 
+    Task<bool> RetryJobAsync(Guid jobId, CancellationToken ct = default);
+
     Task<JsonElement?> GetReportRawJsonAsync(
         Guid jobId,
         int schema = 3,

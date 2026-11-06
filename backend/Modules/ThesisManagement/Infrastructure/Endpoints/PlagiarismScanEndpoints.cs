@@ -53,7 +53,7 @@ public static class PlagiarismScanEndpoints
             .Accepts<ResumePendingScansRequest>("application/json")
             .WithSummary("Kích hoạt khôi phục hàng loạt các lượt quét đang chờ tài nguyên tính toán GPU")
             .WithDescription("""
-                Khôi phục và kích hoạt quét lại hàng loạt cho các lượt quét đang bị treo hoặc ở trạng thái ComputeUnavailable khi worker GPU (Google Colab) được bật lại.
+                Khởi động lại các lượt quét ComputeUnavailable đã hết số lần thử khi GPU được bật lại. Các lượt đang chờ tiếp tục theo lịch của dịch vụ AI.
                 Chỉ Quản trị viên hoặc Trưởng khoa có quyền thực hiện.
                 401: chưa đăng nhập; 403: không có quyền Quản trị viên/Khoa.
                 """)
@@ -76,6 +76,11 @@ public static class PlagiarismScanEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
             .Produces<ApiResponse<object>>(StatusCodes.Status415UnsupportedMediaType);
+
+        endpoints.MapGet("/api/thesis/similarity-index-jobs/{jobId:guid}", GetIndexStatusAsync)
+            .WithTags("ThesisManagement.Plagiarism")
+            .RequireAuthorization()
+            .WithSummary("Theo dõi trạng thái tác vụ đánh chỉ mục vào corpus");
 
         return endpoints;
     }
@@ -156,6 +161,15 @@ public static class PlagiarismScanEndpoints
         }
 
         var result = await handler.HandleAsync(new IndexFinalReportToCorpusCommand(finalReportId, versionNo), cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> GetIndexStatusAsync(
+        [FromRoute] Guid jobId,
+        [FromServices] GetCorpusIndexStatusHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(jobId, cancellationToken);
         return result.ToHttpResult();
     }
 }

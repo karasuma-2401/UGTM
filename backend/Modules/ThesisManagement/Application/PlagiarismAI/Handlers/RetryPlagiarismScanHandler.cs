@@ -58,20 +58,13 @@ public sealed class RetryPlagiarismScanHandler(
             return Result.Failure<PlagiarismReportResultDto>(PlagiarismScanErrors.NotFound);
         }
 
-        if (scan.Status is PlagiarismScanStatus.Queued or PlagiarismScanStatus.Processing)
+        if (scan.Status is not (PlagiarismScanStatus.Completed or PlagiarismScanStatus.Failed or PlagiarismScanStatus.ComputeUnavailable))
         {
             return Result.Failure<PlagiarismReportResultDto>(PlagiarismScanErrors.RescanNotAllowed);
         }
 
-        // Reset state for retry
-        var nowUtc = DateTime.UtcNow;
-        scan.ResetForRetry(nowUtc);
-
-        // Execute scan dispatch immediately if handler available
-        if (executeScanHandler is not null)
-        {
-            await executeScanHandler.ExecuteAsync(scan, cancellationToken);
-        }
+        if (!await executeScanHandler.RetryAsync(scan, cancellationToken))
+            return Result.Failure<PlagiarismReportResultDto>(Error.Failure("PlagiarismScan.RetryFailed", "Không thể yêu cầu dịch vụ AI quét lại."));
 
         // Return latest report view
         return await getReportHandler.HandleAsync(
