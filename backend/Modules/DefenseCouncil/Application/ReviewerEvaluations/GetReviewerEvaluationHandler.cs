@@ -1,4 +1,5 @@
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Contracts.ReviewerEvaluations;
@@ -28,6 +29,11 @@ public sealed class GetReviewerEvaluationHandler(IReviewerAssignmentRepository a
         var topic = group is null ? null : await topics.GetAsync(group.TopicId, cancellationToken);
         if (group is not { IsContextValid: true, BatchId: not null } || topic is null || topic.BatchId != group.BatchId)
             return Result.Failure<ReviewerEvaluationDto>(ReviewerEvaluationErrors.ContextInvalid);
-        return Result.Success(ReviewerEvaluationDtoMapper.ToDto(evaluation, assignment, topic.TopicId, topic.BatchId));
+
+        var details = await evaluations.GetEvaluationDetailsByEvaluationIdAsync(evaluation.Id, cancellationToken);
+        var detailDtos = details.Select(d => new EvaluationDetailResponseDto(
+            d.Id, d.CriteriaId, d.Criteria.CriteriaCode, d.Criteria.CriteriaName, d.Score, d.Criteria.MaxScore)).ToList();
+
+        return Result.Success(ReviewerEvaluationDtoMapper.ToDto(evaluation, assignment, topic.TopicId, topic.BatchId, detailDtos));
     }
 }
