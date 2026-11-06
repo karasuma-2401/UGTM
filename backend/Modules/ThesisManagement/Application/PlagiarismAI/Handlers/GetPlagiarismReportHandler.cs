@@ -177,7 +177,7 @@ public sealed class GetPlagiarismReportHandler(
         PlagiarismScanStatus.Processing =>
             "Đang phân tích cấu trúc tài liệu và trích xuất đặc trưng ngữ nghĩa.",
         PlagiarismScanStatus.WaitingForCompute =>
-            "Đang chờ cụm tính toán GPU (Google Colab) sẵn sàng. Bài nộp được bảo lưu an toàn và sẽ tự động tiếp tục khi GPU kết nối lại.",
+            "Đang chờ tài nguyên tính toán GPU. Tác vụ được bảo lưu và sẽ tiếp tục theo lịch xử lý.",
         PlagiarismScanStatus.ComputeUnavailable =>
             "Tác vụ đã hết số lần thử tài nguyên GPU. Vui lòng yêu cầu quét lại khi GPU sẵn sàng.",
         PlagiarismScanStatus.Completed =>

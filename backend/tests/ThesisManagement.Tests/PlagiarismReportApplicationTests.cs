@@ -12,6 +12,7 @@ using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
+using UGTM.Modules.TopicCatalog.Contracts.Topics;
 
 namespace UGTM.Modules.ThesisManagement.Tests;
 
@@ -61,6 +62,49 @@ public sealed class PlagiarismReportApplicationTests
       "disclaimer": "Automated similarity verification."
     }
     """;
+
+    [Fact]
+    public async Task CouncilReportList_OnlyReturnsAssignedGroupsWhenEvaluationHasStarted()
+    {
+        var report = FinalReport.CreateSubmitted(Guid.NewGuid(), GroupId, FinalReportVersionType.InitialFinal, Now);
+        var assigned = new FakeCouncilAssignedGroups();
+        var handler = new GetMyCouncilSimilarityReportsHandler(
+            CouncilMemberUser(CouncilMemberId), assigned,
+            new FakeStudentGroupRepository(new StudentGroup(GroupId, TopicId, Now)),
+            new FakeFinalReportRepository(report), new FakeTopicSummaries());
+
+        var beforeEvaluation = await handler.HandleAsync();
+        Assert.True(beforeEvaluation.IsSuccess);
+        Assert.Empty(beforeEvaluation.Value);
+        Assert.True(report.TryBeginEvaluation());
+
+        var result = await handler.HandleAsync();
+        Assert.True(result.IsSuccess);
+        var item = Assert.Single(result.Value);
+        Assert.Equal(report.Id, item.FinalReportId);
+        Assert.Equal(GroupId, item.GroupId);
+        Assert.Equal("Đề tài thử nghiệm", item.TopicTitle);
+        Assert.Equal(CouncilMemberId, assigned.LastUserId);
+
+        var otherMember = new GetMyCouncilSimilarityReportsHandler(
+            CouncilMemberUser(Guid.NewGuid()), assigned,
+            new FakeStudentGroupRepository(new StudentGroup(GroupId, TopicId, Now)),
+            new FakeFinalReportRepository(report), new FakeTopicSummaries());
+        var notAssigned = await otherMember.HandleAsync();
+        Assert.True(notAssigned.IsSuccess);
+        Assert.Empty(notAssigned.Value);
+    }
+
+    [Fact]
+    public async Task CouncilReportList_RejectsStudentBeforeLookingUpAssignments()
+    {
+        var assigned = new FakeCouncilAssignedGroups();
+        var handler = new GetMyCouncilSimilarityReportsHandler(StudentUser(StudentId), assigned, null!, null!, null!);
+        var result = await handler.HandleAsync();
+        Assert.False(result.IsSuccess);
+        Assert.Equal(PlagiarismScanErrors.AccessDenied.Code, result.Error.Code);
+        Assert.Null(assigned.LastUserId);
+    }
 
     [Fact]
     public void PlagiarismReportParser_Parses_Valid_SchemaV3_Json()
@@ -442,6 +486,28 @@ public sealed class PlagiarismReportApplicationTests
     {
         public Task<bool> IsAssignedAsync(Guid groupId, Guid userId, CancellationToken cancellationToken = default) =>
             Task.FromResult(groupId == GroupId && userId == CouncilMemberId);
+    }
+
+    private sealed class FakeCouncilAssignedGroups : ICouncilAssignedGroupReader
+    {
+        public Guid? LastUserId { get; private set; }
+        public Task<IReadOnlyList<Guid>> GetAssignedGroupIdsAsync(Guid userId, CancellationToken cancellationToken = default)
+        {
+            LastUserId = userId;
+            IReadOnlyList<Guid> result = userId == CouncilMemberId ? [GroupId] : [];
+            return Task.FromResult(result);
+        }
+    }
+
+    private sealed class FakeTopicSummaries : ITopicSummaryReader
+    {
+        public Task<IReadOnlyDictionary<Guid, TopicSummaryContractDto>> GetByIdsAsync(IEnumerable<Guid> topicIds, CancellationToken cancellationToken = default)
+        {
+            IReadOnlyDictionary<Guid, TopicSummaryContractDto> result = topicIds.Contains(TopicId)
+                ? new Dictionary<Guid, TopicSummaryContractDto> { [TopicId] = new(TopicId, Guid.NewGuid(), AdvisorId, "Đề tài thử nghiệm", null) }
+                : new Dictionary<Guid, TopicSummaryContractDto>();
+            return Task.FromResult(result);
+        }
     }
 
     private static ICurrentUser StudentUser(Guid studentId) =>

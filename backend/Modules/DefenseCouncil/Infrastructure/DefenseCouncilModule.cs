@@ -43,6 +43,7 @@ public sealed class DefenseCouncilModule : IModule
             Persistence.Repositories.LockedDefenseProofReader>();
         services.AddModuleDbContext<DefenseCouncilDbContext>(configuration);
         services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.Councils.ICouncilReportAccess, CouncilReportAccess>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.Councils.ICouncilAssignedGroupReader, CouncilReportAccess>();
         services.AddScoped<ICouncilRepository, CouncilRepository>();
         services.AddScoped<IDefenseCouncilUnitOfWork>(sp => sp.GetRequiredService<DefenseCouncilDbContext>());
         services.AddSingleton<ThesisGradeCalculator>();

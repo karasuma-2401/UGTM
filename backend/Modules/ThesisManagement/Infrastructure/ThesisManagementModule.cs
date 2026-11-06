@@ -105,6 +105,7 @@ public sealed class ThesisManagementModule : IModule
         });
         services.AddScoped<ExecutePlagiarismScanHandler>();
         services.AddScoped<GetPlagiarismReportHandler>();
+        services.AddScoped<GetMyCouncilSimilarityReportsHandler>();
         services.AddScoped<RetryPlagiarismScanHandler>();
         services.AddScoped<ResumePendingPlagiarismScansHandler>();
         services.AddScoped<IndexFinalReportToCorpusHandler>();

@@ -44,6 +44,7 @@ import { PROGRESS_REPORT_STATUS_LABELS } from '@/features/thesis/types/milestone
 import { SYLLABUS_STATUS_LABELS } from '@/features/thesis/types/syllabus.types';
 import { MIDTERM_STATUS_LABELS } from '@/features/thesis/types/midterm.types';
 import { FINAL_REPORT_STATUS_LABELS } from '@/features/thesis/types/finalReport.types';
+import { SimilarityReportPanel } from '@/features/thesis/components/SimilarityReportPanel';
 
 const PAGE_SIZES = [10, 20, 50] as const;
 const tabs: { id: AdvisingTab; label: string }[] = [
@@ -631,6 +632,12 @@ export function TopicAdvisingPage({
                             <div className="rounded-lg bg-slate-50 p-3">Giữa kỳ: <strong>{progressQuery.data.midterm ? MIDTERM_STATUS_LABELS[progressQuery.data.midterm.currentStatus] ?? progressQuery.data.midterm.currentStatus : 'Chưa nộp'}</strong></div>
                             <div className="rounded-lg bg-slate-50 p-3">Báo cáo cuối: <strong>{progressQuery.data.finalReport ? FINAL_REPORT_STATUS_LABELS[progressQuery.data.finalReport.currentStatus as keyof typeof FINAL_REPORT_STATUS_LABELS] ?? progressQuery.data.finalReport.currentStatus : 'Chưa nộp'}</strong></div>
                           </div>
+                          {progressQuery.data.finalReport && (
+                            <SimilarityReportPanel
+                              reportId={progressQuery.data.finalReport.finalReportId}
+                              versionNo={progressQuery.data.finalReport.currentVersionNo}
+                            />
+                          )}
                           {progressQuery.data.progressReports.length > 0 && (
                             <div className="space-y-2">
                               <h4 className="text-xs font-semibold text-slate-600">Mốc tiến độ</h4>

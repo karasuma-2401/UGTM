@@ -13,6 +13,11 @@ public static class PlagiarismScanEndpoints
 {
     public static IEndpointRouteBuilder MapPlagiarismScanEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapGet("/api/thesis/my-council-similarity-reports", GetMyCouncilReportsAsync)
+            .WithTags("ThesisManagement.Plagiarism")
+            .RequireAuthorization()
+            .WithSummary("Danh sách báo cáo được phân cho thành viên hội đồng hiện tại");
+
         endpoints.MapGet("/api/thesis/final-reports/{finalReportId:guid}/similarity-report", GetReportAsync)
             .WithTags("ThesisManagement.Plagiarism")
             .RequireAuthorization()
@@ -84,6 +89,11 @@ public static class PlagiarismScanEndpoints
 
         return endpoints;
     }
+
+    private static async Task<IResult> GetMyCouncilReportsAsync(
+        [FromServices] GetMyCouncilSimilarityReportsHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> GetReportAsync(
         [FromRoute] Guid finalReportId,

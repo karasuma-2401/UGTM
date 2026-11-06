@@ -10,12 +10,14 @@ import {
   ReviewerFeedbackDialog,
 } from '../components/finalReport';
 import { useFinalReportSubmission } from '../hooks/useFinalReportSubmission';
+import { SimilarityReportPanel } from '../components/SimilarityReportPanel';
 
 export function FinalReportSubmissionPage() {
   const {
     statusQuery,
     groupDetailQuery,
     feedbackQuery,
+    historyQuery,
     selectedFile,
     productNote,
     setProductNote,
@@ -152,6 +154,9 @@ export function FinalReportSubmissionPage() {
             onOpenFeedback={() => setIsFeedbackOpen(true)}
             onDownloadFile={handleDownload}
           />
+          {historyQuery.data && (
+            <SimilarityReportPanel reportId={historyQuery.data.finalReportId} versionNo={historyQuery.data.currentVersionNo} />
+          )}
         </div>
 
         <div className="lg:col-span-4">

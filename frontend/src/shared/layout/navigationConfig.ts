@@ -132,6 +132,12 @@ export const navigationSections: NavSectionConfig[] = [
         icon: UserCheck,
         roles: ['Faculty', 'Admin', 'AcademicAffairs'],
       },
+      {
+        label: 'Báo cáo được phân công',
+        path: '/councils/similarity-reports',
+        icon: FileText,
+        roles: ['CouncilMember'],
+      },
     ],
   },
 ];
