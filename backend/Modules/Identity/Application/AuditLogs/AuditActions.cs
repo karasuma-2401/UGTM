@@ -21,6 +21,7 @@ public static class AuditActions
     public const string PasswordRecoveryRequested = "Identity.Account.PasswordRecoveryRequested";
     public const string RecoveryOtpVerified = "Identity.Account.RecoveryOtpVerified";
     public const string PasswordReset = "Identity.Account.PasswordReset";
+    public const string Reauthentication = "Identity.Account.Reauthentication";
 }
 
 public static class AuditOutcomes

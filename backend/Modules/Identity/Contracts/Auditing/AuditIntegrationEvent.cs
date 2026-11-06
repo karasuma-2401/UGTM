@@ -135,6 +135,9 @@ public static class IntegrationAuditActions
     public const string CouncilMinuteUnlockGranted =
         "DefenseCouncil.CouncilMinute.UnlockGranted";
 
+    public const string CouncilMinuteLocked =
+        "DefenseCouncil.CouncilMinute.Locked";
+
     public const string ScoreAdjusted =
         "DefenseCouncil.Score.Adjusted";
 

@@ -15,6 +15,8 @@ public static class PermissionCodes
     public const string ThesisFinalSubmissionsRead = "thesis.final-submissions.read";
     public const string ThesisFinalSubmissionsManage = "thesis.final-submissions.manage";
 
+    public const string CouncilMinutesUnlock = "councils.minutes.unlock";
+
     public const string IdentityUsersRead = "identity.users.read";
     public const string IdentityUsersManage = "identity.users.manage";
     public const string IdentityUsersImport = "identity.users.import";
