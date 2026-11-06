@@ -17,6 +17,7 @@ public sealed class SubmitFinalReportHandler(
     FinalReportSubmissionEligibilityChecker eligibilityChecker,
     IFinalReportRepository finalReportRepository,
     ISubmissionFileRepository submissionFileRepository,
+    IFinalReportPlagiarismScanRepository plagiarismScanRepository,
     IThesisSubmissionFileValidator fileValidator,
     IThesisSubmissionObjectKeyFactory objectKeyFactory,
     IThesisSubmissionObjectStorage objectStorage,
@@ -120,6 +121,14 @@ public sealed class SubmitFinalReportHandler(
                 finalReportRepository.TrackGroupConcurrency(report, context.Group);
             }
             submissionFileRepository.Add(submissionFile);
+
+            var plagiarismScan = FinalReportPlagiarismScan.Create(
+                Guid.NewGuid(),
+                report.Id,
+                submissionFile.Id,
+                versionNo,
+                context.SubmittedAtUtc);
+            plagiarismScanRepository.Add(plagiarismScan);
             auditOutbox.Add(new AuditIntegrationEntry(
                 "FinalReport",
                 report.Id.ToString(),

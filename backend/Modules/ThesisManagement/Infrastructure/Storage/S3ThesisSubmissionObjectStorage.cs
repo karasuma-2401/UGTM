@@ -131,6 +131,19 @@ public sealed class S3ThesisSubmissionObjectStorage : IThesisSubmissionObjectSto
         return Task.FromResult(new Uri(_presigningClient.GetPreSignedURL(request)));
     }
 
+    public async Task<Stream> OpenReadAsync(string objectKey, CancellationToken cancellationToken = default)
+    {
+        ValidateObjectKey(objectKey);
+
+        var response = await _s3Client.GetObjectAsync(new GetObjectRequest
+        {
+            BucketName = _options.BucketName,
+            Key = objectKey
+        }, cancellationToken);
+
+        return response.ResponseStream;
+    }
+
     public async Task DeleteAsync(string objectKey, CancellationToken cancellationToken = default)
     {
         ValidateObjectKey(objectKey);

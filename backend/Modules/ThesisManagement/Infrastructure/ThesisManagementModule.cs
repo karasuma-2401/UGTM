@@ -16,6 +16,9 @@ using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Infrastructure.Storage;
 using Amazon.S3;
 using Microsoft.Extensions.Options;
+using UGTM.Modules.ThesisManagement.Application.PlagiarismAI;
+using UGTM.Modules.ThesisManagement.Application.PlagiarismAI.Handlers;
+using UGTM.Modules.ThesisManagement.Infrastructure.PlagiarismAI;
 
 using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
 using UGTM.Modules.ThesisManagement.Application.ReviewGateConfigurations.GetReviewGateConfigurations;
@@ -84,6 +87,30 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<ISyllabusRepository, SyllabusRepository>();
         services.AddScoped<IMidtermReportRepository, MidtermReportRepository>();
         services.AddScoped<IFinalReportRepository, FinalReportRepository>();
+        services.AddScoped<IFinalReportPlagiarismScanRepository, FinalReportPlagiarismScanRepository>();
+        services.AddOptions<PlagiarismAiOptions>()
+            .Bind(configuration.GetSection(PlagiarismAiOptions.SectionName));
+        services.AddHttpClient<IPlagiarismAiClient, PlagiarismAiClient>((serviceProvider, client) =>
+        {
+            var options = serviceProvider.GetRequiredService<IOptions<PlagiarismAiOptions>>().Value;
+            if (Uri.TryCreate(options.BaseUrl, UriKind.Absolute, out var baseUri))
+            {
+                client.BaseAddress = baseUri;
+            }
+            if (!string.IsNullOrWhiteSpace(options.ApiKey))
+            {
+                client.DefaultRequestHeaders.Add("X-API-Key", options.ApiKey);
+            }
+            client.Timeout = TimeSpan.FromSeconds(Math.Max(options.TimeoutSeconds, 10));
+        });
+        services.AddScoped<ExecutePlagiarismScanHandler>();
+        services.AddScoped<GetPlagiarismReportHandler>();
+        services.AddScoped<GetMyCouncilSimilarityReportsHandler>();
+        services.AddScoped<RetryPlagiarismScanHandler>();
+        services.AddScoped<ResumePendingPlagiarismScansHandler>();
+        services.AddScoped<IndexFinalReportToCorpusHandler>();
+        services.AddScoped<GetCorpusIndexStatusHandler>();
+        services.AddHostedService<PlagiarismScanWorker>();
         services.AddScoped<IAdvisorEvaluationWorkflowContract, AdvisorEvaluationWorkflowContract>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.ReviewerAssignments.IReviewerAssignmentThesisReader,
             Persistence.Repositories.ReviewerAssignmentThesisReader>();
@@ -179,6 +206,7 @@ public sealed class ThesisManagementModule : IModule
         endpoints.MapSyllabusSubmissionEndpoints();
         endpoints.MapMidtermReportSubmissionEndpoints();
         endpoints.MapFinalReportSubmissionEndpoints();
+        endpoints.MapPlagiarismScanEndpoints();
         endpoints.MapFinalSubmissionEndpoints();
         endpoints.MapProgressMilestoneEndpoints();
         endpoints.MapProgressReportSubmissionEndpoints();

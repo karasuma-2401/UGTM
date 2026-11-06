@@ -133,6 +133,12 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Faculty', 'Admin', 'AcademicAffairs'],
       },
       {
+        label: 'Báo cáo được phân công',
+        path: '/councils/similarity-reports',
+        icon: FileText,
+        roles: ['CouncilMember'],
+      },
+      {
         label: 'Phê duyệt hội đồng',
         path: '/councils/approval',
         icon: ClipboardCheck,

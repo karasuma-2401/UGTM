@@ -225,7 +225,12 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests
             var group = await db.StudentGroups.SingleAsync();
             Assert.True(group.TryStop());
         }
-        else if (setup == "MissingFile") db.SubmissionFiles.Remove(file);
+        else if (setup == "MissingFile")
+        {
+            var scans = await db.FinalReportPlagiarismScans.Where(scan => scan.SubmissionFileId == file.Id).ToListAsync();
+            db.FinalReportPlagiarismScans.RemoveRange(scans);
+            db.SubmissionFiles.Remove(file);
+        }
         else
         {
             var revised = FinalReport.CreateSubmitted(Guid.NewGuid(), _groupId, FinalReportVersionType.RevisedAfterReviewer, Now);
