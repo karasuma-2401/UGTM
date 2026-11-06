@@ -23,6 +23,10 @@ services:
       - S3Storage__AccessKey=${MINIO_ROOT_USER:-ugtm_admin}
       - S3Storage__SecretKey=${MINIO_ROOT_PASSWORD:-ugtm_secret_pass_123}
       - S3Storage__BucketName=ugtm-thesis-submissions
+      # AI API runs on the host by default; use its reachable URL and service key in .env.
+      - PlagiarismAi__BaseUrl=${PLAGIARISM_AI_BASE_URL:-http://host.docker.internal:8000}
+      - PlagiarismAi__ApiKey=${PLAGIARISM_AI_API_KEY:-}
+      - PlagiarismAi__DefaultCorpus=${PLAGIARISM_AI_DEFAULT_CORPUS:-uit-kltn-library-v1}
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
       - Identity__Email__PublicWebBaseUrl=http://localhost:3000
       # Each machine has its own Data Protection key volume, so the partition must be unique per developer.

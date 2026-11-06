@@ -2,6 +2,7 @@ import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
 import type { PagedResult } from '../types/topic.types';
 import type { TrackingTopic } from '../types/advising.types';
+import type { StudentGroupDetailDto } from '@/features/thesis/types/syllabus.types';
 
 function unwrap<T>(response: ApiResponse<T>): T {
   if (!response.success) throw new Error(response.error.message);
@@ -50,5 +51,13 @@ export const advisingApi = {
       throw new Error('Dữ liệu đề tài không thuộc giảng viên hiện tại.');
     }
     return topic;
+  },
+
+  async getGroupDetail(groupId: string, signal?: AbortSignal): Promise<StudentGroupDetailDto> {
+    const response = await httpClient.get<ApiResponse<StudentGroupDetailDto>>(
+      `/api/thesis/groups/${groupId}/detail`,
+      { signal },
+    );
+    return unwrap(response.data);
   },
 };

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { UserSummary, UserFormValues } from '../types/user.types';
 import { userApi } from '../services/userApi';
@@ -23,6 +24,7 @@ export function useUserActions({
   onOpenForm,
 }: UserActionsParams) {
   const queryClient = useQueryClient();
+  const [pendingStatusUser, setPendingStatusUser] = useState<UserSummary | null>(null);
 
   const saveMutation = useMutation({
     mutationFn: async ({ user, values }: { user: UserSummary | null; values: UserFormValues }) => {
@@ -74,11 +76,14 @@ export function useUserActions({
     if (user.id === currentUserId) return;
     if (user.status === 'PendingActivation') return;
 
-    const status: 'Active' | 'Disabled' = user.status === 'Active' ? 'Disabled' : 'Active';
-    const action = status === 'Active' ? 'khôi phục truy cập cho' : 'vô hiệu hóa';
-    const confirmed = window.confirm(`Bạn có muốn ${action} tài khoản "${user.fullName}"?`);
-    if (!confirmed) return;
+    setPendingStatusUser(user);
+  };
 
+  const confirmChangeStatus = () => {
+    if (!pendingStatusUser || statusMutation.isPending) return;
+    const user = pendingStatusUser;
+    const status: 'Active' | 'Disabled' = user.status === 'Active' ? 'Disabled' : 'Active';
+    setPendingStatusUser(null);
     saveMutation.reset();
     onSetNotice('');
     statusMutation.mutate({
@@ -102,6 +107,9 @@ export function useUserActions({
     activationMutation,
     handleOpenForm,
     handleChangeStatus,
+    pendingStatusUser,
+    cancelChangeStatus: () => setPendingStatusUser(null),
+    confirmChangeStatus,
     handleResendActivation,
     mutationError,
     isUpdating,

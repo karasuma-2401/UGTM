@@ -14,6 +14,7 @@ export function StudentRegistrationStatusCard({
   receipt,
   onRetry,
   onConfirm,
+  onViewGroup,
 }: {
   status?: StudentRegistrationStatus;
   loading: boolean;
@@ -22,6 +23,7 @@ export function StudentRegistrationStatusCard({
   receipt: RegistrationReceipt | null;
   onRetry: () => void;
   onConfirm: () => void;
+  onViewGroup?: () => void;
 }) {
   const expired = status && invitationExpired(status);
   const pending = status?.confirmationStatus === 'Pending';
@@ -83,6 +85,11 @@ export function StudentRegistrationStatusCard({
                   )}
                   {status.groupId && (
                     <p className="break-all text-xs text-slate-400">Mã nhóm: {status.groupId}</p>
+                  )}
+                  {confirmed && status.groupId && onViewGroup && (
+                    <Button type="button" size="sm" variant="outline" onClick={onViewGroup}>
+                      Xem nhóm và tiến độ
+                    </Button>
                   )}
                 </>
               )

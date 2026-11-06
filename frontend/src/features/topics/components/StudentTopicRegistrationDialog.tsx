@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { UserRound, UsersRound, ArrowLeft, Send, CheckCircle2 } from 'lucide-react';
+import { UserRound, UsersRound, Send } from 'lucide-react';
 import { Dialog } from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -62,7 +63,10 @@ export function StudentTopicRegistrationDialog({
       studentTopicApi.register(request, user?.userCode, controller.current?.signal),
     retry: false,
     onSuccess: onRegistered,
-    onError: () => onRefresh(),
+    onError: () => {
+      setConfirmation(null);
+      onRefresh();
+    },
     onSettled: () => {
       submitting.current = false;
       controller.current = null;
@@ -104,6 +108,7 @@ export function StudentTopicRegistrationDialog({
     const currentWindow = registrationWindow(timeline.isError ? undefined : timeline.data);
     if (validation || currentWindow.state === 'closed') {
       setError(validation || currentWindow.message);
+      setConfirmation(null);
       return;
     }
     submitting.current = true;
@@ -136,94 +141,65 @@ export function StudentTopicRegistrationDialog({
       </Dialog>
     );
   return (
-    <Dialog
-      title={confirmation ? 'Xác nhận đăng ký đề tài' : 'Chi tiết & đăng ký đề tài'}
-      busy={mutation.isPending}
-      onClose={() => {
-        if (!mutation.isPending) onClose();
-      }}
-      className="max-w-5xl"
-    >
-      <div className="grid items-start lg:grid-cols-[minmax(0,1fr)_340px]">
-        {preview}
-        <section
-          className="space-y-5 border-t border-slate-100 bg-slate-50/70 p-5 sm:p-6 lg:min-h-full lg:border-l lg:border-t-0"
-          aria-label="Đăng ký đề tài"
-        >
-          <div>
-            <h2 className="font-semibold text-slate-900">
-              {confirmation ? 'Kiểm tra đăng ký' : 'Đăng ký đề tài'}
-            </h2>
-            <div className="mt-3" aria-busy={availabilityLoading}>
-              {availabilityLoading ? (
-                <Skeleton className="h-12 w-36" />
-              ) : (
-                <TopicCapacityStatus topic={topic} />
-              )}
-            </div>
-          </div>
-          <div aria-busy={timeline.isFetching}>
-            {readingSchedule ? (
-              <Skeleton className="h-7 w-40" />
-            ) : (
-              <>
-                <StatusBadge
-                  tone={
-                    window.state === 'open'
-                      ? 'success'
-                      : window.state === 'closed'
-                        ? 'warning'
-                        : 'neutral'
-                  }
-                >
-                  {window.message}
-                </StatusBadge>
-                {window.state === 'open' && (
-                  <p className="mt-2 text-xs text-slate-500">
-                    Hạn đăng ký: {registrationDate(window.deadline)}
-                  </p>
-                )}
-                {timeline.isError && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="link"
-                    onClick={() => void timeline.refetch()}
-                  >
-                    Thử tải lại lịch
-                  </Button>
-                )}
-              </>
-            )}
-          </div>
-          {confirmation ? (
-            <>
-              <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 text-sm">
-                <div>
-                  <p className="text-xs text-slate-500">Người đăng ký</p>
-                  <p className="mt-1 font-medium">{user?.fullName}</p>
-                  <p className="mt-1 text-xs text-slate-500">{user?.userCode}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500">Hình thức</p>
-                  <p className="mt-1 font-medium">
-                    {confirmation.partnerUserCode ? 'Đăng ký kèm lời mời' : 'Đăng ký cá nhân'}
-                  </p>
-                </div>
-                {confirmation.partnerUserCode && (
-                  <div>
-                    <p className="text-xs text-slate-500">MSSV được mời</p>
-                    <p className="mt-1 font-medium">{confirmation.partnerUserCode}</p>
-                  </div>
+    <>
+      <Dialog
+        title="Chi tiết & đăng ký đề tài"
+        busy={mutation.isPending}
+        onClose={() => {
+          if (!mutation.isPending) onClose();
+        }}
+        className="max-w-5xl"
+      >
+        <div className="grid items-start lg:grid-cols-[minmax(0,1fr)_340px]">
+          {preview}
+          <section
+            className="space-y-5 border-t border-slate-100 bg-slate-50/70 p-5 sm:p-6 lg:min-h-full lg:border-l lg:border-t-0"
+            aria-label="Đăng ký đề tài"
+          >
+            <div>
+              <h2 className="font-semibold text-slate-900">Đăng ký đề tài</h2>
+              <div className="mt-3" aria-busy={availabilityLoading}>
+                {availabilityLoading ? (
+                  <Skeleton className="h-12 w-36" />
+                ) : (
+                  <TopicCapacityStatus topic={topic} />
                 )}
               </div>
-              <p className="text-xs leading-6 text-slate-600">
-                {confirmation.partnerUserCode
-                  ? 'Bạn được ghi nhận ngay. Hệ thống gửi email cho bạn cùng nhóm xác nhận trong 24 giờ.'
-                  : 'Bạn được ghi nhận ngay khi đăng ký thành công, không cần xác nhận qua email.'}
-              </p>
-            </>
-          ) : (
+            </div>
+            <div aria-busy={timeline.isFetching}>
+              {readingSchedule ? (
+                <Skeleton className="h-7 w-40" />
+              ) : (
+                <>
+                  <StatusBadge
+                    tone={
+                      window.state === 'open'
+                        ? 'success'
+                        : window.state === 'closed'
+                          ? 'warning'
+                          : 'neutral'
+                    }
+                  >
+                    {window.message}
+                  </StatusBadge>
+                  {window.state === 'open' && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Hạn đăng ký: {registrationDate(window.deadline)}
+                    </p>
+                  )}
+                  {timeline.isError && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="link"
+                      onClick={() => void timeline.refetch()}
+                    >
+                      Thử tải lại lịch
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
             <>
               <div className="grid grid-cols-2 gap-2" aria-label="Hình thức đăng ký">
                 <Button
@@ -287,42 +263,60 @@ export function StudentTopicRegistrationDialog({
                 </p>
               )}
             </>
-          )}
-          {(error || mutation.error || unavailable) && (
-            <p role="alert" className="text-sm leading-6 text-rose-700">
-              {error || (mutation.error ? getTopicErrorMessage(mutation.error) : unavailable)}
+            {(error || mutation.error || unavailable) && (
+              <p role="alert" className="text-sm leading-6 text-rose-700">
+                {error || (mutation.error ? getTopicErrorMessage(mutation.error) : unavailable)}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={mutation.isPending}
+                onClick={onClose}
+              >
+                Đóng
+              </Button>
+              <Button
+                type="button"
+                leftIcon={<Send />}
+                disabled={
+                  mutation.isPending ||
+                  Boolean(unavailable) ||
+                  readingSchedule ||
+                  availabilityLoading
+                }
+                isLoading={mutation.isPending}
+                onClick={review}
+              >
+                Đăng ký đề tài
+              </Button>
+            </div>
+          </section>
+        </div>
+      </Dialog>
+      <ConfirmDialog
+        open={Boolean(confirmation)}
+        onClose={() => setConfirmation(null)}
+        onConfirm={confirm}
+        type="warning"
+        title="Xác nhận đăng ký đề tài"
+        description={
+          <>
+            <p className="font-medium text-slate-700">{topic.titleVi}</p>
+            <p className="mt-2">
+              Người đăng ký: {user?.fullName} ({user?.userCode})
             </p>
-          )}
-          <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={mutation.isPending}
-              leftIcon={confirmation ? <ArrowLeft /> : undefined}
-              onClick={() => {
-                if (confirmation) {
-                  setConfirmation(null);
-                  setError('');
-                  mutation.reset();
-                } else onClose();
-              }}
-            >
-              {confirmation ? 'Quay lại' : 'Đóng'}
-            </Button>
-            <Button
-              type="button"
-              leftIcon={confirmation ? <CheckCircle2 /> : <Send />}
-              disabled={
-                mutation.isPending || Boolean(unavailable) || readingSchedule || availabilityLoading
-              }
-              isLoading={mutation.isPending}
-              onClick={confirmation ? confirm : review}
-            >
-              {confirmation ? 'Xác nhận đăng ký' : 'Đăng ký đề tài'}
-            </Button>
-          </div>
-        </section>
-      </div>
-    </Dialog>
+            <p className="mt-2">
+              {confirmation?.partnerUserCode
+                ? `Mời MSSV ${confirmation.partnerUserCode} xác nhận qua email trong 24 giờ.`
+                : 'Đăng ký cá nhân sẽ được ghi nhận ngay.'}
+            </p>
+          </>
+        }
+        confirmText="Xác nhận đăng ký"
+        isConfirming={mutation.isPending}
+      />
+    </>
   );
 }

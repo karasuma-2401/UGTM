@@ -12,6 +12,7 @@ public sealed class ThesisManagementDbContext(DbContextOptions<ThesisManagementD
 
     public DbSet<AuditOutboxMessage> AuditOutboxMessages => Set<AuditOutboxMessage>();
     public DbSet<FinalReport> FinalReports => Set<FinalReport>();
+    public DbSet<FinalReportPlagiarismScan> FinalReportPlagiarismScans => Set<FinalReportPlagiarismScan>();
     public DbSet<FinalSubmission> FinalSubmissions => Set<FinalSubmission>();
     public DbSet<FinalSubmissionPackage> FinalSubmissionPackages => Set<FinalSubmissionPackage>();
     public DbSet<FinalSubmissionPackageFile> FinalSubmissionPackageFiles => Set<FinalSubmissionPackageFile>();

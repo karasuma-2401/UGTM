@@ -740,6 +740,22 @@ public sealed class RenameRequestApplicationTests
         Assert.Equal(req2.Id, result.Value[0].Id);
     }
 
+    [Fact]
+    public async Task GetRenameRequests_Lecturer_OnlySeesOwnTopics()
+    {
+        var group = CreateInProgressGroup();
+        var f = new Fixtures(group);
+        f.RenameRequests.Add(RenameRequest.Create(Guid.NewGuid(), group.Id, StudentId, "A", "B", null, null, "Reason", Now));
+
+        var owner = await f.GetListHandler(f.AdvisorUser())
+            .HandleAsync(new GetRenameRequestsQuery(null, nameof(RenameRequestStatus.Created)));
+        var otherLecturer = await f.GetListHandler(f.User(Guid.NewGuid(), roles: ["Lecturer"]))
+            .HandleAsync(new GetRenameRequestsQuery(null, nameof(RenameRequestStatus.Created)));
+
+        Assert.Single(owner.Value);
+        Assert.Empty(otherLecturer.Value);
+    }
+
     #endregion
 
     private static StudentGroup CreateInProgressGroup()
@@ -789,7 +805,7 @@ public sealed class RenameRequestApplicationTests
             => new(RenameRequests, Groups, TopicContract, user);
 
         public GetRenameRequestsHandler GetListHandler(ICurrentUser user)
-            => new(RenameRequests, user);
+            => new(RenameRequests, Groups, TopicContract, user);
 
         public ICurrentUser StudentUser() => User(StudentId, roles: ["Student"]);
         public ICurrentUser AdvisorUser() => User(AdvisorId, roles: ["Lecturer"]);

@@ -2648,6 +2648,137 @@ namespace UGTM.Database.Migrations.Migrations
                         });
                 });
 
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalReportPlagiarismScan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("attempt_count");
+
+                    b.Property<int?>("CitedFindingsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("cited_findings_count");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("error_code");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error_message");
+
+                    b.Property<Guid>("FinalReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("final_report_id");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<DateTime?>("LastPolledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_polled_at");
+
+                    b.Property<int?>("MatchedCharacters")
+                        .HasColumnType("integer")
+                        .HasColumnName("matched_characters");
+
+                    b.Property<double?>("MaxRerankerScore")
+                        .HasColumnType("double precision")
+                        .HasColumnName("max_reranker_score");
+
+                    b.Property<DateTime?>("NextCheckAfterUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_check_after_utc");
+
+                    b.Property<string>("RawReportJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("raw_report_json");
+
+                    b.Property<int?>("ScannedCharacters")
+                        .HasColumnType("integer")
+                        .HasColumnName("scanned_characters");
+
+                    b.Property<int?>("ScannedChunks")
+                        .HasColumnType("integer")
+                        .HasColumnName("scanned_chunks");
+
+                    b.Property<double?>("SimilarityCoverage")
+                        .HasColumnType("double precision")
+                        .HasColumnName("similarity_coverage");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("PendingSubmission")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SubmissionFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_file_id");
+
+                    b.Property<int?>("SuspectedFindingsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("suspected_findings_count");
+
+                    b.Property<int?>("UncitedFindingsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("uncited_findings_count");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("VersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_final_report_plagiarism_scan");
+
+                    b.HasIndex("JobId")
+                        .HasDatabaseName("ix_final_report_plagiarism_scan_job_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_final_report_plagiarism_scan_status");
+
+                    b.HasIndex("SubmissionFileId")
+                        .HasDatabaseName("ix_final_report_plagiarism_scan_submission_file_id");
+
+                    b.HasIndex("FinalReportId", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_final_report_plagiarism_scan_report_id_version_no");
+
+                    b.ToTable("final_report_plagiarism_scan", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_final_report_plagiarism_scan_max_reranker_score", "max_reranker_score IS NULL OR (max_reranker_score >= 0 AND max_reranker_score <= 1)");
+
+                            t.HasCheckConstraint("ck_final_report_plagiarism_scan_similarity_coverage", "similarity_coverage IS NULL OR (similarity_coverage >= 0 AND similarity_coverage <= 100)");
+
+                            t.HasCheckConstraint("ck_final_report_plagiarism_scan_version_no", "version_no > 0");
+                        });
+                });
+
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4309,6 +4440,27 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasConstraintName("fk_final_report_student_groups_group_id");
 
                     b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalReportPlagiarismScan", b =>
+                {
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.FinalReport", "FinalReport")
+                        .WithMany()
+                        .HasForeignKey("FinalReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_final_report_plagiarism_scan_final_report_id");
+
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionFile", "SubmissionFile")
+                        .WithMany()
+                        .HasForeignKey("SubmissionFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_final_report_plagiarism_scan_submission_file_id");
+
+                    b.Navigation("FinalReport");
+
+                    b.Navigation("SubmissionFile");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmission", b =>

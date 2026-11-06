@@ -11,4 +11,8 @@ public sealed record FinalReportHistoryDto(
     DateTime SubmittedAtUtc,
     IReadOnlyList<FinalReportHistoryItemDto> Versions);
 
-public sealed record FinalReportHistoryItemDto(int VersionNo, SubmissionFileDto File);
+public sealed record FinalReportHistoryItemDto(
+    int VersionNo,
+    SubmissionFileDto File,
+    string? PlagiarismStatus = null,
+    double? SimilarityCoverage = null);

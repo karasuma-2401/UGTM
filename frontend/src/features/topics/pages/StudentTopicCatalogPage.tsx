@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
@@ -14,6 +14,7 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Card } from '@/components/ui/card';
+import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -31,6 +32,7 @@ import { getTopicErrorMessage } from '../services/topicApi';
 import { StudentRegistrationStatusCard } from '../components/StudentRegistrationStatusCard';
 import { StudentTopicRegistrationDialog } from '../components/StudentTopicRegistrationDialog';
 import { StudentParticipationDialog } from '../components/StudentParticipationDialog';
+import { StudentTopicGroupDialog } from '../components/StudentTopicGroupDialog';
 import { TopicCapacityStatus } from '../components/TopicCapacityStatus';
 import type { PublishedTopic, RegistrationReceipt } from '../types/studentTopic.types';
 
@@ -56,6 +58,9 @@ export function StudentTopicCatalogContent() {
   const [selection, setSelection] = useState<PublishedTopic | null>(null);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [invitationOpen, setInvitationOpen] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [warningsOpen, setWarningsOpen] = useState(false);
+  const catalogRef = useRef<HTMLDivElement>(null);
   const [receipt, setReceipt] = useState<RegistrationReceipt | null>(null);
   const [notice, setNotice] = useState('');
   const batchesQuery = useAcademicBatches();
@@ -89,8 +94,19 @@ export function StudentTopicCatalogContent() {
     enabled: Boolean(user?.id) && student,
     refetchInterval: 30_000,
   });
+  const registeredGroupId =
+    statusQuery.data?.confirmationStatus === 'Confirmed' ? statusQuery.data.groupId : null;
+  const registeredGroupQuery = useQuery({
+    queryKey: ['student-topic-group', user?.id, registeredGroupId],
+    queryFn: ({ signal }) => studentTopicApi.getGroupDetail(registeredGroupId!, signal),
+    enabled: Boolean(user?.id && student && registeredGroupId),
+  });
   const data = topicsQuery.isError ? undefined : topicsQuery.data;
-  const status = statusQuery.isError ? undefined : statusQuery.data;
+  const status = statusQuery.isError
+    ? undefined
+    : statusQuery.data && registeredGroupQuery.data
+      ? { ...statusQuery.data, batchId: registeredGroupQuery.data.batchId }
+      : statusQuery.data;
   const total = totalQuery.isError ? undefined : totalQuery.data?.totalCount;
   const refreshing = topicsQuery.isFetching;
   function refresh() {
@@ -101,6 +117,11 @@ export function StudentTopicCatalogContent() {
       'topic-advising',
       'topic-advising-detail',
       'my-proposed-topics',
+      'student-topic-group',
+      'student-topic-syllabus',
+      'student-topic-midterm',
+      'student-topic-final-report',
+      'student-topic-milestones',
     ]) {
       void queryClient.invalidateQueries({ queryKey: [key] });
     }
@@ -134,7 +155,7 @@ export function StudentTopicCatalogContent() {
 
   return (
     <div className="min-w-0 space-y-5">
-      <PageHeader title="Đề tài & đăng ký" icon={<GraduationCap />}>
+      <PageHeader title="Theo dõi & đăng ký đề tài" icon={<GraduationCap />}>
         {student ? (
           <Button
             type="button"
@@ -166,6 +187,7 @@ export function StudentTopicCatalogContent() {
           receipt={receipt}
           onRetry={() => void statusQuery.refetch()}
           onConfirm={openInvitation}
+          onViewGroup={() => setGroupOpen(true)}
         />
       )}
       <form
@@ -221,7 +243,10 @@ export function StudentTopicCatalogContent() {
           </Button>
         </p>
       )}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
+      <Card
+        ref={catalogRef}
+        className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm"
+      >
         <ListCardHeader
           title="Danh mục đề tài đã công bố"
           icon={<BookOpen />}
@@ -244,29 +269,26 @@ export function StudentTopicCatalogContent() {
                 icon: <BookOpen />,
                 tone: 'primary',
                 active: !filters.keyword,
+                actionLabel: 'Xem tất cả đề tài trong đợt đang lọc',
                 onClick: () => {
                   const next = { ...filters, keyword: '' };
                   setDraft(next);
                   setFilters(next);
                   setPage(1);
                   setSelectedRowId(null);
+                  catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 },
               },
               ...(student
                 ? [
-                    {
-                      key: 'registration',
-                      label: 'Hồ sơ hiện tại',
-                      value: status ? (status.hasRegistered ? 1 : 0) : '—',
-                      icon: <GraduationCap />,
-                      tone: 'primary' as const,
-                    },
                     {
                       key: 'warnings',
                       label: 'Lần cảnh báo',
                       value: status?.violationCount ?? '—',
                       icon: <ShieldAlert />,
                       tone: 'warning' as const,
+                      actionLabel: 'Xem số lần cảnh báo',
+                      onClick: () => setWarningsOpen(true),
                     },
                   ]
                 : []),
@@ -399,7 +421,7 @@ export function StudentTopicCatalogContent() {
                           openTopic(topic);
                         }}
                       >
-                        {topic.availableSlots === 0 ? 'Chỉ xem' : 'Chi tiết'}
+                        Chi tiết
                       </Button>
                     </td>
                   </SelectableTableRow>
@@ -475,6 +497,32 @@ export function StudentTopicCatalogContent() {
             refresh();
           }}
         />
+      )}
+      {student && groupOpen && status?.confirmationStatus === 'Confirmed' && status.groupId && (
+        <StudentTopicGroupDialog groupId={status.groupId} onClose={() => setGroupOpen(false)} />
+      )}
+      {student && warningsOpen && (
+        <Dialog
+          title="Lần cảnh báo"
+          onClose={() => setWarningsOpen(false)}
+          className="max-w-md"
+        >
+          <div className="space-y-4 p-5 text-sm leading-6 text-slate-700">
+            <p>Số lần cảnh báo do quá hạn xác nhận lời mời tham gia đề tài.</p>
+            <p className="font-medium text-slate-900">
+              {status?.violationCount === 0
+                ? 'Bạn chưa có lần cảnh báo nào.'
+                : status
+                  ? `Bạn có ${status.violationCount} lần cảnh báo.`
+                  : 'Chưa tải được số lần cảnh báo.'}
+            </p>
+            {status?.isRegistrationBlocked && (
+              <p className="text-rose-700">
+                Quyền đăng ký đang bị khóa. Vui lòng liên hệ Khoa để được hỗ trợ.
+              </p>
+            )}
+          </div>
+        </Dialog>
       )}
     </div>
   );

@@ -313,6 +313,7 @@ const ui = Object.fromEntries(
   [
     'Button',
     'Dialog',
+    'ConfirmDialog',
     'Select',
     'Input',
     'StatisticsBar',
@@ -490,6 +491,7 @@ function dialogFixture(status = 'Submitted') {
     },
     '@tanstack/react-query': { useQuery: () => ({ data: { ...fullTopic, status } }) },
     '@/components/ui/dialog': ui.Dialog,
+    '@/components/ui/confirm-dialog': ui.ConfirmDialog,
     '@/components/ui/button': ui.Button,
     '@/components/ui/select': ui.Select,
     '@/shared/auth': { useAuth: () => ({ user: { id: 'faculty' } }) },
@@ -531,8 +533,9 @@ test('review requires an explicit decision and confirmation; approval never publ
   button('Gửi kết luận').props.onClick();
   assert.equal(dialog.actions.length, 0);
   tree = dialog.render();
-  assert.equal(walk(tree, (node) => node.props['aria-label'] === 'Xác nhận thao tác').length, 1);
-  button('Xác nhận').props.onClick();
+  const confirmation = walk(tree, (node) => node.type === 'ConfirmDialog' && node.props.open)[0];
+  assert.ok(confirmation);
+  confirmation.props.onConfirm();
   assert.deepEqual(dialog.actions, [
     { kind: 'review', id: 'topic-1', decision: 'Approved', reviewNote: null },
   ]);
@@ -546,10 +549,7 @@ test('approved detail publishes only itself; other lifecycle states have no deci
     (node) => node.type === 'Button' && node.props.children === 'Công bố đề tài',
   )[0].props.onClick();
   tree = dialog.render();
-  walk(
-    tree,
-    (node) => node.type === 'Button' && node.props.children === 'Xác nhận',
-  )[0].props.onClick();
+  walk(tree, (node) => node.type === 'ConfirmDialog' && node.props.open)[0].props.onConfirm();
   assert.deepEqual(dialog.actions, [
     { kind: 'publish', batchId: 'batch-1', topicIds: ['topic-1'] },
   ]);
@@ -580,12 +580,12 @@ test('revision feedback is required, preserved on back and sent in the confirmed
   button('Gửi kết luận').props.onClick();
   tree = dialog.render();
   assert.equal(walk(tree, (node) => node.type === 'textarea')[0].props.disabled, true);
-  button('Quay lại').props.onClick();
+  walk(tree, (node) => node.type === 'ConfirmDialog' && node.props.open)[0].props.onClose();
   tree = dialog.render();
   assert.equal(walk(tree, (node) => node.type === 'textarea')[0].props.value, note);
   button('Gửi kết luận').props.onClick();
   tree = dialog.render();
-  button('Xác nhận').props.onClick();
+  walk(tree, (node) => node.type === 'ConfirmDialog' && node.props.open)[0].props.onConfirm();
   assert.deepEqual(dialog.actions, [
     { kind: 'review', id: 'topic-1', decision: 'NeedRevision', reviewNote: note.trim() },
   ]);
@@ -615,10 +615,7 @@ test('a refreshed approval cannot turn an existing review confirmation into a pu
   )[0].props.onClick();
   dialog.setStatus('Approved');
   tree = dialog.render();
-  assert.equal(
-    walk(tree, (node) => node.type === 'Button' && node.props.children === 'Xác nhận').length,
-    0,
-  );
+  assert.equal(walk(tree, (node) => node.type === 'ConfirmDialog' && node.props.open).length, 0);
   walk(
     tree,
     (node) => node.type === 'Button' && node.props.children === 'Công bố đề tài',

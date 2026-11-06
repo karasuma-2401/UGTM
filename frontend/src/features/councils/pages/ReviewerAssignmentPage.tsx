@@ -1,5 +1,6 @@
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
+import { SimilarityReportPanel } from '@/features/thesis/components/SimilarityReportPanel';
 import { useReviewerAssignment } from '../hooks/useReviewerAssignment';
 import {
   ReviewerAssignmentFilterBar,
@@ -105,6 +106,9 @@ export function ReviewerAssignmentPage() {
           />
         </div>
       </div>
+      {selectedItem && (
+        <SimilarityReportPanel reportId={selectedItem.finalReportId} versionNo={selectedItem.reportVersionNo} />
+      )}
     </div>
   );
 }
