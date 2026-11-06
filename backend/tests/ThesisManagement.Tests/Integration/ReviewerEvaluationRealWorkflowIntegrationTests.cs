@@ -120,7 +120,7 @@ public sealed partial class FinalReportWorkflowIntegrationTests
         Assert.DoesNotContain(get.GetProperty("parameters").EnumerateArray(), value => value.GetProperty("in").GetString() is "query" or "header");
         foreach (var status in new[] { "200", "400", "401", "403", "404", "409" }) Assert.True(get.GetProperty("responses").TryGetProperty(status, out _));
         var dto = json.RootElement.GetProperty("components").GetProperty("schemas").GetProperty("ReviewerEvaluationDto").GetProperty("properties");
-        Assert.Equal(27, dto.EnumerateObject().Count());
+        Assert.Equal(28, dto.EnumerateObject().Count());
         Assert.Equal(new[] { "Draft", "Submitted" }, dto.GetProperty("status").GetProperty("enum").EnumerateArray().Select(value => value.GetString()).ToArray());
         foreach (var excluded in new[] { "advisorScore", "advisorComment", "objectKey", "downloadUrl", "canProceed", "revisionFeedback", "exclusionReason" }) Assert.False(dto.TryGetProperty(excluded, out _));
     }
