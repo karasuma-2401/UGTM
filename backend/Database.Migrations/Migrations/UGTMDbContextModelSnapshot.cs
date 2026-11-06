@@ -873,6 +873,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("date")
                         .HasColumnName("defense_date");
 
+                    b.Property<bool>("IsSubmittedToAcademicAffairs")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_submitted_to_academic_affairs");
+
                     b.Property<string>("Room")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -890,6 +896,19 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Draft")
                         .HasColumnName("status");
+
+                    b.Property<string>("SubmissionNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("submission_notes");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid?>("SubmittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by");
 
                     b.Property<string>("TimeSlot")
                         .IsRequired()

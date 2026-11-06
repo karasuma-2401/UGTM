@@ -16,6 +16,32 @@ public sealed class CouncilRepository(DefenseCouncilDbContext db) : ICouncilRepo
             .Include(c => c.Assignments)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
+    public async Task<IReadOnlyList<Council>> GetCouncilsForOverviewAsync(
+        Guid? batchId = null,
+        CouncilStatus? status = null,
+        CancellationToken ct = default)
+    {
+        var query = db.Councils
+            .Include(c => c.Members)
+            .Include(c => c.Assignments)
+                .ThenInclude(a => a.Minute)
+            .Include(c => c.Assignments)
+                .ThenInclude(a => a.Scores)
+            .AsNoTracking();
+
+        if (batchId.HasValue)
+        {
+            query = query.Where(c => c.BatchId == batchId.Value);
+        }
+
+        if (status.HasValue)
+        {
+            query = query.Where(c => c.Status == status.Value);
+        }
+
+        return await query.OrderBy(c => c.DefenseDate).ThenBy(c => c.CouncilCode).ToListAsync(ct);
+    }
+
     public async Task<bool> ExistsByCodeInBatchAsync(
         Guid batchId,
         string councilCode,
@@ -236,6 +262,12 @@ public sealed class CouncilRepository(DefenseCouncilDbContext db) : ICouncilRepo
 
         if (minute != null)
         {
+            // Do not downgrade UnlockedByOverride to AllScoresEntered
+            if (minute.LockStatus == CouncilMinuteLockStatus.UnlockedByOverride && status == CouncilMinuteLockStatus.AllScoresEntered)
+            {
+                return;
+            }
+
             minute.LockStatus = status;
         }
         else
@@ -251,6 +283,15 @@ public sealed class CouncilRepository(DefenseCouncilDbContext db) : ICouncilRepo
 
     public Task<CouncilMinute?> GetMinuteByAssignmentIdAsync(Guid assignmentId, CancellationToken ct = default)
         => db.CouncilMinutes.FirstOrDefaultAsync(m => m.CouncilAssignmentId == assignmentId, ct);
+
+    public async Task SaveMinuteAsync(CouncilMinute minute, CancellationToken ct = default)
+    {
+        var existing = await db.CouncilMinutes.FirstOrDefaultAsync(m => m.CouncilAssignmentId == minute.CouncilAssignmentId, ct);
+        if (existing == null)
+        {
+            await db.CouncilMinutes.AddAsync(minute, ct);
+        }
+    }
 
     public async Task SaveCouncilMinuteDraftAsync(Guid assignmentId, string? studentFeedback, string? overrideMarker, CancellationToken ct = default)
     {

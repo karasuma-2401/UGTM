@@ -12,6 +12,6 @@ internal sealed class TopicAdvisorAssignmentContract(TopicCatalogDbContext conte
         => context.Topics
             .AsNoTracking()
             .Where(topic => topic.Id == topicId)
-            .Select(topic => new TopicAdvisorAssignmentContractDto(topic.Id, topic.AdvisorId))
+            .Select(topic => new TopicAdvisorAssignmentContractDto(topic.Id, topic.AdvisorId, topic.BatchId))
             .SingleOrDefaultAsync(cancellationToken);
 }

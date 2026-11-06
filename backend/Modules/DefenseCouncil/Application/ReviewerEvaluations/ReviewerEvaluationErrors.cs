@@ -22,4 +22,11 @@ public static class ReviewerEvaluationErrors
     public static readonly Error ContextInvalid = Error.Conflict("ReviewerEvaluation.ContextInvalid", "Dữ liệu nhóm, đề tài hoặc đợt không nhất quán.");
     public static readonly Error IdempotencyConflict = Error.Conflict("ReviewerEvaluation.IdempotencyConflict", "Idempotency-Key đã được dùng cho một ý định khác.");
     public static readonly Error ConcurrencyConflict = Error.Conflict("ReviewerEvaluation.ConcurrencyConflict", "Có thay đổi đồng thời. Vui lòng tải lại dữ liệu trước ý định mới.");
+
+    public static readonly Error CriteriaRequired = Error.Validation("ReviewerEvaluation.CriteriaRequired", "Danh sách tiêu chí đánh giá không được để trống khi chốt phiếu.");
+    public static readonly Error DuplicateCriteria = Error.Validation("ReviewerEvaluation.DuplicateCriteria", "Có tiêu chí bị gửi trùng lặp trong yêu cầu đánh giá.");
+    public static Error CriteriaNotFound(Guid criteriaId) => Error.Validation("ReviewerEvaluation.CriteriaNotFound", $"Tiêu chí '{criteriaId}' không thuộc danh mục tiêu chí của đợt.");
+    public static Error CriteriaScoreNegative(string criteriaName) => Error.Validation("ReviewerEvaluation.CriteriaScoreNegative", $"Điểm tiêu chí '{criteriaName}' không được là số âm.");
+    public static Error ScoreExceedsMaxScore(string criteriaName, decimal score, decimal maxScore) => Error.Validation("ReviewerEvaluation.ScoreExceedsMaxScore", $"Điểm tiêu chí '{criteriaName}' ({score}) vượt quá điểm tối đa ({maxScore}).");
+    public static Error MissingRequiredCriteria(string criteriaName) => Error.Validation("ReviewerEvaluation.MissingRequiredCriteria", $"Chưa chấm đủ tiêu chí bắt buộc: '{criteriaName}'.");
 }

@@ -5,7 +5,8 @@ namespace UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 /// </summary>
 public sealed record TopicAdvisorAssignmentContractDto(
     Guid TopicId,
-    Guid AdvisorId);
+    Guid AdvisorId,
+    Guid BatchId = default);
 
 /// <summary>
 /// Read-only cross-module contract for resolving a topic's assigned advisor.

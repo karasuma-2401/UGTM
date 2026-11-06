@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
@@ -51,7 +52,7 @@ public sealed class SaveAdvisorEvaluationHandler(
             {
                 return Result.Failure<AdvisorEvaluationDto>(workflowResult.Error);
             }
-            return Result.Success(workflowResult.Response ?? AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!));
+            return Result.Success(workflowResult.Response ?? AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!, workflowResult.Details));
         }
         catch (DefenseCouncilConcurrencyException)
         {
@@ -83,9 +84,10 @@ public sealed class SaveAdvisorEvaluationHandler(
         {
             return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.GroupNotFound);
         }
+
+        var assignment = await advisorAssignmentContract.GetByTopicIdAsync(context.TopicId, cancellationToken);
         if (!IsAdministrator(currentUser))
         {
-            var assignment = await advisorAssignmentContract.GetByTopicIdAsync(context.TopicId, cancellationToken);
             if (assignment?.AdvisorId != actorId)
             {
                 return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.AccessDenied);
@@ -137,9 +139,64 @@ public sealed class SaveAdvisorEvaluationHandler(
         {
             return SaveWorkflowResult.Failure(existingError);
         }
+
+        decimal finalScore;
+        Dictionary<Guid, GradingCriteria>? criteriaMap = null;
+        if (command.Details is { Count: > 0 } details)
+        {
+            if (details.Select(d => d.CriteriaId).Distinct().Count() != details.Count)
+            {
+                return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.DuplicateCriteria);
+            }
+
+            var batchId = assignment?.BatchId ?? Guid.Empty;
+            var batchCriteria = batchId != Guid.Empty
+                ? await evaluationRepository.GetGradingCriteriaByBatchIdAsync(batchId, cancellationToken)
+                : [];
+
+            criteriaMap = batchCriteria.ToDictionary(c => c.Id);
+
+            foreach (var item in details)
+            {
+                if (!criteriaMap.TryGetValue(item.CriteriaId, out var criterion))
+                {
+                    return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.CriteriaNotFound(item.CriteriaId));
+                }
+
+                if (item.Score < 0)
+                {
+                    return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.CriteriaScoreNegative(criterion.CriteriaName));
+                }
+
+                if (item.Score > criterion.MaxScore)
+                {
+                    return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.ScoreExceedsMaxScore(criterion.CriteriaName, item.Score, criterion.MaxScore));
+                }
+            }
+
+            var submittedIds = details.Select(d => d.CriteriaId).ToHashSet();
+            foreach (var req in batchCriteria)
+            {
+                if (!submittedIds.Contains(req.Id))
+                {
+                    return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.MissingRequiredCriteria(req.CriteriaName));
+                }
+            }
+
+            finalScore = Math.Round(details.Sum(d => d.Score), 2);
+        }
+        else
+        {
+            if (!command.Score.HasValue)
+            {
+                return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.InvalidScore);
+            }
+            finalScore = command.Score.Value;
+        }
+
         try
         {
-            AdvisorEvaluation.ValidateEvaluationInput(command.Score, command.Comment);
+            AdvisorEvaluation.ValidateEvaluationInput(finalScore, command.Comment);
         }
         catch (ArgumentOutOfRangeException exception) when (string.Equals(exception.ParamName, "score", StringComparison.Ordinal))
         {
@@ -168,7 +225,7 @@ public sealed class SaveAdvisorEvaluationHandler(
                 lockedReport.ReportVersionNo,
                 lockedReport.SubmissionFileId,
                 lockedReport.SubmissionChecksumSha256,
-                command.Score,
+                finalScore,
                 command.Comment!,
                 actorId,
                 nowUtc);
@@ -177,10 +234,30 @@ public sealed class SaveAdvisorEvaluationHandler(
         else
         {
             evaluation = existing!;
-            if (!evaluation.TryUpdate(command.Score, command.Comment!, actorId, nowUtc))
+            if (!evaluation.TryUpdate(finalScore, command.Comment!, actorId, nowUtc))
             {
                 return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.Locked);
             }
+        }
+
+        List<EvaluationDetailResponseDto>? detailDtos = null;
+        if (command.Details is { Count: > 0 } detailsToSave)
+        {
+            var detailsList = detailsToSave.Select(d => new EvaluationDetail
+            {
+                Id = Guid.NewGuid(),
+                CriteriaId = d.CriteriaId,
+                EvaluationId = evaluation.Id,
+                Score = d.Score
+            }).ToList();
+
+            await evaluationRepository.SaveEvaluationDetailsAsync(evaluation.Id, detailsList, cancellationToken);
+
+            detailDtos = detailsToSave.Select(d =>
+            {
+                var crit = criteriaMap![d.CriteriaId];
+                return new EvaluationDetailResponseDto(Guid.Empty, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore);
+            }).ToList();
         }
 
         var idempotencyRecord = AdvisorEvaluationIdempotencyRecord.Create(
@@ -196,7 +273,7 @@ public sealed class SaveAdvisorEvaluationHandler(
                 evaluation.SubmissionFileId,
                 Operation = created ? "Created" : "Updated"
             }), nowUtc);
-        return SaveWorkflowResult.Changed(evaluation, idempotencyRecord);
+        return SaveWorkflowResult.Changed(evaluation, idempotencyRecord, detailDtos);
     }
 
     private static Task<SaveWorkflowResult> CompleteIdempotencyRecordAsync(
@@ -209,7 +286,7 @@ public sealed class SaveAdvisorEvaluationHandler(
         }
 
         workflowResult.IdempotencyRecord.SetResponsePayload(
-            JsonSerializer.Serialize(AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!)));
+            JsonSerializer.Serialize(AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!, workflowResult.Details)));
         return Task.FromResult(workflowResult);
     }
 
@@ -250,12 +327,16 @@ public sealed class SaveAdvisorEvaluationHandler(
 
     private static string CreateFingerprint(SaveAdvisorEvaluationCommand command)
     {
+        var detailsCanonical = command.Details != null
+            ? string.Join(";", command.Details.OrderBy(d => d.CriteriaId).Select(d => $"{d.CriteriaId:N}:{d.Score.ToString("G29", CultureInfo.InvariantCulture)}"))
+            : string.Empty;
         var canonical = string.Join("\n",
             command.FinalReportId.ToString("N"),
             command.ExpectedReportVersionNo.ToString(CultureInfo.InvariantCulture),
             command.ExpectedEvaluationVersion?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
-            command.Score.ToString("G29", CultureInfo.InvariantCulture),
-            command.Comment ?? string.Empty);
+            command.Score?.ToString("G29", CultureInfo.InvariantCulture) ?? string.Empty,
+            command.Comment ?? string.Empty,
+            detailsCanonical);
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 
@@ -263,13 +344,14 @@ public sealed class SaveAdvisorEvaluationHandler(
         AdvisorEvaluation? Evaluation,
         AdvisorEvaluationIdempotencyRecord? IdempotencyRecord,
         AdvisorEvaluationDto? Response,
-        Error? Error)
+        Error? Error,
+        IReadOnlyList<EvaluationDetailResponseDto>? Details = null)
     {
-        public static SaveWorkflowResult Changed(AdvisorEvaluation evaluation, AdvisorEvaluationIdempotencyRecord record)
-            => new(evaluation, record, null, null);
+        public static SaveWorkflowResult Changed(AdvisorEvaluation evaluation, AdvisorEvaluationIdempotencyRecord record, IReadOnlyList<EvaluationDetailResponseDto>? details = null)
+            => new(evaluation, record, null, null, details);
         public static SaveWorkflowResult Replayed(AdvisorEvaluationDto response)
-            => new(null, null, response, null);
+            => new(null, null, response, null, null);
         public static SaveWorkflowResult Failure(Error error)
-            => new(null, null, null, error);
+            => new(null, null, null, error, null);
     }
 }

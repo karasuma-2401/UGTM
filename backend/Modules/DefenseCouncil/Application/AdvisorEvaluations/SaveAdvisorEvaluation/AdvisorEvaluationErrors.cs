@@ -40,4 +40,17 @@ public static class AdvisorEvaluationErrors
         "AdvisorEvaluation.IdempotencyKeyReused", "Idempotency-Key này đã được dùng cho nội dung yêu cầu khác.");
     public static readonly Error LegacyRecordNeedsResolution = Error.Conflict(
         "AdvisorEvaluation.LegacyRecordNeedsResolution", "Phiếu chấm cũ chưa có liên kết báo cáo khóa; cần được xử lý riêng trước khi chấm.");
+
+    public static readonly Error CriteriaRequired = Error.Validation(
+        "AdvisorEvaluation.CriteriaRequired", "Danh sách tiêu chí đánh giá không được để trống.");
+    public static readonly Error DuplicateCriteria = Error.Validation(
+        "AdvisorEvaluation.DuplicateCriteria", "Có tiêu chí bị gửi trùng lặp trong yêu cầu đánh giá.");
+    public static Error CriteriaNotFound(Guid criteriaId) => Error.Validation(
+        "AdvisorEvaluation.CriteriaNotFound", $"Tiêu chí '{criteriaId}' không thuộc danh mục tiêu chí của đợt.");
+    public static Error CriteriaScoreNegative(string criteriaName) => Error.Validation(
+        "AdvisorEvaluation.CriteriaScoreNegative", $"Điểm tiêu chí '{criteriaName}' không được là số âm.");
+    public static Error ScoreExceedsMaxScore(string criteriaName, decimal score, decimal maxScore) => Error.Validation(
+        "AdvisorEvaluation.ScoreExceedsMaxScore", $"Điểm tiêu chí '{criteriaName}' ({score}) vượt quá điểm tối đa ({maxScore}).");
+    public static Error MissingRequiredCriteria(string criteriaName) => Error.Validation(
+        "AdvisorEvaluation.MissingRequiredCriteria", $"Chưa chấm đủ tiêu chí bắt buộc: '{criteriaName}'.");
 }

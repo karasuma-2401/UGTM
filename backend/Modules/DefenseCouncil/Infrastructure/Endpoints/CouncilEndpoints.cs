@@ -13,6 +13,11 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
+using UGTM.Modules.DefenseCouncil.Application.Councils.LockCouncilMinute;
+using UGTM.Modules.DefenseCouncil.Application.Councils.UnlockCouncilMinute;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilsOverview;
+using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilToAcademicAffairs;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
 
@@ -504,6 +509,271 @@ public static class CouncilEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
             .WithName("DefenseCouncil.Councils.SaveMinute");
 
+        // 10. POST /api/councils/assignments/{assignmentId}/minute/lock
+        group.MapPost("/assignments/{assignmentId:guid}/minute/lock", LockCouncilMinuteAsync)
+            .RequireAuthorization()
+            .Accepts<LockCouncilMinuteInputDto>("application/json")
+            .WithSummary("Thư ký khóa biên bản điểm Hội đồng")
+            .WithDescription("""
+                Khóa biên bản điểm của nhóm đề tài trong hội đồng bảo vệ khóa luận tốt nghiệp sau khi kết thúc ca bảo vệ, đóng băng toàn bộ điểm số và chuyển sang trạng thái Read-Only.
+                
+                ### Tham số URL:
+                - `assignmentId`: GUID định danh phân công nhóm đề tài trong hội đồng bảo vệ (`CouncilAssignment`).
+                
+                ### Tham số Request Body (`LockCouncilMinuteInputDto`):
+                - `password`: Mật khẩu hiện tại của Thư ký hội đồng (hoặc Admin) dùng để xác thực lại danh tính (Re-authentication) trước khi thực hiện thao tác nhạy cảm.
+                
+                ### Quy tắc nghiệp vụ & Ràng buộc:
+                1. **Xác thực lại danh tính (Re-authentication):**
+                   - Bắt buộc kiểm tra mật khẩu hiện tại của tài khoản đang đăng nhập thông qua Identity Reauthentication Service.
+                   - Nếu mật khẩu không chính xác hoặc để trống: Trả về lỗi 400 Bad Request (`Identity.InvalidPassword`).
+                2. **Phân quyền truy cập (RBAC):**
+                   - Chỉ cho phép **Thư ký (`CouncilMemberRole.Secretary`)** của đúng hội đồng này hoặc Quản trị viên (`Admin`).
+                   - Thành viên khác (Chủ tịch, Ủy viên) hay giảng viên ngoài hội đồng sẽ bị từ chối với mã 403 Forbidden (`Council.OnlySecretaryCanLockMinute`).
+                3. **Trạng thái Hội đồng & Tiến độ điểm:**
+                   - Hội đồng phải đang ở trạng thái hoạt động (`Active`). Nếu hội đồng chưa duyệt hoặc đã đóng, trả về lỗi 409 Conflict (`Council.CouncilNotActive`).
+                   - Toàn bộ thành viên bắt buộc phải hoàn thành việc nhập điểm đánh giá (`AllScoresEntered`). Nếu còn thiếu điểm của bất kỳ thành viên nào, trả về lỗi 409 Conflict (`Council.MissingRequiredScores`).
+                4. **Kiểm tra trạng thái khóa:**
+                   - Nếu biên bản đã ở trạng thái đã khóa (`Locked`), thao tác bị từ chối với lỗi 409 Conflict (`Council.MinuteAlreadyLocked`).
+                5. **Hiệu ứng khóa (Lock Effect):**
+                   - Chuyển `LockStatus` sang `Locked`.
+                   - Ghi nhận `LockedAt` (thời điểm khóa) và `LockedBy` (định danh người khóa).
+                   - Toàn bộ bảng điểm của nhóm chuyển sang trạng thái Read-Only tuyệt đối (chặn mọi thao tác sửa điểm hoặc chấm lại).
+                
+                ### Mã lỗi và phản hồi:
+                - **200 OK:** Khóa biên bản thành công, trả về `ApiResponse<CouncilMinuteLockResponseDto>`.
+                - **400 Bad Request:**
+                  - `Identity.InvalidPassword`: Mật khẩu xác thực lại không chính xác hoặc để trống.
+                - **401 Unauthorized:** Chưa đăng nhập hoặc Bearer token không hợp lệ.
+                - **403 Forbidden:**
+                  - `Council.OnlySecretaryCanLockMinute`: Người dùng không phải là Thư ký của hội đồng này.
+                - **404 Not Found:**
+                  - `Council.AssignmentNotFound`: Không tìm thấy phân công nhóm đề tài trong hội đồng.
+                - **409 Conflict:**
+                  - `Council.CouncilNotActive`: Hội đồng chưa được phê duyệt hoạt động để khóa biên bản.
+                  - `Council.MissingRequiredScores`: Chưa đủ điểm của tất cả thành viên bắt buộc trong hội đồng.
+                  - `Council.MinuteAlreadyLocked`: Biên bản hội đồng đã được khóa trước đó.
+                """)
+            .Produces<ApiResponse<CouncilMinuteLockResponseDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .WithName("DefenseCouncil.Councils.LockMinute");
+
+        // 11. POST /api/councils/assignments/{assignmentId}/minute/unlock
+        group.MapPost("/assignments/{assignmentId:guid}/minute/unlock", UnlockCouncilMinuteAsync)
+            .RequireAuthorization()
+            .Accepts<UnlockCouncilMinuteInputDto>("application/json")
+            .WithSummary("Lãnh đạo Khoa mở khóa đặc biệt biên bản điểm Hội đồng")
+            .WithDescription("""
+                Cơ chế mở khóa khẩn cấp có ghi vết kiểm toán (Override Unlock) phục vụ xử lý khiếu nại hoặc điều chỉnh sai sót điểm số sau khi biên bản đã khóa.
+                
+                ### Tham số URL:
+                - `assignmentId`: GUID định danh phân công nhóm đề tài trong hội đồng bảo vệ (`CouncilAssignment`).
+                
+                ### Tham số Request Body (`UnlockCouncilMinuteInputDto`):
+                - `overrideReason` (hoặc `override_reason`): Lý do giải trình việc mở khóa biên bản điểm (bắt buộc, độ dài từ 10 đến 1000 ký tự).
+                
+                ### Quy tắc nghiệp vụ & Ràng buộc:
+                1. **Phân quyền truy cập (RBAC):**
+                   - Yêu cầu người dùng có vai trò Văn phòng Khoa / Lãnh đạo Khoa (`Faculty`) kèm quyền hạn đặc biệt `councils.minutes.unlock`, hoặc Quản trị viên hệ thống (`Admin`).
+                   - Người dùng không có thẩm quyền (bao gồm cả Thư ký và Chủ tịch hội đồng) sẽ bị từ chối với mã 403 Forbidden (`Council.Forbidden`).
+                2. **Kiểm tra tính hợp lệ của lý do giải trình:**
+                   - Lý do không được để trống và phải có độ dài tối thiểu từ 10 ký tự, tối đa 1000 ký tự. Vi phạm sẽ trả về lỗi 400 Bad Request (`Council.InvalidOverrideReason`).
+                3. **Tiền điều kiện trạng thái biên bản:**
+                   - Biên bản phải đang ở trạng thái đã khóa (`Locked`).
+                   - Nếu biên bản chưa bị khóa (`Open` hoặc `AllScoresEntered`), trả về lỗi 409 Conflict (`Council.MinuteNotLocked`).
+                   - Nếu biên bản đã được mở khóa đặc biệt trước đó (`UnlockedByOverride`), trả về lỗi 409 Conflict (`Council.MinuteAlreadyUnlocked`).
+                4. **Hiệu ứng mở khóa & Ghi vết kiểm toán (Security Audit Trail):**
+                   - Chuyển `LockStatus` sang `UnlockedByOverride`.
+                   - Ghi nhận `UnlockedAt`, `UnlockedBy` và nội dung `OverrideReason`.
+                   - Mở lại quyền hiệu chỉnh điểm cho các thành viên trong hội đồng để điều chỉnh sai sót.
+                   - Tự động ghi vết sự kiện kiểm toán nhạy cảm `CouncilMinute.Unlocked` vào bảng `shared.AuditLogs` bao gồm thông tin người thực hiện, thời gian, mã nhóm đề tài và lý do giải trình.
+                
+                ### Mã lỗi và phản hồi:
+                - **200 OK:** Mở khóa thành công, trả về `ApiResponse<CouncilMinuteLockResponseDto>`.
+                - **400 Bad Request:**
+                  - `Council.InvalidOverrideReason`: Lý do giải trình bị để trống hoặc độ dài không nằm trong khoảng 10 - 1000 ký tự.
+                - **401 Unauthorized:** Chưa đăng nhập hoặc Bearer token không hợp lệ.
+                - **403 Forbidden:**
+                  - `Council.Forbidden`: Người dùng không có quyền mở khóa đặc biệt biên bản (yêu cầu role `Faculty` + permission `councils.minutes.unlock` hoặc `Admin`).
+                - **404 Not Found:**
+                  - `Council.AssignmentNotFound`: Không tìm thấy phân công nhóm đề tài trong hội đồng.
+                - **409 Conflict:**
+                  - `Council.MinuteNotLocked`: Biên bản chưa bị khóa, không thể mở khóa.
+                  - `Council.MinuteAlreadyUnlocked`: Biên bản đã ở trạng thái được mở khóa đặc biệt trước đó.
+                """)
+            .Produces<ApiResponse<CouncilMinuteLockResponseDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .WithName("DefenseCouncil.Councils.UnlockMinute");
+
+        // 12. GET /api/councils
+        group.MapGet("/", GetCouncilsOverviewAsync)
+            .RequireAuthorization()
+            .WithSummary("Tra cứu danh sách Hội đồng bảo vệ theo đợt KLTN kèm trạng thái Biên bản & Hồ sơ chấm")
+            .WithDescription("""
+                Cung cấp danh sách các Hội đồng bảo vệ theo đợt KLTN phục vụ màn hình Tổng quan Hội đồng & Biên bản bảo vệ (`CouncilOverviewPage`), hiển thị thông tin ca/phòng thi, cơ cấu phân công (GVPB kiêm UV hoặc UV độc lập), tình trạng hồ sơ chấm (`ProfileStatus`) và trạng thái khóa biên bản (`MinuteLockStatus`).
+                
+                ### Tham số Query:
+                - `batchId`: GUID định danh đợt KLTN cần lọc danh sách (tùy chọn).
+                - `keyword`: Từ khóa tìm kiếm không phân biệt hoa thường theo mã hội đồng, phòng thi, tên đề tài, tên sinh viên hoặc giảng viên (tùy chọn).
+                - `status`: Lọc theo trạng thái Hội đồng: `Draft` (Dự thảo), `Active` (Đã duyệt), `Completed` (Hoàn thành) (tùy chọn).
+                - `lockStatus`: Lọc theo trạng thái biên bản: `Open` (Chưa khóa), `AllScoresEntered` (Đã đủ điểm), `Locked` (Đã khóa), `UnlockedByOverride` (Đã mở khóa đặc biệt) (tùy chọn).
+                - `pageNumber`: Số thứ tự trang cần lấy (>= 1, mặc định 1).
+                - `pageSize`: Kích thước trang (1 đến 100, mặc định 50).
+                
+                ### Cấu trúc dữ liệu phản hồi (`CouncilOverviewItemDto`):
+                - `id`: GUID định danh của hội đồng bảo vệ.
+                - `batchId`: GUID đợt KLTN.
+                - `councilCode`: Mã hội đồng (ví dụ: 'HĐ01').
+                - `facultyName`: Tên khoa phụ trách (ví dụ: 'Khoa CNTT').
+                - `groupCode`: Mã nhóm sinh viên bảo vệ (ví dụ: 'N01').
+                - `topicTitle`: Tên đề tài khóa luận.
+                - `room`: Phòng tổ chức bảo vệ (ví dụ: 'B1.401').
+                - `timeSlot`: Ca bảo vệ (ví dụ: 'Ca sáng').
+                - `defenseDate`: Ngày bảo vệ (định dạng `YYYY-MM-DD`).
+                - `status`, `statusLabel`: Trạng thái hội đồng và nhãn hiển thị (`Draft` / 'Chờ phê duyệt', `Active` / 'Đã phê duyệt', `Completed` / 'Hoàn thành').
+                - `rosterModel`, `rosterModelLabel`: Mô hình cơ cấu hội đồng (`ReviewerInCouncil` / 'CT · TK · GVPB kiêm UV', `IndependentMember` / 'CT · TK · UV độc lập').
+                - `profileStatus`, `profileStatusLabel`: Tình trạng hồ sơ chấm điểm (`PendingScores` / 'Đang chấm', `AllScoresSubmitted` / 'Đủ phiếu áp dụng', `Verified` / 'Đã xác thực').
+                - `minuteLockStatus`, `minuteLockStatusLabel`: Trạng thái khóa biên bản (`Open` / 'Chưa khóa', `AllScoresEntered` / 'Đủ điểm', `Locked` / 'Đã khóa', `UnlockedByOverride` / 'Mở khóa đặc biệt').
+                - `assignmentId`: GUID phân công nhóm vào hội đồng.
+                - `chairman`: Thông tin Chủ tịch hội đồng (`userId`, `fullName`, `role`, `isAdvisorConflict`).
+                - `secretary`: Thông tin Thư ký hội đồng (`userId`, `fullName`, `role`, `isAdvisorConflict`).
+                - `members`: Danh sách các Ủy viên hội đồng (`userId`, `fullName`, `role`, `isReviewer`, `isAdvisorConflict`, `note`).
+                
+                ### Phân quyền truy cập (RBAC):
+                Yêu cầu Bearer token của người dùng có một trong các vai trò:
+                - `Faculty`: Cán bộ Văn phòng Khoa.
+                - `AcademicAffairs`: Chuyên viên Phòng Đào tạo.
+                - `Admin`: Quản trị viên hệ thống.
+                
+                ### Mã lỗi và phản hồi:
+                - **200 OK:** Tra cứu thành công, trả về `ApiResponse<IReadOnlyList<CouncilOverviewItemDto>>`.
+                - **401 Unauthorized:** Chưa đăng nhập hoặc Bearer token không hợp lệ.
+                - **403 Forbidden:** Người dùng không có vai trò `Faculty`, `AcademicAffairs` hoặc `Admin`.
+                """)
+            .Produces<ApiResponse<IReadOnlyList<CouncilOverviewItemDto>>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .WithName("DefenseCouncil.Councils.GetOverview");
+
+        // 13. PUT /api/councils/{id:guid}
+        group.MapPut("/{id:guid}", UpdateCouncilScheduleAsync)
+            .RequireAuthorization()
+            .Accepts<UpdateCouncilScheduleInputDto>("application/json")
+            .WithSummary("Cập nhật Lịch dự thảo Hội đồng bảo vệ (ngày bảo vệ, ca bảo vệ, phòng thi)")
+            .WithDescription("""
+                Cho phép Văn phòng Khoa điều chỉnh ngày bảo vệ (`defenseDate`), ca bảo vệ (`timeSlot`) và phòng thi (`room`) cho Hội đồng bảo vệ đang ở giai đoạn chuẩn bị dự thảo (`Draft`).
+                
+                ### Tham số URL:
+                - `id`: GUID định danh của hội đồng bảo vệ cần cập nhật lịch.
+                
+                ### Tham số Request Body (`UpdateCouncilScheduleInputDto`):
+                - `defenseDate`: Ngày bảo vệ mới (định dạng `YYYY-MM-DD`, ví dụ: '2026-12-22').
+                - `timeSlot`: Ca bảo vệ mới (chuỗi không rỗng, tối đa 50 ký tự, ví dụ: 'Ca sáng', '08:00 - 11:30').
+                - `room`: Phòng tổ chức bảo vệ mới (chuỗi không rỗng, tối đa 50 ký tự, ví dụ: 'B1.401').
+                
+                ### Quy tắc nghiệp vụ & Ràng buộc:
+                1. **Kiểm tra trạng thái Hội đồng:**
+                   - Chỉ được phép sửa đổi khi Hội đồng đang ở trạng thái dự thảo (`Draft`).
+                   - Nếu Hội đồng đã được Phòng Đào tạo duyệt (`Active` hoặc `Completed`), hệ thống lập tức từ chối với mã 409 Conflict (`Council.NotInDraftStatus`).
+                2. **Chống trùng phòng thi (Anti-Double Booking):**
+                   - Hệ thống đối chiếu ngày `defenseDate`, ca `timeSlot` và phòng `room` với tất cả các hội đồng khác trong hệ thống.
+                   - Nếu phòng thi đã bị chiếm bởi hội đồng khác trong cùng thời điểm, trả về lỗi 409 Conflict (`Council.RoomScheduleConflict`).
+                3. **Chống trùng lịch thành viên (Member Schedule Conflict):**
+                   - Hệ thống kiểm tra lại toàn bộ thành viên hiện tại của hội đồng.
+                   - Nếu có bất kỳ thành viên nào bị trùng lịch tham gia một hội đồng khác trong cùng ca thi mới, trả về lỗi 409 Conflict (`Council.MemberScheduleConflict`).
+                4. **Chuẩn hóa dữ liệu đầu vào:**
+                   - Tự động trim khoảng trắng cho ca thi và phòng thi. Không được để trống hoặc chỉ chứa khoảng trắng (`Council.InvalidInput`).
+                
+                ### Phân quyền truy cập (RBAC):
+                Yêu cầu Bearer token có vai trò `Faculty` (Văn phòng Khoa) hoặc `Admin` (Quản trị viên).
+                
+                ### Mã lỗi và phản hồi:
+                - **200 OK:** Cập nhật lịch thành công, trả về `ApiResponse<CouncilResponseDto>` chứa thông tin hội đồng đã cập nhật.
+                - **400 Bad Request:**
+                  - `Council.InvalidInput`: Ngày, ca bảo vệ hoặc phòng thi không hợp lệ hoặc để trống.
+                - **401 Unauthorized:** Chưa đăng nhập hoặc Bearer token không hợp lệ.
+                - **403 Forbidden:** Người dùng không có vai trò `Faculty` hoặc `Admin`.
+                - **404 Not Found:**
+                  - `Council.NotFound`: Không tìm thấy hội đồng bảo vệ tương ứng với `id`.
+                - **409 Conflict:**
+                  - `Council.NotInDraftStatus`: Hội đồng không ở trạng thái dự thảo (`Draft`), không được phép chỉnh sửa lịch.
+                  - `Council.RoomScheduleConflict`: Phòng thi đã được xếp cho một hội đồng khác trong cùng ngày và ca bảo vệ.
+                  - `Council.MemberScheduleConflict`: Có thành viên trong hội đồng bị trùng lịch bảo vệ tại một hội đồng khác.
+                """)
+            .Produces<ApiResponse<CouncilResponseDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .WithName("DefenseCouncil.Councils.UpdateSchedule");
+
+        // 14. POST /api/councils/{id:guid}/submit
+        group.MapPost("/{id:guid}/submit", SubmitCouncilToAcademicAffairsAsync)
+            .RequireAuthorization()
+            .Accepts<SubmitCouncilToAcademicAffairsInputDto>("application/json")
+            .WithSummary("Văn phòng Khoa gửi hồ sơ dự thảo Hội đồng lên Phòng Đào tạo thẩm định")
+            .WithDescription("""
+                Văn phòng Khoa hoàn tất chuẩn bị hồ sơ dự thảo Hội đồng bảo vệ (gồm cơ cấu thành viên, lịch thi, phòng thi và danh sách nhóm đề tài) và chính thức gửi lên Phòng Đào tạo để thẩm định ban hành quyết định thành lập.
+                
+                ### Tham số URL:
+                - `id`: GUID định danh của hội đồng bảo vệ cần gửi thẩm định.
+                
+                ### Tham số Request Body (`SubmitCouncilToAcademicAffairsInputDto` - Tùy chọn):
+                - `notes`: Ghi chú hoặc lời nhắn gửi kèm từ Văn phòng Khoa đến Phòng Đào tạo (tùy chọn, tối đa 500 ký tự).
+                
+                ### Quy tắc nghiệp vụ & Điều kiện tiên quyết:
+                1. **Tiền điều kiện trạng thái Hội đồng:**
+                   - Hội đồng phải đang ở trạng thái dự thảo (`Draft`). Nếu đã được duyệt (`Active` hoặc `Completed`), trả về lỗi 409 Conflict (`Council.NotInDraftStatus`).
+                2. **Cơ cấu thành viên tối thiểu:**
+                   - Bắt buộc phải có **01 Chủ tịch (`Chairman`)**. Thiếu Chủ tịch sẽ trả về lỗi 400 Bad Request (`Council.MissingChairman`).
+                   - Bắt buộc phải có **01 Thư ký (`Secretary`)**. Thiếu Thư ký sẽ trả về lỗi 400 Bad Request (`Council.MissingSecretary`).
+                   - Số lượng Ủy viên (`Member`): Tùy chọn (`>= 0`). Chấp nhận mô hình 2 người (CT · TK) hoặc 3 người (CT · TK · UV).
+                3. **Phân công nhóm đề tài:**
+                   - Hội đồng bắt buộc phải có ít nhất **01 nhóm đề tài** đã được gán vào (`Council.NoAssignedGroups`).
+                4. **Rà soát xung đột toàn diện (Pre-submission Verification):**
+                   - Tự động kiểm tra lại xung đột phòng thi (`Council.RoomScheduleConflict`).
+                   - Tự động kiểm tra lại trùng lịch của tất cả thành viên trong hội đồng (`Council.MemberScheduleConflict`).
+                   - Tự động kiểm tra lại toàn bộ quy định chống xung đột lợi ích giữa GVHD của các nhóm và các thành viên trong hội đồng (`Council.AdvisorIsInCouncil`).
+                5. **Hiệu ứng gửi hồ sơ:**
+                   - Ghi nhận `IsSubmittedToAcademicAffairs = true`, `SubmittedAt` (thời điểm gửi) và `SubmittedBy` (cán bộ Khoa thực hiện).
+                   - Trạng thái hội đồng sẵn sàng để Chuyên viên Phòng Đào tạo kiểm tra và phê duyệt quyết định thành lập thông qua endpoint `PUT /api/councils/{id}/approve`.
+                
+                ### Phân quyền truy cập (RBAC):
+                Yêu cầu Bearer token có vai trò Văn phòng Khoa (`Faculty`) hoặc Quản trị viên (`Admin`).
+                
+                ### Mã lỗi và phản hồi:
+                - **200 OK:** Gửi hồ sơ dự thảo thành công, trả về `ApiResponse<CouncilSubmissionResponseDto>`.
+                - **400 Bad Request:**
+                  - `Council.MissingChairman`: Hội đồng chưa có Chủ tịch.
+                  - `Council.MissingSecretary`: Hội đồng chưa có Thư ký.
+                  - `Council.NoAssignedGroups`: Hội đồng chưa có nhóm đề tài nào được phân công.
+                - **401 Unauthorized:** Chưa đăng nhập hoặc Bearer token không hợp lệ.
+                - **403 Forbidden:** Người dùng không có vai trò `Faculty` hoặc `Admin`.
+                - **404 Not Found:**
+                  - `Council.NotFound`: Không tìm thấy hội đồng bảo vệ tương ứng với `id`.
+                - **409 Conflict:**
+                  - `Council.NotInDraftStatus`: Hội đồng không ở trạng thái dự thảo (`Draft`).
+                  - `Council.RoomScheduleConflict`: Phòng thi bị trùng lịch với một hội đồng khác.
+                  - `Council.MemberScheduleConflict`: Có thành viên trong hội đồng bị trùng lịch tại hội đồng khác.
+                  - `Council.AdvisorIsInCouncil`: Có thành viên hội đồng đồng thời là GVHD của nhóm đề tài trong hội đồng.
+                """)
+            .Produces<ApiResponse<CouncilSubmissionResponseDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .WithName("DefenseCouncil.Councils.SubmitToAcademicAffairs");
+
         return endpoints;
     }
 
@@ -640,6 +910,86 @@ public static class CouncilEndpoints
             body.StudentFeedback,
             body.ChairmanConclusion,
             preview ?? false);
+
+        var result = await handler.HandleAsync(command, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> LockCouncilMinuteAsync(
+        [FromRoute] Guid assignmentId,
+        [FromBody] LockCouncilMinuteInputDto body,
+        [FromServices] LockCouncilMinuteHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var command = new LockCouncilMinuteCommand(
+            assignmentId,
+            body.Password);
+
+        var result = await handler.HandleAsync(command, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> UnlockCouncilMinuteAsync(
+        [FromRoute] Guid assignmentId,
+        [FromBody] UnlockCouncilMinuteInputDto body,
+        [FromServices] UnlockCouncilMinuteHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var command = new UnlockCouncilMinuteCommand(
+            assignmentId,
+            body.EffectiveReason);
+
+        var result = await handler.HandleAsync(command, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> GetCouncilsOverviewAsync(
+        [FromQuery] Guid? batchId,
+        [FromQuery] string? keyword,
+        [FromQuery] string? status,
+        [FromQuery] string? lockStatus,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 50,
+        [FromServices] GetCouncilsOverviewHandler handler = null!,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new GetCouncilsOverviewQuery(
+            batchId,
+            keyword,
+            status,
+            lockStatus,
+            pageNumber,
+            pageSize);
+
+        var result = await handler.HandleAsync(query, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> UpdateCouncilScheduleAsync(
+        [FromRoute] Guid id,
+        [FromBody] UpdateCouncilScheduleInputDto body,
+        [FromServices] UpdateCouncilScheduleHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpdateCouncilScheduleCommand(
+            id,
+            body.DefenseDate,
+            body.TimeSlot,
+            body.Room);
+
+        var result = await handler.HandleAsync(command, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> SubmitCouncilToAcademicAffairsAsync(
+        [FromRoute] Guid id,
+        [FromBody] SubmitCouncilToAcademicAffairsInputDto? body,
+        [FromServices] SubmitCouncilToAcademicAffairsHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var command = new SubmitCouncilToAcademicAffairsCommand(
+            id,
+            body?.Notes);
 
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();

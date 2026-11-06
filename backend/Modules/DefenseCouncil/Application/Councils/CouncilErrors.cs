@@ -130,4 +130,37 @@ public static class CouncilErrors
 
     public static Error InvalidTargetComponent(string componentCode) =>
         Error.Validation("Council.InvalidTargetComponent", $"Mã đầu điểm/vai trò cần loại không hợp lệ hoặc không tồn tại trong hội đồng: '{componentCode}'.");
+
+    public static Error OnlySecretaryCanLockMinute =>
+        Error.Forbidden("Council.OnlySecretaryCanLockMinute", "Chỉ Thư ký của hội đồng (hoặc Admin) mới có quyền khóa biên bản điểm.");
+
+    public static Error UnlockForbidden =>
+        Error.Forbidden("Council.UnlockForbidden", "Chỉ Lãnh đạo Khoa có quyền hoặc Quản trị viên mới được phép mở khóa biên bản điểm.");
+
+    public static Error MinuteAlreadyLocked =>
+        Error.Conflict("Council.MinuteAlreadyLocked", "Biên bản hội đồng đã bị khóa trước đó.");
+
+    public static Error MinuteNotLocked =>
+        Error.Validation("Council.MinuteNotLocked", "Biên bản hội đồng hiện không ở trạng thái khóa (Locked).");
+
+    public static Error MinuteNotReadyToLock =>
+        Error.Conflict("Council.MinuteNotReadyToLock", "Biên bản chưa đủ điều kiện để khóa (chưa đủ tất cả điểm bắt buộc hoặc chưa xử lý xong sai biệt điểm).");
+
+    public static Error ReauthenticationFailed =>
+        Error.Unauthorized("Council.ReauthenticationFailed", "Xác thực mật khẩu không thành công.");
+
+    public static Error ReauthenticationLocked =>
+        Error.Conflict("Council.ReauthenticationLocked", "Tài khoản của bạn đã bị tạm khóa do nhập sai mật khẩu nhiều lần.");
+
+    public static Error PasswordRequired =>
+        Error.Validation("Council.PasswordRequired", "Mật khẩu xác thực là bắt buộc khi khóa biên bản.");
+
+    public static Error OverrideReasonRequired =>
+        Error.Validation("Council.OverrideReasonRequired", "Lý do mở khóa đặc biệt (overrideReason) là bắt buộc và phải từ 10 đến 500 ký tự.");
+
+    public static Error NotSubmittedToAcademicAffairs =>
+        Error.Conflict("Council.NotSubmittedToAcademicAffairs", "Hội đồng chưa được Văn phòng Khoa nộp hồ sơ thẩm định lên Phòng Đào tạo.");
+
+    public static Error InvalidSchedule =>
+        Error.Validation("Council.InvalidSchedule", "Ngày bảo vệ, ca thi và phòng thi không được để trống.");
 }

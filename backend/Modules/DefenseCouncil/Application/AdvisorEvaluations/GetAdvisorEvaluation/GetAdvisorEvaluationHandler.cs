@@ -1,5 +1,6 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.SaveAdvisorEvaluation;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Contracts.AdvisorEvaluations;
@@ -55,7 +56,11 @@ public sealed class GetAdvisorEvaluationHandler(
             return Result.Failure<AdvisorEvaluationDto>(AdvisorEvaluationErrors.LegacyRecordNeedsResolution);
         }
 
-        return Result.Success(AdvisorEvaluationDtoMapper.ToDto(evaluation));
+        var details = await evaluationRepository.GetEvaluationDetailsByEvaluationIdAsync(evaluation.Id, cancellationToken);
+        var detailDtos = details.Select(d => new EvaluationDetailResponseDto(
+            d.Id, d.CriteriaId, d.Criteria.CriteriaCode, d.Criteria.CriteriaName, d.Score, d.Criteria.MaxScore)).ToList();
+
+        return Result.Success(AdvisorEvaluationDtoMapper.ToDto(evaluation, detailDtos));
     }
 
     private static bool IsAdministrator(ICurrentUser user)

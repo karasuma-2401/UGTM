@@ -1,3 +1,4 @@
+using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 
 namespace UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.SaveAdvisorEvaluation;
@@ -18,11 +19,12 @@ public sealed record AdvisorEvaluationDto(
     Guid? DecisionBy,
     DateTime? DecisionAtUtc,
     uint EvaluationVersion,
-    bool IsLocked);
+    bool IsLocked,
+    IReadOnlyList<EvaluationDetailResponseDto>? Details = null);
 
 internal static class AdvisorEvaluationDtoMapper
 {
-    public static AdvisorEvaluationDto ToDto(AdvisorEvaluation evaluation)
+    public static AdvisorEvaluationDto ToDto(AdvisorEvaluation evaluation, IReadOnlyList<EvaluationDetailResponseDto>? details = null)
     {
         ArgumentNullException.ThrowIfNull(evaluation);
         return new AdvisorEvaluationDto(
@@ -41,6 +43,7 @@ internal static class AdvisorEvaluationDtoMapper
             evaluation.DecisionBy,
             evaluation.DecisionAt,
             evaluation.Version,
-            evaluation.IsLocked);
+            evaluation.IsLocked,
+            details);
     }
 }

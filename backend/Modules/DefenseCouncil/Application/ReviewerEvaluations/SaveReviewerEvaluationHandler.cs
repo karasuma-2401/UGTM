@@ -1,6 +1,7 @@
 using System.Text.Json;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.ReviewerAssignments;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
@@ -76,28 +77,89 @@ public sealed class SaveReviewerEvaluationHandler(
         if (evaluation?.IsLocked == true) return Abort(ReviewerEvaluationErrors.Locked);
         if (evaluation is null ? command.ExpectedEvaluationVersion.HasValue : command.ExpectedEvaluationVersion != evaluation.Version)
             return Abort(ReviewerEvaluationErrors.VersionConflict);
+
+        decimal? scoreToApply = command.Score;
+        List<EvaluationDetailResponseDto>? detailDtos = null;
+        if (command.Details is { Count: > 0 } details)
+        {
+            var batchCriteria = await evaluations.GetGradingCriteriaByBatchIdAsync(access.Binding.BatchId, token);
+            var criteriaMap = batchCriteria.ToDictionary(c => c.Id);
+
+            foreach (var item in details)
+            {
+                if (!criteriaMap.TryGetValue(item.CriteriaId, out var criterion))
+                {
+                    return Abort(ReviewerEvaluationErrors.CriteriaNotFound(item.CriteriaId));
+                }
+                if (item.Score < 0)
+                {
+                    return Abort(ReviewerEvaluationErrors.CriteriaScoreNegative(criterion.CriteriaName));
+                }
+                if (item.Score > criterion.MaxScore)
+                {
+                    return Abort(ReviewerEvaluationErrors.ScoreExceedsMaxScore(criterion.CriteriaName, item.Score, criterion.MaxScore));
+                }
+            }
+
+            if (command.Action == ReviewerEvaluationAction.Submit)
+            {
+                var submittedIds = details.Select(d => d.CriteriaId).ToHashSet();
+                foreach (var req in batchCriteria)
+                {
+                    if (!submittedIds.Contains(req.Id))
+                    {
+                        return Abort(ReviewerEvaluationErrors.MissingRequiredCriteria(req.CriteriaName));
+                    }
+                }
+            }
+
+            scoreToApply = Math.Round(details.Sum(d => d.Score), 2);
+            detailDtos = details.Select(d =>
+            {
+                var crit = criteriaMap[d.CriteriaId];
+                return new EvaluationDetailResponseDto(Guid.Empty, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore);
+            }).ToList();
+        }
+        else if (command.Action == ReviewerEvaluationAction.Submit && scoreToApply is null)
+        {
+            return Abort(ReviewerEvaluationErrors.IncompleteEvaluation);
+        }
+
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var status = evaluation is null ? 201 : 200;
         if (evaluation is null)
         {
-            evaluation = ReviewerEvaluation.CreateDraft(Guid.NewGuid(), assignment.Id, command.Score, command.Comment, command.DefenseApproval, actor, now);
+            evaluation = ReviewerEvaluation.CreateDraft(Guid.NewGuid(), assignment.Id, scoreToApply, command.Comment, command.DefenseApproval, actor, now);
             evaluations.Add(evaluation);
         }
         var applied = command.Action == ReviewerEvaluationAction.Submit
-            ? evaluation.TrySubmit(command.Score, command.Comment, command.DefenseApproval, actor, now)
-            : evaluation.TrySaveDraft(command.Score, command.Comment, command.DefenseApproval, actor, now);
+            ? evaluation.TrySubmit(scoreToApply, command.Comment, command.DefenseApproval, actor, now)
+            : evaluation.TrySaveDraft(scoreToApply, command.Comment, command.DefenseApproval, actor, now);
         if (!applied) return Abort(ReviewerEvaluationErrors.Locked);
+
+        if (command.Details is { Count: > 0 } detailsToSave)
+        {
+            var detailsList = detailsToSave.Select(d => new EvaluationDetail
+            {
+                Id = Guid.NewGuid(),
+                CriteriaId = d.CriteriaId,
+                EvaluationId = evaluation.Id,
+                Score = d.Score
+            }).ToList();
+            await evaluations.SaveEvaluationDetailsAsync(evaluation.Id, detailsList, token);
+        }
+
         var receipt = ReviewerEvaluationIdempotencyRecord.Create(Guid.NewGuid(), actor, Operation, command.IdempotencyKey, fingerprint, status, now);
         receipts.Add(receipt);
         return ReviewerAssignmentTransactionResult<SaveResult>.Commit(new(Assignment: assignment, Evaluation: evaluation,
-            Receipt: receipt, TopicId: access.Binding.TopicId, BatchId: access.Binding.BatchId, StatusCode: status));
+            Receipt: receipt, TopicId: access.Binding.TopicId, BatchId: access.Binding.BatchId, StatusCode: status, Details: detailDtos));
     }
 
     private Task<SaveResult> CompleteReceiptAsync(SaveResult result, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         audit.AddSaved(result.Evaluation!, result.Assignment!);
-        var response = ReviewerEvaluationDtoMapper.ToDto(result.Evaluation!, result.Assignment!, result.TopicId, result.BatchId);
+        var response = ReviewerEvaluationDtoMapper.ToDto(result.Evaluation!, result.Assignment!, result.TopicId, result.BatchId, result.Details);
         result.Receipt!.SetResponsePayload(JsonSerializer.Serialize(response));
         return Task.FromResult(result with { Response = response });
     }
@@ -105,5 +167,6 @@ public sealed class SaveReviewerEvaluationHandler(
         => ReviewerAssignmentTransactionResult<SaveResult>.Abort(new(Error: error));
     private sealed record SaveResult(Error? Error = null, ReviewerEvaluationDto? Response = null, int StatusCode = 200,
         ReviewerAssignment? Assignment = null, ReviewerEvaluation? Evaluation = null,
-        ReviewerEvaluationIdempotencyRecord? Receipt = null, Guid TopicId = default, Guid BatchId = default);
+        ReviewerEvaluationIdempotencyRecord? Receipt = null, Guid TopicId = default, Guid BatchId = default,
+        IReadOnlyList<EvaluationDetailResponseDto>? Details = null);
 }
