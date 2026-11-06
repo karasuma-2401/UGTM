@@ -54,3 +54,21 @@ export interface RegistrationReceipt extends RegistrationResult {
   topicTitle: string;
   partnerUserCode: string;
 }
+
+export interface StudentTopicGroupDetail {
+  groupId: string;
+  topicId: string;
+  topicTitleVi: string;
+  topicTitleEn: string | null;
+  batchId: string;
+  batchName: string | null;
+  advisor: { advisorId: string; fullName: string | null };
+  members: {
+    studentId: string;
+    userCode: string | null;
+    fullName: string | null;
+    email: string | null;
+    confirmationStatus: string;
+  }[];
+  groupStatus: string;
+}

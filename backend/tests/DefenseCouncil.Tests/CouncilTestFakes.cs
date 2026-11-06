@@ -148,6 +148,8 @@ public sealed class FakeCouncilRepository : ICouncilRepository
     public List<CouncilMember> Members { get; } = [];
     public List<CouncilAssignment> Assignments { get; } = [];
     public HashSet<Guid> RejectedGroupIds { get; } = [];
+    public HashSet<Guid> IneligibleDefenseGroupIds { get; } = [];
+    public HashSet<Guid>? ExplicitEligibleGroupIds { get; set; }
     public Dictionary<Guid, Guid> ActiveReviewers { get; } = [];
     public List<CouncilScore> Scores { get; } = [];
     public List<EvaluationDetail> EvaluationDetails { get; } = [];
@@ -231,6 +233,22 @@ public sealed class FakeCouncilRepository : ICouncilRepository
     public Task<IReadOnlySet<Guid>> GetRejectedDefenseGroupIdsAsync(IEnumerable<Guid> groupIds, CancellationToken ct = default)
     {
         var result = groupIds.Where(id => RejectedGroupIds.Contains(id)).ToHashSet();
+        return Task.FromResult<IReadOnlySet<Guid>>(result);
+    }
+
+    public Task<IReadOnlySet<Guid>> GetDefenseEligibleGroupIdsAsync(IEnumerable<Guid> groupIds, CancellationToken ct = default)
+    {
+        var idList = groupIds.Distinct().ToList();
+        if (ExplicitEligibleGroupIds != null)
+        {
+            var filtered = idList.Where(id => ExplicitEligibleGroupIds.Contains(id)).ToHashSet();
+            return Task.FromResult<IReadOnlySet<Guid>>(filtered);
+        }
+
+        var result = idList
+            .Where(id => !RejectedGroupIds.Contains(id) && !IneligibleDefenseGroupIds.Contains(id))
+            .ToHashSet();
+
         return Task.FromResult<IReadOnlySet<Guid>>(result);
     }
 
@@ -385,6 +403,41 @@ public sealed class FakeCouncilRepository : ICouncilRepository
                 Id = Guid.NewGuid(),
                 CouncilAssignmentId = assignmentId,
                 LockStatus = status
+            });
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task<CouncilMinute?> GetMinuteByAssignmentIdAsync(Guid assignmentId, CancellationToken ct = default)
+    {
+        return Task.FromResult(Minutes.FirstOrDefault(m => m.CouncilAssignmentId == assignmentId));
+    }
+
+    public Task SaveCouncilMinuteDraftAsync(Guid assignmentId, string? studentFeedback, string? overrideMarker, CancellationToken ct = default)
+    {
+        var minute = Minutes.FirstOrDefault(m => m.CouncilAssignmentId == assignmentId);
+        var feedback = string.IsNullOrWhiteSpace(studentFeedback) ? null : studentFeedback.Trim();
+        var marker = string.IsNullOrWhiteSpace(overrideMarker) ? null : overrideMarker.Trim();
+
+        if (minute != null)
+        {
+            minute.RequiredRevisions = feedback;
+            minute.GeneralFeedback = feedback;
+            if (marker != null)
+            {
+                minute.OverrideReason = marker;
+            }
+        }
+        else
+        {
+            Minutes.Add(new CouncilMinute
+            {
+                Id = Guid.NewGuid(),
+                CouncilAssignmentId = assignmentId,
+                RequiredRevisions = feedback,
+                GeneralFeedback = feedback,
+                OverrideReason = marker,
+                LockStatus = CouncilMinuteLockStatus.Open
             });
         }
         return Task.CompletedTask;

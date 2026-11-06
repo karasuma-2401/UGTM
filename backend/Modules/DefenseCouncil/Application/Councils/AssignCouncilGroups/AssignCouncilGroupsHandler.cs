@@ -118,6 +118,15 @@ public sealed class AssignCouncilGroupsHandler(
                 CouncilErrors.GroupDefenseRejectedByReviewer(rejectedGroupIds.First()));
         }
 
+        // Check if all groups are eligible for defense (Reviewer submitted with Approved and score >= 4.0)
+        var eligibleGroupIds = await councilRepository.GetDefenseEligibleGroupIdsAsync(groupIds, cancellationToken);
+        var ineligibleGroupId = groupIds.FirstOrDefault(id => !eligibleGroupIds.Contains(id));
+        if (ineligibleGroupId != Guid.Empty)
+        {
+            return Result.Failure<IReadOnlyList<CouncilAssignmentResponseDto>>(
+                CouncilErrors.GroupNotEligibleForDefense(ineligibleGroupId));
+        }
+
         // Check Conflict of Interest: Advisor cannot be a member in this council
         var topicIds = groups.Values.Select(g => g.TopicId).Distinct().ToList();
         var topics = await topicDefenseContract.GetTopicsDetailsAsync(topicIds, cancellationToken);
@@ -133,6 +142,24 @@ public sealed class AssignCouncilGroupsHandler(
                     var advisorName = advisorUser?.FullName ?? topic.AdvisorId.ToString();
                     return Result.Failure<IReadOnlyList<CouncilAssignmentResponseDto>>(
                         CouncilErrors.AdvisorIsInCouncil(advisorName, topic.TitleVi));
+                }
+            }
+
+            // Check Reviewer role in Council: Reviewer can only be Member, cannot be Chairman or Secretary
+            var activeReviewers = await councilRepository.GetActiveReviewerIdsByGroupIdsAsync(groupIds, cancellationToken);
+            foreach (var (assignedGrpId, revId) in activeReviewers)
+            {
+                var councilMember = council.Members.FirstOrDefault(m => m.UserId == revId);
+                if (councilMember != null && councilMember.RoleInCouncil != CouncilMemberRole.Member)
+                {
+                    var reviewerUser = await userInfoReader.GetUserByIdAsync(revId, cancellationToken);
+                    var reviewerName = reviewerUser?.FullName ?? revId.ToString();
+                    var topicTitle = groups.TryGetValue(assignedGrpId, out var g) && topics.TryGetValue(g.TopicId, out var t)
+                        ? t.TitleVi
+                        : assignedGrpId.ToString();
+
+                    return Result.Failure<IReadOnlyList<CouncilAssignmentResponseDto>>(
+                        CouncilErrors.ReviewerIsChairmanOrSecretaryInCouncil(reviewerName, topicTitle));
                 }
             }
         }

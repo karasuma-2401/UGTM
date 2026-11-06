@@ -304,6 +304,88 @@ public sealed class CouncilApplicationTests
         Assert.Equal("Council.MemberScheduleConflict", result.Error.Code);
     }
 
+    [Fact]
+    public async Task AddCouncilMembers_Fails_WhenMemberIsAssignedGroupReviewerAndRoleIsChairman()
+    {
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        await _councilRepo.AddAsync(council);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+
+        _councilRepo.Assignments.Add(new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = council.Id, GroupId = groupId, OrderNumber = 1 });
+        _councilRepo.ActiveReviewers[groupId] = reviewerId;
+
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài AI", null);
+        _userInfoReader.Users[reviewerId] = new CouncilUserInfoContractDto(reviewerId, "TS. GVPB", "gvpb@uit.edu.vn", "CB010", true);
+
+        var handler = new AddCouncilMembersHandler(
+            _councilRepo, _uow, _userInfoReader, _defenseGroupContract, _topicDefenseContract, _currentUser);
+
+        var command = new AddCouncilMembersCommand(council.Id, [new(reviewerId, CouncilMemberRole.Chairman)]);
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Council.MemberIsGroupReviewerWithInvalidRole", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task AddCouncilMembers_Fails_WhenMemberIsAssignedGroupReviewerAndRoleIsSecretary()
+    {
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        await _councilRepo.AddAsync(council);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+
+        _councilRepo.Assignments.Add(new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = council.Id, GroupId = groupId, OrderNumber = 1 });
+        _councilRepo.ActiveReviewers[groupId] = reviewerId;
+
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài AI", null);
+        _userInfoReader.Users[reviewerId] = new CouncilUserInfoContractDto(reviewerId, "TS. GVPB", "gvpb@uit.edu.vn", "CB010", true);
+
+        var handler = new AddCouncilMembersHandler(
+            _councilRepo, _uow, _userInfoReader, _defenseGroupContract, _topicDefenseContract, _currentUser);
+
+        var command = new AddCouncilMembersCommand(council.Id, [new(reviewerId, CouncilMemberRole.Secretary)]);
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Council.MemberIsGroupReviewerWithInvalidRole", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task AddCouncilMembers_Succeeds_WhenMemberIsAssignedGroupReviewerAndRoleIsMember()
+    {
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        await _councilRepo.AddAsync(council);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+
+        _councilRepo.Assignments.Add(new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = council.Id, GroupId = groupId, OrderNumber = 1 });
+        _councilRepo.ActiveReviewers[groupId] = reviewerId;
+
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài AI", null);
+        _userInfoReader.Users[reviewerId] = new CouncilUserInfoContractDto(reviewerId, "TS. GVPB", "gvpb@uit.edu.vn", "CB010", true);
+
+        var handler = new AddCouncilMembersHandler(
+            _councilRepo, _uow, _userInfoReader, _defenseGroupContract, _topicDefenseContract, _currentUser);
+
+        var command = new AddCouncilMembersCommand(council.Id, [new(reviewerId, CouncilMemberRole.Member)]);
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value);
+        Assert.Equal("Member", result.Value[0].Role);
+    }
+
     #endregion
 
     #region 3. AssignCouncilGroupsHandler Tests
@@ -435,6 +517,114 @@ public sealed class CouncilApplicationTests
         Assert.Equal(CouncilErrors.DuplicateOrderNumber.Code, result.Error.Code);
     }
 
+    [Fact]
+    public async Task AssignCouncilGroups_Fails_WhenGroupReviewerIsCouncilChairman()
+    {
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        await _councilRepo.AddAsync(council);
+
+        var reviewerId = Guid.NewGuid();
+        var chairman = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = reviewerId, RoleInCouncil = CouncilMemberRole.Chairman };
+        council.Members.Add(chairman);
+        _councilRepo.Members.Add(chairman);
+        _userInfoReader.Users[reviewerId] = new CouncilUserInfoContractDto(reviewerId, "PGS. TS. Reviewer Chairman", "chair@uit.edu.vn", "CB001", true);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài Cloud", null);
+        _councilRepo.ActiveReviewers[groupId] = reviewerId;
+
+        var handler = new AssignCouncilGroupsHandler(
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+
+        var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Council.ReviewerIsChairmanOrSecretaryInCouncil", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task AssignCouncilGroups_Fails_WhenGroupReviewerIsCouncilSecretary()
+    {
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        await _councilRepo.AddAsync(council);
+
+        var reviewerId = Guid.NewGuid();
+        var secretary = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = reviewerId, RoleInCouncil = CouncilMemberRole.Secretary };
+        council.Members.Add(secretary);
+        _councilRepo.Members.Add(secretary);
+        _userInfoReader.Users[reviewerId] = new CouncilUserInfoContractDto(reviewerId, "ThS. Reviewer Secretary", "sec@uit.edu.vn", "CB002", true);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài Cloud", null);
+        _councilRepo.ActiveReviewers[groupId] = reviewerId;
+
+        var handler = new AssignCouncilGroupsHandler(
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+
+        var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Council.ReviewerIsChairmanOrSecretaryInCouncil", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task AssignCouncilGroups_Succeeds_WhenGroupReviewerIsCouncilMember()
+    {
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        await _councilRepo.AddAsync(council);
+
+        var reviewerId = Guid.NewGuid();
+        var member = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = reviewerId, RoleInCouncil = CouncilMemberRole.Member };
+        council.Members.Add(member);
+        _councilRepo.Members.Add(member);
+        _userInfoReader.Users[reviewerId] = new CouncilUserInfoContractDto(reviewerId, "TS. Reviewer Member", "member@uit.edu.vn", "CB003", true);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài Cloud", null);
+        _councilRepo.ActiveReviewers[groupId] = reviewerId;
+
+        var handler = new AssignCouncilGroupsHandler(
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+
+        var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value);
+    }
+
+    [Fact]
+    public async Task AssignCouncilGroups_Fails_WhenGroupIsNotEligibleForDefense()
+    {
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        await _councilRepo.AddAsync(council);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài chưa hoàn tất phản biện", null);
+
+        // Đánh dấu nhóm chưa đủ điều kiện
+        _councilRepo.IneligibleDefenseGroupIds.Add(groupId);
+
+        var handler = new AssignCouncilGroupsHandler(
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+
+        var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Council.GroupNotEligibleForDefense", result.Error.Code);
+    }
+
     #endregion
 
     #region 4. ApproveCouncilHandler Tests
@@ -547,6 +737,82 @@ public sealed class CouncilApplicationTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(CouncilErrors.NoAssignedGroups.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task ApproveCouncil_Fails_WhenGroupReviewerIsChairman()
+    {
+        _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        await _councilRepo.AddAsync(council);
+
+        var reviewerId = Guid.NewGuid();
+        var secretaryId = Guid.NewGuid();
+        var cMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = reviewerId, RoleInCouncil = CouncilMemberRole.Chairman };
+        var sMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretaryId, RoleInCouncil = CouncilMemberRole.Secretary };
+        council.Members.Add(cMember);
+        council.Members.Add(sMember);
+        _councilRepo.Members.Add(cMember);
+        _councilRepo.Members.Add(sMember);
+        _userInfoReader.Users[reviewerId] = new CouncilUserInfoContractDto(reviewerId, "TS. Reviewer Chair", "rev@uit.edu.vn", "CB001", true);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        var advisorId = Guid.NewGuid();
+        var assignment = new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = council.Id, GroupId = groupId, OrderNumber = 1 };
+        council.Assignments.Add(assignment);
+        _councilRepo.Assignments.Add(assignment);
+        _councilRepo.ActiveReviewers[groupId] = reviewerId;
+
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, advisorId, "Đề tài AI", null);
+
+        var handler = new ApproveCouncilHandler(
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+
+        var command = new ApproveCouncilCommand(council.Id, "QD-1234");
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Council.ReviewerIsChairmanOrSecretaryInCouncil", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task ApproveCouncil_Fails_WhenGroupIsNotEligibleForDefense()
+    {
+        _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        await _councilRepo.AddAsync(council);
+
+        var chairmanId = Guid.NewGuid();
+        var secretaryId = Guid.NewGuid();
+        var cMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chairmanId, RoleInCouncil = CouncilMemberRole.Chairman };
+        var sMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretaryId, RoleInCouncil = CouncilMemberRole.Secretary };
+        council.Members.Add(cMember);
+        council.Members.Add(sMember);
+        _councilRepo.Members.Add(cMember);
+        _councilRepo.Members.Add(sMember);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        var advisorId = Guid.NewGuid();
+        var assignment = new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = council.Id, GroupId = groupId, OrderNumber = 1 };
+        council.Assignments.Add(assignment);
+        _councilRepo.Assignments.Add(assignment);
+
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, advisorId, "Đề tài AI", null);
+
+        _councilRepo.IneligibleDefenseGroupIds.Add(groupId);
+
+        var handler = new ApproveCouncilHandler(
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+
+        var command = new ApproveCouncilCommand(council.Id, "QD-1234");
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Council.GroupNotEligibleForDefense", result.Error.Code);
     }
 
     #endregion
@@ -736,14 +1002,14 @@ public sealed class CouncilApplicationTests
     }
 
     [Fact]
-    public async Task GetCouncilSchedule_FlagsReviewerInCouncil_WhenReviewerIsChairman()
+    public async Task GetCouncilSchedule_FlagsReviewerInCouncil_WhenReviewerIsMember()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
         council.Approve("QD-01", null, null, Guid.NewGuid(), DateTime.UtcNow);
         await _councilRepo.AddAsync(council);
 
-        var reviewerAndChairmanId = Guid.NewGuid();
-        var cMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = reviewerAndChairmanId, RoleInCouncil = CouncilMemberRole.Chairman };
+        var reviewerAndMemberId = Guid.NewGuid();
+        var cMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = reviewerAndMemberId, RoleInCouncil = CouncilMemberRole.Member };
         council.Members.Add(cMember);
         _councilRepo.Members.Add(cMember);
 
@@ -752,7 +1018,7 @@ public sealed class CouncilApplicationTests
         var assignment = new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = council.Id, GroupId = groupId, OrderNumber = 1 };
         council.Assignments.Add(assignment);
         _councilRepo.Assignments.Add(assignment);
-        _councilRepo.ActiveReviewers[groupId] = reviewerAndChairmanId;
+        _councilRepo.ActiveReviewers[groupId] = reviewerAndMemberId;
 
         _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(
             groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);

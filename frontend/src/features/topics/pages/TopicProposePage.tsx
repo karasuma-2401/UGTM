@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Dialog } from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,6 +73,11 @@ interface SaveProposal {
   updateAssignedStudents?: boolean;
 }
 
+type PendingConfirmation =
+  | { kind: 'open'; topic: Topic | null; intent: 'edit' | 'copy' | 'submit' }
+  | { kind: 'close' }
+  | { kind: 'submit'; proposal: SaveProposal };
+
 const INITIAL_FILTERS: TopicFilters = { keyword: '', batchId: '', status: '' };
 
 const textareaClass =
@@ -100,6 +106,7 @@ export function TopicProposePage({
   const [pageSize, setPageSize] = useState(20);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [draftFilters, setDraftFilters] = useState<TopicFilters>(INITIAL_FILTERS);
   const [filters, setFilters] = useState<TopicFilters>(INITIAL_FILTERS);
   const [recovery, setRecovery] = useState<LocalProposal | null>(null);
@@ -240,13 +247,15 @@ export function TopicProposePage({
           else showValidation(errors);
           return;
         }
-        if (confirmSubmission())
-          saveMutation.mutate({
+        setPendingConfirmation({
+          kind: 'submit',
+          proposal: {
             id: topic.id,
             values: fresh,
             submitImmediately: true,
             hasChanges: topic.studentNumber !== fresh.studentNumber,
-          });
+          },
+        });
       } else beginEditor(topic, fresh);
     },
   });
@@ -376,7 +385,13 @@ export function TopicProposePage({
   }
   function openTopic(topic: Topic | null, intent: 'edit' | 'copy' | 'submit' = 'edit') {
     if (busy) return;
-    if (hasUnsavedChanges && !window.confirm('Bỏ các thay đổi chưa lưu để tiếp tục?')) return;
+    if (hasUnsavedChanges) {
+      setPendingConfirmation({ kind: 'open', topic, intent });
+      return;
+    }
+    continueOpenTopic(topic, intent);
+  }
+  function continueOpenTopic(topic: Topic | null, intent: 'edit' | 'copy' | 'submit') {
     setNotice('');
     setFormError('');
     setFieldErrors({});
@@ -395,7 +410,13 @@ export function TopicProposePage({
       setIsPreviewOpen(false);
       return;
     }
-    if (hasUnsavedChanges && !window.confirm('Bỏ các thay đổi chưa lưu để đóng cửa sổ?')) return;
+    if (hasUnsavedChanges) {
+      setPendingConfirmation({ kind: 'close' });
+      return;
+    }
+    finishCloseForm();
+  }
+  function finishCloseForm() {
     if (dirty && !recovery) clearCachedDraft(selectedTopic?.id ?? null);
     setValues(baseline);
     setIsFormOpen(false);
@@ -412,10 +433,13 @@ export function TopicProposePage({
     setFormError(`Vui lòng kiểm tra các trường: ${Object.values(errors).join(' ')}`);
     setFocusField(Object.keys(errors)[0] as keyof TopicFormValues);
   }
-  function confirmSubmission() {
-    return window.confirm(
-      'Gửi đề tài đến Khoa thẩm định? Sau khi gửi, bạn chỉ có thể sửa khi Khoa yêu cầu chỉnh sửa.',
-    );
+  function confirmPendingAction() {
+    if (!pendingConfirmation || busy) return;
+    const action = pendingConfirmation;
+    setPendingConfirmation(null);
+    if (action.kind === 'open') continueOpenTopic(action.topic, action.intent);
+    else if (action.kind === 'close') finishCloseForm();
+    else saveMutation.mutate(action.proposal);
   }
   function quickFilter(status: TopicStatus | '') {
     const next = { keyword: '', batchId: filters.batchId, status };
@@ -468,18 +492,22 @@ export function TopicProposePage({
       showValidation(errors);
       return;
     }
-    if (submitImmediately && !confirmSubmission()) return;
-    setNotice('');
-    setFormError('');
-    setFieldErrors({});
-    saveMutation.mutate({
+    const proposal: SaveProposal = {
       id: selectedTopic?.id ?? null,
       values: { ...values },
       submitImmediately,
       hasChanges:
         dirty || Boolean(selectedTopic && selectedTopic.studentNumber !== values.studentNumber),
       ...(updateAssignedStudents ? { updateAssignedStudents: true } : {}),
-    });
+    };
+    if (submitImmediately) {
+      setPendingConfirmation({ kind: 'submit', proposal });
+      return;
+    }
+    setNotice('');
+    setFormError('');
+    setFieldErrors({});
+    saveMutation.mutate(proposal);
   }
 
   return (
@@ -545,46 +573,12 @@ export function TopicProposePage({
 
       {isFormOpen && (
         <Dialog
-          title={
-            blocker.state === 'blocked'
-              ? 'Thay đổi chưa được lưu'
-              : isPreviewOpen
-                ? 'Xem trước đề tài'
-                : 'Đề xuất đề tài'
-          }
+          title={isPreviewOpen ? 'Xem trước đề tài' : 'Đề xuất đề tài'}
           busy={busy}
           onClose={closeForm}
-          className={
-            blocker.state === 'blocked' ? 'max-w-lg' : isPreviewOpen ? 'max-w-3xl' : 'max-w-5xl'
-          }
+          className={isPreviewOpen ? 'max-w-3xl' : 'max-w-5xl'}
         >
-          {blocker.state === 'blocked' ? (
-            <div className="space-y-5 p-5">
-              <p className="text-sm leading-6 text-slate-600">
-                Bạn đang có nội dung chưa lưu. Rời trang sẽ bỏ những thay đổi này.
-              </p>
-              <div className="flex flex-wrap justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => blocker.reset()}
-                >
-                  Tiếp tục soạn
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={busy}
-                  onClick={() => {
-                    leaveWithoutChanges();
-                  }}
-                >
-                  Bỏ thay đổi và rời trang
-                </Button>
-              </div>
-            </div>
-          ) : isPreviewOpen ? (
+          {isPreviewOpen ? (
             <>
               <TopicPreview
                 reviewNote={selectedTopic?.reviewNote}
@@ -1053,6 +1047,38 @@ export function TopicProposePage({
           )}
         </Dialog>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingConfirmation)}
+        onClose={() => setPendingConfirmation(null)}
+        onConfirm={confirmPendingAction}
+        type="warning"
+        title={
+          pendingConfirmation?.kind === 'submit' ? 'Gửi đề tài thẩm định' : 'Bỏ thay đổi chưa lưu'
+        }
+        description={
+          pendingConfirmation?.kind === 'submit'
+            ? 'Sau khi gửi, bạn chỉ có thể sửa đề tài khi Khoa yêu cầu chỉnh sửa.'
+            : pendingConfirmation?.kind === 'close'
+              ? 'Bỏ các thay đổi chưa lưu và đóng cửa sổ?'
+              : 'Bỏ các thay đổi chưa lưu để tiếp tục?'
+        }
+        confirmText={pendingConfirmation?.kind === 'submit' ? 'Gửi Khoa' : 'Bỏ thay đổi'}
+        isConfirming={busy}
+      />
+      <ConfirmDialog
+        open={blocker.state === 'blocked'}
+        onClose={() => {
+          if (blocker.state === 'blocked') blocker.reset();
+        }}
+        onConfirm={leaveWithoutChanges}
+        type="warning"
+        title="Rời trang?"
+        description="Bạn đang có nội dung chưa lưu. Rời trang sẽ bỏ những thay đổi này."
+        confirmText="Bỏ thay đổi và rời trang"
+        cancelText="Tiếp tục soạn"
+        isConfirming={busy}
+      />
 
       <form
         onSubmit={handleApplyFilters}

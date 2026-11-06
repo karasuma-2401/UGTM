@@ -4,11 +4,14 @@ using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.RenameRequests.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
+using UGTM.Modules.TopicCatalog.Contracts.RenameRequests;
 
 namespace UGTM.Modules.ThesisManagement.Application.RenameRequests.GetRenameRequests;
 
 public sealed class GetRenameRequestsHandler(
     IRenameRequestRepository renameRequestRepository,
+    IStudentGroupRepository groupRepository,
+    ITopicRenameContract topicRenameContract,
     ICurrentUser currentUser)
 {
     public async Task<Result<IReadOnlyList<RenameRequestDto>>> HandleAsync(
@@ -51,6 +54,21 @@ public sealed class GetRenameRequestsHandler(
             parsedStatus,
             topicIdsFilter: null,
             cancellationToken);
+
+        // Lecturers may only read requests for topics they advise.
+        if (!isPrivilegedStaff)
+        {
+            var ownRequests = new List<RenameRequestDto>();
+            foreach (var request in requests)
+            {
+                var group = await groupRepository.GetByIdAsync(request.GroupId, cancellationToken);
+                if (group is null) continue;
+                var topic = await topicRenameContract.GetTopicSnapshotAsync(group.TopicId, cancellationToken);
+                if (topic?.AdvisorId == currentUser.UserId.Value)
+                    ownRequests.Add(RenameRequestMapper.ToDto(request));
+            }
+            return Result.Success<IReadOnlyList<RenameRequestDto>>(ownRequests);
+        }
 
         var dtos = requests.Select(RenameRequestMapper.ToDto).ToList();
         return Result.Success<IReadOnlyList<RenameRequestDto>>(dtos);

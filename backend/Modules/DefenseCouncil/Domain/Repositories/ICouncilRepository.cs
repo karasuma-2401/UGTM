@@ -37,6 +37,10 @@ public interface ICouncilRepository
         IEnumerable<Guid> groupIds,
         CancellationToken ct = default);
 
+    Task<IReadOnlySet<Guid>> GetDefenseEligibleGroupIdsAsync(
+        IEnumerable<Guid> groupIds,
+        CancellationToken ct = default);
+
     Task<Council?> GetCouncilByGroupIdAsync(
         Guid groupId,
         CancellationToken ct = default);
@@ -70,4 +74,8 @@ public interface ICouncilRepository
     Task<ScoreSummary?> GetScoreSummaryByGroupIdAsync(Guid groupId, CancellationToken ct = default);
 
     Task UpdateMinuteLockStatusAsync(Guid assignmentId, UGTM.Modules.DefenseCouncil.Domain.Enums.CouncilMinuteLockStatus status, CancellationToken ct = default);
+
+    Task<CouncilMinute?> GetMinuteByAssignmentIdAsync(Guid assignmentId, CancellationToken ct = default);
+
+    Task SaveCouncilMinuteDraftAsync(Guid assignmentId, string? studentFeedback, string? overrideMarker, CancellationToken ct = default);
 }

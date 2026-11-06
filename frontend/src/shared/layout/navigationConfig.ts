@@ -10,6 +10,8 @@ import {
   UsersRound,
   FileText,
   CalendarCheck,
+  UserCheck,
+  FilePenLine,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -95,6 +97,18 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Student', 'Admin'],
       },
       {
+        label: 'Xin đổi tên đề tài',
+        path: '/topics/rename',
+        icon: FilePenLine,
+        roles: ['Student'],
+      },
+      {
+        label: 'Duyệt đổi tên đề tài',
+        path: '/topics/rename/review',
+        icon: FilePenLine,
+        roles: ['Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
+      },
+      {
         label: 'Báo cáo & tiến độ',
         path: '/thesis/proposal',
         icon: FileText,
@@ -110,6 +124,12 @@ export const navigationSections: NavSectionConfig[] = [
         label: 'Thẩm định quy trình',
         path: '/thesis/review/syllabus',
         icon: ClipboardCheck,
+        roles: ['Faculty', 'Admin', 'AcademicAffairs'],
+      },
+      {
+        label: 'Phân công giảng viên',
+        path: '/councils/reviewer-assignments',
+        icon: UserCheck,
         roles: ['Faculty', 'Admin', 'AcademicAffairs'],
       },
     ],

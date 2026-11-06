@@ -31,6 +31,7 @@ export interface StatisticItem {
   tone?: keyof typeof tones;
   onClick?: () => void;
   active?: boolean;
+  actionLabel?: string;
 }
 
 export interface StatisticsBarProps {
@@ -48,7 +49,7 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
         className,
       )}
     >
-      {items.map(({ key, label, value, icon, tone = 'muted', onClick, active }) => {
+      {items.map(({ key, label, value, icon, tone = 'muted', onClick, active, actionLabel }) => {
         const colors = tones[tone];
         return (
           <div
@@ -62,8 +63,8 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
             {onClick && (
               <button
                 type="button"
-                aria-label={`Lọc: ${label}`}
-                aria-pressed={!loading && Boolean(active)}
+                aria-label={actionLabel ?? `Lọc: ${label}`}
+                {...(active !== undefined ? { 'aria-pressed': !loading && active } : {})}
                 disabled={loading}
                 onClick={onClick}
                 className="absolute inset-0 z-10 rounded-md transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait"

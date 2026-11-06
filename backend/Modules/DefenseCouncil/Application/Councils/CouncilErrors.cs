@@ -29,6 +29,12 @@ public static class CouncilErrors
     public static Error AdvisorIsInCouncil(string advisorName, string groupDetails) =>
         Error.Conflict("Council.AdvisorIsInCouncil", $"Nhóm ({groupDetails}) có GVHD là {advisorName} đang là thành viên của hội đồng này, vi phạm quy định chống xung đột lợi ích.");
 
+    public static Error MemberIsGroupReviewerWithInvalidRole(string lecturerName, string groupDetails) =>
+        Error.Conflict("Council.MemberIsGroupReviewerWithInvalidRole", $"Giảng viên {lecturerName} là GVPB của nhóm ({groupDetails}) trong hội đồng, chỉ được phép tham gia với vai trò Ủy viên (Member), không được làm Chủ tịch hoặc Thư ký.");
+
+    public static Error ReviewerIsChairmanOrSecretaryInCouncil(string reviewerName, string groupDetails) =>
+        Error.Conflict("Council.ReviewerIsChairmanOrSecretaryInCouncil", $"GVPB của nhóm ({groupDetails}) là {reviewerName} đang giữ vai trò Chủ tịch hoặc Thư ký trong hội đồng. GVPB chỉ được tham gia với vai trò Ủy viên (Member).");
+
     public static Error DuplicateChairman =>
         Error.Conflict("Council.DuplicateChairman", "Hội đồng chỉ được có tối đa 01 Chủ tịch.");
 
@@ -52,6 +58,9 @@ public static class CouncilErrors
 
     public static Error GroupDefenseRejectedByReviewer(Guid groupId) =>
         Error.Conflict("Council.GroupDefenseRejectedByReviewer", $"Nhóm đề tài {groupId} đã bị giảng viên phản biện đánh giá không đủ điều kiện bảo vệ.");
+
+    public static Error GroupNotEligibleForDefense(Guid groupId) =>
+        Error.Conflict("Council.GroupNotEligibleForDefense", $"Nhóm đề tài {groupId} chưa đủ điều kiện bảo vệ (yêu cầu có kết quả phản biện đã nộp và được chấp thuận bảo vệ).");
 
     public static Error GroupAlreadyAssigned(Guid groupId) =>
         Error.Conflict("Council.GroupAlreadyAssigned", $"Nhóm đề tài {groupId} đã được phân vào một hội đồng bảo vệ.");
@@ -112,4 +121,13 @@ public static class CouncilErrors
 
     public static Error MissingRequiredCriteria(string criteriaName) =>
         Error.Validation("Council.MissingRequiredCriteria", $"Chưa nhập điểm cho tiêu chí bắt buộc: '{criteriaName}'.");
+
+    public static Error OnlySecretaryCanSaveMinute =>
+        Error.Forbidden("Council.OnlySecretaryCanSaveMinute", "Chỉ Thư ký của hội đồng (hoặc Admin) mới có quyền lưu nháp biên bản.");
+
+    public static Error TargetComponentRequiredForRejection =>
+        Error.Validation("Council.TargetComponentRequiredForRejection", "Bắt buộc phải chỉ định mã đầu điểm/vai trò cần loại (target_component_code) khi chọn không công nhận theo biên bản (RejectedAsPerMinute).");
+
+    public static Error InvalidTargetComponent(string componentCode) =>
+        Error.Validation("Council.InvalidTargetComponent", $"Mã đầu điểm/vai trò cần loại không hợp lệ hoặc không tồn tại trong hội đồng: '{componentCode}'.");
 }

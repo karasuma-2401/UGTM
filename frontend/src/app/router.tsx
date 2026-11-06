@@ -14,6 +14,8 @@ import { UsersPage } from '../features/identity';
 import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
 import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
 import { StudentTopicCatalogPage } from '../features/topics/pages/StudentTopicCatalogPage';
+import { StudentRenameRequestPage } from '../features/topics/pages/StudentRenameRequestPage';
+import { RenameReviewEntryPage, RenameReviewPage } from '../features/topics/pages/RenameReviewPage';
 import {
   SyllabusSubmissionPage,
   SyllabusReviewPage,
@@ -22,7 +24,9 @@ import {
   StudentMilestoneSubmissionPage,
   AdvisorMilestoneSetupPage,
   AdvisorMilestoneReviewPage,
+  FinalReportSubmissionPage,
 } from '../features/thesis';
+import { ReviewerAssignmentPage } from '../features/councils';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -60,6 +64,26 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'topics/rename',
+        element: <ProtectedRoute allowedRoles={['Student']}><StudentRenameRequestPage /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review',
+        element: <ProtectedRoute allowedRoles={['Lecturer', 'Faculty', 'AcademicAffairs', 'Admin']}><RenameReviewEntryPage /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review/advisor',
+        element: <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}><RenameReviewPage level="advisor" /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review/faculty',
+        element: <ProtectedRoute allowedRoles={['Faculty', 'Admin']}><RenameReviewPage level="faculty" /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review/academic-affairs',
+        element: <ProtectedRoute allowedRoles={['AcademicAffairs', 'Admin']}><RenameReviewPage level="academic-affairs" /></ProtectedRoute>,
+      },
+      {
         path: 'thesis/proposal',
         element: (
           <ProtectedRoute allowedRoles={['Student', 'Admin']}>
@@ -80,6 +104,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['Student', 'Admin']}>
             <StudentMilestoneSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/final-report',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <FinalReportSubmissionPage />
           </ProtectedRoute>
         ),
       },
@@ -106,6 +138,14 @@ export const router = createBrowserRouter([
       {
         path: 'thesis/progress',
         element: <Navigate to="/thesis/proposal" replace />,
+      },
+      {
+        path: 'councils/reviewer-assignments',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin', 'AcademicAffairs']}>
+            <ReviewerAssignmentPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'advisor/milestones',

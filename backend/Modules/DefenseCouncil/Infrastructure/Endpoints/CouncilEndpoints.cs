@@ -9,7 +9,9 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CheckCouncilDiscrepancy;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
@@ -406,6 +408,102 @@ public static class CouncilEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
             .WithName("DefenseCouncil.Councils.CheckDiscrepancy");
 
+        // 8. GET /api/councils/assignments/{assignmentId}/minute-workspace
+        group.MapGet("/assignments/{assignmentId:guid}/minute-workspace", GetCouncilMinuteWorkspaceAsync)
+            .RequireAuthorization()
+            .WithSummary("Lấy toàn bộ không gian làm việc Biên bản Hội đồng")
+            .WithDescription("""
+                Truy xuất toàn bộ dữ liệu cần thiết cho màn hình Biên bản Hội đồng của một nhóm đề tài trong buổi bảo vệ, bao gồm 4 khối dữ liệu:
+                
+                ### 1. Khối thông tin phân công (`assignment_info`):
+                - `assignment_id`: Mã định danh phân công nhóm vào hội đồng.
+                - `council_id`: Mã định danh hội đồng.
+                - `council_code`: Mã hội đồng (ví dụ: 'HĐ01').
+                - `group_id`: Mã định danh nhóm đề tài.
+                - `group_code`: Mã nhóm đề tài hiển thị (ví dụ: 'N01').
+                - `chairman_name`: Họ tên Chủ tịch hội đồng.
+                - `secretary_name`: Họ tên Thư ký hội đồng.
+                - `lock_status`: Trạng thái khóa biên bản hiện tại (`Open`, `AllScoresEntered`, `Locked`, `UnlockedByOverride`).
+                - `student_feedback`: Nội dung nhận xét/góp ý dành cho sinh viên đã lưu trước đó.
+
+                ### 2. Khối danh sách tất cả đầu điểm (`score_items`):
+                - Danh sách các đầu điểm gồm GVHD (hệ số 2), GVPB (hệ số 2), Chủ tịch (hệ số 1), Thư ký (hệ số 1), và Ủy viên (hệ số 1).
+                - Xử lý đặc thù GVPB kiêm Ủy viên: GVPB hệ số 2; Ủy viên hiển thị `status_text = 'Chỉ tham dự'`, `score = null`, `weight = 0`, `category = 'Không thiếu điểm'`, `is_dual_role_reviewer = true`.
+                - Mỗi đầu điểm bao gồm cờ `is_ignored_in_calculation` cho biết đầu điểm có đang bị loại khỏi công thức tính hay không.
+
+                ### 3. Khối thông tin sai biệt (`discrepancy_summary`):
+                - `has_discrepancy`: Phát hiện độ lệch giữa điểm cao nhất và thấp nhất >= 2.0.
+                - `score_difference`: Giá trị chênh lệch điểm.
+                - `chairman_conclusion`: Kết luận của Chủ tịch về việc công nhận hoặc loại điểm.
+                - `secretary_marking`: Lựa chọn đánh dấu của Thư ký (`RejectedAsPerMinute`, `AcceptedAsPerMinute`, hoặc `None`).
+                - `ignored_component_code`: Mã đầu điểm bị loại (nếu có).
+                - `is_ignored_in_calculation`: Cờ boolean tổng thể có loại điểm hay không.
+
+                ### 4. Khối diễn giải tính điểm trước làm tròn (`calculation_preview`):
+                - Điểm trước điều chỉnh (`raw_total`, `raw_divisor`, `raw_average` giữ 6 chữ số thập phân).
+                - Điểm sau điều chỉnh (`adjusted_total`, `adjusted_divisor`, `adjusted_average`).
+                - `formula_explanation`: Chuỗi giải trình chi tiết từng thành phần để hiển thị UI và hỗ trợ nút 'Xem công thức'.
+                - `is_ready_to_lock`: Cờ xác nhận biên bản đã đủ điều kiện để khóa (đủ tất cả điểm bắt buộc và đã xử lý xong sai biệt nếu có).
+
+                ### Phân quyền truy cập (RBAC):
+                Yêu cầu Bearer token của người dùng đã xác thực (Thành viên Hội đồng, Thư ký, Giảng viên, Khoa hoặc Quản trị viên).
+
+                ### Mã lỗi và phản hồi:
+                - **200 OK:** Truy xuất thành công `ApiResponse<CouncilMinuteWorkspaceResponseDto>`.
+                - **401 Unauthorized:** Chưa xác thực.
+                - **403 Forbidden:** Không có quyền truy cập.
+                - **404 Not Found:** `Council.AssignmentNotFound`: Phân công hội đồng không tồn tại.
+                """)
+            .Produces<ApiResponse<CouncilMinuteWorkspaceResponseDto>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .WithName("DefenseCouncil.Councils.GetMinuteWorkspace");
+
+        // 9. PUT /api/councils/assignments/{assignmentId}/minute
+        group.MapPut("/assignments/{assignmentId:guid}/minute", SaveCouncilMinuteAsync)
+            .RequireAuthorization()
+            .WithSummary("Lưu nháp Biên bản Hội đồng & Xem trước công thức tính điểm")
+            .WithDescription("""
+                Hỗ trợ Thư ký lưu nháp biên bản hội đồng hoặc xem trước kết quả tính điểm khi thay đổi đánh dấu xử lý sai biệt:
+
+                ### Tham số Query:
+                - `preview`: Boolean (`true`/`false`, mặc định `false`).
+                  - Khi `preview=true`: Chỉ thực hiện tính toán trên bộ nhớ và trả về `calculation_preview` cùng `discrepancy_summary` mới nhất, **không ghi xuống DB**.
+                  - Khi `preview=false` (lưu thật): Chỉ cho phép **Thư ký (`CouncilMemberRole.Secretary`)** của hội đồng đó (hoặc Admin) thực hiện khi biên bản chưa bị `Locked`.
+
+                ### Tham số Request Body (`SaveCouncilMinuteInputDto`):
+                - `secretary_marking`: Đánh dấu của Thư ký (`RejectedAsPerMinute`, `AcceptedAsPerMinute`, hoặc `None`).
+                - `target_component_code`: Mã đầu điểm cần loại (bắt buộc khi chọn `RejectedAsPerMinute`, ví dụ: 'REVIEWER', 'ADVISOR', 'COUNCIL_CHAIRMAN', 'COUNCIL_SECRETARY', 'COUNCIL_MEMBER').
+                - `student_feedback`: Nội dung nhận xét/góp ý dành cho sinh viên (lưu vào `RequiredRevisions` và `GeneralFeedback` của bảng `CouncilMinute`).
+                - `chairman_conclusion`: Kết luận bổ sung của Chủ tịch (tuỳ chọn).
+
+                ### Quy tắc nghiệp vụ & Ràng buộc:
+                1. **Bắt buộc chỉ định đầu điểm khi từ chối:** Nếu `secretary_marking == 'RejectedAsPerMinute'`, client bắt buộc phải truyền `target_component_code` hợp lệ.
+                2. **Quyền hạn lưu thật:** Chỉ Thư ký của hội đồng (hoặc Admin) mới có quyền lưu thật. Chủ tịch hoặc Ủy viên chỉ có thể gọi ở chế độ preview.
+                3. **Kiểm tra trạng thái khóa:** Không thể lưu khi biên bản đã ở trạng thái `Locked`.
+                4. **Cập nhật và đồng bộ:** Hệ thống cập nhật cờ `IsIgnoredInCalculation` trên đầu điểm được chỉ định, lưu nhận xét sinh viên và tự động đồng bộ lại `ScoreSummary` cùng `ScoreSummaryComponent`.
+
+                ### Mã lỗi và phản hồi:
+                - **200 OK:** Lưu nháp hoặc xem trước thành công `ApiResponse<SaveCouncilMinuteResponseDto>`.
+                - **400 Bad Request:**
+                  - `Council.TargetComponentRequiredForRejection`: Thiếu `target_component_code` khi chọn loại điểm.
+                  - `Council.InvalidTargetComponent`: Mã đầu điểm cần loại không hợp lệ.
+                - **401 Unauthorized:** Chưa xác thực.
+                - **403 Forbidden:**
+                  - `Council.OnlySecretaryCanSaveMinute`: Người dùng không phải Thư ký hội đồng khi gọi lưu thật.
+                - **404 Not Found:** `Council.AssignmentNotFound`.
+                - **409 Conflict:**
+                  - `Council.MinuteLocked`: Biên bản đã bị khóa.
+                """)
+            .Produces<ApiResponse<SaveCouncilMinuteResponseDto>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .WithName("DefenseCouncil.Councils.SaveMinute");
+
         return endpoints;
     }
 
@@ -515,6 +613,35 @@ public static class CouncilEndpoints
     {
         var query = new CheckCouncilDiscrepancyQuery(assignmentId);
         var result = await handler.HandleAsync(query, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> GetCouncilMinuteWorkspaceAsync(
+        [FromRoute] Guid assignmentId,
+        [FromServices] GetCouncilMinuteWorkspaceHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetCouncilMinuteWorkspaceQuery(assignmentId);
+        var result = await handler.HandleAsync(query, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> SaveCouncilMinuteAsync(
+        [FromRoute] Guid assignmentId,
+        [FromQuery] bool? preview,
+        [FromBody] SaveCouncilMinuteInputDto body,
+        [FromServices] SaveCouncilMinuteHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var command = new SaveCouncilMinuteCommand(
+            assignmentId,
+            body.SecretaryMarking,
+            body.TargetComponentCode,
+            body.StudentFeedback,
+            body.ChairmanConclusion,
+            preview ?? false);
+
+        var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
     }
 }
