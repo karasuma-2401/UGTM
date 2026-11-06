@@ -132,6 +132,12 @@ export const navigationSections: NavSectionConfig[] = [
         icon: UserCheck,
         roles: ['Faculty', 'Admin', 'AcademicAffairs'],
       },
+      {
+        label: 'Phê duyệt hội đồng',
+        path: '/councils/approval',
+        icon: ClipboardCheck,
+        roles: ['AcademicAffairs', 'Admin'],
+      },
     ],
   },
 ];

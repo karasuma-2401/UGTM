@@ -26,7 +26,7 @@ import {
   AdvisorMilestoneReviewPage,
   FinalReportSubmissionPage,
 } from '../features/thesis';
-import { ReviewerAssignmentPage } from '../features/councils';
+import { ReviewerAssignmentPage, CouncilApprovalPage } from '../features/councils';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -144,6 +144,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['Faculty', 'Admin', 'AcademicAffairs']}>
             <ReviewerAssignmentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'councils/approval',
+        element: (
+          <ProtectedRoute allowedRoles={['AcademicAffairs', 'Admin']}>
+            <CouncilApprovalPage />
           </ProtectedRoute>
         ),
       },
