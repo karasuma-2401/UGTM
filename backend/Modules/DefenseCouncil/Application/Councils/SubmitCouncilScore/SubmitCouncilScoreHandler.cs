@@ -139,8 +139,11 @@ public sealed class SubmitCouncilScoreHandler(
 
         if (requiredMembers.All(m => scoredMemberIds.Contains(m.Id)))
         {
-            await councilRepository.UpdateMinuteLockStatusAsync(command.AssignmentId, CouncilMinuteLockStatus.AllScoresEntered, ct);
-
+            var minute = assignment.Minute ?? await councilRepository.GetMinuteByAssignmentIdAsync(command.AssignmentId, ct);
+            if (minute == null || minute.LockStatus == CouncilMinuteLockStatus.Open)
+            {
+                await councilRepository.UpdateMinuteLockStatusAsync(command.AssignmentId, CouncilMinuteLockStatus.AllScoresEntered, ct);
+            }
         }
 
         await unitOfWork.SaveChangesAsync(ct);

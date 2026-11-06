@@ -13,9 +13,12 @@ using Microsoft.Extensions.Options;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
+using UGTM.Modules.DefenseCouncil.Application.Councils.LockCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
+using UGTM.Modules.DefenseCouncil.Application.Councils.UnlockCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Grading;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.Grading;
@@ -24,6 +27,7 @@ using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Grading;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
+using UGTM.Modules.Identity.Contracts.Authentication;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
@@ -46,6 +50,7 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
     private readonly FakeDefenseGroupContract _defenseGroupContract = new();
     private readonly FakeTopicDefenseContract _topicDefenseContract = new();
     private readonly FakeDefenseCouncilAuditOutbox _auditOutbox = new();
+    private readonly FakeReauthenticationVerifier _reauthVerifier = new();
 
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -69,9 +74,13 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
         builder.Services.AddSingleton<IDefenseGroupContract>(_defenseGroupContract);
         builder.Services.AddSingleton<ITopicDefenseContract>(_topicDefenseContract);
         builder.Services.AddSingleton<IDefenseCouncilAuditOutbox>(_auditOutbox);
+        builder.Services.AddSingleton<IReauthenticationVerifier>(_reauthVerifier);
 
+        builder.Services.AddScoped<CouncilMinuteWorkspaceLoader>();
         builder.Services.AddScoped<GetCouncilMinuteWorkspaceHandler>();
         builder.Services.AddScoped<SaveCouncilMinuteHandler>();
+        builder.Services.AddScoped<LockCouncilMinuteHandler>();
+        builder.Services.AddScoped<UnlockCouncilMinuteHandler>();
 
         builder.Services.AddAuthentication(TestMinuteAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, TestMinuteAuthHandler>(TestMinuteAuthHandler.SchemeName, _ => { });

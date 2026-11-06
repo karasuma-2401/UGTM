@@ -17,4 +17,32 @@ public class CouncilMinute
     public uint Version { get; set; }
 
     public CouncilAssignment Assignment { get; set; } = null!;
+
+    public bool TryLock(Guid actorId, DateTime atUtc)
+    {
+        if (LockStatus == CouncilMinuteLockStatus.Locked) return false;
+        if (actorId == Guid.Empty) throw new ArgumentException("Actor ID cannot be empty.", nameof(actorId));
+        if (atUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Lock time must be UTC.", nameof(atUtc));
+
+        LockStatus = CouncilMinuteLockStatus.Locked;
+        LockedBy = actorId;
+        LockedAt = atUtc;
+        return true;
+    }
+
+    public bool TryUnlock(Guid actorId, string reason, DateTime atUtc)
+    {
+        if (LockStatus != CouncilMinuteLockStatus.Locked) return false;
+        if (actorId == Guid.Empty) throw new ArgumentException("Actor ID cannot be empty.", nameof(actorId));
+        if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("Override reason is required.", nameof(reason));
+        if (atUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Unlock time must be UTC.", nameof(atUtc));
+
+        LockStatus = CouncilMinuteLockStatus.UnlockedByOverride;
+        OverrideReason = reason.Trim();
+        UnlockedBy = actorId;
+        UnlockedAt = atUtc;
+        LockedAt = null;
+        LockedBy = null;
+        return true;
+    }
 }
