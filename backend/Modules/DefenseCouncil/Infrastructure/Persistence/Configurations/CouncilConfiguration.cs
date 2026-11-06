@@ -41,5 +41,10 @@ public class CouncilConfiguration : IEntityTypeConfiguration<Council>
         builder.Property(x => x.DecisionFileUrl)
             .HasMaxLength(500);
 
+        builder.Property(x => x.IsSubmittedToAcademicAffairs)
+            .HasDefaultValue(false);
+
+        builder.Property(x => x.SubmissionNotes)
+            .HasMaxLength(1000);
     }
 }

@@ -209,6 +209,31 @@ public sealed class CouncilScoringTests
     }
 
     [Fact]
+    public async Task SubmitScore_WhenMinuteUnlockedByOverride_PreservesUnlockedByOverrideStatus()
+    {
+        var minute = new CouncilMinute
+        {
+            Id = Guid.NewGuid(),
+            CouncilAssignmentId = _assignmentId,
+            LockStatus = CouncilMinuteLockStatus.UnlockedByOverride,
+            OverrideReason = "Mo khoa giai trinh theo de nghi cua Khoa",
+            UnlockedAt = DateTime.UtcNow,
+            UnlockedBy = Guid.NewGuid()
+        };
+        _councilRepo.Minutes.Add(minute);
+
+        _currentUser.UserId = _chairmanUserId;
+        var handler = CreateSubmitHandler();
+
+        var result = await handler.HandleAsync(new SubmitCouncilScoreCommand(
+            _assignmentId,
+            [new CriterionScoreInputDto(_crit1Id, 5.0m), new CriterionScoreInputDto(_crit2Id, 3.5m)]));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(CouncilMinuteLockStatus.UnlockedByOverride, minute.LockStatus);
+    }
+
+    [Fact]
     public async Task SubmitScore_WhenDetailsEmpty_ReturnsValidationError()
     {
         _currentUser.UserId = _chairmanUserId;

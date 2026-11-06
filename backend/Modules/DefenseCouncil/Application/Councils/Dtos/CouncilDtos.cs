@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 
 namespace UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
@@ -218,4 +219,82 @@ public sealed record SaveCouncilMinuteResponseDto(
     MinuteCalculationPreviewDto CalculationPreview,
     IReadOnlyList<MinuteScoreItemDto> ScoreItems);
 
+public sealed record LockCouncilMinuteInputDto(
+    string Password);
 
+public sealed record UnlockCouncilMinuteInputDto(
+    string? OverrideReason = null,
+    [property: JsonPropertyName("override_reason")] string? OverrideReasonSnake = null)
+{
+    [JsonIgnore]
+    public string EffectiveReason => !string.IsNullOrWhiteSpace(OverrideReason)
+        ? OverrideReason
+        : (!string.IsNullOrWhiteSpace(OverrideReasonSnake) ? OverrideReasonSnake : string.Empty);
+}
+
+public sealed record CouncilMinuteLockResponseDto(
+    Guid? MinuteId,
+    Guid AssignmentId,
+    string LockStatus,
+    string LockStatusLabel,
+    DateTime? LockedAt,
+    Guid? LockedBy,
+    DateTime? UnlockedAt,
+    Guid? UnlockedBy,
+    string? OverrideReason);
+
+public sealed record UpdateCouncilScheduleInputDto(
+    DateOnly DefenseDate,
+    string TimeSlot,
+    string Room);
+
+public sealed record SubmitCouncilToAcademicAffairsInputDto(
+    string? Notes = null);
+
+public sealed record CouncilSubmissionResponseDto(
+    Guid Id,
+    string CouncilCode,
+    string Status,
+    bool IsSubmittedToAcademicAffairs,
+    DateTime? SubmittedAt,
+    Guid? SubmittedBy,
+    string? Notes);
+
+public sealed record CouncilOverviewMemberDto(
+    Guid UserId,
+    string FullName,
+    string Role,
+    bool IsReviewer,
+    bool IsAdvisorConflict,
+    string? Note);
+
+public sealed record CouncilOverviewItemDto(
+    Guid Id,
+    Guid BatchId,
+    string CouncilCode,
+    string FacultyName,
+    string? GroupCode,
+    string? TopicTitle,
+    string Room,
+    string TimeSlot,
+    DateOnly DefenseDate,
+    string Status,
+    string StatusLabel,
+    string RosterModel,
+    string RosterModelLabel,
+    string ProfileStatus,
+    string ProfileStatusLabel,
+    string MinuteLockStatus,
+    string MinuteLockStatusLabel,
+    Guid? AssignmentId,
+    CouncilOverviewMemberDto? Chairman,
+    CouncilOverviewMemberDto? Secretary,
+    IReadOnlyList<CouncilOverviewMemberDto> Members);
+
+public sealed record CouncilOverviewQueryFilterDto(
+    Guid? BatchId = null,
+    string? Keyword = null,
+    string? Status = null,
+    string? LockStatus = null,
+    int PageNumber = 1,
+    int PageSize = 50);

@@ -116,6 +116,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Succeeds_WithChairmanSecretaryAndMember()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var chairmanId = Guid.NewGuid();
@@ -147,6 +148,7 @@ public sealed class CouncilApplicationTests
     {
         // Real-world university case: council has only Chairman and Secretary, no independent Member
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var chairmanId = Guid.NewGuid();
@@ -173,6 +175,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Fails_WhenAddingMultipleChairmen()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var c1 = Guid.NewGuid();
@@ -198,6 +201,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Fails_WhenLecturerInactiveOrNotFound()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var inactiveId = Guid.NewGuid();
@@ -217,6 +221,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Fails_WhenMemberIsAdvisorOfAssignedGroup_ConflictOfInterest()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var groupId = Guid.NewGuid();
@@ -250,6 +255,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Allows_ReviewerToBeCouncilMember_WhileBlockingAdvisor()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var groupId = Guid.NewGuid();
@@ -290,6 +296,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.Members.Add(otherMember);
 
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         _userInfoReader.Users[busyLecturerId] = new CouncilUserInfoContractDto(busyLecturerId, "Lecturer Busy", "busy@uit.edu.vn", "CB099", true);
@@ -308,6 +315,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Fails_WhenMemberIsAssignedGroupReviewerAndRoleIsChairman()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var groupId = Guid.NewGuid();
@@ -335,6 +343,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Fails_WhenMemberIsAssignedGroupReviewerAndRoleIsSecretary()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var groupId = Guid.NewGuid();
@@ -362,6 +371,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Succeeds_WhenMemberIsAssignedGroupReviewerAndRoleIsMember()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var groupId = Guid.NewGuid();
@@ -394,6 +404,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Succeeds_WhenValid()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var g1 = Guid.NewGuid();
@@ -419,6 +430,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenAdvisorIsCouncilMember_ConflictOfInterest()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var advisorId = Guid.NewGuid();
@@ -448,6 +460,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenReviewerRejectedGroup()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var groupId = Guid.NewGuid();
@@ -479,6 +492,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.Assignments.Add(new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = otherCouncil.Id, GroupId = groupId, OrderNumber = 1 });
 
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var handler = new AssignCouncilGroupsHandler(
@@ -495,6 +509,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenDuplicateOrderNumber()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var g1 = Guid.NewGuid();
@@ -521,6 +536,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenGroupReviewerIsCouncilChairman()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var reviewerId = Guid.NewGuid();
@@ -549,6 +565,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenGroupReviewerIsCouncilSecretary()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var reviewerId = Guid.NewGuid();
@@ -577,6 +594,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Succeeds_WhenGroupReviewerIsCouncilMember()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var reviewerId = Guid.NewGuid();
@@ -605,6 +623,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenGroupIsNotEligibleForDefense()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var groupId = Guid.NewGuid();
@@ -635,6 +654,7 @@ public sealed class CouncilApplicationTests
         _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
 
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var chairmanId = Guid.NewGuid();
@@ -675,6 +695,7 @@ public sealed class CouncilApplicationTests
     {
         _currentUser.Roles = new HashSet<string> { "Faculty" }; // Faculty cannot approve
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var handler = new ApproveCouncilHandler(
@@ -692,6 +713,7 @@ public sealed class CouncilApplicationTests
     {
         _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         // Only Chairman, missing Secretary
@@ -719,6 +741,7 @@ public sealed class CouncilApplicationTests
     {
         _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var cMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = Guid.NewGuid(), RoleInCouncil = CouncilMemberRole.Chairman };
@@ -744,6 +767,7 @@ public sealed class CouncilApplicationTests
     {
         _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var reviewerId = Guid.NewGuid();
@@ -782,6 +806,7 @@ public sealed class CouncilApplicationTests
     {
         _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var chairmanId = Guid.NewGuid();
@@ -934,6 +959,7 @@ public sealed class CouncilApplicationTests
     public async Task GetCouncilSchedule_AllowsStaffToView_WhenCouncilIsDraft()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var groupId = Guid.NewGuid();
@@ -1129,6 +1155,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Fails_WhenEmptyMembers()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var handler = new AddCouncilMembersHandler(
@@ -1145,6 +1172,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Fails_WhenDuplicateMemberWithinRequest()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var userId = Guid.NewGuid();
@@ -1166,6 +1194,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Fails_WhenMultipleSecretaries()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var s1 = Guid.NewGuid();
@@ -1190,6 +1219,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Fails_WhenMemberAlreadyInCouncil()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var userId = Guid.NewGuid();
@@ -1213,6 +1243,7 @@ public sealed class CouncilApplicationTests
     public async Task AddCouncilMembers_Fails_WhenUnauthenticatedOrStudent()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         _currentUser.Roles = new HashSet<string> { "Student" };
@@ -1261,6 +1292,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenEmptyAssignments()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var handler = new AssignCouncilGroupsHandler(
@@ -1277,6 +1309,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenDuplicateGroupInRequest()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var gId = Guid.NewGuid();
@@ -1297,6 +1330,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenOrderNumberIsZeroOrNegative(int invalidOrder)
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var handler = new AssignCouncilGroupsHandler(
@@ -1313,6 +1347,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenGroupNotFound()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var handler = new AssignCouncilGroupsHandler(
@@ -1330,6 +1365,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenGroupNotInSameBatch()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var groupId = Guid.NewGuid();
@@ -1351,6 +1387,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenGroupIsStopped()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var groupId = Guid.NewGuid();
@@ -1390,6 +1427,7 @@ public sealed class CouncilApplicationTests
         _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
 
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var handler = new ApproveCouncilHandler(
@@ -1427,6 +1465,7 @@ public sealed class CouncilApplicationTests
         _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
 
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         // Only Secretary, no Chairman
@@ -1454,6 +1493,7 @@ public sealed class CouncilApplicationTests
         _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
 
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var cMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = Guid.NewGuid(), RoleInCouncil = CouncilMemberRole.Chairman };
@@ -1488,6 +1528,7 @@ public sealed class CouncilApplicationTests
 
         var busyLecturer = Guid.NewGuid();
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
         await _councilRepo.AddAsync(council);
 
         var cMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = busyLecturer, RoleInCouncil = CouncilMemberRole.Chairman };

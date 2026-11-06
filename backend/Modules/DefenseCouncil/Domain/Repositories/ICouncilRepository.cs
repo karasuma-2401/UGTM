@@ -8,6 +8,11 @@ public interface ICouncilRepository
 
     Task<Council?> GetByIdWithDetailsAsync(Guid id, CancellationToken ct = default);
 
+    Task<IReadOnlyList<Council>> GetCouncilsForOverviewAsync(
+        Guid? batchId = null,
+        UGTM.Modules.DefenseCouncil.Domain.Enums.CouncilStatus? status = null,
+        CancellationToken ct = default);
+
     Task<bool> ExistsByCodeInBatchAsync(
         Guid batchId,
         string councilCode,
@@ -76,6 +81,8 @@ public interface ICouncilRepository
     Task UpdateMinuteLockStatusAsync(Guid assignmentId, UGTM.Modules.DefenseCouncil.Domain.Enums.CouncilMinuteLockStatus status, CancellationToken ct = default);
 
     Task<CouncilMinute?> GetMinuteByAssignmentIdAsync(Guid assignmentId, CancellationToken ct = default);
+
+    Task SaveMinuteAsync(CouncilMinute minute, CancellationToken ct = default);
 
     Task SaveCouncilMinuteDraftAsync(Guid assignmentId, string? studentFeedback, string? overrideMarker, CancellationToken ct = default);
 }

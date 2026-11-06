@@ -157,6 +157,11 @@ public sealed class ApproveCouncilHandler(
             }
         }
 
+        if (!council.IsSubmittedToAcademicAffairs)
+        {
+            return Result.Failure<CouncilResponseDto>(CouncilErrors.NotSubmittedToAcademicAffairs);
+        }
+
         var nowUtc = DateTime.UtcNow;
         var approvedBy = currentUser.UserId ?? Guid.Empty;
 

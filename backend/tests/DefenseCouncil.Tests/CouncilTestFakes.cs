@@ -5,12 +5,29 @@ using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.Identity.Contracts.Authentication;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
 using UGTM.Modules.ThesisManagement.Contracts.DefenseCouncils;
 using UGTM.Modules.TopicCatalog.Contracts.DefenseCouncils;
 
 namespace UGTM.Modules.DefenseCouncil.Tests;
+
+public sealed class FakeReauthenticationVerifier : IReauthenticationVerifier
+{
+    public ReauthenticationOutcome DefaultOutcome { get; set; } = ReauthenticationOutcome.Verified;
+    public Dictionary<(Guid UserId, string Password), ReauthenticationOutcome> CustomOutcomes { get; } = new();
+
+    public Task<ReauthenticationOutcome> VerifyPasswordAsync(Guid userId, string password, CancellationToken ct = default)
+    {
+        if (CustomOutcomes.TryGetValue((userId, password), out var outcome))
+        {
+            return Task.FromResult(outcome);
+        }
+
+        return Task.FromResult(DefaultOutcome);
+    }
+}
 
 public sealed class FakeCurrentUser : ICurrentUser
 {
@@ -172,6 +189,52 @@ public sealed class FakeCouncilRepository : ICouncilRepository
             council.Assignments = Assignments.Where(a => a.CouncilId == id).ToList();
         }
         return Task.FromResult(council);
+    }
+
+    public Task<IReadOnlyList<Council>> GetCouncilsForOverviewAsync(
+        Guid? batchId = null,
+        CouncilStatus? status = null,
+        CancellationToken ct = default)
+    {
+        var list = Councils.AsEnumerable();
+        if (batchId.HasValue) list = list.Where(c => c.BatchId == batchId.Value);
+        if (status.HasValue) list = list.Where(c => c.Status == status.Value);
+
+        var result = list.Select(c =>
+        {
+            var clone = new Council
+            {
+                Id = c.Id,
+                BatchId = c.BatchId,
+                CouncilCode = c.CouncilCode,
+                DefenseDate = c.DefenseDate,
+                TimeSlot = c.TimeSlot,
+                Room = c.Room,
+                Status = c.Status,
+                DecisionNumber = c.DecisionNumber,
+                SignedDate = c.SignedDate,
+                DecisionFileUrl = c.DecisionFileUrl,
+                ApprovedBy = c.ApprovedBy,
+                ApprovedAt = c.ApprovedAt,
+                IsSubmittedToAcademicAffairs = c.IsSubmittedToAcademicAffairs,
+                SubmittedAt = c.SubmittedAt,
+                SubmittedBy = c.SubmittedBy,
+                SubmissionNotes = c.SubmissionNotes
+            };
+
+            clone.Members = Members.Where(m => m.CouncilId == c.Id).ToList();
+            var assignments = Assignments.Where(a => a.CouncilId == c.Id).ToList();
+            foreach (var a in assignments)
+            {
+                a.Council = clone;
+                a.Minute = Minutes.FirstOrDefault(m => m.CouncilAssignmentId == a.Id);
+                a.Scores = Scores.Where(s => s.CouncilAssignmentId == a.Id).ToList();
+            }
+            clone.Assignments = assignments;
+            return clone;
+        }).OrderBy(c => c.DefenseDate).ThenBy(c => c.CouncilCode).ToList();
+
+        return Task.FromResult<IReadOnlyList<Council>>(result);
     }
 
     public Task<bool> ExistsByCodeInBatchAsync(Guid batchId, string councilCode, Guid? excludeCouncilId = null, CancellationToken ct = default)
@@ -394,6 +457,11 @@ public sealed class FakeCouncilRepository : ICouncilRepository
         var minute = Minutes.FirstOrDefault(m => m.CouncilAssignmentId == assignmentId);
         if (minute != null)
         {
+            if (minute.LockStatus == CouncilMinuteLockStatus.UnlockedByOverride && status == CouncilMinuteLockStatus.AllScoresEntered)
+            {
+                return Task.CompletedTask;
+            }
+
             minute.LockStatus = status;
         }
         else
@@ -411,6 +479,16 @@ public sealed class FakeCouncilRepository : ICouncilRepository
     public Task<CouncilMinute?> GetMinuteByAssignmentIdAsync(Guid assignmentId, CancellationToken ct = default)
     {
         return Task.FromResult(Minutes.FirstOrDefault(m => m.CouncilAssignmentId == assignmentId));
+    }
+
+    public Task SaveMinuteAsync(CouncilMinute minute, CancellationToken ct = default)
+    {
+        var existing = Minutes.FirstOrDefault(m => m.CouncilAssignmentId == minute.CouncilAssignmentId);
+        if (existing == null)
+        {
+            Minutes.Add(minute);
+        }
+        return Task.CompletedTask;
     }
 
     public Task SaveCouncilMinuteDraftAsync(Guid assignmentId, string? studentFeedback, string? overrideMarker, CancellationToken ct = default)

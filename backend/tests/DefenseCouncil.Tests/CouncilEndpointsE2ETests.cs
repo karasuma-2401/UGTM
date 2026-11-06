@@ -16,9 +16,17 @@ using UGTM.Modules.DefenseCouncil.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Application.Councils.AddCouncilMembers;
 using UGTM.Modules.DefenseCouncil.Application.Councils.ApproveCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.LockCouncilMinute;
+using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
+using UGTM.Modules.DefenseCouncil.Application.Councils.UnlockCouncilMinute;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilsOverview;
+using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilToAcademicAffairs;
 using UGTM.Modules.DefenseCouncil.Application.Grading;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.Grading;
@@ -27,6 +35,7 @@ using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Grading;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
+using UGTM.Modules.Identity.Contracts.Authentication;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
@@ -48,6 +57,7 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
     private readonly FakeDefenseGroupContract _defenseGroupContract = new();
     private readonly FakeTopicDefenseContract _topicDefenseContract = new();
     private readonly FakeDefenseCouncilAuditOutbox _auditOutbox = new();
+    private readonly FakeReauthenticationVerifier _reauthVerifier = new();
 
     private readonly Guid _batchId = Guid.NewGuid();
     private readonly DateOnly _defenseDate = new(2026, 12, 20);
@@ -80,13 +90,22 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         builder.Services.AddSingleton<IDefenseGroupContract>(_defenseGroupContract);
         builder.Services.AddSingleton<ITopicDefenseContract>(_topicDefenseContract);
         builder.Services.AddSingleton<IDefenseCouncilAuditOutbox>(_auditOutbox);
+        builder.Services.AddSingleton<IReauthenticationVerifier>(_reauthVerifier);
 
         // Register council command and query handlers
+        builder.Services.AddScoped<CouncilMinuteWorkspaceLoader>();
         builder.Services.AddScoped<CreateCouncilHandler>();
         builder.Services.AddScoped<AddCouncilMembersHandler>();
         builder.Services.AddScoped<AssignCouncilGroupsHandler>();
         builder.Services.AddScoped<ApproveCouncilHandler>();
         builder.Services.AddScoped<GetCouncilScheduleHandler>();
+        builder.Services.AddScoped<GetCouncilMinuteWorkspaceHandler>();
+        builder.Services.AddScoped<SaveCouncilMinuteHandler>();
+        builder.Services.AddScoped<LockCouncilMinuteHandler>();
+        builder.Services.AddScoped<UnlockCouncilMinuteHandler>();
+        builder.Services.AddScoped<GetCouncilsOverviewHandler>();
+        builder.Services.AddScoped<UpdateCouncilScheduleHandler>();
+        builder.Services.AddScoped<SubmitCouncilToAcademicAffairsHandler>();
 
         // Setup test authentication
         builder.Services.AddAuthentication(TestE2EAuthHandler.SchemeName)
@@ -236,6 +255,10 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         var facultyDraftData = await ReadDataAsync(facultyDraftLookup);
         Assert.Equal("Draft", facultyDraftData.GetProperty("status").GetString());
 
+        // Step 5b: Faculty submits council to Academic Affairs (POST /api/councils/{id}/submit)
+        var submitResponse = await _client.PostAsJsonAsync($"/api/councils/{councilId}/submit", new SubmitCouncilToAcademicAffairsInputDto("Gửi PĐT thẩm định"));
+        Assert.Equal(HttpStatusCode.OK, submitResponse.StatusCode);
+
         // Step 6: Academic Affairs approves council (PUT /api/councils/{id}/approve)
         var aaUserId = Guid.NewGuid();
         Authenticate(aaUserId, "AcademicAffairs");
@@ -247,8 +270,9 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         var approveData = await ReadDataAsync(approveResponse);
         Assert.Equal("Active", approveData.GetProperty("status").GetString());
         Assert.Equal("123/QĐ-ĐHCNTT", approveData.GetProperty("decisionNumber").GetString());
-        Assert.Single(_auditOutbox.Entries);
-        Assert.Equal("DefenseCouncil.Council.Approved", _auditOutbox.Entries[0].Entry.Action);
+        Assert.Equal(2, _auditOutbox.Entries.Count);
+        Assert.Contains(_auditOutbox.Entries, e => e.Entry.Action == "DefenseCouncil.Council.SubmittedToAcademicAffairs");
+        Assert.Contains(_auditOutbox.Entries, e => e.Entry.Action == "DefenseCouncil.Council.Approved");
 
         // Step 7: Student can now view published schedule by groupId -> 200 OK
         Authenticate(studentId1, "Student");
@@ -417,6 +441,13 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         var assignResponse = await _client.PostAsJsonAsync($"/api/councils/{councilId}/assignments",
             new AssignCouncilGroupsInputDto(Assignments: [new(groupId, 1)]));
         Assert.Equal(HttpStatusCode.OK, assignResponse.StatusCode);
+
+        // 3b. Faculty submits council
+        var facultyUserId = Guid.NewGuid();
+        Authenticate(facultyUserId, "Faculty");
+        var submitResponse = await _client.PostAsJsonAsync($"/api/councils/{councilId}/submit",
+            new SubmitCouncilToAcademicAffairsInputDto("Submit"));
+        Assert.Equal(HttpStatusCode.OK, submitResponse.StatusCode);
 
         // 4. Academic Affairs approves council -> 200 OK
         Authenticate(aaUserId, "AcademicAffairs");

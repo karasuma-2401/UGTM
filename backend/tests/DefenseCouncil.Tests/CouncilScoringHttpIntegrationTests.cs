@@ -17,12 +17,15 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.AddCouncilMembers;
 using UGTM.Modules.DefenseCouncil.Application.Councils.ApproveCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CheckCouncilDiscrepancy;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.LockCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
+using UGTM.Modules.DefenseCouncil.Application.Councils.UnlockCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Grading;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.Grading;
@@ -31,6 +34,7 @@ using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Grading;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
+using UGTM.Modules.Identity.Contracts.Authentication;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
@@ -53,6 +57,7 @@ public sealed class CouncilScoringHttpIntegrationTests : IAsyncLifetime
     private readonly FakeDefenseGroupContract _defenseGroupContract = new();
     private readonly FakeTopicDefenseContract _topicDefenseContract = new();
     private readonly FakeDefenseCouncilAuditOutbox _auditOutbox = new();
+    private readonly FakeReauthenticationVerifier _reauthVerifier = new();
 
     private readonly Guid _batchId = Guid.NewGuid();
     private readonly Guid _councilId = Guid.NewGuid();
@@ -97,8 +102,10 @@ public sealed class CouncilScoringHttpIntegrationTests : IAsyncLifetime
         builder.Services.AddSingleton<IDefenseGroupContract>(_defenseGroupContract);
         builder.Services.AddSingleton<ITopicDefenseContract>(_topicDefenseContract);
         builder.Services.AddSingleton<IDefenseCouncilAuditOutbox>(_auditOutbox);
+        builder.Services.AddSingleton<IReauthenticationVerifier>(_reauthVerifier);
 
         // Handlers
+        builder.Services.AddScoped<CouncilMinuteWorkspaceLoader>();
         builder.Services.AddScoped<CreateCouncilHandler>();
         builder.Services.AddScoped<AddCouncilMembersHandler>();
         builder.Services.AddScoped<AssignCouncilGroupsHandler>();
@@ -108,6 +115,8 @@ public sealed class CouncilScoringHttpIntegrationTests : IAsyncLifetime
         builder.Services.AddScoped<CheckCouncilDiscrepancyHandler>();
         builder.Services.AddScoped<GetCouncilMinuteWorkspaceHandler>();
         builder.Services.AddScoped<SaveCouncilMinuteHandler>();
+        builder.Services.AddScoped<LockCouncilMinuteHandler>();
+        builder.Services.AddScoped<UnlockCouncilMinuteHandler>();
         builder.Services.AddSingleton<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilScoreWriteGuard, TestCouncilScoreWriteGuard>();
         builder.Services.AddScoped<UGTM.Modules.Identity.Contracts.FinalSubmissions.IFinalSubmissionAuthorityReader, TestScoreAuthority>();
         builder.Services.AddSingleton(TimeProvider.System);
