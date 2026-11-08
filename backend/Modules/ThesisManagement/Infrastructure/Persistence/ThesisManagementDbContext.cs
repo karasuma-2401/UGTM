@@ -28,7 +28,9 @@ public sealed class ThesisManagementDbContext(DbContextOptions<ThesisManagementD
     public DbSet<StudentGroup> StudentGroups => Set<StudentGroup>();
     public DbSet<StudentGroupMember> StudentGroupMembers => Set<StudentGroupMember>();
     public DbSet<StudentRegistrationPenalty> StudentRegistrationPenalties => Set<StudentRegistrationPenalty>();
+    public DbSet<TopicRegistrationEmail> TopicRegistrationEmails => Set<TopicRegistrationEmail>();
     public DbSet<SubmissionFile> SubmissionFiles => Set<SubmissionFile>();
+    public DbSet<ThesisUploadAttempt> ThesisUploadAttempts => Set<ThesisUploadAttempt>();
     public DbSet<SubmissionReview> SubmissionReviews => Set<SubmissionReview>();
     public DbSet<Syllabus> Syllabuses => Set<Syllabus>();
 

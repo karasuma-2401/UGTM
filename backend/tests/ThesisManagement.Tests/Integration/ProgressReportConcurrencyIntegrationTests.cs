@@ -15,6 +15,69 @@ public sealed class ProgressReportConcurrencyIntegrationTests(PostgreSqlFixture 
 {
     private static readonly DateTime Now = new(2026, 10, 23, 9, 0, 0, DateTimeKind.Utc);
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Confirmation_and_expiration_cannot_both_commit(bool confirmationFirst)
+    {
+        await using var migrationDb = CreateMigrationDbContext();
+        await ResetSchemasAsync(migrationDb);
+        try
+        {
+            await migrationDb.Database.GetService<IMigrator>().MigrateAsync();
+            var studentId = Guid.NewGuid();
+            Guid memberId;
+            await using (var seed = CreateThesisDbContext())
+            await using (var transaction = await seed.Database.BeginTransactionAsync())
+            {
+                await seed.Database.ExecuteSqlRawAsync("SET LOCAL session_replication_role = replica;");
+                var group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Now.AddDays(-1));
+                var member = group.AddPendingMember(studentId, Guid.NewGuid(), Guid.NewGuid(), "token",
+                    Now.AddDays(-1), Now.AddSeconds(-1));
+                memberId = member.Id;
+                seed.StudentGroups.Add(group);
+                await seed.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+
+            await using var confirm = CreateThesisDbContext();
+            await using var expire = CreateThesisDbContext();
+            await using var expireTransaction = await expire.Database.BeginTransactionAsync();
+            await expire.Database.ExecuteSqlRawAsync("SET LOCAL session_replication_role = replica;");
+            var confirmingMember = await confirm.StudentGroupMembers.SingleAsync(m => m.Id == memberId);
+            var expiringMember = await expire.StudentGroupMembers.Include(m => m.Group).SingleAsync(m => m.Id == memberId);
+            confirmingMember.Confirm(Now.AddMinutes(-1));
+            Assert.True(expiringMember.Group.RemoveMember(studentId));
+            var penalty = StudentRegistrationPenalty.Create(studentId);
+            penalty.RecordViolation(Now, 3);
+            expire.StudentRegistrationPenalties.Add(penalty);
+
+            if (confirmationFirst)
+            {
+                await confirm.SaveChangesAsync();
+                await Assert.ThrowsAsync<ThesisManagementConcurrencyException>(() => expire.SaveChangesAsync());
+            }
+            else
+            {
+                await expire.SaveChangesAsync();
+                await expireTransaction.CommitAsync();
+                await Assert.ThrowsAsync<ThesisManagementConcurrencyException>(() => confirm.SaveChangesAsync());
+            }
+
+            await using var verification = CreateThesisDbContext();
+            var saved = await verification.StudentGroupMembers.AsNoTracking().SingleOrDefaultAsync(m => m.Id == memberId);
+            Assert.Equal(!confirmationFirst, await verification.StudentRegistrationPenalties.AnyAsync(p => p.StudentId == studentId));
+            if (confirmationFirst)
+                Assert.Equal(MemberConfirmationStatus.Confirmed, saved!.ConfirmationStatus);
+            else
+                Assert.Null(saved);
+        }
+        finally
+        {
+            await ResetSchemasAsync(migrationDb);
+        }
+    }
+
     [Fact]
     public async Task Concurrent_review_of_the_same_version_rejects_the_stale_request()
     {

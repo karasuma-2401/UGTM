@@ -51,6 +51,11 @@ public sealed class CreateProgressMilestoneHandler(
             && group.Status != StudentGroupStatus.MidtermSubmitted
             && group.Status != StudentGroupStatus.SyllabusApproved)
         {
+            if (group.Status is not (StudentGroupStatus.Registered or StudentGroupStatus.SyllabusRevisionRequired or StudentGroupStatus.SyllabusSubmitted))
+            {
+                return Result.Failure<ProgressMilestoneDto>(ProgressMilestoneErrors.GateOneNotApproved);
+            }
+
             var syllabus = syllabusRepository is not null
                 ? await syllabusRepository.GetByGroupIdAsync(command.GroupId, cancellationToken)
                 : null;

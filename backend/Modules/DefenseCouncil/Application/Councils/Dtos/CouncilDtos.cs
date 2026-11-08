@@ -196,7 +196,10 @@ public sealed record MinuteCalculationPreviewDto(
     decimal AdjustedAverage,
     decimal? FinalRoundedScore,
     string FormulaExplanation,
-    bool IsReadyToLock);
+    bool IsReadyToLock,
+    Guid? ConfigurationId = null,
+    int? ConfigurationVersion = null,
+    string? CalculationErrorCode = null);
 
 public sealed record CouncilMinuteWorkspaceResponseDto(
     MinuteWorkspaceAssignmentInfoDto AssignmentInfo,
@@ -208,7 +211,8 @@ public sealed record SaveCouncilMinuteInputDto(
     string? SecretaryMarking = null,
     string? TargetComponentCode = null,
     string? StudentFeedback = null,
-    string? ChairmanConclusion = null);
+    string? ChairmanConclusion = null,
+    string? Reason = null);
 
 public sealed record SaveCouncilMinuteResponseDto(
     Guid AssignmentId,

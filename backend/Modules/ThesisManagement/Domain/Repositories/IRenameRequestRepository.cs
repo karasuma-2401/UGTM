@@ -11,6 +11,10 @@ public interface IRenameRequestRepository
         Guid id,
         CancellationToken cancellationToken = default);
 
+    Task<RenameRequest?> LockByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<RenameRequest>> GetByGroupIdAsync(
         Guid groupId,
         CancellationToken cancellationToken = default);

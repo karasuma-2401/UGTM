@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
@@ -22,7 +23,8 @@ public sealed record TopicRegistrationDetailsDto(
 
 public sealed class TopicRegistrationStore(
     ThesisManagementDbContext db,
-    IKltnBatchReader batchReader) : ITopicRegistrationStore
+    IKltnBatchReader batchReader,
+    ITopicRegistrationInvitationOutbox invitationOutbox) : ITopicRegistrationStore
 {
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> TopicLocks = new();
     private static readonly ConcurrentDictionary<Guid, TopicRegistrationDetailsDto> InProcessTestTopics = new();
@@ -40,8 +42,12 @@ public sealed class TopicRegistrationStore(
         DateTime nowUtc,
         TimeSpan confirmationWindow,
         string confirmationTokenHash,
+        TopicRegistrationInvitation? invitation,
         CancellationToken cancellationToken = default)
     {
+        if (studentBId.HasValue != (invitation is not null))
+            throw new ArgumentException("A partner registration requires an invitation payload.", nameof(invitation));
+
         var sem = TopicLocks.GetOrAdd(topicId, _ => new SemaphoreSlim(1, 1));
         await sem.WaitAsync(cancellationToken);
         try
@@ -74,6 +80,8 @@ public sealed class TopicRegistrationStore(
                         return regResult;
                     }
 
+                    if (invitation is not null)
+                        EnqueueInvitation(regResult.Value.GroupId, studentBId!.Value, invitation, confirmationWindow, nowUtc);
                     await db.SaveChangesAsync(cancellationToken);
                     await transaction.CommitAsync(cancellationToken);
                     return regResult;
@@ -101,6 +109,8 @@ public sealed class TopicRegistrationStore(
                     return regResult;
                 }
 
+                if (invitation is not null)
+                    EnqueueInvitation(regResult.Value.GroupId, studentBId!.Value, invitation, confirmationWindow, nowUtc);
                 await db.SaveChangesAsync(cancellationToken);
                 return regResult;
             }
@@ -109,6 +119,16 @@ public sealed class TopicRegistrationStore(
         {
             sem.Release();
         }
+    }
+
+    private void EnqueueInvitation(Guid groupId, Guid studentId, TopicRegistrationInvitation invitation,
+        TimeSpan confirmationWindow, DateTime nowUtc)
+    {
+        var member = db.ChangeTracker.Entries<StudentGroup>()
+            .Select(entry => entry.Entity)
+            .Single(group => group.Id == groupId)
+            .Members.Single(value => value.StudentId == studentId);
+        invitationOutbox.Enqueue(member.Id, invitation, confirmationWindow, nowUtc);
     }
 
     private async Task<TopicRegistrationDetailsDto?> QueryTopicForUpdateAsync(
@@ -197,10 +217,19 @@ public sealed class TopicRegistrationStore(
             .Include(g => g.Members)
             .FirstOrDefaultAsync(g => g.TopicId == topic.Id, cancellationToken);
 
+        var groupMemberIds = group?.Members.Select(member => member.Id).ToArray() ?? [];
+        var pendingDeliveryIds = group is null
+            ? new HashSet<Guid>()
+            : (await db.TopicRegistrationEmails.AsNoTracking()
+                .Where(email => email.Type == "Invite" && email.ProcessedAtUtc == null
+                    && groupMemberIds.Contains(email.MemberId))
+                .Select(email => email.MemberId).ToListAsync(cancellationToken)).ToHashSet();
+
         if (group is not null)
         {
             var expiredMembers = group.Members
                 .Where(m => m.ConfirmationStatus == MemberConfirmationStatus.Pending
+                            && !pendingDeliveryIds.Contains(m.Id)
                             && m.ConfirmationExpiresAtUtc.HasValue
                             && m.ConfirmationExpiresAtUtc.Value <= nowUtc)
                 .ToList();
@@ -222,7 +251,7 @@ public sealed class TopicRegistrationStore(
         var occupiedSlots = group?.Members.Count(m =>
             m.ConfirmationStatus == MemberConfirmationStatus.Confirmed
             || (m.ConfirmationStatus == MemberConfirmationStatus.Pending
-                && (!m.ConfirmationExpiresAtUtc.HasValue || m.ConfirmationExpiresAtUtc.Value > nowUtc))) ?? 0;
+                && (pendingDeliveryIds.Contains(m.Id) || !m.ConfirmationExpiresAtUtc.HasValue || m.ConfirmationExpiresAtUtc.Value > nowUtc))) ?? 0;
 
         var requestedSlots = studentBId.HasValue ? 2 : 1;
 
@@ -242,23 +271,25 @@ public sealed class TopicRegistrationStore(
             db.StudentGroups.Add(group);
         }
 
-        group.AddConfirmedMember(studentAId, topic.BatchId, nowUtc);
+        db.StudentGroupMembers.Add(group.AddConfirmedMember(studentAId, topic.BatchId, nowUtc));
 
         DateTime? expiresAt = null;
         if (studentBId.HasValue)
         {
             expiresAt = nowUtc.Add(confirmationWindow);
-            group.AddPendingMember(
+            var pendingMember = group.AddPendingMember(
                 studentBId.Value,
                 topic.BatchId,
                 invitedByStudentId: studentAId,
                 confirmationTokenHash: confirmationTokenHash,
                 joinedAt: nowUtc,
                 expiresAtUtc: expiresAt.Value);
+            db.StudentGroupMembers.Add(pendingMember);
+            pendingMember.WaitForConfirmationDelivery();
         }
 
         var message = studentBId.HasValue
-            ? "Đăng ký đề tài thành công và đang chờ xác nhận từ thành viên cùng nhóm."
+            ? "Đăng ký đề tài thành công; thư mời đang chờ gửi tới thành viên cùng nhóm."
             : "Đăng ký đề tài thành công.";
 
         return Result.Success(new TopicRegistrationResultDto(
@@ -266,7 +297,7 @@ public sealed class TopicRegistrationStore(
             topic.Id,
             topic.BatchId,
             IsPendingConfirmation: studentBId.HasValue,
-            ConfirmationExpiresAtUtc: expiresAt,
+            ConfirmationExpiresAtUtc: null,
             Message: message));
     }
 
@@ -302,7 +333,14 @@ public sealed class TopicRegistrationStore(
         }
 
         member.Confirm(nowUtc);
-        await db.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (ThesisManagementConcurrencyException)
+        {
+            return Result.Failure<ConfirmRegistrationResultDto>(TopicRegistrationErrors.ConcurrencyConflict);
+        }
 
         return Result.Success(new ConfirmRegistrationResultDto(
             member.GroupId,
@@ -321,7 +359,9 @@ public sealed class TopicRegistrationStore(
             .Include(m => m.Group)
             .Where(m => m.ConfirmationStatus == MemberConfirmationStatus.Pending
                         && m.ConfirmationExpiresAtUtc.HasValue
-                        && m.ConfirmationExpiresAtUtc.Value <= nowUtc)
+                        && m.ConfirmationExpiresAtUtc.Value <= nowUtc
+                        && !db.TopicRegistrationEmails.Any(email => email.MemberId == m.Id
+                            && email.Type == "Invite" && email.ProcessedAtUtc == null))
             .ToListAsync(cancellationToken);
 
         if (expiredMembers.Count == 0)
@@ -427,6 +467,15 @@ public sealed class TopicRegistrationStore(
         await sem.WaitAsync(cancellationToken);
         try
         {
+            if (db.Database.CurrentTransaction is { } existingTransaction)
+            {
+                var topic = await QueryTopicForUpdateAsync(topicId, existingTransaction.GetDbTransaction(), cancellationToken);
+                if (topic is null) return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.TopicNotFound);
+                var result = await ExecuteAdvisorAssignLogicAsync(topic, advisorId, isAdmin, studentIds, nowUtc, cancellationToken);
+                if (result.IsSuccess) await db.SaveChangesAsync(cancellationToken);
+                return result;
+            }
+
             if (db.Database.IsRelational())
             {
                 var strategy = db.Database.CreateExecutionStrategy();
@@ -501,6 +550,15 @@ public sealed class TopicRegistrationStore(
         await sem.WaitAsync(cancellationToken);
         try
         {
+            if (db.Database.CurrentTransaction is { } existingTransaction)
+            {
+                var topic = await QueryTopicForUpdateAsync(topicId, existingTransaction.GetDbTransaction(), cancellationToken);
+                if (topic is null) return Result.Failure(TopicRegistrationErrors.TopicNotFound);
+                var result = await ExecuteAdvisorUnassignLogicAsync(topic, advisorId, isAdmin, nowUtc, cancellationToken);
+                if (result.IsSuccess) await db.SaveChangesAsync(cancellationToken);
+                return result;
+            }
+
             if (db.Database.IsRelational())
             {
                 var strategy = db.Database.CreateExecutionStrategy();
@@ -654,7 +712,10 @@ public sealed class TopicRegistrationStore(
         {
             if (!currentMemberIds.Contains(studentId))
             {
-                group.AddConfirmedMember(studentId, topic.BatchId, nowUtc);
+                // A member has an application-assigned UUID. When it is added to an
+                // already tracked group, explicitly mark it Added instead of letting EF
+                // mistake the non-default key for an existing row.
+                db.StudentGroupMembers.Add(group.AddConfirmedMember(studentId, topic.BatchId, nowUtc));
             }
         }
 

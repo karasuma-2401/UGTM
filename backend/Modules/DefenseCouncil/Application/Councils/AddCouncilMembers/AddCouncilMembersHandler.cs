@@ -44,6 +44,12 @@ public sealed class AddCouncilMembersHandler(
                 Error.Validation("Council.EmptyMembers", "Danh sách thành viên không được để trống."));
         }
 
+        if (command.Members.Any(member => member.UserId == Guid.Empty || !Enum.IsDefined(member.Role)))
+        {
+            return Result.Failure<IReadOnlyList<CouncilMemberResponseDto>>(
+                Error.Validation("Council.InvalidMember", "Thành viên và vai trò hội đồng phải hợp lệ."));
+        }
+
         var council = await councilRepository.GetByIdWithDetailsAsync(command.CouncilId, cancellationToken);
         if (council is null)
         {
@@ -164,7 +170,15 @@ public sealed class AddCouncilMembersHandler(
         }).ToList();
 
         await councilRepository.AddMembersAsync(newMembers, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DefenseCouncilUniqueConstraintException error) when (error.ConstraintName is
+            "ux_council_member_leadership_role" or "ix_council_member_council_id_user_id")
+        {
+            return Result.Failure<IReadOnlyList<CouncilMemberResponseDto>>(CouncilErrors.ConcurrentModification);
+        }
 
         var resultDtos = newMembers.Select(m =>
         {

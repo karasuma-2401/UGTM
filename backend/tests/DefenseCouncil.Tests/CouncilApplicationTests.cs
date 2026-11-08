@@ -113,6 +113,21 @@ public sealed class CouncilApplicationTests
     #region 2. AddCouncilMembersHandler Tests
 
     [Fact]
+    public async Task AddCouncilMembers_rejects_an_undefined_role()
+    {
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        await _councilRepo.AddAsync(council);
+        var handler = new AddCouncilMembersHandler(
+            _councilRepo, _uow, _userInfoReader, _defenseGroupContract, _topicDefenseContract, _currentUser);
+
+        var result = await handler.HandleAsync(new AddCouncilMembersCommand(council.Id,
+            [new CouncilMemberInputDto(Guid.NewGuid(), (CouncilMemberRole)99)]));
+
+        Assert.Equal("Council.InvalidMember", result.Error.Code);
+        Assert.Equal(0, _uow.SaveCount);
+    }
+
+    [Fact]
     public async Task AddCouncilMembers_Succeeds_WithChairmanSecretaryAndMember()
     {
         var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
@@ -415,7 +430,7 @@ public sealed class CouncilApplicationTests
         _topicDefenseContract.Topics[t1] = new TopicDefenseDetailsContractDto(t1, _batchId, adv1, "Tiêu đề 1", "Title 1");
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(g1, 1)]);
         var result = await handler.HandleAsync(command);
@@ -447,7 +462,7 @@ public sealed class CouncilApplicationTests
         _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, advisorId, "Đề tài của Thầy A", null);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
         var result = await handler.HandleAsync(command);
@@ -473,7 +488,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.RejectedGroupIds.Add(groupId);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
         var result = await handler.HandleAsync(command);
@@ -496,7 +511,7 @@ public sealed class CouncilApplicationTests
         await _councilRepo.AddAsync(council);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
         var result = await handler.HandleAsync(command);
@@ -523,7 +538,7 @@ public sealed class CouncilApplicationTests
         _topicDefenseContract.Topics[t2] = new TopicDefenseDetailsContractDto(t2, _batchId, Guid.NewGuid(), "T2", null);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(g1, 1), new(g2, 1)]);
         var result = await handler.HandleAsync(command);
@@ -552,7 +567,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.ActiveReviewers[groupId] = reviewerId;
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
         var result = await handler.HandleAsync(command);
@@ -581,7 +596,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.ActiveReviewers[groupId] = reviewerId;
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
         var result = await handler.HandleAsync(command);
@@ -610,7 +625,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.ActiveReviewers[groupId] = reviewerId;
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
         var result = await handler.HandleAsync(command);
@@ -635,7 +650,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.IneligibleDefenseGroupIds.Add(groupId);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
         var result = await handler.HandleAsync(command);
@@ -677,7 +692,7 @@ public sealed class CouncilApplicationTests
         _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, advisorId, "Đề tài tốt nghiệp", null);
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, "QD-1234/QĐ-ĐHCNTT", new DateOnly(2026, 12, 1), "https://storage.uit.edu.vn/qd-1234.pdf");
         var result = await handler.HandleAsync(command);
@@ -699,7 +714,7 @@ public sealed class CouncilApplicationTests
         await _councilRepo.AddAsync(council);
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, "QD-1234");
         var result = await handler.HandleAsync(command);
@@ -727,7 +742,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.Assignments.Add(assignment);
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, "QD-1234");
         var result = await handler.HandleAsync(command);
@@ -753,7 +768,7 @@ public sealed class CouncilApplicationTests
 
         // 0 assignments
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, "QD-1234");
         var result = await handler.HandleAsync(command);
@@ -792,7 +807,7 @@ public sealed class CouncilApplicationTests
         _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, advisorId, "Đề tài AI", null);
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, "QD-1234");
         var result = await handler.HandleAsync(command);
@@ -831,7 +846,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.IneligibleDefenseGroupIds.Add(groupId);
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, "QD-1234");
         var result = await handler.HandleAsync(command);
@@ -1262,7 +1277,7 @@ public sealed class CouncilApplicationTests
     public async Task AssignCouncilGroups_Fails_WhenCouncilNotFound()
     {
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(Guid.NewGuid(), [new(Guid.NewGuid(), 1)]);
         var result = await handler.HandleAsync(command);
@@ -1279,7 +1294,7 @@ public sealed class CouncilApplicationTests
         await _councilRepo.AddAsync(council);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(Guid.NewGuid(), 1)]);
         var result = await handler.HandleAsync(command);
@@ -1296,7 +1311,7 @@ public sealed class CouncilApplicationTests
         await _councilRepo.AddAsync(council);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, []);
         var result = await handler.HandleAsync(command);
@@ -1314,7 +1329,7 @@ public sealed class CouncilApplicationTests
 
         var gId = Guid.NewGuid();
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(gId, 1), new(gId, 2)]);
         var result = await handler.HandleAsync(command);
@@ -1334,7 +1349,7 @@ public sealed class CouncilApplicationTests
         await _councilRepo.AddAsync(council);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(Guid.NewGuid(), invalidOrder)]);
         var result = await handler.HandleAsync(command);
@@ -1351,7 +1366,7 @@ public sealed class CouncilApplicationTests
         await _councilRepo.AddAsync(council);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var nonExistentGroupId = Guid.NewGuid();
         var command = new AssignCouncilGroupsCommand(council.Id, [new(nonExistentGroupId, 1)]);
@@ -1374,7 +1389,7 @@ public sealed class CouncilApplicationTests
             groupId, Guid.NewGuid(), otherBatchId, "InProgress", DateTime.UtcNow, []);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
         var result = await handler.HandleAsync(command);
@@ -1395,7 +1410,7 @@ public sealed class CouncilApplicationTests
             groupId, Guid.NewGuid(), _batchId, "Stopped", DateTime.UtcNow, []);
 
         var handler = new AssignCouncilGroupsHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new AssignCouncilGroupsCommand(council.Id, [new(groupId, 1)]);
         var result = await handler.HandleAsync(command);
@@ -1410,7 +1425,7 @@ public sealed class CouncilApplicationTests
         _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(Guid.NewGuid(), "QD-01");
         var result = await handler.HandleAsync(command);
@@ -1431,7 +1446,7 @@ public sealed class CouncilApplicationTests
         await _councilRepo.AddAsync(council);
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, decisionNumber);
         var result = await handler.HandleAsync(command);
@@ -1450,7 +1465,7 @@ public sealed class CouncilApplicationTests
         await _councilRepo.AddAsync(council);
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, "QD-01");
         var result = await handler.HandleAsync(command);
@@ -1478,7 +1493,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.Assignments.Add(assignment);
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, "QD-01");
         var result = await handler.HandleAsync(command);
@@ -1512,7 +1527,7 @@ public sealed class CouncilApplicationTests
         await _councilRepo.AddAsync(otherCouncil);
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, "QD-01");
         var result = await handler.HandleAsync(command);
@@ -1549,7 +1564,7 @@ public sealed class CouncilApplicationTests
         _councilRepo.Members.Add(otherMember);
 
         var handler = new ApproveCouncilHandler(
-            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser);
+            _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _auditOutbox, _currentUser, new FakeCouncilSchedulingGuard());
 
         var command = new ApproveCouncilCommand(council.Id, "QD-01");
         var result = await handler.HandleAsync(command);

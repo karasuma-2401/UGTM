@@ -3,7 +3,6 @@ using System.Text;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
-using UGTM.Modules.Notifications.Contracts.Email;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.Dtos;
 
@@ -12,10 +11,8 @@ namespace UGTM.Modules.ThesisManagement.Application.TopicRegistrations.RegisterT
 public sealed class RegisterTopicHandler(
     ITopicRegistrationStore store,
     IStudentInfoReader studentInfoReader,
-    IEmailSender emailSender,
     ICurrentUser currentUser,
-    TimeProvider timeProvider,
-    IThesisEmailTemplateRenderer emailTemplateRenderer)
+    TimeProvider timeProvider)
 {
     private static readonly TimeSpan DefaultConfirmationWindow = TimeSpan.FromHours(24);
 
@@ -64,6 +61,11 @@ public sealed class RegisterTopicHandler(
                 return Result.Failure<TopicRegistrationResultDto>(TopicRegistrationErrors.CannotInviteSelf);
             }
 
+            if (string.IsNullOrWhiteSpace(partnerInfo.Email))
+            {
+                return Result.Failure<TopicRegistrationResultDto>(TopicRegistrationErrors.PartnerEmailRequired);
+            }
+
             partnerStudentId = partnerInfo.Id;
         }
 
@@ -84,64 +86,11 @@ public sealed class RegisterTopicHandler(
             nowUtc,
             DefaultConfirmationWindow,
             tokenHash ?? string.Empty,
+            partnerInfo is not null && rawToken is not null
+                ? new TopicRegistrationInvitation(rawToken, partnerInfo.Email!, partnerInfo.FullName ?? string.Empty,
+                    partnerInfo.UserCode ?? string.Empty, studentAInfo.Email, studentAInfo.FullName ?? "Bạn cùng nhóm")
+                : null,
             cancellationToken);
-
-        if (!registerResult.IsSuccess)
-        {
-            return registerResult;
-        }
-
-        if (partnerStudentId.HasValue && partnerInfo is not null && rawToken is not null)
-        {
-            await TrySendEmailsAsync(
-                studentAInfo,
-                partnerInfo,
-                rawToken,
-                nowUtc.Add(DefaultConfirmationWindow),
-                cancellationToken);
-        }
-
         return registerResult;
-    }
-
-    private async Task TrySendEmailsAsync(
-        StudentInfoContractDto studentAInfo,
-        StudentInfoContractDto partner,
-        string rawToken,
-        DateTime expiresAtUtc,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var studentAName = studentAInfo.FullName ?? "Bạn cùng nhóm";
-
-            if (!string.IsNullOrWhiteSpace(partner.Email))
-            {
-                var message = emailTemplateRenderer.RenderTopicRegistrationInvite(
-                    partner.Email,
-                    partner.FullName ?? string.Empty,
-                    studentAName,
-                    rawToken,
-                    expiresAtUtc);
-
-                await emailSender.SendAsync(message, cancellationToken);
-            }
-
-            if (!string.IsNullOrWhiteSpace(studentAInfo.Email))
-            {
-                var message = emailTemplateRenderer.RenderTopicRegistrationConfirmationForInviter(
-                    studentAInfo.Email,
-                    studentAInfo.FullName ?? string.Empty,
-                    partner.FullName ?? string.Empty,
-                    partner.UserCode ?? string.Empty,
-                    expiresAtUtc);
-
-                await emailSender.SendAsync(message, cancellationToken);
-            }
-        }
-        catch
-        {
-            // Email errors do not rollback database registration
-        }
     }
 }

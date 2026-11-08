@@ -17,7 +17,7 @@ public sealed class GetCouncilMinuteWorkspaceHandler(
         GetCouncilMinuteWorkspaceQuery query,
         CancellationToken ct = default)
     {
-        if (!currentUser.IsAuthenticated)
+        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue)
         {
             return Result.Failure<CouncilMinuteWorkspaceResponseDto>(CouncilErrors.Forbidden);
         }
@@ -26,6 +26,11 @@ public sealed class GetCouncilMinuteWorkspaceHandler(
         if (assignment == null)
         {
             return Result.Failure<CouncilMinuteWorkspaceResponseDto>(CouncilErrors.AssignmentNotFound);
+        }
+
+        if (!CouncilMinuteAccess.CanView(assignment.Council, currentUser))
+        {
+            return Result.Failure<CouncilMinuteWorkspaceResponseDto>(CouncilErrors.Forbidden);
         }
 
         var ctx = await workspaceLoader.LoadAsync(assignment, ct);
@@ -50,7 +55,8 @@ public sealed class GetCouncilMinuteWorkspaceHandler(
             savedSecretaryMarking: null,
             requestedSecretaryMarking: null,
             requestedTargetComponentCode: null,
-            overrideReason: ctx.Minute?.OverrideReason);
+            overrideReason: ctx.Minute?.OverrideReason,
+            configuration: ctx.Configuration);
 
         return Result.Success(new CouncilMinuteWorkspaceResponseDto(
             assignmentInfo,

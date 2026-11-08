@@ -99,6 +99,44 @@ public sealed class ProgressReportApplicationTests
         Assert.Equal("ProgressReport.ReviewAccessDenied", result.Error.Code);
     }
 
+    [Fact]
+    public async Task Pending_member_cannot_submit_or_read_progress_report()
+    {
+        var pendingId = Guid.NewGuid();
+        var fixtures = new WorkflowFixtures(pendingId: pendingId);
+        var pending = new FakeCurrentUser(pendingId, roles: ["Student"]);
+
+        var denied = await fixtures.Submit(pending, "https://github.com/ugtm/team-project");
+        var submitted = await fixtures.Submit(StudentUser(), "https://github.com/ugtm/team-project");
+        var history = await fixtures.GetHistory(pending);
+
+        Assert.Equal("ProgressReport.AccessDenied", denied.Error.Code);
+        Assert.True(submitted.IsSuccess);
+        Assert.True(history.IsFailure);
+    }
+
+    [Fact]
+    public async Task Stopped_group_cannot_submit_even_with_approved_syllabus()
+    {
+        var fixtures = new WorkflowFixtures();
+        Assert.True(fixtures.Group.TryStop());
+
+        var result = await fixtures.Submit(StudentUser(), "https://github.com/ugtm/team-project");
+
+        Assert.Equal("ProgressReport.InvalidSubmissionState", result.Error.Code);
+        Assert.Empty(fixtures.ObjectStorage.UploadedObjectKeys);
+    }
+
+    [Fact]
+    public async Task Ambiguous_save_failure_keeps_uploaded_progress_object()
+    {
+        var fixtures = new WorkflowFixtures { FailSave = true };
+
+        await Assert.ThrowsAsync<IOException>(() => fixtures.Submit(StudentUser(), "https://github.com/ugtm/team-project"));
+
+        Assert.Single(fixtures.ObjectStorage.UploadedObjectKeys);
+    }
+
     private static ICurrentUser StudentUser() => new FakeCurrentUser(StudentId, roles: ["Student"]);
     private static ICurrentUser AdvisorUser() => new FakeCurrentUser(AdvisorId, roles: ["Advisor"]);
 
@@ -114,10 +152,13 @@ public sealed class ProgressReportApplicationTests
         private readonly FakeUnitOfWork _unitOfWork = new();
         private readonly TimeProvider _timeProvider = new FixedTimeProvider(Now);
 
-        public WorkflowFixtures(DateTime? deadline = null)
+        public WorkflowFixtures(DateTime? deadline = null, Guid? pendingId = null)
         {
             _group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Now.AddDays(-2));
-            _group.AddMember(StudentId, Guid.NewGuid(), Now.AddDays(-2));
+            var batchId = Guid.NewGuid();
+            _group.AddMember(StudentId, batchId, Now.AddDays(-2));
+            if (pendingId.HasValue)
+                _group.AddPendingMember(pendingId.Value, batchId, StudentId, "token", Now.AddDays(-1), Now.AddDays(1));
             Assert.True(_group.TrySubmitSyllabus());
             Assert.True(_group.TryApproveSyllabus());
             _milestone = ProgressMilestone.Create(
@@ -135,6 +176,8 @@ public sealed class ProgressReportApplicationTests
 
         public FakeObjectStorage ObjectStorage { get; } = new();
         public FakeAuditOutbox Audit { get; } = new();
+        public StudentGroup Group => _group;
+        public bool FailSave { set => _unitOfWork.FailSave = value; }
 
         public Task<BuildingBlocks.Domain.Result<Application.ProgressReportSubmissions.Dtos.ProgressReportSubmissionDto>> Submit(
             ICurrentUser user,
@@ -150,7 +193,9 @@ public sealed class ProgressReportApplicationTests
                 Audit,
                 _unitOfWork,
                 user,
-                _timeProvider)
+                _timeProvider,
+                new FakeThesisUploadLifecycle(),
+                new ApprovedSyllabusRepository(_group.Id))
                 .HandleAsync(new SubmitProgressReportCommand(
                     _milestone.Id,
                     "tien-do.pdf",
@@ -267,7 +312,26 @@ public sealed class ProgressReportApplicationTests
 
     private sealed class FakeUnitOfWork : IThesisUnitOfWork
     {
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Task.FromResult(1);
+        public bool FailSave { get; set; }
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+            => FailSave ? Task.FromException<int>(new IOException("Save outcome unknown")) : Task.FromResult(1);
+    }
+
+    private sealed class ApprovedSyllabusRepository : ISyllabusRepository
+    {
+        private readonly Syllabus _syllabus;
+
+        public ApprovedSyllabusRepository(Guid groupId)
+        {
+            _syllabus = Syllabus.CreateSubmitted(Guid.NewGuid(), groupId);
+            _syllabus.RecordReview(ReviewDecision.Approved, null, Guid.NewGuid(), Now);
+        }
+
+        public Task<Syllabus?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult<Syllabus?>(_syllabus.Id == id ? _syllabus : null);
+        public Task<Syllabus?> GetByGroupIdAsync(Guid groupId, CancellationToken cancellationToken = default)
+            => Task.FromResult<Syllabus?>(_syllabus.GroupId == groupId ? _syllabus : null);
+        public void Add(Syllabus syllabus) => throw new NotSupportedException();
     }
 
     private sealed class FixedTimeProvider(DateTime now) : TimeProvider

@@ -42,9 +42,9 @@ public static class TopicRegistrationEndpoints
                    - Nếu đăng ký đơn lẻ vào đề tài có chỉ tiêu 2 sinh viên: sinh viên được xác nhận ngay (`Confirmed`, 1/2 slot). Nếu sau đó có sinh viên khác đăng ký đơn lẻ vào đề tài này, hệ thống tự động gộp cả 2 sinh viên vào cùng nhóm đề tài (`2/2 slot`).
                    - Nếu số lượng slot yêu cầu hoặc số slot đã chiếm vượt quá chỉ tiêu tiếp nhận của đề tài, request bị từ chối với lỗi 409 Conflict (`TopicRegistration.TopicAlreadyTaken`).
                 4. **Quy trình gửi Email & Token xác nhận:**
-                   - **Đăng ký đơn lẻ:** Thành công và xác nhận ngay lập tức, gửi email thông báo xác nhận cho sinh viên.
-                   - **Đăng ký nhóm 2 người:** Người đăng ký (Sinh viên A) ở trạng thái `Confirmed`; bạn cùng nhóm (Sinh viên B) ở trạng thái `Pending` và được cấp mã token xác nhận (băm SHA-256) có thời hạn 24 giờ.
-                   - Hệ thống gửi email thông báo cho Sinh viên A và email kèm token xác nhận cho Sinh viên B. Trong 24 giờ này, hệ thống tạm giữ slot cho Sinh viên B.
+                   - **Đăng ký đơn lẻ:** Thành công và xác nhận ngay lập tức.
+                   - **Đăng ký nhóm 2 người:** Người đăng ký (Sinh viên A) ở trạng thái `Confirmed`; bạn cùng nhóm (Sinh viên B) ở trạng thái `Pending`. Token được băm SHA-256 và thư mời được ghi vào outbox cùng transaction đăng ký.
+                   - Worker gửi lại thư khi SMTP lỗi. Thời hạn xác nhận 24 giờ bắt đầu khi gửi thư mời; trong lúc chưa gửi, `confirmationExpiresAtUtc` là `null`, slot vẫn được giữ và không ghi phạt quá hạn. Sau khi gửi thư mời, thông báo cho Sinh viên A cũng được đưa vào outbox.
                 5. **Cơ chế Lazy Cleanup:** Ngay trong transaction đăng ký, hệ thống tự động dọn dẹp các lời mời `Pending` quá hạn của đề tài để giải phóng slot tức thời.
                 6. **Ràng buộc sinh viên:**
                    - Mỗi sinh viên chỉ được đăng ký tối đa 1 đề tài trong một đợt KLTN (`TopicRegistration.StudentAlreadyRegisteredInBatch`).
@@ -58,6 +58,7 @@ public static class TopicRegistrationEndpoints
                 - `200 OK`: Đăng ký thành công, trả về `TopicRegistrationResultDto` (chứa `groupId`, `topicId`, `isPendingConfirmation`, `confirmationExpiresAtUtc`, `message`).
                 - `400 Bad Request`:
                   - `TopicRegistration.InvalidTopicId`: Mã đề tài rỗng hoặc không hợp lệ.
+                  - `TopicRegistration.PartnerEmailRequired`: Sinh viên được mời chưa có địa chỉ email.
                   - `TopicRegistration.CannotInviteSelf`: Sinh viên tự mời chính mình.
                   - `TopicRegistration.TopicNotPublished`: Đề tài chưa được công bố.
                   - `TopicRegistration.RegistrationWindowClosed`: Cổng đăng ký đề tài của đợt KLTN đang đóng hoặc ngoài thời gian cho phép.
@@ -128,7 +129,7 @@ public static class TopicRegistrationEndpoints
                 - `topicId` (Guid?): Định danh của đề tài đã đăng ký (nếu có).
                 - `topicTitleVi` (string?): Tên tiếng Việt của đề tài đã đăng ký.
                 - `confirmationStatus` (string?): Trạng thái xác nhận của sinh viên trong nhóm (`Confirmed` - đã xác nhận chính thức, `Pending` - đang chờ bạn xác nhận token).
-                - `confirmationExpiresAtUtc` (DateTime?): Thời điểm hết hạn xác nhận token nếu đang ở trạng thái `Pending`.
+                - `confirmationExpiresAtUtc` (DateTime?): Thời điểm hết hạn xác nhận token sau khi thư mời được gửi; `null` khi thư còn chờ gửi.
                 - `violationCount` (int): Số lần vi phạm do không xác nhận đề tài đúng hạn 24 giờ (mặc định 0).
                 - `isRegistrationBlocked` (bool): `true` nếu tài khoản đã bị khóa quyền đăng ký đề tài (khi `violationCount >= 3`).
                 - `blockedAtUtc` (DateTime?): Thời điểm bị khóa quyền đăng ký đề tài (nếu có).

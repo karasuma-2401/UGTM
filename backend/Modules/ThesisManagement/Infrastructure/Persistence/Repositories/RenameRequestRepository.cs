@@ -23,6 +23,18 @@ public sealed class RenameRequestRepository(ThesisManagementDbContext db) : IRen
             .ThenInclude(g => g.Members)
             .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
+    public async Task<RenameRequest?> LockByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (db.Database.CurrentTransaction is null)
+            throw new InvalidOperationException("A shared rename transaction is required.");
+
+        var request = await db.RenameRequests.FromSqlInterpolated($"""
+            SELECT r.*, r.xmin FROM thesis.rename_request r WHERE r.id = {id} FOR UPDATE
+            """).SingleOrDefaultAsync(cancellationToken);
+        if (request is null) return null;
+        return await GetByIdAsync(id, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<RenameRequest>> GetByGroupIdAsync(
         Guid groupId,
         CancellationToken cancellationToken = default)

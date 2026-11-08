@@ -11,6 +11,11 @@ public class CouncilMemberConfiguration : IEntityTypeConfiguration<CouncilMember
         builder.HasIndex(x => x.UserId)
             .HasDatabaseName("ix_council_member_user_id");
 
+        builder.HasIndex(x => new { x.CouncilId, x.RoleInCouncil })
+            .HasDatabaseName("ux_council_member_leadership_role")
+            .IsUnique()
+            .HasFilter("role_in_council IN ('Chairman', 'Secretary')");
+
         builder.ToTable("council_member", "councils");
 
         builder.HasKey(x => x.Id);

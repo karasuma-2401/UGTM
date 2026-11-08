@@ -65,7 +65,7 @@ public sealed class GetProgressReportFileDownloadHandler(
 
     private async Task<bool> CanReadAsync(Domain.Entities.StudentGroup group, CancellationToken cancellationToken)
     {
-        if (group.Members.Any(member => member.StudentId == currentUser.UserId!.Value)
+        if (ThesisAuthorization.IsConfirmedMember(group, currentUser.UserId!.Value)
             || ThesisAuthorization.CanReviewGates(currentUser))
         {
             return true;

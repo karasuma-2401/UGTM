@@ -19,10 +19,13 @@ internal sealed class AdvisorEvaluationRepository(DefenseCouncilDbContext contex
     }
 
     public async Task<IReadOnlyList<GradingCriteria>> GetGradingCriteriaByBatchIdAsync(Guid batchId, CancellationToken cancellationToken = default)
-        => await context.GradingCriterias
+    {
+        await GradingRubricLock.AcquireAsync(context, batchId, cancellationToken);
+        return await context.GradingCriterias
             .Where(g => g.BatchId == batchId)
             .OrderBy(g => g.OrderIndex)
             .ToListAsync(cancellationToken);
+    }
 
     public async Task<IReadOnlyList<EvaluationDetail>> GetEvaluationDetailsByEvaluationIdAsync(Guid evaluationId, CancellationToken cancellationToken = default)
         => await context.EvaluationDetails

@@ -9,6 +9,8 @@ using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authentication;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Identity.Contracts.FinalSubmissions;
+using UGTM.Modules.DefenseCouncil.Application.ScoreSummaries;
 
 namespace UGTM.Modules.DefenseCouncil.Application.Councils.LockCouncilMinute;
 
@@ -19,11 +21,33 @@ public sealed class LockCouncilMinuteHandler(
     IReauthenticationVerifier reauthenticationVerifier,
     IDefenseCouncilAuditOutbox auditOutbox,
     ICurrentUser currentUser,
+    ICouncilMinuteWriteGuard writeGuard,
+    IFinalSubmissionAuthorityReader authorityReader,
     TimeProvider? clock = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
 
-    public async Task<Result<CouncilMinuteLockResponseDto>> HandleAsync(
+    public async Task<Result<CouncilMinuteLockResponseDto>> HandleAsync(LockCouncilMinuteCommand command, CancellationToken ct = default)
+    {
+        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue)
+            return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.Forbidden);
+        if (string.IsNullOrWhiteSpace(command.Password))
+            return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.PasswordRequired);
+        var authority = await authorityReader.GetAsync(currentUser.UserId.Value, ct);
+        if (!ScoreSummaryAccess.Role(authority, "Admin") && !ScoreSummaryAccess.Role(authority, "AcademicAffairs") && !ScoreSummaryAccess.Role(authority, "Lecturer"))
+            return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.OnlySecretaryCanLockMinute);
+        // Reauthentication owns an Identity transaction and records failed attempts.
+        // Complete it before the score transaction enlists Identity as a read-only participant;
+        // all membership, state and live-role checks run again under the workflow locks.
+        var outcome = await reauthenticationVerifier.VerifyPasswordAsync(currentUser.UserId.Value, command.Password, ct);
+        if (outcome == ReauthenticationOutcome.AccountLocked)
+            return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.ReauthenticationLocked);
+        if (outcome != ReauthenticationOutcome.Verified)
+            return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.ReauthenticationFailed);
+        return await writeGuard.ExecuteAsync(command.AssignmentId, token => HandleCoreAsync(command, token), ct);
+    }
+
+    private async Task<Result<CouncilMinuteLockResponseDto>> HandleCoreAsync(
         LockCouncilMinuteCommand command,
         CancellationToken ct = default)
     {
@@ -47,8 +71,9 @@ public sealed class LockCouncilMinuteHandler(
         var members = council.Members.ToList();
 
         // 1. Kiểm tra phân quyền: Chỉ Thư ký của hội đồng hoặc Admin
-        var isSecretary = members.Any(m => m.UserId == currentUser.UserId.Value && m.RoleInCouncil == CouncilMemberRole.Secretary);
-        var isAdmin = currentUser.Roles.Contains("Admin") || currentUser.Roles.Contains("AcademicAffairs");
+        var authority = await authorityReader.GetAsync(currentUser.UserId.Value, ct);
+        var isSecretary = ScoreSummaryAccess.Role(authority, "Lecturer") && members.Any(m => m.UserId == currentUser.UserId.Value && m.RoleInCouncil == CouncilMemberRole.Secretary);
+        var isAdmin = ScoreSummaryAccess.Role(authority, "Admin") || ScoreSummaryAccess.Role(authority, "AcademicAffairs");
 
         if (!isSecretary && !isAdmin)
         {
@@ -76,29 +101,18 @@ public sealed class LockCouncilMinuteHandler(
         }
 
         // 5. Kiểm tra IsReadyToLock
-        var ctx = await workspaceLoader.LoadAsync(assignment, ct);
+        var ctx = await workspaceLoader.LoadAsync(assignment, ct, lockConfiguration: true);
         var (_, _, calculationPreview) = CouncilMinuteWorkspaceCalculator.BuildWorkspaceData(
             ctx.EvalItems,
             savedSecretaryMarking: null,
             requestedSecretaryMarking: null,
             requestedTargetComponentCode: null,
-            overrideReason: minute?.OverrideReason);
+            overrideReason: minute?.OverrideReason,
+            configuration: ctx.Configuration);
 
         if (!calculationPreview.IsReadyToLock)
         {
             return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.MinuteNotReadyToLock);
-        }
-
-        // 6. Xác thực mật khẩu Thư ký
-        var reauthOutcome = await reauthenticationVerifier.VerifyPasswordAsync(currentUser.UserId.Value, command.Password, ct);
-        if (reauthOutcome == ReauthenticationOutcome.AccountLocked)
-        {
-            return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.ReauthenticationLocked);
-        }
-
-        if (reauthOutcome != ReauthenticationOutcome.Verified)
-        {
-            return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.ReauthenticationFailed);
         }
 
         // 7. Thực hiện khóa

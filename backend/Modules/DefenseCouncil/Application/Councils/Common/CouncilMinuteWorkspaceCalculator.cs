@@ -1,4 +1,7 @@
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.AcademicPeriods.Contracts.ScoreSummaries;
+using UGTM.Modules.DefenseCouncil.Application.Grading;
+using UGTM.Modules.DefenseCouncil.Domain.Grading;
 
 namespace UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 
@@ -13,7 +16,18 @@ public static class CouncilMinuteWorkspaceCalculator
         string Category,
         bool IsDualRoleReviewer,
         bool IsIgnoredInCalculation,
-        string? ExclusionReason = null);
+        string? ExclusionReason = null,
+        Guid SourceId = default);
+
+    public static string SourceFor(string code) => code switch
+    {
+        "ADVISOR" => "Advisor",
+        "REVIEWER" => "Reviewer",
+        "COUNCIL_CHAIRMAN" => "CouncilChairman",
+        "COUNCIL_SECRETARY" => "CouncilSecretary",
+        "COUNCIL_MEMBER" => "CouncilMember",
+        _ => code
+    };
 
     public static (
         IReadOnlyList<MinuteScoreItemDto> ScoreItems,
@@ -24,9 +38,11 @@ public static class CouncilMinuteWorkspaceCalculator
         string? savedSecretaryMarking,
         string? requestedSecretaryMarking,
         string? requestedTargetComponentCode,
-        string? overrideReason)
+        string? overrideReason,
+        ScoreSummaryConfigurationDto? configuration = null)
     {
         var rawItemList = items.ToList();
+        var inside = rawItemList.Any(i => i.ComponentCode == "REVIEWER" && i.IsDualRoleReviewer);
 
         // Xác định marking và target code được áp dụng
         var secretaryMarking = requestedSecretaryMarking ?? savedSecretaryMarking ?? "None";
@@ -75,7 +91,8 @@ public static class CouncilMinuteWorkspaceCalculator
                 it.RoleLabel,
                 it.LecturerName,
                 it.Score,
-                it.Weight,
+                it.IsDualRoleReviewer && it.ComponentCode == "COUNCIL_MEMBER" ? 0m :
+                    configuration?.Components.Where(c => ConfiguredGradeComponents.Applies(c, inside) && c.Source == SourceFor(it.ComponentCode)).Sum(c => c.Weight) ?? 0m,
                 statusText,
                 it.Category,
                 it.IsDualRoleReviewer,
@@ -140,79 +157,48 @@ public static class CouncilMinuteWorkspaceCalculator
             activeIgnoredCode,
             activeIgnoredCode != null);
 
-        // Tính calculation_preview
-        // Raw: tính trên các item có weight > 0 và có điểm
-        // Chú ý: Raw bao gồm cả item bị ignore nếu có điểm
-        decimal rawTotal = 0m;
-        decimal rawDivisor = 0m;
-        var rawParts = new List<string>();
-
-        foreach (var item in processedItems.Where(i => i.Weight > 0 && i.Score.HasValue))
+        var sources = rawItemList.Select((item, index) => (item, index))
+            .Where(value => !(value.item.ComponentCode == "COUNCIL_MEMBER" && value.item.IsDualRoleReviewer))
+            .Select(value => new ConfiguredGradeSource(value.item.SourceId, SourceFor(value.item.ComponentCode),
+                value.item.Score, processedItems[value.index].IsIgnoredInCalculation, value.item.ExclusionReason)).ToArray();
+        var adjusted = ConfiguredGradeComponents.Resolve(configuration, inside, sources);
+        var raw = ConfiguredGradeComponents.Resolve(configuration, inside, sources, includeExcluded: true);
+        var allRequiredScoresPresent = sources.Length > 0 && sources.All(source => source.Score.HasValue);
+        string? errorCode = adjusted.IsFailure ? adjusted.Error.Code : raw.IsFailure ? raw.Error.Code :
+            !allRequiredScoresPresent ? "ScoreSummary.MissingRequiredSource" : null;
+        decimal rawTotal = 0m, rawDivisor = 0m, rawAverage = 0m;
+        decimal adjustedTotal = 0m, adjustedDivisor = 0m, adjustedAverage = 0m;
+        decimal? finalRoundedScore = null;
+        var formulaExplanation = "Chưa có đủ điểm thành phần hoặc cấu hình Active hợp lệ để tính điểm.";
+        if (errorCode is null)
         {
-            var contribution = item.Score!.Value * item.Weight;
-            rawTotal += contribution;
-            rawDivisor += item.Weight;
-            rawParts.Add($"{item.Score.Value:G29}×{item.Weight:G29} [{item.RoleLabel}]");
+            try
+            {
+                var calculator = new ThesisGradeCalculator();
+                var rawGrade = calculator.Calculate(raw.Value.Components.Select(c => new GradeContribution(c.ComponentCode, c.Score, c.Weight)));
+                var adjustedGrade = calculator.Calculate(adjusted.Value.Components.Select(c => new GradeContribution(c.ComponentCode, c.Score, c.Weight, c.IsIgnoredInCalculation)));
+                rawDivisor = rawGrade.TotalWeight;
+                rawTotal = raw.Value.Components.Sum(c => c.Score * c.Weight);
+                rawAverage = Math.Round(rawGrade.FinalScore, 6);
+                adjustedDivisor = adjustedGrade.TotalWeight;
+                adjustedTotal = adjusted.Value.Components.Where(c => !c.IsIgnoredInCalculation).Sum(c => c.Score * c.Weight);
+                adjustedAverage = Math.Round(adjustedGrade.FinalScore, 6);
+                finalRoundedScore = Math.Round(adjustedGrade.FinalScore, 2, MidpointRounding.AwayFromZero);
+                var parts = adjusted.Value.Components.Where(c => !c.IsIgnoredInCalculation)
+                    .Select(c => $"{c.Score:G29}×{c.Weight:G29} [{c.ComponentName}]");
+                formulaExplanation = $"Cấu hình v{configuration!.VersionNo}: ({string.Join(" + ", parts)}) / {adjustedDivisor:G29}; điểm làm tròn: {finalRoundedScore:F2}";
+                foreach (var component in adjusted.Value.Components.Where(c => c.Source == "CouncilAverage"))
+                    processedItems.Add(new MinuteScoreItemDto(component.ComponentCode, component.ComponentName, "Hội đồng",
+                        component.Score, component.Weight, "Đã chấm", "Trung bình HĐ", false, false));
+            }
+            catch (InvalidOperationException) { errorCode = "ScoreSummary.NoPositiveWeight"; }
+            catch (Exception error) when (error is ArgumentException or OverflowException) { errorCode = "ScoreSummary.ConfigurationInvalid"; }
         }
-
-        var rawAverage = rawDivisor > 0 ? Math.Round(rawTotal / rawDivisor, 6) : 0m;
-
-        // Adjusted: tính trên các item có weight > 0, có điểm và IsIgnoredInCalculation == false
-        decimal adjustedTotal = 0m;
-        decimal adjustedDivisor = 0m;
-        var adjustedParts = new List<string>();
-
-        foreach (var item in processedItems.Where(i => i.Weight > 0 && i.Score.HasValue && !i.IsIgnoredInCalculation))
-        {
-            var contribution = item.Score!.Value * item.Weight;
-            adjustedTotal += contribution;
-            adjustedDivisor += item.Weight;
-            adjustedParts.Add($"{item.Score.Value:G29}×{item.Weight:G29} [{item.RoleLabel}]");
-        }
-
-        var adjustedAverage = adjustedDivisor > 0 ? Math.Round(adjustedTotal / adjustedDivisor, 6) : 0m;
-        decimal? finalRoundedScore = adjustedDivisor > 0 ? Math.Round(adjustedTotal / adjustedDivisor, 2) : null;
-
-        // Formula explanation
-        string formulaExplanation;
-        var rawExpr = rawParts.Count > 0
-            ? $"({string.Join(" + ", rawParts)}) / {rawDivisor:G29} = {rawTotal:G29} / {rawDivisor:G29} ≈ {rawAverage:F6}"
-            : "Chưa có đủ điểm thành phần";
-
-        if (activeIgnoredCode != null)
-        {
-            var ignoredItem = processedItems.FirstOrDefault(i => i.ComponentCode == activeIgnoredCode);
-            var roleText = ignoredItem?.RoleLabel ?? activeIgnoredCode;
-
-            var adjExpr = adjustedParts.Count > 0
-                ? $"({string.Join(" + ", adjustedParts)}) / {adjustedDivisor:G29} = {adjustedTotal:G29} / {adjustedDivisor:G29} = {adjustedAverage:G29} (Điểm làm tròn: {finalRoundedScore:F1})"
-                : "Không có đầu điểm hợp lệ sau điều chỉnh";
-
-            formulaExplanation = $"Trước điều chỉnh: {rawExpr} | Sau điều chỉnh (loại {roleText}): {adjExpr}";
-        }
-        else
-        {
-            var roundedText = finalRoundedScore.HasValue ? $" (Điểm làm tròn: {finalRoundedScore:F1})" : "";
-            formulaExplanation = $"Công thức tính: {rawExpr}{roundedText}";
-        }
-
-        // is_ready_to_lock:
-        // 1. Đủ điểm cho tất cả các item có weight > 0
-        // 2. Nếu có sai biệt điểm (>= 2.0), secretaryMarking phải được chọn (RejectedAsPerMinute hoặc AcceptedAsPerMinute)
-        var allRequiredScoresPresent = processedItems.Where(i => i.Weight > 0).All(i => i.Score.HasValue);
         var discrepancyResolved = !hasDiscrepancy || finalSecretaryMarking is "RejectedAsPerMinute" or "AcceptedAsPerMinute";
-        var isReadyToLock = allRequiredScoresPresent && discrepancyResolved && adjustedDivisor > 0;
-
-        var calculationPreview = new MinuteCalculationPreviewDto(
-            rawTotal,
-            rawDivisor,
-            rawAverage,
-            adjustedTotal,
-            adjustedDivisor,
-            adjustedAverage,
-            finalRoundedScore,
-            formulaExplanation,
-            isReadyToLock);
+        var calculationPreview = new MinuteCalculationPreviewDto(rawTotal, rawDivisor, rawAverage,
+            adjustedTotal, adjustedDivisor, adjustedAverage, finalRoundedScore, formulaExplanation,
+            errorCode is null && discrepancyResolved && adjustedDivisor > 0,
+            configuration?.Id, configuration?.VersionNo, errorCode);
 
         return (processedItems, discrepancySummary, calculationPreview);
     }

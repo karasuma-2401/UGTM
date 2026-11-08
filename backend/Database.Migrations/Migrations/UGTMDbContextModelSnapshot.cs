@@ -965,6 +965,10 @@ namespace UGTM.Database.Migrations.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_council_assignment_group_id");
 
+                    b.HasIndex("CouncilId", "OrderNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_council_assignment_council_order");
+
                     b.ToTable("council_assignment", "councils");
                 });
 
@@ -1000,6 +1004,11 @@ namespace UGTM.Database.Migrations.Migrations
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_council_member_user_id");
+
+                    b.HasIndex("CouncilId", "RoleInCouncil")
+                        .IsUnique()
+                        .HasDatabaseName("ux_council_member_leadership_role")
+                        .HasFilter("role_in_council IN ('Chairman', 'Secretary')");
 
                     b.HasIndex("CouncilId", "UserId")
                         .IsUnique()
@@ -3551,11 +3560,22 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue("Created")
                         .HasColumnName("status");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_rename_request");
 
                     b.HasIndex("GroupId")
                         .HasDatabaseName("ix_rename_request_group_id");
+
+                    b.HasIndex(new[] { "GroupId" }, "ux_rename_request_active_group")
+                        .IsUnique()
+                        .HasDatabaseName("ux_rename_request_active_group")
+                        .HasFilter("status IN ('Created', 'AdvisorConfirmed', 'FacultyApproved')");
 
                     b.ToTable("rename_request", "thesis");
                 });
@@ -3684,6 +3704,7 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnName("confirmation_expires_at_utc");
 
                     b.Property<string>("ConfirmationStatus")
+                        .IsConcurrencyToken()
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(50)
@@ -3969,6 +3990,123 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDatabaseName("ix_syllabus_reviewed_by");
 
                     b.ToTable("syllabus", "thesis");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.ThesisUploadAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_error_code");
+
+                    b.Property<DateTime>("LeaseExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lease_expires_at_utc");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("object_key");
+
+                    b.Property<DateTime?>("RetryAfterUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retry_after_utc");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("state");
+
+                    b.HasKey("Id")
+                        .HasName("pk_submission_upload_attempt");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_submission_upload_attempt_object_key");
+
+                    b.HasIndex("State", "LeaseExpiresAtUtc")
+                        .HasDatabaseName("ix_submission_upload_attempt_state_lease_expires_at_utc");
+
+                    b.ToTable("submission_upload_attempt", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_submission_upload_attempt", "state IN ('Uploading','Committed','CleanupPending','Cleaning','Cleaned') AND retry_count >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.TopicRegistrationEmail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_error_code");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("member_id");
+
+                    b.Property<DateTime>("NextAttemptAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at_utc");
+
+                    b.Property<DateTime?>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at_utc");
+
+                    b.Property<string>("ProtectedPayload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("protected_payload");
+
+                    b.Property<string>("ProtectionPurpose")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("protection_purpose");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_topic_registration_email");
+
+                    b.HasIndex("MemberId", "Type", "ProcessedAtUtc")
+                        .HasDatabaseName("ix_topic_registration_email_member");
+
+                    b.HasIndex("ProtectionPurpose", "ProcessedAtUtc", "NextAttemptAtUtc")
+                        .HasDatabaseName("ix_topic_registration_email_dispatch");
+
+                    b.ToTable("topic_registration_email", "thesis");
                 });
 
             modelBuilder.Entity("UGTM.Modules.TopicCatalog.Domain.Entities.Topic", b =>

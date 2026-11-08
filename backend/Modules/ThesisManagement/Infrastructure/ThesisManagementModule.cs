@@ -123,6 +123,10 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.FinalSubmissions.IFinalSubmissionArchiveProofContract, FinalSubmissionArchiveProofContract>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.IFinalSubmissionUploadCleanup, FinalSubmissionUploadCleanup>();
         services.AddHostedService<FinalSubmissionUploadCleanupWorker>();
+        services.AddScoped<ThesisUploadLifecycle>();
+        services.AddScoped<IThesisUploadLifecycle>(provider => provider.GetRequiredService<ThesisUploadLifecycle>());
+        services.AddScoped<IThesisUploadCleanup>(provider => provider.GetRequiredService<ThesisUploadLifecycle>());
+        services.AddHostedService<ThesisUploadCleanupWorker>();
         services.AddScoped<SubmitFinalReportHandler>();
         services.AddScoped<FinalReportReadAccessChecker>();
         services.AddScoped<GetFinalReportHistoryHandler>();
@@ -181,6 +185,11 @@ public sealed class ThesisManagementModule : IModule
         services.AddOptions<ThesisEmailOptions>()
             .Bind(configuration.GetSection(ThesisEmailOptions.SectionName));
         services.AddSingleton<IThesisEmailTemplateRenderer, ThesisEmailTemplateRenderer>();
+        services.AddScoped<TopicRegistrationEmailOutbox>();
+        services.AddScoped<ITopicRegistrationInvitationOutbox>(provider => provider.GetRequiredService<TopicRegistrationEmailOutbox>());
+        services.AddScoped<IAdvisorAssignmentEmailOutbox>(provider => provider.GetRequiredService<TopicRegistrationEmailOutbox>());
+        services.AddScoped<ITopicRegistrationEmailDispatcher, TopicRegistrationEmailDispatcher>();
+        services.AddHostedService<TopicRegistrationEmailWorker>();
         services.AddScoped<ITopicRegistrationStore, TopicRegistrationStore>();
         services.AddScoped<RegisterTopicHandler>();
         services.AddScoped<ConfirmTopicRegistrationHandler>();

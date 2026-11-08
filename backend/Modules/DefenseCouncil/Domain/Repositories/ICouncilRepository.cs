@@ -46,6 +46,10 @@ public interface ICouncilRepository
         IEnumerable<Guid> groupIds,
         CancellationToken ct = default);
 
+    Task<IReadOnlySet<Guid>> LockDefenseEligibleGroupIdsAsync(
+        IEnumerable<Guid> groupIds,
+        CancellationToken ct = default);
+
     Task<Council?> GetCouncilByGroupIdAsync(
         Guid groupId,
         CancellationToken ct = default);

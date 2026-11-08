@@ -4,6 +4,8 @@ namespace UGTM.Modules.TopicCatalog.Application.Common;
 
 public static class TopicErrors
 {
+    public static readonly Error WorkflowNotConfigured = Error.Conflict(
+        "Topic.WorkflowNotConfigured", "Chưa cấu hình transaction cho thao tác đề tài và sinh viên.");
     public static readonly Error TopicNotFound = Error.NotFound(
         "Topic.NotFound",
         "Không tìm thấy đề tài yêu cầu.");

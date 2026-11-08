@@ -2,6 +2,7 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Users;
 using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
 using UGTM.Modules.TopicCatalog.Application.Common;
+using UGTM.Modules.TopicCatalog.Application.Persistence;
 using UGTM.Modules.TopicCatalog.Application.Topics.CreateTopic;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetAllTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.PublishTopics;
@@ -808,7 +809,7 @@ public sealed class TopicProposalAndReviewTests
         var uow = new FakeTopicUnitOfWork();
         var batchReader = new FakeKltnBatchReader(ValidBatchId);
         var regContract = new MockAssignableRegistrationContract();
-        var handler = new CreateTopicHandler(repo, uow, batchReader, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+        var handler = new CreateTopicHandler(repo, uow, batchReader, FakeCurrentUser.AsLecturer(lecturerId), regContract, new FakeTopicMutationCoordinator());
 
         var result = await handler.HandleAsync(new CreateTopicCommand(
             ValidBatchId,
@@ -832,7 +833,7 @@ public sealed class TopicProposalAndReviewTests
         var uow = new FakeTopicUnitOfWork();
         var batchReader = new FakeKltnBatchReader(ValidBatchId);
         var regContract = new MockAssignableRegistrationContract { ShouldFailAssign = true };
-        var handler = new CreateTopicHandler(repo, uow, batchReader, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+        var handler = new CreateTopicHandler(repo, uow, batchReader, FakeCurrentUser.AsLecturer(lecturerId), regContract, new FakeTopicMutationCoordinator());
 
         var result = await handler.HandleAsync(new CreateTopicCommand(
             ValidBatchId,
@@ -865,7 +866,7 @@ public sealed class TopicProposalAndReviewTests
         repo.Add(topic);
 
         var regContract = new MockAssignableRegistrationContract();
-        var handler = new UpdateTopicHandler(repo, uow, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+        var handler = new UpdateTopicHandler(repo, uow, FakeCurrentUser.AsLecturer(lecturerId), regContract, new FakeTopicMutationCoordinator());
 
         var result = await handler.HandleAsync(new UpdateTopicCommand(
             topic.Id,
@@ -910,7 +911,7 @@ public sealed class TopicProposalAndReviewTests
                     new TopicMemberContractDto(Guid.NewGuid(), ValidBatchId, DateTime.UtcNow)
                 })
         };
-        var handler = new UpdateTopicHandler(repo, uow, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+        var handler = new UpdateTopicHandler(repo, uow, FakeCurrentUser.AsLecturer(lecturerId), regContract, new FakeTopicMutationCoordinator());
 
         var result = await handler.HandleAsync(new UpdateTopicCommand(
             topic.Id,
@@ -934,7 +935,7 @@ public sealed class TopicProposalAndReviewTests
         var lecturerId = Guid.NewGuid();
 
         var handler = new CreateTopicHandler(
-            repo, uow, batchReader, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+            repo, uow, batchReader, FakeCurrentUser.AsLecturer(lecturerId), regContract, new FakeTopicMutationCoordinator());
 
         var result = await handler.HandleAsync(new CreateTopicCommand(
             ValidBatchId,
@@ -971,7 +972,7 @@ public sealed class TopicProposalAndReviewTests
 
         var uow = new FakeTopicUnitOfWork();
         var regContract = new MockAssignableRegistrationContract();
-        var handler = new UpdateTopicHandler(repo, uow, FakeCurrentUser.AsLecturer(lecturerId), regContract);
+        var handler = new UpdateTopicHandler(repo, uow, FakeCurrentUser.AsLecturer(lecturerId), regContract, new FakeTopicMutationCoordinator());
 
         var result = await handler.HandleAsync(new UpdateTopicCommand(
             topic.Id,
@@ -986,6 +987,12 @@ public sealed class TopicProposalAndReviewTests
         Assert.False(result.IsSuccess);
         Assert.Equal(TopicErrors.QuotaLessThanRegisteredStudents.Code, result.Error.Code);
         Assert.Equal(0, uow.SaveChangesCallCount);
+    }
+
+    private sealed class FakeTopicMutationCoordinator : ITopicMutationTransactionCoordinator
+    {
+        public Task<Result<T>> ExecuteAsync<T>(Func<CancellationToken, Task<Result<T>>> workflow, CancellationToken cancellationToken = default)
+            => workflow(cancellationToken);
     }
 
     private sealed class MockAssignableRegistrationContract : IThesisRegistrationContract

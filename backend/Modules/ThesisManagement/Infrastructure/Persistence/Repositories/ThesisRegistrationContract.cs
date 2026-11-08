@@ -17,6 +17,7 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
     private readonly IEmailSender? _emailSender;
     private readonly TimeProvider? _timeProvider;
     private readonly IThesisEmailTemplateRenderer? _emailTemplateRenderer;
+    private readonly IAdvisorAssignmentEmailOutbox? _advisorAssignmentEmailOutbox;
     private readonly IReadOnlyList<StudentGroup>? _inMemoryGroups;
 
     public ThesisRegistrationContract(
@@ -25,7 +26,8 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
         IStudentInfoReader studentInfoReader,
         IEmailSender emailSender,
         TimeProvider timeProvider,
-        IThesisEmailTemplateRenderer? emailTemplateRenderer = null)
+        IThesisEmailTemplateRenderer? emailTemplateRenderer = null,
+        IAdvisorAssignmentEmailOutbox? advisorAssignmentEmailOutbox = null)
     {
         _db = db;
         _registrationStore = registrationStore;
@@ -33,6 +35,7 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
         _emailSender = emailSender;
         _timeProvider = timeProvider;
         _emailTemplateRenderer = emailTemplateRenderer ?? new Notifications.ThesisEmailTemplateRenderer();
+        _advisorAssignmentEmailOutbox = advisorAssignmentEmailOutbox;
     }
 
     private ThesisRegistrationContract(IReadOnlyList<StudentGroup> inMemoryGroups)
@@ -168,6 +171,11 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
         }
 
         var nowUtc = (_timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+        if (_db?.Database.CurrentTransaction is not null && _advisorAssignmentEmailOutbox is null)
+        {
+            return AdvisorAssignStudentsContractResultDto.Failure(
+                "ThesisManagement.NotConfigured", "Chưa cấu hình outbox thông báo sinh viên.");
+        }
         var assignResult = await _registrationStore.AssignTopicStudentsByAdvisorAsync(
             topicId,
             actorUserId,
@@ -183,7 +191,19 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
                 assignResult.Error.Message);
         }
 
-        if (_emailSender is not null)
+        if (_db?.Database.CurrentTransaction is not null)
+        {
+            var members = await _db.StudentGroupMembers
+                .Where(member => member.GroupId == assignResult.Value.GroupId && distinctIds.Contains(member.StudentId))
+                .ToDictionaryAsync(member => member.StudentId, cancellationToken);
+            foreach (var student in resolvedStudents)
+            {
+                if (!string.IsNullOrWhiteSpace(student.Email))
+                    _advisorAssignmentEmailOutbox!.Enqueue(members[student.Id].Id, student.Email,
+                        student.FullName ?? string.Empty, student.UserCode ?? string.Empty, nowUtc);
+            }
+        }
+        else if (_emailSender is not null)
         {
             foreach (var student in resolvedStudents)
             {

@@ -1,12 +1,7 @@
 name: Publish Images
 
 on:
-  workflow_run:
-    workflows:
-      - Backend CI
-      - Frontend CI
-    types:
-      - completed
+  push:
     branches:
       - dev
       - production
@@ -23,16 +18,48 @@ permissions:
   security-events: write
   actions: read
 
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  ci-gate:
+    name: Require both CI workflows for this commit
+    if: contains(fromJSON('["dev", "production"]'), github.ref_name)
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - name: Wait for successful backend and frontend push runs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const workflows = ['backend-ci.yml', 'frontend-ci.yml'];
+            const { owner, repo } = context.repo;
+            for (let attempt = 0; attempt < 150; attempt++) {
+              let allPassed = true;
+              for (const workflow_id of workflows) {
+                const { data } = await github.rest.actions.listWorkflowRuns({
+                  owner, repo, workflow_id, head_sha: context.sha,
+                  branch: context.ref.replace('refs/heads/', ''), event: 'push', per_page: 100
+                });
+                const run = data.workflow_runs.sort((a, b) => b.run_number - a.run_number)[0];
+                if (!run || run.status !== 'completed') {
+                  allPassed = false;
+                  continue;
+                }
+                if (run.conclusion !== 'success') {
+                  core.setFailed(`${workflow_id} failed for ${context.sha}: ${run.conclusion}`);
+                  return;
+                }
+              }
+              if (allPassed) return;
+              await new Promise(resolve => setTimeout(resolve, 30000));
+            }
+            core.setFailed(`Timed out waiting for both CI workflows on ${context.sha}`);
+
   publish:
     name: Build, Scan & Publish
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        contains(fromJSON('["dev", "production"]'), github.event.workflow_run.head_branch)
-      )
+    needs: ci-gate
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -48,7 +75,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up QEMU for multi-arch build
         uses: docker/setup-qemu-action@v3
@@ -65,16 +92,11 @@ jobs:
 
       - name: Resolve Tags
         id: tags
+        env:
+          CUSTOM_TAG: ${{ inputs.image_tag }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SHA="${GITHUB_SHA}"
-            BRANCH="${GITHUB_REF_NAME}"
-            CUSTOM_TAG="${{ inputs.image_tag }}"
-          else
-            SHA="${{ github.event.workflow_run.head_sha }}"
-            BRANCH="${{ github.event.workflow_run.head_branch }}"
-            CUSTOM_TAG=""
-          fi
+          SHA="${GITHUB_SHA}"
+          BRANCH="${GITHUB_REF_NAME}"
           SHORT_SHA="${SHA:0:7}"
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE_NAME="${OWNER}/${{ matrix.image }}"
@@ -86,7 +108,7 @@ jobs:
           fi
 
           SCAN_TAG="ghcr.io/${IMAGE_NAME}:scan-${SHORT_SHA}"
-          PUSH_TAGS="ghcr.io/${IMAGE_NAME}:${FLOATING_TAG},ghcr.io/${IMAGE_NAME}:sha-${SHORT_SHA}"
+          PUSH_TAGS="ghcr.io/${IMAGE_NAME}:${FLOATING_TAG},ghcr.io/${IMAGE_NAME}:sha-${SHA}"
           if [ "${BRANCH}" = "production" ]; then
             PUSH_TAGS="${PUSH_TAGS},ghcr.io/${IMAGE_NAME}:latest"
           fi
@@ -118,7 +140,7 @@ jobs:
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
           ignore-unfixed: true
-          exit-code: 0
+          exit-code: 1
 
       - name: Upload Trivy SARIF
         if: always()

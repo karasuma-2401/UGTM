@@ -16,7 +16,6 @@ using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.RegisterTopic
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Infrastructure.BackgroundServices;
-using UGTM.Modules.ThesisManagement.Infrastructure.Notifications;
 
 namespace UGTM.Modules.ThesisManagement.Tests;
 
@@ -34,7 +33,6 @@ public sealed class TopicRegistrationApplicationTests
     private readonly FakeStudentInfoReader _studentInfoReader = new();
     private readonly FakeEmailSender _emailSender = new();
     private readonly FakeTimeProvider _timeProvider = new(FixedNow);
-    private readonly ThesisEmailTemplateRenderer _templateRenderer = new();
 
     public TopicRegistrationApplicationTests()
     {
@@ -74,7 +72,7 @@ public sealed class TopicRegistrationApplicationTests
 
         Assert.True(result.IsSuccess);
         Assert.True(result.Value.IsPendingConfirmation);
-        Assert.NotNull(result.Value.ConfirmationExpiresAtUtc);
+        Assert.Null(result.Value.ConfirmationExpiresAtUtc);
 
         var statusA = await _store.GetStudentRegistrationStatusAsync(StudentAId);
         Assert.Equal(nameof(MemberConfirmationStatus.Confirmed), statusA!.ConfirmationStatus);
@@ -82,10 +80,11 @@ public sealed class TopicRegistrationApplicationTests
         var statusB = await _store.GetStudentRegistrationStatusAsync(StudentBId);
         Assert.Equal(nameof(MemberConfirmationStatus.Pending), statusB!.ConfirmationStatus);
 
-        // Verify emails were sent to both
-        Assert.Equal(2, _emailSender.SentMessages.Count);
-        Assert.Contains(_emailSender.SentMessages, m => m.To == "studentB@test.edu.vn");
-        Assert.Contains(_emailSender.SentMessages, m => m.To == "studentA@test.edu.vn");
+        // The invitation is queued with the registration; delivery is performed by the worker.
+        var invitation = Assert.Single(_store.QueuedInvitations);
+        Assert.Equal("studentB@test.edu.vn", invitation.PartnerEmail);
+        Assert.Equal("studentA@test.edu.vn", invitation.InviterEmail);
+        Assert.Empty(_emailSender.SentMessages);
     }
 
     [Fact]
@@ -567,10 +566,8 @@ public sealed class TopicRegistrationApplicationTests
         => new(
             _store,
             _studentInfoReader,
-            _emailSender,
             customUser ?? new FakeCurrentUser(currentUserId),
-            _timeProvider,
-            _templateRenderer);
+            _timeProvider);
 
     private sealed class UnauthenticatedCurrentUser : ICurrentUser
     {

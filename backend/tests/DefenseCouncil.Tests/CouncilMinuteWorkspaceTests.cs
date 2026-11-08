@@ -51,6 +51,7 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
     private readonly FakeTopicDefenseContract _topicDefenseContract = new();
     private readonly FakeDefenseCouncilAuditOutbox _auditOutbox = new();
     private readonly FakeReauthenticationVerifier _reauthVerifier = new();
+    private readonly FakeMinuteConfigurationReader _configurations = new();
 
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -77,6 +78,9 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
         builder.Services.AddSingleton<IReauthenticationVerifier>(_reauthVerifier);
 
         builder.Services.AddScoped<CouncilMinuteWorkspaceLoader>();
+        builder.Services.AddSingleton<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilMinuteWriteGuard, TestCouncilScoreWriteGuard>();
+        builder.Services.AddScoped<UGTM.Modules.Identity.Contracts.FinalSubmissions.IFinalSubmissionAuthorityReader, TestScoreAuthority>();
+        builder.Services.AddSingleton<UGTM.Modules.AcademicPeriods.Contracts.ScoreSummaries.IScoreSummaryConfigurationReader>(_configurations);
         builder.Services.AddScoped<GetCouncilMinuteWorkspaceHandler>();
         builder.Services.AddScoped<SaveCouncilMinuteHandler>();
         builder.Services.AddScoped<LockCouncilMinuteHandler>();
@@ -208,6 +212,95 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
         var json = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.GetProperty("data").Clone();
+    }
+
+    [Fact]
+    public void Minute_preview_rounds_midpoints_away_from_zero()
+    {
+        var items = new[]
+        {
+            new CouncilMinuteWorkspaceCalculator.ItemEvaluationData("ADVISOR", "GVHD", "Advisor", 8.125m, 1m, "", false, false, SourceId: Guid.NewGuid())
+        };
+        var configuration = FakeMinuteConfigurationReader.ForBatch(Guid.NewGuid()) with
+        { Components = [FakeMinuteConfigurationReader.Component("ADVISOR", "Advisor", 1m, 1)] };
+        var (_, _, preview) = CouncilMinuteWorkspaceCalculator.BuildWorkspaceData(items, null, null, null, null, configuration);
+
+        Assert.Equal(8.13m, preview.FinalRoundedScore);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("invalid")]
+    [InlineData("incomplete")]
+    public void Minute_preview_does_not_return_a_final_score_without_valid_complete_inputs(string kind)
+    {
+        var config = FakeMinuteConfigurationReader.ForBatch(Guid.NewGuid()) with
+        { Components = [FakeMinuteConfigurationReader.Component("A", "Advisor", 1, 1)] };
+        var item = new CouncilMinuteWorkspaceCalculator.ItemEvaluationData("ADVISOR", "GVHD", "Advisor",
+            kind == "incomplete" ? null : 8m, 2, "", false, false, SourceId: Guid.NewGuid());
+        var (_, _, preview) = CouncilMinuteWorkspaceCalculator.BuildWorkspaceData([item], null, null, null, null,
+            kind == "missing" ? null : kind == "invalid" ? config with { IsValid = false } : config);
+        Assert.Null(preview.FinalRoundedScore);
+        Assert.False(preview.IsReadyToLock);
+        Assert.NotNull(preview.CalculationErrorCode);
+    }
+
+    [Fact]
+    public async Task Workspace_reads_active_nondefault_weights_and_configuration_version()
+    {
+        var ids = SetupTestCouncil();
+        _councilRepo.Scores.AddRange([
+            new CouncilScore { Id = Guid.NewGuid(), CouncilAssignmentId = ids.AssignmentId, CouncilMemberId = ids.ChairmanId, Score = 7 },
+            new CouncilScore { Id = Guid.NewGuid(), CouncilAssignmentId = ids.AssignmentId, CouncilMemberId = ids.SecretaryId, Score = 6 }
+        ]);
+        _configurations.Factory = batch => FakeMinuteConfigurationReader.ForBatch(batch) with
+        {
+            VersionNo = 19,
+            Components = FakeMinuteConfigurationReader.ForBatch(batch).Components.Select(c => c.Source == "Advisor" ? c with { Weight = 7 } : c).ToArray()
+        };
+        Authenticate(ids.SecretaryUserId);
+        var response = await _client.GetAsync($"/api/councils/assignments/{ids.AssignmentId}/minute-workspace");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var data = await ReadDataAsync(response);
+        var preview = data.GetProperty("calculationPreview");
+        Assert.Equal(19, preview.GetProperty("configurationVersion").GetInt32());
+        Assert.Equal(11m, preview.GetProperty("adjustedDivisor").GetDecimal());
+        Assert.Equal(7.73m, preview.GetProperty("finalRoundedScore").GetDecimal());
+    }
+
+    [Theory]
+    [InlineData("Student")]
+    [InlineData("Lecturer")]
+    public async Task Workspace_and_preview_reject_users_outside_the_assigned_council(string role)
+    {
+        var assigned = SetupTestCouncil();
+        var other = SetupTestCouncil();
+        Authenticate(role == "Student" ? Guid.NewGuid() : other.ChairmanUserId, role);
+
+        var workspace = await _client.GetAsync($"/api/councils/assignments/{assigned.AssignmentId}/minute-workspace");
+        var preview = await _client.PutAsJsonAsync(
+            $"/api/councils/assignments/{assigned.AssignmentId}/minute?preview=true",
+            new SaveCouncilMinuteInputDto(SecretaryMarking: "AcceptedAsPerMinute", StudentFeedback: null));
+
+        Assert.Equal(HttpStatusCode.Forbidden, workspace.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, preview.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Admin")]
+    [InlineData("AcademicAffairs")]
+    public async Task Workspace_and_preview_allow_authorized_administrators(string role)
+    {
+        var ids = SetupTestCouncil();
+        Authenticate(Guid.NewGuid(), role);
+
+        var workspace = await _client.GetAsync($"/api/councils/assignments/{ids.AssignmentId}/minute-workspace");
+        var preview = await _client.PutAsJsonAsync(
+            $"/api/councils/assignments/{ids.AssignmentId}/minute?preview=true",
+            new SaveCouncilMinuteInputDto(SecretaryMarking: "AcceptedAsPerMinute", StudentFeedback: null));
+
+        Assert.Equal(HttpStatusCode.OK, workspace.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
     }
 
     [Fact]
@@ -352,6 +445,48 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
         // CouncilMinute trong DB chưa được tạo hoặc chưa có StudentFeedback
         var minute = _councilRepo.Minutes.FirstOrDefault(m => m.CouncilAssignmentId == ids.AssignmentId);
         Assert.Null(minute);
+        Assert.Empty(_auditOutbox.Entries);
+    }
+
+    [Fact]
+    public async Task SaveMinute_rejects_exclusion_without_a_separate_reason_even_when_student_feedback_is_present()
+    {
+        var ids = SetupTestCouncil();
+        Authenticate(ids.SecretaryUserId);
+        var response = await _client.PutAsJsonAsync($"/api/councils/assignments/{ids.AssignmentId}/minute",
+            new SaveCouncilMinuteInputDto("RejectedAsPerMinute", "GVPB", "Góp ý đủ dài nhưng không phải lý do nội bộ."));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("ExclusionReasonRequired", await response.Content.ReadAsStringAsync());
+        Assert.False(_councilRepo.ActiveReviewerAssignments[ids.GroupId].Evaluation!.IsIgnoredInCalculation);
+        Assert.Empty(_auditOutbox.Entries);
+    }
+
+    [Fact]
+    public async Task SaveMinute_rejects_unknown_marking_instead_of_resetting_existing_exclusions()
+    {
+        var ids = SetupTestCouncil();
+        Authenticate(ids.SecretaryUserId);
+        var response = await _client.PutAsJsonAsync($"/api/councils/assignments/{ids.AssignmentId}/minute",
+            new SaveCouncilMinuteInputDto(SecretaryMarking: "typo"));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(_auditOutbox.Entries);
+    }
+
+    [Theory]
+    [InlineData("COUNCIL_MEMBER")]
+    [InlineData("COUNCIL_CHAIRMAN")]
+    public async Task SaveMinute_rejects_attendance_only_or_unscored_target_without_resetting_exclusions(string target)
+    {
+        var ids = SetupTestCouncil(isReviewerInCouncil: true);
+        Authenticate(ids.SecretaryUserId);
+        var reviewer = _councilRepo.ActiveReviewerAssignments[ids.GroupId].Evaluation!;
+        reviewer.SetCalculationExclusion(true, "Lý do đã được lưu trước đó.");
+        var response = await _client.PutAsJsonAsync($"/api/councils/assignments/{ids.AssignmentId}/minute",
+            new SaveCouncilMinuteInputDto("RejectedAsPerMinute", target, Reason: "Lý do loại điểm theo biên bản."));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("InvalidTargetComponent", await response.Content.ReadAsStringAsync());
+        Assert.True(reviewer.IsIgnoredInCalculation);
+        Assert.Empty(_auditOutbox.Entries);
     }
 
     [Fact]
@@ -383,7 +518,8 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
         var payload = new SaveCouncilMinuteInputDto(
             SecretaryMarking: "RejectedAsPerMinute",
             TargetComponentCode: "REVIEWER",
-            StudentFeedback: "Cần bổ sung tài liệu tham khảo và sửa kết luận.");
+            StudentFeedback: "Cần bổ sung tài liệu tham khảo và sửa kết luận.",
+            Reason: "Hội đồng xác định phiếu phản biện không hợp lệ.");
 
         // Act
         var response = await _client.PutAsJsonAsync($"/api/councils/assignments/{ids.AssignmentId}/minute", payload);
@@ -410,7 +546,12 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
         // Kiểm tra database
         var reviewer = _councilRepo.ActiveReviewerAssignments[ids.GroupId];
         Assert.True(reviewer?.Evaluation?.IsIgnoredInCalculation);
-        Assert.Equal("RejectedAsPerMinute", reviewer?.Evaluation?.ExclusionReason);
+        Assert.Equal(payload.Reason, reviewer?.Evaluation?.ExclusionReason);
+        var savedAudit = Assert.Single(_auditOutbox.Entries).Entry;
+        using var auditJson = JsonDocument.Parse(JsonSerializer.Serialize(savedAudit.Metadata));
+        Assert.Equal(payload.Reason, auditJson.RootElement.GetProperty("Reason").GetString());
+        Assert.False(auditJson.RootElement.GetProperty("Before").GetProperty("Reviewer").GetProperty("IsIgnoredInCalculation").GetBoolean());
+        Assert.True(auditJson.RootElement.GetProperty("After").GetProperty("Reviewer").GetProperty("IsIgnoredInCalculation").GetBoolean());
 
         var minute = _councilRepo.Minutes.FirstOrDefault(m => m.CouncilAssignmentId == ids.AssignmentId);
         Assert.NotNull(minute);
@@ -691,7 +832,8 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
         var payload = new SaveCouncilMinuteInputDto(
             SecretaryMarking: "RejectedAsPerMinute",
             TargetComponentCode: "ADVISOR",
-            StudentFeedback: "Loại điểm GVHD theo biên bản.");
+            StudentFeedback: "Góp ý dành cho nhóm sinh viên.",
+            Reason: "Loại điểm GVHD theo biên bản.");
 
         var response = await _client.PutAsJsonAsync($"/api/councils/assignments/{ids.AssignmentId}/minute", payload);
 
@@ -704,7 +846,7 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
 
         var advEval = _councilRepo.AdvisorEvaluations[ids.GroupId];
         Assert.True(advEval.IsIgnoredInCalculation);
-        Assert.Equal("RejectedAsPerMinute", advEval.ExclusionReason);
+        Assert.Equal(payload.Reason, advEval.ExclusionReason);
     }
 
     // =========================================================================

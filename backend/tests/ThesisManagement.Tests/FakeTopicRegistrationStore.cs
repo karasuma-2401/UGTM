@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations;
@@ -16,6 +14,7 @@ public sealed class FakeTopicRegistrationStore : ITopicRegistrationStore
     private readonly List<StudentGroup> _groups = [];
     private readonly Dictionary<Guid, StudentRegistrationPenalty> _penalties = [];
     private string? _lastRawToken;
+    public List<TopicRegistrationInvitation> QueuedInvitations { get; } = [];
 
     public bool IsRegistrationWindowOpen { get; set; } = true;
     public bool IsTopicPreparationStageActive { get; set; } = true;
@@ -51,6 +50,7 @@ public sealed class FakeTopicRegistrationStore : ITopicRegistrationStore
         DateTime nowUtc,
         TimeSpan confirmationWindow,
         string confirmationTokenHash,
+        TopicRegistrationInvitation? invitation,
         CancellationToken cancellationToken = default)
     {
         lock (_sync)
@@ -136,9 +136,9 @@ public sealed class FakeTopicRegistrationStore : ITopicRegistrationStore
             if (studentBId.HasValue)
             {
                 expiresAt = nowUtc.Add(confirmationWindow);
-                _lastRawToken = "test_raw_token_" + Guid.NewGuid().ToString("N");
-                var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(_lastRawToken))).ToLowerInvariant();
-                group.AddPendingMember(studentBId.Value, topic.BatchId, studentAId, hash, nowUtc, expiresAt.Value);
+                _lastRawToken = invitation!.RawToken;
+                QueuedInvitations.Add(invitation);
+                group.AddPendingMember(studentBId.Value, topic.BatchId, studentAId, confirmationTokenHash, nowUtc, expiresAt.Value);
             }
 
             return Task.FromResult(Result.Success(new TopicRegistrationResultDto(
@@ -146,7 +146,7 @@ public sealed class FakeTopicRegistrationStore : ITopicRegistrationStore
                 topicId,
                 topic.BatchId,
                 studentBId.HasValue,
-                expiresAt,
+                null,
                 "Success")));
         }
     }

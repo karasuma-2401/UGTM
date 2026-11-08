@@ -17,14 +17,6 @@ on:
     branches:
       - dev
       - production
-    paths:
-      - "backend/**"
-      - "docker/**"
-      - "docker-compose.yml"
-      - ".env.example"
-      - "UGTM.sln"
-      - ".github/workflows/backend-ci.yml"
-      - ".github/workflows/deploy.yml"
   workflow_dispatch:
 
 concurrency:
@@ -150,6 +142,12 @@ jobs:
           JWT_PRIVATE_KEY_FILE: /tmp/ci-only-jwt-private.pem
           SMTP_HOST: smtp.example.test
           SMTP_FROM_ADDRESS: no-reply@example.test
+          PLAGIARISM_AI_BASE_URL: https://ai.example.test
+          THESIS_EMAIL_OUTBOX_PARTITION: ci-only
+          S3_ENDPOINT: https://storage.example.test
+          S3_ACCESS_KEY: ci-only
+          S3_SECRET_KEY: ci-only
+          S3_BUCKET_NAME: ci-only
         run: docker compose -f docker/docker-compose.prod.yml config --quiet
 
       - name: Validate Caddy gateway configuration

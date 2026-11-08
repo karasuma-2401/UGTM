@@ -5,6 +5,7 @@ namespace UGTM.Modules.ThesisManagement.Domain.Entities;
 public class RenameRequest
 {
     public Guid Id { get; set; }
+    public uint Version { get; private set; }
     public Guid GroupId { get; set; }
     public Guid RequestedByStudentId { get; set; }
     public string OldTitleVi { get; set; } = null!;

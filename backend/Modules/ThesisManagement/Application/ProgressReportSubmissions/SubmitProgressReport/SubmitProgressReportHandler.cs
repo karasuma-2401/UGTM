@@ -25,6 +25,7 @@ public sealed class SubmitProgressReportHandler(
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     TimeProvider timeProvider,
+    IThesisUploadLifecycle uploadLifecycle,
     ISyllabusRepository? syllabusRepository = null)
 {
     public async Task<Result<ProgressReportSubmissionDto>> HandleAsync(
@@ -52,7 +53,7 @@ public sealed class SubmitProgressReportHandler(
         }
 
         var group = await groupRepository.GetByIdAsync(milestone.GroupId, cancellationToken);
-        var isMember = group?.Members.Any(member => member.StudentId == currentUser.UserId.Value) ?? false;
+        var isMember = group is not null && ThesisAuthorization.IsConfirmedMember(group, currentUser.UserId.Value);
         var isAdministrator = ThesisAuthorization.IsAdministrator(currentUser);
         if (group is null || (!isMember && !isAdministrator))
         {
@@ -63,6 +64,11 @@ public sealed class SubmitProgressReportHandler(
             && group.Status != StudentGroupStatus.MidtermSubmitted
             && group.Status != StudentGroupStatus.SyllabusApproved)
         {
+            if (group.Status is not (StudentGroupStatus.Registered or StudentGroupStatus.SyllabusRevisionRequired or StudentGroupStatus.SyllabusSubmitted))
+            {
+                return Result.Failure<ProgressReportSubmissionDto>(ProgressReportErrors.InvalidSubmissionState);
+            }
+
             var syllabus = syllabusRepository is not null
                 ? await syllabusRepository.GetByGroupIdAsync(group.Id, cancellationToken)
                 : null;
@@ -126,14 +132,12 @@ public sealed class SubmitProgressReportHandler(
             UploadedAt = occurredAt
         };
 
-        await using var content = new MemoryStream(validatedFile.Content.ToArray(), writable: false);
-        await objectStorage.UploadAsync(
-            new ThesisSubmissionObjectWriteRequest(objectKey, validatedFile.ContentType, validatedFile.FileSize),
-            content,
-            cancellationToken);
-
+        var uploadAttempt = await uploadLifecycle.BeginAsync(objectKey, cancellationToken);
         try
         {
+            await using var content = new MemoryStream(validatedFile.Content.ToArray(), writable: false);
+            await objectStorage.UploadAsync(new ThesisSubmissionObjectWriteRequest(
+                objectKey, validatedFile.ContentType, validatedFile.FileSize), content, cancellationToken);
             if (isFirstSubmission)
             {
                 report = ProgressReport.CreateSubmitted(reportId, milestone.Id, group.Id, command.StudentNote, occurredAt);
@@ -141,7 +145,7 @@ public sealed class SubmitProgressReportHandler(
             }
             else if (!report!.TrySubmitRevision(command.StudentNote, occurredAt))
             {
-                return await DeleteObjectAndFailAsync(objectKey, ProgressReportErrors.InvalidSubmissionState, cancellationToken);
+                return Result.Failure<ProgressReportSubmissionDto>(ProgressReportErrors.InvalidSubmissionState);
             }
 
             var version = ProgressReportVersion.CreateSubmitted(
@@ -174,13 +178,13 @@ public sealed class SubmitProgressReportHandler(
                     }),
                 occurredAt);
 
-            var saveError = await unitOfWork.TrySaveChangesAsync(
-                ProgressReportErrors.ConcurrencyConflict,
-                ProgressReportErrors.ConcurrencyConflict,
-                cancellationToken);
+            var saveError = await uploadLifecycle.SaveAsync(uploadAttempt,
+                token => unitOfWork.TrySaveChangesAsync(ProgressReportErrors.ConcurrencyConflict,
+                    ProgressReportErrors.ConcurrencyConflict, token),
+                ProgressReportErrors.ConcurrencyConflict, cancellationToken);
             if (saveError is not null)
             {
-                return await DeleteObjectAndFailAsync(objectKey, saveError, cancellationToken);
+                return Result.Failure<ProgressReportSubmissionDto>(saveError);
             }
 
             return Result.Success(new ProgressReportSubmissionDto(
@@ -195,10 +199,9 @@ public sealed class SubmitProgressReportHandler(
                 version.SubmittedAt,
                 SyllabusSubmissionMapper.ToDto(submissionFile)));
         }
-        catch
+        finally
         {
-            await TryDeleteObjectAsync(objectKey, cancellationToken);
-            throw;
+            await uploadLifecycle.FinishAsync(uploadAttempt);
         }
     }
 
@@ -222,21 +225,4 @@ public sealed class SubmitProgressReportHandler(
         return true;
     }
 
-    private async Task<Result<ProgressReportSubmissionDto>> DeleteObjectAndFailAsync(string objectKey, Error error, CancellationToken cancellationToken)
-    {
-        await TryDeleteObjectAsync(objectKey, cancellationToken);
-        return Result.Failure<ProgressReportSubmissionDto>(error);
-    }
-
-    private async Task TryDeleteObjectAsync(string objectKey, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await objectStorage.DeleteAsync(objectKey, cancellationToken);
-        }
-        catch
-        {
-            // The object is unreachable without a committed database row; an orphan sweep can retry cleanup.
-        }
-    }
 }

@@ -1,4 +1,5 @@
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
@@ -21,7 +22,8 @@ public sealed class AssignCouncilGroupsHandler(
     IDefenseGroupContract defenseGroupContract,
     ITopicDefenseContract topicDefenseContract,
     ICouncilUserInfoReader userInfoReader,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ICouncilSchedulingGuard schedulingGuard)
 {
     public async Task<Result<IReadOnlyList<CouncilAssignmentResponseDto>>> HandleAsync(
         AssignCouncilGroupsCommand command,
@@ -43,6 +45,13 @@ public sealed class AssignCouncilGroupsHandler(
             return Result.Failure<IReadOnlyList<CouncilAssignmentResponseDto>>(
                 Error.Validation("Council.EmptyAssignments", "Danh sách nhóm đề tài không được để trống."));
         }
+
+        return await schedulingGuard.ExecuteAsync(token => HandleCoreAsync(command, token), cancellationToken);
+    }
+
+    private async Task<Result<IReadOnlyList<CouncilAssignmentResponseDto>>> HandleCoreAsync(
+        AssignCouncilGroupsCommand command, CancellationToken cancellationToken)
+    {
 
         var council = await councilRepository.GetByIdWithDetailsAsync(command.CouncilId, cancellationToken);
         if (council is null)
@@ -118,8 +127,8 @@ public sealed class AssignCouncilGroupsHandler(
                 CouncilErrors.GroupDefenseRejectedByReviewer(rejectedGroupIds.First()));
         }
 
-        // Check if all groups are eligible for defense (Reviewer submitted with Approved and score >= 4.0)
-        var eligibleGroupIds = await councilRepository.GetDefenseEligibleGroupIdsAsync(groupIds, cancellationToken);
+        // Check the configured reviewer rule and its report binding for every group.
+        var eligibleGroupIds = await councilRepository.LockDefenseEligibleGroupIdsAsync(groupIds, cancellationToken);
         var ineligibleGroupId = groupIds.FirstOrDefault(id => !eligibleGroupIds.Contains(id));
         if (ineligibleGroupId != Guid.Empty)
         {
@@ -174,7 +183,15 @@ public sealed class AssignCouncilGroupsHandler(
         }).ToList();
 
         await councilRepository.AddAssignmentsAsync(newAssignments, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+        catch (DefenseCouncilUniqueConstraintException error) when (error.ConstraintName is
+            "ux_council_assignment_council_order" or "ix_council_assignment_group_id")
+        {
+            return Result.Failure<IReadOnlyList<CouncilAssignmentResponseDto>>(CouncilErrors.ConcurrentModification);
+        }
 
         var resultDtos = newAssignments.Select(a =>
         {

@@ -18,7 +18,8 @@ public sealed class ReviewRenameRequestByAcademicAffairsHandler(
     IThesisManagementAuditOutbox auditOutbox,
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IRenameRequestTransactionCoordinator coordinator)
 {
     public async Task<Result<RenameRequestDto>> HandleAsync(
         ReviewRenameRequestByAcademicAffairsCommand command,
@@ -47,7 +48,17 @@ public sealed class ReviewRenameRequestByAcademicAffairsHandler(
             return Result.Failure<RenameRequestDto>(RenameRequestErrors.RejectionReasonRequired);
         }
 
-        var request = await renameRequestRepository.GetByIdAsync(command.RequestId, cancellationToken);
+        return await coordinator.ExecuteAsync(
+            token => HandleCoreAsync(command, isApprove, currentUser.UserId.Value, token), cancellationToken);
+    }
+
+    private async Task<Result<RenameRequestDto>> HandleCoreAsync(
+        ReviewRenameRequestByAcademicAffairsCommand command,
+        bool isApprove,
+        Guid actorId,
+        CancellationToken cancellationToken)
+    {
+        var request = await renameRequestRepository.LockByIdAsync(command.RequestId, cancellationToken);
         if (request is null)
         {
             return Result.Failure<RenameRequestDto>(RenameRequestErrors.RequestNotFound);
@@ -100,13 +111,13 @@ public sealed class ReviewRenameRequestByAcademicAffairsHandler(
                         NewTitleVi = request.NewTitleVi,
                         OldTitleEn = request.OldTitleEn,
                         NewTitleEn = request.NewTitleEn,
-                        ApprovedBy = currentUser.UserId.Value
+                        ApprovedBy = actorId
                     }),
                 nowUtc);
         }
         else
         {
-            request.RejectByAcademicAffairs(command.RejectionReason!.Trim(), currentUser.UserId.Value, nowUtc);
+            request.RejectByAcademicAffairs(command.RejectionReason!.Trim(), actorId, nowUtc);
         }
 
         var saveError = await unitOfWork.TrySaveChangesAsync(

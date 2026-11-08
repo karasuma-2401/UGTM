@@ -36,6 +36,8 @@ public sealed class ReviewerAssignmentTransactionCoordinator(
         if (all.Any(context => context.Database.CurrentTransaction is not null || context.ChangeTracker.HasChanges()))
             throw new InvalidOperationException("Reviewer coordination requires clean contexts and owns its transaction.");
         var originals = readers.Select(context => context.Database.GetDbConnection()).ToArray();
+        var originalSettings = readers.Select(context => context.Database.GetConnectionString()
+            ?? throw new InvalidOperationException("Reader connection settings are required.")).ToArray();
         if (originals.Any(connection => connection.State != ConnectionState.Closed))
             throw new InvalidOperationException("Reader connections must be closed before reviewer coordination.");
         var connection = defense.Database.GetDbConnection();
@@ -91,7 +93,8 @@ public sealed class ReviewerAssignmentTransactionCoordinator(
         finally
         {
             for (var index = 0; index < replaced; index++)
-                readers[index].Database.SetDbConnection(originals[index], contextOwnsConnection: true);
+                // Replacing an owned EF connection disposes it, so restore a fresh connection.
+                readers[index].Database.SetDbConnection(new NpgsqlConnection(originalSettings[index]), contextOwnsConnection: true);
             if (opened) await defense.Database.CloseConnectionAsync();
         }
     }

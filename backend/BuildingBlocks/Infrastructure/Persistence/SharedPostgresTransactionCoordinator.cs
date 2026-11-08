@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
 
 namespace UGTM.BuildingBlocks.Infrastructure.Persistence;
 
@@ -10,12 +11,30 @@ namespace UGTM.BuildingBlocks.Infrastructure.Persistence;
 /// </summary>
 public static class SharedPostgresTransactionCoordinator
 {
-    public static async Task<TResult> ExecuteAsync<TResult>(
+    public static Task<TResult> ExecuteAsync<TResult>(
         DbContext primaryContext,
         DbContext secondaryContext,
         Func<CancellationToken, Task<TResult>> workflow,
         Func<TResult, CancellationToken, Task<TResult>>? postSave,
         CancellationToken cancellationToken = default)
+        => ExecuteCoreAsync(primaryContext, secondaryContext, workflow, postSave, null, cancellationToken);
+
+    public static Task<TResult> ExecuteConditionalAsync<TResult>(
+        DbContext primaryContext,
+        DbContext secondaryContext,
+        Func<CancellationToken, Task<TResult>> workflow,
+        Func<TResult, bool> shouldCommit,
+        CancellationToken cancellationToken = default)
+        => ExecuteCoreAsync(primaryContext, secondaryContext, workflow, null,
+            shouldCommit ?? throw new ArgumentNullException(nameof(shouldCommit)), cancellationToken);
+
+    private static async Task<TResult> ExecuteCoreAsync<TResult>(
+        DbContext primaryContext,
+        DbContext secondaryContext,
+        Func<CancellationToken, Task<TResult>> workflow,
+        Func<TResult, CancellationToken, Task<TResult>>? postSave,
+        Func<TResult, bool>? shouldCommit,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(primaryContext);
         ArgumentNullException.ThrowIfNull(secondaryContext);
@@ -29,6 +48,8 @@ public static class SharedPostgresTransactionCoordinator
 
         var primaryConnection = primaryContext.Database.GetDbConnection();
         var secondaryConnection = secondaryContext.Database.GetDbConnection();
+        var secondaryConnectionString = secondaryContext.Database.GetConnectionString()
+            ?? throw new InvalidOperationException("Secondary connection settings are required.");
         if (secondaryConnection.State != ConnectionState.Closed)
         {
             throw new InvalidOperationException("The secondary module connection must be closed before coordination.");
@@ -50,6 +71,13 @@ public static class SharedPostgresTransactionCoordinator
             try
             {
                 var result = await workflow(cancellationToken);
+                if (shouldCommit is not null && !shouldCommit(result))
+                {
+                    await primaryTransaction.RollbackAsync(CancellationToken.None);
+                    secondaryContext.ChangeTracker.Clear();
+                    primaryContext.ChangeTracker.Clear();
+                    return result;
+                }
                 await secondaryContext.SaveChangesAsync(acceptAllChangesOnSuccess: false, cancellationToken);
                 await primaryContext.SaveChangesAsync(acceptAllChangesOnSuccess: false, cancellationToken);
                 if (postSave is not null)
@@ -80,7 +108,8 @@ public static class SharedPostgresTransactionCoordinator
         }
         finally
         {
-            secondaryContext.Database.SetDbConnection(secondaryConnection, contextOwnsConnection: true);
+            // EF disposes an owned connection when replacing it; recreate it for subsequent work.
+            secondaryContext.Database.SetDbConnection(new NpgsqlConnection(secondaryConnectionString), contextOwnsConnection: true);
             if (openedPrimaryConnection)
             {
                 await primaryContext.Database.CloseConnectionAsync();
