@@ -113,6 +113,7 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.PublishScoreSummaryHandler>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.StudentScoreSummaryHandler>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilScoreWriteGuard, UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.CouncilScoreWriteGuard>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilMinuteWriteGuard, UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.CouncilScoreWriteGuard>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

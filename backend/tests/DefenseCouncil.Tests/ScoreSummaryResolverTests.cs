@@ -1,5 +1,6 @@
 using UGTM.Modules.AcademicPeriods.Contracts.ScoreSummaries;
 using UGTM.Modules.DefenseCouncil.Application.ScoreSummaries;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Grading;
@@ -35,6 +36,54 @@ public sealed class ScoreSummaryResolverTests
             new(Guid.NewGuid(), batch, 1, 9, "IntegerCoefficient", true, components));
     }
     private static UGTM.BuildingBlocks.Domain.Result<ResolvedScoreCalculation> Resolve(Input i) => new ScoreSummaryResolver(new ThesisGradeCalculator()).Resolve(i.Group, i.Topic, i.Facts, i.Archive, i.Config, Now);
+
+    [Theory]
+    [InlineData("dynamic", false)]
+    [InlineData("dynamic", true)]
+    [InlineData("percentage", false)]
+    [InlineData("average", false)]
+    [InlineData("average", true)]
+    [InlineData("midpoint", false)]
+    public void Minute_preview_matches_official_configured_calculation(string mode, bool inside)
+    {
+        var i = Valid(inside);
+        i = i with { Config = i.Config with { VersionNo = 17, Components = i.Config.Components.Select(c => c.Source == "Advisor" ? c with { Weight = 7 } : c).ToArray() } };
+        if (mode == "percentage")
+            i = i with { Config = i.Config with { Method = "Percentage", Components = i.Config.Components.Select(c => c with { Weight = 20 }).ToArray() } };
+        if (mode == "average")
+        {
+            i.Facts.Scores[0].IsIgnoredInCalculation = true;
+            i.Facts.Scores[0].ExclusionReason = "decision";
+            i = i with { Config = i.Config with { Components = [i.Config.Components[0], i.Config.Components[1], i.Config.Components[2] with { Source = "CouncilAverage" }] } };
+        }
+        if (mode == "midpoint")
+        {
+            Set(i.Facts.Evaluations[0], "Score", 7.69m);
+            i = i with { Config = i.Config with { Components = [i.Config.Components[0] with { Weight = 1 }, i.Config.Components[1] with { Weight = 1 }] } };
+        }
+        var a = i.Facts.Advisors[0]; var e = i.Facts.Evaluations[0];
+        var items = new List<CouncilMinuteWorkspaceCalculator.ItemEvaluationData>
+        {
+            new("ADVISOR", "GVHD", "Advisor", a.Score, 0, "", false, a.IsIgnoredInCalculation, a.ExclusionReason, a.Id),
+            new("REVIEWER", "GVPB", "Reviewer", e.Score, 0, "", inside, e.IsIgnoredInCalculation, e.ExclusionReason, e.Id)
+        };
+        foreach (var member in i.Facts.Members)
+        {
+            var score = i.Facts.Scores.SingleOrDefault(s => s.CouncilMemberId == member.Id);
+            var code = member.RoleInCouncil == CouncilMemberRole.Chairman ? "COUNCIL_CHAIRMAN" : member.RoleInCouncil == CouncilMemberRole.Secretary ? "COUNCIL_SECRETARY" : "COUNCIL_MEMBER";
+            items.Add(new(code, code, "Member", score?.Score, 0, "", member.UserId == i.Facts.Reviewers[0].ReviewerId,
+                score?.IsIgnoredInCalculation ?? false, score?.ExclusionReason, score?.Id ?? member.Id));
+        }
+        var official = Resolve(i);
+        var (_, _, preview) = CouncilMinuteWorkspaceCalculator.BuildWorkspaceData(items, null, null, null, "ACCEPTED_AS_PER_MINUTE", i.Config);
+        Assert.True(official.IsSuccess);
+        Assert.Null(preview.CalculationErrorCode);
+        Assert.Equal(official.Value.Final, preview.FinalRoundedScore);
+        Assert.Equal(official.Value.TotalWeight, preview.AdjustedDivisor);
+        Assert.Equal(Math.Round(official.Value.Raw, 6), preview.AdjustedAverage);
+        Assert.Equal(17, preview.ConfigurationVersion);
+        Assert.True(preview.IsReadyToLock);
+    }
     [Theory]
     [InlineData(false, 7.57, 7)]
     [InlineData(true, 7.83, 6)]

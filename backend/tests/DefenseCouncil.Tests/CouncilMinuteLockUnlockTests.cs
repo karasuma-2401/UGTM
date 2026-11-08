@@ -85,6 +85,8 @@ public sealed class CouncilMinuteLockUnlockTests : IAsyncLifetime
         builder.Services.AddScoped<IFinalSubmissionAuthorityReader, TestScoreAuthority>();
 
         builder.Services.AddScoped<CouncilMinuteWorkspaceLoader>();
+        builder.Services.AddSingleton<ICouncilMinuteWriteGuard, TestCouncilScoreWriteGuard>();
+        builder.Services.AddSingleton<UGTM.Modules.AcademicPeriods.Contracts.ScoreSummaries.IScoreSummaryConfigurationReader, FakeMinuteConfigurationReader>();
         builder.Services.AddScoped<GetCouncilMinuteWorkspaceHandler>();
         builder.Services.AddScoped<SaveCouncilMinuteHandler>();
         builder.Services.AddScoped<LockCouncilMinuteHandler>();
@@ -234,7 +236,8 @@ public sealed class CouncilMinuteLockUnlockTests : IAsyncLifetime
             _councilRepo,
             _userInfoReader,
             _defenseGroupContract,
-            _topicDefenseContract);
+            _topicDefenseContract,
+            new FakeMinuteConfigurationReader());
 
         return new LockCouncilMinuteHandler(
             _councilRepo,
@@ -242,7 +245,9 @@ public sealed class CouncilMinuteLockUnlockTests : IAsyncLifetime
             workspaceLoader,
             _reauthVerifier,
             _auditOutbox,
-            currentUser);
+            currentUser,
+            new TestCouncilScoreWriteGuard(),
+            new TestScoreAuthority(currentUser));
     }
 
     private UnlockCouncilMinuteHandler CreateUnlockHandler(ICurrentUser currentUser)
@@ -253,7 +258,8 @@ public sealed class CouncilMinuteLockUnlockTests : IAsyncLifetime
             _uow,
             authorityReader,
             _auditOutbox,
-            currentUser);
+            currentUser,
+            new TestCouncilScoreWriteGuard());
     }
 
     // =========================================================================
@@ -1214,7 +1220,8 @@ public sealed class CouncilMinuteLockUnlockTests : IAsyncLifetime
             new SaveCouncilMinuteInputDto(
                 SecretaryMarking: "RejectedAsPerMinute",
                 TargetComponentCode: "COUNCIL_CHAIRMAN",
-                StudentFeedback: "Loại bỏ điểm bất thường của chủ tịch theo biên bản."));
+                StudentFeedback: "Góp ý cho sinh viên.",
+                Reason: "Loại bỏ điểm bất thường của chủ tịch theo biên bản."));
         Assert.Equal(HttpStatusCode.OK, saveResp.StatusCode);
 
         // Now lock should succeed!

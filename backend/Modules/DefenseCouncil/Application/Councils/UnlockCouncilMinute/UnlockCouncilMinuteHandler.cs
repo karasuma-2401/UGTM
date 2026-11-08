@@ -17,11 +17,17 @@ public sealed class UnlockCouncilMinuteHandler(
     IFinalSubmissionAuthorityReader authorityReader,
     IDefenseCouncilAuditOutbox auditOutbox,
     ICurrentUser currentUser,
+    ICouncilMinuteWriteGuard writeGuard,
     TimeProvider? clock = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
 
-    public async Task<Result<CouncilMinuteLockResponseDto>> HandleAsync(
+    public Task<Result<CouncilMinuteLockResponseDto>> HandleAsync(UnlockCouncilMinuteCommand command, CancellationToken ct = default)
+        => !currentUser.IsAuthenticated || !currentUser.UserId.HasValue
+            ? Task.FromResult(Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.Forbidden))
+            : writeGuard.ExecuteAsync(command.AssignmentId, token => HandleCoreAsync(command, token), ct);
+
+    private async Task<Result<CouncilMinuteLockResponseDto>> HandleCoreAsync(
         UnlockCouncilMinuteCommand command,
         CancellationToken ct = default)
     {
@@ -40,10 +46,9 @@ public sealed class UnlockCouncilMinuteHandler(
 
         // 1. Kiểm tra phân quyền: Lãnh đạo Khoa (Faculty + councils.minutes.unlock) hoặc Admin
         var authorityDto = await authorityReader.GetAsync(userId, ct);
-        var isAdmin = ScoreSummaryAccess.Role(authorityDto, "Admin") || currentUser.Roles.Contains("Admin");
-        var isFaculty = ScoreSummaryAccess.Role(authorityDto, "Faculty") || currentUser.Roles.Contains("Faculty");
-        var hasUnlockPerm = authorityDto?.Permissions.Contains(PermissionCodes.CouncilMinutesUnlock) == true
-                            || currentUser.Permissions.Contains(PermissionCodes.CouncilMinutesUnlock);
+        var isAdmin = ScoreSummaryAccess.Role(authorityDto, "Admin");
+        var isFaculty = ScoreSummaryAccess.Role(authorityDto, "Faculty");
+        var hasUnlockPerm = authorityDto?.Permissions.Contains(PermissionCodes.CouncilMinutesUnlock) == true;
 
         if (!isAdmin && (!isFaculty || !hasUnlockPerm))
         {

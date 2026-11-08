@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.ScoreSummaries;
+using UGTM.Modules.DefenseCouncil.Application.Grading;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Grading;
@@ -36,35 +37,21 @@ public sealed class ScoreSummaryResolver(ThesisGradeCalculator calculator)
             || archive.ArchivedConfirmedAtUtc > asOfUtc || a.DecisionAt > minute.LockedAt || e.SubmittedAtUtc > minute.LockedAt
             || facts.Scores.Any(s => s.EvaluatedAt.Kind != DateTimeKind.Utc || s.EvaluatedAt > minute.LockedAt)) return Fail("NotEligible");
         var reviewerScore = e.Score ?? throw new InvalidOperationException("Validated reviewer source has no score.");
-        var components = new List<ScoreComponentDto>(); var used = new HashSet<Guid>(); var resolutions = new List<object>();
-        foreach (var c in config.Components.OrderBy(c => c.OrderIndex).ThenBy(c => c.Id))
+        var sources = new List<ConfiguredGradeSource>
         {
-            var applies = c.Applicability == "Always" || c.Applicability == (inside ? "ReviewerInCouncil" : "ReviewerOutsideCouncil");
-            if (!applies || (c.Weight == 0 && !c.IsRequired)) { resolutions.Add(new object[] { N(c.Id), applies, "Skipped" }); continue; }
-            decimal score; bool ignored; string? reason; Guid[] sourceIds;
-            if (c.Source == "Advisor") { score = a.Score; ignored = a.IsIgnoredInCalculation; reason = a.ExclusionReason; sourceIds = [a.Id]; }
-            else if (c.Source == "Reviewer") { score = reviewerScore; ignored = e.IsIgnoredInCalculation; reason = e.ExclusionReason; sourceIds = [e.Id]; }
-            else if (c.Source == "CouncilAverage")
-            {
-                var accepted = facts.Scores.Where(s => !s.IsIgnoredInCalculation).ToArray();
-                if (accepted.Length == 0) return Fail("NoPositiveWeight");
-                score = accepted.Average(s => s.Score); ignored = false; reason = null; sourceIds = facts.Scores.Select(s => s.Id).Order().ToArray();
-            }
-            else if (c.Source is "CouncilChairman" or "CouncilSecretary" or "CouncilMember")
-            {
-                var role = c.Source == "CouncilChairman" ? CouncilMemberRole.Chairman : c.Source == "CouncilSecretary" ? CouncilMemberRole.Secretary : CouncilMemberRole.Member;
-                var candidates = required.Where(m => m.RoleInCouncil == role).ToArray();
-                if (candidates.Length > 1) return Fail("AmbiguousSource");
-                if (candidates.Length == 0) return Fail("MissingRequiredSource");
-                var s = facts.Scores.Single(s => s.CouncilMemberId == candidates[0].Id);
-                score = s.Score; ignored = s.IsIgnoredInCalculation; reason = s.ExclusionReason; sourceIds = [s.Id];
-            }
-            else return Fail("UnsupportedSource");
-            if (sourceIds.Any(id => !used.Add(id))) return Fail("AmbiguousSource");
-            var refs = JsonSerializer.Serialize(sourceIds.Select(N).ToArray());
-            components.Add(new(c.Code, c.Name, c.Source, score, c.Weight, ignored, reason, refs));
-            resolutions.Add(new object[] { N(c.Id), true, refs, D(score), ignored, reason ?? "" });
+            new(a.Id, "Advisor", a.Score, a.IsIgnoredInCalculation, a.ExclusionReason),
+            new(e.Id, "Reviewer", reviewerScore, e.IsIgnoredInCalculation, e.ExclusionReason)
+        };
+        foreach (var s in facts.Scores)
+        {
+            var role = required.Single(m => m.Id == s.CouncilMemberId).RoleInCouncil;
+            var source = role == CouncilMemberRole.Chairman ? "CouncilChairman" : role == CouncilMemberRole.Secretary ? "CouncilSecretary" : "CouncilMember";
+            sources.Add(new(s.Id, source, s.Score, s.IsIgnoredInCalculation, s.ExclusionReason));
         }
+        var resolved = ConfiguredGradeComponents.Resolve(config, inside, sources);
+        if (resolved.IsFailure) return Result.Failure<ResolvedScoreCalculation>(resolved.Error);
+        var components = resolved.Value.Components;
+        var resolutions = resolved.Value.Resolutions;
         try
         {
             if (!components.Any(c => !c.IsIgnoredInCalculation && c.Weight > 0)) return Fail("NoPositiveWeight");

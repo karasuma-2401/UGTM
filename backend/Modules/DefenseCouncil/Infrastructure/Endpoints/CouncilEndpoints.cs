@@ -432,8 +432,8 @@ public static class CouncilEndpoints
                 - `student_feedback`: Nội dung nhận xét/góp ý dành cho sinh viên đã lưu trước đó.
 
                 ### 2. Khối danh sách tất cả đầu điểm (`score_items`):
-                - Danh sách các đầu điểm gồm GVHD (hệ số 2), GVPB (hệ số 2), Chủ tịch (hệ số 1), Thư ký (hệ số 1), và Ủy viên (hệ số 1).
-                - Xử lý đặc thù GVPB kiêm Ủy viên: GVPB hệ số 2; Ủy viên hiển thị `status_text = 'Chỉ tham dự'`, `score = null`, `weight = 0`, `category = 'Không thiếu điểm'`, `is_dual_role_reviewer = true`.
+                - Danh sách các đầu điểm gồm GVHD, GVPB, Chủ tịch, Thư ký và Ủy viên; trọng số lấy từ cấu hình điểm Active của đợt.
+                - Xử lý đặc thù GVPB kiêm Ủy viên: Ủy viên hiển thị `status_text = 'Chỉ tham dự'`, `score = null`, `weight = 0`, `category = 'Không thiếu điểm'`, `is_dual_role_reviewer = true`.
                 - Mỗi đầu điểm bao gồm cờ `is_ignored_in_calculation` cho biết đầu điểm có đang bị loại khỏi công thức tính hay không.
 
                 ### 3. Khối thông tin sai biệt (`discrepancy_summary`):
@@ -449,9 +449,11 @@ public static class CouncilEndpoints
                 - Điểm sau điều chỉnh (`adjusted_total`, `adjusted_divisor`, `adjusted_average`).
                 - `formula_explanation`: Chuỗi giải trình chi tiết từng thành phần để hiển thị UI và hỗ trợ nút 'Xem công thức'.
                 - `is_ready_to_lock`: Cờ xác nhận biên bản đã đủ điều kiện để khóa (đủ tất cả điểm bắt buộc và đã xử lý xong sai biệt nếu có).
+                - `configuration_id`, `configuration_version`: Cấu hình dùng chung với tổng kết điểm chính thức; kết quả cuối làm tròn `AwayFromZero`.
+                - Thiếu điểm hoặc cấu hình không hợp lệ: `final_rounded_score = null`, `is_ready_to_lock = false`, kèm `calculation_error_code`.
 
                 ### Phân quyền truy cập (RBAC):
-                Yêu cầu Bearer token của người dùng đã xác thực (Thành viên Hội đồng, Thư ký, Giảng viên, Khoa hoặc Quản trị viên).
+                Yêu cầu Bearer token của thành viên đúng hội đồng, Quản trị viên (`Admin`) hoặc Phòng Đào tạo (`AcademicAffairs`).
 
                 ### Mã lỗi và phản hồi:
                 - **200 OK:** Truy xuất thành công `ApiResponse<CouncilMinuteWorkspaceResponseDto>`.
@@ -475,25 +477,29 @@ public static class CouncilEndpoints
                 ### Tham số Query:
                 - `preview`: Boolean (`true`/`false`, mặc định `false`).
                   - Khi `preview=true`: Chỉ thực hiện tính toán trên bộ nhớ và trả về `calculation_preview` cùng `discrepancy_summary` mới nhất, **không ghi xuống DB**.
-                  - Khi `preview=false` (lưu thật): Chỉ cho phép **Thư ký (`CouncilMemberRole.Secretary`)** của hội đồng đó (hoặc Admin) thực hiện khi biên bản chưa bị `Locked`.
+                  - Khi `preview=false` (lưu thật): Chỉ cho phép **Thư ký (`CouncilMemberRole.Secretary`)** còn vai trò Lecturer của hội đồng đó, Admin hoặc AcademicAffairs thực hiện khi biên bản chưa bị `Locked`.
 
                 ### Tham số Request Body (`SaveCouncilMinuteInputDto`):
                 - `secretary_marking`: Đánh dấu của Thư ký (`RejectedAsPerMinute`, `AcceptedAsPerMinute`, hoặc `None`).
                 - `target_component_code`: Mã đầu điểm cần loại (bắt buộc khi chọn `RejectedAsPerMinute`, ví dụ: 'REVIEWER', 'ADVISOR', 'COUNCIL_CHAIRMAN', 'COUNCIL_SECRETARY', 'COUNCIL_MEMBER').
                 - `student_feedback`: Nội dung nhận xét/góp ý dành cho sinh viên (lưu vào `RequiredRevisions` và `GeneralFeedback` của bảng `CouncilMinute`).
+                - `reason`: Lý do nội bộ riêng, bắt buộc từ 10 đến 1000 ký tự khi loại đầu điểm hoặc thay đổi cờ loại điểm. Lưu trong audit và lý do loại điểm; không dùng nội dung góp ý thay thế.
                 - `chairman_conclusion`: Kết luận bổ sung của Chủ tịch (tuỳ chọn).
 
                 ### Quy tắc nghiệp vụ & Ràng buộc:
                 1. **Bắt buộc chỉ định đầu điểm khi từ chối:** Nếu `secretary_marking == 'RejectedAsPerMinute'`, client bắt buộc phải truyền `target_component_code` hợp lệ.
-                2. **Quyền hạn lưu thật:** Chỉ Thư ký của hội đồng (hoặc Admin) mới có quyền lưu thật. Chủ tịch hoặc Ủy viên chỉ có thể gọi ở chế độ preview.
+                2. **Quyền hạn lưu thật:** Chỉ Thư ký còn vai trò Lecturer của hội đồng, Admin hoặc AcademicAffairs mới có quyền lưu thật. Chủ tịch hoặc Ủy viên chỉ có thể gọi ở chế độ preview.
                 3. **Kiểm tra trạng thái khóa:** Không thể lưu khi biên bản đã ở trạng thái `Locked`.
-                4. **Cập nhật và đồng bộ:** Hệ thống cập nhật cờ `IsIgnoredInCalculation` trên đầu điểm được chỉ định, lưu nhận xét sinh viên và tự động đồng bộ lại `ScoreSummary` cùng `ScoreSummaryComponent`.
+                4. **Ghi nguyên tử:** Cập nhật cờ loại điểm, nhận xét sinh viên và audit trước/sau trong cùng transaction. Tổng kết điểm cần được tính lại qua workflow tổng kết.
+                5. **Tranh chấp và công bố:** Dùng chung khóa với ghi điểm/tổng kết; không được sửa nguồn điểm đã công bố.
 
                 ### Mã lỗi và phản hồi:
                 - **200 OK:** Lưu nháp hoặc xem trước thành công `ApiResponse<SaveCouncilMinuteResponseDto>`.
                 - **400 Bad Request:**
                   - `Council.TargetComponentRequiredForRejection`: Thiếu `target_component_code` khi chọn loại điểm.
                   - `Council.InvalidTargetComponent`: Mã đầu điểm cần loại không hợp lệ.
+                  - `Council.InvalidSecretaryMarking`: Giá trị đánh dấu không hợp lệ.
+                  - `Council.ExclusionReasonRequired`: Thiếu lý do riêng hoặc độ dài không hợp lệ khi thay đổi loại điểm.
                 - **401 Unauthorized:** Chưa xác thực.
                 - **403 Forbidden:**
                   - `Council.OnlySecretaryCanSaveMinute`: Người dùng không phải Thư ký hội đồng khi gọi lưu thật.
@@ -526,9 +532,9 @@ public static class CouncilEndpoints
                 ### Quy tắc nghiệp vụ & Ràng buộc:
                 1. **Xác thực lại danh tính (Re-authentication):**
                    - Bắt buộc kiểm tra mật khẩu hiện tại của tài khoản đang đăng nhập thông qua Identity Reauthentication Service.
-                   - Nếu mật khẩu không chính xác hoặc để trống: Trả về lỗi 400 Bad Request (`Identity.InvalidPassword`).
+                   - Mật khẩu trống trả 400 (`Council.PasswordRequired`); mật khẩu sai trả 401 (`Council.ReauthenticationFailed`); tài khoản bị khóa trả 409 (`Council.ReauthenticationLocked`).
                 2. **Phân quyền truy cập (RBAC):**
-                   - Chỉ cho phép **Thư ký (`CouncilMemberRole.Secretary`)** của đúng hội đồng này hoặc Quản trị viên (`Admin`).
+                   - Chỉ cho phép **Thư ký (`CouncilMemberRole.Secretary`)** còn vai trò Lecturer của đúng hội đồng này, Quản trị viên (`Admin`) hoặc Phòng Đào tạo (`AcademicAffairs`).
                    - Thành viên khác (Chủ tịch, Ủy viên) hay giảng viên ngoài hội đồng sẽ bị từ chối với mã 403 Forbidden (`Council.OnlySecretaryCanLockMinute`).
                 3. **Trạng thái Hội đồng & Tiến độ điểm:**
                    - Hội đồng phải đang ở trạng thái hoạt động (`Active`). Nếu hội đồng chưa duyệt hoặc đã đóng, trả về lỗi 409 Conflict (`Council.CouncilNotActive`).
@@ -543,7 +549,7 @@ public static class CouncilEndpoints
                 ### Mã lỗi và phản hồi:
                 - **200 OK:** Khóa biên bản thành công, trả về `ApiResponse<CouncilMinuteLockResponseDto>`.
                 - **400 Bad Request:**
-                  - `Identity.InvalidPassword`: Mật khẩu xác thực lại không chính xác hoặc để trống.
+                  - `Council.PasswordRequired`: Chưa cung cấp mật khẩu xác thực lại.
                 - **401 Unauthorized:** Chưa đăng nhập hoặc Bearer token không hợp lệ.
                 - **403 Forbidden:**
                   - `Council.OnlySecretaryCanLockMinute`: Người dùng không phải là Thư ký của hội đồng này.
@@ -574,14 +580,14 @@ public static class CouncilEndpoints
                 - `assignmentId`: GUID định danh phân công nhóm đề tài trong hội đồng bảo vệ (`CouncilAssignment`).
                 
                 ### Tham số Request Body (`UnlockCouncilMinuteInputDto`):
-                - `overrideReason` (hoặc `override_reason`): Lý do giải trình việc mở khóa biên bản điểm (bắt buộc, độ dài từ 10 đến 1000 ký tự).
+                - `overrideReason`: Lý do giải trình việc mở khóa biên bản điểm (bắt buộc, độ dài từ 10 đến 500 ký tự).
                 
                 ### Quy tắc nghiệp vụ & Ràng buộc:
                 1. **Phân quyền truy cập (RBAC):**
                    - Yêu cầu người dùng có vai trò Văn phòng Khoa / Lãnh đạo Khoa (`Faculty`) kèm quyền hạn đặc biệt `councils.minutes.unlock`, hoặc Quản trị viên hệ thống (`Admin`).
                    - Người dùng không có thẩm quyền (bao gồm cả Thư ký và Chủ tịch hội đồng) sẽ bị từ chối với mã 403 Forbidden (`Council.Forbidden`).
                 2. **Kiểm tra tính hợp lệ của lý do giải trình:**
-                   - Lý do không được để trống và phải có độ dài tối thiểu từ 10 ký tự, tối đa 1000 ký tự. Vi phạm sẽ trả về lỗi 400 Bad Request (`Council.InvalidOverrideReason`).
+                   - Lý do không được để trống và phải có độ dài từ 10 đến 500 ký tự. Vi phạm trả 400 (`Council.OverrideReasonRequired`).
                 3. **Tiền điều kiện trạng thái biên bản:**
                    - Biên bản phải đang ở trạng thái đã khóa (`Locked`).
                    - Nếu biên bản chưa bị khóa (`Open` hoặc `AllScoresEntered`), trả về lỗi 409 Conflict (`Council.MinuteNotLocked`).
@@ -590,7 +596,7 @@ public static class CouncilEndpoints
                    - Chuyển `LockStatus` sang `UnlockedByOverride`.
                    - Ghi nhận `UnlockedAt`, `UnlockedBy` và nội dung `OverrideReason`.
                    - Mở lại quyền hiệu chỉnh điểm cho các thành viên trong hội đồng để điều chỉnh sai sót.
-                   - Tự động ghi vết sự kiện kiểm toán nhạy cảm `CouncilMinute.Unlocked` vào bảng `shared.AuditLogs` bao gồm thông tin người thực hiện, thời gian, mã nhóm đề tài và lý do giải trình.
+                   - Ghi audit qua outbox DefenseCouncil trong cùng transaction, bao gồm người thực hiện, thời gian, mã nhóm đề tài và lý do giải trình.
                 
                 ### Mã lỗi và phản hồi:
                 - **200 OK:** Mở khóa thành công, trả về `ApiResponse<CouncilMinuteLockResponseDto>`.
@@ -909,7 +915,8 @@ public static class CouncilEndpoints
             body.TargetComponentCode,
             body.StudentFeedback,
             body.ChairmanConclusion,
-            preview ?? false);
+            preview ?? false,
+            body.Reason);
 
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();

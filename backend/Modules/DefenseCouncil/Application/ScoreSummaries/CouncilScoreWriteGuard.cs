@@ -12,14 +12,26 @@ public interface ICouncilScoreWriteGuard
 {
     Task<Result<T>> ExecuteAsync<T>(Guid assignmentId, Func<CancellationToken, Task<Result<T>>> write, CancellationToken token);
 }
-public sealed class CouncilScoreWriteGuard(IScoreSummaryWorkflowTransactionCoordinator coordinator, IScoreSummaryStore store,
-    IReviewerAssignmentThesisReader groups, IFinalSubmissionAuthorityReader authority, ICurrentUser user) : ICouncilScoreWriteGuard
+public interface ICouncilMinuteWriteGuard
 {
-    public async Task<Result<T>> ExecuteAsync<T>(Guid assignmentId, Func<CancellationToken, Task<Result<T>>> write, CancellationToken token)
+    Task<Result<T>> ExecuteAsync<T>(Guid assignmentId, Func<CancellationToken, Task<Result<T>>> write, CancellationToken token);
+}
+public sealed class CouncilScoreWriteGuard(IScoreSummaryWorkflowTransactionCoordinator coordinator, IScoreSummaryStore store,
+    IReviewerAssignmentThesisReader groups, IFinalSubmissionAuthorityReader authority, ICurrentUser user) : ICouncilScoreWriteGuard, ICouncilMinuteWriteGuard
+{
+    public Task<Result<T>> ExecuteAsync<T>(Guid assignmentId, Func<CancellationToken, Task<Result<T>>> write, CancellationToken token)
+        => ExecuteCoreAsync(assignmentId, write, false, token);
+
+    Task<Result<T>> ICouncilMinuteWriteGuard.ExecuteAsync<T>(Guid assignmentId, Func<CancellationToken, Task<Result<T>>> write, CancellationToken token)
+        => ExecuteCoreAsync(assignmentId, write, true, token);
+
+    private async Task<Result<T>> ExecuteCoreAsync<T>(Guid assignmentId, Func<CancellationToken, Task<Result<T>>> write, bool minute, CancellationToken token)
     {
+        bool Allowed(FinalSubmissionAuthorityDto? account) => ScoreSummaryAccess.Role(account, "Lecturer") || ScoreSummaryAccess.Role(account, "Admin")
+            || (minute && (ScoreSummaryAccess.Role(account, "Faculty") || ScoreSummaryAccess.Role(account, "AcademicAffairs")));
         if (!user.IsAuthenticated || user.UserId is not { } actor) return Result.Failure<T>(CouncilErrors.Forbidden);
         var account = await authority.GetAsync(actor, token);
-        if (!ScoreSummaryAccess.Role(account, "Lecturer") && !ScoreSummaryAccess.Role(account, "Admin")) return Result.Failure<T>(CouncilErrors.Forbidden);
+        if (!Allowed(account)) return Result.Failure<T>(CouncilErrors.Forbidden);
         var group = await store.AssignmentGroupAsync(assignmentId, token);
         if (group is null) return Result.Failure<T>(CouncilErrors.AssignmentNotFound);
         try
@@ -28,7 +40,7 @@ public sealed class CouncilScoreWriteGuard(IScoreSummaryWorkflowTransactionCoord
             {
                 if (await groups.LockAsync(group.Value, ct) is null) return ScoreSummaryTransactionResult<Result<T>>.Abort(Result.Failure<T>(CouncilErrors.AssignmentNotFound));
                 account = await authority.LockAsync(actor, ct);
-                if (!ScoreSummaryAccess.Role(account, "Lecturer") && !ScoreSummaryAccess.Role(account, "Admin")) return ScoreSummaryTransactionResult<Result<T>>.Abort(Result.Failure<T>(CouncilErrors.Forbidden));
+                if (!Allowed(account)) return ScoreSummaryTransactionResult<Result<T>>.Abort(Result.Failure<T>(CouncilErrors.Forbidden));
                 // Group root is held before council/score row locks and retained through the write.
                 await store.FactsAsync([group.Value], true, ct);
                 if (await store.PublishedAsync([group.Value], ct)) return ScoreSummaryTransactionResult<Result<T>>.Abort(Result.Failure<T>(CouncilErrors.ScoresAlreadyPublished));

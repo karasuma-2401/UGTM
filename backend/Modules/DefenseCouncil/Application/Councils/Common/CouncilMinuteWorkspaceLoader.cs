@@ -1,4 +1,5 @@
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.AcademicPeriods.Contracts.ScoreSummaries;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
@@ -18,19 +19,26 @@ public sealed record CouncilMinuteWorkspaceContext(
     IReadOnlyList<CouncilScore> CouncilScores,
     IReadOnlyList<CouncilMember> Members,
     TopicDefenseDetailsContractDto? Topic,
-    List<CouncilMinuteWorkspaceCalculator.ItemEvaluationData> EvalItems);
+    List<CouncilMinuteWorkspaceCalculator.ItemEvaluationData> EvalItems,
+    ScoreSummaryConfigurationDto? Configuration);
 
 public sealed class CouncilMinuteWorkspaceLoader(
     ICouncilRepository councilRepository,
     ICouncilUserInfoReader councilUserInfoReader,
     IDefenseGroupContract defenseGroupContract,
-    ITopicDefenseContract topicDefenseContract)
+    ITopicDefenseContract topicDefenseContract,
+    IScoreSummaryConfigurationReader configurations)
 {
     public async Task<CouncilMinuteWorkspaceContext> LoadAsync(
         CouncilAssignment assignment,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        bool lockConfiguration = false)
     {
         var council = assignment.Council;
+        var configuration = lockConfiguration
+            ? await configurations.LockAsync(council.BatchId, ct)
+            : await configurations.GetAsync(council.BatchId, ct);
+        if (configuration?.BatchId != council.BatchId) configuration = null;
         var members = council.Members.ToList();
 
         var memberUserIds = members.Select(m => m.UserId).Distinct().ToList();
@@ -96,11 +104,12 @@ public sealed class CouncilMinuteWorkspaceLoader(
             RoleLabel: "GVHD",
             LecturerName: advisorName,
             Score: advisorEval?.Score,
-            Weight: 2m,
+            Weight: 0m,
             Category: "Nguồn riêng",
             IsDualRoleReviewer: false,
             IsIgnoredInCalculation: advisorEval?.IsIgnoredInCalculation ?? false,
-            ExclusionReason: advisorEval?.ExclusionReason));
+            ExclusionReason: advisorEval?.ExclusionReason,
+            SourceId: advisorEval?.Id ?? Guid.Empty));
 
         // 2. GVPB
         evalItems.Add(new CouncilMinuteWorkspaceCalculator.ItemEvaluationData(
@@ -108,11 +117,12 @@ public sealed class CouncilMinuteWorkspaceLoader(
             RoleLabel: "GVPB",
             LecturerName: reviewerName,
             Score: activeReviewer?.Evaluation?.Score,
-            Weight: 2m,
+            Weight: 0m,
             Category: "Nguồn riêng",
             IsDualRoleReviewer: isReviewerInCouncil,
             IsIgnoredInCalculation: activeReviewer?.Evaluation?.IsIgnoredInCalculation ?? false,
-            ExclusionReason: activeReviewer?.Evaluation?.ExclusionReason));
+            ExclusionReason: activeReviewer?.Evaluation?.ExclusionReason,
+            SourceId: activeReviewer?.Evaluation?.Id ?? Guid.Empty));
 
         // 3. Chủ tịch
         string chairmanFullName = chairmanName ?? "Chủ tịch";
@@ -122,11 +132,12 @@ public sealed class CouncilMinuteWorkspaceLoader(
             RoleLabel: "Chủ tịch",
             LecturerName: chairmanFullName,
             Score: chairmanScore?.Score,
-            Weight: 1m,
+            Weight: 0m,
             Category: "Thành viên HĐ",
             IsDualRoleReviewer: false,
             IsIgnoredInCalculation: chairmanScore?.IsIgnoredInCalculation ?? false,
-            ExclusionReason: chairmanScore?.ExclusionReason));
+            ExclusionReason: chairmanScore?.ExclusionReason,
+            SourceId: chairmanScore?.Id ?? chairman?.Id ?? Guid.Empty));
 
         // 4. Thư ký
         string secretaryFullName = secretaryName ?? "Thư ký";
@@ -136,11 +147,12 @@ public sealed class CouncilMinuteWorkspaceLoader(
             RoleLabel: "Thư ký",
             LecturerName: secretaryFullName,
             Score: secretaryScore?.Score,
-            Weight: 1m,
+            Weight: 0m,
             Category: "Thành viên HĐ",
             IsDualRoleReviewer: false,
             IsIgnoredInCalculation: secretaryScore?.IsIgnoredInCalculation ?? false,
-            ExclusionReason: secretaryScore?.ExclusionReason));
+            ExclusionReason: secretaryScore?.ExclusionReason,
+            SourceId: secretaryScore?.Id ?? secretary?.Id ?? Guid.Empty));
 
         // 5. Ủy viên
         var otherMembers = members
@@ -161,11 +173,12 @@ public sealed class CouncilMinuteWorkspaceLoader(
                     RoleLabel: "UV",
                     LecturerName: mName,
                     Score: isDualReviewer ? null : cs?.Score,
-                    Weight: isDualReviewer ? 0m : 1m,
+                    Weight: 0m,
                     Category: isDualReviewer ? "Không thiếu điểm" : "Thành viên HĐ",
                     IsDualRoleReviewer: isDualReviewer,
                     IsIgnoredInCalculation: cs?.IsIgnoredInCalculation ?? false,
-                    ExclusionReason: cs?.ExclusionReason));
+                    ExclusionReason: cs?.ExclusionReason,
+                    SourceId: cs?.Id ?? m.Id));
             }
         }
         else if (isReviewerInCouncil)
@@ -191,6 +204,7 @@ public sealed class CouncilMinuteWorkspaceLoader(
             councilScores,
             members,
             topic,
-            evalItems);
+            evalItems,
+            configuration);
     }
 }

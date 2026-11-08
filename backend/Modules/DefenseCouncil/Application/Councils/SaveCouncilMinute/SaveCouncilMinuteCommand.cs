@@ -6,4 +6,5 @@ public sealed record SaveCouncilMinuteCommand(
     string? TargetComponentCode = null,
     string? StudentFeedback = null,
     string? ChairmanConclusion = null,
-    bool IsPreview = false);
+    bool IsPreview = false,
+    string? Reason = null);

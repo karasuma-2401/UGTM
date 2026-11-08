@@ -4,6 +4,8 @@ namespace UGTM.Modules.DefenseCouncil.Application.Councils;
 
 public static class CouncilErrors
 {
+    public static Error InvalidSecretaryMarking => Error.Validation("Council.InvalidSecretaryMarking", "Kết luận thư ký không hợp lệ.");
+    public static Error ExclusionReasonRequired => Error.Validation("Council.ExclusionReasonRequired", "Khi thay đổi việc công nhận điểm, cần lý do từ 10 đến 1000 ký tự.");
     public static Error ConcurrentModification => Error.Conflict("Council.ConcurrentModification", "Dữ liệu hội đồng vừa thay đổi. Vui lòng tải lại và thử lại.");
     public static Error ScoresAlreadyPublished => Error.Conflict("Council.ScoresAlreadyPublished", "Điểm đã công bố; không được sửa đầu điểm hoặc biên bản.");
     public static Error NotFound =>

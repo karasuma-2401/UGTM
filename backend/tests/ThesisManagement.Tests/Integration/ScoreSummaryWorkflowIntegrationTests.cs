@@ -107,11 +107,18 @@ public sealed partial class FinalReportWorkflowIntegrationTests
     public async Task ScoreSummary_real_archival_to_dynamic_calculation_revisions_snapshot_and_receipt(bool inside, double score, int weight)
     {
         await PrepareScoreCalculationAsync(inside);
+        using var workspaceResponse = await SendAsync(HttpMethod.Get,
+            $"/api/councils/assignments/{_scoreAssignmentId}/minute-workspace", _adminId, "Admin");
+        var workspace = await ArchivalDataAsync(workspaceResponse);
         var key = Guid.NewGuid();
         using var calculated = await CalculateAsync(key: key, actor: _scoreFacultyId, role: "Faculty");
         var first = await ArchivalDataAsync(calculated);
         Assert.Equal((decimal)score, first.GetProperty("finalScore").GetDecimal());
         Assert.Equal(weight, first.GetProperty("totalWeight").GetDecimal());
+        var preview = workspace.GetProperty("calculationPreview");
+        Assert.Equal(first.GetProperty("finalScore").GetDecimal(), preview.GetProperty("finalRoundedScore").GetDecimal());
+        Assert.Equal(first.GetProperty("totalWeight").GetDecimal(), preview.GetProperty("adjustedDivisor").GetDecimal());
+        Assert.Equal(first.GetProperty("configVersionNo").GetInt32(), preview.GetProperty("configurationVersion").GetInt32());
         Assert.False(first.GetProperty("isLegacy").GetBoolean()); Assert.False(first.GetProperty("isStale").GetBoolean());
         Assert.True(first.GetProperty("summaryVersion").GetUInt32() > 0);
         using var replay = await CalculateAsync(key: key, actor: _scoreFacultyId, role: "Faculty");
@@ -137,6 +144,10 @@ public sealed partial class FinalReportWorkflowIntegrationTests
             new("R","Reviewer",ScoreComponentSource.Reviewer,ScoreComponentApplicability.Always,2,true,null,false,2),
             new("AVG","Council average",ScoreComponentSource.CouncilAverage,ScoreComponentApplicability.Always,1,true,null,false,3)]);
         using var response = await CalculateAsync(); var result = await ArchivalDataAsync(response); Assert.Equal(7.53m, result.GetProperty("finalScore").GetDecimal());
+        using var workspaceResponse = await SendAsync(HttpMethod.Get,
+            $"/api/councils/assignments/{_scoreAssignmentId}/minute-workspace", _adminId, "Admin");
+        var workspace = await ArchivalDataAsync(workspaceResponse);
+        Assert.Equal(result.GetProperty("finalScore").GetDecimal(), workspace.GetProperty("calculationPreview").GetProperty("finalRoundedScore").GetDecimal());
         await using var db = Db<DefenseCouncilDbContext>(); var average = await db.ScoreSummaryComponents.SingleAsync(c => c.Source == "CouncilAverage");
         Assert.Equal(23m / 3m, average.Score); Assert.NotEqual(decimal.Round(average.Score, 4), average.Score);
         using var read = await SendAsync(HttpMethod.Get, $"{ScoresRoute}/group/{_groupId}", _adminId, "Admin"); Assert.False((await ArchivalDataAsync(read)).GetProperty("isStale").GetBoolean());

@@ -55,7 +55,8 @@ public sealed class GetCouncilMinuteWorkspaceHandler(
             savedSecretaryMarking: null,
             requestedSecretaryMarking: null,
             requestedTargetComponentCode: null,
-            overrideReason: ctx.Minute?.OverrideReason);
+            overrideReason: ctx.Minute?.OverrideReason,
+            configuration: ctx.Configuration);
 
         return Result.Success(new CouncilMinuteWorkspaceResponseDto(
             assignmentInfo,

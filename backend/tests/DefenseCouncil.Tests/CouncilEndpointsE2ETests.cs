@@ -94,6 +94,9 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
 
         // Register council command and query handlers
         builder.Services.AddScoped<CouncilMinuteWorkspaceLoader>();
+        builder.Services.AddSingleton<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilMinuteWriteGuard, TestCouncilScoreWriteGuard>();
+        builder.Services.AddScoped<UGTM.Modules.Identity.Contracts.FinalSubmissions.IFinalSubmissionAuthorityReader, TestScoreAuthority>();
+        builder.Services.AddSingleton<UGTM.Modules.AcademicPeriods.Contracts.ScoreSummaries.IScoreSummaryConfigurationReader, FakeMinuteConfigurationReader>();
         builder.Services.AddScoped<CreateCouncilHandler>();
         builder.Services.AddScoped<AddCouncilMembersHandler>();
         builder.Services.AddScoped<AssignCouncilGroupsHandler>();

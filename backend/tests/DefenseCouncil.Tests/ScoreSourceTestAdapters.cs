@@ -6,7 +6,7 @@ using UGTM.Modules.Identity.Contracts.FinalSubmissions;
 namespace UGTM.Modules.DefenseCouncil.Tests;
 
 // Focused in-memory council tests; the production guard/authority is exercised in PG workflow tests.
-internal sealed class TestCouncilScoreWriteGuard : ICouncilScoreWriteGuard
+internal sealed class TestCouncilScoreWriteGuard : ICouncilScoreWriteGuard, ICouncilMinuteWriteGuard
 {
     public Task<Result<T>> ExecuteAsync<T>(Guid assignmentId, Func<CancellationToken, Task<Result<T>>> write, CancellationToken token) => write(token);
 }
