@@ -63,4 +63,18 @@ public sealed class StudentGroupMember
         ConfirmationStatus = MemberConfirmationStatus.Confirmed;
         ConfirmedAtUtc = confirmedAtUtc;
     }
+
+    public void SetConfirmationDeadline(DateTime expiresAtUtc)
+    {
+        if (ConfirmationStatus != MemberConfirmationStatus.Pending || expiresAtUtc.Kind != DateTimeKind.Utc)
+            throw new InvalidOperationException("Only a pending invitation may receive a UTC deadline.");
+        ConfirmationExpiresAtUtc = expiresAtUtc;
+    }
+
+    public void WaitForConfirmationDelivery()
+    {
+        if (ConfirmationStatus != MemberConfirmationStatus.Pending)
+            throw new InvalidOperationException("Only a pending invitation may await delivery.");
+        ConfirmationExpiresAtUtc = null;
+    }
 }

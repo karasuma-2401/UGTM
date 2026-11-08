@@ -25,7 +25,12 @@ internal sealed class TopicRenameContract(TopicCatalogDbContext context) : ITopi
         string? newTitleEn,
         CancellationToken cancellationToken = default)
     {
-        var topic = await context.Topics.FirstOrDefaultAsync(t => t.Id == topicId, cancellationToken);
+        if (context.Database.CurrentTransaction is null)
+            throw new InvalidOperationException("A shared rename transaction is required.");
+
+        var topic = await context.Topics.FromSqlInterpolated($"""
+            SELECT * FROM topics.topic WHERE id = {topicId} FOR UPDATE
+            """).SingleOrDefaultAsync(cancellationToken);
         if (topic is null)
         {
             return TopicTitleUpdateContractResultDto.Failure("Topic.NotFound", "Không tìm thấy đề tài.");

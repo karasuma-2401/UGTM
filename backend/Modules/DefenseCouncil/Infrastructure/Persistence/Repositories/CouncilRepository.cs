@@ -1,11 +1,14 @@
 using Microsoft.EntityFrameworkCore;
+using UGTM.Modules.DefenseCouncil.Contracts.ReviewerEvaluations;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Persistence.Repositories;
 
-public sealed class CouncilRepository(DefenseCouncilDbContext db) : ICouncilRepository
+public sealed class CouncilRepository(
+    DefenseCouncilDbContext db,
+    IReviewerDefenseEligibilityContract reviewerEligibility) : ICouncilRepository
 {
     public Task<Council?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => db.Councils.FirstOrDefaultAsync(c => c.Id == id, ct);
@@ -132,22 +135,26 @@ public sealed class CouncilRepository(DefenseCouncilDbContext db) : ICouncilRepo
     public async Task<IReadOnlySet<Guid>> GetDefenseEligibleGroupIdsAsync(
         IEnumerable<Guid> groupIds,
         CancellationToken ct = default)
+        => await GetEligibilityAsync(groupIds, false, ct);
+
+    public async Task<IReadOnlySet<Guid>> LockDefenseEligibleGroupIdsAsync(
+        IEnumerable<Guid> groupIds,
+        CancellationToken ct = default)
+        => await GetEligibilityAsync(groupIds, true, ct);
+
+    private async Task<IReadOnlySet<Guid>> GetEligibilityAsync(IEnumerable<Guid> groupIds, bool locked, CancellationToken ct)
     {
-        var idList = groupIds.Distinct().ToList();
-        if (idList.Count == 0) return new HashSet<Guid>();
+        var eligible = new HashSet<Guid>();
+        foreach (var groupId in groupIds.Distinct().Order())
+        {
+            var result = locked
+                ? await reviewerEligibility.LockForSchedulingAsync(groupId, ct)
+                : await reviewerEligibility.GetAsync(groupId, ct);
+            if (result?.CanProceed == true)
+                eligible.Add(groupId);
+        }
 
-        var eligible = await db.ReviewerAssignments
-            .Where(r => r.IsActive
-                        && idList.Contains(r.GroupId)
-                        && r.Evaluation != null
-                        && r.Evaluation.Status == ReviewerEvaluationStatus.Submitted
-                        && r.Evaluation.DefenseApproval == DefenseApprovalStatus.Approved
-                        && r.Evaluation.Score >= 4.0m)
-            .Select(r => r.GroupId)
-            .Distinct()
-            .ToListAsync(ct);
-
-        return eligible.ToHashSet();
+        return eligible;
     }
 
     public Task<Council?> GetCouncilByGroupIdAsync(Guid groupId, CancellationToken ct = default)
@@ -187,10 +194,13 @@ public sealed class CouncilRepository(DefenseCouncilDbContext db) : ICouncilRepo
             .FirstOrDefaultAsync(a => a.Id == assignmentId, ct);
 
     public async Task<IReadOnlyList<GradingCriteria>> GetGradingCriteriaByBatchIdAsync(Guid batchId, CancellationToken ct = default)
-        => await db.GradingCriterias
+    {
+        await GradingRubricLock.AcquireAsync(db, batchId, ct);
+        return await db.GradingCriterias
             .Where(g => g.BatchId == batchId)
             .OrderBy(g => g.OrderIndex)
             .ToListAsync(ct);
+    }
 
     public async Task<IReadOnlyList<CouncilScore>> GetCouncilScoresWithDetailsByAssignmentIdAsync(Guid assignmentId, CancellationToken ct = default)
         => await db.CouncilScores

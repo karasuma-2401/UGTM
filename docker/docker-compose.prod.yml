@@ -9,6 +9,16 @@ services:
       - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING:?DATABASE_CONNECTION_STRING must be configured}
       - Cors__AllowedOrigins__0=${APP_URL:?APP_URL must be configured}
       - Identity__Email__PublicWebBaseUrl=${APP_URL:?APP_URL must be configured}
+      - ThesisManagement__Email__PublicWebBaseUrl=${APP_URL:?APP_URL must be configured}
+      - ThesisManagement__Email__OutboxPartition=${THESIS_EMAIL_OUTBOX_PARTITION:?THESIS_EMAIL_OUTBOX_PARTITION must be configured}
+      - PlagiarismAi__BaseUrl=${PLAGIARISM_AI_BASE_URL:?PLAGIARISM_AI_BASE_URL must be configured}
+      - PlagiarismAi__ApiKey=${PLAGIARISM_AI_API_KEY}
+      - S3Storage__Endpoint=${S3_ENDPOINT:?S3_ENDPOINT must be configured}
+      - S3Storage__PublicEndpoint=${S3_PUBLIC_ENDPOINT:-}
+      - S3Storage__AccessKey=${S3_ACCESS_KEY:?S3_ACCESS_KEY must be configured}
+      - S3Storage__SecretKey=${S3_SECRET_KEY:?S3_SECRET_KEY must be configured}
+      - S3Storage__BucketName=${S3_BUCKET_NAME:?S3_BUCKET_NAME must be configured}
+      - S3Storage__Region=${S3_REGION:-us-east-1}
       - Identity__Email__OutboxPartition=azure-production
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
       - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:?IDENTITY_IP_HASH_KEY must be configured}

@@ -1,9 +1,15 @@
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.ThesisManagement.Domain.Entities;
+using UGTM.Modules.ThesisManagement.Domain.Enums;
 
 namespace UGTM.Modules.ThesisManagement.Application.Common;
 
 internal static class ThesisAuthorization
 {
+    internal static bool IsConfirmedMember(StudentGroup group, Guid userId)
+        => group.Members.Any(member => member.StudentId == userId
+                                       && member.ConfirmationStatus == MemberConfirmationStatus.Confirmed);
+
     internal static bool IsAdministrator(ICurrentUser currentUser)
         => currentUser.IsAuthenticated
            && currentUser.UserId.HasValue

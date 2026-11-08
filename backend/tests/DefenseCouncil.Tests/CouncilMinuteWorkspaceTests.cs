@@ -211,6 +211,54 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
     }
 
     [Fact]
+    public void Minute_preview_rounds_midpoints_away_from_zero()
+    {
+        var items = new[]
+        {
+            new CouncilMinuteWorkspaceCalculator.ItemEvaluationData("ADVISOR", "GVHD", "Advisor", 8.125m, 1m, "", false, false)
+        };
+
+        var (_, _, preview) = CouncilMinuteWorkspaceCalculator.BuildWorkspaceData(items, null, null, null, null);
+
+        Assert.Equal(8.13m, preview.FinalRoundedScore);
+    }
+
+    [Theory]
+    [InlineData("Student")]
+    [InlineData("Lecturer")]
+    public async Task Workspace_and_preview_reject_users_outside_the_assigned_council(string role)
+    {
+        var assigned = SetupTestCouncil();
+        var other = SetupTestCouncil();
+        Authenticate(role == "Student" ? Guid.NewGuid() : other.ChairmanUserId, role);
+
+        var workspace = await _client.GetAsync($"/api/councils/assignments/{assigned.AssignmentId}/minute-workspace");
+        var preview = await _client.PutAsJsonAsync(
+            $"/api/councils/assignments/{assigned.AssignmentId}/minute?preview=true",
+            new SaveCouncilMinuteInputDto(SecretaryMarking: "AcceptedAsPerMinute", StudentFeedback: null));
+
+        Assert.Equal(HttpStatusCode.Forbidden, workspace.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, preview.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Admin")]
+    [InlineData("AcademicAffairs")]
+    public async Task Workspace_and_preview_allow_authorized_administrators(string role)
+    {
+        var ids = SetupTestCouncil();
+        Authenticate(Guid.NewGuid(), role);
+
+        var workspace = await _client.GetAsync($"/api/councils/assignments/{ids.AssignmentId}/minute-workspace");
+        var preview = await _client.PutAsJsonAsync(
+            $"/api/councils/assignments/{ids.AssignmentId}/minute?preview=true",
+            new SaveCouncilMinuteInputDto(SecretaryMarking: "AcceptedAsPerMinute", StudentFeedback: null));
+
+        Assert.Equal(HttpStatusCode.OK, workspace.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, preview.StatusCode);
+    }
+
+    [Fact]
     public async Task GetMinuteWorkspace_DualRoleReviewer_ReturnsExpectedFourBlocksAndFormulas()
     {
         // Arrange (TH1: GVPB kiêm Ủy viên)

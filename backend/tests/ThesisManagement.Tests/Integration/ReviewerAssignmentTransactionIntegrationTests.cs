@@ -407,6 +407,26 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests(Postgr
             .LockRequestAsync(_actor, "Create", Guid.NewGuid()));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Reader_contexts_remain_usable_after_the_transaction(bool commit)
+    {
+        await using var scope = _app.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var coordinator = services.GetRequiredService<IReviewerAssignmentTransactionCoordinator>();
+
+        await coordinator.ExecuteAsync(_ => Task.FromResult(commit
+            ? ReviewerAssignmentTransactionResult<bool>.Commit(true)
+            : ReviewerAssignmentTransactionResult<bool>.Abort(false)));
+
+        foreach (var context in Contexts(services))
+            Assert.True(await context.Database.CanConnectAsync());
+
+        Assert.True(await coordinator.ExecuteAsync(_ =>
+            Task.FromResult(ReviewerAssignmentTransactionResult<bool>.Commit(true))));
+    }
+
     [Fact]
     public async Task A_reader_schema_write_is_rejected_and_does_not_commit_tracked_defense_writes()
     {

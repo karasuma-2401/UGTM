@@ -12,6 +12,7 @@ public interface ITopicRegistrationStore
         DateTime nowUtc,
         TimeSpan confirmationWindow,
         string confirmationTokenHash,
+        TopicRegistrationInvitation? invitation,
         CancellationToken cancellationToken = default);
 
     Task<Result<ConfirmRegistrationResultDto>> ConfirmRegistrationAsync(

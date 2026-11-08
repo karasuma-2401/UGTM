@@ -799,7 +799,7 @@ public sealed class RenameRequestApplicationTests
             => new(RenameRequests, _unitOfWork, user, _timeProvider);
 
         public ReviewRenameRequestByAcademicAffairsHandler AcademicAffairsReviewHandler(ICurrentUser user)
-            => new(RenameRequests, Groups, TopicContract, Audit, _unitOfWork, user, _timeProvider);
+            => new(RenameRequests, Groups, TopicContract, Audit, _unitOfWork, user, _timeProvider, new FakeRenameCoordinator());
 
         public GetGroupRenameRequestsHandler GetGroupHandler(ICurrentUser user)
             => new(RenameRequests, Groups, TopicContract, user);
@@ -854,6 +854,9 @@ public sealed class RenameRequestApplicationTests
         public Task<RenameRequest?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
             => Task.FromResult(_requests.SingleOrDefault(r => r.Id == id));
 
+        public Task<RenameRequest?> LockByIdAsync(Guid id, CancellationToken cancellationToken = default)
+            => GetByIdAsync(id, cancellationToken);
+
         public Task<IReadOnlyList<RenameRequest>> GetByGroupIdAsync(Guid groupId, CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<RenameRequest>>(_requests.Where(r => r.GroupId == groupId).OrderByDescending(r => r.CreatedAt).ToList());
 
@@ -871,6 +874,14 @@ public sealed class RenameRequestApplicationTests
             if (status.HasValue) q = q.Where(r => r.Status == status.Value);
             return Task.FromResult<IReadOnlyList<RenameRequest>>(q.OrderByDescending(r => r.CreatedAt).ToList());
         }
+    }
+
+    private sealed class FakeRenameCoordinator : IRenameRequestTransactionCoordinator
+    {
+        public Task<UGTM.BuildingBlocks.Domain.Result<T>> ExecuteAsync<T>(
+            Func<CancellationToken, Task<UGTM.BuildingBlocks.Domain.Result<T>>> workflow,
+            CancellationToken cancellationToken = default)
+            => workflow(cancellationToken);
     }
 
     private sealed class FakeBatchReader(bool isWindowOpen) : IKltnBatchReader

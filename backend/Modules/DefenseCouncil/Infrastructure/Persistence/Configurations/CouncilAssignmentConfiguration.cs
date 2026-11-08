@@ -11,6 +11,10 @@ public class CouncilAssignmentConfiguration : IEntityTypeConfiguration<CouncilAs
         builder.HasIndex(x => x.CouncilId)
             .HasDatabaseName("ix_council_assignment_council_id");
 
+        builder.HasIndex(x => new { x.CouncilId, x.OrderNumber })
+            .HasDatabaseName("ux_council_assignment_council_order")
+            .IsUnique();
+
         builder.ToTable("council_assignment", "councils");
 
         builder.HasKey(x => x.Id);

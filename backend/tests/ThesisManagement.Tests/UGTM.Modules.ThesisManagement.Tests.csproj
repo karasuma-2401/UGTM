@@ -41,10 +41,16 @@
              Link="ProductionComposition\AdvisorWorkflowTransactionCoordinator.cs" />
     <Compile Include="..\..\host\Api\Modules\ModuleRegistration.cs"
              Link="ProductionComposition\ModuleRegistration.cs" />
+    <Compile Include="..\..\host\Api\Modules\ProductionIntegrationConfiguration.cs"
+             Link="ProductionComposition\ProductionIntegrationConfiguration.cs" />
     <Compile Include="..\..\host\Api\FinalSubmissions\FinalSubmissionWorkflowTransactionCoordinator.cs"
              Link="ProductionComposition\FinalSubmissionWorkflowTransactionCoordinator.cs" />
     <Compile Include="..\..\host\Api\ReviewerAssignments\ReviewerAssignmentTransactionCoordinator.cs"
              Link="ProductionComposition\ReviewerAssignmentTransactionCoordinator.cs" />
+    <Compile Include="..\..\host\Api\RenameRequests\RenameRequestTransactionCoordinator.cs"
+             Link="ProductionComposition\RenameRequestTransactionCoordinator.cs" />
+    <Compile Include="..\..\host\Api\Topics\TopicMutationTransactionCoordinator.cs"
+             Link="ProductionComposition\TopicMutationTransactionCoordinator.cs" />
   </ItemGroup>
 
 </Project>

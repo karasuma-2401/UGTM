@@ -35,6 +35,27 @@ public sealed class AdvisorWorkflowTransactionIntegrationTests(PostgreSqlFixture
         await ResetSchemasAsync(db);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Secondary_context_can_be_reused_after_commit_or_rollback(bool fail)
+    {
+        await using var thesis = CreateThesisDbContext();
+        await using var defense = CreateDefenseDbContext();
+        if (fail)
+        {
+            await Assert.ThrowsAsync<InvalidOperationException>(() => SharedPostgresTransactionCoordinator.ExecuteAsync(
+                thesis, defense, _ => Task.FromException<bool>(new InvalidOperationException("Simulated failure"))));
+        }
+        else
+        {
+            Assert.True(await SharedPostgresTransactionCoordinator.ExecuteAsync(thesis, defense, _ => Task.FromResult(true)));
+        }
+
+        Assert.True(await defense.Database.CanConnectAsync());
+        Assert.True(await SharedPostgresTransactionCoordinator.ExecuteAsync(thesis, defense, _ => Task.FromResult(true)));
+    }
+
     [Fact]
     public async Task Coordinator_commits_locked_report_binding_group_transition_and_audit_messages_together()
     {

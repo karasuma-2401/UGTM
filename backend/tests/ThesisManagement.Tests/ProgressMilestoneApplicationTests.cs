@@ -6,6 +6,7 @@ using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.ProgressMilestones.CreateProgressMilestone;
 using UGTM.Modules.ThesisManagement.Application.ProgressMilestones.GetProgressMilestones;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
+using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 
@@ -122,6 +123,21 @@ public sealed class ProgressMilestoneApplicationTests
         Assert.Empty(fixtures.Milestones.Items);
     }
 
+    [Fact]
+    public async Task Stopped_group_cannot_create_milestone_even_with_approved_syllabus()
+    {
+        var group = CreateApprovedGroup();
+        Assert.True(group.TryStop());
+        var fixtures = new WorkflowFixtures(group, AdvisorId);
+
+        var result = await fixtures.CreateCreateHandler(AdvisorUser(), new ApprovedSyllabusRepository(group.Id))
+            .HandleAsync(new CreateProgressMilestoneCommand(group.Id, "Khảo sát", null, Now.AddDays(1)));
+
+        Assert.Equal(ProgressMilestoneErrors.GateOneNotApproved.Code, result.Error.Code);
+        Assert.Empty(fixtures.Milestones.Items);
+        Assert.Equal(0, fixtures.UnitOfWork.SaveCount);
+    }
+
     private static StudentGroup CreateApprovedGroup()
     {
         var group = CreateRegisteredGroup();
@@ -145,7 +161,7 @@ public sealed class ProgressMilestoneApplicationTests
         public FakeAuditOutbox Audit { get; } = new();
         public FakeUnitOfWork UnitOfWork { get; } = new();
 
-        public CreateProgressMilestoneHandler CreateCreateHandler(ICurrentUser currentUser)
+        public CreateProgressMilestoneHandler CreateCreateHandler(ICurrentUser currentUser, ISyllabusRepository? syllabuses = null)
             => new(
                 _groups,
                 Milestones,
@@ -153,7 +169,8 @@ public sealed class ProgressMilestoneApplicationTests
                 Audit,
                 UnitOfWork,
                 currentUser,
-                new FixedTimeProvider(Now));
+                new FixedTimeProvider(Now),
+                syllabuses);
 
         public GetProgressMilestonesHandler CreateGetHandler(ICurrentUser currentUser)
             => new(_groups, Milestones, _advisorAssignments, currentUser);
@@ -228,6 +245,23 @@ public sealed class ProgressMilestoneApplicationTests
             SaveCount++;
             return Task.FromResult(1);
         }
+    }
+
+    private sealed class ApprovedSyllabusRepository : ISyllabusRepository
+    {
+        private readonly Syllabus _syllabus;
+
+        public ApprovedSyllabusRepository(Guid groupId)
+        {
+            _syllabus = Syllabus.CreateSubmitted(Guid.NewGuid(), groupId);
+            _syllabus.RecordReview(ReviewDecision.Approved, null, Guid.NewGuid(), Now);
+        }
+
+        public Task<Syllabus?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult<Syllabus?>(_syllabus.Id == id ? _syllabus : null);
+        public Task<Syllabus?> GetByGroupIdAsync(Guid groupId, CancellationToken cancellationToken = default)
+            => Task.FromResult<Syllabus?>(_syllabus.GroupId == groupId ? _syllabus : null);
+        public void Add(Syllabus syllabus) => throw new NotSupportedException();
     }
 
     private sealed class FixedTimeProvider(DateTime utcNow) : TimeProvider

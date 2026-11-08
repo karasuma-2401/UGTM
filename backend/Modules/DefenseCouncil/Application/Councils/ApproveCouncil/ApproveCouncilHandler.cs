@@ -1,5 +1,6 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
@@ -25,7 +26,8 @@ public sealed class ApproveCouncilHandler(
     ITopicDefenseContract topicDefenseContract,
     ICouncilUserInfoReader userInfoReader,
     IDefenseCouncilAuditOutbox auditOutbox,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ICouncilSchedulingGuard schedulingGuard)
 {
     public async Task<Result<CouncilResponseDto>> HandleAsync(
         ApproveCouncilCommand command,
@@ -46,6 +48,13 @@ public sealed class ApproveCouncilHandler(
         {
             return Result.Failure<CouncilResponseDto>(CouncilErrors.DecisionNumberRequired);
         }
+
+        return await schedulingGuard.ExecuteAsync(token => HandleCoreAsync(command, token), cancellationToken);
+    }
+
+    private async Task<Result<CouncilResponseDto>> HandleCoreAsync(
+        ApproveCouncilCommand command, CancellationToken cancellationToken)
+    {
 
         var council = await councilRepository.GetByIdWithDetailsAsync(command.CouncilId, cancellationToken);
         if (council is null)
@@ -116,7 +125,7 @@ public sealed class ApproveCouncilHandler(
                 CouncilErrors.GroupDefenseRejectedByReviewer(rejectedGroupIds.First()));
         }
 
-        var eligibleGroupIds = await councilRepository.GetDefenseEligibleGroupIdsAsync(assignedGroupIds, cancellationToken);
+        var eligibleGroupIds = await councilRepository.LockDefenseEligibleGroupIdsAsync(assignedGroupIds, cancellationToken);
         var ineligibleGroupId = assignedGroupIds.FirstOrDefault(id => !eligibleGroupIds.Contains(id));
         if (ineligibleGroupId != Guid.Empty)
         {

@@ -60,7 +60,7 @@ public sealed class GetReviewGateSubmissionFileDownloadHandler(
             return Result.Failure<SubmissionFileDownloadDto>(ReviewGateSubmissionFileErrors.FileNotFound);
         }
 
-        var isMember = group.Members.Any(member => member.StudentId == currentUser.UserId.Value);
+        var isMember = ThesisAuthorization.IsConfirmedMember(group, currentUser.UserId.Value);
         if (!isMember && !ThesisAuthorization.CanReviewGates(currentUser))
         {
             return Result.Failure<SubmissionFileDownloadDto>(ReviewGateSubmissionFileErrors.AccessDenied);

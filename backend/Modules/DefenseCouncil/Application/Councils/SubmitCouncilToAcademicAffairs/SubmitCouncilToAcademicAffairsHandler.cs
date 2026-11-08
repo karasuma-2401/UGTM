@@ -1,5 +1,6 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
@@ -19,7 +20,8 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
     ITopicDefenseContract topicDefenseContract,
     ICouncilUserInfoReader userInfoReader,
     IDefenseCouncilAuditOutbox auditOutbox,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ICouncilSchedulingGuard schedulingGuard)
 {
     public async Task<Result<CouncilSubmissionResponseDto>> HandleAsync(
         SubmitCouncilToAcademicAffairsCommand command,
@@ -35,6 +37,13 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
         {
             return Result.Failure<CouncilSubmissionResponseDto>(CouncilErrors.Forbidden);
         }
+
+        return await schedulingGuard.ExecuteAsync(token => HandleCoreAsync(command, token), cancellationToken);
+    }
+
+    private async Task<Result<CouncilSubmissionResponseDto>> HandleCoreAsync(
+        SubmitCouncilToAcademicAffairsCommand command, CancellationToken cancellationToken)
+    {
 
         var council = await councilRepository.GetByIdWithDetailsAsync(command.CouncilId, cancellationToken);
         if (council is null)
@@ -106,7 +115,7 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
                 CouncilErrors.GroupDefenseRejectedByReviewer(rejectedGroupIds.First()));
         }
 
-        var eligibleGroupIds = await councilRepository.GetDefenseEligibleGroupIdsAsync(assignedGroupIds, cancellationToken);
+        var eligibleGroupIds = await councilRepository.LockDefenseEligibleGroupIdsAsync(assignedGroupIds, cancellationToken);
         var ineligibleGroupId = assignedGroupIds.FirstOrDefault(id => !eligibleGroupIds.Contains(id));
         if (ineligibleGroupId != Guid.Empty)
         {
@@ -150,7 +159,7 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
 
         // 8. Cập nhật trạng thái gửi thẩm định
         var nowUtc = DateTime.UtcNow;
-        var actorId = currentUser.UserId.Value;
+        var actorId = currentUser.UserId!.Value;
 
         council.SubmitToAcademicAffairs(actorId, command.Notes, nowUtc);
 

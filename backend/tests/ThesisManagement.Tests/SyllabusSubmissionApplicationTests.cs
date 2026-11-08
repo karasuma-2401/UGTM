@@ -143,6 +143,38 @@ public sealed class SyllabusSubmissionApplicationTests
     }
 
     [Fact]
+    public async Task Pending_member_cannot_submit_read_or_download_syllabus()
+    {
+        var group = CreateGroup();
+        var pendingId = Guid.NewGuid();
+        group.AddPendingMember(pendingId, BatchId, StudentId, "token", Now.AddHours(-1), Now.AddDays(1));
+        var fixtures = new WorkflowFixtures(group);
+        var pending = new FakeCurrentUser(pendingId);
+
+        var denied = await fixtures.CreateSubmitHandler(pending).HandleAsync(SubmitCommand(group.Id));
+        var submitted = await fixtures.CreateSubmitHandler(StudentUser()).HandleAsync(SubmitCommand(group.Id));
+        var history = await fixtures.CreateHistoryHandler(pending).HandleAsync(new GetSyllabusSubmissionHistoryQuery(group.Id));
+        var download = await fixtures.CreateDownloadHandler(pending)
+            .HandleAsync(new GetSyllabusSubmissionFileDownloadQuery(submitted.Value.File.Id));
+
+        Assert.Equal(SyllabusSubmissionErrors.AccessDenied.Code, denied.Error.Code);
+        Assert.True(submitted.IsSuccess);
+        Assert.True(history.IsFailure);
+        Assert.True(download.IsFailure);
+    }
+
+    [Fact]
+    public async Task Ambiguous_save_failure_keeps_uploaded_syllabus_object()
+    {
+        var group = CreateGroup();
+        var fixtures = new WorkflowFixtures(group) { FailSave = true };
+
+        await Assert.ThrowsAsync<IOException>(() => fixtures.CreateSubmitHandler(StudentUser()).HandleAsync(SubmitCommand(group.Id)));
+
+        Assert.Single(fixtures.ObjectStorage.UploadedObjectKeys);
+    }
+
+    [Fact]
     public async Task Only_faculty_or_admin_with_review_permission_can_review_syllabus()
     {
         var group = CreateGroup();
@@ -207,6 +239,7 @@ public sealed class SyllabusSubmissionApplicationTests
         public FakeObjectStorage ObjectStorage { get; } = new();
         public FakeAuditOutbox Audit { get; } = new();
         public TimeProvider NowProvider { get; }
+        public bool FailSave { set => _unitOfWork.FailSave = value; }
         public Syllabus? Syllabus => _syllabuses.Syllabus;
 
         public SubmitSyllabusHandler CreateSubmitHandler(ICurrentUser currentUser)
@@ -221,7 +254,8 @@ public sealed class SyllabusSubmissionApplicationTests
                 Audit,
                 _unitOfWork,
                 currentUser,
-                NowProvider);
+                NowProvider,
+                new FakeThesisUploadLifecycle());
 
         public ReviewSyllabusHandler CreateReviewHandler(ICurrentUser currentUser)
             => new(
@@ -370,8 +404,9 @@ public sealed class SyllabusSubmissionApplicationTests
 
     private sealed class FakeUnitOfWork : IThesisUnitOfWork
     {
+        public bool FailSave { get; set; }
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(1);
+            => FailSave ? Task.FromException<int>(new IOException("Save outcome unknown")) : Task.FromResult(1);
     }
 
     private sealed class FixedTimeProvider(DateTime now) : TimeProvider

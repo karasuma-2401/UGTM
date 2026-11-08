@@ -7,13 +7,89 @@ using UGTM.Modules.AcademicPeriods.Domain.Grading;
 using UGTM.Modules.AcademicPeriods.Infrastructure.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments;
 using UGTM.Modules.DefenseCouncil.Contracts.ReviewerEvaluations;
+using UGTM.Modules.DefenseCouncil.Application.Persistence;
+using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
+using UGTM.Modules.DefenseCouncil.Domain.Enums;
+using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
+using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.ThesisManagement.Contracts.DefenseCouncils;
+using UGTM.Modules.TopicCatalog.Contracts.DefenseCouncils;
 
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
 public sealed partial class ReviewerAssignmentTransactionIntegrationTests
 {
+    [Fact]
+    public async Task Actual_council_assignment_waits_for_group_change_and_rechecks_eligibility()
+    {
+        await Cp3SubmittedAsync();
+        var councilId = await Cp3CouncilAsync();
+        await using var writer = Db<UGTMDbContext>();
+        await using var transaction = await writer.Database.BeginTransactionAsync();
+        var writerPid = await writer.Database.SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"").SingleAsync();
+        await writer.Database.ExecuteSqlInterpolatedAsync(Change("group"));
+
+        await using var scope = _app.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var defense = services.GetRequiredService<DefenseCouncilDbContext>();
+        await defense.Database.OpenConnectionAsync();
+        var schedulingPid = await defense.Database.SqlQueryRaw<int>("SELECT pg_backend_pid() AS \"Value\"").SingleAsync();
+        var handler = new AssignCouncilGroupsHandler(
+            services.GetRequiredService<ICouncilRepository>(),
+            services.GetRequiredService<IDefenseCouncilUnitOfWork>(),
+            services.GetRequiredService<IDefenseGroupContract>(),
+            services.GetRequiredService<ITopicDefenseContract>(),
+            services.GetRequiredService<ICouncilUserInfoReader>(),
+            new Actor(_actor), services.GetRequiredService<ICouncilSchedulingGuard>());
+        var scheduling = handler.HandleAsync(new AssignCouncilGroupsCommand(councilId,
+            [new CouncilAssignmentInputDto(_group, 1)]));
+        try { await AssertBlockedByAsync(schedulingPid, writerPid); }
+        finally { await transaction.CommitAsync(); }
+
+        var result = await scheduling.WaitAsync(TimeSpan.FromSeconds(25));
+        Assert.True(result.IsFailure);
+        Assert.Equal("Council.GroupNotEligibleForDefense", result.Error.Code);
+        await using var verify = Db<DefenseCouncilDbContext>();
+        Assert.Empty(await verify.CouncilAssignments.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(CouncilMemberRole.Chairman)]
+    [InlineData(CouncilMemberRole.Secretary)]
+    public async Task Council_leadership_role_is_unique_across_writers(CouncilMemberRole role)
+    {
+        var councilId = await Cp3CouncilAsync();
+        await using var first = Db<DefenseCouncilDbContext>();
+        first.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = councilId, UserId = _reviewer, RoleInCouncil = role });
+        await first.SaveChangesAsync();
+
+        await using var second = Db<DefenseCouncilDbContext>();
+        second.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = councilId, UserId = _otherReviewer, RoleInCouncil = role });
+        var error = await Assert.ThrowsAsync<DefenseCouncilUniqueConstraintException>(() => second.SaveChangesAsync());
+        Assert.Equal("ux_council_member_leadership_role", error.ConstraintName);
+    }
+
+    [Fact]
+    public async Task Council_defense_order_is_unique_even_for_different_groups()
+    {
+        var councilId = await Cp3CouncilAsync();
+        await using var db = Db<DefenseCouncilDbContext>();
+        await using var transaction = await db.Database.BeginTransactionAsync();
+        await db.Database.ExecuteSqlRawAsync("SET LOCAL session_replication_role = replica;");
+        db.CouncilAssignments.Add(new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = councilId, GroupId = Guid.NewGuid(), OrderNumber = 1 });
+        await db.SaveChangesAsync();
+        db.CouncilAssignments.Add(new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = councilId, GroupId = Guid.NewGuid(), OrderNumber = 1 });
+
+        var error = await Assert.ThrowsAsync<DefenseCouncilUniqueConstraintException>(() => db.SaveChangesAsync());
+
+        Assert.Equal("ux_council_assignment_council_order", error.ConstraintName);
+        await transaction.RollbackAsync();
+    }
+
     private async Task<Guid> Cp3CouncilAsync()
     {
         await using var db = Db<DefenseCouncilDbContext>();
@@ -46,6 +122,18 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
             if (afterGate is not null) await afterGate(services, gate, token);
             return ReviewerAssignmentTransactionResult<bool>.Commit(true);
         });
+    }
+
+    [Fact]
+    public async Task Council_eligibility_uses_the_active_reviewer_rule()
+    {
+        await Cp3SubmittedAsync();
+        await using var scope = _app.Services.CreateAsyncScope();
+        var councilRepository = scope.ServiceProvider.GetRequiredService<ICouncilRepository>();
+
+        Assert.Contains(_group, await councilRepository.GetDefenseEligibleGroupIdsAsync([_group]));
+        await PublishFoundationRuleAsync(await Cp3RuleDraftAsync(6));
+        Assert.DoesNotContain(_group, await councilRepository.GetDefenseEligibleGroupIdsAsync([_group]));
     }
 
     [Fact]

@@ -131,4 +131,38 @@ hoạt động phải đổi sang origin Vercel chính thức và deploy lại b
 - `frontend`: SPA; [hướng dẫn frontend](frontend/README.md).
 - `backend/docs`: kiến trúc backend, tài liệu kỹ thuật và các sơ đồ PlantUML.
 
-GitHub Actions chạy trên `dev`/`production`: backend format, Gitleaks, build/test, Docker build; frontend lint/typecheck/build và Docker build. Workflow publish đóng gói image, quét Trivy và đẩy GHCR; deploy SSH được bỏ qua khi chưa có secrets VPS. File workflow thể hiện cấu hình tự động hóa, không chứng minh dịch vụ đã được triển khai.
+GitHub Actions chạy cả backend và frontend CI trên mỗi commit `dev`/`production`. Publish chỉ đẩy image khi cả hai workflow push đã thành công trên cùng SHA; Trivy chặn lỗi HIGH/CRITICAL có bản vá. Image có tag `sha-<full SHA>`. Nếu CI bị lỗi hoặc chờ quá 75 phút, cần chạy lại CI và chạy lại publish cho cùng commit.
+
+Triển khai cần tạo hai GitHub Environment `dev` và `production`, mỗi environment có `DEPLOYMENT_SCOPE` đúng bằng tên environment, `API_HOST`, `ACME_EMAIL`, cùng secrets VPS, `APP_URL`, `DATABASE_CONNECTION_STRING`, JWT, SMTP, S3 và AI riêng. S3 cần `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET_NAME`; `S3_PUBLIC_ENDPOINT`, `S3_REGION` và `PLAGIARISM_AI_API_KEY` là tùy chọn, `PLAGIARISM_AI_BASE_URL` là bắt buộc. Không dùng chung database, bucket, Data Protection keys hoặc đích triển khai giữa hai environment. Thiếu cấu hình bắt buộc làm deploy thất bại. Deploy thủ công yêu cầu SHA đầy đủ của image đã publish.
+
+Khi chạy môi trường `Production`, API kiểm tra cấu hình S3 lúc khởi động, yêu cầu URL web trong email dùng HTTPS và yêu cầu URL AI không trỏ loopback. Outbox ThesisManagement cũng phải có partition được đặt rõ ràng thay vì giá trị `default`. Cần dùng tên mạng hoặc địa chỉ thực của dịch vụ AI khi chạy trong container.
+
+Workflow dùng thư mục, Compose project, tên container và mạng riêng theo environment. Gateway vẫn dùng cổng 80/443 nên hai environment cần VPS hoặc cấu hình gateway riêng. Khi chuyển từ stack cũ, phải lập kế hoạch cutover vì tên container/project mới không tự thay thế stack cũ. VPS cần `setfacl` và filesystem hỗ trợ ACL để workflow cấp quyền và kiểm tra UID của image có thể đọc PEM trước khi thay container. Cần smoke test, backup/restore và rollback trên hạ tầng trước khi vận hành. File workflow không chứng minh dịch vụ đã được triển khai hay các phụ thuộc đã hoạt động.
+
+Thư mời ghép nhóm được ghi vào outbox cùng transaction đăng ký và gửi lại khi SMTP lỗi. `ConfirmationExpiresAtUtc` là `null` trong khi thư chưa gửi; thời hạn 24 giờ bắt đầu khi worker gửi thư thành công. Cần giữ và sao lưu Data Protection keys, theo dõi các dòng chưa xử lý trong `thesis.topic_registration_email`, và cấu hình partition riêng cho từng environment. Khi chạy Compose trực tiếp, đặt `THESIS_EMAIL_OUTBOX_PARTITION` ổn định và riêng biệt. Các lời mời cũ tạo trước migration không có bản tin outbox để gửi lại tự động.
+
+Barem theo đợt được đọc bằng `GET /api/thesis/batches/{batchId}/grading-rubric` và cấu hình bằng `PUT` cùng đường dẫn với body `{"criteria":[{"code":"C1","name":"Nội dung","maxScore":10}]}`. Faculty, AcademicAffairs và Admin được cấu hình; Lecturer cũng được đọc. Các tiêu chí phải có mã duy nhất và tổng điểm tối đa bằng 10. Có thể thay toàn bộ trước khi chấm; sau khi có chi tiết đánh giá, barem bị khóa vĩnh viễn. Migration `GradingRubricGuard` đánh dấu các barem đã có chi tiết chấm; không tự suy diễn tiêu chí cho đợt cũ chưa được cấu hình.
+
+Các lần upload đề cương, giữa kỳ và tiến độ có bản ghi trong `thesis.submission_upload_attempt`; worker khóa bản ghi trước khi xóa, thử lại lỗi và quét lại các object đã xóa trong 24 giờ để xử lý upload hoàn tất muộn. Cần theo dõi các bản ghi `CleanupPending`/`Cleaning` và log worker. Đợt quét lại có giới hạn 24 giờ, vì vậy việc đối soát object storage định kỳ vẫn cần thiết khi storage hoàn tất yêu cầu muộn hơn giới hạn đó hoặc worker ngừng hoạt động kéo dài.
+
+Trước khi áp dụng migration `CouncilSchedulingUniqueness` lên dữ liệu có sẵn, kiểm tra và xử lý các hàng trùng sau; migration sẽ thất bại nếu còn trùng:
+
+```sql
+SELECT council_id, role_in_council, count(*)
+FROM councils.council_member
+WHERE role_in_council IN ('Chairman', 'Secretary')
+GROUP BY council_id, role_in_council HAVING count(*) > 1;
+
+SELECT council_id, order_number, count(*)
+FROM councils.council_assignment
+GROUP BY council_id, order_number HAVING count(*) > 1;
+```
+
+Trước migration `RenameRequestConcurrency`, kiểm tra đơn đang xử lý bị trùng:
+
+```sql
+SELECT group_id, count(*)
+FROM thesis.rename_request
+WHERE status IN ('Created', 'AdvisorConfirmed', 'FacultyApproved')
+GROUP BY group_id HAVING count(*) > 1;
+```

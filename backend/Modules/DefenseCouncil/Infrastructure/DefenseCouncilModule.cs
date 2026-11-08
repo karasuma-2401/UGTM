@@ -51,6 +51,8 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.Councils.ICouncilReportAccess, CouncilReportAccess>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.Councils.ICouncilAssignedGroupReader, CouncilReportAccess>();
         services.AddScoped<ICouncilRepository, CouncilRepository>();
+        services.AddScoped<GradingRubricManager>();
+        services.AddScoped<ICouncilSchedulingGuard, CouncilSchedulingGuard>();
         services.AddScoped<IDefenseCouncilUnitOfWork>(sp => sp.GetRequiredService<DefenseCouncilDbContext>());
         services.AddSingleton<ThesisGradeCalculator>();
         services.AddScoped<IGradeCalculationService, GradeCalculationService>();
@@ -116,6 +118,7 @@ public sealed class DefenseCouncilModule : IModule
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapCouncilEndpoints();
+        endpoints.MapGradingRubricEndpoints();
         endpoints.MapScoreSummaryEndpoints();
         endpoints.MapAdvisorEvaluationEndpoints();
         endpoints.MapReviewerAssignmentEndpoints();

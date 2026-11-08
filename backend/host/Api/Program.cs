@@ -23,6 +23,11 @@ if (builder.Environment.IsDevelopment())
     }
 }
 
+if (builder.Environment.IsProduction() && !isBootstrapCommand)
+{
+    ProductionIntegrationConfiguration.Validate(builder.Configuration);
+}
+
 builder.Services.AddUgtmOpenApi();
 
 var knownProxyAddresses = builder.Configuration

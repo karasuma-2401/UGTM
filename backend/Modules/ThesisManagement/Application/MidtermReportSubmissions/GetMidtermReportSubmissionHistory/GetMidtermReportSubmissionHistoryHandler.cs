@@ -35,7 +35,7 @@ public sealed class GetMidtermReportSubmissionHistoryHandler(
             return Result.Failure<MidtermReportSubmissionHistoryDto>(MidtermReportSubmissionErrors.GroupNotFound);
         }
 
-        var isMember = group.Members.Any(member => member.StudentId == currentUser.UserId.Value);
+        var isMember = ThesisAuthorization.IsConfirmedMember(group, currentUser.UserId.Value);
         if (!isMember && !ThesisAuthorization.CanReviewGates(currentUser))
         {
             return Result.Failure<MidtermReportSubmissionHistoryDto>(MidtermReportSubmissionErrors.AccessDenied);

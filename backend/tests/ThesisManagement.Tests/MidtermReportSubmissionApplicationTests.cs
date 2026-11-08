@@ -112,6 +112,41 @@ public sealed class MidtermReportSubmissionApplicationTests
         Assert.Empty(fixtures.ObjectStorage.UploadedObjectKeys);
     }
 
+    [Fact]
+    public async Task Pending_member_cannot_submit_read_or_download_midterm_report()
+    {
+        var group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Now.AddDays(-1));
+        group.AddMember(StudentId, BatchId, Now.AddDays(-1));
+        var pendingId = Guid.NewGuid();
+        group.AddPendingMember(pendingId, BatchId, StudentId, "token", Now.AddHours(-1), Now.AddDays(1));
+        Assert.True(group.TrySubmitSyllabus());
+        Assert.True(group.TryApproveSyllabus());
+        var fixtures = new WorkflowFixtures(group);
+        var pending = new FakeCurrentUser(pendingId);
+
+        var denied = await fixtures.CreateSubmitHandler(pending).HandleAsync(SubmitCommand(group.Id));
+        var submitted = await fixtures.CreateSubmitHandler(StudentUser()).HandleAsync(SubmitCommand(group.Id));
+        var history = await fixtures.CreateHistoryHandler(pending).HandleAsync(new GetMidtermReportSubmissionHistoryQuery(group.Id));
+        var download = await fixtures.CreateDownloadHandler(pending)
+            .HandleAsync(new GetReviewGateSubmissionFileDownloadQuery(submitted.Value.File.Id));
+
+        Assert.Equal(MidtermReportSubmissionErrors.AccessDenied.Code, denied.Error.Code);
+        Assert.True(submitted.IsSuccess);
+        Assert.True(history.IsFailure);
+        Assert.True(download.IsFailure);
+    }
+
+    [Fact]
+    public async Task Ambiguous_save_failure_keeps_uploaded_midterm_object()
+    {
+        var group = CreateInProgressGroup();
+        var fixtures = new WorkflowFixtures(group) { FailSave = true };
+
+        await Assert.ThrowsAsync<IOException>(() => fixtures.CreateSubmitHandler(StudentUser()).HandleAsync(SubmitCommand(group.Id)));
+
+        Assert.Single(fixtures.ObjectStorage.UploadedObjectKeys);
+    }
+
     private static StudentGroup CreateInProgressGroup()
     {
         var group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Now.AddDays(-1));
@@ -148,6 +183,7 @@ public sealed class MidtermReportSubmissionApplicationTests
         public FakeObjectStorage ObjectStorage { get; } = new();
         public FakeAuditOutbox Audit { get; } = new();
         public TimeProvider NowProvider { get; }
+        public bool FailSave { set => _unitOfWork.FailSave = value; }
         public MidtermReport? Report => _reports.Report;
 
         public SubmitMidtermReportHandler CreateSubmitHandler(ICurrentUser currentUser)
@@ -162,7 +198,8 @@ public sealed class MidtermReportSubmissionApplicationTests
                 Audit,
                 _unitOfWork,
                 currentUser,
-                NowProvider);
+                NowProvider,
+                new FakeThesisUploadLifecycle());
 
         public ReviewMidtermReportHandler CreateReviewHandler(ICurrentUser currentUser)
             => new(
@@ -322,8 +359,9 @@ public sealed class MidtermReportSubmissionApplicationTests
 
     private sealed class FakeUnitOfWork : IThesisUnitOfWork
     {
+        public bool FailSave { get; set; }
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(1);
+            => FailSave ? Task.FromException<int>(new IOException("Save outcome unknown")) : Task.FromResult(1);
     }
 
     private sealed class FixedTimeProvider(DateTime now) : TimeProvider

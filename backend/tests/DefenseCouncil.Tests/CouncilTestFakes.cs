@@ -13,6 +13,13 @@ using UGTM.Modules.TopicCatalog.Contracts.DefenseCouncils;
 
 namespace UGTM.Modules.DefenseCouncil.Tests;
 
+public sealed class FakeCouncilSchedulingGuard : UGTM.Modules.DefenseCouncil.Application.Councils.Common.ICouncilSchedulingGuard
+{
+    public Task<UGTM.BuildingBlocks.Domain.Result<T>> ExecuteAsync<T>(
+        Func<CancellationToken, Task<UGTM.BuildingBlocks.Domain.Result<T>>> workflow,
+        CancellationToken cancellationToken = default) => workflow(cancellationToken);
+}
+
 public sealed class FakeReauthenticationVerifier : IReauthenticationVerifier
 {
     public ReauthenticationOutcome DefaultOutcome { get; set; } = ReauthenticationOutcome.Verified;
@@ -314,6 +321,9 @@ public sealed class FakeCouncilRepository : ICouncilRepository
 
         return Task.FromResult<IReadOnlySet<Guid>>(result);
     }
+
+    public Task<IReadOnlySet<Guid>> LockDefenseEligibleGroupIdsAsync(IEnumerable<Guid> groupIds, CancellationToken ct = default)
+        => GetDefenseEligibleGroupIdsAsync(groupIds, ct);
 
     public Task<Council?> GetCouncilByGroupIdAsync(Guid groupId, CancellationToken ct = default)
     {

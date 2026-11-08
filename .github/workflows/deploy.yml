@@ -19,6 +19,10 @@ on:
         options:
           - dev
           - production
+      commit_sha:
+        description: "Full commit SHA of an already published image"
+        required: true
+        type: string
 
 jobs:
   deploy:
@@ -30,9 +34,15 @@ jobs:
         github.event.workflow_run.event == 'push'
       )
     runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.target_env || github.event.workflow_run.head_branch }}
+    concurrency:
+      group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.target_env || github.event.workflow_run.head_branch }}
+      cancel-in-progress: false
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha || github.event.workflow_run.head_sha }}
 
       - name: Verify VPS Secrets
         id: check-secrets
@@ -47,24 +57,29 @@ jobs:
           IDENTITY_IP_HASH_KEY: ${{ secrets.IDENTITY_IP_HASH_KEY }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_FROM_ADDRESS: ${{ secrets.SMTP_FROM_ADDRESS }}
+          DEPLOYMENT_SCOPE: ${{ vars.DEPLOYMENT_SCOPE }}
+          TARGET_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.target_env || github.event.workflow_run.head_branch }}
+          SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha || github.event.workflow_run.head_sha }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          PLAGIARISM_AI_BASE_URL: ${{ secrets.PLAGIARISM_AI_BASE_URL }}
         run: |
           if [ -z "$API_HOST" ] || [ -z "$ACME_EMAIL" ] || \
              [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ] || [ -z "$APP_URL" ] || \
              [ -z "$DATABASE_CONNECTION_STRING" ] || [ -z "$JWT_PRIVATE_KEY_PEM_BASE64" ] || \
              [ -z "$IDENTITY_IP_HASH_KEY" ] || [ "${#IDENTITY_IP_HASH_KEY}" -lt 32 ] || \
-             [ -z "$SMTP_HOST" ] || [ -z "$SMTP_FROM_ADDRESS" ]; then
+             [ -z "$SMTP_HOST" ] || [ -z "$SMTP_FROM_ADDRESS" ] || \
+             [ "$DEPLOYMENT_SCOPE" != "$TARGET_ENV" ] || \
+             [ -z "$S3_ENDPOINT" ] || [ -z "$S3_ACCESS_KEY" ] || \
+             [ -z "$S3_SECRET_KEY" ] || [ -z "$S3_BUCKET_NAME" ] || \
+             [ -z "$PLAGIARISM_AI_BASE_URL" ] || ! [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo "One or more required deployment secrets are not configured."
-            echo "configured=false" >> "$GITHUB_OUTPUT"
+            exit 1
           else
             echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Skip notification
-        if: steps.check-secrets.outputs.configured == 'false'
-        run: |
-          echo "::warning ::Deployment skipped because required secrets are missing."
-          echo "Configure API_HOST and ACME_EMAIL as GitHub Actions variables."
-          echo "Configure VPS_HOST, VPS_SSH_KEY, APP_URL, DATABASE_CONNECTION_STRING, JWT_PRIVATE_KEY_PEM_BASE64, IDENTITY_IP_HASH_KEY (at least 32 characters), SMTP_HOST and SMTP_FROM_ADDRESS as GitHub Actions secrets."
 
       - name: Deploy to VPS via SSH
         if: steps.check-secrets.outputs.configured == 'true'
@@ -84,22 +99,37 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           SMTP_SECURITY: ${{ secrets.SMTP_SECURITY || 'StartTls' }}
           SMTP_TIMEOUT_SECONDS: ${{ secrets.SMTP_TIMEOUT_SECONDS || '30' }}
+          DEPLOYMENT_SCOPE: ${{ github.event_name == 'workflow_dispatch' && inputs.target_env || github.event.workflow_run.head_branch }}
+          SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha || github.event.workflow_run.head_sha }}
+          S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          S3_PUBLIC_ENDPOINT: ${{ secrets.S3_PUBLIC_ENDPOINT }}
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          S3_REGION: ${{ vars.S3_REGION || 'us-east-1' }}
+          PLAGIARISM_AI_BASE_URL: ${{ secrets.PLAGIARISM_AI_BASE_URL }}
+          PLAGIARISM_AI_API_KEY: ${{ secrets.PLAGIARISM_AI_API_KEY }}
           DEPLOY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME || 'ubuntu' }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
-          envs: API_HOST,ACME_EMAIL,DATABASE_CONNECTION_STRING,APP_URL,JWT_PRIVATE_KEY_PEM_BASE64,IDENTITY_IP_HASH_KEY,SMTP_HOST,SMTP_PORT,SMTP_FROM_ADDRESS,SMTP_FROM_NAME,SMTP_USERNAME,SMTP_PASSWORD,SMTP_SECURITY,SMTP_TIMEOUT_SECONDS,DEPLOY_GITHUB_TOKEN
+          envs: API_HOST,ACME_EMAIL,DATABASE_CONNECTION_STRING,APP_URL,JWT_PRIVATE_KEY_PEM_BASE64,IDENTITY_IP_HASH_KEY,SMTP_HOST,SMTP_PORT,SMTP_FROM_ADDRESS,SMTP_FROM_NAME,SMTP_USERNAME,SMTP_PASSWORD,SMTP_SECURITY,SMTP_TIMEOUT_SECONDS,DEPLOYMENT_SCOPE,SOURCE_SHA,S3_ENDPOINT,S3_PUBLIC_ENDPOINT,S3_ACCESS_KEY,S3_SECRET_KEY,S3_BUCKET_NAME,S3_REGION,PLAGIARISM_AI_BASE_URL,PLAGIARISM_AI_API_KEY,DEPLOY_GITHUB_TOKEN
           script: |
             set -e
-            APP_DIR="$HOME/ugtm"
+            APP_DIR="$HOME/ugtm/$DEPLOYMENT_SCOPE"
             mkdir -p "$APP_DIR"
             cd "$APP_DIR"
 
             # Determine image tag based on trigger
-            BRANCH="${{ github.event_name == 'workflow_dispatch' && inputs.target_env || github.event.workflow_run.head_branch }}"
+            BRANCH="$DEPLOYMENT_SCOPE"
             OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+            if [ "$BRANCH" = production ]; then
+              export PROXY_IP=172.29.0.10 NETWORK_SUBNET=172.29.0.0/24 OUTBOX_PARTITION=azure-production
+            else
+              export PROXY_IP=172.30.0.10 NETWORK_SUBNET=172.30.0.0/24 OUTBOX_PARTITION=ugtm-dev
+            fi
 
             echo "Deploying UGTM (${BRANCH}) to VPS..."
 
@@ -108,7 +138,7 @@ jobs:
             services:
               backend:
                 image: ghcr.io/${IMAGE_OWNER}/ugtm-api:${IMAGE_TAG}
-                container_name: ugtm-backend
+                container_name: ugtm-${DEPLOYMENT_SCOPE}-backend
                 restart: always
                 environment:
                   - ASPNETCORE_ENVIRONMENT=Production
@@ -116,11 +146,21 @@ jobs:
                   - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING:?DATABASE_CONNECTION_STRING must be configured}
                   - Cors__AllowedOrigins__0=${APP_URL:?APP_URL must be configured}
                   - Identity__Email__PublicWebBaseUrl=${APP_URL:?APP_URL must be configured}
-                  - Identity__Email__OutboxPartition=azure-production
+                  - ThesisManagement__Email__PublicWebBaseUrl=${APP_URL:?APP_URL must be configured}
+                  - ThesisManagement__Email__OutboxPartition=${OUTBOX_PARTITION}
+                  - PlagiarismAi__BaseUrl=${PLAGIARISM_AI_BASE_URL:?PLAGIARISM_AI_BASE_URL must be configured}
+                  - PlagiarismAi__ApiKey=${PLAGIARISM_AI_API_KEY}
+                  - S3Storage__Endpoint=${S3_ENDPOINT:?S3_ENDPOINT must be configured}
+                  - S3Storage__PublicEndpoint=${S3_PUBLIC_ENDPOINT:-}
+                  - S3Storage__AccessKey=${S3_ACCESS_KEY:?S3_ACCESS_KEY must be configured}
+                  - S3Storage__SecretKey=${S3_SECRET_KEY:?S3_SECRET_KEY must be configured}
+                  - S3Storage__BucketName=${S3_BUCKET_NAME:?S3_BUCKET_NAME must be configured}
+                  - S3Storage__Region=${S3_REGION:-us-east-1}
+                  - Identity__Email__OutboxPartition=${OUTBOX_PARTITION}
                   - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
                   - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:?IDENTITY_IP_HASH_KEY must be configured}
-                  - Proxy__KnownProxies__0=172.29.0.10
-                  - Proxy__KnownProxies__1=::ffff:172.29.0.10
+                  - Proxy__KnownProxies__0=${PROXY_IP}
+                  - Proxy__KnownProxies__1=::ffff:${PROXY_IP}
                   - Notifications__Smtp__Host=${SMTP_HOST}
                   - Notifications__Smtp__Port=${SMTP_PORT:-587}
                   - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS}
@@ -137,7 +177,7 @@ jobs:
 
               frontend:
                 image: ghcr.io/${IMAGE_OWNER}/ugtm-frontend:${IMAGE_TAG}
-                container_name: ugtm-frontend
+                container_name: ugtm-${DEPLOYMENT_SCOPE}-frontend
                 restart: always
                 depends_on:
                   - backend
@@ -146,7 +186,7 @@ jobs:
 
               gateway:
                 image: caddy:2.11.7-alpine
-                container_name: ugtm-gateway
+                container_name: ugtm-${DEPLOYMENT_SCOPE}-gateway
                 restart: always
                 depends_on:
                   - backend
@@ -164,7 +204,7 @@ jobs:
                   - caddy_config:/config
                 networks:
                   default:
-                    ipv4_address: 172.29.0.10
+                    ipv4_address: ${PROXY_IP}
 
             volumes:
               data_protection_keys:
@@ -175,7 +215,7 @@ jobs:
               default:
                 ipam:
                   config:
-                    - subnet: 172.29.0.0/24
+                    - subnet: ${NETWORK_SUBNET}
             EOF
 
             cat << 'EOF' > Caddyfile
@@ -211,24 +251,35 @@ jobs:
 
             umask 077
             mkdir -p "$APP_DIR/secrets"
-            printf '%s' "$JWT_PRIVATE_KEY_PEM_BASE64" | base64 --decode > "$APP_DIR/secrets/ugtm-jwt-private.pem"
 
             export IMAGE_OWNER="$OWNER"
-            export IMAGE_TAG="$BRANCH"
+            export IMAGE_TAG="sha-$SOURCE_SHA"
             export JWT_PRIVATE_KEY_FILE="$APP_DIR/secrets/ugtm-jwt-private.pem"
 
             # Login to GHCR to pull images
             printf '%s' "$DEPLOY_GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-            # Pull and restart containers
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            # Validate the mounted key with the image's real runtime UID before replacing containers.
+            docker compose -p "ugtm-$BRANCH" -f docker-compose.prod.yml pull
+            command -v setfacl >/dev/null || { echo "Install setfacl to grant the runtime UID access to the JWT key." >&2; exit 1; }
+            KEY_TMP=$(mktemp "$APP_DIR/secrets/jwt-key.XXXXXXXX")
+            trap 'rm -f "$KEY_TMP"' EXIT
+            printf '%s' "$JWT_PRIVATE_KEY_PEM_BASE64" | base64 --decode > "$KEY_TMP"
+            API_IMAGE="ghcr.io/$IMAGE_OWNER/ugtm-api:$IMAGE_TAG"
+            RUNTIME_UID=$(docker run --rm --entrypoint id "$API_IMAGE" -u)
+            case "$RUNTIME_UID" in ''|*[!0-9]*) echo "Invalid API runtime UID." >&2; exit 1;; esac
+            if [ "$RUNTIME_UID" = 0 ]; then echo "API image must run as a non-root user." >&2; exit 1; fi
+            setfacl -m "u:$RUNTIME_UID:r" "$KEY_TMP"
+            docker run --rm --entrypoint /bin/sh -v "$KEY_TMP:/run/secrets/ugtm-jwt-private.pem:ro" \
+              "$API_IMAGE" -c 'test -r /run/secrets/ugtm-jwt-private.pem'
+            mv -f "$KEY_TMP" "$JWT_PRIVATE_KEY_FILE"
+            trap - EXIT
+
+            docker compose -p "ugtm-$BRANCH" -f docker-compose.prod.yml up -d --remove-orphans
 
             # Verify that DNS, TLS termination and the backend route all work publicly.
             curl --fail --silent --show-error \
               --retry 12 --retry-delay 5 --retry-all-errors \
               "https://${API_HOST}/api/modules/Identity/ping"
 
-            # Clean dangling images
-            docker image prune -f
             echo "Deployment completed successfully!"

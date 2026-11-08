@@ -24,7 +24,8 @@ public sealed class SubmitMidtermReportHandler(
     IThesisManagementAuditOutbox auditOutbox,
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IThesisUploadLifecycle uploadLifecycle)
 {
     public async Task<Result<MidtermReportSubmissionDto>> HandleAsync(
         SubmitMidtermReportCommand command,
@@ -50,7 +51,7 @@ public sealed class SubmitMidtermReportHandler(
         }
 
         var membership = group.Members.SingleOrDefault(member => member.StudentId == currentUser.UserId.Value);
-        if (membership is null)
+        if (membership is null || membership.ConfirmationStatus != MemberConfirmationStatus.Confirmed)
         {
             return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.AccessDenied);
         }
@@ -129,17 +130,12 @@ public sealed class SubmitMidtermReportHandler(
             UploadedAt = occurredAt
         };
 
-        await using var content = new MemoryStream(validatedFile.Content.ToArray(), writable: false);
-        await objectStorage.UploadAsync(
-            new ThesisSubmissionObjectWriteRequest(
-                objectKey,
-                validatedFile.ContentType,
-                validatedFile.FileSize),
-            content,
-            cancellationToken);
-
+        var uploadAttempt = await uploadLifecycle.BeginAsync(objectKey, cancellationToken);
         try
         {
+            await using var content = new MemoryStream(validatedFile.Content.ToArray(), writable: false);
+            await objectStorage.UploadAsync(new ThesisSubmissionObjectWriteRequest(
+                objectKey, validatedFile.ContentType, validatedFile.FileSize), content, cancellationToken);
             if (isFirstSubmission)
             {
                 report = MidtermReport.CreateSubmitted(reportId, command.GroupId);
@@ -152,10 +148,7 @@ public sealed class SubmitMidtermReportHandler(
 
             if (!group.TrySubmitMidtermReport())
             {
-                return await DeleteObjectAndFailAsync(
-                    objectKey,
-                    MidtermReportSubmissionErrors.InvalidSubmissionState,
-                    cancellationToken);
+                return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.InvalidSubmissionState);
             }
 
             submissionFileRepository.Add(submissionFile);
@@ -178,44 +171,22 @@ public sealed class SubmitMidtermReportHandler(
                     }),
                 occurredAt);
 
-            var saveError = await unitOfWork.TrySaveChangesAsync(
-                MidtermReportSubmissionErrors.ConcurrencyConflict,
-                MidtermReportSubmissionErrors.ConcurrencyConflict,
-                cancellationToken);
+            var saveError = await uploadLifecycle.SaveAsync(uploadAttempt,
+                token => unitOfWork.TrySaveChangesAsync(MidtermReportSubmissionErrors.ConcurrencyConflict,
+                    MidtermReportSubmissionErrors.ConcurrencyConflict, token),
+                MidtermReportSubmissionErrors.ConcurrencyConflict, cancellationToken);
             if (saveError is not null)
             {
-                return await DeleteObjectAndFailAsync(objectKey, saveError, cancellationToken);
+                return Result.Failure<MidtermReportSubmissionDto>(saveError);
             }
 
             return Result.Success(MidtermReportSubmissionMapper.ToSubmissionDto(
                 report,
                 SyllabusSubmissionMapper.ToDto(submissionFile)));
         }
-        catch
+        finally
         {
-            await TryDeleteObjectAsync(objectKey, cancellationToken);
-            throw;
-        }
-    }
-
-    private async Task<Result<MidtermReportSubmissionDto>> DeleteObjectAndFailAsync(
-        string objectKey,
-        Error error,
-        CancellationToken cancellationToken)
-    {
-        await TryDeleteObjectAsync(objectKey, cancellationToken);
-        return Result.Failure<MidtermReportSubmissionDto>(error);
-    }
-
-    private async Task TryDeleteObjectAsync(string objectKey, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await objectStorage.DeleteAsync(objectKey, cancellationToken);
-        }
-        catch
-        {
-            // The upload is immutable and unreachable without a database row. A later orphan sweep can retry cleanup.
+            await uploadLifecycle.FinishAsync(uploadAttempt);
         }
     }
 }

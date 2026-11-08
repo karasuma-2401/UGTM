@@ -34,6 +34,10 @@ public static class ModuleRegistration
         }
 
         services.AddScoped<IAdvisorWorkflowTransactionCoordinator, AdvisorWorkflowTransactionCoordinator>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.Persistence.IRenameRequestTransactionCoordinator,
+            UGTM.Api.RenameRequests.RenameRequestTransactionCoordinator>();
+        services.AddScoped<UGTM.Modules.TopicCatalog.Application.Persistence.ITopicMutationTransactionCoordinator,
+            UGTM.Api.Topics.TopicMutationTransactionCoordinator>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.ScoreSummaries.IScoreSummaryWorkflowTransactionCoordinator,
             UGTM.Api.ScoreSummaries.ScoreSummaryWorkflowTransactionCoordinator>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.FinalSubmissions.IFinalSubmissionWorkflowTransactionCoordinator,

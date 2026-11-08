@@ -171,7 +171,9 @@ public static class CouncilMinuteWorkspaceCalculator
         }
 
         var adjustedAverage = adjustedDivisor > 0 ? Math.Round(adjustedTotal / adjustedDivisor, 6) : 0m;
-        decimal? finalRoundedScore = adjustedDivisor > 0 ? Math.Round(adjustedTotal / adjustedDivisor, 2) : null;
+        decimal? finalRoundedScore = adjustedDivisor > 0
+            ? Math.Round(adjustedTotal / adjustedDivisor, 2, MidpointRounding.AwayFromZero)
+            : null;
 
         // Formula explanation
         string formulaExplanation;

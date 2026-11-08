@@ -16,7 +16,8 @@ public sealed class CreateTopicHandler(
     ITopicUnitOfWork unitOfWork,
     IKltnBatchReader batchReader,
     ICurrentUser currentUser,
-    IThesisRegistrationContract? registrationContract = null)
+    IThesisRegistrationContract? registrationContract = null,
+    ITopicMutationTransactionCoordinator? transactionCoordinator = null)
 {
     private const int MaxTitleViLength = 300;
     private const int MaxTitleEnLength = 350;
@@ -24,6 +25,23 @@ public sealed class CreateTopicHandler(
     public async Task<Result<TopicSummaryDto>> HandleAsync(
         CreateTopicCommand command,
         CancellationToken cancellationToken = default)
+    {
+        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue
+            || (!HasRole(currentUser, "Admin") && !HasRole(currentUser, "Lecturer")))
+            return Result.Failure<TopicSummaryDto>(TopicErrors.AccessDenied);
+
+        if (registrationContract is not null)
+        {
+            if (transactionCoordinator is null) return Result.Failure<TopicSummaryDto>(TopicErrors.WorkflowNotConfigured);
+            return await transactionCoordinator.ExecuteAsync(token => HandleCoreAsync(command, token), cancellationToken);
+        }
+        if (command.StudentIds is { Count: > 0 } || command.StudentCodes is { Count: > 0 })
+            return Result.Failure<TopicSummaryDto>(TopicErrors.WorkflowNotConfigured);
+        return await HandleCoreAsync(command, cancellationToken);
+    }
+
+    private async Task<Result<TopicSummaryDto>> HandleCoreAsync(
+        CreateTopicCommand command, CancellationToken cancellationToken)
     {
         if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue)
         {

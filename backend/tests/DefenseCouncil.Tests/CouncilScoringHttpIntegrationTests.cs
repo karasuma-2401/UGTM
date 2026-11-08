@@ -109,6 +109,7 @@ public sealed class CouncilScoringHttpIntegrationTests : IAsyncLifetime
         builder.Services.AddScoped<CreateCouncilHandler>();
         builder.Services.AddScoped<AddCouncilMembersHandler>();
         builder.Services.AddScoped<AssignCouncilGroupsHandler>();
+        builder.Services.AddSingleton<UGTM.Modules.DefenseCouncil.Application.Councils.Common.ICouncilSchedulingGuard, FakeCouncilSchedulingGuard>();
         builder.Services.AddScoped<ApproveCouncilHandler>();
         builder.Services.AddScoped<GetCouncilScheduleHandler>();
         builder.Services.AddScoped<SubmitCouncilScoreHandler>();

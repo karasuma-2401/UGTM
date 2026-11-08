@@ -32,6 +32,7 @@ public class StudentGroupMemberConfiguration : IEntityTypeConfiguration<StudentG
             .IsRequired();
 
         builder.Property(x => x.ConfirmationStatus)
+            .IsConcurrencyToken()
             .HasDefaultValue(MemberConfirmationStatus.Confirmed)
             .HasSentinel(MemberConfirmationStatus.Confirmed)
             .IsRequired();

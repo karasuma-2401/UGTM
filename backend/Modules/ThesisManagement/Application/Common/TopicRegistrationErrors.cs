@@ -40,6 +40,10 @@ public static class TopicRegistrationErrors
         "TopicRegistration.PartnerNotFound",
         "Không tìm thấy sinh viên cùng nhóm được chỉ định hoặc tài khoản không hoạt động.");
 
+    public static readonly Error PartnerEmailRequired = Error.Validation(
+        "TopicRegistration.PartnerEmailRequired",
+        "Thành viên được mời cần có địa chỉ email để nhận yêu cầu xác nhận.");
+
     public static readonly Error CannotInviteSelf = Error.Validation(
         "TopicRegistration.CannotInviteSelf",
         "Không thể chỉ định chính mình làm thành viên cùng nhóm.");

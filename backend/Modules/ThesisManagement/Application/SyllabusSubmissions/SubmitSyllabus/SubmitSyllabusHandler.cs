@@ -23,7 +23,8 @@ public sealed class SubmitSyllabusHandler(
     IThesisManagementAuditOutbox auditOutbox,
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IThesisUploadLifecycle uploadLifecycle)
 {
     public async Task<Result<SyllabusSubmissionDto>> HandleAsync(
         SubmitSyllabusCommand command,
@@ -49,7 +50,7 @@ public sealed class SubmitSyllabusHandler(
         }
 
         var membership = group.Members.SingleOrDefault(member => member.StudentId == currentUser.UserId.Value);
-        if (membership is null)
+        if (membership is null || membership.ConfirmationStatus != MemberConfirmationStatus.Confirmed)
         {
             return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.AccessDenied);
         }
@@ -137,17 +138,12 @@ public sealed class SubmitSyllabusHandler(
             UploadedAt = occurredAt
         };
 
-        await using var content = new MemoryStream(validatedFile.Content.ToArray(), writable: false);
-        await objectStorage.UploadAsync(
-            new ThesisSubmissionObjectWriteRequest(
-                objectKey,
-                validatedFile.ContentType,
-                validatedFile.FileSize),
-            content,
-            cancellationToken);
-
+        var uploadAttempt = await uploadLifecycle.BeginAsync(objectKey, cancellationToken);
         try
         {
+            await using var content = new MemoryStream(validatedFile.Content.ToArray(), writable: false);
+            await objectStorage.UploadAsync(new ThesisSubmissionObjectWriteRequest(
+                objectKey, validatedFile.ContentType, validatedFile.FileSize), content, cancellationToken);
             if (isRenameResubmission)
             {
                 syllabus!.SubmitUpdatedAfterRename();
@@ -160,10 +156,7 @@ public sealed class SubmitSyllabusHandler(
 
                 if (!group.TrySubmitSyllabus())
                 {
-                    return await DeleteObjectAndFailAsync(
-                        objectKey,
-                        SyllabusSubmissionErrors.InvalidSubmissionState,
-                        cancellationToken);
+                    return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.InvalidSubmissionState);
                 }
             }
             else
@@ -172,10 +165,7 @@ public sealed class SubmitSyllabusHandler(
 
                 if (!group.TrySubmitSyllabus())
                 {
-                    return await DeleteObjectAndFailAsync(
-                        objectKey,
-                        SyllabusSubmissionErrors.InvalidSubmissionState,
-                        cancellationToken);
+                    return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.InvalidSubmissionState);
                 }
             }
 
@@ -199,42 +189,20 @@ public sealed class SubmitSyllabusHandler(
                     }),
                 occurredAt);
 
-            var saveError = await unitOfWork.TrySaveChangesAsync(
-                SyllabusSubmissionErrors.ConcurrencyConflict,
-                SyllabusSubmissionErrors.ConcurrencyConflict,
-                cancellationToken);
+            var saveError = await uploadLifecycle.SaveAsync(uploadAttempt,
+                token => unitOfWork.TrySaveChangesAsync(SyllabusSubmissionErrors.ConcurrencyConflict,
+                    SyllabusSubmissionErrors.ConcurrencyConflict, token),
+                SyllabusSubmissionErrors.ConcurrencyConflict, cancellationToken);
             if (saveError is not null)
             {
-                return await DeleteObjectAndFailAsync(objectKey, saveError, cancellationToken);
+                return Result.Failure<SyllabusSubmissionDto>(saveError);
             }
 
             return Result.Success(SyllabusSubmissionMapper.ToSubmissionDto(syllabus, submissionFile));
         }
-        catch
+        finally
         {
-            await TryDeleteObjectAsync(objectKey, cancellationToken);
-            throw;
-        }
-    }
-
-    private async Task<Result<SyllabusSubmissionDto>> DeleteObjectAndFailAsync(
-        string objectKey,
-        Error error,
-        CancellationToken cancellationToken)
-    {
-        await TryDeleteObjectAsync(objectKey, cancellationToken);
-        return Result.Failure<SyllabusSubmissionDto>(error);
-    }
-
-    private async Task TryDeleteObjectAsync(string objectKey, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await objectStorage.DeleteAsync(objectKey, cancellationToken);
-        }
-        catch
-        {
-            // The upload is immutable and unreachable without a database row. A later orphan sweep can retry cleanup.
+            await uploadLifecycle.FinishAsync(uploadAttempt);
         }
     }
 }

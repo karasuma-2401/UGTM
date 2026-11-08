@@ -27,7 +27,7 @@ public sealed class SaveCouncilMinuteHandler(
         SaveCouncilMinuteCommand command,
         CancellationToken ct = default)
     {
-        if (!currentUser.IsAuthenticated)
+        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue)
         {
             return Result.Failure<SaveCouncilMinuteResponseDto>(CouncilErrors.Forbidden);
         }
@@ -45,6 +45,11 @@ public sealed class SaveCouncilMinuteHandler(
         // Nếu không phải preview, người dùng phải là Thư ký (Secretary) hoặc Admin
         var isSecretary = members.Any(m => m.UserId == currentUser.UserId && m.RoleInCouncil == CouncilMemberRole.Secretary);
         var isAdmin = currentUser.Roles.Contains("Admin") || currentUser.Roles.Contains("AcademicAffairs");
+
+        if (command.IsPreview && !CouncilMinuteAccess.CanView(council, currentUser))
+        {
+            return Result.Failure<SaveCouncilMinuteResponseDto>(CouncilErrors.Forbidden);
+        }
 
         if (!command.IsPreview && !isSecretary && !isAdmin)
         {
