@@ -10,6 +10,9 @@ import {
 
 export function CouncilApprovalPage() {
   const {
+    batches,
+    batchFilter,
+    setBatchFilter,
     keyword,
     setKeyword,
     statusFilter,
@@ -68,6 +71,9 @@ export function CouncilApprovalPage() {
       <CouncilApprovalFilterBar
         keyword={keyword}
         onKeywordChange={setKeyword}
+        batches={batches}
+        batchFilter={batchFilter}
+        onBatchFilterChange={setBatchFilter}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
         onApply={handleApplyFilter}

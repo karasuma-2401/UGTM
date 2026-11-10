@@ -1,11 +1,46 @@
 export type CouncilApprovalStatus = 'all' | 'draft' | 'active' | 'completed';
 
+export interface CouncilOverviewMemberDto {
+  userId: string;
+  fullName: string;
+  role: string;
+  isReviewer: boolean;
+  isAdvisorConflict: boolean;
+  note?: string | null;
+}
+
+export interface CouncilOverviewApiItemDto {
+  id: string;
+  batchId: string;
+  councilCode: string;
+  facultyName: string;
+  groupCode?: string | null;
+  topicTitle?: string | null;
+  room: string;
+  timeSlot: string;
+  defenseDate: string;
+  status: 'Draft' | 'Active' | 'Completed';
+  statusLabel: string;
+  rosterModel: string;
+  rosterModelLabel: string;
+  profileStatus: string;
+  profileStatusLabel: string;
+  minuteLockStatus: string;
+  minuteLockStatusLabel: string;
+  assignmentId?: string | null;
+  chairman?: CouncilOverviewMemberDto | null;
+  secretary?: CouncilOverviewMemberDto | null;
+  members: CouncilOverviewMemberDto[];
+}
+
 export interface CouncilDraftItemDto {
   id: string;
   batchId: string;
   councilCode: string;
   facultyName: string;
   groupCode: string;
+  groupCodes: string[];
+  topicTitles: string[];
   room: string;
   timeSlot: string;
   defenseDate: string;

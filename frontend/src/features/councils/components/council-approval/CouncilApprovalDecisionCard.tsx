@@ -31,7 +31,8 @@ export function CouncilApprovalDecisionCard({
 }: CouncilApprovalDecisionCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isAlreadyApproved = selectedCouncil?.status === 'Active';
+  const isAlreadyApproved =
+    selectedCouncil?.status === 'Active' || selectedCouncil?.status === 'Completed';
   const displayFileName =
     selectedFile?.name || selectedCouncil?.decisionFileUrl || null;
 
@@ -184,7 +185,11 @@ export function CouncilApprovalDecisionCard({
           {isAlreadyApproved ? (
             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-xs text-emerald-800 font-medium">
               <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
-              <span>Hội đồng này đã được phê duyệt quyết định thành lập.</span>
+              <span>
+                {selectedCouncil?.status === 'Completed'
+                  ? 'Hội đồng này đã phê duyệt và hoàn thành bảo vệ.'
+                  : 'Hội đồng này đã được phê duyệt quyết định thành lập.'}
+              </span>
             </div>
           ) : (
             <div className="flex items-center gap-3 pt-2">
