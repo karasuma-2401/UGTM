@@ -25,7 +25,7 @@ export function IdentityNavigation() {
         activeKey={location.pathname}
         selector='a[aria-current="page"]'
         continuityKey="identity-tabs"
-        className="border-b-2 border-primary bg-primary/5"
+        className="bg-primary/5 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:content-[''] after:[background-image:var(--gradient-brand)]"
       />
       {tabs
         .filter((tab) => tab.visible)

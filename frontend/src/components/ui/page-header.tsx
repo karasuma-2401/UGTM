@@ -7,6 +7,7 @@ interface PageHeaderProps {
   children?: ReactNode;
   navigation?: ReactNode;
   compact?: boolean;
+  accent?: boolean;
 }
 
 export function PageHeader({
@@ -16,10 +17,11 @@ export function PageHeader({
   children,
   navigation,
   compact = false,
+  accent = !compact,
 }: PageHeaderProps) {
   return (
     <header className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]">
-      {!compact && (
+      {accent && (
         <div
           aria-hidden="true"
           className="h-1 bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]"

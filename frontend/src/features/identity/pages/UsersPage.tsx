@@ -36,6 +36,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
     <div className="min-w-0 space-y-5">
       <PageHeader
         compact
+        accent
         title="Tài khoản và phân quyền"
         icon={<UsersRound />}
         navigation={<IdentityNavigation />}

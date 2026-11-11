@@ -12,6 +12,7 @@ export interface DialogProps {
   busy?: boolean;
   closeLabel?: string;
   className?: string;
+  headerClassName?: string;
   hideHeader?: boolean;
   variant?: 'modal' | 'drawer';
 }
@@ -24,6 +25,7 @@ export function Dialog({
   busy = false,
   closeLabel = 'Đóng cửa sổ',
   className,
+  headerClassName,
   hideHeader = false,
   variant = 'modal',
 }: DialogProps) {
@@ -70,6 +72,7 @@ export function Dialog({
           className={cn(
             'sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-3.5 backdrop-blur-md',
             variant === 'drawer' && 'min-h-20',
+            headerClassName,
           )}
         >
           <div

@@ -61,6 +61,7 @@ export function UserFormDialog({
     <>
       <Dialog
         variant={user ? 'drawer' : 'modal'}
+        headerClassName={user ? 'bg-gradient-to-r from-blue-50 via-white to-orange-50' : undefined}
         title={
           user ? (
             <UserAccountHeader user={user} />

@@ -65,7 +65,7 @@ export function RoleListCard({
         <SelectionIndicator
           activeKey={`${selectedRoleId}:${searchTerm}`}
           selector='button[aria-pressed="true"]'
-          className="rounded-lg border border-primary bg-blue-50 shadow-xs"
+          className="rounded-lg border border-transparent shadow-xs [background:linear-gradient(180deg,#f8fbff_0%,#eff6ff_100%)_padding-box,var(--gradient-brand)_border-box]"
         />
         {filteredRoles.length === 0 ? (
           <div className="py-8 text-center text-xs text-[var(--color-text-muted,#697e9f)]">

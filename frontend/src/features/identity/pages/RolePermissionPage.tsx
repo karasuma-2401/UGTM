@@ -92,7 +92,7 @@ export function RolePermissionPage() {
 
   return (
     <div className="min-w-0 space-y-4">
-      <PageHeader compact title="Tài khoản và phân quyền" navigation={<IdentityNavigation />} />
+      <PageHeader compact accent title="Tài khoản và phân quyền" navigation={<IdentityNavigation />} />
       {notice && (
         <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
           {notice}
