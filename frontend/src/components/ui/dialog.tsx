@@ -52,13 +52,13 @@ export function Dialog({
         if (!busy) onClose();
       }}
       className={cn(
-        'fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 text-slate-800 shadow-2xl backdrop:bg-slate-900/50 backdrop:backdrop-blur-sm',
+        'fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-0 text-slate-800 shadow-[0_24px_64px_-12px_rgba(15,23,42,0.2)] backdrop:bg-slate-950/45 backdrop:backdrop-blur-xs',
         className,
       )}
     >
       {!hideHeader && (
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-          <span id={titleId} className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-3.5 backdrop-blur-md">
+          <span id={titleId} className="text-sm font-semibold tracking-tight text-slate-900">
             {title}
           </span>
           <Button
@@ -68,7 +68,7 @@ export function Dialog({
             aria-label={closeLabel}
             disabled={busy}
             onClick={onClose}
-            className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-100"
+            className="h-8 w-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           >
             <X />
           </Button>

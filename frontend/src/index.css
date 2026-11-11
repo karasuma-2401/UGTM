@@ -87,11 +87,43 @@
     @apply border-border;
   }
 
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased selection:bg-primary/15 selection:text-primary;
     font-family: var(--font-family-sans);
     font-feature-settings:
       'rlig' 1,
-      'calt' 1;
+      'calt' 1,
+      'cv02' 1,
+      'cv03' 1,
+      'cv04' 1,
+      'cv11' 1;
+  }
+
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Refined modern scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.55);
   }
 }

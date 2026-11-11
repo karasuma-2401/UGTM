@@ -36,14 +36,15 @@ export function TablePagination({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-4',
+        'flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/40 px-5 py-3.5',
         className,
       )}
     >
-      <p className="text-xs text-slate-500">
-        Hiển thị {first}–{last} / {totalCount} {itemLabel}
+      <p className="text-xs font-medium text-slate-500">
+        Hiển thị <span className="text-slate-700 font-semibold tabular-nums">{first}–{last}</span> /{' '}
+        <span className="text-slate-700 font-semibold tabular-nums">{totalCount}</span> {itemLabel}
       </p>
-      <nav aria-label="Phân trang" className="flex items-center gap-2">
+      <nav aria-label="Phân trang" className="flex items-center gap-1.5">
         <Button
           type="button"
           variant="outline"
@@ -68,9 +69,9 @@ export function TablePagination({
         </Button>
         <span
           aria-current="page"
-          className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium tabular-nums text-slate-700"
+          className="rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-xs font-semibold tabular-nums text-slate-800 shadow-2xs"
         >
-          Trang {pageNumber}
+          Trang {pageNumber} / {totalPages}
         </span>
         <Button
           type="button"

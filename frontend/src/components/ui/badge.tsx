@@ -79,7 +79,7 @@ function Badge({
       className={cn(badgeVariants({ variant: currentVariant, rounded }), className)}
       {...props}
     >
-      {dot && <span className={cn('size-3 rounded-sm mr-1.5 shrink-0', dotColor)} />}
+      {dot && <span className={cn('size-1.5 rounded-full mr-1.5 shrink-0', dotColor)} />}
       {leftIcon && (
         <span className="mr-1 inline-flex items-center shrink-0 [&_svg]:size-3">{leftIcon}</span>
       )}

@@ -20,43 +20,33 @@ export interface ConfirmDialogProps {
 
 const THEME_CONFIG = {
   brand: {
-    stripe: 'bg-gradient-to-r from-[#2054A5] to-[#FA7921]',
-    badgeBg: 'bg-gradient-to-r from-[#2054A5] to-[#FA7921] shadow-[#2054A5]/30',
-    titleColor: 'bg-gradient-to-r from-[#2054A5] to-[#FA7921] bg-clip-text text-transparent',
-    divider: 'bg-gradient-to-r from-[#2054A5] to-[#FA7921]',
-    confirmBtn: 'bg-gradient-to-r from-[#2054A5] to-[#FA7921] hover:opacity-95 shadow-[#2054A5]/25',
+    badgeBg: 'bg-blue-50 text-[#2054A5] ring-8 ring-blue-50/60',
+    titleColor: 'text-slate-900',
+    confirmBtn: 'bg-[#2054A5] hover:bg-[#1a458a] text-white shadow-sm shadow-[#2054A5]/20',
     icon: AlertTriangle,
   },
   warning: {
-    stripe: 'bg-gradient-to-r from-[#2054A5] to-[#FA7921]',
-    badgeBg: 'bg-gradient-to-r from-[#2054A5] to-[#FA7921] shadow-[#2054A5]/30',
-    titleColor: 'bg-gradient-to-r from-[#2054A5] to-[#FA7921] bg-clip-text text-transparent',
-    divider: 'bg-gradient-to-r from-[#2054A5] to-[#FA7921]',
-    confirmBtn: 'bg-gradient-to-r from-[#2054A5] to-[#FA7921] hover:opacity-95 shadow-[#2054A5]/25',
+    badgeBg: 'bg-amber-50 text-amber-600 ring-8 ring-amber-50/60',
+    titleColor: 'text-slate-900',
+    confirmBtn: 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm shadow-amber-600/20',
     icon: AlertTriangle,
   },
   error: {
-    stripe: 'bg-rose-500',
-    badgeBg: 'bg-rose-500 shadow-rose-500/30',
-    titleColor: 'text-rose-500',
-    divider: 'bg-rose-300',
-    confirmBtn: 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25',
+    badgeBg: 'bg-rose-50 text-rose-600 ring-8 ring-rose-50/60',
+    titleColor: 'text-slate-900',
+    confirmBtn: 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm shadow-rose-600/20',
     icon: X,
   },
   success: {
-    stripe: 'bg-emerald-500',
-    badgeBg: 'bg-emerald-500 shadow-emerald-500/30',
-    titleColor: 'text-emerald-600',
-    divider: 'bg-emerald-300',
-    confirmBtn: 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/25',
+    badgeBg: 'bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/60',
+    titleColor: 'text-slate-900',
+    confirmBtn: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/20',
     icon: Check,
   },
   info: {
-    stripe: 'bg-blue-500',
-    badgeBg: 'bg-blue-500 shadow-blue-500/30',
-    titleColor: 'text-blue-600',
-    divider: 'bg-blue-300',
-    confirmBtn: 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/25',
+    badgeBg: 'bg-blue-50 text-blue-600 ring-8 ring-blue-50/60',
+    titleColor: 'text-slate-900',
+    confirmBtn: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20',
     icon: AlertCircle,
   },
 };
@@ -86,39 +76,35 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         className,
       )}
     >
-      <div className="relative pt-9 px-4 pb-4">
-        <div className="relative bg-white rounded-[4px] shadow-2xl pt-9 pb-6 px-6 sm:px-8 text-center">
-          <div className={cn('absolute top-0 left-0 right-0 h-1.5 rounded-t-[4px]', theme.stripe)} />
-
-          <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-20">
+      <div className="p-2">
+        <div className="relative rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-7 text-center shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]">
+          <div className="mx-auto mb-4 flex justify-center">
             <div
               className={cn(
-                'size-14 rounded-full flex items-center justify-center text-white shadow-lg ring-4 ring-white',
+                'size-12 rounded-2xl flex items-center justify-center transition-transform',
                 theme.badgeBg,
               )}
             >
-              <IconComponent className="size-7 stroke-[2.75]" />
+              <IconComponent className="size-6 stroke-[2.25]" />
             </div>
           </div>
 
-          <h3 className={cn('text-2xl font-bold tracking-tight mt-1', theme.titleColor)}>
+          <h3 className={cn('text-lg font-semibold tracking-tight', theme.titleColor)}>
             {title}
           </h3>
 
-          <div className={cn('w-9 h-0.5 mx-auto mt-2.5 mb-3.5 rounded-full', theme.divider)} />
-
           {description && (
-            <div className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">
+            <div className="mt-2 text-sm text-slate-600 leading-relaxed max-w-xs mx-auto">
               {description}
             </div>
           )}
 
-          <div className="flex items-center justify-center gap-3 mt-6">
+          <div className="mt-6 flex items-center justify-center gap-2.5">
             <button
               type="button"
               onClick={onClose}
               disabled={isConfirming}
-              className="rounded-full border border-slate-200 px-5 py-2 text-xs sm:text-sm font-semibold text-slate-400 hover:text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors cursor-pointer"
+              className="flex-1 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer disabled:pointer-events-none disabled:opacity-50"
             >
               {cancelText}
             </button>
@@ -127,15 +113,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               onClick={onConfirm}
               disabled={isConfirming}
               className={cn(
-                'rounded-full px-6 py-2 text-xs sm:text-sm font-semibold text-white shadow-md transition-all active:scale-95 cursor-pointer disabled:pointer-events-none disabled:opacity-50',
+                'flex-1 rounded-xl px-5 py-2.5 text-sm font-medium transition-all active:scale-[0.98] cursor-pointer disabled:pointer-events-none disabled:opacity-50',
                 theme.confirmBtn,
               )}
             >
               {isConfirming ? 'Đang xử lý...' : confirmText}
             </button>
           </div>
-
-          <div className={cn('absolute bottom-0 left-0 right-0 h-1.5 rounded-b-[4px]', theme.stripe)} />
         </div>
       </div>
     </Dialog>
