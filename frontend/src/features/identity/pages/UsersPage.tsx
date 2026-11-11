@@ -122,7 +122,27 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             ? 'Vô hiệu hóa tài khoản?'
             : 'Khôi phục tài khoản?'
         }
-        description={actions.pendingStatusUser?.fullName}
+        description={
+          actions.pendingStatusUser && (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-800">
+                Bạn sắp {actions.pendingStatusUser.status === 'Active' ? 'vô hiệu hóa' : 'khôi phục'} tài khoản{' '}
+                <strong className="font-semibold text-slate-950">
+                  {actions.pendingStatusUser.fullName}
+                </strong>
+                {actions.pendingStatusUser.userCode ? (
+                  <span className="text-slate-500"> ({actions.pendingStatusUser.userCode})</span>
+                ) : null}
+                .
+              </p>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {actions.pendingStatusUser.status === 'Active'
+                  ? 'Tài khoản này sẽ bị thu hồi phiên đăng nhập và tạm ngưng quyền truy cập hệ thống.'
+                  : 'Tài khoản sẽ được mở khóa và người dùng có thể đăng nhập lại vào hệ thống.'}
+              </p>
+            </div>
+          )
+        }
         confirmText={actions.pendingStatusUser?.status === 'Active' ? 'Vô hiệu hóa' : 'Khôi phục'}
         isConfirming={actions.statusMutation.isPending}
       />

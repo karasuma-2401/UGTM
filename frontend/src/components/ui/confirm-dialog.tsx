@@ -1,6 +1,6 @@
 import React from 'react';
 import { Dialog } from './dialog';
-import { AlertTriangle, Check, X, AlertCircle } from 'lucide-react';
+import { Button } from './button';
 import { cn } from '@/lib/utils';
 
 export type ConfirmDialogType = 'brand' | 'warning' | 'error' | 'success' | 'info';
@@ -18,36 +18,30 @@ export interface ConfirmDialogProps {
   className?: string;
 }
 
-const THEME_CONFIG = {
+interface ThemeItem {
+  confirmBtn: string;
+}
+
+const THEME_CONFIG: Record<ConfirmDialogType, ThemeItem> = {
   brand: {
-    badgeBg: 'bg-blue-50 text-[#2054A5] ring-8 ring-blue-50/60',
-    titleColor: 'text-slate-900',
-    confirmBtn: 'bg-[#2054A5] hover:bg-[#1a458a] text-white shadow-sm shadow-[#2054A5]/20',
-    icon: AlertTriangle,
+    confirmBtn:
+      'bg-[#2054A5] hover:bg-[#1a458a] text-white shadow-xs focus-visible:ring-[#2054A5]/30',
   },
   warning: {
-    badgeBg: 'bg-amber-50 text-amber-600 ring-8 ring-amber-50/60',
-    titleColor: 'text-slate-900',
-    confirmBtn: 'bg-amber-600 hover:bg-amber-700 text-white shadow-sm shadow-amber-600/20',
-    icon: AlertTriangle,
+    confirmBtn:
+      'bg-amber-600 hover:bg-amber-700 text-white shadow-xs focus-visible:ring-amber-600/30',
   },
   error: {
-    badgeBg: 'bg-rose-50 text-rose-600 ring-8 ring-rose-50/60',
-    titleColor: 'text-slate-900',
-    confirmBtn: 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm shadow-rose-600/20',
-    icon: X,
+    confirmBtn:
+      'bg-red-600 hover:bg-red-700 text-white shadow-xs focus-visible:ring-red-600/30',
   },
   success: {
-    badgeBg: 'bg-emerald-50 text-emerald-600 ring-8 ring-emerald-50/60',
-    titleColor: 'text-slate-900',
-    confirmBtn: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/20',
-    icon: Check,
+    confirmBtn:
+      'bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs focus-visible:ring-emerald-600/30',
   },
   info: {
-    badgeBg: 'bg-blue-50 text-blue-600 ring-8 ring-blue-50/60',
-    titleColor: 'text-slate-900',
-    confirmBtn: 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20',
-    icon: AlertCircle,
+    confirmBtn:
+      'bg-primary hover:bg-primary/92 text-white shadow-xs focus-visible:ring-primary/30',
   },
 };
 
@@ -64,62 +58,55 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   className,
 }) => {
   const theme = THEME_CONFIG[type];
-  const IconComponent = theme.icon;
 
   return (
     <Dialog
       title={title}
       open={open}
       onClose={onClose}
+      busy={isConfirming}
       hideHeader
       className={cn(
-        'overflow-visible bg-transparent border-none shadow-none max-w-[420px] w-full p-0 m-auto',
+        'w-[calc(100%-2rem)] max-w-[420px] overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]',
         className,
       )}
     >
-      <div className="p-2">
-        <div className="relative rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-7 text-center shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]">
-          <div className="mx-auto mb-4 flex justify-center">
-            <div
-              className={cn(
-                'size-12 rounded-2xl flex items-center justify-center transition-transform',
-                theme.badgeBg,
-              )}
-            >
-              <IconComponent className="size-6 stroke-[2.25]" />
-            </div>
-          </div>
-
-          <h3 className={cn('text-lg font-semibold tracking-tight', theme.titleColor)}>
+      <div className="flex flex-col">
+        {/* Header with centered title and clean divider */}
+        <div className="border-b border-slate-300 px-6 py-4 text-center">
+          <h3 className="text-base font-semibold text-slate-800 leading-snug">
             {title}
           </h3>
+        </div>
 
+        {/* Content area: left-aligned text and right-aligned buttons */}
+        <div className="px-6 pt-5 pb-6">
           {description && (
-            <div className="mt-2 text-sm text-slate-600 leading-relaxed max-w-xs mx-auto">
+            <div className="text-sm leading-relaxed text-slate-600 [overflow-wrap:anywhere]">
               {description}
             </div>
           )}
 
-          <div className="mt-6 flex items-center justify-center gap-2.5">
-            <button
+          <div className="mt-6 flex flex-col-reverse justify-end gap-2.5 sm:flex-row sm:items-center">
+            <Button
               type="button"
-              onClick={onClose}
+              variant="outline"
               disabled={isConfirming}
-              className="flex-1 rounded-xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer disabled:pointer-events-none disabled:opacity-50"
+              onClick={onClose}
+              className="h-9 w-full rounded-lg border-slate-200/90 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto"
             >
               {cancelText}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              onClick={onConfirm}
               disabled={isConfirming}
-              className={cn(
-                'flex-1 rounded-xl px-5 py-2.5 text-sm font-medium transition-all active:scale-[0.98] cursor-pointer disabled:pointer-events-none disabled:opacity-50',
-                theme.confirmBtn,
-              )}
+              isLoading={isConfirming}
+              loadingText="Đang xử lý..."
+              onClick={onConfirm}
+              className={cn('h-9 w-full rounded-lg px-4 text-sm font-medium sm:w-auto', theme.confirmBtn)}
             >
-              {isConfirming ? 'Đang xử lý...' : confirmText}
-            </button>
+              {confirmText}
+            </Button>
           </div>
         </div>
       </div>
