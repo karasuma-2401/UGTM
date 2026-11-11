@@ -1,3 +1,4 @@
+import { DatePicker } from '@/components/ui/calendar';
 import React from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -64,11 +65,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Button
-            type="submit"
-            disabled={isLoading}
-            className="h-10 px-5 font-medium shadow-xs"
-          >
+          <Button type="submit" disabled={isLoading} className="h-10 px-5 font-medium shadow-xs">
             Áp dụng
           </Button>
           <Button
@@ -86,20 +83,20 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-slate-700">Từ ngày</label>
-          <input
-            type="date"
+          <DatePicker
+            aria-label="Từ ngày"
             value={filter.fromUtc}
-            onChange={(e) => onFilterChange({ ...filter, fromUtc: e.target.value })}
+            onValueChange={(value) => onFilterChange({ ...filter, fromUtc: value })}
             className="w-full h-10 px-3 text-sm rounded-md border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary text-slate-700"
           />
         </div>
 
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-slate-700">Đến ngày</label>
-          <input
-            type="date"
+          <DatePicker
+            aria-label="Đến ngày"
             value={filter.toUtc}
-            onChange={(e) => onFilterChange({ ...filter, toUtc: e.target.value })}
+            onValueChange={(value) => onFilterChange({ ...filter, toUtc: value })}
             className="w-full h-10 px-3 text-sm rounded-md border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary text-slate-700"
           />
         </div>
@@ -107,4 +104,3 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
     </form>
   );
 };
-

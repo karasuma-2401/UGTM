@@ -1,7 +1,7 @@
+import { DatePicker } from '@/components/ui/calendar';
 import React, { useState, useEffect } from 'react';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import type { ReviewGateConfigurationDto } from '../../types/period.types';
 
 interface PeriodReviewGateDialogProps {
@@ -139,9 +139,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
         </div>
 
         {error && (
-          <div className="rounded-md bg-rose-50 p-3 text-xs font-medium text-rose-700">
-            {error}
-          </div>
+          <div className="rounded-md bg-rose-50 p-3 text-xs font-medium text-rose-700">{error}</div>
         )}
 
         {activeTab === 'Syllabus' ? (
@@ -150,11 +148,11 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
               <label className="mb-1 block text-xs font-semibold text-slate-700">
                 1. Hạn sinh viên nộp đề cương ban đầu
               </label>
-              <Input
-                type="date"
+              <DatePicker
+                aria-label="Hạn sinh viên nộp đề cương ban đầu"
                 disabled={!canEdit}
                 value={sInitial}
-                onChange={(e) => setSInitial(e.target.value)}
+                onValueChange={(value) => setSInitial(value)}
                 className="h-10 text-sm"
               />
             </div>
@@ -162,11 +160,11 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
               <label className="mb-1 block text-xs font-semibold text-slate-700">
                 2. Hạn Khoa / GV phản hồi & thẩm định
               </label>
-              <Input
-                type="date"
+              <DatePicker
+                aria-label="Hạn Khoa / GV phản hồi đề cương"
                 disabled={!canEdit}
                 value={sFaculty}
-                onChange={(e) => setSFaculty(e.target.value)}
+                onValueChange={(value) => setSFaculty(value)}
                 className="h-10 text-sm"
               />
             </div>
@@ -174,11 +172,11 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
               <label className="mb-1 block text-xs font-semibold text-slate-700">
                 3. Hạn chót đóng cổng & nộp hoàn thiện
               </label>
-              <Input
-                type="date"
+              <DatePicker
+                aria-label="Hạn chót đóng cổng đề cương"
                 disabled={!canEdit}
                 value={sFinal}
-                onChange={(e) => setSFinal(e.target.value)}
+                onValueChange={(value) => setSFinal(value)}
                 className="h-10 text-sm"
               />
             </div>
@@ -189,11 +187,11 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
               <label className="mb-1 block text-xs font-semibold text-slate-700">
                 1. Hạn sinh viên nộp báo cáo giữa kỳ
               </label>
-              <Input
-                type="date"
+              <DatePicker
+                aria-label="Hạn sinh viên nộp báo cáo giữa kỳ"
                 disabled={!canEdit}
                 value={mInitial}
-                onChange={(e) => setMInitial(e.target.value)}
+                onValueChange={(value) => setMInitial(value)}
                 className="h-10 text-sm"
               />
             </div>
@@ -201,11 +199,11 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
               <label className="mb-1 block text-xs font-semibold text-slate-700">
                 2. Hạn GVHD / Khoa đánh giá giữa kỳ
               </label>
-              <Input
-                type="date"
+              <DatePicker
+                aria-label="Hạn GVHD / Khoa đánh giá giữa kỳ"
                 disabled={!canEdit}
                 value={mFaculty}
-                onChange={(e) => setMFaculty(e.target.value)}
+                onValueChange={(value) => setMFaculty(value)}
                 className="h-10 text-sm"
               />
             </div>
@@ -213,11 +211,11 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
               <label className="mb-1 block text-xs font-semibold text-slate-700">
                 3. Hạn chót kết luận đánh giá giữa kỳ
               </label>
-              <Input
-                type="date"
+              <DatePicker
+                aria-label="Hạn chót kết luận đánh giá giữa kỳ"
                 disabled={!canEdit}
                 value={mFinal}
-                onChange={(e) => setMFinal(e.target.value)}
+                onValueChange={(value) => setMFinal(value)}
                 className="h-10 text-sm"
               />
             </div>
@@ -225,11 +223,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
         )}
 
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-          >
+          <Button type="button" variant="outline" onClick={onClose}>
             Đóng
           </Button>
           {canEdit && (

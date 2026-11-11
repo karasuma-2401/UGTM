@@ -1,3 +1,4 @@
+import { DateTimePicker } from '@/components/ui/calendar';
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -111,14 +112,16 @@ export function AdvisorMilestoneForm({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="milestone-deadline" className="text-xs font-medium text-slate-700 block">
+            <label
+              htmlFor="milestone-deadline"
+              className="text-xs font-medium text-slate-700 block"
+            >
               Hạn nộp <span className="text-rose-500">*</span>
             </label>
-            <Input
+            <DateTimePicker
               id="milestone-deadline"
-              type="datetime-local"
               value={deadlineLocal}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeadlineLocal(e.target.value)}
+              onValueChange={(value) => setDeadlineLocal(value)}
               required
               disabled={disabled}
               className="h-10 text-sm bg-white"
