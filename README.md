@@ -65,6 +65,8 @@ API không tự chạy migration hoặc đọc `.env`; chạy lại `ConfigureDe
 
 ## Kiểm tra trước khi gửi code
 
+AI agent dùng bộ skill FE chung tại `.agents/skills/`. Xem [hướng dẫn thiết lập và kiểm tra](docs/agent-skills.md) cùng [ngữ cảnh sản phẩm](PRODUCT.md) và [thiết kế](DESIGN.md).
+
 ```powershell
 dotnet build UGTM.sln
 dotnet test UGTM.sln
