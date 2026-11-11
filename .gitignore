@@ -69,3 +69,9 @@ amuse-deploy-main/
 
 # Generated migration review artifacts
 artifacts/
+
+# Agent/browser runtime files (skill sources remain tracked)
+.playwright/
+.playwright-cli/
+__pycache__/
+*.pyc
