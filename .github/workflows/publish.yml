@@ -133,14 +133,26 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
       - name: Scan Image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
         with:
+          version: "v0.76.2"
           image-ref: ${{ steps.tags.outputs.scan_tag }}
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
+          # Otherwise the action unsets severity for SARIF and gates every level.
+          limit-severities-for-sarif: true
           ignore-unfixed: true
           exit-code: 1
+          hide-progress: true
+
+      - name: Preserve Trivy report
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-${{ matrix.image }}-attempt-${{ github.run_attempt }}
+          path: trivy-results.sarif
+          retention-days: 7
 
       - name: Upload Trivy SARIF
         if: always()

@@ -17,6 +17,7 @@ RUN npm run build
 
 # Stage 2: Serve via Nginx
 FROM nginx:alpine AS runner
+RUN apk upgrade --no-cache
 WORKDIR /usr/share/nginx/html
 
 # Remove default nginx static assets
