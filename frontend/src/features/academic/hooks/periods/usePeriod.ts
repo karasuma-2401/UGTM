@@ -24,23 +24,31 @@ export function usePeriod() {
 
   const { selectedBatchId, loadBatchDetail, fetchBatches } = data;
   const { resetForm, populateFromDetail } = form;
+  const { clearFailedGateUpdates } = actions;
 
   useEffect(() => {
+    let cancelled = false;
+    clearFailedGateUpdates();
+
     if (selectedBatchId === 'new') {
       resetForm();
     } else if (selectedBatchId) {
-      loadBatchDetail(selectedBatchId).then((result) => {
-        if (result?.detail) {
+      void loadBatchDetail(selectedBatchId).then((result) => {
+        if (!cancelled && result?.detail && result.detail.id === selectedBatchId) {
           populateFromDetail(result.detail);
         }
       });
     }
-  }, [selectedBatchId, loadBatchDetail, resetForm, populateFromDetail]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedBatchId, loadBatchDetail, resetForm, populateFromDetail, clearFailedGateUpdates]);
 
   const reloadCurrentBatch = useCallback(async () => {
     if (selectedBatchId !== 'new') {
       const result = await loadBatchDetail(selectedBatchId);
-      if (result?.detail) {
+      if (result?.detail && result.detail.id === selectedBatchId) {
         populateFromDetail(result.detail);
       }
     }
@@ -53,6 +61,7 @@ export function usePeriod() {
     await actions.executeSave({
       selectedBatchId: data.selectedBatchId,
       currentBatch: data.currentBatch,
+      isLoadingDetail: data.isLoadingDetail,
       startDate: form.startDate,
       batchName: form.batchName,
       academicYear: form.academicYear,
@@ -63,13 +72,32 @@ export function usePeriod() {
       finalEvaluationDeadline: form.finalEvaluationDeadline,
       defenseDeadline: form.defenseDeadline,
       changeReason: reason,
+      onBatchCreated: async (createdBatchId) => {
+        await fetchBatches(createdBatchId);
+      },
+      onPartialSuccess: async (targetBatchId, isNew, failedGates) => {
+        if (isNew) {
+          await fetchBatches(targetBatchId);
+        }
+        const result = await loadBatchDetail(targetBatchId);
+        if (result?.detail && result.detail.id === targetBatchId) {
+          populateFromDetail(result.detail);
+          for (const fg of failedGates) {
+            if (fg.gateType === 'Syllabus') {
+              form.handleSyllabusDeadlineChange(fg.deadlineDate);
+            } else if (fg.gateType === 'Midterm') {
+              form.handleMidtermDeadlineChange(fg.deadlineDate);
+            }
+          }
+        }
+      },
       onSuccess: async (targetBatchId, message, isNew) => {
         modals.setNotice(message);
         if (isNew) {
           await fetchBatches(targetBatchId);
         } else {
           const result = await loadBatchDetail(targetBatchId);
-          if (result?.detail) {
+          if (result?.detail && result.detail.id === targetBatchId) {
             populateFromDetail(result.detail);
           }
         }
@@ -78,24 +106,56 @@ export function usePeriod() {
     });
   };
 
+  const handleRetryFailedGates = async () => {
+    modals.setNotice(null);
+    modals.setErrorMessage(null);
+
+    await actions.retryFailedGates({
+      selectedBatchId: data.selectedBatchId,
+      onSuccess: async (targetBatchId, message) => {
+        modals.setNotice(message);
+        const result = await loadBatchDetail(targetBatchId);
+        if (result?.detail && result.detail.id === targetBatchId) {
+          populateFromDetail(result.detail);
+        }
+      },
+      onError: modals.setErrorMessage,
+    });
+  };
+
   const handleSaveClick = () => {
+    if (data.selectedBatchId !== 'new') {
+      if (
+        data.isLoadingDetail ||
+        !data.currentBatch ||
+        data.currentBatch.id !== data.selectedBatchId
+      ) {
+        modals.setErrorMessage(
+          'Dữ liệu đợt khóa luận đang chọn chưa tải xong hoặc không khớp với đợt hiện tại. Vui lòng đợi tải hoàn tất rồi thử lại.',
+        );
+        return;
+      }
+    }
+
     if (data.currentBatch && data.currentBatch.status === 'Open') {
       modals.setIsChangeReasonOpen(true);
     } else {
-      executeSave();
+      void executeSave();
     }
   };
 
   const handleConfirmChangeReason = (reason: string) => {
     modals.setIsChangeReasonOpen(false);
-    executeSave(reason);
+    void executeSave(reason);
   };
 
   const handleOpenBatch = async () => {
     modals.setNotice(null);
     modals.setErrorMessage(null);
     await actions.handleOpenBatch({
+      selectedBatchId: data.selectedBatchId,
       currentBatch: data.currentBatch,
+      isLoadingDetail: data.isLoadingDetail,
       onSuccess: async (opened) => {
         data.setCurrentBatch(opened);
         modals.setNotice('Đợt KLTN đã được mở vận hành thành công!');
@@ -109,8 +169,12 @@ export function usePeriod() {
     syllabus: { initial: string; faculty: string; final: string },
     midterm: { initial: string; faculty: string; final: string },
   ) => {
+    modals.setNotice(null);
+    modals.setErrorMessage(null);
     await actions.handleSaveGates({
+      selectedBatchId: data.selectedBatchId,
       currentBatch: data.currentBatch,
+      isLoadingDetail: data.isLoadingDetail,
       syllabus,
       midterm,
       onSyllabusDeadlineChange: form.handleSyllabusDeadlineChange,
@@ -131,7 +195,9 @@ export function usePeriod() {
     actions: {
       isSaving: actions.isSaving,
       isOpenLoading: actions.isOpenLoading,
+      failedGateUpdates: actions.failedGateUpdates,
       executeSave,
+      handleRetryFailedGates,
       handleSaveClick,
       handleConfirmChangeReason,
       handleOpenBatch,

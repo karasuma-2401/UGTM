@@ -1,6 +1,7 @@
 import {
   type ScoreCalculationMethod,
   type ScoreComponentInput,
+  type ScoreConfigurationDto,
   UIT_INTEGER_PRESET_COMPONENTS,
 } from '../types/scoreConfig.types';
 
@@ -84,6 +85,32 @@ export function isConfigDifferentFromDefault(
       Number(comp.weight) !== Number(preset.weight) ||
       comp.minimumScore !== preset.minimumScore ||
       comp.applicability !== preset.applicability
+    );
+  });
+}
+
+export function isConfigDifferentFromSaved(
+  saved: ScoreConfigurationDto | null,
+  method: ScoreCalculationMethod,
+  currentComponents: ScoreComponentInput[],
+): boolean {
+  if (!saved) return true;
+  if (saved.calculationMethod !== method) return true;
+  if (saved.components.length !== currentComponents.length) return true;
+
+  return currentComponents.some((comp, idx) => {
+    const savedComp = saved.components[idx];
+    if (!savedComp) return true;
+    return (
+      comp.componentCode !== savedComp.componentCode ||
+      comp.componentName !== savedComp.componentName ||
+      comp.source !== savedComp.source ||
+      comp.applicability !== savedComp.applicability ||
+      Number(comp.weight) !== Number(savedComp.weight) ||
+      Boolean(comp.isRequired) !== Boolean(savedComp.isRequired) ||
+      (comp.minimumScore ?? null) !== (savedComp.minimumScore ?? null) ||
+      Boolean(comp.requiresApproval) !== Boolean(savedComp.requiresApproval) ||
+      Number(comp.orderIndex) !== Number(savedComp.orderIndex)
     );
   });
 }

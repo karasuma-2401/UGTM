@@ -1,6 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { ScoreConfigurationDto } from '../../types/scoreConfig.types';
-import { isConfigDifferentFromDefault } from '../../utils/scoreWeights';
+import {
+  isConfigDifferentFromDefault,
+  isConfigDifferentFromSaved,
+} from '../../utils/scoreWeights';
 import { useScoreConfigModals } from './useScoreConfigModals';
 import { useScoreConfigData } from './useScoreConfigData';
 import { useScoreConfigForm } from './useScoreConfigForm';
@@ -20,12 +23,28 @@ export function useScoreConfig() {
   const { populateFromConfig } = form;
 
   useEffect(() => {
+    let cancelled = false;
     if (selectedBatchId) {
-      loadBatchConfig(selectedBatchId).then((loaded) => {
-        populateFromConfig(loaded);
+      void loadBatchConfig(selectedBatchId).then((loaded) => {
+        if (!cancelled) {
+          populateFromConfig(loaded);
+        }
       });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [selectedBatchId, loadBatchConfig, populateFromConfig]);
+
+  const isDirty = useMemo(
+    () =>
+      isConfigDifferentFromSaved(
+        data.currentConfig,
+        form.calculationMethod,
+        form.components,
+      ),
+    [data.currentConfig, form.calculationMethod, form.components],
+  );
 
   const handleApplyDefaultTemplateClick = () => {
     const isDifferent = isConfigDifferentFromDefault(
@@ -55,6 +74,7 @@ export function useScoreConfig() {
       selectedBatchId: data.selectedBatchId,
       currentConfig: data.currentConfig,
       currentBatch: data.currentBatch,
+      isLoadingConfig: data.isLoadingConfig,
       calculationMethod: form.calculationMethod,
       components: form.components,
       isValid: form.isValid,
@@ -80,7 +100,7 @@ export function useScoreConfig() {
       return;
     }
 
-    executeSaveDraft(null);
+    void executeSaveDraft(null);
   };
 
   const handlePublish = async () => {
@@ -90,6 +110,11 @@ export function useScoreConfig() {
     await actions.handlePublish({
       selectedBatchId: data.selectedBatchId,
       currentConfig: data.currentConfig,
+      isLoadingConfig: data.isLoadingConfig,
+      calculationMethod: form.calculationMethod,
+      components: form.components,
+      totalWeight: form.totalWeight,
+      isDirty,
       isValid: form.isValid,
       onSuccess: async (published) => {
         const batchTitle = data.currentBatch?.batchName || 'đợt khóa luận';
@@ -110,7 +135,10 @@ export function useScoreConfig() {
 
   return {
     data,
-    form,
+    form: {
+      ...form,
+      isDirty,
+    },
     modals,
     actions: {
       isSaving: actions.isSaving,

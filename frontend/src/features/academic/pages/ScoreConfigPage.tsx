@@ -173,7 +173,13 @@ export const ScoreConfigPage: React.FC = () => {
               variant="default"
               className="w-full rounded-lg h-11 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-semibold text-sm cursor-pointer disabled:pointer-events-none disabled:opacity-50"
               onClick={actions.handlePublish}
-              disabled={!form.isValid || actions.isPublishing || data.isLoadingConfig || data.isLoadingBatches}
+              disabled={
+                !form.isValid ||
+                actions.isSaving ||
+                actions.isPublishing ||
+                data.isLoadingConfig ||
+                data.isLoadingBatches
+              }
               leftIcon={
                 actions.isPublishing ? (
                   <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -182,8 +188,14 @@ export const ScoreConfigPage: React.FC = () => {
                 )
               }
             >
-              <span>Công bố</span>
+              <span>{form.isDirty ? 'Lưu & Công bố' : 'Công bố'}</span>
             </Button>
+          )}
+
+          {data.currentConfig?.status === 'Draft' && form.isDirty && form.isValid && (
+            <p className="text-[11px] text-slate-500 text-center font-medium">
+              Thay đổi chưa lưu sẽ được tự động cập nhật vào bản nháp trước khi công bố.
+            </p>
           )}
 
           {data.currentConfig?.status === 'Draft' && !form.isValid && (

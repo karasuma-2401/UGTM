@@ -40,7 +40,7 @@ export function useReviewerAssignment() {
   );
 
   const eligibilityQuery = useQuery({
-    queryKey: ['reviewer-eligibility', selectedBatch?.id, appliedKeyword],
+    queryKey: ['reviewer-eligibility', user?.id, selectedBatch?.id, appliedKeyword],
     queryFn: ({ signal }) =>
       reviewerAssignmentApi.getEligibilityList(
         {
@@ -51,7 +51,7 @@ export function useReviewerAssignment() {
         },
         signal,
       ),
-    enabled: Boolean(selectedBatch?.id),
+    enabled: Boolean(user?.id && selectedBatch?.id),
   });
 
   const rawItems = useMemo(
@@ -94,7 +94,7 @@ export function useReviewerAssignment() {
   };
 
   const groupDetailQuery = useQuery({
-    queryKey: ['student-group-detail', selectedGroupId],
+    queryKey: ['student-group-detail', user?.id, selectedGroupId],
     queryFn: ({ signal }) =>
       syllabusApi.getGroupDetail(
         selectedGroupId!,
@@ -105,13 +105,13 @@ export function useReviewerAssignment() {
         },
         signal,
       ),
-    enabled: Boolean(selectedGroupId),
+    enabled: Boolean(user?.id && selectedGroupId),
   });
 
   const candidatesQuery = useQuery({
-    queryKey: ['reviewer-candidates', selectedGroupId],
+    queryKey: ['reviewer-candidates', user?.id, selectedGroupId],
     queryFn: ({ signal }) => reviewerAssignmentApi.getCandidates(selectedGroupId!, undefined, signal),
-    enabled: Boolean(selectedGroupId),
+    enabled: Boolean(user?.id && selectedGroupId),
   });
 
   const candidates = useMemo(

@@ -52,7 +52,7 @@ export function useCouncilApproval() {
   const isBatchReady = !batchesQuery.isFetching || appliedBatchFilter !== null;
 
   const draftsQuery = useQuery({
-    queryKey: ['council-drafts', appliedBatchId, appliedKeyword, appliedStatusFilter],
+    queryKey: ['council-drafts', user?.id, appliedBatchId, appliedKeyword, appliedStatusFilter],
     queryFn: ({ signal }) =>
       councilApprovalApi.getCouncilDrafts(
         {
@@ -62,7 +62,7 @@ export function useCouncilApproval() {
         },
         signal,
       ),
-    enabled: isBatchReady,
+    enabled: Boolean(user?.id && isBatchReady),
   });
 
   const filteredDrafts = useMemo(

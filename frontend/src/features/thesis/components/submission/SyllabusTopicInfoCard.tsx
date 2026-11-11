@@ -1,15 +1,24 @@
+import { AlertCircle, ShieldAlert, RotateCcw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import type { StudentGroupDetailDto } from '../../types/syllabus.types';
 import { Separator } from '@/components/ui/separator';
+import { classifyThesisError, getThesisErrorMessage } from '../../utils/thesisErrors';
 
 interface SyllabusTopicInfoCardProps {
   detail?: StudentGroupDetailDto;
   isLoading?: boolean;
+  isError?: boolean;
+  error?: unknown;
+  onRetry?: () => void;
 }
 
 export function SyllabusTopicInfoCard({
   detail,
   isLoading = false,
+  isError = false,
+  error,
+  onRetry,
 }: SyllabusTopicInfoCardProps) {
   if (isLoading) {
     return (
@@ -19,6 +28,55 @@ export function SyllabusTopicInfoCard({
           <div className="h-4 bg-slate-100 rounded w-1/2" />
           <div className="h-4 bg-slate-100 rounded w-3/4" />
           <div className="h-4 bg-slate-100 rounded w-2/3" />
+        </div>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    const errorKind = classifyThesisError(error);
+    const message = getThesisErrorMessage(
+      error,
+      'Không thể tải thông tin chi tiết nhóm và đề tài.',
+    );
+
+    return (
+      <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-4">
+        <h3 className="text-base font-semibold text-slate-900 border-b border-slate-100 pb-3">
+          Hồ sơ đề cương
+        </h3>
+
+        <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-4 space-y-3">
+          <div className="flex items-start gap-2.5 text-rose-800">
+            {errorKind === 'forbidden' ? (
+              <ShieldAlert className="size-5 shrink-0 text-amber-600 mt-0.5" />
+            ) : (
+              <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
+            )}
+            <div className="space-y-1 text-xs">
+              <p className="font-semibold text-slate-900">
+                {errorKind === 'forbidden'
+                  ? 'Không có quyền xem chi tiết nhóm'
+                  : errorKind === 'not_found'
+                    ? 'Không có dữ liệu chi tiết nhóm'
+                    : 'Không tải được chi tiết nhóm'}
+              </p>
+              <p className="text-slate-600 leading-relaxed">{message}</p>
+            </div>
+          </div>
+
+          {errorKind !== 'forbidden' && onRetry && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onRetry}
+              className="h-8 text-xs border-rose-200 bg-white text-rose-700 hover:bg-rose-50"
+            >
+              <RotateCcw className="size-3.5 mr-1.5" />
+              Thử lại
+            </Button>
+          )}
         </div>
       </Card>
     );

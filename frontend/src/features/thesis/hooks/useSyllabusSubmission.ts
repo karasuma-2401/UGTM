@@ -17,8 +17,9 @@ export function useSyllabusSubmission() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const statusQuery = useQuery({
-    queryKey: ['student-registration-status'],
+    queryKey: ['student-registration-status', user?.id],
     queryFn: ({ signal }) => syllabusApi.getMyStatus(signal),
+    enabled: Boolean(user?.id),
   });
 
   const groupId = statusQuery.data?.groupId;
@@ -30,21 +31,25 @@ export function useSyllabusSubmission() {
   );
 
   const groupDetailQuery = useQuery({
-    queryKey: ['student-group-detail', groupId, user?.id, currentBatch?.id],
-    queryFn: () =>
-      syllabusApi.getGroupDetail(groupId!, {
-        topicId: topicId ?? undefined,
-        topicTitle: topicTitleVi ?? undefined,
-        currentUser: user,
-        batchName: currentBatch?.batchName,
-      }),
-    enabled: Boolean(groupId),
+    queryKey: ['student-group-detail', user?.id, groupId, currentBatch?.id],
+    queryFn: ({ signal }) =>
+      syllabusApi.getGroupDetail(
+        groupId!,
+        {
+          topicId: topicId ?? undefined,
+          topicTitle: topicTitleVi ?? undefined,
+          currentUser: user,
+          batchName: currentBatch?.batchName,
+        },
+        signal,
+      ),
+    enabled: Boolean(user?.id && groupId),
   });
 
   const historyQuery = useQuery({
-    queryKey: ['syllabus-history', groupId],
+    queryKey: ['syllabus-history', user?.id, groupId],
     queryFn: ({ signal }) => syllabusApi.getSyllabusHistory(groupId!, signal),
-    enabled: Boolean(groupId),
+    enabled: Boolean(user?.id && groupId),
   });
 
   const submitMutation = useMutation({
@@ -71,8 +76,8 @@ export function useSyllabusSubmission() {
     onSuccess: (data) => {
       setSelectedFile(null);
       setActionSuccess(`Nộp đề cương phiên bản v${data.versionNo} thành công!`);
-      void queryClient.invalidateQueries({ queryKey: ['syllabus-history', groupId] });
-      void queryClient.invalidateQueries({ queryKey: ['student-registration-status'] });
+      void queryClient.invalidateQueries({ queryKey: ['syllabus-history', user?.id, groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
     },
     onError: (err: Error) => {
       setActionError(err.message || 'Nộp đề cương thất bại. Vui lòng thử lại.');

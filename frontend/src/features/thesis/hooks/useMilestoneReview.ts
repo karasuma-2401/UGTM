@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { milestoneApi } from '../services/milestoneApi';
 import { syllabusApi } from '../services/syllabusApi';
@@ -8,6 +9,7 @@ import type { ProgressReportStatus } from '../types/milestone.types';
 
 export function useMilestoneReview() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { milestoneId } = useParams<{ milestoneId: string }>();
   const batchesQuery = useAcademicBatches();
 
@@ -17,10 +19,10 @@ export function useMilestoneReview() {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const reportQuery = useQuery({
-    queryKey: ['advisor-milestone-report', milestoneId],
+    queryKey: ['advisor-milestone-report', user?.id, milestoneId],
     queryFn: ({ signal }) =>
       milestoneId ? milestoneApi.getProgressReport(milestoneId, signal) : null,
-    enabled: Boolean(milestoneId),
+    enabled: Boolean(user?.id && milestoneId),
   });
 
   const report = reportQuery.data;
@@ -29,21 +31,25 @@ export function useMilestoneReview() {
   const currentBatch = batchesQuery.data?.find((b) => b.status === 'Open');
 
   const groupDetailQuery = useQuery({
-    queryKey: ['advisor-group-detail', groupId],
-    queryFn: () =>
+    queryKey: ['advisor-group-detail', user?.id, groupId],
+    queryFn: ({ signal }) =>
       groupId
-        ? syllabusApi.getGroupDetail(groupId, {
-            batchName: currentBatch?.batchName,
-          })
+        ? syllabusApi.getGroupDetail(
+            groupId,
+            {
+              batchName: currentBatch?.batchName,
+            },
+            signal,
+          )
         : null,
-    enabled: Boolean(groupId),
+    enabled: Boolean(user?.id && groupId),
   });
 
   const milestonesQuery = useQuery({
-    queryKey: ['advisor-milestones', groupId],
+    queryKey: ['advisor-milestones', user?.id, groupId],
     queryFn: ({ signal }) =>
       groupId ? milestoneApi.getMilestones(groupId, signal) : [],
-    enabled: Boolean(groupId),
+    enabled: Boolean(user?.id && groupId),
   });
 
   const milestones = useMemo(
@@ -108,11 +114,11 @@ export function useMilestoneReview() {
           : 'Đã gửi yêu cầu chỉnh sửa đến nhóm sinh viên.';
       setActionSuccess(msg);
       void queryClient.invalidateQueries({
-        queryKey: ['advisor-milestone-report', milestoneId],
+        queryKey: ['advisor-milestone-report', user?.id, milestoneId],
       });
       if (groupId) {
         void queryClient.invalidateQueries({
-          queryKey: ['advisor-milestones', groupId],
+          queryKey: ['advisor-milestones', user?.id, groupId],
         });
       }
     },

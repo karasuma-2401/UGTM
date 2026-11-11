@@ -49,8 +49,8 @@ jobs:
       - name: TypeScript typecheck
         run: npx tsc -b
 
-      - name: Test similarity reports
-        run: npm run test:similarity
+      - name: Run frontend unit tests
+        run: npm test
 
   build:
     name: Build SPA

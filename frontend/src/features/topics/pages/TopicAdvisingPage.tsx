@@ -124,12 +124,12 @@ export function TopicAdvisingPage({
   const detailGroupId =
     detailId && detailQuery.data?.id === detailId ? detailQuery.data.group?.groupId ?? '' : '';
   const groupDetailQuery = useQuery({
-    queryKey: ['topic-advising-group-detail', detailGroupId],
+    queryKey: ['topic-advising-group-detail', user?.id, detailGroupId],
     queryFn: ({ signal }) => advisingApi.getGroupDetail(detailGroupId, signal),
-    enabled: Boolean(detailGroupId),
+    enabled: Boolean(user?.id && detailGroupId),
   });
   const progressQuery = useQuery({
-    queryKey: ['topic-advising-group-progress', detailGroupId],
+    queryKey: ['topic-advising-group-progress', user?.id, detailGroupId],
     queryFn: async ({ signal }) => {
       const [syllabus, midterm, finalReport, milestones] = await Promise.all([
         syllabusApi.getSyllabusHistory(detailGroupId, signal),
@@ -145,7 +145,7 @@ export function TopicAdvisingPage({
       );
       return { syllabus, midterm, finalReport, progressReports };
     },
-    enabled: Boolean(detailGroupId),
+    enabled: Boolean(user?.id && detailGroupId),
   });
   // Do not present stale counts as current data after a failed refresh.
   const topics = query.isError ? undefined : query.data;
@@ -611,7 +611,7 @@ export function TopicAdvisingPage({
                           </span>
                         </p>
                         <p className="mt-1 text-xs text-slate-600">
-                          Xác nhận: {('confirmationStatus' in student && student.confirmationStatus) || 'Không có dữ liệu'}
+                          Xác nhận: {('confirmationStatus' in student && student.confirmationStatus) || 'Chưa có trạng thái xác nhận riêng'}
                         </p>
                         {'email' in student && <p className="mt-1 break-all text-xs text-slate-500">{student.email || 'Chưa có email'}</p>}
                         {'joinedAt' in student && <p className="mt-1 text-xs text-slate-500">Ghi nhận: {date(student.joinedAt)}</p>}

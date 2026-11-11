@@ -33,7 +33,7 @@ export function UserFilterBar({
     <div className="space-y-4">
       <form
         onSubmit={onApply}
-        className={`grid items-end gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm md:grid-cols-2 ${isStudent ? 'xl:grid-cols-[2fr_1fr_auto]' : 'xl:grid-cols-[2fr_1fr_1fr_auto]'}`}
+        className={`grid items-end gap-3 bg-white md:grid-cols-2 ${isStudent ? 'xl:grid-cols-[2fr_1fr_auto]' : 'xl:grid-cols-[2fr_1fr_1fr_auto]'}`}
       >
         <label className="block space-y-2 text-sm text-slate-700">
           <span>Tìm tài khoản</span>
@@ -66,9 +66,7 @@ export function UserFilterBar({
                   label: role.title,
                 })),
               ]}
-              onChange={(value: SystemRole | '') =>
-                onDraftChange({ ...draftFilters, role: value })
-              }
+              onChange={(value: SystemRole | '') => onDraftChange({ ...draftFilters, role: value })}
             />
           </div>
         )}
@@ -159,4 +157,3 @@ export function UserFilterBar({
     </div>
   );
 }
-
