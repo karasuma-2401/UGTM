@@ -140,7 +140,7 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
 
           <Button
             type="button"
-            variant="outline"
+            variant="successOutline"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
             className="rounded-lg h-8 text-xs shrink-0 cursor-pointer"
@@ -152,9 +152,9 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-full rounded-xl border-2 border-dashed border-slate-200 hover:border-[#2054A5]/60 hover:bg-slate-50/50 p-6 flex flex-col items-center justify-center gap-2 text-center transition-all cursor-pointer group"
+          className="w-full rounded-xl border-2 border-dashed border-emerald-200 hover:border-emerald-500 hover:bg-emerald-50/50 p-6 flex flex-col items-center justify-center gap-2 text-center transition-colors cursor-pointer group focus-visible:outline-emerald-600"
         >
-          <div className="size-10 rounded-full bg-slate-100 group-hover:bg-[#2054A5]/10 flex items-center justify-center text-slate-500 group-hover:text-[#2054A5] transition-colors">
+          <div className="size-10 rounded-full bg-emerald-50 group-hover:bg-emerald-100 flex items-center justify-center text-emerald-700 transition-colors">
             <Upload className="size-5" />
           </div>
           <div className="space-y-0.5">
@@ -174,7 +174,7 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
             type="button"
             onClick={onDownloadTemplate}
             disabled={isDownloading}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2054A5] hover:text-[#184285] hover:underline cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer disabled:opacity-50 focus-visible:outline-emerald-600"
           >
             <Download className="size-3.5" />
             <span>{isDownloading ? 'Đang tải mẫu…' : 'Xem mẫu Excel'}</span>

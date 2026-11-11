@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { Search } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { SelectionIndicator } from '@/components/ui/selection-indicator';
 import { SYSTEM_ROLES } from '../../constants/systemRoles';
 import type { SystemRoleInfo } from '../../types/rolePermission.types';
 
 export interface RoleListCardProps {
   selectedRoleId: number;
+  disabled?: boolean;
+  failedRoleIds?: number[];
   onSelectRole: (role: SystemRoleInfo) => void;
   rolePermissionCounts?: Record<number, number>;
   totalPermissionsCount?: number;
@@ -16,6 +18,8 @@ export interface RoleListCardProps {
 
 export function RoleListCard({
   selectedRoleId,
+  disabled = false,
+  failedRoleIds = [],
   onSelectRole,
   rolePermissionCounts = {},
   totalPermissionsCount = 0,
@@ -44,9 +48,6 @@ export function RoleListCard({
               Chọn vai trò để xem và cấu hình danh mục quyền
             </CardDescription>
           </div>
-          <Badge variant="secondary" className="text-xs font-semibold">
-            {SYSTEM_ROLES.length} vai trò
-          </Badge>
         </div>
 
         <div className="mt-3">
@@ -60,7 +61,12 @@ export function RoleListCard({
         </div>
       </CardHeader>
 
-      <CardContent className="p-2.5 flex-1 overflow-y-auto space-y-1.5">
+      <CardContent className="relative isolate grid grid-cols-2 gap-1.5 p-2.5 lg:grid-cols-1">
+        <SelectionIndicator
+          activeKey={`${selectedRoleId}:${searchTerm}`}
+          selector='button[aria-pressed="true"]'
+          className="rounded-lg border border-primary bg-blue-50 shadow-xs"
+        />
         {filteredRoles.length === 0 ? (
           <div className="py-8 text-center text-xs text-[var(--color-text-muted,#697e9f)]">
             Không tìm thấy vai trò phù hợp
@@ -73,14 +79,16 @@ export function RoleListCard({
             return (
               <button
                 key={role.id}
+                data-selection-item
                 type="button"
+                disabled={disabled}
+                aria-pressed={isSelected}
                 onClick={() => onSelectRole(role)}
                 className={cn(
-                  'w-full text-left p-3 rounded-lg border transition-all select-none',
-                  'hover:bg-[var(--color-bg-subtle,#f7f9fc)]',
+                  'relative z-10 w-full text-left p-3 rounded-lg border border-transparent transition-colors select-none',
                   isSelected
-                    ? 'border-[var(--color-primary,#2563eb)] bg-[var(--color-primary-light,#eff6ff)] shadow-xs'
-                    : 'border-transparent bg-transparent hover:border-[var(--color-border-subtle,#edf1f7)]',
+                    ? 'bg-transparent'
+                    : 'bg-transparent hover:bg-slate-50 hover:border-slate-100',
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -98,7 +106,7 @@ export function RoleListCard({
                       </span>
                     </div>
 
-                    <p className="text-xs text-[var(--color-text-desc,#667b9a)] mt-1.5 line-clamp-2 leading-relaxed">
+                    <p className="hidden lg:block text-xs text-[var(--color-text-desc,#667b9a)] mt-1.5 line-clamp-2 leading-relaxed">
                       {role.description}
                     </p>
                   </div>
@@ -120,7 +128,9 @@ export function RoleListCard({
                       ? 'Toàn quyền'
                       : count !== undefined
                         ? `${count} / ${totalPermissionsCount} quyền`
-                        : 'Đang tải...'}
+                        : failedRoleIds.includes(role.id)
+                          ? 'Không tải được'
+                          : 'Đang tải...'}
                   </span>
                 </div>
               </button>
@@ -131,4 +141,3 @@ export function RoleListCard({
     </Card>
   );
 }
-

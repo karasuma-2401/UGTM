@@ -21,6 +21,12 @@ const tones = {
     label: 'text-slate-500',
     icon: 'text-slate-500 bg-slate-200/60',
   },
+  danger: {
+    background: 'bg-rose-50/80',
+    value: 'text-rose-700',
+    label: 'text-rose-700',
+    icon: 'text-rose-600 bg-rose-100/70',
+  },
 };
 
 export interface StatisticItem {
@@ -38,15 +44,22 @@ export interface StatisticsBarProps {
   items: StatisticItem[];
   className?: string;
   loading?: boolean;
+  compact?: boolean;
 }
 
-export function StatisticsBar({ items, className, loading = false }: StatisticsBarProps) {
+export function StatisticsBar({
+  items,
+  className,
+  loading = false,
+  compact = false,
+}: StatisticsBarProps) {
   return (
     <dl
       aria-busy={loading}
       className={cn(
         'grid auto-cols-fr grid-flow-col gap-1.5 rounded-xl border border-slate-200/80 bg-slate-100/60 p-1.5',
         className,
+        compact && 'flex flex-wrap border-0 bg-transparent p-0 gap-2',
       )}
     >
       {items.map(({ key, label, value, icon, tone = 'muted', onClick, active, actionLabel }) => {
@@ -56,7 +69,15 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
             key={key}
             className={cn(
               'relative flex min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 transition-all duration-150',
-              loading ? 'bg-white/70' : active ? 'bg-white shadow-xs ring-1 ring-primary/30' : colors.background,
+              compact && 'flex-none',
+              loading
+                ? 'bg-white/70'
+                : active
+                  ? cn(
+                      'bg-white shadow-xs ring-1',
+                      tone === 'danger' ? 'ring-rose-300' : 'ring-primary/30',
+                    )
+                  : colors.background,
             )}
           >
             {onClick && (
@@ -66,10 +87,15 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
                 {...(active !== undefined ? { 'aria-pressed': !loading && active } : {})}
                 disabled={loading}
                 onClick={onClick}
-                className="absolute inset-0 z-10 rounded-lg transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer disabled:cursor-wait"
+                className={cn(
+                  'absolute inset-0 z-10 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 cursor-pointer disabled:cursor-wait',
+                  tone === 'danger'
+                    ? 'hover:bg-rose-100/40 focus-visible:ring-rose-500'
+                    : 'hover:bg-primary/5 focus-visible:ring-ring',
+                )}
               />
             )}
-            {icon && (
+            {icon && !compact && (
               <span
                 aria-hidden="true"
                 className={cn(
@@ -80,12 +106,13 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
                 {loading ? <Skeleton className="size-3.5 rounded-sm" /> : icon}
               </span>
             )}
-            <div className="flex min-w-0 flex-1 flex-col">
+            <div className={cn('flex min-w-0 flex-1', compact ? 'items-center gap-2' : 'flex-col')}>
               <dt
                 title={label}
                 className={cn(
                   'relative order-2 mt-0.5 truncate text-[11px] font-medium',
                   colors.label,
+                  compact && 'order-none mt-0 text-sm',
                 )}
               >
                 {loading ? (
@@ -104,6 +131,7 @@ export function StatisticsBar({ items, className, loading = false }: StatisticsB
                 className={cn(
                   'order-1 text-base font-bold leading-tight tracking-tight tabular-nums',
                   colors.value,
+                  compact && 'order-none text-sm',
                 )}
               >
                 {loading ? <Skeleton className="h-4 w-8 max-w-full" /> : value}

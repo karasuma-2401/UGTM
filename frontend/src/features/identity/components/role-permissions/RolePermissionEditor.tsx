@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PermissionModuleCard } from './PermissionModuleCard';
 import type { ModulePermissionsDto, SystemRoleInfo } from '../../types/rolePermission.types';
+import { permissionModuleLabel } from '../../utils/permissionLabels';
 
 export interface RolePermissionEditorProps {
   role: SystemRoleInfo;
@@ -64,6 +65,7 @@ export function RolePermissionEditor({
         ...mod,
         permissions: mod.permissions.filter(
           (p) =>
+            permissionModuleLabel(mod.module).toLowerCase().includes(term) ||
             (p.permissionName && p.permissionName.toLowerCase().includes(term)) ||
             p.permissionCode.toLowerCase().includes(term),
         ),
@@ -72,17 +74,14 @@ export function RolePermissionEditor({
   }, [modulePermissions, searchTerm]);
 
   return (
-    <Card className="h-full border-[var(--color-border-card,#e0e7f1)] bg-[var(--color-bg-white,#ffffff)] flex flex-col shadow-sm">
+    <Card className="fluent-panel h-full border-[var(--color-border-card,#e0e7f1)] bg-[var(--color-bg-white,#ffffff)] flex flex-col shadow-sm">
       <CardHeader className="p-5 pb-4 border-b border-[var(--color-border-subtle,#edf1f7)] bg-[var(--color-bg-subtle,#f7f9fc)]/40">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2.5">
               <h2 className="text-lg sm:text-xl font-bold text-[var(--color-text-heading,#10182c)]">
                 {role.title}
               </h2>
-              <Badge variant="secondary" className="font-mono text-xs px-2 py-0.5">
-                {role.roleName}
-              </Badge>
               {isAdminRole && (
                 <Badge variant="info" dot className="text-xs">
                   Toàn quyền hệ thống
@@ -93,51 +92,20 @@ export function RolePermissionEditor({
               {role.description}
             </p>
           </div>
-
-          <div className="flex items-center gap-2.5 shrink-0">
-            {isDirty && !isAdminRole && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onReset}
-                disabled={isSaving}
-                leftIcon={<RotateCcw className="size-3.5" />}
-                className="text-xs border-[var(--color-border-input,#cbd7e8)]"
-              >
-                Đặt lại
-              </Button>
-            )}
-
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={onSave}
-              disabled={!isDirty || isSaving || isAdminRole}
-              isLoading={isSaving}
-              loadingText="Đang lưu..."
-              leftIcon={<Save className="size-3.5" />}
-              className="text-xs bg-[var(--color-primary,#2563eb)] hover:bg-[var(--color-primary-hover,#1d4ed8)] px-4"
-            >
-              Lưu thay đổi
-            </Button>
-          </div>
         </div>
 
         {isAdminRole ? (
           <div className="mt-4 p-3 rounded-lg bg-[var(--color-primary-light,#eff6ff)] border border-[var(--color-primary-border,#d4e4ff)] flex items-start gap-2.5 text-xs text-[var(--color-primary-link,#0053d8)]">
             <ShieldCheck className="size-4 shrink-0 mt-0.5" />
             <p className="leading-relaxed">
-              Tài khoản thuộc vai trò <strong>Quản trị viên (Admin)</strong> được phân quyền tự động
-              với toàn bộ đặc quyền hệ thống theo cơ chế Superuser. Danh sách quyền của Admin được
-              bảo vệ để phòng tránh nguy cơ khóa hệ thống.
+              Tài khoản thuộc vai trò <strong>Quản trị viên</strong> có toàn quyền hệ thống. Danh
+              sách quyền của Quản trị viên được bảo vệ để phòng tránh nguy cơ khóa hệ thống.
             </p>
           </div>
         ) : (
           <div className="mt-3 text-[11px] text-[var(--color-text-muted,#697e9f)] flex items-center justify-between">
             <span>
-              Mọi thay đổi phân quyền sẽ có hiệu lực ngay ở lần làm mới token kế tiếp của người dùng.
+              Thay đổi phân quyền có hiệu lực khi phiên đăng nhập của người dùng được làm mới.
             </span>
             {isDirty && (
               <Badge variant="warning" className="text-[10px] font-medium">
@@ -174,30 +142,49 @@ export function RolePermissionEditor({
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={onSelectAll}
-                disabled={isSaving || selectedCount === totalCount}
+                onClick={() =>
+                  searchTerm.trim()
+                    ? onToggleModule(
+                        filteredModules.flatMap((mod) => mod.permissions.map((p) => p.id)),
+                        true,
+                      )
+                    : onSelectAll()
+                }
+                disabled={
+                  isSaving ||
+                  isLoading ||
+                  filteredModules.length === 0 ||
+                  selectedCount === totalCount
+                }
                 leftIcon={<CheckCheck className="size-3.5" />}
                 className="h-8 text-xs text-[var(--color-primary,#2563eb)] hover:bg-[var(--color-primary-light,#eff6ff)] px-2.5"
               >
-                Chọn tất cả
+                {searchTerm.trim() ? 'Chọn quyền đang hiển thị' : 'Chọn tất cả'}
               </Button>
 
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={onDeselectAll}
-                disabled={isSaving || selectedCount === 0}
+                onClick={() =>
+                  searchTerm.trim()
+                    ? onToggleModule(
+                        filteredModules.flatMap((mod) => mod.permissions.map((p) => p.id)),
+                        false,
+                      )
+                    : onDeselectAll()
+                }
+                disabled={isSaving || isLoading || selectedCount === 0}
                 className="h-8 text-xs text-[var(--color-text-muted,#697e9f)] hover:bg-slate-100 px-2.5"
               >
-                Bỏ chọn tất cả
+                {searchTerm.trim() ? 'Bỏ chọn quyền đang hiển thị' : 'Bỏ chọn tất cả'}
               </Button>
             </div>
           )}
         </div>
       </div>
 
-      <CardContent className="p-4 flex-1 overflow-y-auto space-y-3.5 bg-[var(--color-bg-subtle,#f7f9fc)]/30">
+      <CardContent className="p-4 flex-1 space-y-3.5 bg-[var(--color-bg-subtle,#f7f9fc)]/30">
         {isLoading ? (
           <div className="py-16 flex flex-col items-center justify-center gap-3">
             <div className="size-8 border-3 border-[var(--color-primary,#2563eb)] border-t-transparent rounded-full animate-spin" />
@@ -218,12 +205,49 @@ export function RolePermissionEditor({
               selectedPermissionIds={selectedPermissionIds}
               onTogglePermission={onTogglePermission}
               onToggleModule={onToggleModule}
-              disabled={isAdminRole || isSaving}
+              disabled={isAdminRole || isSaving || isLoading}
             />
           ))
         )}
       </CardContent>
+      <div className="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-sm">
+        <span role="status" className="text-sm text-slate-600">
+          {isAdminRole
+            ? 'Vai trò Quản trị viên được bảo vệ'
+            : isDirty
+              ? 'Có thay đổi chưa lưu'
+              : 'Chưa có thay đổi'}
+        </span>
+        <div className="flex items-center gap-2.5 shrink-0">
+          {isDirty && !isAdminRole && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onReset}
+              disabled={isSaving || isLoading}
+              leftIcon={<RotateCcw className="size-3.5" />}
+              className="text-xs border-[var(--color-border-input,#cbd7e8)]"
+            >
+              Hủy thay đổi
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            onClick={onSave}
+            disabled={!isDirty || isSaving || isLoading || isAdminRole}
+            isLoading={isSaving}
+            loadingText="Đang lưu..."
+            leftIcon={<Save className="size-3.5" />}
+            className="text-xs bg-[var(--color-primary,#2563eb)] hover:bg-[var(--color-primary-hover,#1d4ed8)] px-4"
+          >
+            Lưu thay đổi
+          </Button>
+        </div>
+      </div>
     </Card>
   );
 }
-

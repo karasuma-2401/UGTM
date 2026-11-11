@@ -15,6 +15,19 @@ Tệp này ghi nhận nền tảng giao diện từ source hiện tại, không 
 
 ## Cách mở rộng giao diện
 
+- Trang tài khoản dùng header gọn, thống kê dạng bộ lọc nhanh và thanh lọc sát danh sách. Hàng bảng khoảng 72px trên desktop; màn hình nhỏ chuyển thành danh sách gọn. Thao tác thay đổi trạng thái nằm trong menu phụ và giữ bước xác nhận.
+- Tab tài khoản liền nhau và sát mép thẻ. Nền tab, vạch chọn hàng và khung chọn vai trò trượt bằng transform trong 360ms; nội dung giữ nguyên vị trí. Khi giảm chuyển động, dấu chọn đổi vị trí ngay.
+- Chuyển tab tài khoản ưu tiên commit route ngay (`navigate` với `flushSync`), hiển thị skeleton độc lập khi API đang tải. Không đợi hiệu ứng hoặc dữ liệu; router vẫn chặn rời trang nếu phân quyền chưa lưu. Ctrl/Cmd + bấm giữ hành vi mở liên kết của trình duyệt.
+- Nhấp một lần chọn hàng tài khoản; nhấp đúp mở chi tiết giống nút Chi tiết. Thao tác trên nút/menu trong hàng không kích hoạt nhấp đúp của hàng. Bộ lọc và nhãn Vô hiệu hóa dùng màu đỏ, vẫn giữ tên trạng thái bằng chữ.
+- Input và Select dùng viền xanh cùng ring xanh nhạt 2px khi focus; không chuyển tiếp outline mặc định. Combobox giữ viền focus khi con trỏ chuyển vào ô tìm kiếm; trường lỗi giữ màu đỏ.
+- Phân trang dùng `TablePagination` chung: số trang hiện tại nền xanh, các trang lân cận và dấu “…” cho danh sách dài. Chọn số hàng bằng nhóm nút 10 / 20 / 50 thay dropdown native; giữ giá trị tùy chỉnh nếu trang đang dùng kích thước khác. Mobile dùng chỉ báo trang và nút đầu/trước/sau/cuối, bố cục xuống dòng để tránh tràn ngang.
+- Thao tác Excel dùng xanh lá emerald: nút chính `success`, nút phụ `successOutline`, biểu tượng và vùng chọn file cùng tông. Giữ màu đỏ cho lỗi và màu xanh dương cho điều hướng hệ thống.
+- Popup nhập sinh viên chia hai bước: chuẩn bị file mẫu và chọn danh sách. Vùng upload hỗ trợ bấm/kéo thả, đổi/xóa file, báo lỗi ngay với file rỗng/sai định dạng/quá 5 MB. Footer giữ trong tầm nhìn khi cuộn; khóa đóng/chỉnh file trong lúc nhập. Giữ giới hạn 5.000 sinh viên/lần và thông báo tài khoản chờ kích hoạt.
+- Chi tiết tài khoản dùng `Dialog variant="drawer"` rộng 560px bên phải, toàn màn hình trên mobile. Header là avatar, tên và mã tài khoản; trạng thái nằm bên phải, căn giữa cụm tên/mã. Nội dung mở ở chế độ xem; nút Chỉnh sửa chuyển sang form trong cùng drawer. Nhãn vai trò căn phải cùng hàng tiêu đề. Header/footer giữ khi cuộn.
+- Tạo tài khoản dùng popup giữa màn hình, tiêu đề một cấp, trường bắt buộc có dấu *, giải thích email kích hoạt và lựa chọn vai trò theo nhóm. Form chỉ bật Lưu khi có thay đổi; giữ dữ liệu nếu lỗi, xác nhận trước khi đóng/hủy/rời trang với thay đổi chưa lưu và chặn thao tác khi đang lưu. Drawer trượt từ phải trong 360ms; giảm chuyển động dùng opacity 120ms.
+- Vai trò và phân hệ dùng tên tiếng Việt trên giao diện; mã gửi API giữ nguyên. Tên phân hệ quyền lấy từ `shared/config/modules.ts`. Phân quyền giữ thay đổi chưa lưu, cảnh báo khi chuyển vai trò/rời trang và khóa chỉnh sửa khi tải lỗi.
+- Chuyển trang bắt đầu trước khi vẽ bằng `useLayoutEffect`, dịch 10px trong 360ms và giữ opacity từ 0.94 để tránh chớp nội dung. Đổi vai trò dùng panel dịch 8px/360ms; dialog mở dịch/zoom nhẹ trong 320ms, backdrop 260ms. Easing cho nội dung là `cubic-bezier(0.22, 1, 0.36, 1)`. Nút giữ phản hồi nhấn ngắn. Với `prefers-reduced-motion`, chỉ giữ opacity 0.97 → 1 trong 120ms, bỏ chuyển động vị trí/zoom.
+
 - Ưu tiên tái sử dụng component và token hiện có; kiểm tra cả hai nguồn token trước khi thêm giá trị mới.
 - Với chỉnh sửa cục bộ, giữ bố cục, nội dung nghiệp vụ và nhận diện ngoài phạm vi yêu cầu. Thay toàn bộ phong cách cần một yêu cầu redesign rõ ràng.
 - Bảng và form cần nhãn rõ, focus bàn phím nhìn thấy được, phản hồi loading/lỗi và trạng thái không chỉ phân biệt bằng màu.

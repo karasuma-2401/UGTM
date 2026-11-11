@@ -1,10 +1,13 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { SelectionIndicator } from '@/components/ui/selection-indicator';
 import { GraduationCap, ShieldCheck, UsersRound } from 'lucide-react';
 import { useAuth } from '@/shared/auth';
 import { getIdentityAccess } from '@/shared/auth/identityAccess';
 import { cn } from '@/lib/utils';
 
 export function IdentityNavigation() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const { canReadUsers, canManageRoles } = getIdentityAccess(hasPermission);
   const tabs = [
@@ -16,24 +19,40 @@ export function IdentityNavigation() {
   return (
     <nav
       aria-label="Tài khoản và phân quyền"
-      className="flex gap-1 overflow-x-auto border-b border-slate-200"
+      className="relative isolate flex overflow-x-auto"
     >
+      <SelectionIndicator
+        activeKey={location.pathname}
+        selector='a[aria-current="page"]'
+        continuityKey="identity-tabs"
+        className="border-b-2 border-primary bg-primary/5"
+      />
       {tabs
         .filter((tab) => tab.visible)
         .map(({ path, label, icon: Icon }) => (
           <NavLink
             key={path}
+            data-selection-item
             to={`/modules/identity/${path}`}
+            onClick={(event) => {
+              // Commit the tab and its loading UI without deferring the route render.
+              // Modified clicks retain native link behavior; router blockers still apply.
+              if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+                return;
+              event.preventDefault();
+              if (location.pathname !== `/modules/identity/${path}`)
+                void navigate(`/modules/identity/${path}`, { flushSync: true });
+            }}
             className={({ isActive }) =>
               cn(
-                'inline-flex h-12 shrink-0 items-center justify-center gap-2 border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                'relative z-10 inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 border-b-2 border-transparent px-2 text-center text-xs font-medium transition-colors duration-150 sm:flex-none sm:px-4 sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                 isActive
-                  ? 'border-primary bg-primary/5 text-primary hover:bg-primary/5 hover:text-primary'
+                  ? 'text-primary hover:text-primary'
                   : 'border-transparent text-slate-500 hover:bg-slate-100/60 hover:text-slate-800',
               )
             }
           >
-            <Icon className="size-4" aria-hidden="true" />
+            <Icon className="hidden size-4 shrink-0 sm:block" aria-hidden="true" />
             {label}
           </NavLink>
         ))}

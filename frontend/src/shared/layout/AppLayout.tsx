@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import ugtmLogo from '../../../assets/logo_UGTM.svg';
 import {
@@ -44,6 +44,22 @@ export function AppLayout() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState('');
   const location = useLocation();
+  const pageContent = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const element = pageContent.current;
+    if (!element) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const animation = element.animate(
+      reduced
+        ? [{ opacity: 0.97 }, { opacity: 1 }]
+        : [
+            { opacity: 0.94, transform: 'translateY(10px)' },
+            { opacity: 1, transform: 'translateY(0)' },
+          ],
+      { duration: reduced ? 120 : 360, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+    );
+    return () => animation.cancel();
+  }, [location.pathname]);
   const { user, logout, isLoggingOut, hasPermission, hasRole } = useAuth();
 
   const toggleSidebarCollapse = () => {
@@ -183,10 +199,12 @@ export function AppLayout() {
         </button>
 
         {/* Sidebar Header / Brand */}
-        <div className={cn(
-          'h-16 flex items-center border-b border-slate-100 transition-all duration-200',
-          sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4',
-        )}>
+        <div
+          className={cn(
+            'h-16 flex items-center border-b border-slate-100 transition-all duration-200',
+            sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4',
+          )}
+        >
           <Link
             to="/"
             title="UGTM - Quản lý Khóa luận ĐH"
@@ -264,16 +282,16 @@ export function AppLayout() {
                           : 'font-medium text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
                       )}
                     >
-                      <div className={cn(
-                        'flex items-center min-w-0',
-                        sidebarCollapsed ? 'justify-center' : 'gap-3',
-                      )}>
+                      <div
+                        className={cn(
+                          'flex items-center min-w-0',
+                          sidebarCollapsed ? 'justify-center' : 'gap-3',
+                        )}
+                      >
                         <Icon
                           className={cn(
                             'size-4.5 shrink-0 transition-colors',
-                            isActive
-                              ? 'text-white'
-                              : 'text-slate-400 group-hover:text-slate-700',
+                            isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700',
                           )}
                         />
                         {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
@@ -298,16 +316,20 @@ export function AppLayout() {
         </nav>
 
         {/* Sidebar Footer User profile */}
-        <div className={cn(
-          'p-3 border-t border-slate-100 bg-slate-50/40 transition-all duration-200',
-          sidebarCollapsed && 'p-2',
-        )}>
-          <div className={cn(
-            'flex items-center rounded-xl border border-slate-200/60 bg-white shadow-2xs',
-            sidebarCollapsed ? 'justify-center p-1.5' : 'gap-3 px-2.5 py-2',
-          )}>
+        <div
+          className={cn(
+            'p-3 border-t border-slate-100 bg-slate-50/40 transition-all duration-200',
+            sidebarCollapsed && 'p-2',
+          )}
+        >
+          <div
+            className={cn(
+              'flex items-center rounded-xl border border-slate-200/60 bg-white shadow-2xs',
+              sidebarCollapsed ? 'justify-center p-1.5' : 'gap-3 px-2.5 py-2',
+            )}
+          >
             <div
-              title={sidebarCollapsed ? (user?.fullName || 'Người dùng') : undefined}
+              title={sidebarCollapsed ? user?.fullName || 'Người dùng' : undefined}
               className="size-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0 ring-1 ring-primary/20"
             >
               {userInitial}
@@ -404,7 +426,7 @@ export function AppLayout() {
         </header>
 
         {/* Page Content Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main ref={pageContent} className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           <Outlet />
         </main>
       </div>

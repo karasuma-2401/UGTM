@@ -44,7 +44,7 @@ export const RosterPreviewTable: React.FC<RosterPreviewTableProps> = ({
   if (rows.length === 0) {
     return (
       <Card className="rounded-2xl border-slate-200/80 bg-white p-12 text-center shadow-sm">
-        <div className="size-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400 mb-3">
+        <div className="size-12 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto text-emerald-700 mb-3">
           <FileSpreadsheet className="size-6" />
         </div>
         <h3 className="text-sm font-bold text-slate-800">
@@ -145,7 +145,7 @@ export const RosterPreviewTable: React.FC<RosterPreviewTableProps> = ({
       <div className="p-4 sm:px-6 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <Button
           type="button"
-          variant="outline"
+          variant="successOutline"
           size="sm"
           onClick={() => replaceInputRef.current?.click()}
           className="rounded-lg h-9 text-xs cursor-pointer shrink-0"
@@ -159,9 +159,10 @@ export const RosterPreviewTable: React.FC<RosterPreviewTableProps> = ({
 
         <Button
           type="button"
+          variant="success"
           onClick={onSubmit}
           disabled={!summary.canSubmit || isSubmitting}
-          className="rounded-lg h-9 text-xs font-semibold px-5 bg-[#2054A5] hover:bg-[#184285] text-white shadow-xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none shrink-0"
+          className="rounded-lg h-9 text-xs font-semibold px-5 cursor-pointer disabled:opacity-50 disabled:pointer-events-none shrink-0"
           leftIcon={
             isSubmitting ? (
               <RefreshCw className="size-3.5 animate-spin" />

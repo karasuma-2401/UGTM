@@ -405,3 +405,93 @@ test('Users keeps rows only within the same account/group and locks actions whil
       .length,
   );
 });
+
+test("editing only enables save for actual changes and restores clean state when reverted", () => {
+  const { SYSTEM_ROLES } = loadModule(
+    "features/identity/constants/systemRoles.ts",
+  );
+  const slots = [];
+  let cursor = 0;
+  const dirtyStates = [];
+  const saves = [];
+  const { UserForm } = loadModule(
+    "features/identity/components/users/UserForm.tsx",
+    {
+      react: {
+        useState(initial) {
+          const index = cursor++;
+          if (!(index in slots))
+            slots[index] = typeof initial === "function" ? initial() : initial;
+          return [
+            slots[index],
+            (next) => {
+              slots[index] =
+                typeof next === "function" ? next(slots[index]) : next;
+            },
+          ];
+        },
+        useEffect(callback) {
+          callback();
+        },
+      },
+      "react/jsx-runtime": jsxRuntime,
+      "lucide-react": { Save, UserPlus },
+      "../../constants/systemRoles": { SYSTEM_ROLES },
+      "../../utils/accountGroups": groups,
+      "@/components/ui/button": { Button: "Button" },
+      "@/components/ui/input": { Input: "Input" },
+      "@/components/ui/checkbox": { Checkbox: "Checkbox" },
+    },
+  );
+  const user = {
+    fullName: "Nguyễn Minh Anh",
+    email: "sv@example.test",
+    userCode: "2452001",
+    phoneNumber: null,
+    roles: ["Student"],
+  };
+  const render = () => {
+    cursor = 0;
+    return UserForm({
+      accountGroup: "Student",
+      user,
+      isSaving: false,
+      error: null,
+      onSave: (value) => saves.push(value),
+      onCancel() {},
+      onDirtyChange: (value) => dirtyStates.push(value),
+    });
+  };
+  const walk = (node, predicate) =>
+    !node || typeof node !== "object"
+      ? []
+      : Array.isArray(node)
+        ? node.flatMap((n) => walk(n, predicate))
+        : [
+            ...(predicate(node) ? [node] : []),
+            ...walk(node.props?.children, predicate),
+          ];
+  let tree = render();
+  const save = () =>
+    walk(tree, (n) => n.type === "Button" && n.props.type === "submit")[0];
+  assert.equal(save().props.disabled, true);
+  tree.props.onSubmit({ preventDefault() {} });
+  assert.equal(saves.length, 0);
+  walk(
+    tree,
+    (n) => n.type === "Input" && n.props["aria-label"] === "Họ và tên",
+  )[0].props.onChange({ target: { value: "Tên mới" } });
+  tree = render();
+  assert.equal(save().props.disabled, false);
+  assert.equal(dirtyStates.at(-1), true);
+  tree.props.onSubmit({ preventDefault() {} });
+  assert.equal(saves[0].fullName, "Tên mới");
+  assert.deepEqual(saves[0].roles, ["Student"]);
+  walk(
+    tree,
+    (n) => n.type === "Input" && n.props["aria-label"] === "Họ và tên",
+  )[0].props.onChange({ target: { value: user.fullName } });
+  tree = render();
+  assert.equal(save().props.disabled, true);
+  assert.equal(dirtyStates.at(-1), false);
+});

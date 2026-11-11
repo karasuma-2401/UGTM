@@ -68,6 +68,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   return (
     <Dialog
+      title={title}
       open={open}
       onClose={onClose}
       hideHeader
