@@ -59,9 +59,7 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests(Postgr
 
     public async Task InitializeAsync()
     {
-        await using var db = Db<UGTMDbContext>();
-        await ResetAsync(db);
-        await db.Database.MigrateAsync();
+        await fixture.ResetToMigratedAsync();
         await SeedAsync();
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = Environments.Development });
         builder.Logging.ClearProviders();
@@ -102,8 +100,6 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests(Postgr
     {
         _httpClient?.Dispose();
         if (_app is not null) await _app.DisposeAsync();
-        await using var db = Db<UGTMDbContext>();
-        await ResetAsync(db);
     }
 
     [Fact]
@@ -664,14 +660,4 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests(Postgr
         return (T)Activator.CreateInstance(typeof(T), options.Options)!;
     }
 
-    private static Task ResetAsync(UGTMDbContext db) => db.Database.ExecuteSqlRawAsync("""
-        DROP SCHEMA IF EXISTS identity CASCADE;
-        DROP SCHEMA IF EXISTS academic CASCADE;
-        DROP SCHEMA IF EXISTS topics CASCADE;
-        DROP SCHEMA IF EXISTS thesis CASCADE;
-        DROP SCHEMA IF EXISTS councils CASCADE;
-        DROP SCHEMA IF EXISTS notifications CASCADE;
-        DROP SCHEMA IF EXISTS public CASCADE;
-        CREATE SCHEMA public;
-        """);
 }
