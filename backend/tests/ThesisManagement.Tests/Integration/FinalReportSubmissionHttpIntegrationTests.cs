@@ -20,7 +20,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using UGTM.BuildingBlocks.Infrastructure.Middlewares;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
-using UGTM.Database.Migrations;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
@@ -63,11 +62,7 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
 
     public async Task InitializeAsync()
     {
-        await using (var db = CreateMigrationDbContext())
-        {
-            await ResetSchemasAsync(db);
-            await db.Database.MigrateAsync();
-        }
+        await fixture.ResetToMigratedAsync();
         await SeedGroupAsync();
 
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
@@ -112,8 +107,6 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
     {
         _client?.Dispose();
         if (_app is not null) await _app.DisposeAsync();
-        await using var db = CreateMigrationDbContext();
-        await ResetSchemasAsync(db);
     }
 
     [Theory]
@@ -534,24 +527,6 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         DatabaseOptions.Configure(options, fixture.ConnectionString);
         return new DefenseCouncilDbContext(options.Options);
     }
-
-    private UGTMDbContext CreateMigrationDbContext()
-    {
-        var options = new DbContextOptionsBuilder<UGTMDbContext>();
-        DatabaseOptions.Configure(options, fixture.ConnectionString, typeof(UGTMDbContext).Assembly.GetName().Name);
-        return new UGTMDbContext(options.Options);
-    }
-
-    private static Task ResetSchemasAsync(UGTMDbContext db) => db.Database.ExecuteSqlRawAsync("""
-        DROP SCHEMA IF EXISTS identity CASCADE;
-        DROP SCHEMA IF EXISTS academic CASCADE;
-        DROP SCHEMA IF EXISTS topics CASCADE;
-        DROP SCHEMA IF EXISTS thesis CASCADE;
-        DROP SCHEMA IF EXISTS councils CASCADE;
-        DROP SCHEMA IF EXISTS notifications CASCADE;
-        DROP SCHEMA IF EXISTS public CASCADE;
-        CREATE SCHEMA public;
-        """);
 
     private static ClaimsPrincipal Principal(Guid userId, string role, string? permission = null)
     {

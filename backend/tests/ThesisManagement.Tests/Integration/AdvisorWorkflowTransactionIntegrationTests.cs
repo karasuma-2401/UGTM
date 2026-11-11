@@ -1,8 +1,6 @@
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
@@ -22,18 +20,9 @@ public sealed class AdvisorWorkflowTransactionIntegrationTests(PostgreSqlFixture
 {
     private static readonly DateTime Now = new(2026, 10, 29, 8, 0, 0, DateTimeKind.Utc);
 
-    public async Task InitializeAsync()
-    {
-        await using var db = CreateMigrationDbContext();
-        await ResetSchemasAsync(db);
-        await db.Database.GetService<IMigrator>().MigrateAsync();
-    }
+    public Task InitializeAsync() => fixture.ResetToMigratedAsync();
 
-    public async Task DisposeAsync()
-    {
-        await using var db = CreateMigrationDbContext();
-        await ResetSchemasAsync(db);
-    }
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Theory]
     [InlineData(false)]
@@ -234,18 +223,6 @@ public sealed class AdvisorWorkflowTransactionIntegrationTests(PostgreSqlFixture
         return new UGTMDbContext(options.Options);
     }
 
-    private static Task ResetSchemasAsync(UGTMDbContext db)
-        => db.Database.ExecuteSqlRawAsync(
-            """
-            DROP SCHEMA IF EXISTS identity CASCADE;
-            DROP SCHEMA IF EXISTS academic CASCADE;
-            DROP SCHEMA IF EXISTS topics CASCADE;
-            DROP SCHEMA IF EXISTS thesis CASCADE;
-            DROP SCHEMA IF EXISTS councils CASCADE;
-            DROP SCHEMA IF EXISTS notifications CASCADE;
-            DROP SCHEMA IF EXISTS public CASCADE;
-            CREATE SCHEMA public;
-            """);
 
     private sealed record SeededWorkflowIds(
         Guid GroupId,

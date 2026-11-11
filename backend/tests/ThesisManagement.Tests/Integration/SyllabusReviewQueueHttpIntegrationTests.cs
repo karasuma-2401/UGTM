@@ -58,11 +58,7 @@ public sealed class SyllabusReviewQueueHttpIntegrationTests(PostgreSqlFixture fi
 
     public async Task InitializeAsync()
     {
-        await using (var db = CreateMigrationDbContext())
-        {
-            await ResetSchemasAsync(db);
-            await db.Database.MigrateAsync();
-        }
+        await fixture.ResetToMigratedAsync();
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
         builder.Logging.ClearProviders();
         builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
@@ -104,8 +100,6 @@ public sealed class SyllabusReviewQueueHttpIntegrationTests(PostgreSqlFixture fi
     {
         _client?.Dispose();
         if (_app is not null) await _app.DisposeAsync();
-        await using var db = CreateMigrationDbContext();
-        await ResetSchemasAsync(db);
     }
 
     [Fact]
@@ -498,16 +492,6 @@ public sealed class SyllabusReviewQueueHttpIntegrationTests(PostgreSqlFixture fi
         return new UGTMDbContext(options.Options);
     }
 
-    private static Task ResetSchemasAsync(UGTMDbContext db) => db.Database.ExecuteSqlRawAsync("""
-        DROP SCHEMA IF EXISTS identity CASCADE;
-        DROP SCHEMA IF EXISTS academic CASCADE;
-        DROP SCHEMA IF EXISTS topics CASCADE;
-        DROP SCHEMA IF EXISTS thesis CASCADE;
-        DROP SCHEMA IF EXISTS councils CASCADE;
-        DROP SCHEMA IF EXISTS notifications CASCADE;
-        DROP SCHEMA IF EXISTS public CASCADE;
-        CREATE SCHEMA public;
-        """);
 
     private sealed record SeededSubmission(Guid GroupId, Guid TopicId, Guid SyllabusId, Guid[] Students,
         Guid BatchId, string Status, Guid FileId);
