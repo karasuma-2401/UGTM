@@ -7,12 +7,15 @@ import {
 } from '../components/milestone';
 import { PageHeader } from '@/components/ui/page-header';
 import { Select } from '@/components/ui/select';
-import { AlertCircle, CheckCircle2, Target, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertCircle, CheckCircle2, Target, Users, ShieldAlert, RotateCcw } from 'lucide-react';
+import { classifyThesisError, getThesisErrorMessage } from '../utils/thesisErrors';
 
 export function AdvisorMilestoneSetupPage() {
   const navigate = useNavigate();
   const {
     topicsQuery,
+    milestonesQuery,
     advisedGroups,
     selectedGroupId,
     setSelectedGroupId,
@@ -69,14 +72,54 @@ export function AdvisorMilestoneSetupPage() {
           </div>
         </div>
 
-        {advisedGroups.length === 0 && !topicsQuery.isLoading && (
+        {advisedGroups.length === 0 && !topicsQuery.isLoading && !topicsQuery.isError && (
           <span className="text-xs text-amber-700 font-medium bg-amber-50 px-3 py-1.5 rounded-md border border-amber-200">
             Bạn chưa có nhóm khóa luận nào được phân công trong đợt này.
           </span>
         )}
       </div>
 
-      {!canCreateMilestones && ineligibleReason && (
+      {(topicsQuery.isError || milestonesQuery.isError) && (() => {
+        const err = topicsQuery.error || milestonesQuery.error;
+        const kind = classifyThesisError(err);
+        const msg = getThesisErrorMessage(err, 'Không thể tải dữ liệu mốc tiến độ.');
+        return (
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              {kind === 'forbidden' ? (
+                <ShieldAlert className="size-5 shrink-0 text-amber-600 mt-0.5" />
+              ) : (
+                <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
+              )}
+              <div>
+                <p className="font-semibold">
+                  {kind === 'forbidden'
+                    ? 'Không có quyền truy cập danh sách mốc tiến độ'
+                    : 'Không tải được danh sách mốc tiến độ'}
+                </p>
+                <p className="text-xs mt-0.5 text-rose-700">{msg}</p>
+              </div>
+            </div>
+            {kind !== 'forbidden' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (topicsQuery.isError) void topicsQuery.refetch();
+                  if (milestonesQuery.isError) void milestonesQuery.refetch();
+                }}
+                className="h-8 text-xs border-rose-300 bg-white text-rose-700 hover:bg-rose-100"
+              >
+                <RotateCcw className="size-3.5 mr-1.5" />
+                Thử lại
+              </Button>
+            )}
+          </div>
+        );
+      })()}
+
+      {!canCreateMilestones && ineligibleReason && !topicsQuery.isError && (
         <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 flex items-start gap-3.5 shadow-xs">
           <div className="p-2 rounded-lg bg-amber-100/80 text-amber-700 shrink-0 mt-0.5">
             <AlertCircle className="size-5" />

@@ -9,8 +9,9 @@ import { ThesisSubmissionNavigation } from '../components/navigation';
 import { PageHeader } from '@/components/ui/page-header';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2, BookOpen, Flag } from 'lucide-react';
+import { AlertCircle, CheckCircle2, BookOpen, Flag, ShieldAlert, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { classifyThesisError, getThesisErrorMessage } from '../utils/thesisErrors';
 
 export function StudentMilestoneSubmissionPage() {
   const {
@@ -22,6 +23,7 @@ export function StudentMilestoneSubmissionPage() {
     setSelectedMilestoneId,
     selectedMilestone,
     selectedMilestoneIndex,
+    reportQuery,
     report,
     versions,
     currentStatus,
@@ -47,6 +49,45 @@ export function StudentMilestoneSubmissionPage() {
       : 'Nhóm KLTN');
 
   const milestoneCode = String(selectedMilestoneIndex + 1).padStart(2, '0');
+
+  if (statusQuery.isError) {
+    const errorKind = classifyThesisError(statusQuery.error);
+    const message = getThesisErrorMessage(
+      statusQuery.error,
+      'Không thể tải trạng thái đăng ký đề tài của bạn.',
+    );
+
+    return (
+      <div className="max-w-4xl mx-auto py-10 px-4">
+        <div className="p-8 text-center bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
+          <div className="size-12 mx-auto rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+            {errorKind === 'forbidden' ? (
+              <ShieldAlert className="size-6 text-amber-600" />
+            ) : (
+              <AlertCircle className="size-6" />
+            )}
+          </div>
+          <h2 className="text-lg font-bold text-slate-800">
+            {errorKind === 'forbidden'
+              ? 'Không có quyền truy cập mốc tiến độ'
+              : 'Không tải được thông tin đề tài KLTN'}
+          </h2>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">{message}</p>
+          {errorKind !== 'forbidden' && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void statusQuery.refetch()}
+              className="border-slate-300"
+            >
+              <RotateCcw className="size-4 mr-2" />
+              Thử lại
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (!statusQuery.isLoading && !statusQuery.data?.hasRegistered) {
     return (
@@ -138,12 +179,52 @@ export function StudentMilestoneSubmissionPage() {
           </div>
         </div>
 
-        {milestones.length === 0 && !milestonesQuery.isLoading && (
+        {milestones.length === 0 && !milestonesQuery.isLoading && !milestonesQuery.isError && (
           <span className="text-xs text-amber-700 font-medium bg-amber-50 px-3 py-1.5 rounded-md border border-amber-200">
             GVHD chưa tạo mốc tiến độ nào cho nhóm bạn.
           </span>
         )}
       </div>
+
+      {(milestonesQuery.isError || reportQuery.isError) && (() => {
+        const err = milestonesQuery.error || reportQuery.error;
+        const kind = classifyThesisError(err);
+        const msg = getThesisErrorMessage(err, 'Không thể tải dữ liệu mốc tiến độ.');
+        return (
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              {kind === 'forbidden' ? (
+                <ShieldAlert className="size-5 shrink-0 text-amber-600 mt-0.5" />
+              ) : (
+                <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
+              )}
+              <div>
+                <p className="font-semibold">
+                  {kind === 'forbidden'
+                    ? 'Không có quyền truy cập mốc tiến độ'
+                    : 'Không tải được dữ liệu mốc tiến độ'}
+                </p>
+                <p className="text-xs mt-0.5 text-rose-700">{msg}</p>
+              </div>
+            </div>
+            {kind !== 'forbidden' && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void milestonesQuery.refetch();
+                  if (selectedMilestoneId) void reportQuery.refetch();
+                }}
+                className="h-8 text-xs border-rose-300 bg-white text-rose-700 hover:bg-rose-100"
+              >
+                <RotateCcw className="size-3.5 mr-1.5" />
+                Thử lại
+              </Button>
+            )}
+          </div>
+        );
+      })()}
 
       {actionError && (
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">

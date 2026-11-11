@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { Upload, FileSpreadsheet, Download, UserPlus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import type { KltnBatchSummaryDto } from '../../types/period.types';
 
 interface RosterConfigCardProps {
@@ -10,6 +11,7 @@ interface RosterConfigCardProps {
   batches: KltnBatchSummaryDto[];
   selectedBatchId: string;
   onSelectBatchId: (id: string) => void;
+  isLoadingBatches?: boolean;
   fileInfo: { name: string; sizeLabel: string; statusText: string } | null;
   onSelectFile: (file: File) => void;
   onDownloadTemplate: () => void;
@@ -23,6 +25,7 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
   batches,
   selectedBatchId,
   onSelectBatchId,
+  isLoadingBatches = false,
   fileInfo,
   onSelectFile,
   onDownloadTemplate,
@@ -30,6 +33,21 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
   onOpenSingleAdd,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const batchOptions = useMemo(
+    () =>
+      batches.map((b) => ({
+        value: b.id,
+        label: `${b.batchName} - HK${b.semester} ${b.academicYear}`,
+      })),
+    [batches],
+  );
+
+  const roleTypeOption = useMemo(() => {
+    const label =
+      activeRole === 'Student' ? 'Sinh viên đủ điều kiện' : 'Giảng viên hướng dẫn & phản biện';
+    return [{ value: activeRole, label }];
+  }, [activeRole]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -71,32 +89,29 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <label className="space-y-1.5 text-xs font-semibold text-slate-700 block">
+        <div className="space-y-1.5 text-xs font-semibold text-slate-700 block">
           <span>Đợt khóa luận</span>
-          <select
+          <Select
+            options={batchOptions}
             value={selectedBatchId}
-            onChange={(e) => onSelectBatchId(e.target.value)}
-            className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-[#2054A5]"
-          >
-            {batches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.batchName} - HK{b.semester} {b.academicYear}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={(val) => onSelectBatchId(String(val ?? ''))}
+            disabled={isLoadingBatches || batches.length === 0}
+            placeholder={isLoadingBatches ? 'Đang tải đợt khóa luận...' : 'Chưa có đợt khóa luận'}
+            size="lg"
+            triggerClassName="rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-2xs"
+          />
+        </div>
 
-        <label className="space-y-1.5 text-xs font-semibold text-slate-700 block">
+        <div className="space-y-1.5 text-xs font-semibold text-slate-700 block">
           <span>Loại danh sách</span>
-          <select
-            className="w-full h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 shadow-2xs focus:outline-hidden focus:ring-2 focus:ring-[#2054A5]"
+          <Select
+            options={roleTypeOption}
+            value={activeRole}
             disabled
-          >
-            <option>
-              {activeRole === 'Student' ? 'Sinh viên đủ điều kiện' : 'Giảng viên hướng dẫn & phản biện'}
-            </option>
-          </select>
-        </label>
+            size="lg"
+            triggerClassName="rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-2xs"
+          />
+        </div>
       </div>
 
       <input

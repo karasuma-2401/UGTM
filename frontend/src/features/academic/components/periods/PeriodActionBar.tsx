@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 interface PeriodActionBarProps {
   canEdit: boolean;
   isSaving: boolean;
+  isDisabled?: boolean;
   onSave: () => void;
   onImportUsers: () => void;
 }
@@ -12,6 +13,7 @@ interface PeriodActionBarProps {
 export const PeriodActionBar: React.FC<PeriodActionBarProps> = ({
   canEdit,
   isSaving,
+  isDisabled = false,
   onSave,
   onImportUsers,
 }) => {
@@ -19,7 +21,7 @@ export const PeriodActionBar: React.FC<PeriodActionBarProps> = ({
     <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-xs flex flex-wrap items-center gap-3">
       <Button
         type="button"
-        disabled={!canEdit || isSaving}
+        disabled={!canEdit || isSaving || isDisabled}
         onClick={onSave}
         className="h-10 px-6 gap-2 bg-[#2054A5] hover:bg-[#1a4485] text-white font-medium text-sm rounded-lg transition-colors shadow-2xs"
       >

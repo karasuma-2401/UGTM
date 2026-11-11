@@ -22,8 +22,9 @@ export function useStudentMilestones() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const statusQuery = useQuery({
-    queryKey: ['student-registration-status'],
+    queryKey: ['student-registration-status', user?.id],
     queryFn: ({ signal }) => syllabusApi.getMyStatus(signal),
+    enabled: Boolean(user?.id),
   });
 
   const groupId = statusQuery.data?.groupId;
@@ -35,21 +36,25 @@ export function useStudentMilestones() {
   );
 
   const groupDetailQuery = useQuery({
-    queryKey: ['student-group-detail', groupId, user?.id, currentBatch?.id],
-    queryFn: () =>
-      syllabusApi.getGroupDetail(groupId!, {
-        topicId: topicId ?? undefined,
-        topicTitle: topicTitleVi ?? undefined,
-        currentUser: user,
-        batchName: currentBatch?.batchName,
-      }),
-    enabled: Boolean(groupId),
+    queryKey: ['student-group-detail', user?.id, groupId, currentBatch?.id],
+    queryFn: ({ signal }) =>
+      syllabusApi.getGroupDetail(
+        groupId!,
+        {
+          topicId: topicId ?? undefined,
+          topicTitle: topicTitleVi ?? undefined,
+          currentUser: user,
+          batchName: currentBatch?.batchName,
+        },
+        signal
+      ),
+    enabled: Boolean(user?.id && groupId),
   });
 
   const milestonesQuery = useQuery({
-    queryKey: ['student-milestones', groupId],
+    queryKey: ['student-milestones', user?.id, groupId],
     queryFn: ({ signal }) => (groupId ? milestoneApi.getMilestones(groupId, signal) : []),
-    enabled: Boolean(groupId),
+    enabled: Boolean(user?.id && groupId),
   });
 
   const milestones = useMemo(() => milestonesQuery.data || [], [milestonesQuery.data]);
@@ -69,10 +74,10 @@ export function useStudentMilestones() {
   }, [milestones, selectedMilestoneId]);
 
   const reportQuery = useQuery({
-    queryKey: ['student-milestone-report', selectedMilestoneId],
+    queryKey: ['student-milestone-report', user?.id, selectedMilestoneId],
     queryFn: ({ signal }) =>
       selectedMilestoneId ? milestoneApi.getProgressReport(selectedMilestoneId, signal) : null,
-    enabled: Boolean(selectedMilestoneId),
+    enabled: Boolean(user?.id && selectedMilestoneId),
     retry: false,
   });
 
@@ -127,10 +132,10 @@ export function useStudentMilestones() {
       setStudentNote('');
       setActionSuccess(`Nộp sản phẩm phiên bản v${data.versionNo} thành công!`);
       void queryClient.invalidateQueries({
-        queryKey: ['student-milestone-report', selectedMilestoneId],
+        queryKey: ['student-milestone-report', user?.id, selectedMilestoneId],
       });
       void queryClient.invalidateQueries({
-        queryKey: ['student-milestones', groupId],
+        queryKey: ['student-milestones', user?.id, groupId],
       });
     },
     onError: (err: Error) => {

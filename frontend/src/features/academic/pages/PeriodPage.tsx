@@ -1,6 +1,7 @@
-import React from 'react';
-import { Plus, RefreshCw, AlertTriangle, CheckCircle2, CalendarDays } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Plus, RefreshCw, AlertTriangle, CheckCircle2, CalendarDays, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { PageHeader } from '@/components/ui/page-header';
 import {
   PeriodStagesCard,
@@ -17,25 +18,33 @@ import { usePeriod } from '../hooks/periods';
 export const PeriodPage: React.FC = () => {
   const { data, form, modals, actions, permissions } = usePeriod();
 
+  const batchOptions = useMemo(
+    () => [
+      { value: 'new', label: '+ Khởi tạo đợt mới' },
+      ...data.batches.map((b) => ({
+        value: b.id,
+        label: `${b.batchName} (${b.academicYear} - HK${b.semester}) [${b.status}]`,
+      })),
+    ],
+    [data.batches],
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Khởi tạo đợt & deadline"
         icon={<CalendarDays />}
       >
-        <select
-          value={data.selectedBatchId}
-          onChange={(e) => data.setSelectedBatchId(e.target.value)}
-          disabled={data.isLoadingBatches}
-          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-800 shadow-sm focus:outline-hidden focus:ring-2 focus:ring-[#2054A5]"
-        >
-          <option value="new">+ Khởi tạo đợt mới</option>
-          {data.batches.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.batchName} ({b.academicYear} - HK{b.semester}) [{b.status}]
-            </option>
-          ))}
-        </select>
+        <div className="w-72 sm:w-80">
+          <Select
+            options={batchOptions}
+            value={data.selectedBatchId}
+            onChange={(val) => data.setSelectedBatchId(String(val ?? 'new'))}
+            disabled={data.isLoadingBatches}
+            size="lg"
+            triggerClassName="h-10 rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-sm"
+          />
+        </div>
 
         {permissions.canManageBatch && (
           <Button
@@ -71,9 +80,24 @@ export const PeriodPage: React.FC = () => {
       )}
 
       {modals.errorMessage && (
-        <div className="flex items-center gap-2.5 rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-sm font-medium text-rose-800 shadow-2xs">
-          <AlertTriangle className="size-5 shrink-0 text-rose-600" />
-          <span>{modals.errorMessage}</span>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-sm font-medium text-rose-800 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="size-5 shrink-0 text-rose-600" />
+            <span>{modals.errorMessage}</span>
+          </div>
+          {actions.failedGateUpdates.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={actions.isSaving || data.isLoadingDetail}
+              onClick={actions.handleRetryFailedGates}
+              className="h-8 text-xs border-rose-300 bg-white text-rose-700 hover:bg-rose-100 shrink-0"
+            >
+              <RotateCcw className="size-3.5 mr-1.5" />
+              Thử lại cập nhật cổng ({actions.failedGateUpdates.length})
+            </Button>
+          )}
         </div>
       )}
 
@@ -134,6 +158,7 @@ export const PeriodPage: React.FC = () => {
       <PeriodActionBar
         canEdit={permissions.canEdit}
         isSaving={actions.isSaving}
+        isDisabled={data.isLoadingDetail || !data.isSelectionSynced}
         onSave={actions.handleSaveClick}
         onImportUsers={() => modals.setIsImportOpen(true)}
       />

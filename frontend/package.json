@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "node --test test/*.test.mjs",
     "test:auth": "node --test test/auth-session.test.mjs test/auth-navigation.test.mjs",
     "test:accounts": "node --test test/account-groups.test.mjs",
     "test:topics": "node --test test/topic-proposals.test.mjs test/topic-review.test.mjs",

@@ -61,76 +61,82 @@ export const syllabusReviewApi = {
   },
 
   async getReviewQueue(
-    query?: {
-      batchId?: string;
-      status?: string;
-      keyword?: string;
-      pageNumber?: number;
-      pageSize?: number;
-    } | string,
-    signal?: AbortSignal,
-  ): Promise<ReviewGroupItemDto[]> {
-    try {
-      const params = typeof query === 'string' ? { keyword: query } : query;
-      const response = await httpClient.get<ApiResponse<PagedResult<SyllabusReviewItemDto>>>(
-        '/api/thesis/syllabus/submissions',
-        {
-          params,
-          signal,
-        },
-      );
-      const paged = unwrap(response.data);
-      const items = paged?.items || [];
-      return items.map((item) => {
-        const studentNames =
-          (item.students || [])
-            .map((s) => s.fullName || s.userCode || 'Sinh viên')
-            .join(', ') || 'Chưa có thành viên';
-        const advisorName = item.advisor?.fullName || 'Chưa phân công';
-
-        return {
-          groupId: item.groupId,
-          groupCode: `Nhóm ${item.groupId.slice(0, 4).toUpperCase()}`,
-          topicCode: `KLTN-${item.topicId.slice(0, 8).toUpperCase()}`,
-          topicTitleVi: item.topicTitleVi,
-          studentNames,
-          advisorName,
-          batchName: item.batchName || 'Học kỳ hiện tại',
-          latestFileName: item.latestFile?.fileName || 'Chưa nộp tệp',
-          latestVersionNo: item.currentVersionNo || 1,
-          currentStatus: item.currentStatus as SyllabusStatus,
-          submittedAtUtc: item.latestFile?.uploadedAtUtc,
-          fileId: item.latestFile?.id,
-        };
-      });
-    } catch {
-      const knownGroupId = typeof query === 'string' ? query : undefined;
-      const items: ReviewGroupItemDto[] = [];
-      const testGroupId = knownGroupId || '13c2a7dc-a0bc-4c6a-a560-26ad3b4fda44';
-
-      try {
-        const history = await syllabusReviewApi.getSyllabusHistory(testGroupId, signal);
-        if (history) {
-          const latest = history.versions[history.versions.length - 1];
-          items.push({
-            groupId: history.groupId,
-            groupCode: `Nhóm ${history.groupId.slice(0, 4).toUpperCase()}`,
-            topicCode: `KLTN-${history.groupId.slice(0, 8).toUpperCase()}`,
-            topicTitleVi: 'Chưa có dữ liệu',
-            studentNames: 'Chưa có dữ liệu',
-            advisorName: 'Chưa có dữ liệu',
-            batchName: 'Học kỳ hiện tại',
-            latestFileName: latest?.file.fileName || 'Chưa có dữ liệu',
-            latestVersionNo: latest?.versionNo || 1,
-            currentStatus: history.currentStatus,
-            submittedAtUtc: latest?.file.uploadedAtUtc,
-            fileId: latest?.file.id,
-          });
+    query?:
+      | {
+          batchId?: string;
+          status?: string;
+          keyword?: string;
+          pageNumber?: number;
+          pageSize?: number;
         }
-      } catch {
-      }
+      | string,
+    signal?: AbortSignal,
+  ): Promise<PagedResult<ReviewGroupItemDto>> {
+    const raw = typeof query === 'string' ? { keyword: query } : query || {};
+    const pageNumber = raw.pageNumber && raw.pageNumber > 0 ? raw.pageNumber : 1;
+    const pageSize = raw.pageSize && raw.pageSize > 0 ? raw.pageSize : 20;
 
-      return items;
+    const params: Record<string, string | number> = {
+      pageNumber,
+      pageSize,
+    };
+
+    if (raw.batchId && raw.batchId !== 'ALL' && raw.batchId !== 'all') {
+      params.batchId = raw.batchId;
     }
+    if (raw.status && raw.status !== 'ALL' && raw.status !== 'all') {
+      params.status = raw.status;
+    }
+    if (raw.keyword && raw.keyword.trim()) {
+      params.keyword = raw.keyword.trim();
+    }
+
+    const response = await httpClient.get<ApiResponse<PagedResult<SyllabusReviewItemDto>>>(
+      '/api/thesis/syllabus/submissions',
+      {
+        params,
+        signal,
+      },
+    );
+    const paged = unwrap(response.data);
+    const rawItems = paged?.items || [];
+    const items = rawItems.map((item) => {
+      const studentNames =
+        (item.students || [])
+          .map((s) => s.fullName || s.userCode || 'Sinh viên')
+          .join(', ') || 'Chưa có thành viên';
+      const advisorName = item.advisor?.fullName || 'Chưa phân công';
+
+      return {
+        groupId: item.groupId,
+        groupCode: `Nhóm ${item.groupId.slice(0, 4).toUpperCase()}`,
+        topicCode: `KLTN-${item.topicId.slice(0, 8).toUpperCase()}`,
+        topicTitleVi: item.topicTitleVi,
+        studentNames,
+        advisorName,
+        batchName: item.batchName || 'Học kỳ hiện tại',
+        latestFileName: item.latestFile?.fileName || 'Chưa nộp tệp',
+        latestVersionNo: item.currentVersionNo || 1,
+        currentStatus: item.currentStatus as SyllabusStatus,
+        submittedAtUtc: item.latestFile?.uploadedAtUtc,
+        fileId: item.latestFile?.id,
+      };
+    });
+
+    const totalCount = paged?.totalCount ?? items.length;
+    const resolvedPageNumber = paged?.pageNumber ?? pageNumber;
+    const resolvedPageSize = paged?.pageSize ?? pageSize;
+    const totalPages =
+      paged?.totalPages ?? Math.max(1, Math.ceil(totalCount / Math.max(1, resolvedPageSize)));
+
+    return {
+      items,
+      totalCount,
+      pageNumber: resolvedPageNumber,
+      pageSize: resolvedPageSize,
+      totalPages,
+      hasPreviousPage: paged?.hasPreviousPage ?? resolvedPageNumber > 1,
+      hasNextPage: paged?.hasNextPage ?? resolvedPageNumber < totalPages,
+    };
   },
 };

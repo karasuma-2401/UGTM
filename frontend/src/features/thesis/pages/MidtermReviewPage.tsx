@@ -13,13 +13,23 @@ import { ReviewMidtermTable } from '../components/midterm';
 export function MidtermReviewPage() {
   const {
     queueQuery,
+    queueErrorKind,
+    queueErrorMessage,
     filteredItems,
     selectedGroup,
     setSelectedGroup,
+    batchId,
+    setBatchId,
     searchTerm,
     setSearchTerm,
     statusFilter,
     setStatusFilter,
+    pageNumber,
+    pageSize,
+    totalCount,
+    hasPreviousPage,
+    hasNextPage,
+    handlePageChange,
     handleApplyFilter,
     handleResetFilter,
     reviewMutation,
@@ -31,7 +41,8 @@ export function MidtermReviewPage() {
   } = useMidtermReview();
 
   const batchesQuery = useAcademicBatches();
-  const currentBatch = batchesQuery.data?.find((b) => b.status === 'Open') || batchesQuery.data?.[0];
+  const batches = batchesQuery.data || [];
+  const currentBatch = batches.find((b) => b.status === 'Open') || batches[0];
   const batchLabel = currentBatch?.batchName || 'Học kỳ hiện tại';
 
   const groupCodeLabel = selectedGroup?.groupCode ? `nhóm ${selectedGroup.groupCode}` : 'nhóm sinh viên';
@@ -74,6 +85,9 @@ export function MidtermReviewPage() {
         onSearchChange={setSearchTerm}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        batchId={batchId}
+        onBatchChange={setBatchId}
+        batches={batches}
         onApply={handleApplyFilter}
         onReset={handleResetFilter}
       />
@@ -84,6 +98,15 @@ export function MidtermReviewPage() {
         onSelectGroup={setSelectedGroup}
         onDownloadFile={handleDownload}
         isLoading={queueQuery.isLoading}
+        errorKind={queueErrorKind}
+        errorMessage={queueErrorMessage}
+        onRetry={() => void queueQuery.refetch()}
+        pageNumber={pageNumber}
+        pageSize={pageSize}
+        totalCount={totalCount}
+        hasPreviousPage={hasPreviousPage}
+        hasNextPage={hasNextPage}
+        onPageChange={handlePageChange}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

@@ -25,7 +25,7 @@ function loadModule(path, dependencies = {}) {
   return exports;
 }
 
-const groups = loadModule('features/admin/utils/accountGroups.ts');
+const groups = loadModule('features/identity/utils/accountGroups.ts');
 
 test('student and staff forms keep distinct role defaults and constraints', () => {
   assert.deepEqual(groups.defaultRolesForGroup('Student'), ['Student']);
@@ -38,13 +38,13 @@ test('student and staff forms keep distinct role defaults and constraints', () =
 });
 
 function renderForm(accountGroup) {
-  const { SYSTEM_ROLES } = loadModule('features/admin/constants/systemRoles.ts');
-  const { UserForm } = loadModule('features/admin/components/UserForm.tsx', {
+  const { SYSTEM_ROLES } = loadModule('features/identity/constants/systemRoles.ts');
+  const { UserForm } = loadModule('features/identity/components/users/UserForm.tsx', {
     react: React,
     'react/jsx-runtime': jsxRuntime,
     'lucide-react': { Save, UserPlus },
-    '../constants/systemRoles': { SYSTEM_ROLES },
-    '../utils/accountGroups': groups,
+    '../../constants/systemRoles': { SYSTEM_ROLES },
+    '../../utils/accountGroups': groups,
     '@/components/ui/button': {
       Button: ({ children }) => React.createElement('button', null, children),
     },
@@ -88,7 +88,7 @@ test('staff form offers staff roles and does not allow selecting Student', () =>
 });
 
 function apiFixture(httpClient) {
-  return loadModule('features/admin/services/userApi.ts', {
+  return loadModule('features/identity/services/userApi.ts', {
     axios: { default: { isAxiosError: () => false } },
     '@/shared/api': { httpClient },
   }).userApi;
@@ -164,35 +164,76 @@ function usersPageFixture(accountGroup, queryState = {}) {
   let cursor = 0;
   let queries = [];
   const component = (name) => ({ [name]: name });
-  const { UsersPage } = loadModule('features/admin/pages/UsersPage.tsx', {
-    react: {
-      useState(initial) {
-        const index = cursor++;
-        if (!(index in state)) state[index] = initial;
-        return [
-          state[index],
-          (value) => {
-            state[index] = value;
-          },
-        ];
-      },
+  const reactMock = {
+    useState(initial) {
+      const index = cursor++;
+      if (!(index in state)) state[index] = typeof initial === 'function' ? initial() : initial;
+      return [
+        state[index],
+        (value) => {
+          state[index] = typeof value === 'function' ? value(state[index]) : value;
+        },
+      ];
     },
+  };
+  const reactQueryMock = {
+    useQueryClient: () => ({}),
+    useQuery(options) {
+      queries.push(options);
+      return {
+        data: options.queryKey.includes('statistics')
+          ? { total: 30, pendingActivation: 4, disabled: 2 }
+          : { items: [{}], pageNumber: options.queryKey[4], pageSize: 20 },
+        ...queryState,
+      };
+    },
+    useMutation: () => ({ reset() {}, mutate() {}, isPending: false }),
+  };
+  const authMock = { useAuth: () => ({ user: { id: 'admin' }, hasPermission: () => true }) };
+  const userTypes = loadModule('features/identity/types/user.types.ts');
+  const systemRoles = loadModule('features/identity/constants/systemRoles.ts');
+  const userApiMock = {
+    userApi: { getUsers: async (query) => query },
+    getUserErrorMessage: String,
+  };
+  const useUserFiltersMod = loadModule('features/identity/hooks/useUserFilters.ts', {
+    react: reactMock,
+  });
+  const useUserModalsMod = loadModule('features/identity/hooks/useUserModals.ts', {
+    react: reactMock,
+  });
+  const useUserDataMod = loadModule('features/identity/hooks/useUserData.ts', {
+    '@tanstack/react-query': reactQueryMock,
+    '../services/userApi': userApiMock,
+  });
+  const useUserActionsMod = loadModule('features/identity/hooks/useUserActions.ts', {
+    react: reactMock,
+    '@tanstack/react-query': reactQueryMock,
+    '../services/userApi': userApiMock,
+    '@/features/auth/services/authApi': {},
+  });
+  const useUsersMod = loadModule('features/identity/hooks/useUsers.ts', {
+    '@/shared/auth': authMock,
+    './useUserFilters': useUserFiltersMod,
+    './useUserData': useUserDataMod,
+    './useUserModals': useUserModalsMod,
+    './useUserActions': useUserActionsMod,
+  });
+  const { UserFilterBar } = loadModule('features/identity/components/users/UserFilterBar.tsx', {
     'react/jsx-runtime': jsxRuntime,
     'lucide-react': icons,
-    '@tanstack/react-query': {
-      useQueryClient: () => ({}),
-      useQuery(options) {
-        queries.push(options);
-        return {
-          data: options.queryKey.includes('statistics')
-            ? { total: 30, pendingActivation: 4, disabled: 2 }
-            : { items: [{}], pageNumber: options.queryKey[4], pageSize: 20 },
-          ...queryState,
-        };
-      },
-      useMutation: () => ({}),
-    },
-    '@/shared/auth': { useAuth: () => ({ user: { id: 'admin' }, hasPermission: () => true }) },
+    '@/components/ui/button': component('Button'),
+    '@/components/ui/input': component('Input'),
+    '@/components/ui/select': component('Select'),
+    '../../constants/systemRoles': systemRoles,
+    '../../types/user.types': userTypes,
+  });
+  const { UsersPage } = loadModule('features/identity/pages/UsersPage.tsx', {
+    react: reactMock,
+    'react/jsx-runtime': jsxRuntime,
+    'lucide-react': icons,
+    '@tanstack/react-query': reactQueryMock,
+    '@/shared/auth': authMock,
     '@/components/ui/button': component('Button'),
     '@/components/ui/input': component('Input'),
     '@/components/ui/card': { Card: 'Card', CardHeader: 'CardHeader', CardTitle: 'CardTitle' },
@@ -202,16 +243,18 @@ function usersPageFixture(accountGroup, queryState = {}) {
     '@/components/ui/statistics-bar': component('StatisticsBar'),
     '@/components/ui/table-pagination': component('TablePagination'),
     '@/components/ui/table-skeleton': component('TableSkeleton'),
-    '../components/UserFormDialog': component('UserFormDialog'),
-    '../components/StudentImportDialog': component('StudentImportDialog'),
-    '../components/UsersTable': component('UsersTable'),
-    '../components/IdentityNavigation': component('IdentityNavigation'),
-    '../types/user.types': loadModule('features/admin/types/user.types.ts'),
-    '../constants/systemRoles': loadModule('features/admin/constants/systemRoles.ts'),
-    '../services/userApi': {
-      userApi: { getUsers: async (query) => query },
-      getUserErrorMessage: String,
+    '@/components/ui/confirm-dialog': component('ConfirmDialog'),
+    '../components/users': {
+      UserFormDialog: 'UserFormDialog',
+      StudentImportDialog: 'StudentImportDialog',
+      UsersTable: 'UsersTable',
+      IdentityNavigation: 'IdentityNavigation',
+      UserFilterBar,
     },
+    '../hooks': useUsersMod,
+    '../types/user.types': userTypes,
+    '../constants/systemRoles': systemRoles,
+    '../services/userApi': userApiMock,
     '@/features/auth/services/authApi': {},
   });
   let tree;
@@ -223,7 +266,12 @@ function usersPageFixture(accountGroup, queryState = {}) {
   function find(predicate, node) {
     if (Array.isArray(node)) return node.flatMap((item) => find(predicate, item));
     if (!React.isValidElement(node)) return [];
-    return [...(predicate(node) ? [node] : []), ...find(predicate, node.props.children)];
+    const rendered = typeof node.type === 'function' ? node.type(node.props) : null;
+    return [
+      ...(predicate(node) ? [node] : []),
+      ...(rendered ? find(predicate, rendered) : []),
+      ...find(predicate, node.props.children),
+    ];
   }
   render();
   return {

@@ -8,7 +8,8 @@ import {
 } from '../components/milestone';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, AlertCircle, CheckCircle2, CalendarCheck } from 'lucide-react';
+import { ArrowLeft, AlertCircle, CheckCircle2, CalendarCheck, ShieldAlert, RotateCcw } from 'lucide-react';
+import { classifyThesisError, getThesisErrorMessage } from '../utils/thesisErrors';
 
 export function AdvisorMilestoneReviewPage() {
   const navigate = useNavigate();
@@ -42,6 +43,55 @@ export function AdvisorMilestoneReviewPage() {
         <div className="inline-flex items-center gap-2 text-slate-500 text-sm">
           <span className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           Đang tải dữ liệu báo cáo tiến độ...
+        </div>
+      </div>
+    );
+  }
+
+  if (reportQuery.isError) {
+    const errorKind = classifyThesisError(reportQuery.error);
+    const message = getThesisErrorMessage(
+      reportQuery.error,
+      'Không thể tải báo cáo tiến độ của mốc công việc này.',
+    );
+
+    return (
+      <div className="max-w-4xl mx-auto py-10 px-4">
+        <div className="p-8 text-center bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
+          <div className="size-12 mx-auto rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+            {errorKind === 'forbidden' ? (
+              <ShieldAlert className="size-6 text-amber-600" />
+            ) : (
+              <AlertCircle className="size-6" />
+            )}
+          </div>
+          <h2 className="text-lg font-bold text-slate-800">
+            {errorKind === 'forbidden'
+              ? 'Không có quyền truy cập báo cáo tiến độ'
+              : 'Không tải được dữ liệu báo cáo tiến độ'}
+          </h2>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">{message}</p>
+          <div className="flex items-center justify-center gap-3">
+            {errorKind !== 'forbidden' && (
+              <Button
+                type="button"
+                onClick={() => void reportQuery.refetch()}
+                className="bg-primary text-white"
+              >
+                <RotateCcw className="size-4 mr-2" />
+                Thử lại
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/advisor/milestones')}
+              className="border-slate-300"
+            >
+              <ArrowLeft className="size-4 mr-2" />
+              Quay lại danh sách mốc
+            </Button>
+          </div>
         </div>
       </div>
     );
