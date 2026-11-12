@@ -36,8 +36,7 @@ export interface NavSectionConfig {
 
 export const navigationSections: NavSectionConfig[] = [
   {
-    id: 'admin',
-    title: 'Quản trị hệ thống',
+    id: 'overview',
     roles: ['Admin'],
     items: [
       {
@@ -45,28 +44,11 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/',
         icon: LayoutDashboard,
       },
-      {
-        label: 'Tài khoản & Phân quyền',
-        path: '/modules/identity',
-        icon: ShieldCheck,
-      },
-      {
-        label: 'Cấu hình điểm',
-        path: '/admin/grade-config',
-        icon: SlidersHorizontal,
-        roles: ['Admin'],
-      },
-      {
-        label: 'Nhật ký hoạt động',
-        path: '/admin/audit-logs',
-        icon: ScrollText,
-        roles: ['Admin'],
-      },
     ],
   },
   {
-    id: 'academic',
-    title: 'Khóa luận',
+    id: 'planning',
+    title: 'Tổ chức & kế hoạch',
     items: [
       {
         label: 'Kế hoạch đợt',
@@ -78,16 +60,16 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/academic/roster',
         icon: UsersRound,
       },
+    ],
+  },
+  {
+    id: 'topics',
+    title: 'Đề tài & hướng dẫn',
+    items: [
       {
         label: 'Đề tài hướng dẫn',
         path: '/topics/advising',
         icon: BookOpen,
-        roles: ['Lecturer', 'Admin'],
-      },
-      {
-        label: 'Tiến độ sinh viên',
-        path: '/advisor/milestones',
-        icon: CalendarCheck,
         roles: ['Lecturer', 'Admin'],
       },
       {
@@ -109,16 +91,28 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
       },
       {
-        label: 'Báo cáo & tiến độ',
-        path: '/thesis/proposal',
-        icon: FileText,
-        roles: ['Student', 'Admin'],
-      },
-      {
         label: 'Thẩm định đề tài',
         path: '/topics/review',
         icon: ClipboardCheck,
         roles: ['Faculty', 'Admin'],
+      },
+    ],
+  },
+  {
+    id: 'progress',
+    title: 'Tiến độ & đánh giá',
+    items: [
+      {
+        label: 'Tiến độ sinh viên',
+        path: '/advisor/milestones',
+        icon: CalendarCheck,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
+        label: 'Báo cáo & tiến độ',
+        path: '/thesis/proposal',
+        icon: FileText,
+        roles: ['Student', 'Admin'],
       },
       {
         label: 'Thẩm định quy trình',
@@ -143,6 +137,30 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/councils/approval',
         icon: ClipboardCheck,
         roles: ['AcademicAffairs', 'Admin'],
+      },
+    ],
+  },
+  {
+    id: 'admin',
+    title: 'Hệ thống',
+    roles: ['Admin'],
+    items: [
+      {
+        label: 'Tài khoản & Phân quyền',
+        path: '/modules/identity',
+        icon: ShieldCheck,
+      },
+      {
+        label: 'Cấu hình điểm',
+        path: '/admin/grade-config',
+        icon: SlidersHorizontal,
+        roles: ['Admin'],
+      },
+      {
+        label: 'Nhật ký hoạt động',
+        path: '/admin/audit-logs',
+        icon: ScrollText,
+        roles: ['Admin'],
       },
     ],
   },

@@ -15,6 +15,10 @@ Tệp này ghi nhận nền tảng giao diện từ source hiện tại, không 
 
 ## Cách mở rộng giao diện
 
+- Sidebar dùng nền slate-50, chữ menu 13px theo `--font-size-md`, icon Lucide 16px nét 1.75 và hàng 36px trên desktop / tối thiểu 44px trên mobile. Mục đang chọn dùng nền primary/10, chữ và icon primary, không gradient hoặc bóng. Giữ logo và tên ứng dụng ở dòng dưới. Nút thu gọn/mở rộng desktop là chevron đơn trái/phải trong nút tròn 28px nằm vắt qua mép phải sidebar, tâm cách đỉnh 64px, theo ảnh tham chiếu của người dùng; không đặt trong thanh tiêu đề nội dung hoặc dưới logo.
+- Điều hướng chia thành Tổng quan, Tổ chức & kế hoạch, Đề tài & hướng dẫn, Tiến độ & đánh giá và Hệ thống; giữ nguyên route và phân quyền. Admin có nhóm đóng/mở, lưu trạng thái theo tài khoản và tự mở nhóm khi chuyển tới trang bên trong; vai trò có ít mục dùng danh sách chia nhóm. Dải icon trên desktop vẫn hiển thị mọi liên kết được phép; mobile luôn có nhãn đầy đủ, đóng bằng Escape và giữ focus trong menu khi mở.
+- Thông tin đợt ở sidebar dùng vùng gọn có đường phân cách, không bọc nhiều thẻ. Giữ tên/năm/học kỳ của tất cả đợt hiện hành từ API cùng trạng thái loading, lỗi/thử lại và thiếu quyền.
+
 - Trang tài khoản dùng header gọn, thống kê dạng bộ lọc nhanh và thanh lọc sát danh sách. Hàng bảng khoảng 72px trên desktop; màn hình nhỏ chuyển thành danh sách gọn. Thao tác thay đổi trạng thái nằm trong menu phụ và giữ bước xác nhận.
 - Tab tài khoản liền nhau và sát mép thẻ. Nền tab, vạch chọn hàng và khung chọn vai trò trượt bằng transform trong 360ms; nội dung giữ nguyên vị trí. Khi giảm chuyển động, dấu chọn đổi vị trí ngay.
 - Chuyển tab tài khoản ưu tiên commit route ngay (`navigate` với `flushSync`), hiển thị skeleton độc lập khi API đang tải. Không đợi hiệu ứng hoặc dữ liệu; router vẫn chặn rời trang nếu phân quyền chưa lưu. Ctrl/Cmd + bấm giữ hành vi mở liên kết của trình duyệt.

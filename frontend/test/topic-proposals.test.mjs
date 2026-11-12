@@ -359,6 +359,16 @@ const { navigationSections } = loadModule('shared/layout/navigationConfig.ts', {
 function renderSidebar(roles) {
   const Link = ({ to, children, ...props }) =>
     React.createElement('a', { ...props, href: to }, children);
+  const { SidebarNavigation } = loadModule('shared/layout/SidebarNavigation.tsx', {
+    react: React,
+    'react/jsx-runtime': jsxRuntime,
+    'react-router-dom': { NavLink: ({ end: _end, ...props }) => React.createElement(Link, props) },
+    'lucide-react': icons,
+    '@/lib/utils': { cn: (...parts) => parts.filter(Boolean).join(' ') },
+    '@/components/ui/badge': {
+      Badge: ({ children }) => React.createElement('span', null, children),
+    },
+  });
   const { AppLayout } = loadModule('shared/layout/AppLayout.tsx', {
     react: React,
     'react/jsx-runtime': jsxRuntime,
@@ -393,6 +403,7 @@ function renderSidebar(roles) {
     '@/shared/auth/identityAccess': { getIdentityAccess: () => ({ canAccess: false }) },
     './navigationConfig': { navigationSections },
     './CurrentAcademicBatch': { CurrentAcademicBatch: () => null },
+    './SidebarNavigation': { SidebarNavigation },
   });
   return renderToStaticMarkup(React.createElement(AppLayout));
 }
