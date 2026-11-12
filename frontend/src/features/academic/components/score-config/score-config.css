@@ -1,0 +1,75 @@
+.score-components th {
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.score-components th,
+.score-components td {
+  padding-inline: 0.625rem;
+}
+
+.score-weight-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.score-weight-input::-webkit-inner-spin-button,
+.score-weight-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .score-components table,
+  .score-components tbody {
+    display: block;
+  }
+
+  .score-components thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .score-components tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .score-components tbody td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .score-components td:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+  .score-components td:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+  .score-components td:nth-child(4) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .score-components td[colspan] {
+    grid-column: 1 / -1;
+  }
+
+  .score-components td:nth-child(2)::before,
+  .score-components td:nth-child(3)::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.375rem;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+}

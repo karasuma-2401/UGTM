@@ -37,12 +37,12 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
     label: `${b.batchName} (${b.academicYear})`,
   }));
 
-  const methodOptions = (
-    Object.keys(CALCULATION_METHOD_LABELS) as ScoreCalculationMethod[]
-  ).map((key) => ({
-    value: key,
-    label: CALCULATION_METHOD_LABELS[key],
-  }));
+  const methodOptions = (Object.keys(CALCULATION_METHOD_LABELS) as ScoreCalculationMethod[]).map(
+    (key) => ({
+      value: key,
+      label: CALCULATION_METHOD_LABELS[key],
+    }),
+  );
 
   const handleMinScoreChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.trim();
@@ -57,17 +57,16 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-xs p-5 sm:p-6 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
-        <div>
-          <h3 className="text-base font-bold text-slate-900 tracking-tight">Cấu hình</h3>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Chọn đợt khóa luận và thiết lập phương thức tính điểm chung.
-          </p>
-        </div>
-
-        <div className="w-full sm:w-80 md:w-96">
+    <section
+      aria-label="Thiết lập chung"
+      className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6 space-y-4"
+    >
+      <h2 className="text-base font-semibold text-slate-900">Thiết lập chung</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 min-[1400px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4">
+        <div className="min-w-0 space-y-1.5 sm:col-span-2 min-[1400px]:col-span-1">
+          <p className="text-sm font-medium text-slate-700">Đợt khóa luận</p>
           <Select
+            aria-label="Đợt khóa luận"
             options={batchOptions}
             value={selectedBatchId}
             onChange={(val) => onBatchChange(val as string)}
@@ -75,22 +74,18 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
               isLoadingBatches
                 ? 'Đang tải đợt khóa luận...'
                 : batches.length === 0
-                ? 'Chưa có đợt khóa luận'
-                : 'Chọn đợt khóa luận...'
+                  ? 'Chưa có đợt khóa luận'
+                  : 'Chọn đợt khóa luận...'
             }
-            triggerClassName="h-9 w-full text-xs font-medium"
+            triggerClassName="h-10 w-full text-sm font-medium bg-slate-50/60"
             contentClassName="min-w-full"
             disabled={isLoadingBatches || batches.length === 0}
           />
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-700">
-            Phương thức
-          </label>
+          <p className="text-sm font-medium text-slate-700">Phương thức tính điểm</p>
           <Select
+            aria-label="Phương thức tính điểm"
             options={methodOptions}
             value={calculationMethod}
             onChange={(val) => onCalculationMethodChange(val as ScoreCalculationMethod)}
@@ -100,10 +95,12 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-700">
+          <label htmlFor="reviewer-minimum-score" className="text-sm font-medium text-slate-700">
             Điểm sàn phản biện
           </label>
           <Input
+            id="reviewer-minimum-score"
+            aria-describedby="reviewer-score-help"
             type="number"
             step="0.1"
             min="0"
@@ -114,11 +111,11 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
             disabled={isReadOnly}
             className="h-10 text-sm bg-white"
           />
-          <p className="text-[11px] text-slate-400">
-            Giá trị của đợt mẫu, có thể cấu hình (0.0 – 10.0)
+          <p id="reviewer-score-help" className="text-xs text-slate-500 leading-relaxed">
+            Thang điểm 0–10. Để trống nếu không áp dụng điểm sàn.
           </p>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
