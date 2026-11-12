@@ -1,3 +1,4 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ScrollText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -142,14 +143,7 @@ export const AuditLogPage: React.FC = () => {
         </Badge>
       </PageHeader>
 
-      {error && (
-        <div
-          role="alert"
-          className="rounded-xl border border-rose-200 bg-rose-50/80 p-4 text-xs sm:text-sm text-rose-700 font-medium shadow-xs"
-        >
-          {error}
-        </div>
-      )}
+      {error && <InlineAlert tone="error">{error}</InlineAlert>}
 
       <AuditLogFilterBar
         filter={filter}

@@ -1,16 +1,7 @@
+import { OperationToast } from '@/shared/notifications';
 import { useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  BookOpen,
-  FileText,
-  GraduationCap,
-  Search,
-  SlidersHorizontal,
-  FunnelX,
-  Eye,
-  MailCheck,
-  ShieldAlert,
-} from 'lucide-react';
+import { BookOpen, FileText, GraduationCap, Search, SlidersHorizontal, FunnelX, Eye, MailCheck, ShieldAlert } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Card } from '@/components/ui/card';
@@ -170,14 +161,7 @@ export function StudentTopicCatalogContent() {
           <StatusBadge tone="neutral">Chỉ xem</StatusBadge>
         )}
       </PageHeader>
-      {student && notice && (
-        <p
-          role="status"
-          className="rounded-xl border border-emerald-100 bg-emerald-50 px-5 py-3 text-sm text-emerald-800"
-        >
-          {notice}
-        </p>
-      )}
+      <OperationToast message={student ? notice : ''} onConsumed={() => setNotice('')} />
       {student && (
         <StudentRegistrationStatusCard
           status={status}

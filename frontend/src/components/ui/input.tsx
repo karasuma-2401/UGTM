@@ -27,6 +27,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ref,
   ) => {
     const hasError = Boolean(error || isInvalid);
+    const descriptionId = React.useId();
+    const describedBy = [props['aria-describedby'], error || helperText ? descriptionId : null].filter(Boolean).join(' ') || undefined;
 
     const inputElement = (
       <div className={cn('relative flex items-center w-full', containerClassName)}>
@@ -49,6 +51,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           disabled={disabled}
           aria-invalid={hasError ? 'true' : undefined}
           {...props}
+          aria-describedby={describedBy}
         />
         {rightIcon && (
           <div className="absolute right-3 flex items-center justify-center text-muted-foreground [&_svg]:size-4">
@@ -66,11 +69,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <div className="w-full">
         {inputElement}
         {error ? (
-          <p className="text-xs font-medium text-destructive mt-1.5" role="alert">
+          <p id={descriptionId} className="text-xs font-medium text-destructive mt-1.5" role="alert">
             {error}
           </p>
         ) : helperText ? (
-          <p className="text-xs text-muted-foreground mt-1.5">{helperText}</p>
+          <p id={descriptionId} className="text-xs text-muted-foreground mt-1.5">{helperText}</p>
         ) : null}
       </div>
     );

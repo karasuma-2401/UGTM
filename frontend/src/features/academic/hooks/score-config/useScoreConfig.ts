@@ -84,7 +84,7 @@ export function useScoreConfig() {
         const batchTitle = data.currentBatch?.batchName || 'đợt khóa luận';
         modals.setNotice(
           savedConfig.status === 'Draft'
-            ? `Đã lưu thành công bản nháp cấu hình điểm (Phiên bản v${savedConfig.versionNo}) cho ${batchTitle}. Bạn có thể tiếp tục chỉnh sửa hoặc bấm "Công bố (Publish)" để áp dụng chính thức.`
+            ? `Đã lưu thành công bản nháp cấu hình điểm (Phiên bản v${savedConfig.versionNo}) cho ${batchTitle}. Bạn có thể tiếp tục chỉnh sửa hoặc bấm "Công bố" để áp dụng chính thức.`
             : `Đã tạo thành công bản nháp cấu hình điểm (Phiên bản v${savedConfig.versionNo}) cho ${batchTitle}.`,
         );
         const reloaded = await data.loadBatchConfig(data.selectedBatchId);
@@ -119,7 +119,7 @@ export function useScoreConfig() {
       onSuccess: async (published) => {
         const batchTitle = data.currentBatch?.batchName || 'đợt khóa luận';
         modals.setNotice(
-          `Đã công bố (Publish) thành công cấu hình điểm phiên bản v${published.versionNo} cho ${batchTitle}. Cấu hình hiện đang có hiệu lực áp dụng!`,
+          `Đã công bố thành công cấu hình điểm phiên bản v${published.versionNo} cho ${batchTitle}. Cấu hình hiện đang có hiệu lực áp dụng!`,
         );
         const reloaded = await data.loadBatchConfig(data.selectedBatchId);
         form.populateFromConfig(reloaded);

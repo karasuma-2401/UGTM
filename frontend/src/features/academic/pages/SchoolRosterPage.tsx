@@ -1,5 +1,7 @@
+import { OperationToast } from '@/shared/notifications';
 import React from 'react';
-import { UsersRound, CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react';
+import { UsersRound, RotateCcw } from 'lucide-react';
+import { InlineAlert } from '@/components/ui/inline-alert';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { UserFormDialog } from '@/features/identity/components/users/UserFormDialog';
@@ -58,36 +60,10 @@ export const SchoolRosterPage: React.FC = () => {
       >
       </PageHeader>
 
-      {roster.notice && (
-        <div
-          role="status"
-          className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-xs sm:text-sm text-emerald-800 flex items-center justify-between shadow-xs transition-all animate-in fade-in"
-        >
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
-            <span className="font-medium">{roster.notice}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => roster.setNotice(null)}
-            className="text-emerald-700 hover:text-emerald-950 font-bold ml-3 text-xs underline cursor-pointer"
-          >
-            Đóng
-          </button>
-        </div>
-      )}
+      <OperationToast message={roster.notice} onConsumed={() => roster.setNotice(null)} />
 
       {activeErrorMessage && (
-        <div
-          role="alert"
-          className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-xs sm:text-sm text-rose-800 flex flex-wrap items-center justify-between gap-3 shadow-xs transition-all animate-in fade-in"
-        >
-          <div className="flex items-center gap-2.5">
-            <AlertCircle className="size-5 text-rose-600 shrink-0" />
-            <span className="font-medium">{activeErrorMessage}</span>
-          </div>
-          <div className="flex items-center gap-3 ml-auto">
-            {data.loadError && (
+        <InlineAlert onDismiss={handleDismissError} action={data.loadError ? (
               <Button
                 type="button"
                 variant="outline"
@@ -99,16 +75,9 @@ export const SchoolRosterPage: React.FC = () => {
                 <RotateCcw className="size-3.5 mr-1.5" />
                 Thử lại
               </Button>
-            )}
-            <button
-              type="button"
-              onClick={handleDismissError}
-              className="text-rose-700 hover:text-rose-950 font-bold text-xs underline cursor-pointer"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
+            ) : undefined}>
+          {activeErrorMessage}
+        </InlineAlert>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">

@@ -1,22 +1,9 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { notify } from '@/shared/notifications';
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useBeforeUnload, useBlocker } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  FilePlus2,
-  FileText,
-  Clock3,
-  RotateCcw,
-  Search,
-  SlidersHorizontal,
-  Save,
-  Send,
-  Eye,
-  CheckCircle2,
-  Circle,
-  X,
-  ArrowLeft,
-  FunnelX,
-} from 'lucide-react';
+import { FilePlus2, FileText, Clock3, RotateCcw, Search, SlidersHorizontal, Save, Send, Eye, CheckCircle2, Circle, X, ArrowLeft, FunnelX } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -283,7 +270,7 @@ export function TopicProposePage({
       setIsPreviewOpen(false);
       setRecovery(null);
       setLocalSavedAt('');
-      setNotice(
+      notify.success(
         submitImmediately
           ? 'Đã gửi đề tài đến Khoa để thẩm định.'
           : topic.status === 'NeedRevision'
@@ -550,26 +537,14 @@ export function TopicProposePage({
           </div>
         </div>
       )}
-      {localError && !isFormOpen && (
-        <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-          {localError}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
-          {notice}
-        </p>
-      )}
+      {localError && !isFormOpen && <InlineAlert tone="error">{localError}</InlineAlert>}
+      {notice && <InlineAlert tone="info">{notice}</InlineAlert>}
       {detailMutation.isPending && (
         <p role="status" className="text-sm text-slate-500">
           Đang tải nội dung đề tài...
         </p>
       )}
-      {detailMutation.isError && (
-        <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
-          {getTopicErrorMessage(detailMutation.error)}
-        </p>
-      )}
+      {detailMutation.isError && <InlineAlert tone="error">{getTopicErrorMessage(detailMutation.error)}</InlineAlert>}
 
       {isFormOpen && (
         <Dialog

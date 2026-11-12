@@ -1,3 +1,5 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { OperationToast } from '@/shared/notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import { UsersRound, GraduationCap, UserPlus, Clock3, ShieldOff, Upload, X } from 'lucide-react';
 
@@ -67,17 +69,9 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         )}
       </PageHeader>
 
-      {modals.notice && (
-        <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
-          {modals.notice}
-        </p>
-      )}
+      <OperationToast message={modals.notice} onConsumed={() => modals.setNotice('')} />
 
-      {actions.mutationError && (
-        <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
-          {getUserErrorMessage(actions.mutationError)}
-        </p>
-      )}
+      {actions.mutationError && <InlineAlert tone="error">{getUserErrorMessage(actions.mutationError)}</InlineAlert>}
 
       {modals.isFormOpen && canManage && (
         <UserFormDialog

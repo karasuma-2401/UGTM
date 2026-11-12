@@ -9,6 +9,11 @@ import * as icons from 'lucide-react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 function loadModule(path, dependencies = {}, browserWindow = {}) {
+  dependencies = {
+    '@/shared/notifications': { OperationToast: 'OperationToast', notify: { success() {} } },
+    '@/components/ui/inline-alert': { InlineAlert: 'InlineAlert' },
+    ...dependencies,
+  };
   const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: {

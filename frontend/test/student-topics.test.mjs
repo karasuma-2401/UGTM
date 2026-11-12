@@ -7,6 +7,11 @@ import * as jsxRuntime from 'react/jsx-runtime';
 import * as icons from 'lucide-react';
 
 function load(path, dependencies = {}) {
+  dependencies = {
+    '@/shared/notifications': { OperationToast: 'OperationToast', notify: { success() {} } },
+    '@/components/ui/inline-alert': { InlineAlert: 'InlineAlert' },
+    ...dependencies,
+  };
   const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: {

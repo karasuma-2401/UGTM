@@ -16,6 +16,7 @@ export interface ConfirmDialogProps {
   cancelText?: string;
   isConfirming?: boolean;
   className?: string;
+  confirmButtonClassName?: string;
 }
 
 interface ThemeItem {
@@ -29,19 +30,17 @@ const THEME_CONFIG: Record<ConfirmDialogType, ThemeItem> = {
   },
   warning: {
     confirmBtn:
-      'bg-amber-600 hover:bg-amber-700 text-white shadow-xs focus-visible:ring-amber-600/30',
+      'bg-amber-700 hover:bg-amber-800 text-white shadow-xs focus-visible:ring-amber-700/30',
   },
   error: {
-    confirmBtn:
-      'bg-red-600 hover:bg-red-700 text-white shadow-xs focus-visible:ring-red-600/30',
+    confirmBtn: 'bg-red-600 hover:bg-red-700 text-white shadow-xs focus-visible:ring-red-600/30',
   },
   success: {
     confirmBtn:
       'bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs focus-visible:ring-emerald-600/30',
   },
   info: {
-    confirmBtn:
-      'bg-primary hover:bg-primary/92 text-white shadow-xs focus-visible:ring-primary/30',
+    confirmBtn: 'bg-primary hover:bg-primary/92 text-white shadow-xs focus-visible:ring-primary/30',
   },
 };
 
@@ -56,6 +55,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   cancelText = 'Hủy',
   isConfirming = false,
   className,
+  confirmButtonClassName,
 }) => {
   const theme = THEME_CONFIG[type];
 
@@ -74,9 +74,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       <div className="flex flex-col">
         {/* Header with centered title and clean divider */}
         <div className="border-b border-slate-300 px-6 py-4 text-center">
-          <h3 className="text-base font-semibold text-slate-800 leading-snug">
-            {title}
-          </h3>
+          <h3 className="text-base font-semibold text-slate-800 leading-snug">{title}</h3>
         </div>
 
         {/* Content area: left-aligned text and right-aligned buttons */}
@@ -103,7 +101,11 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               isLoading={isConfirming}
               loadingText="Đang xử lý..."
               onClick={onConfirm}
-              className={cn('h-9 w-full rounded-lg px-4 text-sm font-medium sm:w-auto', theme.confirmBtn)}
+              className={cn(
+                'h-9 w-full rounded-lg px-4 text-sm font-medium sm:w-auto',
+                theme.confirmBtn,
+                confirmButtonClassName,
+              )}
             >
               {confirmText}
             </Button>

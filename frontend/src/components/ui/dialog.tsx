@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from './button';
 import { cn } from '@/lib/utils';
+import { registerNotificationDialog } from '@/shared/notifications/dialog-host';
 
 export interface DialogProps {
   title?: ReactNode;
@@ -36,9 +37,11 @@ export function Dialog({
     const dialog = ref.current;
     if (!dialog || !open) return;
     if (!dialog.open) dialog.showModal();
+    const unregisterNotifications = registerNotificationDialog(dialog);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
+      unregisterNotifications();
       dialog.close();
       document.body.style.overflow = previousOverflow;
     };
