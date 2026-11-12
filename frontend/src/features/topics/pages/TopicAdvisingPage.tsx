@@ -11,22 +11,23 @@ import {
   Info,
   Copy,
   CheckCircle2,
+  GraduationCap,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { SelectableTableRow } from '@/components/ui/selectable-table-row';
-import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Dialog } from '@/components/ui/dialog';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
+import { StatusTabs } from '@/components/ui/status-tabs';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { Skeleton } from '@/components/ui/skeleton';
 import { InfoCell } from '@/components/ui/info-cell';
+import { NavigationTabs } from '@/components/ui/navigation-tabs';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
@@ -209,123 +210,339 @@ export function TopicAdvisingPage({
     setDetailId(id);
   }
 
+  const hasFilters = Boolean(draft.keyword || draft.batchId || draft.status);
+  const activeBatchName = batches.find((b) => b.id === (filters.batchId || draft.batchId))?.batchName;
+
+  function removeFilter(key: 'keyword' | 'batchId' | 'status') {
+    const next = { ...filters, [key]: '' };
+    setFilters(next);
+    setDraft((prev) => ({ ...prev, [key]: '' }));
+    setPage(1);
+    setSelectedRowId(null);
+  }
+
   return (
-    <div className="min-w-0 space-y-5">
+    <div className="space-y-6 animate-in fade-in-50 duration-300">
       {!embedded && (
         <PageHeader
+          compact
+          accent
           title="Đề tài hướng dẫn"
-          icon={<BookOpen />}
+          description="Quản lý danh sách đề tài đề xuất, theo dõi nhóm sinh viên đăng ký và tiến độ hướng dẫn khóa luận tốt nghiệp"
           navigation={
-            <nav className="flex gap-1 overflow-x-auto" aria-label="Đề tài hướng dẫn">
-              {tabs.map((item) => (
-                <Button
-                  key={item.id}
-                  type="button"
-                  variant={tab === item.id ? 'secondary' : 'ghost'}
-                  onClick={() => changeTab(item.id)}
-                >
-                  {item.label}
-                </Button>
-              ))}
-            </nav>
+            <NavigationTabs
+              tabs={tabs.map((item) => ({
+                id: item.id,
+                label: item.label,
+                icon:
+                  item.id === 'topics'
+                    ? BookOpen
+                    : item.id === 'registrations'
+                      ? Users
+                      : GraduationCap,
+              }))}
+              activeId={tab}
+              onSelect={(id) => changeTab(id as AdvisingTab)}
+              ariaLabel="Đề tài hướng dẫn"
+              continuityKey="topics-advising-standalone-tabs"
+            />
           }
         />
       )}
-      <form
-        onSubmit={applyFilters}
-        className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4"
-      >
-        <div className="min-w-60 flex-1">
-          <Input
-            aria-label="Tìm đề tài hoặc sinh viên"
-            placeholder="Tên đề tài, sinh viên, MSSV hoặc mã nhóm"
-            leftIcon={<Search />}
-            value={draft.keyword}
-            onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
-          />
+
+      {/* Row 1: Search & Filter Card (8 cols) + Bento Guidelines & Stats Card (4 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="lg:col-span-8">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5 transition-all hover:border-slate-300">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                  {tab === 'registrations'
+                    ? 'Tìm kiếm & Bộ lọc nhóm đăng ký'
+                    : tab === 'advising'
+                      ? 'Tìm kiếm & Bộ lọc nhóm hướng dẫn'
+                      : 'Tìm kiếm & Bộ lọc đề tài'}
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {tab === 'registrations'
+                    ? 'Lọc danh sách nhóm sinh viên đăng ký đề tài theo từ khóa, đợt khóa luận và trạng thái'
+                    : tab === 'advising'
+                      ? 'Lọc danh sách nhóm đang hướng dẫn và theo dõi tiến độ khóa luận tốt nghiệp'
+                      : 'Lọc danh sách đề tài theo từ khóa, đợt khóa luận và trạng thái'}
+                </p>
+              </div>
+              {hasFilters && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<FunnelX className="size-3.5" />}
+                  onClick={resetFilters}
+                  className="h-8 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  Xóa bộ lọc
+                </Button>
+              )}
+            </div>
+
+            <form onSubmit={applyFilters} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
+                  <span>Tìm kiếm nhóm hoặc sinh viên</span>
+                  <Input
+                    aria-label="Tìm đề tài hoặc sinh viên"
+                    placeholder="Tên đề tài, sinh viên, MSSV hoặc mã nhóm"
+                    leftIcon={<Search className="size-4" />}
+                    className="h-10 rounded-xl border-slate-200/90 bg-slate-50/60 shadow-none focus-visible:bg-white text-xs"
+                    value={draft.keyword}
+                    onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
+                  />
+                </label>
+                <div className="space-y-1.5 text-xs font-semibold text-slate-700">
+                  <span>Đợt khóa luận</span>
+                  <Select<string>
+                    aria-label="Đợt KLTN"
+                    triggerClassName="h-10 rounded-xl border-slate-200/90 bg-slate-50/60 shadow-none focus-visible:bg-white text-xs font-medium"
+                    value={draft.batchId}
+                    options={[
+                      { value: '', label: 'Tất cả đợt khóa luận' },
+                      ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
+                    ]}
+                    onChange={(batchId: string) => setDraft({ ...draft, batchId })}
+                    searchable
+                    disabled={!canReadBatches || batchesQuery.isPending}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                <div className="space-y-1.5 text-xs font-semibold text-slate-700">
+                  <span>Trạng thái tiến độ</span>
+                  <Select<string>
+                    aria-label="Trạng thái"
+                    triggerClassName="h-10 rounded-xl border-slate-200/90 bg-slate-50/60 shadow-none focus-visible:bg-white text-xs font-medium"
+                    value={draft.status}
+                    options={[
+                      { value: '', label: 'Tất cả trạng thái' },
+                      ...statusOptions.map(([value, label]) => ({ value, label })),
+                    ]}
+                    onChange={(status: string) => setDraft({ ...draft, status })}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="submit"
+                    variant="soft"
+                    leftIcon={<SlidersHorizontal className="size-3.5" />}
+                    className="h-10 flex-1 rounded-xl text-xs font-semibold shadow-xs"
+                  >
+                    Áp dụng
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    leftIcon={<FunnelX className="size-3.5" />}
+                    className="h-10 rounded-xl text-xs font-semibold border-slate-200 hover:bg-slate-50 px-3.5"
+                    onClick={resetFilters}
+                  >
+                    Bỏ lọc
+                  </Button>
+                </div>
+              </div>
+            </form>
+
+            {Boolean(filters.keyword || filters.batchId || filters.status) && (
+              <div
+                className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-slate-100"
+                aria-label="Bộ lọc đang áp dụng"
+              >
+                <span className="text-[11px] font-medium text-slate-400">Đang lọc theo:</span>
+                {filters.keyword && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    rightIcon={<X className="size-3" />}
+                    onClick={() => removeFilter('keyword')}
+                    className="h-7 text-xs rounded-lg"
+                    aria-label={`Bỏ lọc từ khóa ${filters.keyword}`}
+                  >
+                    Từ khóa: {filters.keyword}
+                  </Button>
+                )}
+                {filters.batchId && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    rightIcon={<X className="size-3" />}
+                    onClick={() => removeFilter('batchId')}
+                    className="h-7 text-xs rounded-lg"
+                    aria-label="Bỏ lọc đợt KLTN"
+                  >
+                    {batches.find((b) => b.id === filters.batchId)?.batchName ?? 'Đợt đã chọn'}
+                  </Button>
+                )}
+                {filters.status && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    rightIcon={<X className="size-3" />}
+                    onClick={() => removeFilter('status')}
+                    className="h-7 text-xs rounded-lg"
+                    aria-label="Bỏ lọc trạng thái"
+                  >
+                    {((tab === 'topics' ? TOPIC_STATUS_LABELS : GROUP_STATUS_LABELS) as Record<string, string>)[filters.status] ??
+                      filters.status}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-        <Select
-          aria-label="Đợt KLTN"
-          value={draft.batchId}
-          containerClassName="w-full sm:w-56"
-          disabled={!canReadBatches || batchesQuery.isPending}
-          options={[
-            { value: '', label: 'Tất cả đợt KLTN' },
-            ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
-          ]}
-          onChange={(batchId: string) => setDraft({ ...draft, batchId })}
-        />
-        <Select
-          aria-label="Trạng thái"
-          value={draft.status}
-          containerClassName="w-full sm:w-56"
-          options={[
-            { value: '', label: 'Tất cả trạng thái' },
-            ...statusOptions.map(([value, label]) => ({ value, label })),
-          ]}
-          onChange={(status: string) => setDraft({ ...draft, status })}
-        />
-        <Button type="submit" leftIcon={<SlidersHorizontal />}>
-          Áp dụng
-        </Button>
-        <Button type="button" variant="outline" leftIcon={<FunnelX />} onClick={resetFilters}>
-          Bỏ lọc
-        </Button>
-      </form>
+
+        {/* Right Bento Card (4 cols) - Tổng quan & Quy định */}
+        <div className="lg:col-span-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col justify-between h-full transition-all hover:border-slate-300">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                  Tổng quan hướng dẫn
+                </h2>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs">
+                  {activeBatchName || 'Tất cả đợt khóa luận'}
+                </span>
+              </div>
+
+              {/* StatisticsBar */}
+              <section aria-label="Thống kê hướng dẫn" aria-busy={busy}>
+                <StatisticsBar
+                  layout="card"
+                  className="grid-cols-2 auto-cols-auto grid-flow-row gap-2.5"
+                  loading={query.isPending}
+                  items={[
+                    {
+                      key: 'topics',
+                      label: 'Tổng đề tài',
+                      value: topics?.length ?? '—',
+                      icon: <BookOpen />,
+                      tone: 'primary',
+                      onClick: () => changeTab('topics'),
+                      active: tab === 'topics' && !filters.status && !filters.keyword,
+                    },
+                    {
+                      key: 'pending',
+                      label: 'Chờ xác nhận',
+                      value: confirmationStatistics.pending ?? unavailable,
+                      icon: <Mail />,
+                      tone: 'warning',
+                    },
+                    {
+                      key: 'advising',
+                      label: 'Nhóm hướng dẫn',
+                      value: topics?.filter(isAdvisingGroup).length ?? '—',
+                      icon: <Users />,
+                      tone: 'primary',
+                      onClick: () => changeTab('advising'),
+                      active: tab === 'advising' && !filters.status && !filters.keyword,
+                    },
+                    {
+                      key: 'students',
+                      label: 'Sinh viên',
+                      value: confirmationStatistics.confirmed ?? unavailable,
+                      icon: <CheckCircle2 />,
+                      tone: 'muted',
+                    },
+                  ]}
+                />
+              </section>
+
+              {/* Policy Rules Key-Value List */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5 text-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-slate-500 shrink-0 font-medium">Sinh viên / đề tài:</span>
+                  <span className="font-semibold text-slate-800 text-right leading-snug">
+                    Tối đa 2 sinh viên
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-2 pt-2 border-t border-slate-200/80">
+                  <span className="text-slate-500 shrink-0 font-medium">Xác nhận lời mời:</span>
+                  <span className="font-semibold text-slate-800 text-right leading-snug">
+                    Sinh viên xác nhận trong đợt
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-2 pt-2 border-t border-slate-200/80">
+                  <span className="text-slate-500 shrink-0 font-medium">Tiến độ khóa luận:</span>
+                  <span className="font-semibold text-slate-800 text-right leading-snug">
+                    Đề cương, giữa kỳ & báo cáo
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 mt-4 text-[11px] text-slate-400">
+              Giảng viên hướng dẫn phản hồi đề cương và duyệt tiến độ của nhóm sinh viên.
+            </div>
+          </div>
+        </div>
+      </div>
+
       {batchesQuery.isError && (
         <p role="alert" className="text-sm text-amber-700">
-          Không thể tải danh sách đợt KLTN.{' '}
+          Không thể tải danh sách đợt khóa luận.{' '}
           <Button variant="link" size="sm" onClick={() => void batchesQuery.refetch()}>
             Thử lại
           </Button>
         </p>
       )}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
-        <ListCardHeader
-          title={tabs.find((item) => item.id === tab)?.label}
-          icon={<Users />}
-          description={
-            topics ? `${total} ${tab === 'topics' ? 'đề tài' : 'nhóm'}` : 'Đang cập nhật danh sách'
-          }
-        >
-          <StatisticsBar
-            loading={query.isPending}
-            items={[
-              {
-                key: 'topics',
-                label: 'Tổng đề tài',
-                value: topics?.length ?? '—',
-                icon: <BookOpen />,
-                tone: 'primary',
-                onClick: () => changeTab('topics'),
-                active: tab === 'topics' && !filters.status && !filters.keyword,
-              },
-              {
-                key: 'pending',
-                label: 'Chờ xác nhận',
-                value: confirmationStatistics.pending ?? unavailable,
-                icon: <Mail />,
-                tone: 'warning',
-              },
-              {
-                key: 'advising',
-                label: 'Nhóm hướng dẫn',
-                value: topics?.filter(isAdvisingGroup).length ?? '—',
-                icon: <Users />,
-                tone: 'primary',
-                onClick: () => changeTab('advising'),
-                active: tab === 'advising' && !filters.status && !filters.keyword,
-              },
-              {
-                key: 'students',
-                label: 'SV đã xác nhận',
-                value: confirmationStatistics.confirmed ?? unavailable,
-                icon: <CheckCircle2 />,
-                tone: 'muted',
-              },
-            ]}
-          />
-        </ListCardHeader>
+
+      {/* Row 2: Data Table Card */}
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs transition-all hover:border-slate-300">
+        <div className="p-5 sm:px-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">
+              {tab === 'registrations'
+                ? 'Danh sách nhóm đăng ký đề tài'
+                : tab === 'advising'
+                  ? 'Danh sách nhóm đang hướng dẫn'
+                  : 'Danh sách đề tài'}
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {tab === 'registrations'
+                ? 'Theo dõi danh sách các nhóm sinh viên đã gửi đăng ký đề tài và trạng thái phê duyệt'
+                : tab === 'advising'
+                  ? 'Theo dõi nhóm thực hiện khóa luận, hồ sơ đề cương và các mốc đánh giá tiến độ'
+                  : 'Quản lý danh sách các đề tài đã lưu nháp, chờ duyệt hoặc đã công bố'}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusTabs
+              ariaLabel="Chuyển chế độ xem đề tài hoặc nhóm"
+              activeKey={tab}
+              onSelect={(selectedTab) => changeTab(selectedTab as 'topics' | 'advising')}
+              loading={query.isPending}
+              tabs={[
+                {
+                  key: 'topics',
+                  label: 'Đề tài của tôi',
+                  count: topics?.length,
+                  icon: <BookOpen className="size-3.5 text-slate-500" />,
+                  tone: 'primary',
+                },
+                {
+                  key: 'advising',
+                  label: 'Nhóm hướng dẫn',
+                  count: topics?.filter(isAdvisingGroup).length,
+                  icon: <Users className="size-3.5 text-slate-500" />,
+                  tone: 'primary',
+                },
+              ]}
+            />
+          </div>
+        </div>
+
         <div aria-busy={busy} className="h-[min(60vh,40rem)] min-h-[20rem] overflow-auto">
           {query.isPending ? (
             <TableSkeleton
@@ -334,7 +551,7 @@ export function TopicAdvisingPage({
                 tab === 'topics'
                   ? [
                       { label: 'Đề tài', variant: 'topic' },
-                      { label: 'Đợt KLTN', width: 'w-40' },
+                      { label: 'Đợt khóa luận', width: 'w-40' },
                       { label: 'Sinh viên', width: 'w-24', variant: 'number' },
                       { label: 'Trạng thái', width: 'w-56', variant: 'badge' },
                       { label: 'Thao tác', width: 'w-44', variant: 'actions' },
@@ -374,16 +591,16 @@ export function TopicAdvisingPage({
                 <col className="w-56" />
                 <col className="w-44" />
               </colgroup>
-              <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
+              <thead className="sticky top-0 z-10 border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 <tr>
                   {(tab === 'topics'
-                    ? ['Đề tài', 'Đợt KLTN', 'Sinh viên', 'Trạng thái', 'Thao tác']
+                    ? ['Đề tài', 'Đợt khóa luận', 'Sinh viên', 'Trạng thái', 'Thao tác']
                     : ['Nhóm', 'Đề tài', 'Sinh viên', 'Tiến độ khóa luận', 'Thao tác']
                   ).map((label) => (
                     <th
                       scope="col"
                       key={label}
-                      className={`px-5 py-4 font-bold ${label === 'Thao tác' ? 'text-center' : ''}`}
+                      className={`px-5 py-3.5 font-bold ${label === 'Thao tác' ? 'text-center' : ''}`}
                     >
                       {label}
                     </th>
@@ -391,7 +608,7 @@ export function TopicAdvisingPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {visibleRows.map((topic) => (
+                {visibleRows.map((topic, index) => (
                   <SelectableTableRow
                     key={topic.id}
                     selected={selectedRowId === topic.id}
@@ -408,7 +625,7 @@ export function TopicAdvisingPage({
                         <td className="px-5 py-4 text-xs text-slate-500">
                           {batchName(topic.batchId)}
                         </td>
-                        <td className="px-5 py-4 tabular-nums">
+                        <td className="px-5 py-4 tabular-nums text-xs font-semibold text-slate-700">
                           {topic.registeredStudentsCount}/{topic.studentNumber ?? '—'}
                         </td>
                         <td className="px-5 py-4">
@@ -418,18 +635,21 @@ export function TopicAdvisingPage({
                     ) : (
                       <>
                         <td className="px-5 py-4">
-                          <Badge variant="info" className="rounded-lg">
-                            Nhóm
-                          </Badge>
-                          <p
-                            className="mt-2 truncate font-mono text-xs text-slate-500"
-                            title={topic.group!.groupId}
-                          >
-                            {topic.group!.groupId}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-400">
-                            {date(topic.group!.createdAt)}
-                          </p>
+                          <div className="space-y-1">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                              <Users className="size-3 text-blue-600" />
+                              <span>Nhóm {String((currentPage - 1) * pageSize + index + 1).padStart(2, '0')}</span>
+                            </span>
+                            <p
+                              className="text-[11px] font-mono text-slate-400 truncate max-w-[140px]"
+                              title={`Mã nhóm: ${topic.group!.groupId}`}
+                            >
+                              #{topic.group!.groupId.slice(0, 8)}
+                            </p>
+                            <p className="text-[11px] text-slate-400">
+                              {date(topic.group!.createdAt)}
+                            </p>
+                          </div>
                         </td>
                         <td className="px-5 py-4">
                           <p
@@ -449,11 +669,12 @@ export function TopicAdvisingPage({
                                 key={student.studentId}
                                 title={student.fullName}
                                 description={student.userCode ?? 'Chưa có MSSV'}
-                                titleClassName="font-medium"
+                                titleClassName="font-medium text-xs text-slate-900"
+                                descriptionClassName="text-[11px] text-slate-500 font-mono"
                                 leading={
                                   <span
                                     aria-hidden="true"
-                                    className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500"
+                                    className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[10px] font-bold text-blue-600 ring-1 ring-inset ring-blue-100"
                                   >
                                     {student.fullName
                                       .trim()
@@ -476,9 +697,9 @@ export function TopicAdvisingPage({
                       <Button
                         variant="soft"
                         size="sm"
-                        leftIcon={<Eye />}
+                        leftIcon={<Eye className="size-3.5" />}
                         disabled={busy}
-                        className="h-9 w-28 rounded-lg shadow-none"
+                        className="h-8 w-28 rounded-xl font-semibold shadow-2xs"
                         onClick={() => openDetail(topic.id)}
                         aria-label={`Xem chi tiết ${topic.titleVi}`}
                       >
@@ -491,27 +712,27 @@ export function TopicAdvisingPage({
             </table>
           )}
         </div>
+
         {!query.isPending && !query.isError && (
           <>
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-3 text-sm">
-              <label htmlFor="advising-page-size">Số dòng mỗi trang</label>
-              <select
-                id="advising-page-size"
-                className="rounded-md border border-slate-200 bg-white p-2"
-                value={pageSize}
-                onChange={(event) => {
-                  setPageSize(Number(event.target.value));
-                  setPage(1);
-                  setSelectedRowId(null);
-                }}
-              >
-                {PAGE_SIZES.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              id="advising-page-size"
+              className="sr-only"
+              aria-hidden="true"
+              tabIndex={-1}
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPage(1);
+                setSelectedRowId(null);
+              }}
+            >
+              {PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
             <TablePagination
               pageNumber={currentPage}
               pageSize={pageSize}
@@ -521,11 +742,16 @@ export function TopicAdvisingPage({
                 setPage(next);
                 setSelectedRowId(null);
               }}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(1);
+                setSelectedRowId(null);
+              }}
               itemLabel={tab === 'topics' ? 'đề tài' : 'nhóm'}
             />
           </>
         )}
-      </Card>
+      </div>
       {detailId && (
         <Dialog
           title={tab === 'topics' ? 'Chi tiết đề tài hướng dẫn' : 'Chi tiết nhóm đăng ký'}
@@ -559,7 +785,7 @@ export function TopicAdvisingPage({
                     <dd className="mt-1 font-medium">{user?.fullName}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-slate-500">Đợt KLTN</dt>
+                    <dt className="text-xs text-slate-500">Đợt khóa luận</dt>
                     <dd className="mt-1">{batchName(detail.batchId)}</dd>
                   </div>
                   <div>
@@ -585,9 +811,11 @@ export function TopicAdvisingPage({
                   <section className="space-y-4 rounded-xl border border-slate-200 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <h3 className="font-semibold">Nhóm đăng ký</h3>
-                        <p className="mt-1 break-all font-mono text-xs text-slate-500">
-                          {detail.group.groupId}
+                        <h3 className="font-semibold text-slate-900">
+                          Nhóm đăng ký #{detail.group.groupId.slice(0, 8).toUpperCase()}
+                        </h3>
+                        <p className="mt-1 break-all font-mono text-xs text-slate-400">
+                          Mã định danh: {detail.group.groupId}
                         </p>
                         <p className="mt-1 text-xs text-slate-500">
                           Ngày tạo: {date(detail.group.createdAt)}

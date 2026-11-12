@@ -22,17 +22,10 @@ export const PeriodPage: React.FC = () => {
   const batchOptions = useMemo(
     () => [
       { value: 'new', label: '+ Khởi tạo đợt mới' },
-      ...data.batches.map((b) => {
-        let statusBadge = 'Bản nháp';
-        if (b.status === 'Open') statusBadge = 'Đang hoạt động';
-        else if (b.status === 'Closed') statusBadge = 'Đã đóng';
-        else if (b.status === 'Archived') statusBadge = 'Đã lưu trữ';
-
-        return {
-          value: b.id,
-          label: `${b.batchName} (${b.academicYear} - HK${b.semester}) [${statusBadge}]`,
-        };
-      }),
+      ...data.batches.map((b) => ({
+        value: b.id,
+        label: `${b.batchName} (${b.academicYear} - HK${b.semester})`,
+      })),
     ],
     [data.batches],
   );
@@ -47,7 +40,9 @@ export const PeriodPage: React.FC = () => {
             onChange={(val) => data.setSelectedBatchId(String(val ?? 'new'))}
             disabled={data.isLoadingBatches}
             size="lg"
-            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300 transition-all"
+            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300 transition-all select-none"
+            contentClassName="w-max min-w-full sm:min-w-[440px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-slate-200/90 shadow-lg"
+            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-slate-700 hover:bg-slate-50 transition-colors"
           />
         </div>
 

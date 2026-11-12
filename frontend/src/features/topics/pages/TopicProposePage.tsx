@@ -11,7 +11,7 @@ import { Select } from '@/components/ui/select';
 import { Dialog } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
-import { ListCardHeader } from '@/components/ui/list-card-header';
+import { StatusTabs } from '@/components/ui/status-tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
 import { TopicsTable } from '../components/TopicsTable';
@@ -170,7 +170,7 @@ export function TopicProposePage({
     Boolean(value.keyword || value.batchId || value.status),
   );
   const checklist = [
-    { label: 'Đã chọn đợt KLTN', complete: Boolean(values.batchId) },
+    { label: 'Đã chọn đợt khóa luận', complete: Boolean(values.batchId) },
     {
       label: 'Tên tiếng Việt hợp lệ (tối đa 300 ký tự)',
       complete: Boolean(values.titleVi.trim()) && values.titleVi.trim().length <= 300,
@@ -498,14 +498,20 @@ export function TopicProposePage({
   }
 
   return (
-    <div className="min-w-0 space-y-5">
-      <PageHeader icon={<FileText />} title={pageTitle} navigation={navigation}>
+    <div className="space-y-6 pb-12 animate-in fade-in-50 duration-300">
+      <PageHeader
+        compact
+        accent
+        title={pageTitle}
+        description="Quản lý danh sách đề tài đề xuất, theo dõi nhóm sinh viên đăng ký và tiến độ hướng dẫn khóa luận tốt nghiệp"
+        navigation={navigation}
+      >
         <Button
           type="button"
           leftIcon={<FilePlus2 />}
           disabled={busy}
           onClick={() => openTopic(null)}
-          className="h-10 rounded-lg px-4 shadow-sm"
+          className="h-10 rounded-xl px-4 font-semibold shadow-xs"
         >
           Đề xuất đề tài
         </Button>
@@ -657,12 +663,12 @@ export function TopicProposePage({
                           id="topic-batch-label"
                           className="text-sm font-medium text-slate-700"
                         >
-                          Đợt KLTN <span className="text-rose-600">*</span>
+                          Đợt khóa luận <span className="text-rose-600">*</span>
                         </label>
                         <Select<string>
                           id="topic-batch-field"
                           error={fieldErrors.batchId}
-                          triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
+                          triggerClassName="h-10 rounded-xl bg-slate-50/60 shadow-none focus-visible:bg-white"
                           aria-labelledby="topic-batch-label"
                           value={values.batchId}
                           options={batches.map((batch) => ({
@@ -715,7 +721,7 @@ export function TopicProposePage({
                           </span>
                         </label>
                         <Input
-                          className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
+                          className="h-10 rounded-xl bg-slate-50/60 shadow-none focus-visible:bg-white"
                           id="topic-title-vi"
                           error={fieldErrors.titleVi}
                           value={values.titleVi}
@@ -742,7 +748,7 @@ export function TopicProposePage({
                           </span>
                         </label>
                         <Input
-                          className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
+                          className="h-10 rounded-xl bg-slate-50/60 shadow-none focus-visible:bg-white"
                           id="topic-title-en"
                           error={fieldErrors.titleEn}
                           value={values.titleEn}
@@ -828,7 +834,7 @@ export function TopicProposePage({
                         <Select<number>
                           id="topic-capacity-field"
                           error={fieldErrors.studentNumber}
-                          triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
+                          triggerClassName="h-10 rounded-xl bg-slate-50/60 shadow-none focus-visible:bg-white"
                           aria-labelledby="topic-capacity-label"
                           value={values.studentNumber}
                           options={[
@@ -864,7 +870,7 @@ export function TopicProposePage({
                           variant="outline"
                           disabled={busy}
                           onClick={closeForm}
-                          className="h-10 rounded-lg px-5"
+                          className="h-10 rounded-xl px-5 font-medium"
                         >
                           Đóng
                         </Button>
@@ -874,7 +880,7 @@ export function TopicProposePage({
                           value="draft"
                           variant="outline"
                           leftIcon={<Save />}
-                          className="h-10 rounded-lg px-5"
+                          className="h-10 rounded-xl px-5 font-medium"
                           disabled={busy || Boolean(recovery)}
                           isLoading={
                             saveMutation.isPending && !saveMutation.variables?.submitImmediately
@@ -887,7 +893,7 @@ export function TopicProposePage({
                           name="action"
                           value="submit"
                           leftIcon={<Send />}
-                          className="h-10 rounded-lg px-5"
+                          className="h-10 rounded-xl px-5 font-medium"
                           disabled={busy || Boolean(recovery)}
                           isLoading={
                             saveMutation.isPending &&
@@ -906,7 +912,7 @@ export function TopicProposePage({
                       <Button
                         type="button"
                         variant="outline"
-                        className="h-10 rounded-lg px-5"
+                        className="h-10 rounded-xl px-5 font-medium"
                         onClick={closeForm}
                       >
                         Đóng
@@ -929,7 +935,7 @@ export function TopicProposePage({
                       <dd className="mt-1 font-medium text-slate-800">{user?.fullName}</dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-slate-500">Đợt KLTN</dt>
+                      <dt className="text-xs text-slate-500">Đợt khóa luận</dt>
                       <dd className="mt-1 text-slate-800">
                         {selectedBatch?.batchName ||
                           (values.batchId && batchesLoading ? (
@@ -991,7 +997,7 @@ export function TopicProposePage({
                         ))}
                       </ul>
                       <p className="mt-3 text-[11px] leading-5 text-slate-400">
-                        Lưu nháp chỉ cần đợt KLTN, tên tiếng Việt và chỉ tiêu. Hoàn thành đủ 6 mục
+                        Lưu nháp chỉ cần đợt khóa luận, tên tiếng Việt và chỉ tiêu. Hoàn thành đủ 6 mục
                         trước khi gửi Khoa thẩm định.
                       </p>
                     </div>
@@ -1013,7 +1019,7 @@ export function TopicProposePage({
 
                   {batchesQuery.isSuccess && batches.length === 0 && (
                     <p className="text-amber-700">
-                      Chưa có đợt KLTN. Vui lòng liên hệ đơn vị quản lý.
+                      Chưa có đợt khóa luận. Vui lòng liên hệ đơn vị quản lý.
                     </p>
                   )}
                 </CardContent>
@@ -1055,121 +1061,238 @@ export function TopicProposePage({
         isConfirming={busy}
       />
 
-      <form
-        onSubmit={handleApplyFilters}
-        className="grid items-end gap-4 rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_auto]"
-      >
-        <label className="block space-y-2 text-sm text-slate-700">
-          <span>Tìm đề tài</span>
-          <Input
-            leftIcon={<Search className="size-4" />}
-            className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
-            placeholder="Tên đề tài tiếng Việt hoặc tiếng Anh"
-            value={draftFilters.keyword}
-            onChange={(event) => setDraftFilters({ ...draftFilters, keyword: event.target.value })}
-          />
-        </label>
-        <div className="space-y-2 text-sm text-slate-700">
-          <span>Đợt KLTN</span>
-          <Select<string>
-            aria-label="Lọc theo đợt KLTN"
-            triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
-            value={draftFilters.batchId}
-            options={[
-              { value: '', label: 'Tất cả đợt' },
-              ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
-            ]}
-            onChange={(value: string) => setDraftFilters({ ...draftFilters, batchId: value })}
-            searchable
-            disabled={batchesQuery.isPending || batchesQuery.isError}
-          />
-        </div>
-        <div className="space-y-2 text-sm text-slate-700">
-          <span>Trạng thái</span>
-          <Select<TopicStatus | ''>
-            aria-label="Lọc theo trạng thái đề tài"
-            triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
-            value={draftFilters.status}
-            options={[
-              { value: '', label: 'Tất cả trạng thái' },
-              ...Object.entries(TOPIC_STATUS_LABELS).map(([value, label]) => ({
-                value: value as TopicStatus,
-                label,
-              })),
-            ]}
-            onChange={(value: TopicStatus | '') =>
-              setDraftFilters({ ...draftFilters, status: value })
-            }
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="submit"
-            variant="soft"
-            leftIcon={<SlidersHorizontal />}
-            className="h-10 rounded-lg px-5"
-          >
-            Áp dụng
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            leftIcon={<FunnelX />}
-            className="h-10 rounded-lg px-4"
-            disabled={!hasFilters}
-            onClick={clearFilters}
-          >
-            Bỏ lọc
-          </Button>
-        </div>
-      </form>
+      {/* Row 1: Search & Filter Card (8 cols) + Bento Guidelines & Stats Card (4 cols) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        <div className="lg:col-span-8">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5 transition-all hover:border-slate-300">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                  Tìm kiếm & Bộ lọc đề tài
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Lọc danh sách đề xuất theo từ khóa, đợt khóa luận và trạng thái thẩm định
+                </p>
+              </div>
+              {hasFilters && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<FunnelX className="size-3.5" />}
+                  onClick={clearFilters}
+                  className="h-8 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  Xóa bộ lọc
+                </Button>
+              )}
+            </div>
 
-      {Boolean(filters.keyword || filters.batchId || filters.status) && (
-        <div className="flex flex-wrap items-center gap-2" aria-label="Bộ lọc đang áp dụng">
-          <span className="text-xs text-slate-500">Đang lọc:</span>
-          {filters.keyword && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              rightIcon={<X />}
-              onClick={() => removeFilter('keyword')}
-              aria-label={`Bỏ lọc từ khóa ${filters.keyword}`}
-            >
-              Từ khóa: {filters.keyword}
-            </Button>
-          )}
-          {filters.batchId && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              rightIcon={<X />}
-              onClick={() => removeFilter('batchId')}
-              aria-label="Bỏ lọc đợt KLTN"
-            >
-              {batches.find((batch) => batch.id === filters.batchId)?.batchName ?? 'Đợt đã chọn'}
-            </Button>
-          )}
-          {filters.status && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              rightIcon={<X />}
-              onClick={() => removeFilter('status')}
-              aria-label="Bỏ lọc trạng thái"
-            >
-              {TOPIC_STATUS_LABELS[filters.status]}
-            </Button>
-          )}
+            <form onSubmit={handleApplyFilters} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
+                  <span>Tìm kiếm đề tài</span>
+                  <Input
+                    leftIcon={<Search className="size-4" />}
+                    className="h-10 rounded-xl border-slate-200/90 bg-slate-50/60 shadow-none focus-visible:bg-white text-xs"
+                    placeholder="Tên đề tài tiếng Việt hoặc tiếng Anh"
+                    value={draftFilters.keyword}
+                    onChange={(event) => setDraftFilters({ ...draftFilters, keyword: event.target.value })}
+                  />
+                </label>
+                <div className="space-y-1.5 text-xs font-semibold text-slate-700">
+                  <span>Đợt khóa luận</span>
+                  <Select<string>
+                    aria-label="Lọc theo đợt KLTN"
+                    triggerClassName="h-10 rounded-xl border-slate-200/90 bg-slate-50/60 shadow-none focus-visible:bg-white text-xs font-medium"
+                    value={draftFilters.batchId}
+                    options={[
+                      { value: '', label: 'Tất cả đợt khóa luận' },
+                      ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
+                    ]}
+                    onChange={(value: string) => setDraftFilters({ ...draftFilters, batchId: value })}
+                    searchable
+                    disabled={batchesQuery.isPending || batchesQuery.isError}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                <div className="space-y-1.5 text-xs font-semibold text-slate-700">
+                  <span>Trạng thái thẩm định</span>
+                  <Select<TopicStatus | ''>
+                    aria-label="Lọc theo trạng thái đề tài"
+                    triggerClassName="h-10 rounded-xl border-slate-200/90 bg-slate-50/60 shadow-none focus-visible:bg-white text-xs font-medium"
+                    value={draftFilters.status}
+                    options={[
+                      { value: '', label: 'Tất cả trạng thái' },
+                      ...Object.entries(TOPIC_STATUS_LABELS).map(([value, label]) => ({
+                        value: value as TopicStatus,
+                        label,
+                      })),
+                    ]}
+                    onChange={(value: TopicStatus | '') =>
+                      setDraftFilters({ ...draftFilters, status: value })
+                    }
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    type="submit"
+                    variant="soft"
+                    leftIcon={<SlidersHorizontal className="size-3.5" />}
+                    className="h-10 flex-1 rounded-xl text-xs font-semibold shadow-xs"
+                  >
+                    Áp dụng bộ lọc
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    leftIcon={<FunnelX className="size-3.5" />}
+                    className="h-10 rounded-xl text-xs font-semibold border-slate-200 hover:bg-slate-50 px-3.5"
+                    disabled={!hasFilters}
+                    onClick={clearFilters}
+                  >
+                    Bỏ lọc
+                  </Button>
+                </div>
+              </div>
+            </form>
+
+            {Boolean(filters.keyword || filters.batchId || filters.status) && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-slate-100" aria-label="Bộ lọc đang áp dụng">
+                <span className="text-[11px] font-medium text-slate-400">Đang lọc theo:</span>
+                {filters.keyword && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    rightIcon={<X className="size-3" />}
+                    onClick={() => removeFilter('keyword')}
+                    className="h-7 text-xs rounded-lg"
+                    aria-label={`Bỏ lọc từ khóa ${filters.keyword}`}
+                  >
+                    Từ khóa: {filters.keyword}
+                  </Button>
+                )}
+                {filters.batchId && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    rightIcon={<X className="size-3" />}
+                    onClick={() => removeFilter('batchId')}
+                    className="h-7 text-xs rounded-lg"
+                    aria-label="Bỏ lọc đợt KLTN"
+                  >
+                    {batches.find((batch) => batch.id === filters.batchId)?.batchName ?? 'Đợt đã chọn'}
+                  </Button>
+                )}
+                {filters.status && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    rightIcon={<X className="size-3" />}
+                    onClick={() => removeFilter('status')}
+                    className="h-7 text-xs rounded-lg"
+                    aria-label="Bỏ lọc trạng thái"
+                  >
+                    {TOPIC_STATUS_LABELS[filters.status]}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+
+        {/* Right Bento Card (4 cols) - Tình trạng & Quy chuẩn */}
+        <div className="lg:col-span-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col justify-between h-full transition-all hover:border-slate-300">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                  Tình trạng đề tài
+                </h2>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs">
+                  {selectedBatch?.batchName || 'Học kỳ hiện tại'}
+                </span>
+              </div>
+
+              {/* StatisticsBar */}
+              <section aria-label="Thống kê đề tài" aria-busy={statisticsQuery.isFetching}>
+                <StatisticsBar
+                  layout="card"
+                  className="grid-cols-3 auto-cols-auto grid-flow-row gap-2"
+                  loading={statisticsQuery.isPending}
+                  items={[
+                    {
+                      key: 'total',
+                      onClick: () => quickFilter(''),
+                      active: filters.status === '' && !filters.keyword,
+                      label: 'Tổng đề tài',
+                      value: formatCount(statistics?.total),
+                      icon: <FileText />,
+                      tone: 'primary',
+                    },
+                    {
+                      key: 'submitted',
+                      onClick: () => quickFilter('Submitted'),
+                      active: filters.status === 'Submitted' && !filters.keyword,
+                      label: 'Chờ duyệt',
+                      value: formatCount(statistics?.submitted),
+                      icon: <Clock3 />,
+                      tone: 'muted',
+                    },
+                    {
+                      key: 'revision',
+                      onClick: () => quickFilter('NeedRevision'),
+                      active: filters.status === 'NeedRevision' && !filters.keyword,
+                      label: 'Cần chỉnh sửa',
+                      value: formatCount(statistics?.needRevision),
+                      icon: <RotateCcw />,
+                      tone: 'warning',
+                    },
+                  ]}
+                />
+              </section>
+
+              {/* Policy & Rules List (same as RosterGuideCard) */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5 text-xs">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-slate-500 shrink-0 font-medium">Chỉ tiêu mỗi đề tài:</span>
+                  <span className="font-semibold text-slate-800 text-right leading-snug">
+                    Tối đa 2 sinh viên
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-2 pt-2 border-t border-slate-200/80">
+                  <span className="text-slate-500 shrink-0 font-medium">Quy trình thẩm định:</span>
+                  <span className="font-semibold text-slate-800 text-right leading-snug">
+                    Khoa phê duyệt trước khi công bố
+                  </span>
+                </div>
+                <div className="flex items-start justify-between gap-2 pt-2 border-t border-slate-200/80">
+                  <span className="text-slate-500 shrink-0 font-medium">Quyền hạn chỉnh sửa:</span>
+                  <span className="font-semibold text-slate-800 text-right leading-snug">
+                    Chỉ sửa Bản nháp & Cần chỉnh sửa
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 mt-4 text-[11px] text-slate-400 leading-relaxed">
+              Nhấn vào từng ô thống kê ở trên để lọc nhanh danh sách theo trạng thái.
+            </div>
+          </div>
+        </div>
+      </div>
+
       {filters.batchId && <TopicProposalSchedule batchId={filters.batchId} />}
 
       {!canReadBatches && !isFormOpen && (
         <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
-          Bạn chưa có quyền xem danh sách đợt KLTN. Liên hệ quản trị viên để được cấp quyền.
+          Bạn chưa có quyền xem danh sách đợt khóa luận. Liên hệ quản trị viên để được cấp quyền.
         </p>
       )}
 
@@ -1190,75 +1313,53 @@ export function TopicProposePage({
         </div>
       )}
 
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
-        <ListCardHeader
-          title="Đề tài của tôi"
-          icon={<FileText />}
-          description={
-            filters.batchId
-              ? 'Thống kê trong đợt đang chọn'
-              : 'Nội dung đề xuất và kết quả thẩm định'
-          }
-          className="xl:grid-cols-[minmax(0,1fr)_420px]"
-        >
-          <section
-            className="w-full"
-            aria-label="Thống kê đề tài"
-            aria-busy={statisticsQuery.isFetching}
-          >
-            <StatisticsBar
+      {/* Row 2: Table Card */}
+      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs transition-all hover:border-slate-300">
+        <div className="p-5 sm:px-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 tracking-tight">
+              Danh sách đề tài đã đề xuất
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {filters.batchId ? 'Đang lọc theo đợt khóa luận đã chọn' : 'Theo dõi tiến trình thẩm định và kết quả duyệt đề tài'}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusTabs
+              ariaLabel="Lọc nhanh trạng thái đề tài"
+              activeKey={filters.status}
+              onSelect={(val) => quickFilter(val as TopicStatus | '')}
               loading={statisticsQuery.isPending}
-              items={[
+              tabs={[
                 {
-                  key: 'total',
-                  onClick: () => quickFilter(''),
-                  active: filters.status === '' && !filters.keyword,
-                  label: 'Tổng đề tài',
-                  value: formatCount(statistics?.total),
-                  icon: <FileText />,
+                  key: '',
+                  label: 'Tất cả',
+                  count: statistics?.total,
                   tone: 'primary',
                 },
                 {
-                  key: 'submitted',
-                  onClick: () => quickFilter('Submitted'),
-                  active: filters.status === 'Submitted' && !filters.keyword,
+                  key: 'Submitted',
                   label: 'Chờ duyệt',
-                  value: formatCount(statistics?.submitted),
-                  icon: <Clock3 />,
+                  count: statistics?.submitted,
                   tone: 'muted',
                 },
                 {
-                  key: 'revision',
-                  onClick: () => quickFilter('NeedRevision'),
-                  active: filters.status === 'NeedRevision' && !filters.keyword,
+                  key: 'NeedRevision',
                   label: 'Cần chỉnh sửa',
-                  value: formatCount(statistics?.needRevision),
-                  icon: <RotateCcw />,
+                  count: statistics?.needRevision,
                   tone: 'warning',
                 },
               ]}
             />
-            {statisticsQuery.isPending && (
-              <p role="status" className="sr-only">
-                Đang tải thống kê...
-              </p>
+            {isRefreshing && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-primary">
+                <RotateCcw className="size-3 animate-spin" />
+                Đang làm mới...
+              </span>
             )}
-            {statisticsQuery.isError && (
-              <div role="alert" className="mt-2 flex flex-wrap items-center gap-2">
-                <p className="text-xs text-rose-700">Không thể tải thống kê đề tài.</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={statisticsQuery.isFetching}
-                  onClick={() => void statisticsQuery.refetch()}
-                >
-                  Thử lại
-                </Button>
-              </div>
-            )}
-          </section>
-        </ListCardHeader>
+          </div>
+        </div>
 
         <div
           aria-busy={topicsQuery.isFetching}
@@ -1270,7 +1371,7 @@ export function TopicProposePage({
               columns={[
                 { label: 'STT', width: 'w-14', variant: 'number' },
                 { label: 'Đề tài', variant: 'topic' },
-                { label: 'Đợt KLTN', width: 'w-40' },
+                { label: 'Đợt khóa luận', width: 'w-40' },
                 { label: 'Chỉ tiêu', width: 'w-24' },
                 { label: 'Ngày tạo', width: 'w-32' },
                 { label: 'Trạng thái', width: 'w-44', variant: 'badge' },
@@ -1325,23 +1426,22 @@ export function TopicProposePage({
 
         {topicsQuery.data && !topicsQuery.isError && (
           <>
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-3 text-sm">
-              <label htmlFor="topic-page-size">Số đề tài mỗi trang</label>
-              <select
-                id="topic-page-size"
-                value={pageSize}
-                className="rounded-md border border-slate-200 bg-white p-2"
-                disabled={topicsQuery.isFetching || busy}
-                onChange={(event) => {
-                  setPageSize(Number(event.target.value));
-                  setPageNumber(1);
-                }}
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
+            <select
+              id="topic-page-size"
+              value={pageSize}
+              className="sr-only"
+              aria-hidden="true"
+              tabIndex={-1}
+              disabled={topicsQuery.isFetching || busy}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setPageNumber(1);
+              }}
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
             <TablePagination
               pageNumber={topicsQuery.data.pageNumber}
               pageSize={topicsQuery.data.pageSize}
@@ -1350,11 +1450,15 @@ export function TopicProposePage({
               hasNextPage={topicsQuery.data.hasNextPage}
               isLoading={topicsQuery.isFetching || busy}
               onPageChange={setPageNumber}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPageNumber(1);
+              }}
               itemLabel="đề tài"
             />
           </>
         )}
-      </Card>
+      </div>
     </div>
   );
 }

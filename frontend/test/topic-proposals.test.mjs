@@ -467,6 +467,7 @@ test('guidance uses the live proposal page and links to separate group tabs on o
       'react-router-dom': { Link: 'Link', useSearchParams: () => [new URLSearchParams(search)] },
       '@/components/ui/button': { Button: 'Button' },
       '@/components/ui/badge': { Badge: 'Badge' },
+      '@/components/ui/navigation-tabs': { NavigationTabs: 'NavigationTabs' },
       './TopicProposePage': { TopicProposePage: 'TopicProposePage' },
       './TopicAdvisingPage': { TopicAdvisingPage: 'TopicAdvisingPage' },
       '@/components/ui/page-header': { PageHeader: 'PageHeader' },
@@ -477,11 +478,15 @@ test('guidance uses the live proposal page and links to separate group tabs on o
   assert.equal(page.type, 'TopicProposePage');
   assert.equal(page.props.pageTitle, 'Đề tài hướng dẫn');
   const navigation = page.props.navigation;
-  assert.equal(navigation.props.children.length, 3);
-  assert.deepEqual(
-    navigation.props.children.map((button) => button.props.children.props.to),
-    ['/topics/advising', '/topics/advising?tab=registrations', '/topics/advising?tab=advising'],
-  );
+  const tabUrls = navigation.props.tabs
+    ? navigation.props.tabs.map((t) => t.href)
+    : navigation.props.children.map((button) => button.props.children.props.to);
+  assert.equal(tabUrls.length, 3);
+  assert.deepEqual(tabUrls, [
+    '/topics/advising',
+    '/topics/advising?tab=registrations',
+    '/topics/advising?tab=advising',
+  ]);
   for (const tab of ['registrations', 'advising']) {
     const groups = render(`tab=${tab}`);
     const pane = findElement(groups, (node) => node.type === 'TopicAdvisingPage');
@@ -700,6 +705,7 @@ function proposalPageFixture(options = {}) {
       '@/components/ui/dialog': dependency('Dialog'),
       '@/components/ui/confirm-dialog': dependency('ConfirmDialog'),
       '@/components/ui/statistics-bar': dependency('StatisticsBar'),
+      '@/components/ui/status-tabs': dependency('StatusTabs'),
       '@/components/ui/list-card-header': dependency('ListCardHeader'),
       '@/components/ui/card': Object.fromEntries(
         ['Card', 'CardContent', 'CardHeader', 'CardTitle'].map((key) => [key, components[key]]),

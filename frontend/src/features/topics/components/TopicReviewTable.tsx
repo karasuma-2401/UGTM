@@ -1,7 +1,6 @@
-import { ClipboardCheck, Eye, FileText } from 'lucide-react';
+import { ClipboardCheck, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { InfoCell } from '@/components/ui/info-cell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SelectableTableRow } from '@/components/ui/selectable-table-row';
 import type { Topic, TopicBatch } from '../types/topic.types';
@@ -123,24 +122,26 @@ export function TopicReviewTable({
                 />
               </td>
               <td className="px-4 py-4">
-                <InfoCell
-                  leading={
+                <div className="space-y-1 min-w-0">
+                  <span
+                    className="line-clamp-2 block text-sm font-semibold text-slate-900 leading-snug"
+                    title={topic.titleVi}
+                  >
+                    {topic.titleVi}
+                  </span>
+                  {topic.titleEn ? (
                     <span
-                      aria-hidden="true"
-                      className="flex size-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-inset ring-blue-100"
+                      className="truncate block text-[11px] text-slate-500 font-normal"
+                      title={topic.titleEn}
                     >
-                      <FileText className="size-4" />
+                      {topic.titleEn}
                     </span>
-                  }
-                  title={
-                    <span className="line-clamp-2" title={topic.titleVi}>
-                      {topic.titleVi}
+                  ) : (
+                    <span className="block text-[11px] text-slate-400 italic">
+                      Chưa có tên tiếng Anh
                     </span>
-                  }
-                  titleClassName="block text-sm leading-5"
-                  description={topic.titleEn || 'Chưa có tên tiếng Anh'}
-                  descriptionClassName="truncate text-[11px]"
-                />
+                  )}
+                </div>
               </td>
               <td
                 aria-busy={!advisorNames[topic.advisorId] && advisorsLoading}

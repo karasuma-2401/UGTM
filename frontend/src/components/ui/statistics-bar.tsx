@@ -45,6 +45,7 @@ export interface StatisticsBarProps {
   className?: string;
   loading?: boolean;
   compact?: boolean;
+  layout?: 'row' | 'card';
 }
 
 export function StatisticsBar({
@@ -52,12 +53,17 @@ export function StatisticsBar({
   className,
   loading = false,
   compact = false,
+  layout = 'row',
 }: StatisticsBarProps) {
+  const isCard = layout === 'card';
+
   return (
     <dl
       aria-busy={loading}
       className={cn(
-        'grid auto-cols-fr grid-flow-col gap-1.5 rounded-xl border border-slate-200/80 bg-slate-100/60 p-1.5',
+        isCard
+          ? 'grid gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-2'
+          : 'grid auto-cols-fr grid-flow-col gap-1.5 rounded-xl border border-slate-200/80 bg-slate-100/60 p-1.5',
         className,
         compact && 'flex flex-wrap border-0 bg-transparent p-0 gap-2',
       )}
@@ -68,7 +74,10 @@ export function StatisticsBar({
           <div
             key={key}
             className={cn(
-              'relative flex min-w-0 items-center gap-2.5 rounded-lg px-3 py-2 transition-all duration-150',
+              'relative flex min-w-0 transition-all duration-150',
+              isCard
+                ? 'flex-col justify-between rounded-xl p-3 border border-slate-200/70 hover:border-slate-300'
+                : 'items-center gap-2.5 rounded-lg px-3 py-2',
               compact && 'flex-none',
               loading
                 ? 'bg-white/70'
@@ -76,8 +85,11 @@ export function StatisticsBar({
                   ? cn(
                       'bg-white shadow-xs ring-1',
                       tone === 'danger' ? 'ring-rose-300' : 'ring-primary/30',
+                      isCard && 'border-primary/40 shadow-xs',
                     )
-                  : colors.background,
+                  : isCard
+                    ? 'bg-white shadow-2xs hover:shadow-xs'
+                    : colors.background,
             )}
           >
             {onClick && (
@@ -95,48 +107,94 @@ export function StatisticsBar({
                 )}
               />
             )}
-            {icon && !compact && (
-              <span
-                aria-hidden="true"
-                className={cn(
-                  'hidden size-7 shrink-0 items-center justify-center rounded-lg md:flex [&_svg]:size-3.5',
-                  colors.icon,
-                )}
-              >
-                {loading ? <Skeleton className="size-3.5 rounded-sm" /> : icon}
-              </span>
-            )}
-            <div className={cn('flex min-w-0 flex-1', compact ? 'items-center gap-2' : 'flex-col')}>
-              <dt
-                title={label}
-                className={cn(
-                  'relative order-2 mt-0.5 truncate text-[11px] font-medium',
-                  colors.label,
-                  compact && 'order-none mt-0 text-sm',
-                )}
-              >
-                {loading ? (
-                  <>
-                    <span className="invisible" aria-hidden="true">
-                      {label}
+            {isCard ? (
+              <>
+                <div className="flex items-center justify-between gap-2 w-full mb-1">
+                  <dd
+                    className={cn(
+                      'text-lg sm:text-xl font-bold leading-none tracking-tight tabular-nums',
+                      colors.value,
+                    )}
+                  >
+                    {loading ? <Skeleton className="h-5 w-8 max-w-full" /> : value}
+                  </dd>
+                  {icon && (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'flex size-6 shrink-0 items-center justify-center rounded-lg [&_svg]:size-3.5',
+                        colors.icon,
+                      )}
+                    >
+                      {loading ? <Skeleton className="size-3.5 rounded-sm" /> : icon}
                     </span>
-                    <span className="sr-only">{label}</span>
-                    <Skeleton className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2" />
-                  </>
-                ) : (
-                  label
+                  )}
+                </div>
+                <dt
+                  title={label}
+                  className={cn(
+                    'relative text-[11px] font-semibold leading-tight line-clamp-2 text-slate-600',
+                  )}
+                >
+                  {loading ? (
+                    <>
+                      <span className="invisible" aria-hidden="true">
+                        {label}
+                      </span>
+                      <span className="sr-only">{label}</span>
+                      <Skeleton className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2" />
+                    </>
+                  ) : (
+                    label
+                  )}
+                </dt>
+              </>
+            ) : (
+              <>
+                {icon && !compact && (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'hidden size-7 shrink-0 items-center justify-center rounded-lg md:flex [&_svg]:size-3.5',
+                      colors.icon,
+                    )}
+                  >
+                    {loading ? <Skeleton className="size-3.5 rounded-sm" /> : icon}
+                  </span>
                 )}
-              </dt>
-              <dd
-                className={cn(
-                  'order-1 text-base font-bold leading-tight tracking-tight tabular-nums',
-                  colors.value,
-                  compact && 'order-none text-sm',
-                )}
-              >
-                {loading ? <Skeleton className="h-4 w-8 max-w-full" /> : value}
-              </dd>
-            </div>
+                <div className={cn('flex min-w-0 flex-1', compact ? 'items-center gap-2' : 'flex-col')}>
+                  <dt
+                    title={label}
+                    className={cn(
+                      'relative order-2 mt-0.5 truncate text-[11px] font-medium',
+                      colors.label,
+                      compact && 'order-none mt-0 text-sm',
+                    )}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="invisible" aria-hidden="true">
+                          {label}
+                        </span>
+                        <span className="sr-only">{label}</span>
+                        <Skeleton className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2" />
+                      </>
+                    ) : (
+                      label
+                    )}
+                  </dt>
+                  <dd
+                    className={cn(
+                      'order-1 text-base font-bold leading-tight tracking-tight tabular-nums',
+                      colors.value,
+                      compact && 'order-none text-sm',
+                    )}
+                  >
+                    {loading ? <Skeleton className="h-4 w-8 max-w-full" /> : value}
+                  </dd>
+                </div>
+              </>
+            )}
           </div>
         );
       })}

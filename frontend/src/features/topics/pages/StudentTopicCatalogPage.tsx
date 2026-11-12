@@ -1,7 +1,7 @@
 import { OperationToast } from '@/shared/notifications';
 import { useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, FileText, GraduationCap, Search, SlidersHorizontal, FunnelX, Eye, MailCheck, ShieldAlert } from 'lucide-react';
+import { BookOpen, GraduationCap, Search, SlidersHorizontal, FunnelX, Eye, MailCheck, ShieldAlert } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Card } from '@/components/ui/card';
@@ -9,7 +9,6 @@ import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { InfoCell } from '@/components/ui/info-cell';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -351,21 +350,22 @@ export function StudentTopicCatalogContent() {
                       {(data.pageNumber - 1) * data.pageSize + index + 1}
                     </td>
                     <td className="px-4 py-4">
-                      <InfoCell
-                        title={
-                          <span className="line-clamp-2" title={topic.titleVi}>
-                            {topic.titleVi}
+                      <div className="space-y-1 min-w-0">
+                        <span
+                          className="line-clamp-2 block text-sm font-semibold text-slate-900 leading-snug"
+                          title={topic.titleVi}
+                        >
+                          {topic.titleVi}
+                        </span>
+                        {topic.titleEn ? (
+                          <span
+                            className="truncate block text-[11px] text-slate-500 font-normal"
+                            title={topic.titleEn}
+                          >
+                            {topic.titleEn}
                           </span>
-                        }
-                        description={topic.titleEn || undefined}
-                        titleClassName="block text-sm leading-5"
-                        descriptionClassName="truncate text-[11px]"
-                        leading={
-                          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-primary ring-1 ring-inset ring-blue-100">
-                            <FileText className="size-4" aria-hidden="true" />
-                          </span>
-                        }
-                      />
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <p className="text-xs font-medium text-slate-700">

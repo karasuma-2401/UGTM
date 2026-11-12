@@ -51,7 +51,7 @@ export function TopicPreview({
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500">Đợt KLTN</dt>
+          <dt className="text-xs text-slate-500">Đợt khóa luận</dt>
           <dd aria-busy={batchLoading} className="mt-1 text-sm font-medium text-slate-800">
             {batchLoading ? (
               <Skeleton className="h-5 w-32 max-w-full" />

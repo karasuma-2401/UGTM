@@ -356,6 +356,8 @@ function fixture({
     'table-skeleton': 'TableSkeleton',
     'info-cell': 'InfoCell',
     skeleton: 'Skeleton',
+    'navigation-tabs': 'NavigationTabs',
+    'status-tabs': 'StatusTabs',
   }))
     dependencies[`@/components/ui/${file}`] = { [name]: name };
   const { TopicAdvisingPage } = load('pages/TopicAdvisingPage.tsx', dependencies);

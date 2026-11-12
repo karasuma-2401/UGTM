@@ -131,6 +131,8 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
             placeholder={isLoadingBatches ? 'Đang tải đợt khóa luận...' : 'Chưa có đợt khóa luận'}
             size="lg"
             triggerClassName="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-2xs hover:border-slate-300 transition-all select-none"
+            contentClassName="w-max min-w-full sm:min-w-[440px] max-w-[90vw] p-1.5 rounded-xl border-slate-200/90 shadow-lg"
+            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-slate-700 hover:bg-slate-50 transition-colors"
           />
         </div>
 

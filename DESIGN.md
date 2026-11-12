@@ -59,6 +59,19 @@ Toast dùng Sonner qua API chung `notify`, giao diện Tailwind và nội dung t
 
 Toast dùng thẻ trắng bo góc 12px, viền và bóng nhẹ, icon tròn đặc căn giữa cạnh nội dung. Giữ màu thành công emerald, thông tin blue, cảnh báo amber và lỗi rose; bỏ dải màu cố định phía trên. Toast tự đóng có thanh thời gian 3px ở cạnh dưới, co dần theo thời gian và tạm dừng cùng Sonner khi hover, focus hoặc tab bị ẩn. Toast giữ đến khi đóng và loading không hiển thị thanh đếm ngược. Khi giảm chuyển động, thanh cập nhật theo nhịp giây. Nhiều toast xếp chồng và mở rộng khi hover hoặc dùng F8.
 
+## Quản lý đề tài & Hướng dẫn khóa luận
+
+- Thẻ phân đoạn chuyển trạng thái (`StatusTabs`):
+  - Kế thừa và chuẩn hóa component `StatusTabs` (`frontend/src/components/ui/status-tabs.tsx`) dùng chung cho toàn bộ hệ thống (Tài khoản người dùng, Đề xuất đề tài, Đề tài hướng dẫn).
+  - Sử dụng thẻ trượt mượt mà bằng phần cứng (`translate3d`, `width`, cubic-bezier `(0.16, 1, 0.3, 1)` 220ms), nền `bg-slate-100/90`, indicator `bg-white shadow-2xs border border-slate-200/90`, huy hiệu đếm số lượng dạng pill với số định dạng theo locale tiếng Việt (`tabular-nums`).
+- Thẻ Bento cột phải (4 cột) trên trang Đề tài:
+  - Cụm thống kê (`StatisticsBar` dạng `layout="card"`): Dùng lưới 2 cột (`grid-cols-2 gap-2.5`) hoặc 3 cột cân đối, tuyệt đối không dồn 4 ô vào một hàng ngang hẹp khiến nhãn bị co rút thành 1 ký tự (`T`, `C`, `N`, `S`).
+  - Danh sách quy định/chính sách: Căn chỉnh `items-start` với nhãn tự động xuống hàng mềm mại (`leading-snug break-words`), nghiêm cấm áp dụng `whitespace-nowrap` khiến nội dung tràn qua mép thẻ (out khỏi vùng chứa chữ).
+- Bảng dữ liệu và định danh thực thể:
+  - Loại bỏ các icon lặp đi lặp lại vô nghĩa (như icon `FileText` lặp lại trên từng hàng tiêu đề đề tài); ưu tiên hệ thống phân cấp kiểu chữ (typography) thoáng đãng, sắc nét, dành trọn vẹn bề ngang cho tên đề tài tiếng Việt và tiếng Anh.
+  - Tuyệt đối không hiển thị trực tiếp GUID thô (như `99999999-9999-...`) ra giao diện người dùng. Hiển thị huy hiệu định danh thân thiện (ví dụ `Nhóm 01`, `Nhóm 02`) kèm mã băm rút gọn `#{id.slice(0, 8)}` và ngày tạo.
+  - Phân trang: Luôn sử dụng component chuẩn `<TablePagination>` với thuộc tính `onPageSizeChange` tích hợp sẵn nút phân đoạn (`[ 10 ] [ 20 ] [ 50 ]`); không tự viết thêm các thẻ `<select>` lẻ tẻ trên giao diện.
+
 ## Quản lý đợt & Kế hoạch đào tạo
 
 - Phong cách chủ đạo của trang Khởi tạo đợt & Deadline (`/academic/periods`): Kết hợp **Modern Clean SaaS** và **Fluent Design** — tối giản, thanh lịch, nền slate canvas thoáng đãng, thẻ `bg-white` phẳng viền `border-slate-200/80` bo góc 16px (`rounded-2xl`), triệt tiêu hoàn toàn tình trạng thẻ lồng thẻ (card soup) và nhãn chú thích thừa.
@@ -71,9 +84,9 @@ Toast dùng thẻ trắng bo góc 12px, viền và bóng nhẹ, icon tròn đặ
   - Tự động điền trước (auto-prefill) các mốc gợi ý chuẩn suy diễn từ hạn nộp đề cương và giữa kỳ của đợt (`defaultSyllabusDeadline`, `defaultMidtermDeadline`), giải quyết dứt điểm lỗi trường trống `dd/mm/yyyy`.
   - Quy trình 3 bước trực quan: *Sinh viên nộp đề cương/báo cáo ban đầu ➔ Khoa / GV phản hồi & thẩm định ➔ Hạn chót đóng cổng & nộp hoàn thiện*.
 - Biểu mẫu & điều hướng:
-  - Dropdown chọn đợt mở rộng (`w-full sm:w-80 md:w-96`) hiển thị đầy đủ tên đợt và huy hiệu trạng thái; `PageHeader` dùng cấu trúc `relative z-20` không có `overflow-hidden` để menu con hiển thị nổi mà không bị cắt xén.
+  - Dropdown chọn đợt mở rộng (`w-full sm:w-96 md:w-[440px]`), menu danh sách tự động co giãn theo độ dài nội dung (`w-max min-w-full sm:min-w-[440px] max-w-[90vw] sm:right-0 sm:left-auto`), hiển thị trọn vẹn tên đợt và học kỳ mà không bị cắt xén chữ `...`; `PageHeader` dùng cấu trúc `relative z-20` không có `overflow-hidden` để menu con hiển thị nổi.
+  - Các mục trong dropdown dùng cỡ chữ `text-xs` (12px) đồng bộ tỉ lệ với nút trigger, góc bo mềm mại `rounded-lg`, hover `hover:bg-slate-50` thanh nhã, giữ nguyên cấu trúc văn bản thuần túy không lạm dụng icon hay nhãn trang trí rườm rà.
   - Nút bấm `Select` có `select-none` để tránh hiện con trỏ văn bản `|` khi tương tác.
-  - Nhãn trạng thái đợt (*Đang hoạt động*, *Bản nháp*, v.v.) luôn có `whitespace-nowrap shrink-0` để không bị gãy dòng.
 - Trang Danh sách Sinh viên & Giảng viên (`/academic/roster`):
   - Áp dụng cấu trúc Bento Grid 8-4 cột đồng bộ phong cách Modern Clean SaaS + Fluent Design: Thẻ cấu hình tải tệp bên trái (8 cột) kết hợp Thẻ tiêu chuẩn danh sách dạng quy chuẩn đào tạo bên phải (4 cột).
   - Thẻ tiêu chuẩn danh sách bên phải (`RosterGuideCard`) sử dụng cấu trúc phân tầng thông tin đa lớp đồng bộ với `PeriodSummaryCard`: gồm 2 ô thông số kỹ thuật chuẩn (`Định dạng tệp`, `Cột bắt buộc`), cụm huy hiệu dữ liệu cột trực quan (`Mã số định danh`, `Họ và tên`, `Hộp thư @uit.edu.vn`, `Khoa / Đơn vị`) và danh mục nguyên tắc tài khoản/phân quyền dạng key-value cô đọng. Triệt tiêu hoàn toàn cảm giác trống trải cũng như tình trạng dồn ứ chữ hoặc lạm dụng icon hộp màu ("AI design").
@@ -83,3 +96,20 @@ Toast dùng thẻ trắng bo góc 12px, viền và bóng nhẹ, icon tròn đặ
   - Thao tác Excel dùng tông màu xanh lá Emerald chuẩn (`emerald-600`, `emerald-50`, `border-emerald-300`), hover nâng sắc độ nhẹ nhàng (`hover:bg-emerald-100 hover:border-emerald-400`), không đảo màu đột ngột sang nền đặc tối.
   - Vùng tải tệp Excel hỗ trợ kéo thả (`border-2 border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/40`), hiển thị trạng thái tệp đã chọn với icon rõ ràng và nút đổi tệp nhanh.
   - Bảng đối chiếu xem trước có hàng tiêu đề tự động điều chỉnh theo vai trò đang chọn ("Mã số sinh viên" hoặc "Mã số giảng viên"), các huy hiệu trạng thái đối chiếu dạng pill có icon rõ nét (`Hợp lệ`, `Cần điều chỉnh`, `Trùng lặp mã trong tệp`).
+
+## Đề tài hướng dẫn (`/topics/advising`)
+
+- Thanh điều hướng chuyển tab (`NavigationTabs`, `TopicGuidancePage`):
+  - Thiết kế thành component dùng chung (`frontend/src/components/ui/navigation-tabs.tsx`), kế thừa hiệu ứng chuyển động mượt mà của thanh tab Tài khoản & Phân quyền (`IdentityNavigation`) qua `SelectionIndicator` (`cubic-bezier(0.22, 1, 0.36, 1)`, thời gian trượt 360ms).
+  - Chiều cao chuẩn `h-12`, tab active nổi bật với chữ màu `text-primary`, nền mờ nhẹ `bg-primary/5` và đường viền gạch chân đáy 2px chuyển sắc thương hiệu (`after:[background-image:var(--gradient-brand)]`).
+  - Hỗ trợ cả định dạng `Link` của React Router lẫn nút chọn thuần `button`, có hỗ trợ badge số lượng (`count`), icon đại diện và tương thích khả năng truy cập WAI-ARIA.
+  - Tích hợp mượt mà vào đáy `PageHeader` dạng `compact accent` mà không tạo đường phân cách thừa.
+- Cấu trúc Bento Grid 8-4 cột đồng bộ (Hàng 1):
+  - Thẻ bên trái (8 cột): Khung tìm kiếm & bộ lọc với tiêu đề rõ ràng, mô tả mục đích, input tìm kiếm từ khóa, menu chọn đợt khóa luận và trạng thái, nút *Áp dụng* (`variant="soft"`) và *Bỏ lọc* (`variant="outline"`), kèm các thẻ chip bộ lọc đang áp dụng có nút xóa nhanh.
+  - Thẻ bên phải (4 cột): Tổng quan tình trạng đề tài & tiến độ hướng dẫn, hiển thị thanh số liệu trực quan `StatisticsBar` (cho phép bấm vào từng số liệu để lọc hoặc chuyển tab nhanh), danh mục quy định đào tạo dạng key-value cô đọng (hạn ngạch sinh viên/đề tài, thẩm định từ Khoa, các mốc nộp hồ sơ) và ghi chú hướng dẫn ở chân thẻ.
+- Bảng dữ liệu đề tài & nhóm hướng dẫn (Hàng 2):
+  - Thẻ bảng dữ liệu toàn màn hình với thanh tiêu đề SaaS hiện đại: Tên danh sách, phụ đề giải thích và huy hiệu đếm tổng số dòng dạng pill (`Tổng số: {total} đề tài / nhóm`).
+  - Tiêu đề cột dùng font trung tính cao cấp `text-[11px] font-semibold uppercase tracking-wider text-slate-500` với nền `bg-slate-50/90`.
+  - Loại bỏ hoàn toàn các từ viết tắt gây khó hiểu: Thay "Đợt KLTN" bằng "Đợt khóa luận", "{x} SV" bằng "{x} sinh viên", "SV đã xác nhận" bằng "Sinh viên đã xác nhận".
+  - Ô thông tin đề tài & sinh viên (`InfoCell`) sử dụng icon đại diện đóng hộp bo góc mềm `rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100/80` cùng tên đề tài rõ nét.
+  - Các nút thao tác trong bảng (*Chi tiết*, *Nhân bản*, *Gửi duyệt*) chuẩn hóa bo góc `rounded-xl` với icon và khoảng cách thao tác chuẩn xác.

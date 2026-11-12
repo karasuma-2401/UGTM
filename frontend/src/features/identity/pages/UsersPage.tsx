@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { ListCardHeader } from '@/components/ui/list-card-header';
+import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -153,6 +154,47 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             aria-label="Thống kê tài khoản"
             aria-busy={data.statisticsQuery.isFetching}
           >
+            <StatisticsBar
+              compact
+              className="sr-only"
+              loading={data.statisticsQuery.isPending}
+              items={[
+                {
+                  key: 'total',
+                  onClick: () => filters.quickFilter(''),
+                  active:
+                    !filters.filters.status && !filters.filters.keyword && !filters.filters.role,
+                  label: 'Tổng tài khoản',
+                  value: data.formatCount(data.statistics?.total),
+                  icon: <UsersRound />,
+                  tone: 'primary',
+                },
+                {
+                  key: 'pending',
+                  onClick: () => filters.quickFilter('PendingActivation'),
+                  active:
+                    filters.filters.status === 'PendingActivation' &&
+                    !filters.filters.keyword &&
+                    !filters.filters.role,
+                  label: 'Chờ kích hoạt',
+                  value: data.formatCount(data.statistics?.pendingActivation),
+                  icon: <UsersRound />,
+                  tone: 'warning',
+                },
+                {
+                  key: 'disabled',
+                  onClick: () => filters.quickFilter('Disabled'),
+                  active:
+                    filters.filters.status === 'Disabled' &&
+                    !filters.filters.keyword &&
+                    !filters.filters.role,
+                  label: 'Vô hiệu hóa',
+                  value: data.formatCount(data.statistics?.disabled),
+                  icon: <UsersRound />,
+                  tone: 'danger',
+                },
+              ]}
+            />
             <UserStatusTabs
               activeKey={
                 !filters.filters.status && !filters.filters.keyword && !filters.filters.role

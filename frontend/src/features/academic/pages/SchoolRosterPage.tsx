@@ -1,10 +1,9 @@
 import { OperationToast } from '@/shared/notifications';
-import React, { useMemo } from 'react';
-import { RotateCcw, RefreshCw } from 'lucide-react';
+import React from 'react';
+import { RotateCcw } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { Select } from '@/components/ui/select';
 import { UserFormDialog } from '@/features/identity/components/users/UserFormDialog';
 import { userApi, getUserErrorMessage } from '@/features/identity/services/userApi';
 import type { UserFormValues } from '@/features/identity/types/user.types';
@@ -49,22 +48,6 @@ export const SchoolRosterPage: React.FC = () => {
     }
   };
 
-  const batchOptions = useMemo(
-    () =>
-      data.batches.map((b) => {
-        let statusBadge = 'Bản nháp';
-        if (b.status === 'Open') statusBadge = 'Đang hoạt động';
-        else if (b.status === 'Closed') statusBadge = 'Đã đóng';
-        else if (b.status === 'Archived') statusBadge = 'Đã lưu trữ';
-
-        return {
-          value: b.id,
-          label: `${b.batchName} (Học kỳ ${b.semester} - Năm học ${b.academicYear}) [${statusBadge}]`,
-        };
-      }),
-    [data.batches],
-  );
-
   const batchLabel = data.selectedBatch
     ? `${data.selectedBatch.batchName} - Học kỳ ${data.selectedBatch.semester} (Năm học ${data.selectedBatch.academicYear})`
     : undefined;
@@ -74,31 +57,7 @@ export const SchoolRosterPage: React.FC = () => {
       <PageHeader
         title="Danh sách Sinh viên & Giảng viên"
         description="Nhập và đối chiếu danh sách sinh viên đủ điều kiện khóa luận và giảng viên hướng dẫn theo từng đợt đào tạo"
-      >
-        <div className="w-full sm:w-80 md:w-96">
-          <Select
-            options={batchOptions}
-            value={data.selectedBatchId}
-            onChange={(val) => data.setSelectedBatchId(String(val ?? ''))}
-            disabled={data.isLoadingBatches || data.batches.length === 0}
-            placeholder={data.isLoadingBatches ? 'Đang tải đợt khóa luận...' : 'Chưa có đợt khóa luận'}
-            size="lg"
-            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300 transition-all select-none"
-          />
-        </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={handleRetryLoad}
-          disabled={data.isLoadingBatches}
-          className="size-10 rounded-xl border-slate-200 bg-white text-slate-500 hover:text-slate-900 shadow-2xs active:scale-[0.98] transition-all"
-          title="Tải lại dữ liệu"
-        >
-          <RefreshCw className={`size-4 ${data.isLoadingBatches ? 'animate-spin' : ''}`} />
-        </Button>
-      </PageHeader>
+      />
 
       <OperationToast message={roster.notice} onConsumed={() => roster.setNotice(null)} />
 
