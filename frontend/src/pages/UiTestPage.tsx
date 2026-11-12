@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NotificationExamples } from '@/shared/notifications/NotificationExamples';
 import {
   Search,
   Mail,
@@ -73,6 +74,7 @@ export function UiTestPage() {
 
   return (
     <div className="space-y-10 pb-16">
+      <NotificationExamples />
       {/* Page Header */}
       <div className="border-b border-slate-200 pb-5">
         <div className="flex flex-wrap items-center justify-between gap-4">

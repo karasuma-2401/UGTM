@@ -1,5 +1,7 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { OperationToast } from '@/shared/notifications';
 import React from 'react';
-import { History, Wand2, CheckCircle2, AlertCircle, Save, Send } from 'lucide-react';
+import { History, Wand2, Save, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -53,57 +55,15 @@ export const ScoreConfigPage: React.FC = () => {
         </div>
       </header>
 
-      {modals.notice && (
-        <div
-          role="status"
-          className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-xs sm:text-sm text-emerald-800 flex items-center justify-between shadow-xs transition-all animate-in fade-in"
-        >
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
-            <span className="font-medium">{modals.notice}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => modals.setNotice(null)}
-            className="text-emerald-700 hover:text-emerald-950 font-bold ml-3 text-xs underline cursor-pointer"
-          >
-            Đóng
-          </button>
-        </div>
-      )}
+      <OperationToast message={modals.notice} onConsumed={() => modals.setNotice(null)} />
 
-      {modals.errorMessage && (
-        <div
-          role="alert"
-          className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-xs sm:text-sm text-rose-800 flex items-center justify-between shadow-xs transition-all animate-in fade-in"
-        >
-          <div className="flex items-center gap-2.5">
-            <AlertCircle className="size-5 text-rose-600 shrink-0" />
-            <span className="font-medium">{modals.errorMessage}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => modals.setErrorMessage(null)}
-            className="text-rose-700 hover:text-rose-950 font-bold ml-3 text-xs underline cursor-pointer"
-          >
-            Đóng
-          </button>
-        </div>
-      )}
+      {modals.errorMessage && <InlineAlert title="Không thể hoàn tất" onDismiss={() => modals.setErrorMessage(null)}>{modals.errorMessage}</InlineAlert>}
 
       {data.batches.length === 0 && !data.isLoadingBatches && (
-        <div
-          role="alert"
-          className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-xs sm:text-sm text-amber-800 flex items-center justify-between shadow-xs transition-all animate-in fade-in"
-        >
-          <div className="flex items-center gap-2.5">
-            <AlertCircle className="size-5 text-amber-600 shrink-0" />
-            <span className="font-medium">
+        <InlineAlert tone="warning" title="Chưa có đợt khóa luận">
               Chưa có đợt khóa luận nào trong hệ thống. Vui lòng tạo đợt khóa luận trước khi tiến
               hành cấu hình điểm.
-            </span>
-          </div>
-        </div>
+        </InlineAlert>
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(250px,280px)] gap-5 items-start">

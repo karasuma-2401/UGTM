@@ -1,3 +1,4 @@
+import { OperationToast } from '@/shared/notifications';
 import axios from 'axios';
 import { ArrowLeft, ArrowRight, Check, Clock, LockKeyhole, Mail, Shield } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -226,11 +227,7 @@ export function OtpPage() {
             {error}
           </p>
         )}
-        {notice && (
-          <p className="auth-success" role="status">
-            {notice}
-          </p>
-        )}
+        <OperationToast message={notice} tone="info" onConsumed={() => setNotice('')} />
         <Button
           type="submit"
           className="auth-submit"

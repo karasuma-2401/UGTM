@@ -1,4 +1,6 @@
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { OperationToast } from '@/shared/notifications';
+
 import { PageHeader } from '@/components/ui/page-header';
 import { useCouncilApproval } from '../hooks/useCouncilApproval';
 import {
@@ -31,6 +33,7 @@ export function CouncilApprovalPage() {
     customDecisionNumber,
     setCustomDecisionNumber,
     noticeMessage,
+    setNoticeMessage,
     errorMessage,
     canApprove,
     approveMutation,
@@ -48,25 +51,9 @@ export function CouncilApprovalPage() {
         </span>
       </PageHeader>
 
-      {errorMessage && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
-          <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold">Thao tác không thành công</p>
-            <p className="text-xs mt-0.5 text-rose-700">{errorMessage}</p>
-          </div>
-        </div>
-      )}
+      {errorMessage && <InlineAlert title="Không thể hoàn tất">{errorMessage}</InlineAlert>}
 
-      {noticeMessage && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3">
-          <CheckCircle2 className="size-5 shrink-0 text-emerald-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold">Thông báo</p>
-            <p className="text-xs mt-0.5 text-emerald-700">{noticeMessage}</p>
-          </div>
-        </div>
-      )}
+      <OperationToast message={noticeMessage} onConsumed={() => setNoticeMessage(null)} />
 
       <CouncilApprovalFilterBar
         keyword={keyword}

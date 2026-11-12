@@ -1,5 +1,7 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { OperationToast } from '@/shared/notifications';
 import { Link } from 'react-router-dom';
-import { FileUp, BookOpen, AlertCircle, CheckCircle2, Clock, ShieldAlert, RotateCcw } from 'lucide-react';
+import { FileUp, BookOpen, AlertCircle, Clock, ShieldAlert, RotateCcw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { ThesisSubmissionNavigation } from '../components/navigation';
@@ -27,6 +29,7 @@ export function FinalReportSubmissionPage() {
     setIsFeedbackOpen,
     actionError,
     actionSuccess,
+    setActionSuccess,
     currentStatus,
     latestVersion,
     canSubmit,
@@ -199,19 +202,9 @@ export function FinalReportSubmissionPage() {
         );
       })()}
 
-      {actionError && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3 shadow-xs">
-          <AlertCircle className="size-5 text-rose-600 shrink-0 mt-0.5" />
-          <div className="text-sm font-medium leading-relaxed">{actionError}</div>
-        </div>
-      )}
+      {actionError && <InlineAlert title="Không thể hoàn tất">{actionError}</InlineAlert>}
 
-      {actionSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-start gap-3 shadow-xs">
-          <CheckCircle2 className="size-5 text-emerald-600 shrink-0 mt-0.5" />
-          <div className="text-sm font-medium leading-relaxed">{actionSuccess}</div>
-        </div>
-      )}
+      <OperationToast message={actionSuccess} onConsumed={() => setActionSuccess(null)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-8 space-y-6">

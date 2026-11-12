@@ -5,6 +5,7 @@ import type { UserProfile } from '@/features/auth/types/auth.types';
 import { logoutApi } from '@/features/auth/services/authApi';
 import { allowSessionRefresh, isInvalidSession, stopSessionRefresh } from '../api/sessionRefresh';
 import { restoreSession } from './restoreSession';
+import { notify } from '../notifications/notify';
 
 const USER_PROFILE_KEY = 'ugtm_user_profile';
 
@@ -46,6 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const clearLocalSession = useCallback(() => {
+    notify.dismissAll();
     void queryClient.cancelQueries();
     queryClient.clear();
     tokenStorage.clearTokens();
@@ -93,6 +95,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       generation.current += 1;
+      notify.dismissAll();
       void queryClient.cancelQueries();
       queryClient.clear();
       allowSessionRefresh();

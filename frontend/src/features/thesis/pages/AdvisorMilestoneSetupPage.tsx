@@ -1,3 +1,5 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { OperationToast } from '@/shared/notifications';
 import { useNavigate } from 'react-router-dom';
 import { useAdvisorMilestones } from '../hooks/useAdvisorMilestones';
 import {
@@ -8,7 +10,7 @@ import {
 import { PageHeader } from '@/components/ui/page-header';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2, Target, Users, ShieldAlert, RotateCcw } from 'lucide-react';
+import { AlertCircle, Target, Users, ShieldAlert, RotateCcw } from 'lucide-react';
 import { classifyThesisError, getThesisErrorMessage } from '../utils/thesisErrors';
 
 export function AdvisorMilestoneSetupPage() {
@@ -25,6 +27,7 @@ export function AdvisorMilestoneSetupPage() {
     setSelectedMilestone,
     actionError,
     actionSuccess,
+    setActionSuccess,
     createMutation,
     canCreateMilestones,
     ineligibleReason,
@@ -135,25 +138,9 @@ export function AdvisorMilestoneSetupPage() {
         </div>
       )}
 
-      {actionError && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
-          <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold">Thao tác không thành công</p>
-            <p className="text-xs mt-0.5 text-rose-700">{actionError}</p>
-          </div>
-        </div>
-      )}
+      {actionError && <InlineAlert title="Không thể hoàn tất">{actionError}</InlineAlert>}
 
-      {actionSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3">
-          <CheckCircle2 className="size-5 shrink-0 text-emerald-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold">Thông báo</p>
-            <p className="text-xs mt-0.5 text-emerald-700">{actionSuccess}</p>
-          </div>
-        </div>
-      )}
+      <OperationToast message={actionSuccess} onConsumed={() => setActionSuccess(null)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-8 space-y-6">

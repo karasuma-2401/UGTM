@@ -1,3 +1,4 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileSearch } from 'lucide-react';
@@ -51,9 +52,7 @@ export function CouncilSimilarityReportsPage() {
             Chưa có báo cáo nào được phân công và đến giai đoạn thẩm định.
           </p>
         )}
-        {!query.isError && query.data && query.data.length > 0 && (
-          <ul className="divide-y divide-slate-100">
-            {query.data.map((item) => (
+        {!query.isError && query.data && query.data.length > 0 && <InlineAlert tone="error">{query.data.map((item) => (
               <li
                 key={item.finalReportId}
                 className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
@@ -71,9 +70,7 @@ export function CouncilSimilarityReportsPage() {
                   {selectedId === item.finalReportId ? 'Đang xem' : 'Xem kết quả'}
                 </Button>
               </li>
-            ))}
-          </ul>
-        )}
+            ))}</InlineAlert>}
       </section>
       {selected && (
         <SimilarityReportPanel reportId={selected.finalReportId} versionNo={selected.versionNo} />

@@ -7,6 +7,11 @@ import * as jsxRuntime from 'react/jsx-runtime';
 import * as icons from 'lucide-react';
 
 function loadModule(path, dependencies = {}, browserWindow = {}) {
+  dependencies = {
+    '@/shared/notifications': { OperationToast: 'OperationToast', notify: { success() {} } },
+    '@/components/ui/inline-alert': { InlineAlert: 'InlineAlert' },
+    ...dependencies,
+  };
   const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
   const { outputText } = ts.transpileModule(source, {
     compilerOptions: {
@@ -815,7 +820,7 @@ test('successful review refreshes both reviewer and lecturer lists; Lecturer/Stu
   assert.equal(
     page.find(
       (node) =>
-        node.props.role === 'status' && String(node.props.children).includes('chưa được công bố'),
+        node.type === 'OperationToast' && String(node.props.message).includes('chưa được công bố'),
     ).length,
     1,
   );

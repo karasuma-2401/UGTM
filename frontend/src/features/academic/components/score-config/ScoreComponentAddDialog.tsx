@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { FormErrorSummary, type FormFieldError } from '@/components/ui/form-error-summary';
 import type {
   ScoreComponentInput,
   ScoreComponentSource,
@@ -37,7 +38,8 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
   const [isRequired, setIsRequired] = useState(true);
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [minimumScore, setMinimumScore] = useState<string>('');
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FormFieldError[]>([]);
+  const [submissionKey, setSubmissionKey] = useState(0);
 
   const resetForm = () => {
     setComponentCode('');
@@ -48,7 +50,8 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
     setIsRequired(true);
     setRequiresApproval(false);
     setMinimumScore('');
-    setError(null);
+    setErrors([]);
+    setSubmissionKey(0);
   };
 
   const handleClose = () => {
@@ -61,36 +64,53 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
     const cleanCode = componentCode.trim().toUpperCase();
     const cleanName = componentName.trim();
 
-    if (!cleanCode) {
-      setError('Mã thành phần điểm không được để trống.');
-      return;
-    }
-
-    if (existingCodes.includes(cleanCode)) {
-      setError('Mã thành phần điểm này đã tồn tại trong danh sách.');
-      return;
-    }
-
-    if (!cleanName) {
-      setError('Tên thành phần điểm không được để trống.');
-      return;
-    }
-
+    const nextErrors: FormFieldError[] = [];
+    if (!cleanCode)
+      nextErrors.push({
+        fieldId: 'score-component-code',
+        message: 'Mã thành phần điểm không được để trống.',
+      });
+    else if (existingCodes.includes(cleanCode))
+      nextErrors.push({
+        fieldId: 'score-component-code',
+        message: 'Mã thành phần điểm này đã tồn tại trong danh sách.',
+      });
+    if (!cleanName)
+      nextErrors.push({
+        fieldId: 'score-component-name',
+        message: 'Tên thành phần điểm không được để trống.',
+      });
     const weightNum = parseFloat(weight);
-    if (isNaN(weightNum) || weightNum < 0) {
-      setError('Trọng số/hệ số phải là số không âm.');
-      return;
-    }
+    if (!Number.isFinite(weightNum) || weightNum < 0)
+      nextErrors.push({
+        fieldId: 'score-component-weight',
+        message: 'Trọng số/hệ số phải là số không âm.',
+      });
+    else if (calculationMethod === 'IntegerCoefficient' && !Number.isInteger(weightNum))
+      nextErrors.push({
+        fieldId: 'score-component-weight',
+        message: 'Hệ số phải là số nguyên không âm.',
+      });
+    else if (calculationMethod === 'Percentage' && weightNum > 100)
+      nextErrors.push({
+        fieldId: 'score-component-weight',
+        message: 'Tỷ lệ không được vượt quá 100%.',
+      });
 
     let minScoreNum: number | null = null;
     if (minimumScore.trim() !== '') {
       const parsed = parseFloat(minimumScore);
       if (isNaN(parsed) || parsed < 0 || parsed > 10) {
-        setError('Điểm sàn phải nằm trong khoảng từ 0.0 đến 10.0.');
-        return;
+        nextErrors.push({
+          fieldId: 'score-component-minimum',
+          message: 'Điểm sàn phải nằm trong khoảng từ 0.0 đến 10.0.',
+        });
       }
       minScoreNum = parsed;
     }
+    setErrors(nextErrors);
+    setSubmissionKey((previous) => previous + 1);
+    if (nextErrors.length) return;
 
     onAdd({
       componentCode: cleanCode,
@@ -129,19 +149,21 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
       className="max-w-lg"
       headerClassName="border-b border-slate-200 bg-gradient-to-r from-blue-100/80 via-blue-50/70 to-orange-100 py-4 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[image:var(--gradient-brand)]"
     >
-      <form onSubmit={handleSubmit} className="text-sm">
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        className="text-sm"
+        onChange={(event) => {
+          const fieldId = (event.target as HTMLElement).id;
+          if (errors.some((entry) => entry.fieldId === fieldId))
+            setErrors((previous) => previous.filter((entry) => entry.fieldId !== fieldId));
+        }}
+      >
         <div className="p-5 sm:p-6 space-y-4">
           <p className="text-sm leading-relaxed text-slate-600">
             Thiết lập thành phần điểm và điều kiện áp dụng cho đợt đã chọn.
           </p>
-          {error && (
-            <div
-              role="alert"
-              className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 font-medium"
-            >
-              {error}
-            </div>
-          )}
+          <FormErrorSummary errors={errors} submissionKey={submissionKey} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
@@ -150,6 +172,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
               </label>
               <Input
                 id="score-component-code"
+                error={errors.find((entry) => entry.fieldId === 'score-component-code')?.message}
                 value={componentCode}
                 onChange={(e) => setComponentCode(e.target.value.toUpperCase())}
                 placeholder="VD: DIEM_DO_AN"
@@ -164,8 +187,9 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
               </label>
               <Input
                 id="score-component-weight"
+                error={errors.find((entry) => entry.fieldId === 'score-component-weight')?.message}
                 type="number"
-                step={calculationMethod === 'Percentage' ? '1' : '0.5'}
+                step={calculationMethod === 'Percentage' ? '0.01' : '1'}
                 min="0"
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
@@ -182,6 +206,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
             </label>
             <Input
               id="score-component-name"
+              error={errors.find((entry) => entry.fieldId === 'score-component-name')?.message}
               value={componentName}
               onChange={(e) => setComponentName(e.target.value)}
               placeholder="VD: Điểm đánh giá đồ án tốt nghiệp"
@@ -218,6 +243,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
             </label>
             <Input
               id="score-component-minimum"
+              error={errors.find((entry) => entry.fieldId === 'score-component-minimum')?.message}
               type="number"
               step="0.1"
               min="0"

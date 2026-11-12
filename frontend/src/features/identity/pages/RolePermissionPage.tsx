@@ -1,3 +1,4 @@
+import { OperationToast } from '@/shared/notifications';
 import { useEffect, useState } from 'react';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBlocker } from 'react-router-dom';
@@ -93,11 +94,7 @@ export function RolePermissionPage() {
   return (
     <div className="min-w-0 space-y-4">
       <PageHeader compact accent title="Tài khoản và phân quyền" navigation={<IdentityNavigation />} />
-      {notice && (
-        <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
-          {notice}
-        </p>
-      )}
+      <OperationToast message={notice} onConsumed={() => setNotice('')} />
       {save.isError && (
         <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
           {save.error.message} Thay đổi của bạn vẫn được giữ lại.

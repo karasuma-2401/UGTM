@@ -30,7 +30,7 @@ const THEME_CONFIG: Record<ConfirmDialogType, ThemeItem> = {
   },
   warning: {
     confirmBtn:
-      'bg-amber-600 hover:bg-amber-700 text-white shadow-xs focus-visible:ring-amber-600/30',
+      'bg-amber-700 hover:bg-amber-800 text-white shadow-xs focus-visible:ring-amber-700/30',
   },
   error: {
     confirmBtn: 'bg-red-600 hover:bg-red-700 text-white shadow-xs focus-visible:ring-red-600/30',

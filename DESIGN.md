@@ -48,3 +48,9 @@ Tệp này ghi nhận nền tảng giao diện từ source hiện tại, không 
 Trước khi sửa UI, xem component và giao diện được render. Sau khi sửa, kiểm tra các viewport và trạng thái có liên quan, lưu ảnh/trace trong `artifacts/playwright/` nếu cần.
 
 Khi một quyết định thiết kế được chấp nhận, cập nhật tệp này hoặc nguồn token/component tương ứng. Kết quả tra cứu từ skill là gợi ý; không tự ghi đè các quyết định hiện có.
+
+## Thông báo và phản hồi
+
+Toast dùng Sonner qua API chung `notify`, giao diện Tailwind và nội dung tiếng Việt. Thành công/thông tin tự đóng sau 5 giây; cảnh báo/lỗi/có thao tác giữ đến khi đóng. Tối đa ba toast hiển thị, không tạo trùng cùng nội dung. Giữ lỗi nhập liệu cạnh trường cùng summary có liên kết; lỗi tải và cảnh báo cần xử lý lâu dài dùng InlineAlert tại vùng bị ảnh hưởng. ConfirmDialog dành cho quyết định có hậu quả, warning dùng amber. Không thay inbox nghiệp vụ bằng toast. Quy ước và ví dụ: [docs/notifications.md](docs/notifications.md).
+
+Toast dùng thẻ trắng bo góc 12px, viền và bóng nhẹ, icon tròn đặc căn giữa cạnh nội dung. Giữ màu thành công emerald, thông tin blue, cảnh báo amber và lỗi rose; bỏ dải màu cố định phía trên. Toast tự đóng có thanh thời gian 3px ở cạnh dưới, co dần theo thời gian và tạm dừng cùng Sonner khi hover, focus hoặc tab bị ẩn. Toast giữ đến khi đóng và loading không hiển thị thanh đếm ngược. Khi giảm chuyển động, thanh cập nhật theo nhịp giây. Nhiều toast xếp chồng và mở rộng khi hover hoặc dùng F8.

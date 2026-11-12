@@ -1,3 +1,5 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { OperationToast } from '@/shared/notifications';
 import { useMidtermSubmission } from '../hooks/useMidtermSubmission';
 import {
   MidtermStatusBadge,
@@ -8,7 +10,7 @@ import { SyllabusTopicInfoCard } from '../components/submission';
 import { ThesisSubmissionNavigation } from '../components/navigation';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/ui/page-header';
-import { AlertCircle, CheckCircle2, BookOpen, FileUp, Clock, ShieldAlert, RotateCcw } from 'lucide-react';
+import { AlertCircle, BookOpen, FileUp, Clock, ShieldAlert, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { classifyThesisError, getThesisErrorMessage } from '../utils/thesisErrors';
 
@@ -22,6 +24,7 @@ export function MidtermSubmissionPage() {
     setSelectedFile,
     actionError,
     actionSuccess,
+    setActionSuccess,
     submitMutation,
     handleDownload,
     currentStatus,
@@ -192,25 +195,9 @@ export function MidtermSubmissionPage() {
         </div>
       )}
 
-      {actionError && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
-          <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold">Thao tác không thành công</p>
-            <p className="text-xs mt-0.5 text-rose-700">{actionError}</p>
-          </div>
-        </div>
-      )}
+      {actionError && <InlineAlert title="Không thể hoàn tất">{actionError}</InlineAlert>}
 
-      {actionSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3">
-          <CheckCircle2 className="size-5 shrink-0 text-emerald-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold">Thông báo</p>
-            <p className="text-xs mt-0.5 text-emerald-700">{actionSuccess}</p>
-          </div>
-        </div>
-      )}
+      <OperationToast message={actionSuccess} onConsumed={() => setActionSuccess(null)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-8 space-y-6">

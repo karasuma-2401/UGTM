@@ -1,15 +1,8 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { OperationToast } from '@/shared/notifications';
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  CheckCheck,
-  Clock3,
-  FileText,
-  Megaphone,
-  Search,
-  SlidersHorizontal,
-  X,
-  FunnelX,
-} from 'lucide-react';
+import { CheckCheck, Clock3, FileText, Megaphone, Search, SlidersHorizontal, X, FunnelX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
@@ -158,16 +151,8 @@ export function TopicReviewPage() {
         </Button>
       </PageHeader>
 
-      {notice && (
-        <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
-          {notice}
-        </p>
-      )}
-      {actionMutation.isError && !topicId && !publishOpen && (
-        <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
-          {getTopicErrorMessage(actionMutation.error)}
-        </p>
-      )}
+      <OperationToast message={notice} onConsumed={() => setNotice('')} />
+      {actionMutation.isError && !topicId && !publishOpen && <InlineAlert tone="error">{getTopicErrorMessage(actionMutation.error)}</InlineAlert>}
 
       <form
         onSubmit={handleApply}
