@@ -1,6 +1,5 @@
 import React, { useRef, useMemo } from 'react';
-import { Upload, FileSpreadsheet, Download, UserPlus } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Upload, FileSpreadsheet, Download, UserPlus, GraduationCap, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import type { KltnBatchSummaryDto } from '../../types/period.types';
@@ -38,14 +37,16 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
     () =>
       batches.map((b) => ({
         value: b.id,
-        label: `${b.batchName} - HK${b.semester} ${b.academicYear}`,
+        label: `${b.batchName} (Học kỳ ${b.semester} - Năm học ${b.academicYear})`,
       })),
     [batches],
   );
 
   const roleTypeOption = useMemo(() => {
     const label =
-      activeRole === 'Student' ? 'Sinh viên đủ điều kiện' : 'Giảng viên hướng dẫn & phản biện';
+      activeRole === 'Student'
+        ? 'Sinh viên đủ điều kiện làm khóa luận'
+        : 'Giảng viên hướng dẫn & phản biện';
     return [{ value: activeRole, label }];
   }, [activeRole]);
 
@@ -60,37 +61,68 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
   };
 
   return (
-    <Card className="rounded-2xl border-slate-200/80 bg-white p-6 shadow-sm space-y-5">
-      <div className="flex items-center gap-2">
-        <div className="inline-flex p-1 bg-slate-100 rounded-xl">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5 transition-all hover:border-slate-300">
+      {/* Role Segmented Controls - Fluent Style with Fluid Sliding Animation */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative inline-grid grid-cols-2 p-1 rounded-xl border border-slate-200 bg-slate-100/80 select-none">
+          {/* Animated Sliding Pill Indicator */}
+          <span
+            aria-hidden="true"
+            className={`absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-lg bg-white shadow-xs border border-slate-200/60 transition-transform duration-300 ease-out will-change-transform pointer-events-none ${
+              activeRole === 'Student' ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          />
+
           <button
             type="button"
             onClick={() => onSwitchRole('Student')}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+            className={`relative z-10 flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-colors duration-200 select-none cursor-pointer active:scale-[0.98] ${
               activeRole === 'Student'
-                ? 'bg-[#2054A5] text-white shadow-xs'
+                ? 'text-slate-900 font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Sinh viên
+            <GraduationCap
+              className={`size-4 transition-all duration-300 ${
+                activeRole === 'Student'
+                  ? 'text-primary scale-110'
+                  : 'text-slate-400'
+              }`}
+            />
+            <span>Danh sách Sinh viên</span>
           </button>
+
           <button
             type="button"
             onClick={() => onSwitchRole('Lecturer')}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+            className={`relative z-10 flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg transition-colors duration-200 select-none cursor-pointer active:scale-[0.98] ${
               activeRole === 'Lecturer'
-                ? 'bg-[#2054A5] text-white shadow-xs'
+                ? 'text-slate-900 font-bold'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Giảng viên
+            <Briefcase
+              className={`size-4 transition-all duration-300 ${
+                activeRole === 'Lecturer'
+                  ? 'text-emerald-600 scale-110'
+                  : 'text-slate-400'
+              }`}
+            />
+            <span>Danh sách Giảng viên</span>
           </button>
         </div>
+
+        <span className="text-xs font-medium text-slate-400">
+          Chọn đối tượng danh sách cần nhập dữ liệu
+        </span>
       </div>
 
+      {/* Selectors Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5 text-xs font-semibold text-slate-700 block">
-          <span>Đợt khóa luận</span>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-slate-700 block">
+            Đợt khóa luận tốt nghiệp <span className="text-rose-500">*</span>
+          </label>
           <Select
             options={batchOptions}
             value={selectedBatchId}
@@ -98,18 +130,20 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
             disabled={isLoadingBatches || batches.length === 0}
             placeholder={isLoadingBatches ? 'Đang tải đợt khóa luận...' : 'Chưa có đợt khóa luận'}
             size="lg"
-            triggerClassName="rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-2xs"
+            triggerClassName="h-10 rounded-xl border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-2xs hover:border-slate-300 transition-all select-none"
           />
         </div>
 
-        <div className="space-y-1.5 text-xs font-semibold text-slate-700 block">
-          <span>Loại danh sách</span>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-slate-700 block">
+            Phân loại đối tượng danh sách
+          </label>
           <Select
             options={roleTypeOption}
             value={activeRole}
             disabled
             size="lg"
-            triggerClassName="rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-800 shadow-2xs"
+            triggerClassName="h-10 rounded-xl border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 shadow-2xs select-none"
           />
         </div>
       </div>
@@ -122,80 +156,84 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
         onChange={handleFileChange}
       />
 
+      {/* Drag & Drop Upload Zone */}
       {fileInfo ? (
-        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="size-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
-              <FileSpreadsheet className="size-5 text-emerald-600" />
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 sm:p-5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="size-11 rounded-xl bg-emerald-100/90 border border-emerald-200 flex items-center justify-center shrink-0 text-emerald-700 shadow-2xs">
+              <FileSpreadsheet className="size-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
+              <p className="text-sm font-bold text-slate-900 truncate">
                 {fileInfo.name}
               </p>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                Excel .xlsx - {fileInfo.sizeLabel} - {fileInfo.statusText}
+              <p className="text-xs text-slate-500 mt-0.5">
+                Bảng tính Excel (.xlsx) • Dung lượng: {fileInfo.sizeLabel} • {fileInfo.statusText}
               </p>
             </div>
           </div>
 
           <Button
             type="button"
-            variant="successOutline"
+            variant="outline"
             size="sm"
             onClick={() => fileInputRef.current?.click()}
-            className="rounded-lg h-8 text-xs shrink-0 cursor-pointer"
+            className="rounded-xl border-emerald-300 bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-semibold h-9 px-3.5 shrink-0 shadow-2xs transition-all active:scale-[0.98]"
           >
-            Thay tệp
+            Đổi tệp khác
           </Button>
         </div>
       ) : (
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="w-full rounded-xl border-2 border-dashed border-emerald-200 hover:border-emerald-500 hover:bg-emerald-50/50 p-6 flex flex-col items-center justify-center gap-2 text-center transition-colors cursor-pointer group focus-visible:outline-emerald-600"
+          className="w-full rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50/30 p-8 flex flex-col items-center justify-center gap-3 text-center transition-all cursor-pointer group focus-visible:outline-emerald-600 bg-slate-50/40"
         >
-          <div className="size-10 rounded-full bg-emerald-50 group-hover:bg-emerald-100 flex items-center justify-center text-emerald-700 transition-colors">
+          <div className="size-12 rounded-2xl bg-emerald-50 border border-emerald-200/80 group-hover:scale-105 group-hover:bg-emerald-100 flex items-center justify-center text-emerald-600 transition-all shadow-2xs">
             <Upload className="size-5" />
           </div>
-          <div className="space-y-0.5">
-            <span className="text-xs sm:text-sm font-semibold text-slate-800">
-              Nhấn để tải lên tệp danh sách Excel (.xlsx)
+          <div className="space-y-1">
+            <span className="text-sm font-bold text-slate-800 block">
+              Nhấn để tải lên tệp bảng tính Excel (.xlsx)
             </span>
-            <p className="text-[11px] text-slate-400">
-              Hệ thống sẽ tự động đọc và đối chiếu hợp lệ trước khi nhập
+            <p className="text-xs text-slate-500 max-w-md mx-auto">
+              Hệ thống sẽ tự động đọc dữ liệu, kiểm tra cấu trúc cột và đối chiếu điều kiện hợp lệ trước khi nhập
             </p>
           </div>
         </button>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
-        <div className="flex items-center gap-3">
-          <button
+      {/* Action Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
+        <div className="flex items-center gap-2">
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onDownloadTemplate}
             disabled={isDownloading}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline cursor-pointer disabled:opacity-50 focus-visible:outline-emerald-600"
+            className="h-8 gap-1.5 rounded-lg border-emerald-200 bg-emerald-50/70 text-emerald-800 hover:bg-emerald-100 font-semibold text-xs shadow-2xs transition-all active:scale-[0.98]"
           >
-            <Download className="size-3.5" />
-            <span>{isDownloading ? 'Đang tải mẫu…' : 'Xem mẫu Excel'}</span>
-          </button>
+            <Download className="size-3.5 text-emerald-600" />
+            <span>{isDownloading ? 'Đang tải mẫu…' : 'Tải tệp Excel mẫu (.xlsx)'}</span>
+          </Button>
 
-          <span className="text-slate-300">|</span>
-
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onOpenSingleAdd}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
+            className="h-8 gap-1.5 rounded-lg border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-semibold text-xs shadow-2xs transition-all active:scale-[0.98]"
           >
-            <UserPlus className="size-3.5" />
+            <UserPlus className="size-3.5 text-slate-500" />
             <span>Thêm bổ sung đơn lẻ</span>
-          </button>
+          </Button>
         </div>
 
-        <span className="text-[11px] text-slate-400">
-          Tệp tối đa 20 MB
+        <span className="text-xs text-slate-400">
+          Định dạng hỗ trợ: Microsoft Excel (.xlsx) • Tối đa 20 MB
         </span>
       </div>
-    </Card>
+    </div>
   );
 };

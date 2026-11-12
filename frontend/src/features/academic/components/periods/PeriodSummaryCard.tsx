@@ -146,7 +146,7 @@ export const PeriodSummaryCard: React.FC<PeriodSummaryCardProps> = ({
               size="sm"
               disabled={isOpenLoading}
               onClick={onOpenBatch}
-              className="w-full h-10 gap-2 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 font-semibold text-xs shadow-2xs transition-all active:scale-[0.98]"
+              className="w-full h-10 gap-2 rounded-xl border border-emerald-300 bg-emerald-50/90 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 hover:text-emerald-900 font-semibold text-xs shadow-2xs transition-all active:scale-[0.98]"
             >
               <Play className="size-3.5 fill-current" />
               {isOpenLoading ? 'Đang mở đợt...' : 'Mở đợt vận hành'}

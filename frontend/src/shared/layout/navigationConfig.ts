@@ -56,7 +56,7 @@ export const navigationSections: NavSectionConfig[] = [
         icon: CalendarRange,
       },
       {
-        label: 'Danh sách SV / GV',
+        label: 'Danh sách Sinh viên & Giảng viên',
         path: '/academic/roster',
         icon: UsersRound,
       },
