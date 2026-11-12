@@ -104,38 +104,32 @@ export function formatAuditAction(action: string): string {
   return ACTION_LABELS[action] || action;
 }
 
+function vietnamTimeParts(isoString: string): Record<string, string> | null {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return null;
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  });
+  return Object.fromEntries(formatter.formatToParts(date).map((part) => [part.type, part.value]));
+}
+
 export function formatAuditShortTime(isoString: string): string {
-  try {
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return isoString;
-
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-
-    return `${day}/${month} - ${hours}:${minutes}`;
-  } catch {
-    return isoString;
-  }
+  const parts = vietnamTimeParts(isoString);
+  return parts ? `${parts.day}/${parts.month} - ${parts.hour}:${parts.minute}` : isoString;
 }
 
 export function formatAuditFullTime(isoString: string): string {
-  try {
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return isoString;
-
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-
-    return `${day}/${month}/${year} - ${hours}:${minutes}:${seconds}`;
-  } catch {
-    return isoString;
-  }
+  const parts = vietnamTimeParts(isoString);
+  return parts
+    ? `${parts.day}/${parts.month}/${parts.year} - ${parts.hour}:${parts.minute}:${parts.second} (UTC+7)`
+    : isoString;
 }
 
 export function formatAuditRelativeTime(isoString: string): string {
@@ -159,120 +153,74 @@ export function formatAuditRelativeTime(isoString: string): string {
 
 export function parseAuditDiff(item: AuditLogItem): AuditLogDiffData {
   const metadata = item.metadata || {};
-  const reason = item.reasonCode || metadata.Reason || metadata.reason || 'Thao tác hợp lệ được ghi nhận.';
-
-  if (item.action === 'Identity.User.StatusChanged') {
-    const prev = metadata.PreviousStatus || metadata.previousStatus;
-    const next = metadata.NewStatus || metadata.newStatus;
-    return {
-      fieldTitle: 'Trường dữ liệu: Trạng thái tài khoản',
-      beforeValue: prev ? (STATUS_TEXT[prev] || prev) : 'Chưa xác định',
-      afterValue: next ? (STATUS_TEXT[next] || next) : 'Chưa xác định',
-      reason,
-      hasDiff: true,
-    };
-  }
-
-  if (item.action === 'Identity.Role.PermissionsChanged') {
-    const added = metadata.AddedPermissionIds || metadata.addedPermissionIds || [];
-    const removed = metadata.RemovedPermissionIds || metadata.removedPermissionIds || [];
-    const current = metadata.CurrentPermissionIds || metadata.currentPermissionIds || [];
-
-    return {
-      fieldTitle: 'Trường dữ liệu: Quyền hạn vai trò',
-      beforeValue: removed.length > 0 ? `Đã gỡ: ${removed.join(', ')}` : 'Không có quyền bị gỡ',
-      afterValue: added.length > 0 ? `Cấp thêm: ${added.join(', ')} (Hiện có ${current.length} quyền)` : `Hiện có ${current.length} quyền`,
-      reason,
-      hasDiff: true,
-    };
-  }
-
-  if (item.action === 'Identity.User.RolesChanged') {
-    const added = metadata.AddedRoles || metadata.addedRoles || [];
-    const removed = metadata.RemovedRoles || metadata.removedRoles || [];
-
-    return {
-      fieldTitle: 'Trường dữ liệu: Phân quyền vai trò người dùng',
-      beforeValue: removed.length > 0 ? `Bỏ vai trò: ${removed.join(', ')}` : 'Không có vai trò bị gỡ',
-      afterValue: added.length > 0 ? `Gán thêm: ${added.join(', ')}` : 'Không có vai trò gán thêm',
-      reason,
-      hasDiff: true,
-    };
-  }
-
-  if (item.action === 'Identity.User.Updated') {
-    const changed = metadata.ChangedFields || metadata.changedFields || [];
-    return {
-      fieldTitle: 'Trường dữ liệu: Thông tin tài khoản',
-      beforeValue: 'Giá trị thông tin cũ trước khi sửa',
-      afterValue: changed.length > 0 ? `Đã cập nhật các trường: ${changed.join(', ')}` : 'Đã cập nhật thông tin',
-      reason,
-      hasDiff: true,
-    };
-  }
-
-  if (item.action === 'Identity.User.Created') {
-    const roles = metadata.Roles || metadata.roles || [];
-    const status = metadata.Status || metadata.status || 'Active';
-    return {
-      fieldTitle: 'Trường dữ liệu: Hồ sơ người dùng mới',
-      beforeValue: 'Chưa có trên hệ thống',
-      afterValue: `Đã tạo (Trạng thái: ${STATUS_TEXT[status] || status}, Vai trò: ${roles.join(', ') || 'Mặc định'})`,
-      reason,
-      hasDiff: true,
-    };
-  }
-
-  if (item.action.startsWith('Identity.Authentication.')) {
-    return {
-      fieldTitle: 'Trường dữ liệu: Phiên xác thực người dùng',
-      beforeValue: 'Chưa xác thực',
-      afterValue: item.outcome === 'Success' ? 'Đăng nhập thành công' : `Thất bại (${item.reasonCode || 'Sai thông tin'})`,
-      reason: item.reasonCode ? `Mã lý do: ${item.reasonCode}` : reason,
-      hasDiff: true,
-    };
-  }
-
-  if (item.action === 'ThesisManagement.RenameRequest.Approved') {
-    return {
-      fieldTitle: 'Trường dữ liệu: Tên đề tài khóa luận',
-      beforeValue: metadata.OldTopicName || metadata.oldTopicName || 'Tên đề tài cũ',
-      afterValue: metadata.NewTopicName || metadata.newTopicName || 'Tên đề tài mới',
-      reason,
-      hasDiff: true,
-    };
-  }
-
-  if (item.action.startsWith('DefenseCouncil.Score.')) {
-    return {
-      fieldTitle: 'Trường dữ liệu: Điểm đánh giá hội đồng',
-      beforeValue: metadata.OldScore !== undefined ? String(metadata.OldScore) : 'Điểm trước điều chỉnh',
-      afterValue: metadata.NewScore !== undefined ? String(metadata.NewScore) : 'Điểm sau điều chỉnh',
-      reason,
-      hasDiff: true,
-    };
-  }
-
-  const beforeKey = Object.keys(metadata).find((k) => /before|old|prev/i.test(k));
-  const afterKey = Object.keys(metadata).find((k) => /after|new|next/i.test(k));
-
-  if (beforeKey && afterKey) {
-    return {
-      fieldTitle: `Trường dữ liệu: ${formatAuditAction(item.action)}`,
-      beforeValue: String(metadata[beforeKey]),
-      afterValue: String(metadata[afterKey]),
-      reason,
-      hasDiff: true,
-    };
-  }
-
-  // Sự kiện vận hành (operational event), không phải thay đổi trường
-  const hasMetadata = Object.keys(metadata).length > 0;
-  return {
-    fieldTitle: `Hành động: ${formatAuditAction(item.action)}`,
-    beforeValue: item.targetType ? `${formatTargetType(item.targetType)} (ID: ${item.targetId})` : 'Dữ liệu trước thao tác',
-    afterValue: item.outcome === 'Success' ? 'Thao tác hoàn tất thành công' : `Kết quả: ${item.outcome}`,
+  const reason =
+    item.reasonCode ||
+    (typeof metadata.Reason === 'string' ? metadata.Reason : undefined) ||
+    (typeof metadata.reason === 'string' ? metadata.reason : undefined);
+  const value = (...keys: string[]): unknown =>
+    keys.map((key) => metadata[key]).find((entry) => entry !== undefined && entry !== null);
+  const show = (entry: unknown): string =>
+    entry === undefined || entry === null
+      ? 'Không được ghi nhận'
+      : typeof entry === 'object'
+        ? JSON.stringify(entry)
+        : String(entry);
+  const pair = (title: string, before: unknown, after: unknown): AuditLogDiffData => ({
+    fieldTitle: title,
+    beforeValue: show(before),
+    afterValue: show(after),
     reason,
-    hasDiff: hasMetadata && (item.action.includes('Changed') || item.action.includes('Updated')),
+    hasDiff: before !== undefined || after !== undefined,
+  });
+  if (item.action === 'Identity.User.StatusChanged') {
+    const before = value('PreviousStatus', 'previousStatus');
+    const after = value('NewStatus', 'newStatus');
+    return pair(
+      'Trạng thái tài khoản',
+      typeof before === 'string' ? STATUS_TEXT[before] || before : before,
+      typeof after === 'string' ? STATUS_TEXT[after] || after : after,
+    );
+  }
+  if (
+    item.action === 'Identity.Role.PermissionsChanged' ||
+    item.action === 'Identity.User.RolesChanged'
+  ) {
+    const isRole = item.action === 'Identity.User.RolesChanged';
+    const added = value(
+      isRole ? 'AddedRoles' : 'AddedPermissionIds',
+      isRole ? 'addedRoles' : 'addedPermissionIds',
+    );
+    const removed = value(
+      isRole ? 'RemovedRoles' : 'RemovedPermissionIds',
+      isRole ? 'removedRoles' : 'removedPermissionIds',
+    );
+    return pair(
+      isRole ? 'Vai trò người dùng' : 'Quyền của vai trò',
+      Array.isArray(removed)
+        ? removed.length
+          ? removed.join(', ')
+          : 'Không có mục thu hồi'
+        : undefined,
+      Array.isArray(added)
+        ? added.length
+          ? added.join(', ')
+          : 'Không có mục cấp thêm'
+        : undefined,
+    );
+  }
+  if (item.action === 'ThesisManagement.RenameRequest.Approved')
+    return pair(
+      'Tên đề tài',
+      value('OldTitleVi', 'oldTitleVi', 'OldTopicName', 'oldTopicName'),
+      value('NewTitleVi', 'newTitleVi', 'NewTopicName', 'newTopicName'),
+    );
+  if (item.action.startsWith('DefenseCouncil.Score.'))
+    return pair('Điểm đánh giá', value('OldScore', 'oldScore'), value('NewScore', 'newScore'));
+  return {
+    fieldTitle: formatAuditAction(item.action),
+    beforeValue: '',
+    afterValue: '',
+    reason,
+    hasDiff: false,
   };
 }

@@ -1,14 +1,12 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ScrollText, RefreshCw, Download } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ScrollText, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { ListCardHeader } from '@/components/ui/list-card-header';
-import {
-  AuditLogStatusTabs,
-  type AuditOutcomeStats,
-} from '../components/AuditLogStatusTabs';
+import { AuditLogStatusTabs, type AuditOutcomeStats } from '../components/AuditLogStatusTabs';
 import { AuditLogFilterBar } from '../components/AuditLogFilterBar';
 import { AuditLogTable } from '../components/AuditLogTable';
 import { AuditLogDetailDrawer } from '../components/AuditLogDetailDrawer';
@@ -16,6 +14,8 @@ import { auditLogApi, getAuditLogErrorMessage } from '../services/auditLogApi';
 import type {
   AuditLogItem,
   AuditLogFilterState,
+  AuditLogQueryParams,
+  AuditTimePreset,
 } from '../types/auditLog.types';
 
 const INITIAL_FILTER: AuditLogFilterState = {
@@ -25,306 +25,364 @@ const INITIAL_FILTER: AuditLogFilterState = {
   fromUtc: '',
   toUtc: '',
   timePreset: 'all',
-  academicPeriod: '2026-1',
+  requestId: '',
+  targetId: '',
+  actorSessionId: '',
 };
+const EMPTY_STATS: AuditOutcomeStats = { total: 0, success: 0, denied: 0, failed: 0 };
+const validDate = (date: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+  !Number.isNaN(Date.parse(`${date}T00:00:00Z`)) &&
+  new Date(`${date}T00:00:00Z`).toISOString().slice(0, 10) === date;
+const validGuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+function filterFromUrl(params: URLSearchParams): AuditLogFilterState {
+  const from = params.get('from') || '';
+  const to = params.get('to') || '';
+  const preset = params.get('preset');
+  const outcome = params.get('outcome') || '';
+  const session = params.get('actorSessionId') || '';
+  return {
+    searchTerm: (params.get('search') || '').slice(0, 200),
+    action: (params.get('action') || '').slice(0, 100),
+    outcome: ['Success', 'Denied', 'Failed'].includes(outcome) ? outcome : '',
+    fromUtc: validDate(from) ? from : '',
+    toUtc: validDate(to) ? to : '',
+    timePreset: (['all', 'today', '7d', '30d', 'custom'].includes(preset || '')
+      ? preset
+      : from || to
+        ? 'custom'
+        : 'all') as AuditTimePreset,
+    requestId: (params.get('requestId') || '').slice(0, 100),
+    targetId: (params.get('targetId') || '').slice(0, 100),
+    actorSessionId: validGuid(session) ? session : '',
+  };
+}
+function queryFor(filter: AuditLogFilterState): AuditLogQueryParams {
+  return {
+    searchTerm: filter.searchTerm || undefined,
+    action: filter.action || undefined,
+    outcome: filter.outcome || undefined,
+    fromUtc: filter.fromUtc || undefined,
+    toUtc: filter.toUtc || undefined,
+    requestId: filter.requestId || undefined,
+    targetId: filter.targetId || undefined,
+    actorSessionId: filter.actorSessionId || undefined,
+  };
+}
+function writeFilter(params: URLSearchParams, filter: AuditLogFilterState) {
+  const values: Record<string, string | undefined> = {
+    search: filter.searchTerm.trim(),
+    action: filter.action,
+    outcome: filter.outcome,
+    from: filter.fromUtc,
+    to: filter.toUtc,
+    preset: filter.timePreset === 'all' ? '' : filter.timePreset,
+    requestId: filter.requestId?.trim(),
+    targetId: filter.targetId?.trim(),
+    actorSessionId: filter.actorSessionId?.trim(),
+  };
+  for (const [key, value] of Object.entries(values)) {
+    if (value) params.set(key, value);
+    else params.delete(key);
+  }
+}
 
 export const AuditLogPage: React.FC = () => {
-  const [filter, setFilter] = useState<AuditLogFilterState>(INITIAL_FILTER);
-  const [appliedFilter, setAppliedFilter] = useState<AuditLogFilterState>(INITIAL_FILTER);
-
+  const [params, setParams] = useSearchParams();
+  const paramKey = params.toString();
+  const applied = useMemo(() => filterFromUrl(new URLSearchParams(paramKey)), [paramKey]);
+  const filterKey = JSON.stringify(applied);
+  const [filter, setFilter] = useState<AuditLogFilterState>(applied);
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(10);
-
-  const [stats, setStats] = useState<AuditOutcomeStats>({
-    total: 0,
-    success: 0,
-    denied: 0,
-    failed: 0,
-  });
-  const [isLoadingStats, setIsLoadingStats] = useState<boolean>(false);
-
+  const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState<AuditOutcomeStats>(EMPTY_STATS);
+  const [actions, setActions] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [detail, setDetail] = useState<AuditLogItem | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchLogs = useCallback(
-    async (
-      page: number,
-      size: number,
-      currentFilter: AuditLogFilterState,
-      signal?: AbortSignal,
-    ) => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const result = await auditLogApi.getAuditLogs(
-          {
-            action: currentFilter.action || undefined,
-            outcome: currentFilter.outcome || undefined,
-            fromUtc: currentFilter.fromUtc || undefined,
-            toUtc: currentFilter.toUtc || undefined,
-            pageNumber: page,
-            pageSize: size,
-          },
-          signal,
-        );
-
-        setLogs(result.items);
-        setTotalCount(result.totalCount);
-        setPageNumber(result.pageNumber);
-        setPageSize(result.pageSize);
-
-        if (result.items.length > 0) {
-          setSelectedId((prev) => {
-            const stillExists = result.items.some((item: AuditLogItem) => item.id === prev);
-            return stillExists ? prev : result.items[0].id;
-          });
-        } else {
-          setSelectedId(null);
-        }
-      } catch (err) {
-        if (signal?.aborted) return;
-        const msg = getAuditLogErrorMessage(err);
-        setError(msg);
-        setLogs([]);
-        setTotalCount(0);
-        setSelectedId(null);
-      } finally {
-        if (!signal?.aborted) {
-          setIsLoading(false);
-        }
-      }
-    },
-    [],
-  );
-
-  const fetchStats = useCallback(
-    async (currentFilter: AuditLogFilterState, signal?: AbortSignal) => {
-      setIsLoadingStats(true);
-      try {
-        const [allRes, successRes, deniedRes, failedRes] = await Promise.all([
-          auditLogApi.getAuditLogs(
-            {
-              fromUtc: currentFilter.fromUtc || undefined,
-              toUtc: currentFilter.toUtc || undefined,
-              action: currentFilter.action || undefined,
-              pageSize: 1,
-            },
-            signal,
-          ),
-          auditLogApi.getAuditLogs(
-            {
-              fromUtc: currentFilter.fromUtc || undefined,
-              toUtc: currentFilter.toUtc || undefined,
-              action: currentFilter.action || undefined,
-              outcome: 'Success',
-              pageSize: 1,
-            },
-            signal,
-          ),
-          auditLogApi.getAuditLogs(
-            {
-              fromUtc: currentFilter.fromUtc || undefined,
-              toUtc: currentFilter.toUtc || undefined,
-              action: currentFilter.action || undefined,
-              outcome: 'Denied',
-              pageSize: 1,
-            },
-            signal,
-          ),
-          auditLogApi.getAuditLogs(
-            {
-              fromUtc: currentFilter.fromUtc || undefined,
-              toUtc: currentFilter.toUtc || undefined,
-              action: currentFilter.action || undefined,
-              outcome: 'Failed',
-              pageSize: 1,
-            },
-            signal,
-          ),
-        ]);
-
-        setStats({
-          total: allRes.totalCount,
-          success: successRes.totalCount,
-          denied: deniedRes.totalCount,
-          failed: failedRes.totalCount,
-        });
-      } catch {
-        // Fallback
-      } finally {
-        if (!signal?.aborted) {
-          setIsLoadingStats(false);
-        }
-      }
-    },
-    [],
-  );
+  const [listError, setListError] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [actionsError, setActionsError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  const pageParam = Number(params.get('page'));
+  const page =
+    Number.isSafeInteger(pageParam) && pageParam > 0 && pageParam <= 1_000_000 ? pageParam : 1;
+  const size = [10, 20, 50].includes(Number(params.get('pageSize')))
+    ? Number(params.get('pageSize'))
+    : 10;
+  const eventId = /^\d+$/.test(params.get('event') || '') ? Number(params.get('event')) : 0;
 
   useEffect(() => {
-    const controller = new AbortController();
-    fetchLogs(pageNumber, pageSize, appliedFilter, controller.signal);
-    return () => controller.abort();
-  }, [fetchLogs, pageNumber, pageSize, appliedFilter]);
-
-  const statsFilterKey = `${appliedFilter.fromUtc}:${appliedFilter.toUtc}:${appliedFilter.action}`;
-
+    setFilter(JSON.parse(filterKey));
+  }, [filterKey]);
   useEffect(() => {
     const controller = new AbortController();
-    fetchStats(appliedFilter, controller.signal);
+    auditLogApi
+      .getActions(controller.signal)
+      .then((items) => {
+        setActions(items);
+        setActionsError(false);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setActionsError(true);
+      });
     return () => controller.abort();
-    // Chỉ tải lại breakdown thống kê khi khoảng ngày hoặc thao tác thay đổi, không chạy lại khi đổi tab outcome
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchStats, statsFilterKey]);
-
-  const filteredLogs = useMemo(() => {
-    const term = appliedFilter.searchTerm.trim().toLowerCase();
-    if (!term) return logs;
-
-    return logs.filter((item) => {
-      const actor = `${item.actorFullName || ''} ${item.actorEmail || ''}`.toLowerCase();
-      const target = `${item.targetType || ''} ${item.targetId || ''}`.toLowerCase();
-      const action = (item.action || '').toLowerCase();
-      const reason = (item.reasonCode || '').toLowerCase();
-      const reqId = (item.requestId || '').toLowerCase();
-      const meta = item.metadata ? JSON.stringify(item.metadata).toLowerCase() : '';
-
-      return (
-        actor.includes(term) ||
-        target.includes(term) ||
-        action.includes(term) ||
-        reason.includes(term) ||
-        reqId.includes(term) ||
-        meta.includes(term)
-      );
+  }, [refresh]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setListError(null);
+    auditLogApi
+      .getAuditLogs(
+        { ...queryFor(JSON.parse(filterKey)), pageNumber: page, pageSize: size },
+        controller.signal,
+      )
+      .then((result) => {
+        if (!controller.signal.aborted) {
+          setLogs(result.items);
+          setTotalCount(result.totalCount);
+        }
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setListError(getAuditLogErrorMessage(err));
+          setLogs([]);
+          setTotalCount(0);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [filterKey, page, size, refresh]);
+  const statsKey = JSON.stringify({ ...applied, outcome: '' });
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoadingStats(true);
+    setStatsError(null);
+    auditLogApi
+      .getStatistics(queryFor(JSON.parse(statsKey)), controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setStats(result);
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) setStatsError(getAuditLogErrorMessage(err));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingStats(false);
+      });
+    return () => controller.abort();
+  }, [statsKey, refresh]);
+  useEffect(() => {
+    if (!eventId || !Number.isSafeInteger(eventId)) {
+      setDetail(null);
+      setDetailError(null);
+      return;
+    }
+    const controller = new AbortController();
+    setDetailError(null);
+    auditLogApi
+      .getById(eventId, controller.signal)
+      .then((item) => {
+        if (!controller.signal.aborted) {
+          setDetail(item);
+          setSelectedId(item.id);
+        }
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setDetail(null);
+          setDetailError(getAuditLogErrorMessage(err));
+        }
+      });
+    return () => controller.abort();
+  }, [eventId]);
+  const update = (change: (next: URLSearchParams) => void) => {
+    const next = new URLSearchParams(params);
+    change(next);
+    setParams(next);
+  };
+  const apply = () => {
+    if (
+      (filter.fromUtc && !validDate(filter.fromUtc)) ||
+      (filter.toUtc && !validDate(filter.toUtc)) ||
+      (filter.fromUtc && filter.toUtc && filter.fromUtc > filter.toUtc)
+    ) {
+      setError('Khoảng ngày không hợp lệ.');
+      return;
+    }
+    if (filter.actorSessionId && !validGuid(filter.actorSessionId.trim())) {
+      setError('Session ID phải là GUID hợp lệ.');
+      return;
+    }
+    setError(null);
+    update((next) => {
+      writeFilter(next, filter);
+      next.delete('page');
+      next.delete('event');
     });
-  }, [logs, appliedFilter.searchTerm]);
-
-  const selectedLog = useMemo(() => {
-    return logs.find((l) => l.id === selectedId) || null;
-  }, [logs, selectedId]);
-
-  const handleApplyFilter = () => {
-    setAppliedFilter({ ...filter });
-    setPageNumber(1);
   };
-
-  const handleResetFilter = () => {
-    setFilter(INITIAL_FILTER);
-    setAppliedFilter(INITIAL_FILTER);
-    setPageNumber(1);
-  };
-
-  const handleQuickOutcome = (outcomeValue: string) => {
-    const nextOutcome = appliedFilter.outcome === outcomeValue ? '' : outcomeValue;
-    const nextFilter: AuditLogFilterState = {
-      ...filter,
-      outcome: nextOutcome,
-    };
-    setFilter(nextFilter);
-    setAppliedFilter({
-      ...appliedFilter,
-      outcome: nextOutcome,
+  const setEvent = (id?: number) =>
+    update((next) => {
+      if (id) next.set('event', String(id));
+      else next.delete('event');
     });
-    setPageNumber(1);
+  const exportCsv = async () => {
+    setExporting(true);
+    setError(null);
+    try {
+      await auditLogApi.exportCsv(queryFor(applied));
+    } catch (err) {
+      setError(getAuditLogErrorMessage(err));
+    } finally {
+      setExporting(false);
+    }
   };
-
-  const handleViewDetails = (log: AuditLogItem) => {
-    setSelectedId(log.id);
-    setIsDrawerOpen(true);
-  };
-
-  const handlePageSizeChange = (newSize: number) => {
-    setPageSize(newSize);
-    setPageNumber(1);
-  };
-
-  const handleRefresh = () => {
-    fetchLogs(pageNumber, pageSize, appliedFilter);
-    fetchStats(appliedFilter);
-  };
-
   return (
     <div className="min-w-0 space-y-5">
-      {/* Tiêu đề trang */}
-      <PageHeader
-        compact
-        accent
-        title="Nhật ký thao tác"
-        icon={<ScrollText />}
-      >
+      <PageHeader compact accent title="Nhật ký thao tác" icon={<ScrollText />}>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          disabled={isLoading || isLoadingStats}
-          onClick={handleRefresh}
+          disabled={exporting}
+          onClick={exportCsv}
+          leftIcon={<Download className="size-3.5" />}
+        >
+          {exporting ? 'Đang xuất...' : 'Xuất CSV'}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={loading || loadingStats}
+          onClick={() => setRefresh((v) => v + 1)}
           leftIcon={
-            <RefreshCw
-              className={isLoading || isLoadingStats ? 'animate-spin size-3.5' : 'size-3.5'}
-            />
+            <RefreshCw className={loading || loadingStats ? 'animate-spin size-3.5' : 'size-3.5'} />
           }
-          className="h-8 px-3 text-xs"
         >
           Làm mới
         </Button>
       </PageHeader>
-
-      {/* Thông báo lỗi nếu có */}
       {error && <InlineAlert tone="error">{error}</InlineAlert>}
-
-      {/* Card bao bọc toàn bộ Danh sách & Bộ lọc */}
+      {listError && (
+        <InlineAlert tone="error">
+          {listError}{' '}
+          <button type="button" className="underline" onClick={() => setRefresh((v) => v + 1)}>
+            Thử lại
+          </button>
+        </InlineAlert>
+      )}
+      {statsError && (
+        <InlineAlert tone="error">
+          Không tải được thống kê.{' '}
+          <button type="button" className="underline" onClick={() => setRefresh((v) => v + 1)}>
+            Thử lại
+          </button>
+        </InlineAlert>
+      )}
+      {actionsError && (
+        <InlineAlert tone="warning">
+          Không tải được toàn bộ danh mục thao tác.{' '}
+          <button type="button" className="underline" onClick={() => setRefresh((v) => v + 1)}>
+            Thử lại
+          </button>
+        </InlineAlert>
+      )}
+      {detailError && (
+        <InlineAlert tone="error">
+          Không tải được sự kiện. {detailError}{' '}
+          <button type="button" className="underline" onClick={() => setEvent()}>
+            Đóng
+          </button>
+        </InlineAlert>
+      )}
       <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
-        {/* Header thẻ với Status Tabs hiện đại */}
         <ListCardHeader
           title="Sự kiện hệ thống"
           icon={<ScrollText />}
-          description={`${totalCount.toLocaleString('vi-VN')} sự kiện ghi nhận`}
+          description={
+            listError
+              ? 'Không tải được số lượng'
+              : `${totalCount.toLocaleString('vi-VN')} sự kiện ghi nhận`
+          }
           className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
         >
           <div className="flex items-center justify-end w-full">
             <AuditLogStatusTabs
-              currentOutcome={appliedFilter.outcome}
-              onSelectOutcome={handleQuickOutcome}
+              currentOutcome={applied.outcome}
+              onSelectOutcome={(outcome) =>
+                update((next) => {
+                  if (outcome) next.set('outcome', outcome);
+                  else next.delete('outcome');
+                  next.delete('page');
+                  next.delete('event');
+                })
+              }
               stats={stats}
-              loading={isLoadingStats}
+              loading={loadingStats}
+              error={Boolean(statsError)}
             />
           </div>
         </ListCardHeader>
-
-        {/* Thanh công cụ lọc hiện đại */}
         <AuditLogFilterBar
           filter={filter}
           onFilterChange={setFilter}
-          onApply={handleApplyFilter}
-          onReset={handleResetFilter}
-          isLoading={isLoading}
+          onApply={apply}
+          onReset={() => {
+            setFilter(INITIAL_FILTER);
+            setError(null);
+            update((next) => {
+              writeFilter(next, INITIAL_FILTER);
+              next.delete('page');
+              next.delete('event');
+            });
+          }}
+          isLoading={loading}
+          actions={actions}
         />
-
-        {/* Bảng dữ liệu sự kiện theo chuẩn UX Tài khoản & Phân quyền */}
-        <AuditLogTable
-          logs={filteredLogs}
-          selectedId={selectedId}
-          onSelect={(log) => setSelectedId(log.id)}
-          onViewDetails={handleViewDetails}
-          pageNumber={pageNumber}
-          pageSize={pageSize}
-          totalCount={totalCount}
-          onPageChange={(page) => setPageNumber(page)}
-          onPageSizeChange={handlePageSizeChange}
-          isLoading={isLoading}
-        />
+        {!listError && (
+          <AuditLogTable
+            logs={logs}
+            selectedId={selectedId}
+            onSelect={(log) => setSelectedId(log.id)}
+            onViewDetails={(log) => setEvent(log.id)}
+            pageNumber={page}
+            pageSize={size}
+            totalCount={totalCount}
+            onPageChange={(n) =>
+              update((next) => {
+                next.set('page', String(n));
+                next.delete('event');
+              })
+            }
+            onPageSizeChange={(n) =>
+              update((next) => {
+                next.set('pageSize', String(n));
+                next.delete('page');
+                next.delete('event');
+              })
+            }
+            isLoading={loading}
+          />
+        )}
       </Card>
-
-      {/* Drawer chi tiết sự kiện trượt từ bên phải */}
       <AuditLogDetailDrawer
-        log={selectedLog}
-        open={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        log={detail}
+        open={Boolean(detail && eventId)}
+        onClose={() => setEvent()}
+        onViewRequest={(requestId) =>
+          update((next) => {
+            writeFilter(next, { ...INITIAL_FILTER, requestId });
+            next.delete('page');
+            next.delete('event');
+          })
+        }
       />
     </div>
   );

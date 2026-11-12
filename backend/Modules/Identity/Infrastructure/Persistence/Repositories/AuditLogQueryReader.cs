@@ -1,115 +1,104 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.Identity.Application.AuditLogs.Dtos;
 using UGTM.Modules.Identity.Application.AuditLogs.GetAuditLogs;
+using UGTM.Modules.Identity.Domain.Entities;
 
 namespace UGTM.Modules.Identity.Infrastructure.Persistence.Repositories;
 
 public sealed class AuditLogQueryReader(IdentityDbContext db) : IAuditLogQueryReader
 {
-    public async Task<PagedResult<AuditLogDto>> GetAuditLogsAsync(
-        GetAuditLogsQuery query,
-        CancellationToken cancellationToken)
+    private IQueryable<AuditLog> Filter(GetAuditLogsQuery query, bool includeOutcome = true)
     {
         var source = db.AuditLogs.AsNoTracking();
-
-        if (query.ActorUserId.HasValue)
+        if (query.ActorUserId.HasValue) source = source.Where(x => x.ActorUserId == query.ActorUserId);
+        if (query.ActorSessionId.HasValue) source = source.Where(x => x.ActorSessionId == query.ActorSessionId);
+        if (query.Action is not null) source = source.Where(x => x.Action == query.Action);
+        if (query.TargetType is not null) source = source.Where(x => x.TargetType == query.TargetType);
+        if (query.TargetId is not null) source = source.Where(x => x.TargetId == query.TargetId);
+        if (query.RequestId is not null) source = source.Where(x => x.RequestId == query.RequestId);
+        if (includeOutcome && query.Outcome is not null)
+            source = query.Outcome == "Success"
+                ? source.Where(x => x.Outcome == "Success" || x.Outcome == "Succeeded")
+                : source.Where(x => x.Outcome == query.Outcome);
+        if (query.FromUtc.HasValue) source = source.Where(x => x.Timestamp >= query.FromUtc);
+        if (query.ToUtc.HasValue) source = source.Where(x => x.Timestamp < query.ToUtc);
+        if (query.SearchTerm is not null)
         {
-            source = source.Where(x => x.ActorUserId == query.ActorUserId.Value);
+            // Escape SQL LIKE wildcards so the search has literal substring semantics.
+            var pattern = "%" + query.SearchTerm.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
+            // jsonb has no ILIKE operator; cast it to text in a parameterized subquery.
+            var metadataIds = db.AuditLogs.FromSqlInterpolated($"SELECT * FROM identity.audit_log WHERE metadata_json::text ILIKE {pattern}")
+                .Select(x => x.Id);
+            source = source.Where(x => EF.Functions.ILike(x.TargetType, pattern)
+                || EF.Functions.ILike(x.TargetId, pattern)
+                || EF.Functions.ILike(x.Action, pattern)
+                || (x.ReasonCode != null && EF.Functions.ILike(x.ReasonCode, pattern))
+                || EF.Functions.ILike(x.RequestId, pattern)
+                || metadataIds.Contains(x.Id)
+                || db.Users.Any(u => u.Id == x.ActorUserId &&
+                    (EF.Functions.ILike(u.FullName, pattern) || EF.Functions.ILike(u.Email, pattern))));
         }
-
-        if (query.Action is not null)
-        {
-            source = source.Where(x => x.Action == query.Action);
-        }
-
-        if (query.TargetType is not null)
-        {
-            source = source.Where(x => x.TargetType == query.TargetType);
-        }
-
-        if (query.Outcome is not null)
-        {
-            source = source.Where(x => x.Outcome == query.Outcome);
-        }
-
-        if (query.FromUtc.HasValue)
-        {
-            source = source.Where(x => x.Timestamp >= query.FromUtc.Value);
-        }
-
-        if (query.ToUtc.HasValue)
-        {
-            source = source.Where(x => x.Timestamp < query.ToUtc.Value);
-        }
-
-        var totalCount = await source.CountAsync(cancellationToken);
-
-        var rows = await (
-                from auditLog in source
-                join user in db.Users.AsNoTracking()
-                    on auditLog.ActorUserId equals (Guid?)user.Id into actors
-                from actor in actors.DefaultIfEmpty()
-                orderby auditLog.Timestamp descending, auditLog.Id descending
-                select new
-                {
-                    auditLog.Id,
-                    auditLog.ActorUserId,
-                    ActorEmail = actor == null ? null : actor.Email,
-                    ActorFullName = actor == null ? null : actor.FullName,
-                    auditLog.ActorSessionId,
-                    auditLog.TargetType,
-                    auditLog.TargetId,
-                    auditLog.Action,
-                    auditLog.Outcome,
-                    auditLog.ReasonCode,
-                    auditLog.RequestId,
-                    auditLog.MetadataJson,
-                    auditLog.Timestamp
-                })
-            .Skip((query.PageNumber - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .ToListAsync(cancellationToken);
-
-        var items = rows.Select(x => new AuditLogDto(
-            x.Id,
-            x.ActorUserId,
-            x.ActorEmail,
-            x.ActorFullName,
-            x.ActorSessionId,
-            x.TargetType,
-            x.TargetId,
-            x.Action,
-            x.Outcome,
-            x.ReasonCode,
-            x.RequestId,
-            ParseMetadata(x.MetadataJson),
-            x.Timestamp)).ToList();
-
-        return new PagedResult<AuditLogDto>(
-            items,
-            totalCount,
-            query.PageNumber,
-            query.PageSize);
+        return source;
     }
 
-    private static JsonElement? ParseMetadata(string? metadataJson)
+    private IQueryable<AuditRow> Project(IQueryable<AuditLog> source) =>
+        from log in source
+        join user in db.Users.AsNoTracking() on log.ActorUserId equals (Guid?)user.Id into users
+        from actor in users.DefaultIfEmpty()
+        select new AuditRow(log.Id, log.ActorUserId, actor == null ? null : actor.Email,
+            actor == null ? null : actor.FullName, log.ActorSessionId, log.TargetType, log.TargetId,
+            log.Action, log.Outcome, log.ReasonCode, log.RequestId, log.MetadataJson, log.Timestamp);
+
+    public async Task<PagedResult<AuditLogDto>> GetAuditLogsAsync(GetAuditLogsQuery query, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(metadataJson))
-        {
-            return null;
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(metadataJson);
-            return document.RootElement.Clone();
-        }
-        catch (JsonException)
-        {
-            // A malformed legacy row must not make the whole result page unusable.
-            return null;
-        }
+        var source = Filter(query);
+        var total = await source.CountAsync(cancellationToken);
+        var offset = ((long)query.PageNumber - 1) * query.PageSize;
+        if (offset > int.MaxValue) return new PagedResult<AuditLogDto>([], total, query.PageNumber, query.PageSize);
+        var rows = await Project(source.OrderByDescending(x => x.Timestamp).ThenByDescending(x => x.Id)
+            .Skip((int)offset).Take(query.PageSize)).ToListAsync(cancellationToken);
+        return new PagedResult<AuditLogDto>(rows.Select(ToDto).ToList(), total, query.PageNumber, query.PageSize);
     }
+
+    public async Task<AuditLogStatistics> GetStatisticsAsync(GetAuditLogsQuery query, CancellationToken cancellationToken)
+    {
+        var groups = await Filter(query, false).GroupBy(x => x.Outcome)
+            .Select(g => new { Outcome = g.Key, Count = g.Count() }).ToListAsync(cancellationToken);
+        return new AuditLogStatistics(groups.Sum(x => x.Count), groups.Where(x => x.Outcome is "Success" or "Succeeded").Sum(x => x.Count),
+            groups.Where(x => x.Outcome == "Denied").Sum(x => x.Count), groups.Where(x => x.Outcome == "Failed").Sum(x => x.Count),
+            groups.Where(x => x.Outcome is not ("Success" or "Succeeded" or "Denied" or "Failed")).Sum(x => x.Count));
+    }
+
+    public async Task<AuditLogDto?> GetByIdAsync(long id, CancellationToken cancellationToken)
+    {
+        var row = await Project(db.AuditLogs.AsNoTracking().Where(x => x.Id == id)).SingleOrDefaultAsync(cancellationToken);
+        return row is null ? null : ToDto(row);
+    }
+
+    public Task<List<string>> GetActionsAsync(CancellationToken cancellationToken) =>
+        db.AuditLogs.AsNoTracking().Select(x => x.Action).Distinct().OrderBy(x => x).ToListAsync(cancellationToken);
+
+    public async IAsyncEnumerable<AuditLogDto> ExportAsync(GetAuditLogsQuery query, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var rows = Project(Filter(query).OrderByDescending(x => x.Timestamp).ThenByDescending(x => x.Id));
+        await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken)) yield return ToDto(row);
+    }
+
+    private static AuditLogDto ToDto(AuditRow row) => new(row.Id, row.ActorUserId, row.ActorEmail, row.ActorFullName,
+        row.ActorSessionId, row.TargetType, row.TargetId, row.Action, row.Outcome == "Succeeded" ? "Success" : row.Outcome,
+        row.ReasonCode, row.RequestId, ParseMetadata(row.MetadataJson), row.Timestamp);
+
+    private static JsonElement? ParseMetadata(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try { using var document = JsonDocument.Parse(json); return document.RootElement.Clone(); }
+        catch (JsonException) { return null; }
+    }
+
+    private sealed record AuditRow(long Id, Guid? ActorUserId, string? ActorEmail, string? ActorFullName,
+        Guid? ActorSessionId, string TargetType, string TargetId, string Action, string Outcome,
+        string? ReasonCode, string RequestId, string? MetadataJson, DateTime Timestamp);
 }

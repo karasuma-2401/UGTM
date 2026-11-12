@@ -1,10 +1,8 @@
-import React, { useId, useRef } from 'react';
+import React from 'react';
 import {
   Server,
   Eye,
-  MoreHorizontal,
   Copy,
-  FileCode,
   Clock,
   Inbox,
 } from 'lucide-react';
@@ -17,6 +15,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { InfoCell } from '@/components/ui/info-cell';
 import { SelectableTableRow } from '@/components/ui/selectable-table-row';
 import { SelectionIndicator } from '@/components/ui/selection-indicator';
+import { notify } from '@/shared/notifications';
 import {
   formatAuditShortTime,
   formatAuditRelativeTime,
@@ -45,20 +44,12 @@ function AuditLogRowActions({
   log: AuditLogItem;
   onViewDetails?: (log: AuditLogItem) => void;
 }) {
-  const id = useId();
-  const popup = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-
-  const closeAndRun = (action: () => void) => {
-    popup.current?.hidePopover();
-    action();
-  };
-
-  const handleCopy = async (text: string) => {
+  const handleCopyRequestId = async () => {
     try {
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(log.requestId);
+      notify.success('Đã sao chép Request ID.');
     } catch {
-      // Fallback
+      notify.error('Không thể sao chép Request ID. Vui lòng thử lại.');
     }
   };
 
@@ -77,69 +68,14 @@ function AuditLogRowActions({
       </Button>
 
       <button
-        ref={trigger}
         type="button"
-        popoverTarget={id}
-        aria-label={`Thao tác với sự kiện #${log.id}`}
+        onClick={() => void handleCopyRequestId()}
+        aria-label={`Sao chép Request ID của sự kiện #${log.id}`}
+        title="Sao chép Request ID"
         className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-primary"
       >
-        <MoreHorizontal className="size-4" />
+        <Copy className="size-4" aria-hidden="true" />
       </button>
-
-      <div
-        ref={popup}
-        id={id}
-        popover="auto"
-        aria-label={`Thao tác với sự kiện #${log.id}`}
-        className="fixed inset-auto m-0 w-52 rounded-xl border border-slate-200 bg-white p-1 text-left shadow-lg text-xs"
-        onToggle={(event) => {
-          if (event.newState !== 'open') return;
-          const rect = trigger.current?.getBoundingClientRect();
-          const el = popup.current;
-          if (!rect || !el) return;
-          el.style.left =
-            Math.max(8, Math.min(rect.right - 208, window.innerWidth - 216)) + 'px';
-          el.style.top =
-            Math.max(
-              8,
-              rect.bottom + el.offsetHeight + 8 > window.innerHeight
-                ? rect.top - el.offsetHeight - 4
-                : rect.bottom + 4,
-            ) + 'px';
-          el.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => closeAndRun(() => onViewDetails?.(log))}
-          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-slate-700 hover:bg-slate-50 font-medium"
-        >
-          <Eye className="size-3.5 text-slate-400" />
-          Xem chi tiết sự kiện
-        </button>
-
-        <button
-          type="button"
-          onClick={() => closeAndRun(() => void handleCopy(log.requestId))}
-          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-slate-700 hover:bg-slate-50 font-medium"
-        >
-          <Copy className="size-3.5 text-slate-400" />
-          Sao chép Request ID
-        </button>
-
-        {log.metadata && Object.keys(log.metadata).length > 0 && (
-          <button
-            type="button"
-            onClick={() =>
-              closeAndRun(() => void handleCopy(JSON.stringify(log.metadata, null, 2)))
-            }
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-slate-700 hover:bg-slate-50 font-medium"
-          >
-            <FileCode className="size-3.5 text-slate-400" />
-            Sao chép JSON Metadata
-          </button>
-        )}
-      </div>
     </div>
   );
 }
@@ -228,11 +164,8 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
             <tbody className="block divide-y divide-slate-100 md:table-row-group">
               {logs.map((log, index) => {
                 const isSelected = selectedId === log.id;
-                const isSystemActor =
-                  !log.actorFullName && !log.actorEmail
-                    ? true
-                    : log.actorFullName === 'Hệ thống';
-                const actorName = log.actorFullName || log.actorEmail || 'Hệ thống';
+                const isSystemActor = !log.actorFullName && !log.actorEmail;
+                const actorName = log.actorFullName || log.actorEmail || (log.actorUserId ? 'Không tìm thấy tài khoản' : 'Chưa xác định');
                 const actionTitle = formatAuditAction(log.action);
                 const targetLabel = formatTargetType(log.targetType);
                 const relativeTime = formatAuditRelativeTime(log.timestamp);
@@ -298,17 +231,10 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
                         titleClassName="flex-nowrap"
                         description={
                           <span className="truncate text-slate-400 text-xs" title={log.actorEmail || undefined}>
-                            {log.actorEmail || (isSystemActor ? 'Tác vụ tự động' : 'Tài khoản hệ thống')}
+                            {log.actorEmail || (log.actorUserId ? log.actorUserId : 'Không có thông tin tác nhân')}
                           </span>
                         }
                         descriptionClassName="truncate"
-                        trailing={
-                          isSystemActor ? (
-                            <Badge variant="secondary" className="px-1.5 py-0 text-[10px] font-normal">
-                              Hệ thống
-                            </Badge>
-                          ) : undefined
-                        }
                       />
                     </td>
 
@@ -345,8 +271,10 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
                         <StatusBadge tone="success">Thành công</StatusBadge>
                       ) : log.outcome === 'Denied' ? (
                         <StatusBadge tone="warning">Bị từ chối</StatusBadge>
-                      ) : (
+                      ) : log.outcome === 'Failed' ? (
                         <StatusBadge tone="error">Thất bại</StatusBadge>
+                      ) : (
+                        <StatusBadge tone="warning">{log.outcome || 'Chưa xác định'}</StatusBadge>
                       )}
                     </td>
 

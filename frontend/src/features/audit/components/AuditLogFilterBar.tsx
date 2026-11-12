@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, type SelectOption } from '@/components/ui/select';
 import { DatePicker } from '@/components/ui/calendar';
-import { ACTION_GROUPS } from '../utils/parseAuditDiff';
+import { ACTION_GROUPS, formatAuditAction } from '../utils/parseAuditDiff';
 import type { AuditLogFilterState, AuditTimePreset } from '../types/auditLog.types';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +14,7 @@ interface AuditLogFilterBarProps {
   onApply: () => void;
   onReset: () => void;
   isLoading?: boolean;
+  actions?: string[];
 }
 
 const ACTION_OPTIONS: SelectOption[] = [
@@ -35,15 +36,12 @@ const OUTCOME_OPTIONS: SelectOption[] = [
 ];
 
 function getLocalDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 }
 
 function getPastDaysString(days: number): string {
   const d = new Date();
-  d.setDate(d.getDate() - days);
+  d.setUTCDate(d.getUTCDate() - days);
   return getLocalDateString(d);
 }
 
@@ -53,7 +51,9 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
   onApply,
   onReset,
   isLoading = false,
+  actions = [],
 }) => {
+  const actionOptions = [...ACTION_OPTIONS, ...actions.filter((action) => !ACTION_OPTIONS.some((option) => option.value === action)).map((action) => ({ value: action, label: formatAuditAction(action) }))];
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onApply();
@@ -80,14 +80,14 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
       onFilterChange({
         ...filter,
         timePreset: '7d',
-        fromUtc: getPastDaysString(7),
+        fromUtc: getPastDaysString(6),
         toUtc: today,
       });
     } else if (preset === '30d') {
       onFilterChange({
         ...filter,
         timePreset: '30d',
-        fromUtc: getPastDaysString(30),
+        fromUtc: getPastDaysString(29),
         toUtc: today,
       });
     } else {
@@ -104,6 +104,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
       filter.outcome ||
       filter.fromUtc ||
       filter.toUtc ||
+      filter.requestId || filter.targetId || filter.actorSessionId ||
       filter.timePreset !== 'all',
   );
 
@@ -117,6 +118,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
         {/* Tìm kiếm */}
         <div className="flex-1 min-w-0">
           <Input
+            aria-label="Từ khóa tìm kiếm"
             value={filter.searchTerm}
             onChange={(e) => onFilterChange({ ...filter, searchTerm: e.target.value })}
             placeholder="Tìm theo người thực hiện, mã hồ sơ hoặc nội dung..."
@@ -140,7 +142,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
         {/* Dropdown Thao tác */}
         <div className="w-full sm:w-60 lg:w-64 shrink-0">
           <Select
-            options={ACTION_OPTIONS}
+            options={actionOptions}
             value={filter.action}
             onChange={(val) => onFilterChange({ ...filter, action: String(val || '') })}
             placeholder="Tất cả thao tác"
@@ -186,6 +188,12 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             </Button>
           )}
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <Input aria-label="Request ID chính xác" placeholder="Request ID chính xác" value={filter.requestId || ''} onChange={(event) => onFilterChange({ ...filter, requestId: event.target.value })} />
+        <Input aria-label="Mã đối tượng chính xác" placeholder="Mã đối tượng chính xác" value={filter.targetId || ''} onChange={(event) => onFilterChange({ ...filter, targetId: event.target.value })} />
+        <Input aria-label="Session ID chính xác" placeholder="Session ID chính xác" value={filter.actorSessionId || ''} onChange={(event) => onFilterChange({ ...filter, actorSessionId: event.target.value })} />
       </div>
 
       {/* Hàng 2: Mốc thời gian nhanh (Time Presets) & Bộ chọn ngày */}
@@ -271,7 +279,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
                 aria-label="Từ ngày"
                 value={filter.fromUtc}
                 onValueChange={(val) => onFilterChange({ ...filter, fromUtc: val })}
-                className="w-36 h-8 px-2.5 text-xs rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary text-slate-700"
+                className="w-48 h-8 px-2.5 text-xs rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary text-slate-700"
               />
             </div>
             <div className="flex items-center gap-1.5">
@@ -280,7 +288,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
                 aria-label="Đến ngày"
                 value={filter.toUtc}
                 onValueChange={(val) => onFilterChange({ ...filter, toUtc: val })}
-                className="w-36 h-8 px-2.5 text-xs rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary text-slate-700"
+                className="w-48 h-8 px-2.5 text-xs rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary text-slate-700"
               />
             </div>
           </div>

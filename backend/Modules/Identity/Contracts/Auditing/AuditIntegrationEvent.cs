@@ -32,6 +32,7 @@ public static class AuditIntegrationEventValidation
         EnsureValue(entry.TargetId, 100, nameof(entry.TargetId));
         EnsureValue(entry.Action, 100, nameof(entry.Action));
         EnsureValue(entry.Outcome, 50, nameof(entry.Outcome));
+        _ = NormalizeOutcome(entry.Outcome);
 
         if (entry.ReasonCode is not null)
         {
@@ -45,6 +46,14 @@ public static class AuditIntegrationEventValidation
                 nameof(occurredAtUtc));
         }
     }
+
+    public static string NormalizeOutcome(string outcome) => outcome.Trim() switch
+    {
+        "Succeeded" or "Success" => "Success",
+        "Denied" => "Denied",
+        "Failed" => "Failed",
+        _ => throw new ArgumentException("Unsupported audit outcome.", nameof(outcome))
+    };
 
     private static void EnsureValue(string value, int maxLength, string parameterName)
     {

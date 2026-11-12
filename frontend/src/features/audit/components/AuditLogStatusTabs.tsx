@@ -8,6 +8,7 @@ export interface AuditOutcomeStats {
   success: number;
   denied: number;
   failed: number;
+  other?: number;
 }
 
 interface AuditLogStatusTabsProps {
@@ -15,6 +16,7 @@ interface AuditLogStatusTabsProps {
   onSelectOutcome: (outcome: string) => void;
   stats: AuditOutcomeStats;
   loading?: boolean;
+  error?: boolean;
 }
 
 interface StatusTabConfig {
@@ -32,6 +34,7 @@ export const AuditLogStatusTabs: React.FC<AuditLogStatusTabsProps> = ({
   onSelectOutcome,
   stats,
   loading = false,
+  error = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -110,7 +113,7 @@ export const AuditLogStatusTabs: React.FC<AuditLogStatusTabsProps> = ({
   return (
     <div
       ref={containerRef}
-      role="tablist"
+      role="group"
       aria-label="Lọc nhanh trạng thái sự kiện"
       className="relative isolate inline-flex flex-wrap items-center gap-1 p-1 rounded-xl bg-slate-100/90 border border-slate-200/70"
     >
@@ -139,9 +142,8 @@ export const AuditLogStatusTabs: React.FC<AuditLogStatusTabsProps> = ({
               tabRefs.current[tab.key] = el;
             }}
             data-selection-item
-            role="tab"
             type="button"
-            aria-selected={isActive}
+            aria-pressed={isActive}
             onClick={() => onSelectOutcome(tab.key)}
             className={cn(
               // Giữ font-semibold cố định trên cả active và inactive để không bị giật kích thước chữ khi click
@@ -173,8 +175,10 @@ export const AuditLogStatusTabs: React.FC<AuditLogStatusTabsProps> = ({
                 isActive ? tab.activeBadgeClass : tab.inactiveBadgeClass,
               )}
             >
-              {loading && stats.total === 0 ? (
+              {loading ? (
                 <Skeleton className="h-3 w-4 rounded-sm" />
+              ) : error ? (
+                <span aria-label="Không tải được số lượng">—</span>
               ) : (
                 tab.count.toLocaleString('vi-VN')
               )}
@@ -182,6 +186,7 @@ export const AuditLogStatusTabs: React.FC<AuditLogStatusTabsProps> = ({
           </button>
         );
       })}
+      {!loading && !error && Boolean(stats.other) && <span className="px-2 text-xs text-slate-600">Khác: {stats.other?.toLocaleString('vi-VN')}</span>}
     </div>
   );
 };

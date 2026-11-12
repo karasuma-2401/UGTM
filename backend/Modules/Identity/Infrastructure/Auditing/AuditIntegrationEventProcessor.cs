@@ -11,6 +11,7 @@ public sealed class AuditIntegrationEventProcessor(
     ILogger<AuditIntegrationEventProcessor> logger) : BackgroundService
 {
     private const int BatchSize = 20;
+    private DateTime _lastHealthCheckUtc = DateTime.MinValue;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -57,6 +58,14 @@ public sealed class AuditIntegrationEventProcessor(
                     clock.UtcNow,
                     BatchSize,
                     cancellationToken);
+
+                if (clock.UtcNow - _lastHealthCheckUtc >= TimeSpan.FromMinutes(1))
+                {
+                    var health = await source.GetHealthAsync(cancellationToken);
+                    if (health.FailedCount > 0 || (health.OldestPendingUtc is { } oldest && clock.UtcNow - oldest > TimeSpan.FromMinutes(5)))
+                        logger.LogWarning("Audit outbox {SourceName}: {PendingCount} pending, {FailedCount} retrying, oldest {OldestPendingUtc}.",
+                            health.Source, health.PendingCount, health.FailedCount, health.OldestPendingUtc);
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -70,6 +79,7 @@ public sealed class AuditIntegrationEventProcessor(
                     source.SourceName);
             }
         }
+        if (clock.UtcNow - _lastHealthCheckUtc >= TimeSpan.FromMinutes(1)) _lastHealthCheckUtc = clock.UtcNow;
     }
 
 }

@@ -1,6 +1,6 @@
 import type { PagedResult } from '@/shared/api/types';
 
-export type AuditOutcome = 'Success' | 'Denied' | 'Failed';
+export type AuditOutcome = 'Success' | 'Denied' | 'Failed' | (string & {});
 
 export interface AuditLogItem {
   id: number;
@@ -20,8 +20,12 @@ export interface AuditLogItem {
 
 export interface AuditLogQueryParams {
   actorUserId?: string;
+  actorSessionId?: string;
   action?: string;
   targetType?: string;
+  targetId?: string;
+  requestId?: string;
+  searchTerm?: string;
   outcome?: string;
   fromUtc?: string;
   toUtc?: string;
@@ -39,6 +43,9 @@ export interface AuditLogFilterState {
   toUtc: string;
   timePreset: AuditTimePreset;
   academicPeriod?: string;
+  requestId?: string;
+  targetId?: string;
+  actorSessionId?: string;
 }
 
 export interface AuditLogDiffData {

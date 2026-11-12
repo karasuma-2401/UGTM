@@ -18,11 +18,24 @@ public sealed class GetAuditLogsHandler(IAuditLogQueryReader queryReader)
         GetAuditLogsQuery query,
         CancellationToken cancellationToken)
     {
+        var normalized = NormalizeQuery(query);
+        if (normalized.IsFailure)
+            return Result.Failure<PagedResult<AuditLogDto>>(normalized.Error);
+
+        var result = await queryReader.GetAuditLogsAsync(normalized.Value, cancellationToken);
+        return Result.Success(result);
+    }
+
+    public static Result<GetAuditLogsQuery> NormalizeQuery(GetAuditLogsQuery query)
+    {
         if (query.FromUtc is { Kind: not DateTimeKind.Utc }
             || query.ToUtc is { Kind: not DateTimeKind.Utc }
-            || query.FromUtc > query.ToUtc)
+            || query.FromUtc > query.ToUtc
+            || query.SearchTerm?.Length > 200
+            || query.RequestId?.Length > 100
+            || query.TargetId?.Length > 100)
         {
-            return Result.Failure<PagedResult<AuditLogDto>>(
+            return Result.Failure<GetAuditLogsQuery>(
                 IdentityErrors.InvalidAuditLogFilter);
         }
 
@@ -35,7 +48,7 @@ public sealed class GetAuditLogsHandler(IAuditLogQueryReader queryReader)
 
             if (outcome is null)
             {
-                return Result.Failure<PagedResult<AuditLogDto>>(
+                return Result.Failure<GetAuditLogsQuery>(
                     IdentityErrors.InvalidAuditLogFilter);
             }
         }
@@ -52,13 +65,15 @@ public sealed class GetAuditLogsHandler(IAuditLogQueryReader queryReader)
         {
             Action = Normalize(query.Action),
             TargetType = Normalize(query.TargetType),
+            SearchTerm = Normalize(query.SearchTerm),
+            RequestId = Normalize(query.RequestId),
+            TargetId = Normalize(query.TargetId),
             Outcome = outcome,
             PageNumber = pageNumber,
             PageSize = pageSize
         };
 
-        var result = await queryReader.GetAuditLogsAsync(sanitizedQuery, cancellationToken);
-        return Result.Success(result);
+        return Result.Success(sanitizedQuery);
     }
 
     private static string? Normalize(string? value)

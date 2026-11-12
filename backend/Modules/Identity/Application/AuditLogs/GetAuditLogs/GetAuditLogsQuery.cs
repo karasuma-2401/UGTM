@@ -8,4 +8,8 @@ public sealed record GetAuditLogsQuery(
     DateTime? FromUtc = null,
     DateTime? ToUtc = null,
     int PageNumber = 1,
-    int PageSize = 20);
+    int PageSize = 20,
+    string? SearchTerm = null,
+    string? RequestId = null,
+    string? TargetId = null,
+    Guid? ActorSessionId = null);
