@@ -28,12 +28,77 @@ export const ACTION_LABELS: Record<string, string> = {
   'DefenseCouncil.Score.Excluded': 'Loại trừ điểm đánh giá',
 };
 
+export interface ActionGroupOption {
+  group: string;
+  items: { value: string; label: string }[];
+}
+
+export const ACTION_GROUPS: ActionGroupOption[] = [
+  {
+    group: 'Xác thực & Phiên làm việc',
+    items: [
+      { value: 'Identity.Authentication.Login', label: 'Đăng nhập hệ thống' },
+      { value: 'Identity.Session.Refreshed', label: 'Làm mới phiên làm việc' },
+      { value: 'Identity.Session.Revoked', label: 'Thu hồi phiên làm việc' },
+      { value: 'Identity.User.SessionsRevoked', label: 'Thu hồi toàn bộ phiên' },
+      { value: 'Identity.Session.RefreshTokenReuseDetected', label: 'Cảnh báo dùng lại Token' },
+      { value: 'Identity.Session.LoggedOut', label: 'Đăng xuất' },
+    ],
+  },
+  {
+    group: 'Tài khoản người dùng',
+    items: [
+      { value: 'Identity.User.Created', label: 'Tạo tài khoản' },
+      { value: 'Identity.User.Updated', label: 'Cập nhật tài khoản' },
+      { value: 'Identity.User.StatusChanged', label: 'Đổi trạng thái tài khoản' },
+      { value: 'Identity.User.RolesChanged', label: 'Thay đổi vai trò người dùng' },
+      { value: 'Identity.Users.Imported', label: 'Nhập danh sách người dùng' },
+      { value: 'Identity.Account.Activated', label: 'Kích hoạt tài khoản' },
+      { value: 'Identity.Account.ActivationRequested', label: 'Gửi email kích hoạt' },
+      { value: 'Identity.Account.PasswordChanged', label: 'Đổi mật khẩu' },
+      { value: 'Identity.Account.PasswordReset', label: 'Đặt lại mật khẩu' },
+    ],
+  },
+  {
+    group: 'Phân quyền & Vai trò',
+    items: [
+      { value: 'Identity.Role.Created', label: 'Tạo vai trò mới' },
+      { value: 'Identity.Role.PermissionsChanged', label: 'Cập nhật quyền vai trò' },
+    ],
+  },
+  {
+    group: 'Đợt khóa luận & Hội đồng',
+    items: [
+      { value: 'AcademicPeriods.Batch.ConfigurationUpdated', label: 'Cấu hình đợt khóa luận' },
+      { value: 'AcademicPeriods.Score.ConfigurationUpdated', label: 'Cấu hình thang điểm' },
+      { value: 'ThesisManagement.RenameRequest.Approved', label: 'Duyệt đổi tên đề tài' },
+      { value: 'DefenseCouncil.CouncilMinute.UnlockGranted', label: 'Mở khóa biên bản hội đồng' },
+      { value: 'DefenseCouncil.Score.Adjusted', label: 'Điều chỉnh điểm hội đồng' },
+      { value: 'DefenseCouncil.Score.Excluded', label: 'Loại trừ điểm đánh giá' },
+    ],
+  },
+];
+
 export const STATUS_TEXT: Record<string, string> = {
   Active: 'Hoạt động',
   PendingActivation: 'Chờ kích hoạt',
   Suspended: 'Tạm khóa',
   Disabled: 'Vô hiệu hóa',
 };
+
+export const TARGET_TYPE_LABELS: Record<string, string> = {
+  User: 'Tài khoản',
+  Role: 'Vai trò',
+  AuthenticationSession: 'Phiên làm việc',
+  AcademicPeriod: 'Đợt khóa luận',
+  ThesisTopic: 'Đề tài',
+  CouncilMinute: 'Biên bản hội đồng',
+  ThesisScore: 'Điểm số',
+};
+
+export function formatTargetType(targetType: string): string {
+  return TARGET_TYPE_LABELS[targetType] || targetType;
+}
 
 export function formatAuditAction(action: string): string {
   return ACTION_LABELS[action] || action;
@@ -70,6 +135,25 @@ export function formatAuditFullTime(isoString: string): string {
     return `${day}/${month}/${year} - ${hours}:${minutes}:${seconds}`;
   } catch {
     return isoString;
+  }
+}
+
+export function formatAuditRelativeTime(isoString: string): string {
+  try {
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return '';
+    const now = new Date();
+    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+    if (diffSec < 60) return 'Vừa xong';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin} phút trước`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 30) return `${diffDays} ngày trước`;
+    return '';
+  } catch {
+    return '';
   }
 }
 
@@ -149,6 +233,26 @@ export function parseAuditDiff(item: AuditLogItem): AuditLogDiffData {
     };
   }
 
+  if (item.action === 'ThesisManagement.RenameRequest.Approved') {
+    return {
+      fieldTitle: 'Trường dữ liệu: Tên đề tài khóa luận',
+      beforeValue: metadata.OldTopicName || metadata.oldTopicName || 'Tên đề tài cũ',
+      afterValue: metadata.NewTopicName || metadata.newTopicName || 'Tên đề tài mới',
+      reason,
+      hasDiff: true,
+    };
+  }
+
+  if (item.action.startsWith('DefenseCouncil.Score.')) {
+    return {
+      fieldTitle: 'Trường dữ liệu: Điểm đánh giá hội đồng',
+      beforeValue: metadata.OldScore !== undefined ? String(metadata.OldScore) : 'Điểm trước điều chỉnh',
+      afterValue: metadata.NewScore !== undefined ? String(metadata.NewScore) : 'Điểm sau điều chỉnh',
+      reason,
+      hasDiff: true,
+    };
+  }
+
   const beforeKey = Object.keys(metadata).find((k) => /before|old|prev/i.test(k));
   const afterKey = Object.keys(metadata).find((k) => /after|new|next/i.test(k));
 
@@ -162,12 +266,13 @@ export function parseAuditDiff(item: AuditLogItem): AuditLogDiffData {
     };
   }
 
+  // Sự kiện vận hành (operational event), không phải thay đổi trường
+  const hasMetadata = Object.keys(metadata).length > 0;
   return {
-    fieldTitle: `Trường dữ liệu: ${formatAuditAction(item.action)}`,
-    beforeValue: item.targetType ? `${item.targetType} (ID: ${item.targetId})` : 'Dữ liệu trước thao tác',
+    fieldTitle: `Hành động: ${formatAuditAction(item.action)}`,
+    beforeValue: item.targetType ? `${formatTargetType(item.targetType)} (ID: ${item.targetId})` : 'Dữ liệu trước thao tác',
     afterValue: item.outcome === 'Success' ? 'Thao tác hoàn tất thành công' : `Kết quả: ${item.outcome}`,
     reason,
-    hasDiff: Object.keys(metadata).length > 0,
+    hasDiff: hasMetadata && (item.action.includes('Changed') || item.action.includes('Updated')),
   };
 }
-

@@ -1,12 +1,17 @@
 import { InlineAlert } from '@/components/ui/inline-alert';
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ScrollText } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { ScrollText, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
+import { ListCardHeader } from '@/components/ui/list-card-header';
+import {
+  AuditLogStatusTabs,
+  type AuditOutcomeStats,
+} from '../components/AuditLogStatusTabs';
 import { AuditLogFilterBar } from '../components/AuditLogFilterBar';
 import { AuditLogTable } from '../components/AuditLogTable';
-import { AuditLogDiffCard } from '../components/AuditLogDiffCard';
-import { AuditLogDetailCard } from '../components/AuditLogDetailCard';
+import { AuditLogDetailDrawer } from '../components/AuditLogDetailDrawer';
 import { auditLogApi, getAuditLogErrorMessage } from '../services/auditLogApi';
 import type {
   AuditLogItem,
@@ -16,12 +21,12 @@ import type {
 const INITIAL_FILTER: AuditLogFilterState = {
   searchTerm: '',
   action: '',
+  outcome: '',
   fromUtc: '',
   toUtc: '',
+  timePreset: 'all',
   academicPeriod: '2026-1',
 };
-
-const PAGE_SIZE = 10;
 
 export const AuditLogPage: React.FC = () => {
   const [filter, setFilter] = useState<AuditLogFilterState>(INITIAL_FILTER);
@@ -30,15 +35,28 @@ export const AuditLogPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
+  const [stats, setStats] = useState<AuditOutcomeStats>({
+    total: 0,
+    success: 0,
+    denied: 0,
+    failed: 0,
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState<boolean>(false);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const detailSectionRef = useRef<HTMLDivElement>(null);
-
   const fetchLogs = useCallback(
-    async (page = 1, currentFilter = appliedFilter, signal?: AbortSignal) => {
+    async (
+      page: number,
+      size: number,
+      currentFilter: AuditLogFilterState,
+      signal?: AbortSignal,
+    ) => {
       setIsLoading(true);
       setError(null);
 
@@ -46,10 +64,11 @@ export const AuditLogPage: React.FC = () => {
         const result = await auditLogApi.getAuditLogs(
           {
             action: currentFilter.action || undefined,
+            outcome: currentFilter.outcome || undefined,
             fromUtc: currentFilter.fromUtc || undefined,
             toUtc: currentFilter.toUtc || undefined,
             pageNumber: page,
-            pageSize: PAGE_SIZE,
+            pageSize: size,
           },
           signal,
         );
@@ -57,6 +76,7 @@ export const AuditLogPage: React.FC = () => {
         setLogs(result.items);
         setTotalCount(result.totalCount);
         setPageNumber(result.pageNumber);
+        setPageSize(result.pageSize);
 
         if (result.items.length > 0) {
           setSelectedId((prev) => {
@@ -79,14 +99,87 @@ export const AuditLogPage: React.FC = () => {
         }
       }
     },
-    [appliedFilter],
+    [],
+  );
+
+  const fetchStats = useCallback(
+    async (currentFilter: AuditLogFilterState, signal?: AbortSignal) => {
+      setIsLoadingStats(true);
+      try {
+        const [allRes, successRes, deniedRes, failedRes] = await Promise.all([
+          auditLogApi.getAuditLogs(
+            {
+              fromUtc: currentFilter.fromUtc || undefined,
+              toUtc: currentFilter.toUtc || undefined,
+              action: currentFilter.action || undefined,
+              pageSize: 1,
+            },
+            signal,
+          ),
+          auditLogApi.getAuditLogs(
+            {
+              fromUtc: currentFilter.fromUtc || undefined,
+              toUtc: currentFilter.toUtc || undefined,
+              action: currentFilter.action || undefined,
+              outcome: 'Success',
+              pageSize: 1,
+            },
+            signal,
+          ),
+          auditLogApi.getAuditLogs(
+            {
+              fromUtc: currentFilter.fromUtc || undefined,
+              toUtc: currentFilter.toUtc || undefined,
+              action: currentFilter.action || undefined,
+              outcome: 'Denied',
+              pageSize: 1,
+            },
+            signal,
+          ),
+          auditLogApi.getAuditLogs(
+            {
+              fromUtc: currentFilter.fromUtc || undefined,
+              toUtc: currentFilter.toUtc || undefined,
+              action: currentFilter.action || undefined,
+              outcome: 'Failed',
+              pageSize: 1,
+            },
+            signal,
+          ),
+        ]);
+
+        setStats({
+          total: allRes.totalCount,
+          success: successRes.totalCount,
+          denied: deniedRes.totalCount,
+          failed: failedRes.totalCount,
+        });
+      } catch {
+        // Fallback
+      } finally {
+        if (!signal?.aborted) {
+          setIsLoadingStats(false);
+        }
+      }
+    },
+    [],
   );
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchLogs(pageNumber, appliedFilter, controller.signal);
+    fetchLogs(pageNumber, pageSize, appliedFilter, controller.signal);
     return () => controller.abort();
-  }, [fetchLogs, pageNumber, appliedFilter]);
+  }, [fetchLogs, pageNumber, pageSize, appliedFilter]);
+
+  const statsFilterKey = `${appliedFilter.fromUtc}:${appliedFilter.toUtc}:${appliedFilter.action}`;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchStats(appliedFilter, controller.signal);
+    return () => controller.abort();
+    // Chỉ tải lại breakdown thống kê khi khoảng ngày hoặc thao tác thay đổi, không chạy lại khi đổi tab outcome
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchStats, statsFilterKey]);
 
   const filteredLogs = useMemo(() => {
     const term = appliedFilter.searchTerm.trim().toLowerCase();
@@ -96,12 +189,16 @@ export const AuditLogPage: React.FC = () => {
       const actor = `${item.actorFullName || ''} ${item.actorEmail || ''}`.toLowerCase();
       const target = `${item.targetType || ''} ${item.targetId || ''}`.toLowerCase();
       const action = (item.action || '').toLowerCase();
+      const reason = (item.reasonCode || '').toLowerCase();
+      const reqId = (item.requestId || '').toLowerCase();
       const meta = item.metadata ? JSON.stringify(item.metadata).toLowerCase() : '';
 
       return (
         actor.includes(term) ||
         target.includes(term) ||
         action.includes(term) ||
+        reason.includes(term) ||
+        reqId.includes(term) ||
         meta.includes(term)
       );
     });
@@ -122,57 +219,113 @@ export const AuditLogPage: React.FC = () => {
     setPageNumber(1);
   };
 
+  const handleQuickOutcome = (outcomeValue: string) => {
+    const nextOutcome = appliedFilter.outcome === outcomeValue ? '' : outcomeValue;
+    const nextFilter: AuditLogFilterState = {
+      ...filter,
+      outcome: nextOutcome,
+    };
+    setFilter(nextFilter);
+    setAppliedFilter({
+      ...appliedFilter,
+      outcome: nextOutcome,
+    });
+    setPageNumber(1);
+  };
+
   const handleViewDetails = (log: AuditLogItem) => {
     setSelectedId(log.id);
-    setTimeout(() => {
-      detailSectionRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    }, 50);
+    setIsDrawerOpen(true);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setPageNumber(1);
+  };
+
+  const handleRefresh = () => {
+    fetchLogs(pageNumber, pageSize, appliedFilter);
+    fetchStats(appliedFilter);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-5">
+      {/* Tiêu đề trang */}
       <PageHeader
+        compact
+        accent
         title="Nhật ký thao tác"
         icon={<ScrollText />}
       >
-        <Badge variant="secondary" className="text-xs font-semibold px-2.5 py-1">
-          Nhật ký chỉ đọc
-        </Badge>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isLoading || isLoadingStats}
+          onClick={handleRefresh}
+          leftIcon={
+            <RefreshCw
+              className={isLoading || isLoadingStats ? 'animate-spin size-3.5' : 'size-3.5'}
+            />
+          }
+          className="h-8 px-3 text-xs"
+        >
+          Làm mới
+        </Button>
       </PageHeader>
 
+      {/* Thông báo lỗi nếu có */}
       {error && <InlineAlert tone="error">{error}</InlineAlert>}
 
-      <AuditLogFilterBar
-        filter={filter}
-        onFilterChange={setFilter}
-        onApply={handleApplyFilter}
-        onReset={handleResetFilter}
-        isLoading={isLoading}
-      />
+      {/* Card bao bọc toàn bộ Danh sách & Bộ lọc */}
+      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
+        {/* Header thẻ với Status Tabs hiện đại */}
+        <ListCardHeader
+          title="Sự kiện hệ thống"
+          icon={<ScrollText />}
+          description={`${totalCount.toLocaleString('vi-VN')} sự kiện ghi nhận`}
+          className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
+        >
+          <div className="flex items-center justify-end w-full">
+            <AuditLogStatusTabs
+              currentOutcome={appliedFilter.outcome}
+              onSelectOutcome={handleQuickOutcome}
+              stats={stats}
+              loading={isLoadingStats}
+            />
+          </div>
+        </ListCardHeader>
 
-      <AuditLogTable
-        logs={filteredLogs}
-        selectedId={selectedId}
-        onSelect={(log) => setSelectedId(log.id)}
-        onViewDetails={handleViewDetails}
-        pageNumber={pageNumber}
-        pageSize={PAGE_SIZE}
-        totalCount={totalCount}
-        onPageChange={(page) => setPageNumber(page)}
-        isLoading={isLoading}
-      />
+        {/* Thanh công cụ lọc hiện đại */}
+        <AuditLogFilterBar
+          filter={filter}
+          onFilterChange={setFilter}
+          onApply={handleApplyFilter}
+          onReset={handleResetFilter}
+          isLoading={isLoading}
+        />
 
-      <div
-        ref={detailSectionRef}
-        id="audit-log-details"
-        className="scroll-mt-24 grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 pt-1"
-      >
-        <AuditLogDiffCard log={selectedLog} />
-        <AuditLogDetailCard log={selectedLog} />
-      </div>
+        {/* Bảng dữ liệu sự kiện theo chuẩn UX Tài khoản & Phân quyền */}
+        <AuditLogTable
+          logs={filteredLogs}
+          selectedId={selectedId}
+          onSelect={(log) => setSelectedId(log.id)}
+          onViewDetails={handleViewDetails}
+          pageNumber={pageNumber}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={(page) => setPageNumber(page)}
+          onPageSizeChange={handlePageSizeChange}
+          isLoading={isLoading}
+        />
+      </Card>
+
+      {/* Drawer chi tiết sự kiện trượt từ bên phải */}
+      <AuditLogDetailDrawer
+        log={selectedLog}
+        open={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+      />
     </div>
   );
 };

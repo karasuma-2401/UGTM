@@ -1,13 +1,12 @@
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { OperationToast } from '@/shared/notifications';
 import { useQueryClient } from '@tanstack/react-query';
-import { UsersRound, GraduationCap, UserPlus, Clock3, ShieldOff, Upload, X } from 'lucide-react';
+import { UsersRound, GraduationCap, UserPlus, Upload, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { ListCardHeader } from '@/components/ui/list-card-header';
-import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -18,6 +17,7 @@ import {
   UsersTable,
   IdentityNavigation,
   UserFilterBar,
+  UserStatusTabs,
 } from '../components/users';
 import { getUserErrorMessage } from '../services/userApi';
 import { useUsers } from '../hooks';
@@ -149,49 +149,27 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
           className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
         >
           <section
-            className="w-full"
+            className="flex items-center justify-end w-full"
             aria-label="Thống kê tài khoản"
             aria-busy={data.statisticsQuery.isFetching}
           >
-            <StatisticsBar
-              compact
+            <UserStatusTabs
+              activeKey={
+                !filters.filters.status && !filters.filters.keyword && !filters.filters.role
+                  ? ''
+                  : filters.filters.status === 'PendingActivation' &&
+                      !filters.filters.keyword &&
+                      !filters.filters.role
+                    ? 'PendingActivation'
+                    : filters.filters.status === 'Disabled' &&
+                        !filters.filters.keyword &&
+                        !filters.filters.role
+                      ? 'Disabled'
+                      : 'none'
+              }
+              onSelect={(status) => filters.quickFilter(status)}
+              stats={data.statistics}
               loading={data.statisticsQuery.isPending}
-              items={[
-                {
-                  key: 'total',
-                  onClick: () => filters.quickFilter(''),
-                  active:
-                    !filters.filters.status && !filters.filters.keyword && !filters.filters.role,
-                  label: 'Tổng tài khoản',
-                  value: data.formatCount(data.statistics?.total),
-                  icon: <UsersRound />,
-                  tone: 'primary',
-                },
-                {
-                  key: 'pending',
-                  onClick: () => filters.quickFilter('PendingActivation'),
-                  active:
-                    filters.filters.status === 'PendingActivation' &&
-                    !filters.filters.keyword &&
-                    !filters.filters.role,
-                  label: 'Chờ kích hoạt',
-                  value: data.formatCount(data.statistics?.pendingActivation),
-                  icon: <Clock3 />,
-                  tone: 'warning',
-                },
-                {
-                  key: 'disabled',
-                  onClick: () => filters.quickFilter('Disabled'),
-                  active:
-                    filters.filters.status === 'Disabled' &&
-                    !filters.filters.keyword &&
-                    !filters.filters.role,
-                  label: 'Vô hiệu hóa',
-                  value: data.formatCount(data.statistics?.disabled),
-                  icon: <ShieldOff />,
-                  tone: 'danger',
-                },
-              ]}
             />
             {data.statisticsQuery.isPending && (
               <p role="status" className="sr-only">

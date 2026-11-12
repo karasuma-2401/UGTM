@@ -29,12 +29,16 @@ export interface AuditLogQueryParams {
   pageSize?: number;
 }
 
+export type AuditTimePreset = 'all' | 'today' | '7d' | '30d' | 'custom';
+
 export interface AuditLogFilterState {
   searchTerm: string;
   action: string;
+  outcome: string;
   fromUtc: string;
   toUtc: string;
-  academicPeriod: string;
+  timePreset: AuditTimePreset;
+  academicPeriod?: string;
 }
 
 export interface AuditLogDiffData {
