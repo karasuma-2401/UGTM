@@ -15,7 +15,7 @@ export interface SelectOption<T = string> {
 export type RawOption<T = string> = SelectOption<T> | string | number;
 
 const selectTriggerVariants = cva(
-  'flex w-full items-center justify-between rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-2xs outline-none transition-[background-color,border-color,box-shadow] duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60 text-left cursor-pointer',
+  'flex w-full items-center justify-between rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-2xs outline-none transition-[background-color,border-color,box-shadow] duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60 text-left cursor-pointer select-none',
   {
     variants: {
       size: {
@@ -259,7 +259,7 @@ export function Select<T = string>({
   return (
     <div
       ref={containerRef}
-      className={cn('relative w-full text-left', containerClassName, className)}
+      className={cn('relative w-full text-left', isOpen && 'z-50', containerClassName, className)}
       {...props}
     >
       <button
@@ -320,7 +320,7 @@ export function Select<T = string>({
           tabIndex={-1}
           style={{ maxHeight: maxMenuHeight }}
           className={cn(
-            'absolute z-50 left-0 right-0 mt-1.5 w-full rounded-xl border border-slate-200/90 bg-white p-1.5 text-slate-900 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.14)] outline-none overflow-hidden flex flex-col animate-in fade-in-0 zoom-in-95',
+            'absolute z-50 left-0 right-0 top-full mt-1.5 w-full rounded-xl border border-slate-200/90 bg-white p-1.5 text-slate-900 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.14)] outline-none overflow-hidden flex flex-col animate-in fade-in-0 zoom-in-95',
             contentClassName,
           )}
         >
