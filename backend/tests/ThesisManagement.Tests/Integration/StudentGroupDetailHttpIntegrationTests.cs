@@ -49,6 +49,7 @@ public sealed class StudentGroupDetailHttpIntegrationTests(PostgreSqlFixture fix
     private readonly Guid _studentId = Guid.NewGuid();
     private readonly Guid _partnerId = Guid.NewGuid();
     private readonly Guid _advisorId = Guid.NewGuid();
+    private readonly TestClock _clock = new();
     private WebApplication _app = null!;
     private HttpClient _client = null!;
     private string Route => $"/api/thesis/groups/{_groupId}/detail";
@@ -68,6 +69,7 @@ public sealed class StudentGroupDetailHttpIntegrationTests(PostgreSqlFixture fix
         new TopicCatalogModule().RegisterModule(builder.Services, builder.Configuration);
         new ThesisManagementModule().RegisterModule(builder.Services, builder.Configuration);
         builder.Services.RemoveAll<IHostedService>();
+        builder.Services.AddSingleton<TimeProvider>(_clock);
         builder.Services.AddDbContext<IdentityDbContext>(options => DatabaseOptions.Configure(options, fixture.ConnectionString));
         builder.Services.AddScoped<IStudentInfoReader, StudentInfoReader>();
         builder.Services.AddScoped<IAdvisorNameReader, AdvisorNameReader>();
@@ -91,6 +93,53 @@ public sealed class StudentGroupDetailHttpIntegrationTests(PostgreSqlFixture fix
     {
         _client?.Dispose();
         if (_app is not null) await _app.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Advising_list_is_scoped_even_for_admin_and_does_not_expose_invitation_secrets()
+    {
+        Authenticate(_advisorId, "Admin");
+        using var own = await _client.GetAsync("/api/thesis/advising/groups?scope=all&sortBy=title&sortOrder=asc&pageSize=1");
+        Assert.Equal(HttpStatusCode.OK, own.StatusCode);
+        var body = await own.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("private-invitation-hash", body);
+        using var json = JsonDocument.Parse(body);
+        var data = json.RootElement.GetProperty("data");
+        Assert.Equal(1, data.GetProperty("page").GetProperty("totalCount").GetInt32());
+        Assert.Equal(_groupId, data.GetProperty("page").GetProperty("items")[0].GetProperty("groupId").GetGuid());
+        Assert.Equal(1, data.GetProperty("statistics").GetProperty("pendingInvitations").GetInt32());
+        Authenticate(Guid.NewGuid(), "Admin");
+        using var other = await _client.GetAsync("/api/thesis/advising/groups?scope=all");
+        using var otherJson = JsonDocument.Parse(await other.Content.ReadAsStringAsync());
+        Assert.Equal(0, otherJson.RootElement.GetProperty("data").GetProperty("page").GetProperty("totalCount").GetInt32());
+        Authenticate(_studentId);
+        using var student = await _client.GetAsync("/api/thesis/advising/groups");
+        Assert.Equal(HttpStatusCode.Forbidden, student.StatusCode);
+    }
+
+    [Fact]
+    public async Task Invitation_deadline_is_evaluated_by_the_server_before_cleanup_without_changing_the_detail_enum()
+    {
+        _clock.UtcNow = new DateTimeOffset(Now.AddHours(24));
+        Authenticate(_advisorId, "Lecturer");
+        using var list = await _client.GetAsync("/api/thesis/advising/groups?confirmation=expired");
+        using var json = JsonDocument.Parse(await list.Content.ReadAsStringAsync());
+        var data = json.RootElement.GetProperty("data");
+        Assert.Equal(0, data.GetProperty("statistics").GetProperty("pendingInvitations").GetInt32());
+        Assert.Equal(1, data.GetProperty("statistics").GetProperty("expiredInvitations").GetInt32());
+        var members = data.GetProperty("page").GetProperty("items")[0].GetProperty("students");
+        Assert.Equal("Expired", members.EnumerateArray().Single(m => m.GetProperty("studentId").GetGuid() == _partnerId).GetProperty("confirmationStatus").GetString());
+        using var detail = await _client.GetAsync(Route);
+        using var detailJson = JsonDocument.Parse(await detail.Content.ReadAsStringAsync());
+        var partner = detailJson.RootElement.GetProperty("data").GetProperty("members").EnumerateArray().Single(m => m.GetProperty("studentId").GetGuid() == _partnerId);
+        Assert.Equal("Pending", partner.GetProperty("confirmationStatus").GetString());
+        Assert.True(partner.GetProperty("invitationExpired").GetBoolean());
+    }
+
+    private sealed class TestClock : TimeProvider
+    {
+        public DateTimeOffset UtcNow { get; set; } = new(Now);
+        public override DateTimeOffset GetUtcNow() => UtcNow;
     }
 
     [Fact]
@@ -243,6 +292,13 @@ public sealed class StudentGroupDetailHttpIntegrationTests(PostgreSqlFixture fix
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("Stopped", json.RootElement.GetProperty("data").GetProperty("groupStatus").GetString());
+        Authenticate(_advisorId, "Lecturer");
+        using var stopped = await _client.GetAsync("/api/thesis/advising/groups?scope=stopped");
+        using var stoppedJson = JsonDocument.Parse(await stopped.Content.ReadAsStringAsync());
+        Assert.Equal(_groupId, stoppedJson.RootElement.GetProperty("data").GetProperty("page").GetProperty("items")[0].GetProperty("groupId").GetGuid());
+        using var active = await _client.GetAsync("/api/thesis/advising/groups?scope=active");
+        using var activeJson = JsonDocument.Parse(await active.Content.ReadAsStringAsync());
+        Assert.Equal(0, activeJson.RootElement.GetProperty("data").GetProperty("page").GetProperty("totalCount").GetInt32());
     }
 
     [Fact]

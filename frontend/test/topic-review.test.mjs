@@ -4,6 +4,7 @@ import test from 'node:test';
 import ts from 'typescript';
 import * as React from 'react';
 import * as jsxRuntime from 'react/jsx-runtime';
+import { DataTable } from './helpers/data-table.mjs';
 import * as icons from 'lucide-react';
 
 function loadModule(path, dependencies = {}, browserWindow = {}) {
@@ -339,9 +340,25 @@ const ui = Object.fromEntries(
   ].map((name) => [name, { [name]: name }]),
 );
 const common = {
+  react: React,
   'react/jsx-runtime': jsxRuntime,
   'lucide-react': icons,
   '@/components/ui/selectable-table-row': { SelectableTableRow: 'SelectableTableRow' },
+  '@/components/ui/selection-indicator': { SelectionIndicator: 'SelectionIndicator' },
+  '@/components/ui/checkbox': ui.Checkbox,
+  '@/components/ui/table-floating-bar': { TableFloatingBar: 'TableFloatingBar' },
+  '@/components/ui/table': {
+    Table: 'Table',
+    TableHeader: 'TableHeader',
+    TableBody: 'TableBody',
+    TableFooter: 'TableFooter',
+    TableRow: 'SelectableTableRow',
+    TableHead: 'TableHead',
+    TableCell: 'td',
+    TableEmpty: 'TableEmpty',
+    TableActiveFilters: 'TableActiveFilters',
+    TableFilterChip: 'TableFilterChip',
+  },
 };
 
 test('review table only allows selecting approved topics from one batch', () => {
@@ -428,6 +445,7 @@ test('review names stay skeletons until their own queries finish and cached name
 
 test('proposal batch cells and shared preview keep skeletons while related names are unresolved', () => {
   const { TopicsTable } = loadModule('features/topics/components/TopicsTable.tsx', {
+    '@/components/ui/data-table': { DataTable },
     ...common,
     '@/components/ui/button': ui.Button,
     '@/components/ui/info-cell': ui.InfoCell,
@@ -445,13 +463,15 @@ test('proposal batch cells and shared preview keep skeletons while related names
     onCopy() {},
     onSubmit() {},
   };
-  let table = TopicsTable({ ...props, batchesLoading: true });
+  let table = DataTable(TopicsTable({ ...props, batchesLoading: true }).props);
   assert.equal(walk(table, (node) => node.type === 'Skeleton').length, 1);
-  table = TopicsTable({
-    ...props,
-    batchesLoading: true,
-    batches: [{ id: 'batch-1', batchName: 'Đợt 1' }],
-  });
+  table = DataTable(
+    TopicsTable({
+      ...props,
+      batchesLoading: true,
+      batches: [{ id: 'batch-1', batchName: 'Đợt 1' }],
+    }).props,
+  );
   assert.equal(walk(table, (node) => node.type === 'Skeleton').length, 0);
   const { TopicPreview } = loadModule('features/topics/components/TopicPreview.tsx', {
     './TopicReviewNote': { TopicReviewNote: 'TopicReviewNote' },

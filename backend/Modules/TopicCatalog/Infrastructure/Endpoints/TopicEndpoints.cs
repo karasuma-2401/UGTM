@@ -53,6 +53,8 @@ public static class TopicEndpoints
                 - `advisorId`: Dành cho Văn phòng Khoa (`Faculty`), Quản trị viên (`Admin`) hoặc Hội đồng (`CouncilMember`) khi muốn lọc theo một GVHD cụ thể.
                 - `pageNumber`: Số trang (mặc định 1).
                 - `pageSize`: Kích thước trang (1 đến 100, mặc định 10).
+                - `sortBy`: `title`, `studentNumber` hoặc `createdAt` (mặc định `createdAt`).
+                - `sortOrder`: `asc` hoặc `desc` (mặc định `desc`); sắp xếp trước khi phân trang.
 
                 Yêu cầu Bearer token.
                 - Vai trò `Lecturer` (GVHD): Xem danh sách đề tài do chính mình hướng dẫn.
@@ -176,6 +178,14 @@ public static class TopicEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
 
+        group.MapGet("/my-statistics", async (GetMyTopicStatisticsHandler handler,
+                Guid? batchId = null, CancellationToken cancellationToken = default)
+                => (await handler.HandleAsync(batchId, cancellationToken)).ToHttpResult())
+            .RequireAuthorization()
+            .WithSummary("Thống kê đề tài của giảng viên hiện tại theo đợt, không tải nhóm/thành viên")
+            .Produces<ApiResponse<TopicStatisticsDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
         return endpoints;
     }
 
@@ -200,10 +210,12 @@ public static class TopicEndpoints
         Guid? advisorId,
         int pageNumber = 1,
         int pageSize = 10,
+        string? sortBy = null,
+        string? sortOrder = null,
         GetMyTopicsHandler handler = null!,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetMyTopicsQuery(keyword, batchId, status, registrationStatus, advisorId, pageNumber, pageSize);
+        var query = new GetMyTopicsQuery(keyword, batchId, status, registrationStatus, advisorId, pageNumber, pageSize, sortBy, sortOrder);
         var result = await handler.HandleAsync(query, cancellationToken);
         return result.ToHttpResult();
     }

@@ -1,6 +1,6 @@
 # Topic Catalog, Proposal, Review & Tracking API
 
-**Trạng thái:** mục 1–4 đã triển khai; mục 5 phân biệt API đã có và các phần còn thiếu · **Cập nhật:** 27/10/2026
+**Trạng thái:** mục 1–4 đã triển khai; mục 5 phân biệt API đã có và các phần còn thiếu · **Cập nhật:** 13/11/2026
 
 **Base path hiện có:** `/api/topics`
 
@@ -47,6 +47,7 @@ Tài liệu này đặc tả chi tiết các endpoint thuộc phân hệ **Đề
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/topics/all-topics` | Mọi vai trò / Công khai | Tra cứu danh mục đề tài đã được Khoa duyệt và công bố (`isPublished = true`) |
 | `GET` | `/api/topics/my-topics` | `Lecturer` (chính chủ), `Faculty`, `Admin`, `CouncilMember` | GVHD theo dõi đề tài của mình; Khoa/Admin/Hội đồng xem & lọc toàn bộ đề tài |
+| `GET` | `/api/topics/my-statistics?batchId=...` | `Lecturer`, `Admin`, luôn giới hạn UserId hiện tại | Tổng đề tài, Submitted, NeedRevision theo đợt; không tải nhóm/thành viên |
 | `GET` | `/api/topics/{id}/tracking` | `Lecturer` (chính chủ), `Faculty`, `Admin`, `CouncilMember` | Xem chi tiết đề tài kèm trạng thái đăng ký, nhóm sinh viên và lý do thẩm định |
 | `POST` | `/api/topics` | `Lecturer`, `Admin` | GVHD tạo đề tài mới (`Draft` hoặc gửi duyệt ngay `Submitted`) |
 | `PUT` | `/api/topics/{id}` | `Lecturer` (chính chủ), `Admin` | GVHD chỉnh sửa đề tài khi ở trạng thái `Draft` hoặc `NeedRevision` |
@@ -243,11 +244,15 @@ Chỉ vai trò `Faculty` hoặc `Admin` được phép thực hiện. Chuyển c
 
 **Thời hạn giữ chỗ đã chốt lại: 24 giờ**, phù hợp `RegisterTopicHandler.DefaultConfirmationWindow`. Thay thế mốc 48 giờ trước đây.
 
-Topic Advising đã nối `GET /api/topics/my-topics` và `GET /api/topics/{id}/tracking`; danh sách đợt dùng `GET /api/academic-periods/batches`. Chi tiết phần đã nối và API còn thiếu: [TopicAdvisingIntegration.md](TopicAdvisingIntegration.md).
+**Sắp xếp danh sách đề tài:** `GET /api/topics/my-topics` nhận thêm `sortBy=title|studentNumber|createdAt` và `sortOrder=asc|desc`. Mặc định `createdAt desc`; tham số không hợp lệ trả 400. Sắp xếp trước phân trang, kể cả khi lọc tình trạng đăng ký; ID giảm dần làm khóa phụ, chỉ tiêu null ở cuối. API cũ không truyền tham số vẫn giữ thứ tự mặc định.
+
+**Cập nhật 13/11/2026:** trang hướng dẫn dùng hai tab Đề tài của tôi và Nhóm & tiến độ. Đề tài đọc `GET /api/topics/my-topics`, thống kê đọc `GET /api/topics/my-statistics`; nhóm đọc `GET /api/thesis/advising/groups` gồm phân trang, tìm kiếm, sắp xếp và lịch sử nhóm đã dừng. Chi tiết đọc theo groupId qua `/api/thesis/groups/{id}/detail`. Xem contract hiện tại tại [TopicAdvisingIntegration.md](TopicAdvisingIntegration.md).
+
+Các đề xuất ở phần 5 bên dưới là định hướng cũ, không phải điều kiện của trang hai tab hiện tại. API nhóm và thống kê trong tài liệu tích hợp mới thay thế các đề xuất danh sách/chi tiết/thống kê tương đương; các API mutation chưa triển khai vẫn chỉ là đề xuất.
 
 Backend đã có đăng ký/xác nhận trong `/api/thesis/topic-registrations`, và chỉ định SV bằng `studentIds`/`studentCodes` khi tạo/sửa đề tài hoặc `/advisor-assign`. Không coi các API này là chưa triển khai chỉ vì đường dẫn khác bản đề xuất cũ.
 
-**Bổ sung DTO tracking:** cả `GET /api/topics/my-topics` và `GET /api/topics/{id}/tracking` trả `confirmedStudentsCount: number` (số thành viên Confirmed) và `pendingConfirmationsCount: number` (Pending chưa hết hạn tại thời điểm đọc; hạn bằng hiện tại đã hết hạn). Pending cũ không có hạn vẫn được tính để khớp quy tắc giữ chỗ hiện tại. Không có nhóm trả 0 cho cả hai. Frontend cộng hai trường trên các nhóm đang hướng dẫn trong phạm vi GV/đợt, loại Completed/Stopped. Không trả token xác nhận.
+**Bổ sung DTO tracking:** cả `GET /api/topics/my-topics` và `GET /api/topics/{id}/tracking` trả `confirmedStudentsCount: number` (số thành viên Confirmed) và `pendingConfirmationsCount: number` (Pending chưa hết hạn tại thời điểm đọc; hạn bằng hiện tại đã hết hạn). Pending cũ không có hạn vẫn được tính để khớp quy tắc giữ chỗ hiện tại. Không có nhóm trả 0 cho cả hai. Các trường tracking này vẫn phục vụ consumer cũ; tab Nhóm & tiến độ hiện đọc số liệu đã tổng hợp từ /api/thesis/advising/groups. Không trả token xác nhận.
 
 **Tên giảng viên trong danh mục công khai:** `GET /api/topics/all-topics` trả thêm `advisorName: string | null` trong từng `TopicSummaryDto`, đọc tên hiện tại từ Identity theo `advisorId`. Chỉ tra cứu một lần cho các giảng viên trong trang kết quả; không trả email, số điện thoại hoặc danh sách tài khoản. Nếu không tìm thấy tài khoản thì trả null. Frontend dùng trường này cho danh sách và chi tiết/đăng ký; không cần endpoint tra cứu tài khoản riêng hay quyền `identity.users.read`.
 

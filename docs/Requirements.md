@@ -38,7 +38,7 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 | Tạo, chỉnh sửa đề tài | — | TH | — | X | — | — | — |
 | Thẩm định, duyệt và công bố đề tài | X | X | — | D | — | — | — |
 | Tạo nhóm, đăng ký đề tài | TH | — | — | X | — | — | — |
-| Xác nhận tiếp nhận nhóm đăng ký | X | D | — | X | — | — | — |
+| Xác nhận tham gia nhóm và theo dõi đăng ký | TH | X | — | X | — | — | — |
 | Nộp đề cương chi tiết | N | X | — | X | — | — | — |
 | Thẩm định đề cương — Cổng 1 | X | X | — | D | X | — | — |
 | Chỉnh sửa, nộp lại đề cương khi Khoa yêu cầu | N* | X | — | X | — | — | — |
@@ -122,7 +122,7 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 - Khoa tiến hành thẩm định danh mục đề tài → Phê duyệt → Công bố công khai để sinh viên tra cứu.
 - Sinh viên đủ điều kiện tra cứu đề tài, chọn đề tài mong muốn và tạo nhóm (tối đa 2 sinh viên). Từng thành viên hoặc đại diện nhóm đăng ký đề tài.
 - Hệ thống kích hoạt giao tác CSDL và cơ chế khóa dữ liệu (Database Transaction + Locking/Updlock) để trừ chỉ tiêu trống của đề tài, ngăn chặn tình trạng nhiều nhóm cùng đăng ký một lúc và xuất phiếu tiếp nhận đăng ký dạng PDF.
-- GVHD nhận thông báo, truy cập hệ thống và bấm xác nhận tiếp nhận nhóm sinh viên.
+- Đăng ký cá nhân hoặc sinh viên do GVHD chỉ định có hiệu lực ngay; thành viên được mời xác nhận trong 24 giờ theo hạn hệ thống. GVHD theo dõi nhóm và tiến độ, không có bước phê duyệt tiếp nhận nhóm riêng (chốt ngày 13/11/2026).
 - Nhóm sinh viên cùng GVHD xây dựng đề cương chi tiết → Đại diện nhóm upload file đề cương (định dạng .pdf, .doc, .docx ≤20 MiB (20,971,520 byte)) lên hệ thống trước hạn chót Tuần 2.
 - Văn phòng Khoa thẩm định đề cương (Cổng kiểm soát 1): Khoa đánh giá "Đạt" → Hệ thống tự động chuyển trạng thái của nhóm sang "Đang thực hiện KLTN" và mở khóa quyền truy cập các tính năng tiếp theo.
 
@@ -312,7 +312,7 @@ Mã FR được giữ theo báo cáo để truy vết với Use Case và kiểm 
 | FR-TOPIC-05 | Kiểm tra điều kiện đăng ký | Hệ thống kiểm tra điều kiện tham gia KLTN của sinh viên, trạng thái công bố đề tài, thời hạn đăng ký và số lượng chỉ tiêu còn trống. Những yêu cầu không đáp ứng điều kiện sẽ bị từ chối và hiển thị thông báo tương ứng. | Hệ thống |
 | FR-TOPIC-06 | Kiểm soát chỉ tiêu và xử lý đăng ký đồng thời | Hệ thống sử dụng Database Transaction kết hợp cơ chế khóa dữ liệu để bảo đảm không vượt quá chỉ tiêu tiếp nhận của đề tài khi nhiều nhóm đăng ký đồng thời. Nếu chỉ tiêu đã hết, hệ thống thực hiện Rollback giao tác và thông báo đăng ký không thành công. | Hệ thống |
 | FR-TOPIC-07 | Tạo phiếu tiếp nhận đăng ký đề tài | Sau khi đăng ký được ghi nhận thành công, hệ thống tự động tạo phiếu tiếp nhận đăng ký đề tài dưới định dạng PDF, thể hiện thông tin đề tài, sinh viên và nhóm đăng ký. | Sinh viên, Hệ thống |
-| FR-TOPIC-08 | Xác nhận tiếp nhận nhóm sinh viên | Sau khi sinh viên đăng ký đề tài thành công, hệ thống thông báo đến GVHD phụ trách. GVHD truy cập danh sách đăng ký và thực hiện xác nhận tiếp nhận nhóm sinh viên theo đề tài tương ứng. | GVHD |
+| FR-TOPIC-08 | Theo dõi nhóm và xác nhận thành viên | Đăng ký cá nhân hoặc chỉ định của GVHD có hiệu lực ngay. Thành viên được mời chủ động xác nhận trong 24 giờ theo hạn hệ thống; không có bước GVHD phê duyệt tiếp nhận riêng. GVHD xem nhóm đang thực hiện, hoàn thành, đã dừng và tình trạng lời mời theo đợt. | Sinh viên, GVHD |
 | FR-TOPIC-09 | Thông báo kết quả đăng ký | Hệ thống tự động thông báo kết quả đăng ký đề tài cho sinh viên, đồng thời gửi thông báo đến GVHD khi có yêu cầu đăng ký cần xác nhận. | Hệ thống |
 
 ### 2.1.3. Phân hệ Đề cương và Tiến độ giữa kỳ

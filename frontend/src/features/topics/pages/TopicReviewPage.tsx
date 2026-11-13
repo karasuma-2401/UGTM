@@ -13,6 +13,7 @@ import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { TablePagination } from '@/components/ui/table-pagination';
+import { TableFloatingBar } from '@/components/ui/table-floating-bar';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { TopicProposalSchedule } from '../components/TopicProposalSchedule';
@@ -354,7 +355,7 @@ export function TopicReviewPage() {
           </div>
         )}
         <div
-          className={`h-[min(60vh,40rem)] min-h-[20rem] overflow-auto transition-opacity ${isRefreshing ? 'opacity-60' : ''}`}
+          className={`min-h-[16rem] overflow-x-auto transition-opacity ${isRefreshing ? 'opacity-60' : ''}`}
           aria-busy={topicsQuery.isFetching}
         >
           {topicsQuery.isPending ? (
@@ -470,6 +471,28 @@ export function TopicReviewPage() {
           }}
           onAction={executeAction}
         />
+      )}
+      {selected.length > 0 && (
+        <TableFloatingBar
+          selectedCount={selected.length}
+          totalCount={data?.totalCount}
+          onClearSelection={() => setSelected([])}
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant="default"
+            leftIcon={<Megaphone className="size-3.5" />}
+            className="h-8 text-xs font-semibold rounded-xl shadow-xs"
+            disabled={busy || !selected.length || topicsQuery.isFetching || topicsQuery.isError}
+            onClick={() => {
+              actionMutation.reset();
+              setPublishOpen(true);
+            }}
+          >
+            Công bố ({selected.length})
+          </Button>
+        </TableFloatingBar>
       )}
       {publishOpen && (
         <Dialog

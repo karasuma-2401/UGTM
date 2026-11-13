@@ -1,59 +1,108 @@
 import { useSearchParams } from 'react-router-dom';
-import { FileText, Users, GraduationCap } from 'lucide-react';
+import { FileText, Users } from 'lucide-react';
 import { NavigationTabs, type TabItem } from '@/components/ui/navigation-tabs';
 import { TopicProposePage } from './TopicProposePage';
 import { TopicAdvisingPage } from './TopicAdvisingPage';
 import { PageHeader } from '@/components/ui/page-header';
-
-const tabs: TabItem[] = [
-  { id: 'topics', label: 'Đề tài của tôi', icon: FileText, href: '/topics/advising' },
-  { id: 'registrations', label: 'Nhóm đăng ký', icon: Users, href: '/topics/advising?tab=registrations' },
-  { id: 'advising', label: 'Đang hướng dẫn', icon: GraduationCap, href: '/topics/advising?tab=advising' },
-];
+import {
+  GROUP_STATUS_LABELS,
+  type AdvisingFilters,
+  type GroupScope,
+} from '../types/advising.types';
+import { TOPIC_STATUS_LABELS, type TopicFilters } from '../types/topic.types';
 
 export function TopicGuidancePage() {
   const [params, setParams] = useSearchParams();
   const selected = params.get('tab');
-  const tab = selected === 'registrations' || selected === 'advising' ? selected : 'topics';
-  const status = params.get('status') ?? '';
-
+  // Existing bookmarks continue to resolve to the unified group view.
+  const isGroups = ['groups', 'registrations', 'advising'].includes(selected ?? '');
+  const batchId = params.get('batchId') ?? '';
+  const href = (tab: 'topics' | 'groups') => {
+    const query = new URLSearchParams();
+    if (tab === 'groups') query.set('tab', 'groups');
+    if (batchId) query.set('batchId', batchId);
+    return `/topics/advising${query.size ? `?${query}` : ''}`;
+  };
+  const tabs: TabItem[] = [
+    { id: 'topics', label: 'Đề tài của tôi', icon: FileText, href: href('topics') },
+    { id: 'groups', label: 'Nhóm & tiến độ', icon: Users, href: href('groups') },
+  ];
   const navigation = (
     <NavigationTabs
       tabs={tabs}
-      activeId={tab}
+      activeId={isGroups ? 'groups' : 'topics'}
       ariaLabel="Đề tài hướng dẫn"
       continuityKey="topics-guidance-tabs"
     />
   );
-
-  // Router links also pass through the proposal editor's unsaved-changes blocker.
-  if (tab === 'topics')
-    return <TopicProposePage pageTitle="Đề tài hướng dẫn" navigation={navigation} />;
-
+  const status = params.get('status') ?? '';
+  const keyword = params.get('keyword') ?? '';
+  function changeTopicFilters(filters: TopicFilters) {
+    setParams(
+      {
+        ...(filters.batchId ? { batchId: filters.batchId } : {}),
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.keyword ? { keyword: filters.keyword } : {}),
+      },
+      { flushSync: true },
+    );
+  }
+  if (!isGroups)
+    return (
+      <TopicProposePage
+        key={params.toString()}
+        pageTitle="Đề tài hướng dẫn"
+        navigation={navigation}
+        initialFilters={{
+          batchId,
+          keyword,
+          status: Object.hasOwn(TOPIC_STATUS_LABELS, status)
+            ? (status as TopicFilters['status'])
+            : '',
+        }}
+        onFiltersChange={changeTopicFilters}
+      />
+    );
+  const requestedScope = params.get('scope') ?? (selected === 'registrations' ? 'all' : 'active');
+  const scope: GroupScope =
+    status === 'Stopped'
+      ? 'stopped'
+      : status === 'Completed'
+        ? 'completed'
+        : ['active', 'all', 'completed', 'stopped'].includes(requestedScope)
+          ? (requestedScope as GroupScope)
+          : 'active';
+  const confirmation = params.get('confirmation') ?? '';
+  const filters: AdvisingFilters = {
+    batchId,
+    keyword,
+    scope,
+    status: Object.hasOwn(GROUP_STATUS_LABELS, status) ? (status as AdvisingFilters['status']) : '',
+    confirmation: confirmation === 'pending' || confirmation === 'expired' ? confirmation : '',
+  };
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in-50 duration-300">
+    <div className="space-y-4 pb-8">
       <PageHeader
         compact
         accent
         title="Đề tài hướng dẫn"
-        description="Quản lý danh sách đề tài đề xuất, theo dõi nhóm sinh viên đăng ký và tiến độ hướng dẫn khóa luận tốt nghiệp"
+        description="Quản lý đề xuất, thành viên và tiến độ thực hiện khóa luận"
         navigation={navigation}
       />
       <TopicAdvisingPage
-        key={`${tab}:${status}:${params.get('batchId') ?? ''}`}
-        embedded
-        initialTab={tab}
-        initialStatus={status}
-        initialBatchId={params.get('batchId') ?? ''}
-        onQuickFilter={(next, filter, batchId) =>
+        key={params.toString()}
+        initialFilters={filters}
+        onFiltersChange={(next) =>
           setParams(
-            next === 'topics'
-              ? {}
-              : {
-                  tab: next,
-                  ...(batchId ? { batchId } : {}),
-                  ...(filter ? { status: filter } : {}),
-                },
+            {
+              tab: 'groups',
+              ...(next.batchId ? { batchId: next.batchId } : {}),
+              ...(next.scope !== 'active' ? { scope: next.scope } : {}),
+              ...(next.status ? { status: next.status } : {}),
+              ...(next.confirmation ? { confirmation: next.confirmation } : {}),
+              ...(next.keyword ? { keyword: next.keyword } : {}),
+            },
+            { flushSync: true },
           )
         }
       />

@@ -5,7 +5,10 @@ public sealed record TopicSummaryContractDto(
     Guid BatchId,
     Guid AdvisorId,
     string TitleVi,
-    string? TitleEn);
+    string? TitleEn,
+    string? Description = null,
+    string? Requirements = null,
+    int? StudentNumber = null);
 
 public interface ITopicSummaryReader
 {

@@ -118,7 +118,7 @@ export function StudentTopicGroupDialog({
               )}
               <p className="mt-2 text-xs text-slate-600">
                 {group.data.batchName || `Mã đợt: ${group.data.batchId}`} ·{' '}
-                {GROUP_STATUS_LABELS[group.data.groupStatus] ?? group.data.groupStatus}
+                {GROUP_STATUS_LABELS[group.data.groupStatus as keyof typeof GROUP_STATUS_LABELS] ?? group.data.groupStatus}
               </p>
               <p className="mt-1 text-xs text-slate-600">
                 Giảng viên hướng dẫn: {group.data.advisor.fullName || 'Chưa cập nhật'}

@@ -8,6 +8,7 @@ import type {
   TopicFilters,
   TopicFormValues,
   TopicStatistics,
+  TopicSortField,
 } from '../types/topic.types';
 
 function unwrap<T>(response: ApiResponse<T>): T {
@@ -39,6 +40,8 @@ export const topicApi = {
       advisorId?: string;
       pageNumber: number;
       pageSize: number;
+      sortBy?: TopicSortField;
+      sortOrder?: 'asc' | 'desc';
     },
     signal?: AbortSignal,
   ): Promise<PagedResult<Topic>> {
@@ -59,20 +62,18 @@ export const topicApi = {
   },
 
   async getStatistics(
-    advisorId: string,
+    _advisorId: string,
     batchId?: string,
     signal?: AbortSignal,
   ): Promise<TopicStatistics> {
-    const [all, submitted, needRevision] = await Promise.all(
-      (['', 'Submitted', 'NeedRevision'] as const).map((status) =>
-        topicApi.getMyTopics({ advisorId, batchId, status, pageNumber: 1, pageSize: 1 }, signal),
-      ),
+    const response = await httpClient.get<ApiResponse<TopicStatistics>>(
+      '/api/topics/my-statistics',
+      {
+        params: { batchId: batchId || undefined },
+        signal,
+      },
     );
-    return {
-      total: all.totalCount,
-      submitted: submitted.totalCount,
-      needRevision: needRevision.totalCount,
-    };
+    return unwrap(response.data);
   },
 
   async getDetail(id: string, signal?: AbortSignal): Promise<Topic> {

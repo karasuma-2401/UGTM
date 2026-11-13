@@ -55,6 +55,8 @@ public sealed class TopicCatalogModule : IModule
         // Query Handlers
         services.AddScoped<GetAllTopicsHandler>();
         services.AddScoped<GetMyTopicsHandler>();
+        services.AddScoped<ITopicStatisticsReader, TopicStatisticsReader>();
+        services.AddScoped<GetMyTopicStatisticsHandler>();
         services.AddScoped<GetTopicTrackingDetailHandler>();
     }
 

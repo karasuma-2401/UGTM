@@ -3,7 +3,20 @@ import { notify } from '@/shared/notifications';
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useBeforeUnload, useBlocker } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FilePlus2, FileText, Clock3, RotateCcw, Search, SlidersHorizontal, Save, Send, Eye, CheckCircle2, Circle, X, ArrowLeft, FunnelX } from 'lucide-react';
+import {
+  FilePlus2,
+  FileText,
+  Clock3,
+  RotateCcw,
+  Search,
+  Save,
+  Send,
+  Eye,
+  CheckCircle2,
+  Circle,
+  ArrowLeft,
+  FunnelX,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,12 +24,12 @@ import { Select } from '@/components/ui/select';
 import { Dialog } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
-import { StatusTabs } from '@/components/ui/status-tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
 import { TopicsTable } from '../components/TopicsTable';
 import { TopicProposalSchedule } from '../components/TopicProposalSchedule';
-import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { TableActiveFilters } from '@/components/ui/table';
+import { TableFloatingBar } from '@/components/ui/table-floating-bar';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   EMPTY_PROPOSAL,
@@ -35,7 +48,6 @@ import { TopicPreview } from '../components/TopicPreview';
 import { TopicReviewNote } from '../components/TopicReviewNote';
 import { TopicStudentAssignmentField } from '../components/TopicStudentAssignmentField';
 import { PageHeader } from '@/components/ui/page-header';
-import { TablePagination } from '@/components/ui/table-pagination';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 
@@ -47,6 +59,7 @@ import {
   type TopicFormValues,
   type TopicFilters,
   type TopicStatus,
+  type TopicSortField,
 } from '../types/topic.types';
 import { getTopicErrorMessage, topicApi } from '../services/topicApi';
 
@@ -76,7 +89,14 @@ const textareaClass =
 export function TopicProposePage({
   pageTitle = 'Đề xuất đề tài',
   navigation,
-}: { pageTitle?: string; navigation?: ReactNode } = {}) {
+  initialFilters = INITIAL_FILTERS,
+  onFiltersChange,
+}: {
+  pageTitle?: string;
+  navigation?: ReactNode;
+  initialFilters?: TopicFilters;
+  onFiltersChange?: (filters: TopicFilters) => void;
+} = {}) {
   const { user, hasPermission } = useAuth();
   const canReadBatches = hasPermission('academic.batches.read');
   const queryClient = useQueryClient();
@@ -91,11 +111,13 @@ export function TopicProposePage({
   const [focusField, setFocusField] = useState<keyof TopicFormValues | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [sortBy, setSortBy] = useState<TopicSortField>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
-  const [draftFilters, setDraftFilters] = useState<TopicFilters>(INITIAL_FILTERS);
-  const [filters, setFilters] = useState<TopicFilters>(INITIAL_FILTERS);
+  const [draftFilters, setDraftFilters] = useState<TopicFilters>(initialFilters);
+  const [filters, setFilters] = useState<TopicFilters>(initialFilters);
   const [recovery, setRecovery] = useState<LocalProposal | null>(null);
   const [localSavedAt, setLocalSavedAt] = useState('');
   const [localError, setLocalError] = useState('');
@@ -192,10 +214,13 @@ export function TopicProposePage({
 
   const batchesQuery = useAcademicBatches();
   const topicsQuery = useQuery({
-    queryKey: ['my-proposed-topics', user?.id, filters, pageNumber, pageSize],
+    queryKey: ['my-proposed-topics', user?.id, filters, pageNumber, pageSize, sortBy, sortOrder],
     enabled: Boolean(user?.id),
     queryFn: ({ signal }) =>
-      topicApi.getMyTopics({ ...filters, advisorId: user!.id, pageNumber, pageSize }, signal),
+      topicApi.getMyTopics(
+        { ...filters, advisorId: user!.id, pageNumber, pageSize, sortBy, sortOrder },
+        signal,
+      ),
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
   });
@@ -205,7 +230,6 @@ export function TopicProposePage({
     queryFn: ({ signal }) => topicApi.getStatistics(user!.id, filters.batchId || undefined, signal),
   });
   const statistics = statisticsQuery.isError ? undefined : statisticsQuery.data;
-  const isRefreshing = topicsQuery.isFetching && !topicsQuery.isPending;
   const formatCount = (count: number | undefined) =>
     count === undefined ? '—' : count.toLocaleString('vi-VN');
 
@@ -278,11 +302,12 @@ export function TopicProposePage({
             : 'Đã lưu bản nháp đề tài trên hệ thống.',
       );
       setPageNumber(1);
+      setSelectedRowId(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['my-proposed-topics'] }),
         queryClient.invalidateQueries({ queryKey: ['topic-review'] }),
         queryClient.invalidateQueries({ queryKey: ['topic-advising'] }),
-        queryClient.invalidateQueries({ queryKey: ['topic-advising-detail'] }),
+        queryClient.invalidateQueries({ queryKey: ['topic-advising-group-detail'] }),
       ]);
     },
   });
@@ -290,6 +315,7 @@ export function TopicProposePage({
   const busy = saveMutation.isPending || detailMutation.isPending;
   const batches = batchesQuery.data ?? [];
   const selectedBatch = batches.find((batch) => batch.id === values.batchId);
+  const filterBatch = batches.find((batch) => batch.id === filters.batchId);
   const batchesLoading = canReadBatches && (batchesQuery.isPending || batchesQuery.isFetching);
 
   function clearCachedDraft(id: string | null) {
@@ -433,22 +459,31 @@ export function TopicProposePage({
     setFilters(next);
     setDraftFilters(next);
     setPageNumber(1);
+    setSelectedRowId(null);
+    onFiltersChange?.(next);
   }
   function handleApplyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFilters({ ...draftFilters, keyword: draftFilters.keyword.trim() });
+    const next = { ...draftFilters, keyword: draftFilters.keyword.trim() };
+    setFilters(next);
     setPageNumber(1);
+    setSelectedRowId(null);
+    onFiltersChange?.(next);
   }
   function clearFilters() {
     setDraftFilters({ ...INITIAL_FILTERS });
     setFilters({ ...INITIAL_FILTERS });
     setPageNumber(1);
+    setSelectedRowId(null);
+    onFiltersChange?.({ ...INITIAL_FILTERS });
   }
   function removeFilter(key: keyof TopicFilters) {
     const next = { ...filters, [key]: '' };
     setDraftFilters(next);
     setFilters(next);
     setPageNumber(1);
+    setSelectedRowId(null);
+    onFiltersChange?.(next);
   }
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -550,7 +585,9 @@ export function TopicProposePage({
           Đang tải nội dung đề tài...
         </p>
       )}
-      {detailMutation.isError && <InlineAlert tone="error">{getTopicErrorMessage(detailMutation.error)}</InlineAlert>}
+      {detailMutation.isError && (
+        <InlineAlert tone="error">{getTopicErrorMessage(detailMutation.error)}</InlineAlert>
+      )}
 
       {isFormOpen && (
         <Dialog
@@ -997,8 +1034,8 @@ export function TopicProposePage({
                         ))}
                       </ul>
                       <p className="mt-3 text-[11px] leading-5 text-slate-400">
-                        Lưu nháp chỉ cần đợt khóa luận, tên tiếng Việt và chỉ tiêu. Hoàn thành đủ 6 mục
-                        trước khi gửi Khoa thẩm định.
+                        Lưu nháp chỉ cần đợt khóa luận, tên tiếng Việt và chỉ tiêu. Hoàn thành đủ 6
+                        mục trước khi gửi Khoa thẩm định.
                       </p>
                     </div>
                   )}
@@ -1061,232 +1098,111 @@ export function TopicProposePage({
         isConfirming={busy}
       />
 
-      {/* Row 1: Search & Filter Card (8 cols) + Bento Guidelines & Stats Card (4 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <div className="lg:col-span-8">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-5 transition-all hover:border-slate-300">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                  Tìm kiếm & Bộ lọc đề tài
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Lọc danh sách đề xuất theo từ khóa, đợt khóa luận và trạng thái thẩm định
-                </p>
-              </div>
-              {hasFilters && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<FunnelX className="size-3.5" />}
-                  onClick={clearFilters}
-                  className="h-8 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
-                >
-                  Xóa bộ lọc
-                </Button>
-              )}
-            </div>
-
-            <form onSubmit={handleApplyFilters} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <label className="block space-y-1.5 text-xs font-semibold text-slate-700">
-                  <span>Tìm kiếm đề tài</span>
-                  <Input
-                    leftIcon={<Search className="size-4" />}
-                    className="h-10 rounded-xl border-slate-200/90 bg-slate-50/60 shadow-none focus-visible:bg-white text-xs"
-                    placeholder="Tên đề tài tiếng Việt hoặc tiếng Anh"
-                    value={draftFilters.keyword}
-                    onChange={(event) => setDraftFilters({ ...draftFilters, keyword: event.target.value })}
-                  />
-                </label>
-                <div className="space-y-1.5 text-xs font-semibold text-slate-700">
-                  <span>Đợt khóa luận</span>
-                  <Select<string>
-                    aria-label="Lọc theo đợt KLTN"
-                    triggerClassName="h-10 rounded-xl border-slate-200/90 bg-slate-50/60 shadow-none focus-visible:bg-white text-xs font-medium"
-                    value={draftFilters.batchId}
-                    options={[
-                      { value: '', label: 'Tất cả đợt khóa luận' },
-                      ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
-                    ]}
-                    onChange={(value: string) => setDraftFilters({ ...draftFilters, batchId: value })}
-                    searchable
-                    disabled={batchesQuery.isPending || batchesQuery.isError}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-                <div className="space-y-1.5 text-xs font-semibold text-slate-700">
-                  <span>Trạng thái thẩm định</span>
-                  <Select<TopicStatus | ''>
-                    aria-label="Lọc theo trạng thái đề tài"
-                    triggerClassName="h-10 rounded-xl border-slate-200/90 bg-slate-50/60 shadow-none focus-visible:bg-white text-xs font-medium"
-                    value={draftFilters.status}
-                    options={[
-                      { value: '', label: 'Tất cả trạng thái' },
-                      ...Object.entries(TOPIC_STATUS_LABELS).map(([value, label]) => ({
-                        value: value as TopicStatus,
-                        label,
-                      })),
-                    ]}
-                    onChange={(value: TopicStatus | '') =>
-                      setDraftFilters({ ...draftFilters, status: value })
-                    }
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    type="submit"
-                    variant="soft"
-                    leftIcon={<SlidersHorizontal className="size-3.5" />}
-                    className="h-10 flex-1 rounded-xl text-xs font-semibold shadow-xs"
-                  >
-                    Áp dụng bộ lọc
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    leftIcon={<FunnelX className="size-3.5" />}
-                    className="h-10 rounded-xl text-xs font-semibold border-slate-200 hover:bg-slate-50 px-3.5"
-                    disabled={!hasFilters}
-                    onClick={clearFilters}
-                  >
-                    Bỏ lọc
-                  </Button>
-                </div>
-              </div>
-            </form>
-
-            {Boolean(filters.keyword || filters.batchId || filters.status) && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-3 border-t border-slate-100" aria-label="Bộ lọc đang áp dụng">
-                <span className="text-[11px] font-medium text-slate-400">Đang lọc theo:</span>
-                {filters.keyword && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    rightIcon={<X className="size-3" />}
-                    onClick={() => removeFilter('keyword')}
-                    className="h-7 text-xs rounded-lg"
-                    aria-label={`Bỏ lọc từ khóa ${filters.keyword}`}
-                  >
-                    Từ khóa: {filters.keyword}
-                  </Button>
-                )}
-                {filters.batchId && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    rightIcon={<X className="size-3" />}
-                    onClick={() => removeFilter('batchId')}
-                    className="h-7 text-xs rounded-lg"
-                    aria-label="Bỏ lọc đợt KLTN"
-                  >
-                    {batches.find((batch) => batch.id === filters.batchId)?.batchName ?? 'Đợt đã chọn'}
-                  </Button>
-                )}
-                {filters.status && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    rightIcon={<X className="size-3" />}
-                    onClick={() => removeFilter('status')}
-                    className="h-7 text-xs rounded-lg"
-                    aria-label="Bỏ lọc trạng thái"
-                  >
-                    {TOPIC_STATUS_LABELS[filters.status]}
-                  </Button>
-                )}
-              </div>
-            )}
+      <section aria-label="Thống kê đề tài" className="space-y-2">
+        <p className="text-sm text-slate-600">
+          {filters.batchId ? (filterBatch?.batchName ?? 'Đợt đã chọn') : 'Tất cả đợt khóa luận'}
+        </p>
+        <StatisticsBar
+          layout="card"
+          className="grid-cols-3"
+          loading={statisticsQuery.isPending || statisticsQuery.isFetching}
+          items={[
+            {
+              key: 'total',
+              label: 'Tổng đề tài',
+              value: formatCount(statistics?.total),
+              icon: <FileText />,
+              tone: 'primary',
+              active: !filters.status && !filters.keyword,
+              onClick: () => quickFilter(''),
+            },
+            {
+              key: 'submitted',
+              label: 'Chờ duyệt',
+              value: formatCount(statistics?.submitted),
+              icon: <Clock3 />,
+              active: filters.status === 'Submitted' && !filters.keyword,
+              onClick: () => quickFilter('Submitted'),
+            },
+            {
+              key: 'revision',
+              label: 'Cần chỉnh sửa',
+              value: formatCount(statistics?.needRevision),
+              icon: <RotateCcw />,
+              tone: 'warning',
+              active: filters.status === 'NeedRevision' && !filters.keyword,
+              onClick: () => quickFilter('NeedRevision'),
+            },
+          ]}
+        />
+        {statisticsQuery.isError && (
+          <div role="alert" className="text-sm text-rose-700">
+            Không tải được thống kê đề tài.{' '}
+            <Button variant="link" size="sm" onClick={() => void statisticsQuery.refetch()}>
+              Thử lại thống kê
+            </Button>
           </div>
+        )}
+      </section>
+      <form
+        onSubmit={handleApplyFilters}
+        aria-label="Bộ lọc đề tài"
+        className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4"
+      >
+        <label className="block space-y-1.5 sm:col-span-2">
+          <span className="text-xs font-medium text-slate-700">Tìm kiếm đề tài</span>
+          <Input
+            leftIcon={<Search className="size-4" />}
+            placeholder="Tên đề tài tiếng Việt hoặc tiếng Anh"
+            value={draftFilters.keyword}
+            onChange={(event) => setDraftFilters({ ...draftFilters, keyword: event.target.value })}
+          />
+        </label>
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium text-slate-700">Đợt khóa luận</span>
+          <Select<string>
+            aria-label="Lọc theo đợt KLTN"
+            placeholder="Tất cả đợt khóa luận"
+            value={draftFilters.batchId}
+            options={[
+              { value: '', label: 'Tất cả đợt khóa luận' },
+              ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
+            ]}
+            onChange={(batchId) => setDraftFilters({ ...draftFilters, batchId })}
+            searchable
+            disabled={!canReadBatches || batchesQuery.isPending || batchesQuery.isError}
+          />
         </div>
-
-        {/* Right Bento Card (4 cols) - Tình trạng & Quy chuẩn */}
-        <div className="lg:col-span-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col justify-between h-full transition-all hover:border-slate-300">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                  Tình trạng đề tài
-                </h2>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs">
-                  {selectedBatch?.batchName || 'Học kỳ hiện tại'}
-                </span>
-              </div>
-
-              {/* StatisticsBar */}
-              <section aria-label="Thống kê đề tài" aria-busy={statisticsQuery.isFetching}>
-                <StatisticsBar
-                  layout="card"
-                  className="grid-cols-3 auto-cols-auto grid-flow-row gap-2"
-                  loading={statisticsQuery.isPending}
-                  items={[
-                    {
-                      key: 'total',
-                      onClick: () => quickFilter(''),
-                      active: filters.status === '' && !filters.keyword,
-                      label: 'Tổng đề tài',
-                      value: formatCount(statistics?.total),
-                      icon: <FileText />,
-                      tone: 'primary',
-                    },
-                    {
-                      key: 'submitted',
-                      onClick: () => quickFilter('Submitted'),
-                      active: filters.status === 'Submitted' && !filters.keyword,
-                      label: 'Chờ duyệt',
-                      value: formatCount(statistics?.submitted),
-                      icon: <Clock3 />,
-                      tone: 'muted',
-                    },
-                    {
-                      key: 'revision',
-                      onClick: () => quickFilter('NeedRevision'),
-                      active: filters.status === 'NeedRevision' && !filters.keyword,
-                      label: 'Cần chỉnh sửa',
-                      value: formatCount(statistics?.needRevision),
-                      icon: <RotateCcw />,
-                      tone: 'warning',
-                    },
-                  ]}
-                />
-              </section>
-
-              {/* Policy & Rules List (same as RosterGuideCard) */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 space-y-2.5 text-xs">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-slate-500 shrink-0 font-medium">Chỉ tiêu mỗi đề tài:</span>
-                  <span className="font-semibold text-slate-800 text-right leading-snug">
-                    Tối đa 2 sinh viên
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-2 pt-2 border-t border-slate-200/80">
-                  <span className="text-slate-500 shrink-0 font-medium">Quy trình thẩm định:</span>
-                  <span className="font-semibold text-slate-800 text-right leading-snug">
-                    Khoa phê duyệt trước khi công bố
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-2 pt-2 border-t border-slate-200/80">
-                  <span className="text-slate-500 shrink-0 font-medium">Quyền hạn chỉnh sửa:</span>
-                  <span className="font-semibold text-slate-800 text-right leading-snug">
-                    Chỉ sửa Bản nháp & Cần chỉnh sửa
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-slate-100 mt-4 text-[11px] text-slate-400 leading-relaxed">
-              Nhấn vào từng ô thống kê ở trên để lọc nhanh danh sách theo trạng thái.
-            </div>
-          </div>
+        <div className="space-y-1.5">
+          <span className="text-xs font-medium text-slate-700">Trạng thái thẩm định</span>
+          <Select<TopicStatus | ''>
+            aria-label="Lọc theo trạng thái đề tài"
+            placeholder="Tất cả trạng thái"
+            value={draftFilters.status}
+            options={[
+              { value: '', label: 'Tất cả trạng thái' },
+              ...Object.entries(TOPIC_STATUS_LABELS).map(([value, label]) => ({
+                value: value as TopicStatus,
+                label,
+              })),
+            ]}
+            onChange={(status) => setDraftFilters({ ...draftFilters, status })}
+          />
         </div>
-      </div>
+        <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-4">
+          <Button type="submit">Áp dụng bộ lọc</Button>
+          <Button type="button" variant="outline" disabled={!hasFilters} onClick={clearFilters}>
+            Bỏ lọc
+          </Button>
+          <details className="text-xs text-slate-600 sm:ml-auto">
+            <summary className="cursor-pointer py-2">Quy định đề xuất</summary>
+            <p className="max-w-xl py-2 leading-5">
+              Mỗi đề tài tối đa 2 sinh viên. Khoa thẩm định trước khi công bố. Giảng viên chỉ sửa đề
+              tài ở trạng thái Bản nháp hoặc Yêu cầu chỉnh sửa.
+            </p>
+          </details>
+        </div>
+      </form>
 
       {filters.batchId && <TopicProposalSchedule batchId={filters.batchId} />}
 
@@ -1317,148 +1233,186 @@ export function TopicProposePage({
       <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs transition-all hover:border-slate-300">
         <div className="p-5 sm:px-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white">
           <div>
-            <h3 className="text-base font-bold text-slate-900 tracking-tight">
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">
               Danh sách đề tài đã đề xuất
-            </h3>
+            </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              {filters.batchId ? 'Đang lọc theo đợt khóa luận đã chọn' : 'Theo dõi tiến trình thẩm định và kết quả duyệt đề tài'}
+              {filters.batchId
+                ? 'Đang lọc theo đợt khóa luận đã chọn'
+                : 'Theo dõi tiến trình thẩm định và kết quả duyệt đề tài'}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <StatusTabs
-              ariaLabel="Lọc nhanh trạng thái đề tài"
-              activeKey={filters.status}
-              onSelect={(val) => quickFilter(val as TopicStatus | '')}
-              loading={statisticsQuery.isPending}
-              tabs={[
-                {
-                  key: '',
-                  label: 'Tất cả',
-                  count: statistics?.total,
-                  tone: 'primary',
-                },
-                {
-                  key: 'Submitted',
-                  label: 'Chờ duyệt',
-                  count: statistics?.submitted,
-                  tone: 'muted',
-                },
-                {
-                  key: 'NeedRevision',
-                  label: 'Cần chỉnh sửa',
-                  count: statistics?.needRevision,
-                  tone: 'warning',
-                },
-              ]}
-            />
-            {isRefreshing && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-primary">
-                <RotateCcw className="size-3 animate-spin" />
-                Đang làm mới...
-              </span>
-            )}
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs">
+              {topicsQuery.isError ? '—' : (topicsQuery.data?.totalCount ?? '—')} đề tài
+            </span>
           </div>
         </div>
 
-        <div
-          aria-busy={topicsQuery.isFetching}
-          className={`h-[min(60vh,40rem)] min-h-[20rem] overflow-auto transition-opacity ${isRefreshing ? 'opacity-60' : ''}`}
+        <TableActiveFilters
+          chips={[
+            ...(filters.keyword
+              ? [
+                  {
+                    key: 'keyword',
+                    label: 'Từ khóa',
+                    value: filters.keyword,
+                    onRemove: () => removeFilter('keyword'),
+                  },
+                ]
+              : []),
+            ...(filters.batchId
+              ? [
+                  {
+                    key: 'batchId',
+                    label: 'Đợt khóa luận',
+                    value: filterBatch?.batchName ?? 'Đợt đã chọn',
+                    onRemove: () => removeFilter('batchId'),
+                  },
+                ]
+              : []),
+            ...(filters.status
+              ? [
+                  {
+                    key: 'status',
+                    label: 'Trạng thái',
+                    value: TOPIC_STATUS_LABELS[filters.status],
+                    onRemove: () => removeFilter('status'),
+                  },
+                ]
+              : []),
+          ]}
+          onClearAll={clearFilters}
+        />
+
+        <TopicsTable
+          topics={topicsQuery.data?.items ?? []}
+          batches={batches}
+          batchesLoading={batchesLoading}
+          pageNumber={topicsQuery.data?.pageNumber ?? pageNumber}
+          pageSize={topicsQuery.data?.pageSize ?? pageSize}
+          busy={busy || topicsQuery.isFetching}
+          loading={topicsQuery.isPending}
+          error={
+            topicsQuery.isError
+              ? {
+                  message: getTopicErrorMessage(topicsQuery.error),
+                  onRetry: () => void topicsQuery.refetch(),
+                }
+              : null
+          }
+          onOpen={openTopic}
+          selectedRowId={selectedRowId}
+          onSelectRow={setSelectedRowId}
+          onCopy={(topic) => openTopic(topic, 'copy')}
+          onSubmit={(topic) => openTopic(topic, 'submit')}
+          sortField={sortBy}
+          sortOrder={sortOrder}
+          onSortChange={(field) => {
+            setSortOrder(sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc');
+            setSortBy(field);
+            setPageNumber(1);
+            setSelectedRowId(null);
+          }}
+          empty={{
+            icon: <FileText className="size-9" />,
+            title:
+              pageNumber > 1 && topicsQuery.data?.totalCount
+                ? 'Trang này không còn đề tài'
+                : 'Không có đề tài',
+            description:
+              filters.keyword || filters.status || filters.batchId
+                ? 'Không có đề tài phù hợp với bộ lọc.'
+                : 'Chưa có đề tài. Tạo đề xuất đầu tiên để bắt đầu.',
+            action:
+              pageNumber > 1 ? (
+                <Button variant="outline" onClick={() => setPageNumber(1)}>
+                  Về trang đầu
+                </Button>
+              ) : filters.keyword || filters.status || filters.batchId ? (
+                <Button variant="outline" leftIcon={<FunnelX />} onClick={clearFilters}>
+                  Bỏ lọc
+                </Button>
+              ) : undefined,
+          }}
+          pagination={
+            topicsQuery.data
+              ? {
+                  pageNumber: topicsQuery.data.pageNumber,
+                  pageSize: topicsQuery.data.pageSize,
+                  totalCount: topicsQuery.data.totalCount,
+                  hasPreviousPage: topicsQuery.data.hasPreviousPage,
+                  hasNextPage: topicsQuery.data.hasNextPage,
+                  onPageChange: (next) => {
+                    setPageNumber(next);
+                    setSelectedRowId(null);
+                  },
+                  onPageSizeChange: (size) => {
+                    setPageSize(size);
+                    setPageNumber(1);
+                    setSelectedRowId(null);
+                  },
+                  itemLabel: 'đề tài',
+                }
+              : undefined
+          }
+        />
+      </div>
+
+      {/* Floating Action Dock for Selected Row / Topics */}
+      {selectedRowId && (
+        <TableFloatingBar
+          aria-label="Thao tác với đề tài đã chọn"
+          selectedCount={1}
+          totalCount={topicsQuery.data?.totalCount ?? 0}
+          onClearSelection={() => {
+            setSelectedRowId(null);
+          }}
         >
-          {topicsQuery.isPending ? (
-            <TableSkeleton
-              className="min-w-[1200px]"
-              columns={[
-                { label: 'STT', width: 'w-14', variant: 'number' },
-                { label: 'Đề tài', variant: 'topic' },
-                { label: 'Đợt khóa luận', width: 'w-40' },
-                { label: 'Chỉ tiêu', width: 'w-24' },
-                { label: 'Ngày tạo', width: 'w-32' },
-                { label: 'Trạng thái', width: 'w-44', variant: 'badge' },
-                { label: 'Thao tác', width: 'w-72', variant: 'actions', actionCount: 2 },
-              ]}
-            />
-          ) : topicsQuery.isError ? (
-            <div
-              role="alert"
-              className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"
-            >
-              <p className="text-sm text-rose-600">{getTopicErrorMessage(topicsQuery.error)}</p>
-              <Button type="button" variant="outline" onClick={() => void topicsQuery.refetch()}>
-                Thử lại
-              </Button>
-            </div>
-          ) : topicsQuery.data?.items.length ? (
-            <TopicsTable
-              topics={topicsQuery.data.items}
-              batches={batches}
-              batchesLoading={batchesLoading}
-              pageNumber={topicsQuery.data.pageNumber}
-              pageSize={topicsQuery.data.pageSize}
-              busy={busy || topicsQuery.isFetching}
-              onOpen={openTopic}
-              selectedRowId={selectedRowId}
-              onSelectRow={setSelectedRowId}
-              onCopy={(topic) => openTopic(topic, 'copy')}
-              onSubmit={(topic) => openTopic(topic, 'submit')}
-            />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
-              <FileText className="size-9 text-slate-300" aria-hidden="true" />
-              <p className="text-sm text-slate-500">
-                {filters.keyword || filters.status || filters.batchId
-                  ? 'Không có đề tài phù hợp với bộ lọc.'
-                  : 'Chưa có đề tài. Tạo đề xuất đầu tiên để bắt đầu.'}
-              </p>
-              {Boolean(filters.keyword || filters.status || filters.batchId) && (
+          {(() => {
+            const activeId = selectedRowId;
+            const topic = topicsQuery.data?.items.find((item) => item.id === activeId);
+            if (!topic) return null;
+            return (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  className="h-8 text-xs font-semibold rounded-xl shadow-xs"
+                  disabled={busy || topicsQuery.isFetching}
+                  onClick={() => openTopic(topic)}
+                >
+                  Xem
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  leftIcon={<FunnelX />}
-                  onClick={clearFilters}
+                  size="sm"
+                  className="h-8 text-xs font-semibold rounded-xl"
+                  disabled={busy || topicsQuery.isFetching}
+                  onClick={() => openTopic(topic, 'copy')}
                 >
-                  Bỏ lọc
+                  Nhân bản
                 </Button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {topicsQuery.data && !topicsQuery.isError && (
-          <>
-            <select
-              id="topic-page-size"
-              value={pageSize}
-              className="sr-only"
-              aria-hidden="true"
-              tabIndex={-1}
-              disabled={topicsQuery.isFetching || busy}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPageNumber(1);
-              }}
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <TablePagination
-              pageNumber={topicsQuery.data.pageNumber}
-              pageSize={topicsQuery.data.pageSize}
-              totalCount={topicsQuery.data.totalCount}
-              hasPreviousPage={topicsQuery.data.hasPreviousPage}
-              hasNextPage={topicsQuery.data.hasNextPage}
-              isLoading={topicsQuery.isFetching || busy}
-              onPageChange={setPageNumber}
-              onPageSizeChange={(size) => {
-                setPageSize(size);
-                setPageNumber(1);
-              }}
-              itemLabel="đề tài"
-            />
-          </>
-        )}
-      </div>
+                {canEditTopic(topic.status) && (
+                  <Button
+                    type="button"
+                    variant="successOutline"
+                    size="sm"
+                    className="h-8 text-xs font-semibold rounded-xl"
+                    disabled={busy || topicsQuery.isFetching}
+                    onClick={() => openTopic(topic, 'submit')}
+                  >
+                    Gửi duyệt
+                  </Button>
+                )}
+              </>
+            );
+          })()}
+        </TableFloatingBar>
+      )}
     </div>
   );
 }

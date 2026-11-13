@@ -7,4 +7,6 @@ public sealed record GetMyTopicsQuery(
     string? RegistrationStatus = null,
     Guid? AdvisorId = null,
     int PageNumber = 1,
-    int PageSize = 10);
+    int PageSize = 10,
+    string? SortBy = null,
+    string? SortOrder = null);

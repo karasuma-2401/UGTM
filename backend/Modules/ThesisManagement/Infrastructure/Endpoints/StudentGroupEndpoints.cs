@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.ThesisManagement.Application.StudentGroups.Dtos;
 using UGTM.Modules.ThesisManagement.Application.StudentGroups.GetStudentGroupDetail;
+using UGTM.Modules.ThesisManagement.Application.StudentGroups.GetAdvisingGroups;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Endpoints;
 
@@ -11,6 +12,14 @@ public static class StudentGroupEndpoints
 {
     public static IEndpointRouteBuilder MapStudentGroupEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        endpoints.MapGet("/api/thesis/advising/groups", GetAdvisingAsync)
+            .WithTags("ThesisManagement.StudentGroups")
+            .RequireAuthorization()
+            .WithSummary("Danh sách nhóm và tiến độ của giảng viên hiện tại, gồm lịch sử hoàn thành/đã dừng")
+            .Produces<ApiResponse<AdvisingGroupsDto>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
         endpoints.MapGet("/api/thesis/groups/{groupId:guid}/detail", GetDetailAsync)
             .WithTags("ThesisManagement.StudentGroups")
             .RequireAuthorization()
@@ -41,4 +50,10 @@ public static class StudentGroupEndpoints
     private static async Task<IResult> GetDetailAsync(
         Guid groupId, GetStudentGroupDetailHandler handler, CancellationToken cancellationToken)
         => (await handler.HandleAsync(new GetStudentGroupDetailQuery(groupId), cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> GetAdvisingAsync(GetAdvisingGroupsHandler handler,
+        Guid? batchId = null, string? keyword = null, string scope = "active", string? status = null,
+        string? confirmation = null, string sortBy = "createdAt", string sortOrder = "desc",
+        int pageNumber = 1, int pageSize = 10, CancellationToken cancellationToken = default)
+        => (await handler.HandleAsync(new(batchId, keyword, scope, status, confirmation, sortBy, sortOrder, pageNumber, pageSize), cancellationToken)).ToHttpResult();
 }

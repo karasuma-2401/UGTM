@@ -15,13 +15,13 @@ export interface SelectOption<T = string> {
 export type RawOption<T = string> = SelectOption<T> | string | number;
 
 const selectTriggerVariants = cva(
-  'flex w-full items-center justify-between rounded-lg border border-slate-200/90 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-2xs outline-none transition-[background-color,border-color,box-shadow] duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60 text-left cursor-pointer select-none',
+  'flex w-full items-center justify-between rounded-xl border border-slate-200/90 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-2xs outline-none transition-[background-color,border-color,box-shadow] duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-60 text-left cursor-pointer select-none',
   {
     variants: {
       size: {
         default: 'h-9 py-2',
         sm: 'h-8 px-2.5 py-1 text-xs',
-        lg: 'h-10 px-3.5 py-2 text-base',
+        lg: 'h-10 px-3.5 py-2 text-xs sm:text-sm',
       },
     },
     defaultVariants: {
@@ -320,7 +320,7 @@ export function Select<T = string>({
           tabIndex={-1}
           style={{ maxHeight: maxMenuHeight }}
           className={cn(
-            'absolute z-50 left-0 right-0 top-full mt-1.5 w-full rounded-xl border border-slate-200/90 bg-white p-1.5 text-slate-900 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.14)] outline-none overflow-hidden flex flex-col animate-in fade-in-0 zoom-in-95',
+            'absolute z-50 left-0 top-full mt-1.5 w-max min-w-full max-w-[90vw] sm:max-w-md rounded-xl border border-slate-200/90 bg-white p-1.5 text-slate-900 shadow-lg outline-none overflow-hidden flex flex-col animate-in fade-in-0 zoom-in-95',
             contentClassName,
           )}
         >
@@ -362,10 +362,10 @@ export function Select<T = string>({
                     aria-disabled={opt.disabled}
                     onClick={(e) => handleSelectOption(opt, e)}
                     className={cn(
-                      'relative flex items-center justify-between gap-2 px-2.5 py-2 text-sm rounded-md select-none transition-colors cursor-pointer',
+                      'relative flex items-center justify-between gap-2 px-3 py-2 text-xs rounded-lg select-none font-medium transition-colors cursor-pointer',
                       isSelected
-                        ? 'bg-blue-50/80 text-primary font-medium'
-                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+                        ? 'bg-blue-50 text-primary font-semibold'
+                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900',
                       opt.disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
                       optionClassName,
                     )}

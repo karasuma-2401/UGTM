@@ -116,6 +116,20 @@ public sealed class TopicQueryReader : ITopicQueryReader
             query.PageSize);
     }
 
+    private static IOrderedQueryable<Topic> SortMyTopics(IQueryable<Topic> topics, GetMyTopicsQuery query)
+    {
+        var ascending = string.Equals(query.SortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+        var ordered = query.SortBy?.ToLowerInvariant() switch
+        {
+            "title" => ascending ? topics.OrderBy(t => t.TitleVi) : topics.OrderByDescending(t => t.TitleVi),
+            "studentnumber" => ascending
+                ? topics.OrderBy(t => t.StudentNumber == null).ThenBy(t => t.StudentNumber)
+                : topics.OrderBy(t => t.StudentNumber == null).ThenByDescending(t => t.StudentNumber),
+            _ => ascending ? topics.OrderBy(t => t.CreatedAt) : topics.OrderByDescending(t => t.CreatedAt)
+        };
+        return ordered.ThenByDescending(t => t.Id);
+    }
+
     public async Task<PagedResult<TopicTrackingSummaryDto>> GetMyTopicsAsync(
         GetMyTopicsQuery query,
         Guid? advisorId,
@@ -155,9 +169,7 @@ public sealed class TopicQueryReader : ITopicQueryReader
         {
             var totalCount = await CountSafeAsync(topicsQuery, cancellationToken);
 
-            var pagedQuery = topicsQuery
-                .OrderByDescending(t => t.CreatedAt)
-                .ThenByDescending(t => t.Id)
+            var pagedQuery = SortMyTopics(topicsQuery, query)
                 .Skip((query.PageNumber - 1) * query.PageSize)
                 .Take(query.PageSize);
 
@@ -187,9 +199,7 @@ public sealed class TopicQueryReader : ITopicQueryReader
         }
         else
         {
-            var candidateQuery = topicsQuery
-                .OrderByDescending(t => t.CreatedAt)
-                .ThenByDescending(t => t.Id);
+            var candidateQuery = SortMyTopics(topicsQuery, query);
 
             var candidateTopics = await ToListSafeAsync(candidateQuery, cancellationToken);
 

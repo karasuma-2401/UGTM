@@ -278,7 +278,7 @@ export function StudentTopicCatalogContent() {
             ]}
           />
         </ListCardHeader>
-        <div aria-busy={refreshing} className="h-[min(60vh,40rem)] min-h-[20rem] overflow-auto">
+        <div aria-busy={refreshing} className="min-h-[16rem] overflow-x-auto">
           {topicsQuery.isPending ? (
             <TableSkeleton
               className="min-w-[1080px]"

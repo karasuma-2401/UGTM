@@ -68,8 +68,20 @@ Toast dùng thẻ trắng bo góc 12px, viền và bóng nhẹ, icon tròn đặ
   - Cụm thống kê (`StatisticsBar` dạng `layout="card"`): Dùng lưới 2 cột (`grid-cols-2 gap-2.5`) hoặc 3 cột cân đối, tuyệt đối không dồn 4 ô vào một hàng ngang hẹp khiến nhãn bị co rút thành 1 ký tự (`T`, `C`, `N`, `S`).
   - Danh sách quy định/chính sách: Căn chỉnh `items-start` với nhãn tự động xuống hàng mềm mại (`leading-snug break-words`), nghiêm cấm áp dụng `whitespace-nowrap` khiến nội dung tràn qua mép thẻ (out khỏi vùng chứa chữ).
 - Bảng dữ liệu và định danh thực thể:
-  - Loại bỏ các icon lặp đi lặp lại vô nghĩa (như icon `FileText` lặp lại trên từng hàng tiêu đề đề tài); ưu tiên hệ thống phân cấp kiểu chữ (typography) thoáng đãng, sắc nét, dành trọn vẹn bề ngang cho tên đề tài tiếng Việt và tiếng Anh.
-  - Tuyệt đối không hiển thị trực tiếp GUID thô (như `99999999-9999-...`) ra giao diện người dùng. Hiển thị huy hiệu định danh thân thiện (ví dụ `Nhóm 01`, `Nhóm 02`) kèm mã băm rút gọn `#{id.slice(0, 8)}` và ngày tạo.
+  - Hệ thống Component Bảng dữ liệu chuẩn (`frontend/src/components/ui/table.tsx`):
+    - Khung bảng chuẩn Modern Clean SaaS: Container bo góc lớn (`rounded-2xl border border-slate-200/80 bg-white shadow-xs`), hàng tiêu đề kính mờ dính (`sticky top-0 z-10 bg-slate-50/90 backdrop-blur-xs border-b border-slate-200/80`), đường phân dòng tinh tế (`divide-slate-100`).
+    - Tiêu đề cột hỗ trợ sắp xếp tương tác (`TableHead sortable`): Tích hợp chỉ báo trạng thái `aria-sort`, chuyển đổi linh hoạt tăng dần (`ArrowUp`), giảm dần (`ArrowDown`) hoặc chưa chọn (`ArrowUpDown`), hỗ trợ tooltip hướng dẫn và phím bấm thân thiện.
+    - Phân tầng thông tin 2 lớp (2-Tier Typography): Hàng dữ liệu áp dụng dòng chính chữ đậm (`font-semibold text-slate-900 line-clamp-2`) và dòng phụ chú thích thanh nhã (`text-xs text-slate-500 font-normal`) cho tên tiếng Anh, đợt hoặc ngày tạo.
+    - Thanh thao tác hàng loạt nổi (`TableFloatingBar` - `frontend/src/components/ui/table-floating-bar.tsx`): Dock nổi cố định đáy giữa màn hình (`fixed bottom-6 left-1/2 -translate-x-1/2 z-40`), nền kính mờ (`bg-white/95 backdrop-blur-md`), viền bo tròn mềm mại (`rounded-2xl border border-slate-200/90 shadow-xl`), hiển thị số lượng chọn (`Đã chọn: N`), nhóm nút hành động hàng loạt và nút Bỏ chọn (hỗ trợ phím Escape).
+    - Cụm Avatar xếp lớp (`AvatarGroup` - `frontend/src/components/ui/avatar-group.tsx`): Vòng tròn avatar xếp chồng âm (`-space-x-2`), viền trắng nổi (`ring-2 ring-white`), bảng màu pastel hài hòa dựa trên mã băm của tên, huy hiệu hiển thị số lượng vượt mức `+N` và tooltip tên/MSSV chi tiết khi hover.
+    - Trạng thái bảng rỗng chuẩn (`TableEmpty`): Hiển thị icon trực quan, tiêu đề và giải thích thân thiện, đi kèm nút bỏ bộ lọc nhanh.
+    - Thanh chip bộ lọc kích hoạt (`TableActiveFilters`, `TableFilterChip`): Hiển thị các tiêu chí lọc đang chọn dưới dạng chip có thể bỏ nhanh bằng nút `✕`.
+    - Trải nghiệm tương tác dòng (Row UX & Motion): Hỗ trợ nhấp đúp (`onDoubleClick`) để mở modal chi tiết thực thể tức thì; hiệu ứng vạch trượt chỉ báo dòng chọn (`SelectionIndicator` variant="rail") trượt mượt mà giữa các hàng.
+    - Nút thao tác tối giản (Clean Minimal Action): Nút xem chi tiết trên bảng chỉ hiển thị nhãn chữ ngắn gọn `Xem` (không dùng icon con mắt `Eye` gây nhiễu thị giác), viền `variant="outline"` bo cong thanh thoát.
+    - Chỉ bật lựa chọn hàng loạt khi các hành động thực sự xử lý nhiều mục. Trang đề tài của giảng viên dùng chọn một dòng; thẩm định/công bố vẫn theo phạm vi được API hỗ trợ.
+  - Hộp chọn thả xuống chuẩn (`Select` - `frontend/src/components/ui/select.tsx`): Kế thừa phong cách Fluent SaaS từ trang Roster (`rounded-xl`, `w-max min-w-full sm:max-w-md shadow-lg`, item `rounded-lg py-2 px-3 hover:bg-slate-50`, vạch chọn `Check` màu xanh primary bên phải).
+  - Không dùng số thứ tự theo trang làm mã nhóm. Khi chưa có mã nghiệp vụ, dùng UUID rút gọn ổn định và cho xem định danh đầy đủ trong chi tiết; giảm các icon trang trí lặp lại.
+  - Phân tầng giao diện & chống trùng lặp bộ lọc: Khi cụm thẻ Bento phía trên đã có các ô thống kê đóng vai trò bộ lọc nhanh trạng thái (`StatisticsBar`), tuyệt đối không lặp lại cụm tab trạng thái (`StatusTabs`) thứ hai ở đầu bảng; loại bỏ các chỉ báo xoay tải giật cục (`Đang làm mới...`), thay bằng hiệu ứng chuyển mờ `opacity-60 transition-opacity` êm dịu trên bảng.
   - Phân trang: Luôn sử dụng component chuẩn `<TablePagination>` với thuộc tính `onPageSizeChange` tích hợp sẵn nút phân đoạn (`[ 10 ] [ 20 ] [ 50 ]`); không tự viết thêm các thẻ `<select>` lẻ tẻ trên giao diện.
 
 ## Quản lý đợt & Kế hoạch đào tạo
@@ -99,17 +111,19 @@ Toast dùng thẻ trắng bo góc 12px, viền và bóng nhẹ, icon tròn đặ
 
 ## Đề tài hướng dẫn (`/topics/advising`)
 
-- Thanh điều hướng chuyển tab (`NavigationTabs`, `TopicGuidancePage`):
-  - Thiết kế thành component dùng chung (`frontend/src/components/ui/navigation-tabs.tsx`), kế thừa hiệu ứng chuyển động mượt mà của thanh tab Tài khoản & Phân quyền (`IdentityNavigation`) qua `SelectionIndicator` (`cubic-bezier(0.22, 1, 0.36, 1)`, thời gian trượt 360ms).
-  - Chiều cao chuẩn `h-12`, tab active nổi bật với chữ màu `text-primary`, nền mờ nhẹ `bg-primary/5` và đường viền gạch chân đáy 2px chuyển sắc thương hiệu (`after:[background-image:var(--gradient-brand)]`).
-  - Hỗ trợ cả định dạng `Link` của React Router lẫn nút chọn thuần `button`, có hỗ trợ badge số lượng (`count`), icon đại diện và tương thích khả năng truy cập WAI-ARIA.
-  - Tích hợp mượt mà vào đáy `PageHeader` dạng `compact accent` mà không tạo đường phân cách thừa.
-- Cấu trúc Bento Grid 8-4 cột đồng bộ (Hàng 1):
-  - Thẻ bên trái (8 cột): Khung tìm kiếm & bộ lọc với tiêu đề rõ ràng, mô tả mục đích, input tìm kiếm từ khóa, menu chọn đợt khóa luận và trạng thái, nút *Áp dụng* (`variant="soft"`) và *Bỏ lọc* (`variant="outline"`), kèm các thẻ chip bộ lọc đang áp dụng có nút xóa nhanh.
-  - Thẻ bên phải (4 cột): Tổng quan tình trạng đề tài & tiến độ hướng dẫn, hiển thị thanh số liệu trực quan `StatisticsBar` (cho phép bấm vào từng số liệu để lọc hoặc chuyển tab nhanh), danh mục quy định đào tạo dạng key-value cô đọng (hạn ngạch sinh viên/đề tài, thẩm định từ Khoa, các mốc nộp hồ sơ) và ghi chú hướng dẫn ở chân thẻ.
-- Bảng dữ liệu đề tài & nhóm hướng dẫn (Hàng 2):
-  - Thẻ bảng dữ liệu toàn màn hình với thanh tiêu đề SaaS hiện đại: Tên danh sách, phụ đề giải thích và huy hiệu đếm tổng số dòng dạng pill (`Tổng số: {total} đề tài / nhóm`).
-  - Tiêu đề cột dùng font trung tính cao cấp `text-[11px] font-semibold uppercase tracking-wider text-slate-500` với nền `bg-slate-50/90`.
-  - Loại bỏ hoàn toàn các từ viết tắt gây khó hiểu: Thay "Đợt KLTN" bằng "Đợt khóa luận", "{x} SV" bằng "{x} sinh viên", "SV đã xác nhận" bằng "Sinh viên đã xác nhận".
-  - Ô thông tin đề tài & sinh viên (`InfoCell`) sử dụng icon đại diện đóng hộp bo góc mềm `rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100/80` cùng tên đề tài rõ nét.
-  - Các nút thao tác trong bảng (*Chi tiết*, *Nhân bản*, *Gửi duyệt*) chuẩn hóa bo góc `rounded-xl` với icon và khoảng cách thao tác chuẩn xác.
+Cập nhật 13/11/2026 theo lựa chọn sản phẩm: giữ luồng đăng ký hiện tại, không có bước GV phê duyệt tiếp nhận riêng.
+
+- Hai tab `Đề tài của tôi` và `Nhóm & tiến độ`; giữ `NavigationTabs` và nhận diện hiện tại. Đổi tab giữ bộ lọc đợt; URL cũ registrations/advising vẫn mở được.
+- Mỗi tab có một dải thống kê ngang và toolbar lọc gọn. Bỏ bố cục 8–4 với thẻ quy định cao đẩy bảng xuống; quy định đề xuất đặt trong vùng có thể mở rộng.
+- Chỉ có một tầng điều hướng và một vùng chip bộ lọc đang áp dụng. Nhãn đợt của thống kê lấy từ bộ lọc đã áp dụng; trạng thái mặc định là Tất cả đợt khóa luận.
+- Tab đề tài dùng chọn một dòng và các hành động tương ứng. Không dùng checkbox/chọn nhiều nếu API và UI chỉ xử lý một đề tài. Giữ cảnh báo thay đổi chưa lưu, bản lưu tạm và các bước xác nhận gửi thẩm định.
+- Hai bảng desktop dùng chung `SelectionIndicator` dạng `rail` để thanh chọn trượt giữa các dòng trong 360ms; tắt thanh tĩnh của từng dòng bằng `hideSelectionMarker`. Giữ hỗ trợ `prefers-reduced-motion` của component chung.
+- Hai bảng dùng `DataTable` trong `components/ui`: page khai báo cột/dữ liệu/callback, không lặp logic chọn dòng, animation và phân trang. `cell` và `renderMobileItem` giữ nội dung tùy chỉnh. `TableRow` ủy quyền cho `SelectableTableRow` để hành vi thống nhất. Xem [hướng dẫn DataTable](docs/frontend-data-table.md).
+- Desktop nhấp một lần chọn dòng, nhấp đúp nội dung mở chi tiết; nút/menu/checkbox giữ hành vi riêng. Nút Xem mở trực tiếp, kể cả trên mobile. Đề tài sắp xếp tên/chỉ tiêu/ngày tạo trên server trước khi phân trang; mặc định ngày tạo giảm dần.
+- Tab nhóm có phạm vi đang thực hiện / tất cả / hoàn thành / đã dừng, bộ lọc tiến độ và lời mời riêng; hỗ trợ mọi StudentGroupStatus, gồm Chờ phân công phản biện. Trạng thái nhóm khác trạng thái đề tài và xác nhận sinh viên.
+- Danh sách nhóm lọc, sắp xếp và phân trang trên server. Lời mời hết hạn lấy kết luận từ server; không tự suy ra hiệu lực từ joinedAt hay giờ máy khách.
+- Định danh nhóm dùng UUID rút gọn ổn định, đầy đủ trong tooltip/chi tiết; không gọi số thứ tự theo trang là mã nhóm.
+- Desktop dùng bảng; màn hình nhỏ dùng danh sách gọn với tên đề tài, đợt, thành viên, tiến độ và nút Xem nhìn thấy được, không yêu cầu cuộn ngang cả bảng.
+- Nút Xem giữ nền trắng, viền xám 1px, bo nhẹ `rounded-md` và bóng nhẹ theo ảnh người dùng. Tiêu đề có thể mở chi tiết phải là button hỗ trợ bàn phím.
+- Chi tiết nhóm đọc theo groupId, gồm cả nhóm đã dừng. Các khối đề cương/giữa kỳ/cuối kỳ/milestones tải và thử lại độc lập; lỗi một phần không che những khối khác.
+- Liên hệ Khoa ghi rõ là soạn/sao chép nội dung, chưa gửi yêu cầu; không có thao tác gửi giả.

@@ -18,7 +18,8 @@ public sealed class GetStudentGroupDetailHandler(
     IStudentInfoReader studentReader,
     IAdvisorNameReader advisorReader,
     ICurrentUser currentUser,
-    ILogger<GetStudentGroupDetailHandler> logger)
+    ILogger<GetStudentGroupDetailHandler> logger,
+    TimeProvider? timeProvider = null)
 {
     public async Task<Result<StudentGroupDetailDto>> HandleAsync(
         GetStudentGroupDetailQuery query, CancellationToken cancellationToken = default)
@@ -64,6 +65,7 @@ public sealed class GetStudentGroupDetailHandler(
         }
         var students = await studentReader.GetStudentsByIdsAsync(
             group.Members.Select(member => member.StudentId), cancellationToken);
+        var now = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
         var members = group.Members.OrderBy(member => member.JoinedAt).ThenBy(member => member.StudentId)
             .Select(member =>
             {
@@ -72,12 +74,13 @@ public sealed class GetStudentGroupDetailHandler(
                     logger.LogWarning("Student {StudentId} for group {GroupId} was not found.", member.StudentId, group.Id);
                 }
                 return new StudentGroupMemberDto(member.StudentId, student?.UserCode, student?.FullName,
-                    student?.Email, member.ConfirmationStatus.ToString());
+                    student?.Email, member.ConfirmationStatus.ToString(), member.JoinedAt,
+                    member.ConfirmedAtUtc, member.ConfirmationExpiresAtUtc, member.InvitedByStudentId, member.IsExpired(now));
             }).ToArray();
 
         return Result.Success(new StudentGroupDetailDto(group.Id, topic.TopicId, topic.TitleVi, topic.TitleEn,
             topic.BatchId, batch?.BatchName, new StudentGroupAdvisorDto(topic.AdvisorId, advisorName), members,
-            group.Status.ToString()));
+            group.Status.ToString(), topic.Description, topic.Requirements, topic.StudentNumber, group.CreatedAt));
     }
 
     private bool CanRead(StudentGroup group, Guid? advisorId)
