@@ -270,6 +270,8 @@ function fixture({
       AdvisingGroupDetail: 'AdvisingGroupDetail',
       GroupStatusBadge: 'GroupStatusBadge',
     },
+    '@/components/ui/card': { Card: 'Card', CardHeader: 'CardHeader', CardTitle: 'CardTitle' },
+    '@/components/ui/inline-alert': { InlineAlert: 'InlineAlert' },
     '@/components/ui/table': Object.fromEntries(
       [
         'Table',
@@ -420,7 +422,16 @@ test('list failures hide cached rows/statistics and allow retry; loading disable
   assert.ok(component(tree, 'StatisticsBar').props.items.every((item) => item.value === '—'));
   button(tree, 'Thử lại').props.onClick();
   assert.deepEqual(ui.calls, ['retry']);
-  const refreshing = fixture({ queryState: { isFetching: true } }).render();
+  const refreshingFixture = fixture({ queryState: { isFetching: true } });
+  const refreshing = refreshingFixture.render();
+  const advisingQuery = refreshingFixture.queries()[0];
+  const previous = { page: { items: groups }, statistics };
+  assert.equal(advisingQuery.placeholderData(previous, { queryKey: advisingQuery.queryKey }), previous);
+  assert.equal(
+    advisingQuery.placeholderData(previous, { queryKey: ['topic-advising', 'other-advisor'] }),
+    undefined,
+  );
+  assert.equal(component(refreshing, 'StatisticsBar').props.loading, false);
   assert.ok(
     nodes(refreshing)
       .filter((node) => node.type === 'SelectableTableRow')

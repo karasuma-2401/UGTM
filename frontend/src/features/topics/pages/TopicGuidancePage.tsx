@@ -50,7 +50,6 @@ export function TopicGuidancePage() {
   if (!isGroups)
     return (
       <TopicProposePage
-        key={params.toString()}
         pageTitle="Đề tài hướng dẫn"
         navigation={navigation}
         initialFilters={{
@@ -90,7 +89,6 @@ export function TopicGuidancePage() {
         navigation={navigation}
       />
       <TopicAdvisingPage
-        key={params.toString()}
         initialFilters={filters}
         onFiltersChange={(next) =>
           setParams(

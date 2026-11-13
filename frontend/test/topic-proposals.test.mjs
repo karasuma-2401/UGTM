@@ -570,6 +570,7 @@ function proposalPageFixture(options = {}) {
     'Select',
     'Dialog',
     'ConfirmDialog',
+    'RichTextEditor',
     'StatisticsBar',
     'Card',
     'CardContent',
@@ -686,6 +687,7 @@ function proposalPageFixture(options = {}) {
       '@/components/ui/select': dependency('Select'),
       '@/components/ui/dialog': dependency('Dialog'),
       '@/components/ui/confirm-dialog': dependency('ConfirmDialog'),
+      '@/components/ui/rich-text-editor': dependency('RichTextEditor'),
       '@/components/ui/statistics-bar': dependency('StatisticsBar'),
       '@/components/ui/status-tabs': dependency('StatusTabs'),
       '@/components/ui/list-card-header': dependency('ListCardHeader'),
@@ -811,6 +813,7 @@ test('proposal refresh retains only the same lecturer data and locks table actio
   );
   assert.equal(query.placeholderData(previous, undefined), undefined);
   assert.equal(page.component('TopicsTable').props.busy, true);
+  assert.equal(page.component('StatisticsBar').props.loading, false);
 });
 
 test('Bỏ lọc clears applied and pending filters immediately and resets pagination', () => {
@@ -1023,13 +1026,14 @@ test('sending requires every content field and reports all missing fields withou
   assert.match(error, /yêu cầu công nghệ và kiến thức/);
   assert.ok(page.find((node) => node.props.id === 'topic-title-en').props.error);
   assert.equal(
-    page.find((node) => node.props.id === 'topic-description').props['aria-invalid'],
+    page.find((node) => node.props.id === 'topic-description').props.invalid,
     true,
   );
   page.flushFrames();
   assert.equal(page.focused.at(-1), 'topic-title-en');
   for (const id of ['topic-title-en', 'topic-description', 'topic-requirements']) {
-    page.find((node) => node.props.id === id).props.onChange({ target: { value: '   ' } });
+    const field = page.find((node) => node.props.id === id);
+    field.props.onChange(id === 'topic-title-en' ? { target: { value: '   ' } } : '   ');
     page.render();
   }
   submitProposal(page, 'submit');
@@ -1249,7 +1253,7 @@ test('autosaved new content survives a reload and is removed only after successf
   const page = draftPage();
   page
     .find((node) => node.props.id === 'topic-description')
-    .props.onChange({ target: { value: 'Nội dung dài chưa gửi' } });
+    .props.onChange('Nội dung dài chưa gửi');
   page.render();
   page.flushTimers();
   page.render();
@@ -1317,7 +1321,7 @@ test('send from table validates fresh content, opens missing fields, and submits
   assert.equal(incomplete.saveCalls().length, 0);
   assert.ok(incomplete.find((node) => node.props.id === 'topic-title-en').props.error);
   assert.equal(
-    incomplete.find((node) => node.props.id === 'topic-description').props['aria-invalid'],
+    incomplete.find((node) => node.props.id === 'topic-description').props.invalid,
     true,
   );
   const complete = proposalPageFixture({ listedTopic: fullTopic });
@@ -1479,7 +1483,7 @@ test('sending becomes available only after all three additional fields have cont
   ].entries()) {
     page
       .find((node) => node.props.id === id)
-      .props.onChange({ target: { value: 'Nội dung đầy đủ' } });
+      .props.onChange(id === 'topic-title-en' ? { target: { value: 'Nội dung đầy đủ' } } : 'Nội dung đầy đủ');
     page.render();
     submitProposal(page, 'submit');
     if (index === 2) {
@@ -1518,7 +1522,7 @@ test('editing reads the assigned roster and changes it only with an explicit ass
   assert.deepEqual(page.component('TopicStudentAssignmentField').props.codes, ['24521603']);
   page
     .find((node) => node.props.id === 'topic-description')
-    .props.onChange({ target: { value: 'Chỉ sửa nội dung' } });
+    .props.onChange('Chỉ sửa nội dung');
   page.render();
   submitProposal(page, 'draft');
   assert.equal(page.saveCalls()[0].updateAssignedStudents, undefined);
