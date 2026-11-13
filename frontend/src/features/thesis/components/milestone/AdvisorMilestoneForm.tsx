@@ -1,12 +1,13 @@
-import { DateTimePicker } from '@/components/ui/calendar';
-import { useState, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
+import { useId, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
+import { DateTimePicker } from '@/components/ui/calendar';
+import { InlineAlert } from '@/components/ui/inline-alert';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import type { MilestoneWithReportDto } from '../../types/milestone.types';
+import { getDefaultFutureDeadlineInput } from '../../utils/milestoneFormatters';
 
-interface AdvisorMilestoneFormProps {
+export interface AdvisorMilestoneFormProps {
   selectedMilestone?: MilestoneWithReportDto | null;
   isSubmitting?: boolean;
   disabled?: boolean;
@@ -17,165 +18,143 @@ interface AdvisorMilestoneFormProps {
 }
 
 export function AdvisorMilestoneForm({
-  selectedMilestone,
   isSubmitting = false,
   disabled = false,
-  disabledReason,
+  disabledReason = null,
   onSubmit,
-  onNavigateReview,
   onResetForm,
 }: AdvisorMilestoneFormProps) {
+  const titleId = useId();
+  const deadlineId = useId();
+  const descLabelId = useId();
+
   const [title, setTitle] = useState('');
+  const [deadlineInput, setDeadlineInput] = useState(() => getDefaultFutureDeadlineInput(7));
   const [description, setDescription] = useState('');
-  const [deadlineLocal, setDeadlineLocal] = useState('');
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (selectedMilestone) {
-      setTitle(selectedMilestone.milestone.title);
-      setDescription(selectedMilestone.milestone.description || '');
-      try {
-        const d = new Date(selectedMilestone.milestone.deadlineUtc);
-        const pad = (n: number) => String(n).padStart(2, '0');
-        const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        setDeadlineLocal(formatted);
-      } catch {
-        setDeadlineLocal('');
-      }
-    } else {
-      setTitle('');
-      setDescription('');
-      const defaultDate = new Date();
-      defaultDate.setDate(defaultDate.getDate() + 7);
-      defaultDate.setHours(23, 59, 0, 0);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      const formatted = `${defaultDate.getFullYear()}-${pad(defaultDate.getMonth() + 1)}-${pad(defaultDate.getDate())}T${pad(defaultDate.getHours())}:${pad(defaultDate.getMinutes())}`;
-      setDeadlineLocal(formatted);
+  const formDisabled = disabled || isSubmitting;
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (formDisabled) return;
+
+    const cleanTitle = title.trim();
+    if (!cleanTitle) {
+      setError('Vui lòng nhập tên mốc tiến độ.');
+      return;
     }
-  }, [selectedMilestone]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (disabled || !title.trim() || !deadlineLocal) return;
+    const deadlineDate = new Date(deadlineInput);
+    if (!deadlineInput || Number.isNaN(deadlineDate.getTime()) || deadlineDate.getTime() <= Date.now()) {
+      setError('Hạn chót nộp báo cáo phải nằm ở thời điểm tương lai.');
+      return;
+    }
 
-    const dateObj = new Date(deadlineLocal);
-    const deadlineUtc = dateObj.toISOString();
-
+    setError('');
     onSubmit({
-      title: title.trim(),
+      title: cleanTitle,
       description: description.trim(),
-      deadlineUtc,
+      deadlineUtc: deadlineDate.toISOString(),
     });
-  };
+    setTitle('');
+    setDescription('');
+    setDeadlineInput(getDefaultFutureDeadlineInput(7));
+  }
 
   return (
-    <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">
-          {selectedMilestone ? 'Chỉnh sửa mốc tiến độ' : 'Tạo / sửa mốc'}
-        </h3>
-        {selectedMilestone && !disabled && (
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs"
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <h3 className="text-base font-semibold text-slate-900">Thêm mốc tiến độ mới</h3>
+        {onResetForm && (
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="text-xs text-primary"
-            onClick={onResetForm}
+            onClick={() => {
+              setTitle('');
+              setDescription('');
+              setDeadlineInput(getDefaultFutureDeadlineInput(7));
+              setError('');
+              onResetForm();
+            }}
           >
-            <PlusCircle className="size-3.5 mr-1" />
-            Tạo mốc mới
+            Làm mới
           </Button>
         )}
       </div>
 
       {disabled && disabledReason && (
-        <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2.5">
-          <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
-          <span>{disabledReason}</span>
-        </div>
+        <InlineAlert tone="warning" title="Không thể tạo mốc">
+          {disabledReason}
+        </InlineAlert>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label htmlFor="milestone-title" className="text-xs font-medium text-slate-700 block">
-              Tên mốc <span className="text-rose-500">*</span>
-            </label>
-            <Input
-              id="milestone-title"
-              placeholder="VD: Thực nghiệm mô hình"
-              value={title}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-              required
-              disabled={disabled}
-              className="h-10 text-sm bg-white"
-            />
-          </div>
+      {error && (
+        <InlineAlert tone="error" title="Dữ liệu chưa hợp lệ">
+          {error}
+        </InlineAlert>
+      )}
 
-          <div className="space-y-1.5">
-            <label
-              htmlFor="milestone-deadline"
-              className="text-xs font-medium text-slate-700 block"
-            >
-              Hạn nộp <span className="text-rose-500">*</span>
-            </label>
-            <DateTimePicker
-              id="milestone-deadline"
-              value={deadlineLocal}
-              onValueChange={(value) => setDeadlineLocal(value)}
-              required
-              disabled={disabled}
-              className="h-10 text-sm bg-white"
-            />
-          </div>
-        </div>
-
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label htmlFor="milestone-products" className="text-xs font-medium text-slate-700 block">
-            Sản phẩm cần nộp
+          <label htmlFor={titleId} className="block text-sm font-semibold text-slate-800">
+            Tên mốc tiến độ <span className="text-rose-600">*</span>
           </label>
-          <textarea
-            id="milestone-products"
-            placeholder="Báo cáo - mã nguồn / link - ghi chú"
-            value={description}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-            rows={2}
-            disabled={disabled}
-            className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+          <Input
+            id={titleId}
+            value={title}
+            maxLength={250}
+            disabled={formDisabled}
+            placeholder="VD: Mốc 1 — Báo cáo khảo sát và kiến trúc"
+            onChange={(event) => {
+              setTitle(event.target.value);
+              if (error) setError('');
+            }}
           />
         </div>
 
-        <div className="flex items-center gap-3 pt-2">
-          <Button
-            type="submit"
-            disabled={disabled || isSubmitting || !title.trim() || !deadlineLocal}
-            className="bg-primary hover:bg-primary/90 text-white font-medium px-5 h-10 shadow-xs"
-          >
-            {isSubmitting ? (
-              <span className="flex items-center gap-2">
-                <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Đang lưu...
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5">
-                <Save className="size-4" />
-                Lưu mốc
-              </span>
-            )}
-          </Button>
-
-          {selectedMilestone && onNavigateReview && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onNavigateReview}
-              className="border-slate-300 text-slate-700 hover:bg-slate-50 h-10 px-4"
-            >
-              <CheckCircle className="size-4 mr-1.5 text-slate-500" />
-              Đánh giá sản phẩm
-            </Button>
-          )}
+        <div className="space-y-1.5">
+          <label htmlFor={deadlineId} className="block text-sm font-semibold text-slate-800">
+            Hạn chót nộp báo cáo <span className="text-rose-600">*</span>
+          </label>
+          <DateTimePicker
+            id={deadlineId}
+            value={deadlineInput}
+            required
+            disabled={formDisabled}
+            onValueChange={(next) => {
+              setDeadlineInput(next);
+              if (error) setError('');
+            }}
+          />
         </div>
-      </form>
-    </Card>
+      </div>
+
+      <div className="space-y-1.5">
+        <span id={descLabelId} className="block text-sm font-semibold text-slate-800">
+          Sản phẩm & yêu cầu cần nộp
+        </span>
+        <RichTextEditor
+          id="inline-milestone-description"
+          ariaLabelledBy={descLabelId}
+          value={description}
+          disabled={formDisabled}
+          expandable
+          expandedTitle="Soạn yêu cầu sản phẩm cần nộp"
+          minHeightClassName="min-h-[140px]"
+          onChange={setDescription}
+        />
+      </div>
+
+      <div className="flex justify-end border-t border-slate-100 pt-3">
+        <Button type="submit" disabled={formDisabled}>
+          {isSubmitting ? 'Đang tạo mốc...' : 'Tạo mốc tiến độ'}
+        </Button>
+      </div>
+    </form>
   );
 }

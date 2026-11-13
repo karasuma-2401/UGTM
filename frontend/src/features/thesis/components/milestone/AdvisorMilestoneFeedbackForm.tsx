@@ -1,8 +1,10 @@
-import { Card } from '@/components/ui/card';
+import { useId } from 'react';
+import { CheckCircle2, MessageSquareText, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
-interface AdvisorMilestoneFeedbackFormProps {
+export interface AdvisorMilestoneFeedbackFormProps {
   feedback: string;
   onFeedbackChange: (feedback: string) => void;
   onAccept: () => void;
@@ -20,90 +22,69 @@ export function AdvisorMilestoneFeedbackForm({
   onNeedRevision,
   isSubmitting = false,
   disabled = false,
-  disabledReason,
-  currentStatus,
+  disabledReason = null,
 }: AdvisorMilestoneFeedbackFormProps) {
-  const isAccepted = currentStatus === 'Accepted';
-  const isNeedRevision = currentStatus === 'NeedRevision';
+  const labelId = useId();
+  const isFormDisabled = disabled || isSubmitting;
 
   return (
-    <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-5">
-      <div>
-        <h3 className="text-base font-semibold text-slate-900">Phản hồi</h3>
+    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs">
+      <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
+        <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
+        <h2 className="text-base font-semibold text-slate-900">Đánh giá & Nhận xét</h2>
       </div>
 
-      {disabled && disabledReason && (
-        <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2.5">
-          <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
-          <p>{disabledReason}</p>
-        </div>
-      )}
+      <div className="space-y-4 p-5">
+        {disabled && disabledReason && (
+          <InlineAlert tone="warning" title="Trạng thái hiện tại">
+            {disabledReason}
+          </InlineAlert>
+        )}
 
-      {isAccepted && (
-        <div className="p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2.5">
-          <CheckCircle2 className="size-4 shrink-0 text-emerald-600 mt-0.5" />
-          <p>Mốc báo cáo này đã được bạn đánh giá Đạt. Không cần thao tác thêm.</p>
-        </div>
-      )}
-
-      {isNeedRevision && (
-        <div className="p-3.5 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-800 flex items-start gap-2.5">
-          <RotateCcw className="size-4 shrink-0 text-primary mt-0.5" />
-          <p>
-            Bạn đã yêu cầu nhóm chỉnh sửa phiên bản này. Vui lòng chờ sinh viên nộp phiên bản tiếp theo.
-          </p>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <label
-          htmlFor="advisor-feedback"
-          className="text-xs font-semibold text-slate-700 block uppercase tracking-wide"
-        >
-          Nhận xét
-        </label>
-        <textarea
-          id="advisor-feedback"
-          rows={4}
-          value={feedback}
-          onChange={(e) => onFeedbackChange(e.target.value)}
-          placeholder="Nhập nhận xét chi tiết, hướng dẫn chỉnh sửa hoặc đánh giá kết quả..."
-          disabled={disabled || isSubmitting}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60 disabled:bg-slate-50 disabled:cursor-not-allowed resize-none transition-all shadow-xs"
-        />
-        <p className="text-[11px] text-slate-400">
-          Nhận xét là bắt buộc khi chọn &ldquo;Cần chỉnh sửa&rdquo; để sinh viên biết nội dung cần khắc phục.
-        </p>
-      </div>
-
-      <div className="flex items-center gap-3 pt-2">
-        <Button
-          type="button"
-          onClick={onAccept}
-          disabled={disabled || isSubmitting}
-          className="bg-primary hover:bg-primary/90 text-white font-medium px-6 h-10 shadow-xs"
-        >
-          {isSubmitting ? (
-            <span className="flex items-center gap-2">
-              <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Đang lưu...
+        <div className="space-y-2">
+          <label id={labelId} className="block text-sm font-semibold text-slate-800">
+            Nhận xét của giảng viên
+            <span className="ml-1.5 font-normal text-slate-500">
+              (bắt buộc khi yêu cầu chỉnh sửa)
             </span>
-          ) : (
-            'Đạt'
-          )}
-        </Button>
+          </label>
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onNeedRevision}
-          disabled={disabled || isSubmitting}
-          className="border-slate-300 text-slate-700 hover:bg-slate-50 font-medium px-5 h-10 bg-white"
-        >
-          Cần chỉnh sửa
-        </Button>
+          <RichTextEditor
+            id="standalone-milestone-feedback"
+            ariaLabelledBy={labelId}
+            value={feedback}
+            disabled={isFormDisabled}
+            expandable
+            expandedTitle="Soạn nhận xét mốc tiến độ"
+            placeholder="Nhập nhận xét chi tiết về mã nguồn, tiến độ thực hiện và các điểm cần hoàn thiện..."
+            minHeightClassName="min-h-[160px]"
+            onChange={onFeedbackChange}
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2.5 border-t border-slate-100 pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isFormDisabled}
+            onClick={onNeedRevision}
+            className="gap-1.5 border-amber-300 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
+          >
+            <RotateCcw className="size-4" aria-hidden="true" />
+            <span>Yêu cầu chỉnh sửa</span>
+          </Button>
+
+          <Button
+            type="button"
+            disabled={isFormDisabled}
+            onClick={onAccept}
+            className="gap-1.5"
+          >
+            <CheckCircle2 className="size-4" aria-hidden="true" />
+            <span>{isSubmitting ? 'Đang gửi...' : 'Xác nhận Đạt'}</span>
+          </Button>
+        </div>
       </div>
-    </Card>
+    </section>
   );
 }
-

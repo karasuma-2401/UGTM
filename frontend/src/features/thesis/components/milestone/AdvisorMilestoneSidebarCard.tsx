@@ -1,8 +1,11 @@
-import { Card } from '@/components/ui/card';
+import { CalendarClock, Users } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
+import { RichTextContent } from '@/components/ui/rich-text-content';
 import type { ProgressMilestoneDto } from '../../types/milestone.types';
 import type { StudentGroupDetailDto } from '../../types/syllabus.types';
+import { formatMilestoneDateTime } from '../../utils/milestoneFormatters';
 
-interface AdvisorMilestoneSidebarCardProps {
+export interface AdvisorMilestoneSidebarCardProps {
   milestone?: ProgressMilestoneDto | null;
   milestoneIndex?: number;
   groupDetail?: StudentGroupDetailDto | null;
@@ -13,104 +16,84 @@ interface AdvisorMilestoneSidebarCardProps {
 
 export function AdvisorMilestoneSidebarCard({
   milestone,
-  milestoneIndex = 0,
+  milestoneIndex,
   groupDetail,
-  versionNo = 1,
+  versionNo,
   fileName,
-  gitUrl,
 }: AdvisorMilestoneSidebarCardProps) {
-  const code = String(milestoneIndex + 1).padStart(2, '0');
-  const groupCode = groupDetail?.groupCode || 'Nhóm KLTN';
-  const topicCode = groupDetail?.topicCode || 'KLTN';
-  const advisorName = groupDetail?.advisor?.fullName
-    ? `${groupDetail.advisor.academicTitle || 'GV.'} ${groupDetail.advisor.fullName}`.trim()
-    : 'Chưa cập nhật';
-  const batchName = groupDetail?.batchName || 'Đợt KLTN';
-
-  const shortGitUrl = gitUrl
-    ? gitUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
-    : 'Chưa cập nhật';
+  const members = groupDetail?.members ?? [];
 
   return (
-    <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-5">
-      <div>
-        <h3 className="text-base font-semibold text-slate-900">
-          Sản phẩm mốc {code}
+    <aside className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs">
+      <div className="space-y-2 border-b border-slate-100 p-5">
+        <div className="flex items-center justify-between gap-2">
+          <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+            {groupDetail?.groupCode ?? 'Nhóm KLTN'}
+          </span>
+          {versionNo && (
+            <span className="text-xs font-medium text-slate-600">Phiên bản v{versionNo}</span>
+          )}
+        </div>
+
+        <h3 className="text-sm font-semibold leading-snug text-slate-900">
+          {milestoneIndex != null && milestoneIndex > 0 ? `Mốc ${milestoneIndex}: ` : ''}
+          {milestone?.title ?? 'Chi tiết mốc tiến độ'}
         </h3>
-        {milestone?.title && (
-          <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
-            {milestone.title}
+
+        {milestone?.deadlineUtc && (
+          <p className="flex items-center gap-1.5 text-xs text-slate-600">
+            <CalendarClock className="size-3.5 text-slate-500" aria-hidden="true" />
+            <span>Hạn nộp: {formatMilestoneDateTime(milestone.deadlineUtc)}</span>
           </p>
         )}
       </div>
 
-      <div className="space-y-4 text-xs divide-y divide-slate-100">
-        <div className="pt-1 first:pt-0">
-          <span className="text-slate-400 block mb-0.5">Hồ sơ</span>
-          <span className="font-medium text-slate-800">
-            {topicCode} - {groupCode}
-          </span>
+      {milestone && (
+        <div className="space-y-2 border-b border-slate-100 p-5">
+          <h4 className="text-xs font-semibold text-slate-600">Yêu cầu sản phẩm</h4>
+          <div className="text-xs leading-relaxed text-slate-700">
+            <RichTextContent
+              content={milestone.description}
+              emptyFallback="Chưa có mô tả chi tiết."
+            />
+          </div>
+          {fileName && (
+            <p className="truncate pt-1 text-xs text-slate-600">
+              Tệp mới nhất: <span className="font-medium text-slate-800">{fileName}</span>
+            </p>
+          )}
         </div>
+      )}
 
-        <div className="pt-3">
-          <span className="text-slate-400 block mb-1">Sinh viên</span>
-          <div className="space-y-1">
-            {groupDetail?.members && groupDetail.members.length > 0 ? (
-              groupDetail.members.map((m) => (
-                <div key={m.studentId} className="font-medium text-slate-800">
-                  {m.fullName} {m.userCode ? `- ${m.userCode}` : ''}
+      <div className="space-y-2.5 p-5">
+        <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+          <Users className="size-3.5 text-slate-500" aria-hidden="true" />
+          <span>Thành viên nhóm ({members.length})</span>
+        </h4>
+
+        {members.length === 0 ? (
+          <p className="text-xs text-slate-500">Chưa có thông tin thành viên.</p>
+        ) : (
+          <ul className="space-y-2">
+            {members.map((member) => (
+              <li
+                key={member.studentId}
+                className="flex items-center justify-between gap-2 rounded-lg bg-slate-50/80 px-2.5 py-2"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <Avatar name={member.fullName} className="size-6 shrink-0 text-[10px]" />
+                  <span className="truncate text-xs font-medium text-slate-800">
+                    {member.fullName}
+                  </span>
                 </div>
-              ))
-            ) : (
-              <span className="text-slate-500">Chưa có dữ liệu</span>
-            )}
-          </div>
-        </div>
-
-        <div className="pt-3">
-          <span className="text-slate-400 block mb-0.5">GVHD</span>
-          <span className="font-medium text-slate-800">{advisorName}</span>
-        </div>
-
-        <div className="pt-3">
-          <span className="text-slate-400 block mb-0.5">Đợt</span>
-          <span className="font-medium text-slate-800">{batchName}</span>
-        </div>
-
-        <div className="pt-3">
-          <span className="text-slate-400 block mb-1">Tài liệu đối chiếu</span>
-          <div className="space-y-1.5 text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-            <div>
-              <span className="text-slate-400 block text-[11px]">Báo cáo</span>
-              <span className="font-medium text-slate-800 truncate block">
-                {fileName || 'Chưa có tệp'}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 block text-[11px]">Phiên bản</span>
-              <span className="font-medium text-slate-800">
-                v{versionNo} - Nhóm đã nộp
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 block text-[11px]">Kho mã nguồn</span>
-              <span className="font-medium text-slate-800 truncate block">
-                {shortGitUrl}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-3">
-          <span className="text-slate-400 block mb-1">Lưu ý xử lý</span>
-          <ul className="text-slate-600 space-y-1 list-disc list-inside">
-            <li>Đối chiếu yêu cầu mốc</li>
-            <li>Đánh giá kết quả và mã nguồn</li>
-            <li>Nhận xét rõ nội dung cần sửa</li>
+                <span className="shrink-0 font-mono text-[11px] text-slate-600">
+                  {member.userCode}
+                </span>
+              </li>
+            ))}
           </ul>
-        </div>
+        )}
       </div>
-    </Card>
+    </aside>
   );
 }
-

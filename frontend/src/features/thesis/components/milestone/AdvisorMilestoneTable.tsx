@@ -1,162 +1,270 @@
-import { Card } from '@/components/ui/card';
+import { useMemo } from 'react';
+import { CalendarClock, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { MilestoneStatusBadge } from './MilestoneStatusBadge';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { stripRichText } from '@/components/ui/rich-text-content';
+import { cn } from '@/lib/utils';
 import type { MilestoneWithReportDto } from '../../types/milestone.types';
+import {
+  formatMilestoneDateShort,
+  formatMilestoneDateTime,
+  formatMilestoneTimeShort,
+  getDeadlineInfo,
+  toReportStatus,
+} from '../../utils/milestoneFormatters';
+import { MilestoneStatusBadge } from './MilestoneStatusBadge';
 
-interface AdvisorMilestoneTableProps {
-  milestones: MilestoneWithReportDto[];
-  selectedMilestoneId?: string | null;
+export interface AdvisorMilestoneTableProps {
+  milestones: readonly MilestoneWithReportDto[];
+  selectedMilestoneId: string | null;
   onSelectMilestone: (item: MilestoneWithReportDto) => void;
-  onReviewMilestone?: (milestoneId: string) => void;
+  onOpenReview: (milestoneId: string) => void;
+  loading?: boolean;
+  busy?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
+  hasActiveFilter?: boolean;
+  onClearFilter?: () => void;
+  canCreate?: boolean;
+  onOpenCreate?: () => void;
 }
+
+const DEADLINE_TONE_CLASS = {
+  completed: 'text-emerald-700',
+  overdue: 'font-semibold text-rose-700',
+  soon: 'font-medium text-amber-700',
+  normal: 'text-slate-500',
+} as const;
 
 export function AdvisorMilestoneTable({
   milestones,
   selectedMilestoneId,
   onSelectMilestone,
-  onReviewMilestone,
+  onOpenReview,
+  loading = false,
+  busy = false,
+  error = null,
+  onRetry,
+  hasActiveFilter = false,
+  onClearFilter,
+  canCreate = false,
+  onOpenCreate,
 }: AdvisorMilestoneTableProps) {
-  const formatDeadline = (utcString: string) => {
-    try {
-      const date = new Date(utcString);
-      return date.toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
-    } catch {
-      return utcString;
-    }
-  };
+  const columns = useMemo<DataTableColumn<MilestoneWithReportDto>[]>(
+    () => [
+      {
+        id: 'order',
+        header: 'STT',
+        widthClassName: 'w-14',
+        align: 'center',
+        headerClassName: 'px-3 py-3.5 whitespace-nowrap',
+        cellClassName: 'px-3 py-3',
+        skeleton: { variant: 'number' },
+        cell: (_, index) => (
+          <span className="text-xs font-medium tabular-nums text-slate-400">
+            {index + 1}
+          </span>
+        ),
+      },
+      {
+        id: 'title',
+        header: 'Mốc tiến độ',
+        headerClassName: 'px-4 py-3.5',
+        cellClassName: 'px-4 py-3',
+        skeleton: { variant: 'topic' },
+        cell: (item) => {
+          const summary = stripRichText(item.milestone.description);
+          return (
+            <div className="min-w-0 space-y-1">
+              <p
+                className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900"
+                title={item.milestone.title}
+              >
+                {item.milestone.title}
+              </p>
+              <p
+                className={cn(
+                  'truncate text-xs font-normal',
+                  summary ? 'text-slate-500' : 'text-slate-400 italic',
+                )}
+                title={summary || undefined}
+              >
+                {summary || 'Chưa có mô tả yêu cầu chi tiết'}
+              </p>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'deadline',
+        header: 'Hạn nộp',
+        widthClassName: 'w-40',
+        headerClassName: 'px-4 py-3.5 whitespace-nowrap',
+        cellClassName: 'px-4 py-3',
+        skeleton: { variant: 'text' },
+        cell: (item) => {
+          const status = toReportStatus(item.report?.currentStatus);
+          const deadlineInfo = getDeadlineInfo(item.milestone.deadlineUtc, status);
+          return (
+            <div className="min-w-0 space-y-0.5">
+              <p className="whitespace-nowrap text-xs font-medium tabular-nums text-slate-800">
+                {formatMilestoneDateShort(item.milestone.deadlineUtc)} ·{' '}
+                {formatMilestoneTimeShort(item.milestone.deadlineUtc)}
+              </p>
+              <p className={cn('text-xs', DEADLINE_TONE_CLASS[deadlineInfo.urgency])}>
+                {deadlineInfo.label}
+              </p>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'status',
+        header: 'Trạng thái',
+        widthClassName: 'w-40',
+        headerClassName: 'px-4 py-3.5 whitespace-nowrap',
+        cellClassName: 'px-4 py-3',
+        skeleton: { variant: 'badge' },
+        cell: (item) => {
+          const status = toReportStatus(item.report?.currentStatus);
+          const latestVersion = item.report?.versions?.at(-1) ?? null;
+          return (
+            <div className="min-w-0 space-y-1">
+              <MilestoneStatusBadge status={status} />
+              <p className="truncate text-xs text-slate-500">
+                {item.report && item.report.currentVersionNo > 0
+                  ? `Phiên bản v${item.report.currentVersionNo}${latestVersion?.isLate ? ' (Trễ hạn)' : ''}`
+                  : 'Chưa có bài nộp'}
+              </p>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'actions',
+        header: 'Thao tác',
+        align: 'right',
+        widthClassName: 'w-28',
+        headerClassName: 'px-4 py-3.5 whitespace-nowrap',
+        cellClassName: 'px-4 py-3 text-right',
+        skeleton: { variant: 'actions', actionCount: 1 },
+        cell: (item) => {
+          const status = toReportStatus(item.report?.currentStatus);
+          const pendingReview = status === 'Submitted';
+          return (
+            <div className="flex justify-end">
+              {pendingReview ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpenReview(item.milestone.id);
+                  }}
+                  className="h-8 rounded-md px-3 text-xs font-medium shadow-2xs"
+                >
+                  Đánh giá
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onOpenReview(item.milestone.id);
+                  }}
+                  className="h-8 rounded-md border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50"
+                >
+                  Xem
+                </Button>
+              )}
+            </div>
+          );
+        },
+      },
+    ],
+    [onOpenReview],
+  );
+
+  const emptyConfig = hasActiveFilter
+    ? {
+        icon: <Flag className="size-8" aria-hidden="true" />,
+        title: 'Không có mốc tiến độ khớp bộ lọc',
+        description: 'Thử chọn trạng thái khác để xem toàn bộ tiến độ của nhóm.',
+        actionLabel: 'Hiển thị tất cả',
+        onAction: onClearFilter,
+      }
+    : {
+        icon: <Flag className="size-8" aria-hidden="true" />,
+        title: 'Chưa có mốc tiến độ nào',
+        description: canCreate
+          ? 'Thiết lập mốc đầu tiên để định hướng các đợt nộp báo cáo của nhóm.'
+          : 'Mốc tiến độ sẽ hiển thị tại đây khi nhóm đủ điều kiện và được giao mốc.',
+        actionLabel: canCreate ? 'Thêm mốc đầu tiên' : undefined,
+        onAction: canCreate ? onOpenCreate : undefined,
+      };
 
   return (
-    <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-slate-900">Mốc thực hiện</h3>
-      </div>
-
-      <div className="overflow-x-auto border border-slate-200/80 rounded-lg">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-slate-500 font-medium text-xs border-b border-slate-200/80">
-            <tr>
-              <th className="py-3 px-4">Nội dung</th>
-              <th className="py-3 px-4">Thông tin</th>
-              <th className="py-3 px-4">Trạng thái</th>
-              <th className="py-3 px-4 text-right">Chi tiết</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {milestones.map((item, index) => {
-              const code = String(index + 1).padStart(2, '0');
-              const isSelected = selectedMilestoneId === item.milestone.id;
-              const status = item.report?.currentStatus || 'NotSubmitted';
-              const versionNo = item.report?.currentVersionNo;
-
-              const handleRowClick = () => {
-                if (status === 'Submitted' || status === 'Accepted' || status === 'NeedRevision') {
-                  onReviewMilestone?.(item.milestone.id);
-                } else {
-                  onSelectMilestone(item);
-                }
-              };
-
-              return (
-                <tr
-                  key={item.milestone.id}
-                  onClick={handleRowClick}
-                  className={`hover:bg-slate-50/80 transition-colors cursor-pointer ${
-                    isSelected ? 'bg-blue-50/40' : ''
-                  }`}
-                  title={
-                    status === 'Submitted'
-                      ? 'Nhấp để đánh giá báo cáo của mốc này'
-                      : status === 'Accepted' || status === 'NeedRevision'
-                      ? 'Nhấp để xem chi tiết báo cáo và đánh giá'
-                      : 'Nhấp để chỉnh sửa mốc'
-                  }
-                >
-                  <td className="py-3.5 px-4 font-medium text-slate-900">
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-500 font-semibold">
-                        {code} -
-                      </span>
-                      <span className="truncate max-w-[220px] md:max-w-[300px]">
-                        {item.milestone.title}
-                      </span>
-                    </div>
-                    {item.milestone.description && (
-                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-1 pl-7">
-                        {item.milestone.description}
-                      </p>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-600 text-xs">
-                    {formatDeadline(item.milestone.deadlineUtc)}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <MilestoneStatusBadge status={status} versionNo={versionNo} />
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    {status === 'Submitted' ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="h-8 px-3 text-xs font-semibold bg-primary hover:bg-primary/90 text-white shadow-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onReviewMilestone?.(item.milestone.id);
-                        }}
-                      >
-                        Đánh giá
-                      </Button>
-                    ) : status === 'Accepted' || status === 'NeedRevision' ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-3 text-xs font-medium border-slate-300 text-slate-700 hover:bg-slate-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onReviewMilestone?.(item.milestone.id);
-                        }}
-                      >
-                        Xem
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 px-2.5 text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectMilestone(item);
-                        }}
-                      >
-                        Sửa deadline
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-
-            {milestones.length === 0 && (
-              <tr>
-                <td colSpan={4} className="py-8 text-center text-slate-400 text-xs">
-                  Chưa có mốc tiến độ nào cho nhóm này. Vui lòng thiết lập mốc đầu tiên ở biểu mẫu bên dưới.
-                </td>
-              </tr>
+    <DataTable
+      data={[...milestones]}
+      columns={columns}
+      getRowId={(item) => item.milestone.id}
+      ariaLabel="Danh sách mốc tiến độ sinh viên"
+      selectedRowId={selectedMilestoneId}
+      onRowSelect={(_id, item) => onSelectMilestone(item)}
+      onRowOpen={(item) => onOpenReview(item.milestone.id)}
+      rowClassName="h-[68px]"
+      loading={loading}
+      busy={busy}
+      error={error ? { message: error, onRetry } : null}
+      empty={emptyConfig}
+      renderMobileItem={(item) => {
+        const status = toReportStatus(item.report?.currentStatus);
+        const deadlineInfo = getDeadlineInfo(item.milestone.deadlineUtc, status);
+        const summary = stripRichText(item.milestone.description);
+        const selected = item.milestone.id === selectedMilestoneId;
+        return (
+          <div
+            className={cn(
+              'space-y-3 rounded-xl border p-4 transition-colors',
+              selected ? 'border-primary/40 bg-blue-50/35' : 'border-slate-200 bg-white',
             )}
-          </tbody>
-        </table>
-      </div>
+            onClick={() => onSelectMilestone(item)}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 space-y-1">
+                <p className="text-sm font-semibold text-slate-900">{item.milestone.title}</p>
+                {summary && <p className="line-clamp-2 text-xs text-slate-600">{summary}</p>}
+              </div>
+              <MilestoneStatusBadge status={status} />
+            </div>
 
-      <div className="pt-1">
-        <span className="text-xs text-slate-500">
-          {milestones.length} mục trong danh sách
-        </span>
-      </div>
-    </Card>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-xs">
+              <div className="space-y-0.5">
+                <span className="inline-flex items-center gap-1 text-slate-600">
+                  <CalendarClock className="size-3.5" aria-hidden="true" />
+                  <span>{formatMilestoneDateTime(item.milestone.deadlineUtc)}</span>
+                </span>
+                <p className={DEADLINE_TONE_CLASS[deadlineInfo.urgency]}>{deadlineInfo.label}</p>
+              </div>
+
+              <Button
+                type="button"
+                variant={status === 'Submitted' ? 'default' : 'outline'}
+                size="sm"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenReview(item.milestone.id);
+                }}
+                className="h-8 rounded-md px-3 text-xs font-medium"
+              >
+                {status === 'Submitted' ? 'Đánh giá' : 'Xem'}
+              </Button>
+            </div>
+          </div>
+        );
+      }}
+    />
   );
 }
