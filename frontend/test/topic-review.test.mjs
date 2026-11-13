@@ -343,6 +343,13 @@ const common = {
   react: React,
   'react/jsx-runtime': jsxRuntime,
   'lucide-react': icons,
+  '@/lib/utils': { cn: (...parts) => parts.flat().filter(Boolean).join(' ') },
+  '@/components/ui/avatar': { Avatar: 'Avatar' },
+  '@/components/ui/rich-text-content': loadModule('components/ui/rich-text-content.tsx', {
+    react: React,
+    'react/jsx-runtime': jsxRuntime,
+    '@/lib/utils': { cn: (...parts) => parts.flat().filter(Boolean).join(' ') },
+  }),
   '@/components/ui/selectable-table-row': { SelectableTableRow: 'SelectableTableRow' },
   '@/components/ui/selection-indicator': { SelectionIndicator: 'SelectionIndicator' },
   '@/components/ui/checkbox': ui.Checkbox,
@@ -361,11 +368,12 @@ const common = {
   },
 };
 
-test('review table only allows selecting approved topics from one batch', () => {
+test('review table uses DataTable rail indicator, supports double-click open, and allows selecting all approved topics across batches', () => {
   const { TopicReviewTable } = loadModule('features/topics/components/TopicReviewTable.tsx', {
     ...common,
     '@/components/ui/button': ui.Button,
     '@/components/ui/checkbox': ui.Checkbox,
+    '@/components/ui/data-table': { DataTable },
     '@/components/ui/info-cell': ui.InfoCell,
     '@/components/ui/skeleton': ui.Skeleton,
     './TopicStatusBadge': ui.TopicStatusBadge,
@@ -375,30 +383,117 @@ test('review table only allows selecting approved topics from one batch', () => 
     { ...fullTopic, id: 'approved-1', status: 'Approved' },
     { ...fullTopic, id: 'approved-2', status: 'Approved', batchId: 'batch-2' },
   ];
-  let selected;
-  const render = (selection) =>
-    TopicReviewTable({
-      topics,
-      batches: [],
-      advisorNames: {},
-      selected: selection,
-      pageNumber: 2,
-      pageSize: 20,
-      busy: false,
-      onSelect: (items) => {
-        selected = items;
-      },
-      onOpen() {},
-    });
-  let checkboxes = walk(render([]), (node) => node.type === 'Checkbox');
-  assert.equal(checkboxes[0].props.disabled, true); // Mixed batches: no ambiguous select-all.
+  let selected = [];
+  let openedTopic = null;
+  let selectedRow = null;
+  const render = (selection, pageTopics = topics) =>
+    DataTable(
+      TopicReviewTable({
+        topics: pageTopics,
+        batches: [],
+        advisorNames: {},
+        selected: selection,
+        selectedRowId: selectedRow,
+        onSelectRow: (id) => {
+          selectedRow = selectedRow === id ? null : id;
+        },
+        onActiveRowChange: (id) => {
+          selectedRow = id;
+        },
+        pageNumber: 2,
+        pageSize: 20,
+        busy: false,
+        onSelect: (items) => {
+          selected = items;
+        },
+        onOpen: (topic) => {
+          openedTopic = topic;
+        },
+      }).props,
+    );
+
+  // Verify DataTable rail indicator, title hover style parity & double-click open behavior.
+  const initialTree = render([]);
+  const rail = walk(initialTree, (node) => node.type === 'SelectionIndicator')[0];
+  assert.equal(rail.props.variant, 'rail');
+  assert.equal(rail.props.selector, 'tr[data-active-row="true"]');
+  const titleParagraph = walk(
+    initialTree,
+    (node) => node.type === 'p' && node.props.title === fullTopic.titleVi,
+  )[0];
+  assert.equal(String(titleParagraph.props.className).includes('group-hover:text-primary'), false);
+  const rows = walk(initialTree, (node) => node.type === 'SelectableTableRow');
+  rows[0].props.onSelect();
+  assert.equal(selectedRow, 'topic-1');
+  rows[0].props.onDoubleClick({ target: { closest: () => null } });
+  assert.equal(openedTopic.id, 'topic-1');
+
+  // When a page has no approved topics, select-all is disabled.
+  const noApprovedCheckboxes = walk(
+    walk(render([], [fullTopic]), (node) => node.type === 'Table')[0],
+    (node) => node.type === 'Checkbox',
+  );
+  assert.equal(noApprovedCheckboxes[0].props.disabled, true);
+  assert.equal(noApprovedCheckboxes[1].props.disabled, true);
+
+  let checkboxes = walk(
+    walk(initialTree, (node) => node.type === 'Table')[0],
+    (node) => node.type === 'Checkbox',
+  );
+  assert.equal(checkboxes[0].props.disabled, false); // Enabled whenever at least one Approved row exists.
+  assert.equal(checkboxes[0].props.checked, false);
   assert.equal(checkboxes[1].props.disabled, true); // Submitted.
+  assert.equal(checkboxes[2].props.disabled, false); // Approved (batch-1).
+  assert.equal(checkboxes[3].props.disabled, false); // Approved (batch-2).
+
+  // Checking row 1 then row 2 moves the active sliding rail to each checked row sequentially.
   checkboxes[2].props.onCheckedChange(true);
-  checkboxes = walk(render(selected), (node) => node.type === 'Checkbox');
-  assert.equal(checkboxes[3].props.disabled, true); // A different batch.
-  assert.equal(checkboxes[0].props.disabled, false);
+  assert.equal(selectedRow, 'approved-1');
+  const treeAfterFirstCheck = render(selected);
+  checkboxes = walk(
+    walk(treeAfterFirstCheck, (node) => node.type === 'Table')[0],
+    (node) => node.type === 'Checkbox',
+  );
+  assert.equal(checkboxes[0].props.checked, 'indeterminate');
+  assert.equal(checkboxes[3].props.disabled, false);
+
+  checkboxes[3].props.onCheckedChange(true);
+  assert.equal(selectedRow, 'approved-2');
+  const multiSelectedTree = render(selected);
+  const multiRows = walk(multiSelectedTree, (node) => node.type === 'SelectableTableRow');
+  assert.equal(multiRows[1].props.selected, true);
+  assert.equal(multiRows[1].props['data-active-row'], undefined);
+  assert.equal(multiRows[2].props.selected, true);
+  assert.equal(multiRows[2].props['data-active-row'], 'true');
+
+  // Unchecking the active row returns the active rail to the remaining checked row.
+  checkboxes = walk(
+    walk(multiSelectedTree, (node) => node.type === 'Table')[0],
+    (node) => node.type === 'Checkbox',
+  );
+  checkboxes[3].props.onCheckedChange(false);
+  assert.equal(selectedRow, 'approved-1');
+
+  // Clicking select-all selects every approved topic across batches on the page.
+  checkboxes = walk(
+    walk(render(selected), (node) => node.type === 'Table')[0],
+    (node) => node.type === 'Checkbox',
+  );
+  checkboxes[0].props.onCheckedChange(true);
+  assert.deepEqual(
+    selected.map((topic) => topic.id),
+    ['approved-1', 'approved-2'],
+  );
+  checkboxes = walk(
+    walk(render(selected), (node) => node.type === 'Table')[0],
+    (node) => node.type === 'Checkbox',
+  );
+  assert.equal(checkboxes[0].props.checked, true);
+
+  // Clicking select-all again clears selections and hides the active rail from this page.
   checkboxes[0].props.onCheckedChange(false);
   assert.deepEqual(selected, []);
+  assert.equal(selectedRow, null);
 });
 
 test('review names stay skeletons until their own queries finish and cached names never flash back to IDs', () => {
@@ -406,7 +501,7 @@ test('review names stay skeletons until their own queries finish and cached name
     ...common,
     '@/components/ui/button': ui.Button,
     '@/components/ui/checkbox': ui.Checkbox,
-    '@/components/ui/info-cell': ui.InfoCell,
+    '@/components/ui/data-table': { DataTable },
     '@/components/ui/skeleton': ui.Skeleton,
     './TopicStatusBadge': ui.TopicStatusBadge,
   });
@@ -421,10 +516,13 @@ test('review names stay skeletons until their own queries finish and cached name
     onSelect() {},
     onOpen() {},
   };
-  const cells = (overrides) =>
-    walk(TopicReviewTable({ ...props, ...overrides }), (node) => node.type === 'td');
+  const cells = (overrides) => {
+    const tree = DataTable(TopicReviewTable({ ...props, ...overrides }).props);
+    const table = walk(tree, (node) => node.type === 'Table')[0];
+    return walk(table, (node) => node.type === 'TableCell');
+  };
   const loading = cells({ advisorsLoading: true, batchesLoading: true });
-  assert.equal(walk(loading[3], (node) => node.type === 'Skeleton').length, 1);
+  assert.equal(walk(loading[3], (node) => node.type === 'Skeleton').length, 2);
   assert.equal(walk(loading[4], (node) => node.type === 'Skeleton').length, 1);
   assert.equal(walk(loading[3], (node) => node.type === 'span').length, 0); // No temporary ID.
   const resolved = cells({
@@ -433,8 +531,9 @@ test('review names stay skeletons until their own queries finish and cached name
     advisorNames: { 'lecturer-1': 'Nguyễn Văn An' },
     batches: [{ id: 'batch-1', batchName: 'Đợt 1' }],
   });
-  assert.equal(resolved[3].props.children, 'Nguyễn Văn An');
-  assert.equal(resolved[4].props.children, 'Đợt 1');
+  assert.equal(walk(resolved[3], (node) => node.type === 'Avatar')[0].props.name, 'Nguyễn Văn An');
+  assert.equal(walk(resolved[3], (node) => node.type === 'span')[0].props.children, 'Nguyễn Văn An');
+  assert.equal(walk(resolved[4], (node) => node.type === 'span')[0].props.children, 'Đợt 1');
   const failedOrForbidden = cells({ advisorsLoading: false, batchesLoading: false });
   assert.equal(walk(failedOrForbidden[3], (node) => node.type === 'Skeleton').length, 0);
   assert.equal(
@@ -494,6 +593,18 @@ test('proposal batch cells and shared preview keep skeletons while related names
         field.props['aria-busy'] && walk(field, (node) => node.type === 'Skeleton').length === 1,
     ),
   );
+
+  const structuredPreview = TopicPreview({
+    values: {
+      ...fullTopic,
+      requirements: '- Python\n- GraphRAG\n- React',
+    },
+    advisorName: 'TS. Phạm Minh Khang',
+    batchName: 'Khóa luận tốt nghiệp HK2',
+  });
+  assert.equal(walk(structuredPreview, (node) => node.type === 'Avatar').length, 1);
+  assert.equal(walk(structuredPreview, (node) => node.type === 'li').length, 3);
+  assert.match(JSON.stringify(structuredPreview), /3 tiêu chí/);
 });
 
 function dialogFixture(status = 'Submitted') {
@@ -503,13 +614,15 @@ function dialogFixture(status = 'Submitted') {
   const { TopicReviewDialog } = loadModule('features/topics/components/TopicReviewDialog.tsx', {
     ...common,
     react: {
+      useId: () => 'topic-review-preset-popover',
+      useRef: (initial) => ({ current: initial }),
       useState: (initial) => {
         const index = cursor++;
         if (!(index in state)) state[index] = initial;
         return [
           state[index],
           (value) => {
-            state[index] = value;
+            state[index] = typeof value === 'function' ? value(state[index]) : value;
           },
         ];
       },
@@ -518,6 +631,7 @@ function dialogFixture(status = 'Submitted') {
     '@/components/ui/dialog': ui.Dialog,
     '@/components/ui/confirm-dialog': ui.ConfirmDialog,
     '@/components/ui/button': ui.Button,
+    '@/components/ui/rich-text-editor': { RichTextEditor: 'RichTextEditor' },
     '@/components/ui/select': ui.Select,
     '@/shared/auth': { useAuth: () => ({ user: { id: 'faculty' } }) },
     '../services/topicApi': { topicApi: {}, getTopicErrorMessage: String },
@@ -553,7 +667,10 @@ test('review requires an explicit decision and confirmation; approval never publ
   const button = (label) =>
     walk(tree, (node) => node.type === 'Button' && node.props.children === label)[0];
   assert.equal(button('Gửi kết luận').props.disabled, true);
-  walk(tree, (node) => node.type === 'Select')[0].props.onChange('Approved');
+  walk(
+    tree,
+    (node) => node.type === 'button' && node.props['data-decision'] === 'Approved',
+  )[0].props.onClick();
   tree = dialog.render();
   button('Gửi kết luận').props.onClick();
   assert.equal(dialog.actions.length, 0);
@@ -580,9 +697,18 @@ test('approved detail publishes only itself; other lifecycle states have no deci
   ]);
   for (const status of ['Draft', 'NeedRevision', 'Rejected', 'Published', 'Closed', 'Archived']) {
     const readonly = dialogFixture(status).render();
-    assert.equal(walk(readonly, (node) => node.type === 'Select').length, 0);
     assert.equal(
-      walk(readonly, (node) => node.type === 'Button' && node.props.children !== 'Đóng').length,
+      walk(readonly, (node) => node.type === 'button' && Boolean(node.props['data-decision'])).length,
+      0,
+    );
+    assert.equal(
+      walk(
+        readonly,
+        (node) =>
+          node.type === 'Button' &&
+          node.props.children !== 'Đóng' &&
+          node.props['aria-label'] !== 'Đóng hộp thoại',
+      ).length,
       0,
     );
   }
@@ -593,21 +719,24 @@ test('revision feedback is required, preserved on back and sent in the confirmed
   let tree = dialog.render();
   const button = (label) =>
     walk(tree, (node) => node.type === 'Button' && node.props.children === label)[0];
-  walk(tree, (node) => node.type === 'Select')[0].props.onChange('NeedRevision');
+  walk(
+    tree,
+    (node) => node.type === 'button' && node.props['data-decision'] === 'NeedRevision',
+  )[0].props.onClick();
   tree = dialog.render();
   button('Gửi kết luận').props.onClick();
   tree = dialog.render();
   assert.equal(walk(tree, (node) => node.props.role === 'alert').length, 1);
   assert.equal(dialog.actions.length, 0);
   const note = '  Bổ sung dữ liệu thử nghiệm.\nLàm rõ tiêu chí đánh giá.  ';
-  walk(tree, (node) => node.type === 'textarea')[0].props.onChange({ target: { value: note } });
+  walk(tree, (node) => node.type === 'RichTextEditor')[0].props.onChange(note);
   tree = dialog.render();
   button('Gửi kết luận').props.onClick();
   tree = dialog.render();
-  assert.equal(walk(tree, (node) => node.type === 'textarea')[0].props.disabled, true);
+  assert.equal(walk(tree, (node) => node.type === 'RichTextEditor')[0].props.disabled, true);
   walk(tree, (node) => node.type === 'ConfirmDialog' && node.props.open)[0].props.onClose();
   tree = dialog.render();
-  assert.equal(walk(tree, (node) => node.type === 'textarea')[0].props.value, note);
+  assert.equal(walk(tree, (node) => node.type === 'RichTextEditor')[0].props.value, note);
   button('Gửi kết luận').props.onClick();
   tree = dialog.render();
   walk(tree, (node) => node.type === 'ConfirmDialog' && node.props.open)[0].props.onConfirm();
@@ -619,20 +748,26 @@ test('revision feedback is required, preserved on back and sent in the confirmed
 test('feedback display handles null, preserves line breaks and renders content as text', () => {
   const { TopicReviewNote } = loadModule('features/topics/components/TopicReviewNote.tsx', {
     'react/jsx-runtime': jsxRuntime,
+    '@/components/ui/rich-text-content': common['@/components/ui/rich-text-content'],
   });
   assert.equal(TopicReviewNote({ note: null }), null);
   assert.equal(TopicReviewNote({ note: '  ' }), null);
   const note = 'Dòng một\n<script>Ví dụ nội dung</script>';
   const tree = TopicReviewNote({ note });
-  assert.equal(walk(tree, (node) => node.type === 'p')[0].props.children, note);
-  assert.match(walk(tree, (node) => node.type === 'p')[0].props.className, /whitespace-pre-wrap/);
-  assert.equal(walk(tree, (node) => node.type === 'script').length, 0);
+  const richContent = walk(tree, (node) => typeof node.type === 'function')[0];
+  const rendered = richContent.type(richContent.props);
+  const paragraph = walk(rendered, (node) => node.type === 'p')[0];
+  assert.match(paragraph.props.className, /whitespace-pre-wrap/);
+  assert.equal(walk(rendered, (node) => node.type === 'script').length, 0);
 });
 
 test('a refreshed approval cannot turn an existing review confirmation into a publish command', () => {
   const dialog = dialogFixture();
   let tree = dialog.render();
-  walk(tree, (node) => node.type === 'Select')[0].props.onChange('Approved');
+  walk(
+    tree,
+    (node) => node.type === 'button' && node.props['data-decision'] === 'Approved',
+  )[0].props.onClick();
   tree = dialog.render();
   walk(
     tree,
@@ -648,6 +783,78 @@ test('a refreshed approval cannot turn an existing review confirmation into a pu
   assert.equal(dialog.actions.length, 0); // Publication still requires its own confirmation.
 });
 
+test('review workspace pins action footer, uses expandable RichTextEditor, and toggles presets via popover', () => {
+  const dialog = dialogFixture();
+  let tree = dialog.render();
+
+  const dialogNode = walk(tree, (node) => node.type === 'Dialog')[0];
+  assert.match(String(dialogNode.props.className), /max-w-6xl/);
+  assert.match(String(dialogNode.props.className), /max-h-\[90dvh\]/);
+  assert.match(String(dialogNode.props.className), /flex-col/);
+
+  const editorInitial = walk(tree, (node) => node.type === 'RichTextEditor')[0];
+  assert.equal(editorInitial.props.maxLength, 2000);
+  assert.match(String(editorInitial.props.minHeightClassName), /flex-1/);
+  assert.match(String(editorInitial.props.minHeightClassName), /min-h-\[190px\]/);
+
+  // No preset popover trigger before selecting NeedRevision or Rejected.
+  assert.equal(
+    walk(tree, (node) => node.type === 'div' && node.props.popover === 'auto').length,
+    0,
+  );
+
+  // Switch to NeedRevision -> compact popover appears inside toolbarExtra.
+  walk(
+    tree,
+    (node) => node.type === 'button' && node.props['data-decision'] === 'NeedRevision',
+  )[0].props.onClick();
+  tree = dialog.render();
+
+  const popover = walk(tree, (node) => node.type === 'div' && node.props.popover === 'auto')[0];
+  assert.ok(popover);
+  const editorWithPopover = walk(tree, (node) => node.type === 'RichTextEditor')[0];
+  const trigger = walk(
+    editorWithPopover.props.toolbarExtra,
+    (node) => node.type === 'button' && node.props.popoverTarget === popover.props.id,
+  )[0];
+  assert.ok(trigger);
+
+  // Toggle first preset on, verify bullet markdown inserted and count shows (1), then toggle off.
+  const firstPresetButton = walk(popover, (node) => node.type === 'button')[0];
+  firstPresetButton.props.onClick();
+  tree = dialog.render();
+  const editorUpdated = walk(tree, (node) => node.type === 'RichTextEditor')[0];
+  const noteAfterInsert = editorUpdated.props.value;
+  assert.ok(noteAfterInsert.startsWith('- '));
+  const triggerUpdated = walk(
+    editorUpdated.props.toolbarExtra,
+    (node) => node.type === 'button' && node.props.popoverTarget === popover.props.id,
+  )[0];
+  assert.match(JSON.stringify(triggerUpdated.props.children), /\(1\)/);
+
+  const popoverUpdated = walk(
+    tree,
+    (node) => node.type === 'div' && node.props.popover === 'auto',
+  )[0];
+  walk(popoverUpdated, (node) => node.type === 'button')[0].props.onClick();
+  tree = dialog.render();
+  assert.equal(walk(tree, (node) => node.type === 'RichTextEditor')[0].props.value, '');
+
+  // Action buttons live inside a pinned shrink-0 footer separated from scrollable content.
+  const pinnedFooter = walk(
+    tree,
+    (node) =>
+      node.type === 'div' &&
+      String(node.props.className).includes('shrink-0') &&
+      String(node.props.className).includes('sticky bottom-0'),
+  )[0];
+  assert.ok(pinnedFooter);
+  assert.equal(
+    walk(pinnedFooter, (node) => node.type === 'Button').map((b) => b.props.children).length,
+    2,
+  );
+});
+
 function pageFixture(roles = ['Faculty'], queryState = {}) {
   const state = [];
   let cursor = 0;
@@ -659,13 +866,15 @@ function pageFixture(roles = ['Faculty'], queryState = {}) {
   const { TopicReviewPage } = loadModule('features/topics/pages/TopicReviewPage.tsx', {
     ...common,
     react: {
+      useId: () => 'topic-review-preset-popover',
+      useRef: (initial) => ({ current: initial }),
       useState: (initial) => {
         const index = cursor++;
         if (!(index in state)) state[index] = initial;
         return [
           state[index],
           (value) => {
-            state[index] = value;
+            state[index] = typeof value === 'function' ? value(state[index]) : value;
           },
         ];
       },
@@ -757,18 +966,16 @@ test('review refresh retains only the same reviewer data and locks selection/pub
 test('review queue defaults to Submitted and explicit filters retain the applied batch', () => {
   const page = pageFixture();
   assert.equal(page.query().queryKey[3].status, 'Submitted');
-  const statusOptions = page.find(
-    (node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài',
-  )[0].props.options;
+  const statusPills = page.find(
+    (node) => node.type === 'button' && node.props.onClick && typeof node.props.children === 'string',
+  );
   assert.equal(
-    statusOptions.some((option) => option.value === 'Draft'),
+    statusPills.some((pill) => pill.props.children === 'Bản nháp'),
     false,
   );
   page
     .find((node) => node.props['aria-label'] === 'Lọc theo đợt KLTN')[0]
     .props.onChange('batch-1');
-  page.render();
-  page.find((node) => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
   page.render();
   page
     .find((node) => node.type === 'TopicReviewTable')[0]
@@ -779,10 +986,8 @@ test('review queue defaults to Submitted and explicit filters retain the applied
   const stats = page.find((node) => node.type === 'StatisticsBar')[0].props.items;
   assert.ok(stats.every((item) => typeof item.onClick === 'function'));
   page
-    .find((node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài')[0]
-    .props.onChange('Approved');
-  page.render();
-  page.find((node) => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    .find((node) => node.type === 'button' && node.props.children === 'Chờ công bố')[0]
+    .props.onClick();
   page.render();
   assert.deepEqual(page.query().queryKey[3], {
     keyword: '',
