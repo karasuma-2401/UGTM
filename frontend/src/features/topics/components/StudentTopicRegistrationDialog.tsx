@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { UserRound, UsersRound, Send } from 'lucide-react';
+import { AlertCircle, CalendarClock, Send, UserRound, UsersRound } from 'lucide-react';
 import { Dialog } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Button } from '@/components/ui/button';
@@ -116,6 +116,8 @@ export function StudentTopicRegistrationDialog({
     setError('');
     mutation.mutate({ ...confirmation, topic });
   }
+  const headerBarClass =
+    "sticky top-0 z-10 overflow-hidden border-b border-slate-200/80 bg-white/95 px-5 py-4 sm:px-6 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]";
   const preview = (
     <TopicPreview
       values={{
@@ -129,17 +131,66 @@ export function StudentTopicRegistrationDialog({
       advisorName={topic.advisorName || `Mã GVHD: ${topic.advisorId}`}
       batchName={batchName || `Mã đợt: ${topic.batchId}`}
       previewLabel="Đề tài đã công bố"
+      showQuota={false}
     />
   );
   if (!student)
     return (
-      <Dialog title="Chi tiết đề tài" onClose={onClose} className="max-w-3xl">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <TopicCapacityStatus topic={topic} />
+      <Dialog
+        title="Chi tiết đề tài"
+        onClose={onClose}
+        className="max-w-4xl"
+        headerClassName={headerBarClass}
+      >
+        <div className="grid items-stretch lg:grid-cols-[minmax(0,1fr)_288px]">
+          {preview}
+          <aside
+            aria-label="Thông tin chỉ tiêu"
+            className="flex flex-col justify-between gap-5 border-t border-slate-100 bg-slate-50/75 p-5 sm:p-6 lg:border-l lg:border-t-0"
+          >
+            <div className="space-y-4">
+              <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Tình trạng đăng ký
+                </h2>
+                <div aria-busy={availabilityLoading}>
+                  {availabilityLoading ? (
+                    <Skeleton className="h-12 w-full" />
+                  ) : (
+                    <TopicCapacityStatus topic={topic} />
+                  )}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200/80 bg-white/80 p-4 text-xs leading-5 text-slate-600">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-slate-500">Trạng thái đề tài</span>
+                  <StatusBadge tone="success">Đã công bố</StatusBadge>
+                </div>
+                <p className="mt-2.5 border-t border-slate-100 pt-2.5 text-slate-500">
+                  Sinh viên tra cứu và gửi đăng ký theo thời hạn mở đăng ký của đợt KLTN.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end border-t border-slate-200/80 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="h-9 w-full rounded-xl bg-white sm:w-auto"
+              >
+                Đóng
+              </Button>
+            </div>
+          </aside>
         </div>
-        {preview}
       </Dialog>
     );
+  const windowCardClass =
+    window.state === 'open'
+      ? 'border-emerald-200/80 bg-emerald-50/60'
+      : window.state === 'closed'
+        ? 'border-amber-200/80 bg-amber-50/60'
+        : 'border-slate-200/80 bg-white';
   return (
     <>
       <Dialog
@@ -149,58 +200,72 @@ export function StudentTopicRegistrationDialog({
           if (!mutation.isPending) onClose();
         }}
         className="max-w-5xl"
+        headerClassName={headerBarClass}
       >
-        <div className="grid items-start lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="grid items-start lg:grid-cols-[minmax(0,1fr)_356px]">
           {preview}
           <section
-            className="space-y-5 border-t border-slate-100 bg-slate-50/70 p-5 sm:p-6 lg:min-h-full lg:border-l lg:border-t-0"
+            className="space-y-4 border-t border-slate-100 bg-gradient-to-b from-slate-50/90 via-slate-50/50 to-white p-5 sm:p-6 lg:min-h-full lg:border-l lg:border-t-0"
             aria-label="Đăng ký đề tài"
           >
-            <div>
-              <h2 className="font-semibold text-slate-900">Đăng ký đề tài</h2>
-              <div className="mt-3" aria-busy={availabilityLoading}>
+            <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-slate-900">Đăng ký đề tài</h2>
+                <span className="text-[11px] font-medium text-slate-400">Chỉ tiêu hiện tại</span>
+              </div>
+              <div aria-busy={availabilityLoading}>
                 {availabilityLoading ? (
-                  <Skeleton className="h-12 w-36" />
+                  <Skeleton className="h-12 w-full" />
                 ) : (
                   <TopicCapacityStatus topic={topic} />
                 )}
               </div>
             </div>
-            <div aria-busy={timeline.isFetching}>
+
+            <div
+              aria-busy={timeline.isFetching}
+              className={`rounded-xl border p-3.5 transition-colors ${windowCardClass}`}
+            >
               {readingSchedule ? (
-                <Skeleton className="h-7 w-40" />
+                <Skeleton className="h-9 w-full" />
               ) : (
-                <>
-                  <StatusBadge
-                    tone={
-                      window.state === 'open'
-                        ? 'success'
-                        : window.state === 'closed'
-                          ? 'warning'
-                          : 'neutral'
-                    }
-                  >
-                    {window.message}
-                  </StatusBadge>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <StatusBadge
+                      tone={
+                        window.state === 'open'
+                          ? 'success'
+                          : window.state === 'closed'
+                            ? 'warning'
+                            : 'neutral'
+                      }
+                    >
+                      {window.message}
+                    </StatusBadge>
+                    {timeline.isError && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="link"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => void timeline.refetch()}
+                      >
+                        Thử tải lại lịch
+                      </Button>
+                    )}
+                  </div>
                   {window.state === 'open' && (
-                    <p className="mt-2 text-xs text-slate-500">
-                      Hạn đăng ký: {registrationDate(window.deadline)}
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-900">
+                      <CalendarClock className="size-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                      <span>Hạn đăng ký: {registrationDate(window.deadline)}</span>
                     </p>
                   )}
-                  {timeline.isError && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="link"
-                      onClick={() => void timeline.refetch()}
-                    >
-                      Thử tải lại lịch
-                    </Button>
-                  )}
-                </>
+                </div>
               )}
             </div>
-            <>
+
+            <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
+              <p className="text-xs font-semibold text-slate-700">Hình thức đăng ký</p>
               <div className="grid grid-cols-2 gap-2" aria-label="Hình thức đăng ký">
                 <Button
                   type="button"
@@ -208,6 +273,11 @@ export function StudentTopicRegistrationDialog({
                   aria-pressed={mode === 'solo'}
                   leftIcon={<UserRound />}
                   disabled={mutation.isPending}
+                  className={
+                    mode === 'solo'
+                      ? 'h-10 rounded-xl ring-1 ring-primary/35 font-semibold'
+                      : 'h-10 rounded-xl'
+                  }
                   onClick={() => {
                     setMode('solo');
                     setError('');
@@ -220,6 +290,11 @@ export function StudentTopicRegistrationDialog({
                   variant={mode === 'pair' ? 'soft' : 'outline'}
                   aria-pressed={mode === 'pair'}
                   leftIcon={<UsersRound />}
+                  className={
+                    mode === 'pair'
+                      ? 'h-10 rounded-xl ring-1 ring-primary/35 font-semibold'
+                      : 'h-10 rounded-xl'
+                  }
                   disabled={
                     topic.studentNumber !== 2 ||
                     (typeof topic.availableSlots === 'number' && topic.availableSlots < 2) ||
@@ -234,8 +309,8 @@ export function StudentTopicRegistrationDialog({
                 </Button>
               </div>
               {mode === 'pair' ? (
-                <div className="space-y-2">
-                  <label htmlFor="registration-partner-code" className="text-sm font-medium">
+                <div className="space-y-2 pt-1">
+                  <label htmlFor="registration-partner-code" className="text-xs font-medium text-slate-700">
                     MSSV bạn cùng nhóm
                   </label>
                   <Input
@@ -246,6 +321,7 @@ export function StudentTopicRegistrationDialog({
                     spellCheck={false}
                     placeholder="Nhập MSSV được mời"
                     disabled={mutation.isPending}
+                    className="h-10 rounded-xl font-mono uppercase shadow-none"
                     onChange={(event) => {
                       setPartnerCode(event.target.value);
                       setError('');
@@ -256,24 +332,31 @@ export function StudentTopicRegistrationDialog({
                   </p>
                 </div>
               ) : (
-                <p className="text-xs leading-6 text-slate-500">
+                <p className="text-xs leading-5 text-slate-500">
                   {topic.studentNumber === 2
                     ? 'Đề tài nhận tối đa 2 SV vẫn cho phép đăng ký cá nhân. Nếu còn chỗ, SV khác sẽ được thêm vào cùng nhóm.'
                     : 'Đăng ký cá nhân được ghi nhận ngay khi thành công.'}
                 </p>
               )}
-            </>
+            </div>
+
             {(error || mutation.error || unavailable) && (
-              <p role="alert" className="text-sm leading-6 text-rose-700">
-                {error || (mutation.error ? getTopicErrorMessage(mutation.error) : unavailable)}
-              </p>
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-xs font-medium leading-5 text-rose-700"
+              >
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-rose-600" aria-hidden="true" />
+                <p>{error || (mutation.error ? getTopicErrorMessage(mutation.error) : unavailable)}</p>
+              </div>
             )}
-            <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200/80 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 disabled={mutation.isPending}
                 onClick={onClose}
+                className="h-10 rounded-xl"
               >
                 Đóng
               </Button>
@@ -288,6 +371,7 @@ export function StudentTopicRegistrationDialog({
                 }
                 isLoading={mutation.isPending}
                 onClick={review}
+                className="h-10 flex-1 rounded-xl sm:flex-initial"
               >
                 Đăng ký đề tài
               </Button>

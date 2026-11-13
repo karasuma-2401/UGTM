@@ -180,6 +180,85 @@ public sealed class TopicQueryReaderTests
     }
 
     [Theory]
+    [InlineData("title", "asc", null, 3, "Alpha")]
+    [InlineData("title", "desc", null, 3, "Zeta")]
+    [InlineData("availableSlots", "desc", null, 3, "Beta")]
+    [InlineData("availableSlots", "asc", null, 3, "Zeta")]
+    [InlineData("createdAt", "desc", "available", 2, "Beta")]
+    [InlineData("createdAt", "desc", "full", 1, "Zeta")]
+    public async Task GetAllTopicsAsync_sorts_and_filters_by_availability_before_paging(
+        string sortBy,
+        string sortOrder,
+        string? availability,
+        int expectedTotal,
+        string expectedFirstTitle)
+    {
+        var batchId = Guid.NewGuid();
+        var advisorId = Guid.NewGuid();
+        var fullTopic = new Topic
+        {
+            Id = Guid.NewGuid(),
+            BatchId = batchId,
+            AdvisorId = advisorId,
+            TitleVi = "Zeta",
+            Status = TopicStatus.Published,
+            StudentNumber = 1,
+            CreatedAt = BaseTime.AddMinutes(1)
+        };
+        var oneSlotLeftTopic = new Topic
+        {
+            Id = Guid.NewGuid(),
+            BatchId = batchId,
+            AdvisorId = advisorId,
+            TitleVi = "Alpha",
+            Status = TopicStatus.Published,
+            StudentNumber = 2,
+            CreatedAt = BaseTime.AddMinutes(2)
+        };
+        var twoSlotsLeftTopic = new Topic
+        {
+            Id = Guid.NewGuid(),
+            BatchId = batchId,
+            AdvisorId = advisorId,
+            TitleVi = "Beta",
+            Status = TopicStatus.Published,
+            StudentNumber = 2,
+            CreatedAt = BaseTime.AddMinutes(3)
+        };
+        var registrations = new Dictionary<Guid, TopicRegistrationContractDto>
+        {
+            [fullTopic.Id] = new(
+                Guid.NewGuid(),
+                fullTopic.Id,
+                "Registered",
+                BaseTime,
+                [new TopicMemberContractDto(Guid.NewGuid(), batchId, BaseTime, "Confirmed", null)]),
+            [oneSlotLeftTopic.Id] = new(
+                Guid.NewGuid(),
+                oneSlotLeftTopic.Id,
+                "Registered",
+                BaseTime,
+                [
+                    new TopicMemberContractDto(Guid.NewGuid(), batchId, BaseTime, "Confirmed", null),
+                    new TopicMemberContractDto(Guid.NewGuid(), batchId, BaseTime, "Pending", BaseTime.AddMinutes(-5)) // expired -> does NOT take slot
+                ])
+        };
+
+        var reader = TopicQueryReader.CreateInMemory(
+            [fullTopic, oneSlotLeftTopic, twoSlotsLeftTopic],
+            new FakeRegistrationContract(registrations),
+            new FakeStudentInfoReader(),
+            new FixedTimeProvider(BaseTime));
+
+        var result = await reader.GetAllTopicsAsync(
+            new GetAllTopicsQuery(null, batchId, 1, 1, availability, sortBy, sortOrder),
+            CancellationToken.None);
+
+        Assert.Equal(expectedTotal, result.TotalCount);
+        Assert.Equal(expectedFirstTitle, Assert.Single(result.Items).TitleVi);
+    }
+
+    [Theory]
     [InlineData("Empty", 1, "Empty")]
     [InlineData("Registered", 1, "Registered")]
     [InlineData("Full", 1, "Full")]

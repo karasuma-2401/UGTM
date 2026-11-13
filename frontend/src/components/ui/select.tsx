@@ -232,7 +232,7 @@ export function Select<T = string>({
       );
     }
 
-    if (!multiple && currentValue !== undefined && currentValue !== null && currentValue !== '') {
+    if (!multiple && currentValue !== undefined && currentValue !== null) {
       const selectedOpt = normalizedOptions.find((opt) => opt.value === currentValue);
       if (selectedOpt) {
         return (

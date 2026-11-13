@@ -1,5 +1,8 @@
 import type { Topic } from './topic.types';
 
+export type CatalogAvailabilityFilter = '' | 'available' | 'full';
+export type CatalogSortField = 'createdAt' | 'title' | 'availableSlots';
+
 export interface PublishedTopic extends Omit<Topic, 'group' | 'reviewNote'> {
   // Optional for compatibility with backend versions predating availability.
   advisorName?: string | null;

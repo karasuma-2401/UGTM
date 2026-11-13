@@ -34,6 +34,9 @@ public static class TopicEndpoints
                 - `batchId`: Lọc theo đợt KLTN.
                 - `pageNumber`: Số trang (>= 1, mặc định 1).
                 - `pageSize`: Số lượng đề tài trên một trang (1 đến 100, mặc định 10).
+                - `availability`: Lọc theo tình trạng chỗ trống (`all`, `available` - còn chỗ trống, `full` - đã đủ chỉ tiêu / tạm hết chỗ).
+                - `sortBy`: `title`, `studentNumber`, `availableSlots` hoặc `createdAt` (mặc định `createdAt`).
+                - `sortOrder`: `asc` hoặc `desc` (mặc định `desc`); sắp xếp trước khi phân trang.
 
                 Không yêu cầu quyền đặc thù. Sinh viên chỉ tra cứu được các đề tài đã được duyệt và công bố.
                 - 200 OK: Danh sách đề tài phân trang `PagedResult<TopicSummaryDto>`.
@@ -214,10 +217,13 @@ public static class TopicEndpoints
         Guid? batchId,
         int pageNumber = 1,
         int pageSize = 10,
+        string? availability = null,
+        string? sortBy = null,
+        string? sortOrder = null,
         GetAllTopicsHandler handler = null!,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetAllTopicsQuery(keyword, batchId, pageNumber, pageSize);
+        var query = new GetAllTopicsQuery(keyword, batchId, pageNumber, pageSize, availability, sortBy, sortOrder);
         var result = await handler.HandleAsync(query, cancellationToken);
         return result.ToHttpResult();
     }

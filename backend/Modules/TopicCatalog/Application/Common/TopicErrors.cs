@@ -6,6 +6,10 @@ public static class TopicErrors
 {
     public static readonly Error InvalidSort = Error.Validation(
         "Topic.InvalidSort", "Sắp xếp chỉ hỗ trợ title, studentNumber, createdAt và thứ tự asc hoặc desc.");
+    public static readonly Error InvalidCatalogSort = Error.Validation(
+        "Topic.InvalidSort", "Sắp xếp danh mục chỉ hỗ trợ title, studentNumber, availableSlots, createdAt và thứ tự asc hoặc desc.");
+    public static readonly Error InvalidAvailabilityFilter = Error.Validation(
+        "Topic.InvalidAvailabilityFilter", "Bộ lọc tình trạng chỗ trống chỉ chấp nhận: 'all', 'available', 'full'.");
     public static readonly Error WorkflowNotConfigured = Error.Conflict(
         "Topic.WorkflowNotConfigured", "Chưa cấu hình transaction cho thao tác đề tài và sinh viên.");
     public static readonly Error TopicNotFound = Error.NotFound(
