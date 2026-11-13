@@ -197,3 +197,69 @@
     background: rgba(100, 116, 139, 0.55);
   }
 }
+
+@layer components {
+  .rich-text-prose {
+    @apply text-sm leading-relaxed text-slate-800;
+  }
+
+  .rich-text-prose > * + * {
+    margin-top: 0.5rem;
+  }
+
+  .rich-text-prose p {
+    margin: 0;
+  }
+
+  .rich-text-prose ul {
+    list-style-type: disc;
+    padding-left: 1.25rem;
+  }
+
+  .rich-text-prose ol {
+    list-style-type: decimal;
+    padding-left: 1.25rem;
+  }
+
+  .rich-text-prose li > p {
+    margin: 0;
+  }
+
+  .rich-text-prose li + li {
+    margin-top: 0.25rem;
+  }
+
+  .rich-text-prose blockquote {
+    border-left: 2px solid rgb(203 213 225);
+    padding-left: 0.75rem;
+    color: rgb(71 85 105);
+    font-style: italic;
+  }
+
+  .rich-text-prose a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .rich-text-prose code {
+    border-radius: 0.25rem;
+    background-color: rgb(241 245 249);
+    padding: 0.125rem 0.3rem;
+    font-size: 0.85em;
+  }
+
+  .rich-text-editor-content .ProseMirror {
+    outline: none;
+    min-height: inherit;
+    height: 100%;
+  }
+
+  .rich-text-editor-content .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: rgb(148 163 184);
+    pointer-events: none;
+  }
+}
