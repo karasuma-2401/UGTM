@@ -17,9 +17,9 @@ export const renameRequestApi = {
     );
     return unwrap(response.data);
   },
-  async list(status: RenameRequestStatus, signal?: AbortSignal) {
+  async list(status?: RenameRequestStatus | '', signal?: AbortSignal) {
     const response = await httpClient.get<ApiResponse<RenameRequest[]>>(`${root}/rename-requests`, {
-      params: { status },
+      params: status ? { status } : undefined,
       signal,
     });
     return unwrap(response.data);

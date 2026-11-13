@@ -1,7 +1,7 @@
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { OperationToast } from '@/shared/notifications';
 import { useQueryClient } from '@tanstack/react-query';
-import { UsersRound, GraduationCap, UserPlus, Upload, X } from 'lucide-react';
+import { UsersRound, GraduationCap, UserPlus, Upload, X, Clock3, Ban } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -19,7 +19,6 @@ import {
   UsersTable,
   IdentityNavigation,
   UserFilterBar,
-  UserStatusTabs,
 } from '../components/users';
 import { getUserErrorMessage } from '../services/userApi';
 import { useUsers } from '../hooks';
@@ -153,13 +152,12 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
           className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
         >
           <section
-            className="flex items-center justify-end w-full"
+            className="flex w-full flex-col items-stretch gap-2 lg:items-end"
             aria-label="Thống kê tài khoản"
             aria-busy={data.statisticsQuery.isFetching}
           >
             <StatisticsBar
-              compact
-              className="sr-only"
+              className="w-full lg:w-auto"
               loading={data.statisticsQuery.isPending}
               items={[
                 {
@@ -168,6 +166,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                   active:
                     !filters.filters.status && !filters.filters.keyword && !filters.filters.role,
                   label: 'Tổng tài khoản',
+                  actionLabel: 'Lọc tổng tài khoản',
                   value: data.formatCount(data.statistics?.total),
                   icon: <UsersRound />,
                   tone: 'primary',
@@ -180,8 +179,9 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                     !filters.filters.keyword &&
                     !filters.filters.role,
                   label: 'Chờ kích hoạt',
+                  actionLabel: 'Lọc tài khoản chờ kích hoạt',
                   value: data.formatCount(data.statistics?.pendingActivation),
-                  icon: <UsersRound />,
+                  icon: <Clock3 />,
                   tone: 'warning',
                 },
                 {
@@ -192,29 +192,12 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                     !filters.filters.keyword &&
                     !filters.filters.role,
                   label: 'Vô hiệu hóa',
+                  actionLabel: 'Lọc tài khoản vô hiệu hóa',
                   value: data.formatCount(data.statistics?.disabled),
-                  icon: <UsersRound />,
+                  icon: <Ban />,
                   tone: 'danger',
                 },
               ]}
-            />
-            <UserStatusTabs
-              activeKey={
-                !filters.filters.status && !filters.filters.keyword && !filters.filters.role
-                  ? ''
-                  : filters.filters.status === 'PendingActivation' &&
-                      !filters.filters.keyword &&
-                      !filters.filters.role
-                    ? 'PendingActivation'
-                    : filters.filters.status === 'Disabled' &&
-                        !filters.filters.keyword &&
-                        !filters.filters.role
-                      ? 'Disabled'
-                      : 'none'
-              }
-              onSelect={(status) => filters.quickFilter(status)}
-              stats={data.statistics}
-              loading={data.statisticsQuery.isPending}
             />
             {data.statisticsQuery.isPending && (
               <p role="status" className="sr-only">

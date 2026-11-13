@@ -1,6 +1,6 @@
 import React from 'react';
-import { ScrollText } from 'lucide-react';
-import { StatusTabs, type StatusTabItem } from '@/components/ui/status-tabs';
+import { CheckCircle2, ScrollText, ShieldAlert, XCircle } from 'lucide-react';
+import { StatisticsBar, type StatisticItem } from '@/components/ui/statistics-bar';
 
 export interface AuditOutcomeStats {
   total: number;
@@ -25,43 +25,56 @@ export const AuditLogStatusTabs: React.FC<AuditLogStatusTabsProps> = ({
   loading = false,
   error = false,
 }) => {
-  const valueOrFallback = (val: number) => (error ? '—' : loading ? undefined : val);
+  const formatValue = (val: number) => (error ? '—' : val.toLocaleString('vi-VN'));
 
-  const tabs: StatusTabItem<string>[] = [
+  const items: StatisticItem[] = [
     {
-      key: '',
+      key: 'all',
       label: 'Tất cả',
-      count: valueOrFallback(stats.total),
-      icon: <ScrollText className="size-3.5 text-slate-500" />,
+      value: formatValue(stats.total),
+      icon: <ScrollText />,
       tone: 'primary',
+      active: currentOutcome === '',
+      actionLabel: 'Lọc tất cả sự kiện',
+      onClick: () => onSelectOutcome(''),
     },
     {
-      key: 'Success',
+      key: 'success',
       label: 'Thành công',
-      count: valueOrFallback(stats.success),
+      value: formatValue(stats.success),
+      icon: <CheckCircle2 />,
       tone: 'success',
+      active: currentOutcome === 'Success',
+      actionLabel: 'Lọc sự kiện thành công',
+      onClick: () => onSelectOutcome('Success'),
     },
     {
-      key: 'Denied',
+      key: 'denied',
       label: 'Bị từ chối',
-      count: valueOrFallback(stats.denied),
+      value: formatValue(stats.denied),
+      icon: <ShieldAlert />,
       tone: 'warning',
+      active: currentOutcome === 'Denied',
+      actionLabel: 'Lọc sự kiện bị từ chối',
+      onClick: () => onSelectOutcome('Denied'),
     },
     {
-      key: 'Failed',
+      key: 'failed',
       label: 'Thất bại',
-      count: valueOrFallback(stats.failed),
+      value: formatValue(stats.failed),
+      icon: <XCircle />,
       tone: 'danger',
+      active: currentOutcome === 'Failed',
+      actionLabel: 'Lọc sự kiện thất bại',
+      onClick: () => onSelectOutcome('Failed'),
     },
   ];
 
   return (
-    <StatusTabs
-      tabs={tabs}
-      activeKey={currentOutcome}
-      onSelect={onSelectOutcome}
-      ariaLabel="Lọc nhanh theo kết quả thao tác"
-      loading={loading}
+    <StatisticsBar
+      items={items}
+      loading={loading && !error}
+      className="w-full lg:w-auto"
     />
   );
 };

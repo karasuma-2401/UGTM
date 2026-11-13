@@ -345,7 +345,7 @@ export const AuditLogPage: React.FC = () => {
           }
           className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
         >
-          <div className="flex items-center justify-end w-full">
+          <div className="flex w-full items-center lg:justify-end">
             <AuditLogStatusTabs
               currentOutcome={applied.outcome}
               onSelectOutcome={(outcome) => {

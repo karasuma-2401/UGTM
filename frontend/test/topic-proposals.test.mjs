@@ -272,9 +272,12 @@ test('statistics quick filters are disabled during loading and expose selected s
     'react/jsx-runtime': jsxRuntime,
     '@/lib/utils': { cn },
   });
+  const { SELECTION_TONES } = loadModule('components/ui/selection-tones.ts', {});
   const { StatisticsBar } = loadModule('components/ui/statistics-bar.tsx', {
     'react/jsx-runtime': jsxRuntime,
     '@/lib/utils': { cn },
+    './selection-indicator': { SelectionIndicator: 'SelectionIndicator' },
+    './selection-tones': { SELECTION_TONES },
     './skeleton': { Skeleton },
   });
   const items = [

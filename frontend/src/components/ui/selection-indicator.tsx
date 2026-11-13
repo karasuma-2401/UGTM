@@ -42,10 +42,12 @@ export function SelectionIndicator({
     const update = (animate: boolean) => {
       const target = parent.querySelector<HTMLElement>(selector);
       if (!target || !target.getClientRects().length) {
+        animation?.cancel();
         indicator.hidden = true;
         previous.current = null;
         return;
       }
+      if (!animate && animation?.playState === 'running') return;
       let next = boundsOf(target);
       if (variant === 'rail')
         next = { x: 0, y: next.y + 6, width: 4, height: Math.max(0, next.height - 12) };
@@ -69,7 +71,7 @@ export function SelectionIndicator({
       indicator.style.transform = `translate(${next.x}px, ${next.y}px)`;
       // Only the overlay transforms; text, table geometry and button hit areas stay still.
       if (animate && from && !media.matches && next.width > 0 && next.height > 0) {
-        animation = indicator.animate(
+        const running = indicator.animate(
           [
             {
               transform: `translate(${from.x}px, ${from.y}px) scale(${from.width / next.width}, ${from.height / next.height})`,
@@ -78,6 +80,10 @@ export function SelectionIndicator({
           ],
           { duration: 360, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
         );
+        animation = running;
+        running.onfinish = () => {
+          if (animation === running) update(false);
+        };
       }
       previous.current = next;
     };

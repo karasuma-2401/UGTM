@@ -52,7 +52,7 @@ function getTone(name: string, index: number): string {
 }
 
 const sizeClasses = {
-  sm: 'size-6 text-[10px] ring-1.5',
+  sm: 'size-6 text-[10px] ring-2',
   md: 'size-7 text-xs ring-2',
   lg: 'size-8 text-sm ring-2',
 };
@@ -78,7 +78,7 @@ export function AvatarGroup({
     <div
       role="group"
       aria-label={ariaLabel}
-      className={cn('flex items-center -space-x-2 overflow-hidden py-0.5', className)}
+      className={cn('inline-flex shrink-0 items-center -space-x-2 p-0.5', className)}
       {...props}
     >
       {visibleItems.map((item, index) => {

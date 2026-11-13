@@ -1,6 +1,6 @@
 import React from 'react';
-import { UsersRound } from 'lucide-react';
-import { StatusTabs, type StatusTabItem } from '@/components/ui/status-tabs';
+import { Ban, Clock3, UsersRound } from 'lucide-react';
+import { StatisticsBar, type StatisticItem } from '@/components/ui/statistics-bar';
 
 export interface UserStatusTabsProps {
   activeKey: string; // '' | 'PendingActivation' | 'Disabled' | 'none'
@@ -19,35 +19,41 @@ export const UserStatusTabs: React.FC<UserStatusTabsProps> = ({
   stats,
   loading = false,
 }) => {
-  const tabs: StatusTabItem<'' | 'PendingActivation' | 'Disabled'>[] = [
+  const formatCount = (value?: number) =>
+    value !== undefined ? value.toLocaleString('vi-VN') : '—';
+
+  const items: StatisticItem[] = [
     {
-      key: '',
+      key: 'total',
       label: 'Tổng tài khoản',
-      count: stats?.total,
-      icon: <UsersRound className="size-3.5 text-slate-500" />,
+      value: formatCount(stats?.total),
+      icon: <UsersRound />,
       tone: 'primary',
+      active: activeKey === '',
+      actionLabel: 'Lọc tổng tài khoản',
+      onClick: () => onSelect(''),
     },
     {
-      key: 'PendingActivation',
+      key: 'pending',
       label: 'Chờ kích hoạt',
-      count: stats?.pendingActivation,
+      value: formatCount(stats?.pendingActivation),
+      icon: <Clock3 />,
       tone: 'warning',
+      active: activeKey === 'PendingActivation',
+      actionLabel: 'Lọc tài khoản chờ kích hoạt',
+      onClick: () => onSelect('PendingActivation'),
     },
     {
-      key: 'Disabled',
+      key: 'disabled',
       label: 'Vô hiệu hóa',
-      count: stats?.disabled,
+      value: formatCount(stats?.disabled),
+      icon: <Ban />,
       tone: 'danger',
+      active: activeKey === 'Disabled',
+      actionLabel: 'Lọc tài khoản vô hiệu hóa',
+      onClick: () => onSelect('Disabled'),
     },
   ];
 
-  return (
-    <StatusTabs
-      tabs={tabs}
-      activeKey={activeKey as '' | 'PendingActivation' | 'Disabled' | 'none'}
-      onSelect={onSelect}
-      ariaLabel="Lọc nhanh trạng thái tài khoản"
-      loading={loading}
-    />
-  );
+  return <StatisticsBar items={items} loading={loading} className="w-full lg:w-auto" />;
 };
