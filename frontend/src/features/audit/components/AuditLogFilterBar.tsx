@@ -135,7 +135,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
                 </button>
               ) : null
             }
-            className="h-10 text-sm bg-white border-slate-200/90 focus:bg-white"
+            className="h-10 rounded-xl border-slate-200/90 bg-white text-sm"
           />
         </div>
 
@@ -148,7 +148,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             placeholder="Tất cả thao tác"
             searchable
             searchPlaceholder="Tìm thao tác..."
-            triggerClassName="h-10 text-sm bg-white border-slate-200/90"
+            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-sm"
           />
         </div>
 
@@ -159,7 +159,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             value={filter.outcome}
             onChange={(val) => onFilterChange({ ...filter, outcome: String(val || '') })}
             placeholder="Tất cả kết quả"
-            triggerClassName="h-10 text-sm bg-white border-slate-200/90"
+            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-sm"
           />
         </div>
 
@@ -169,7 +169,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             type="submit"
             disabled={isLoading}
             leftIcon={<Filter className="size-3.5" />}
-            className="h-10 px-4 font-medium shadow-2xs"
+            className="h-10 rounded-xl px-4 font-medium shadow-2xs"
           >
             Áp dụng
           </Button>
@@ -181,7 +181,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               disabled={isLoading}
               onClick={onReset}
               leftIcon={<RotateCcw className="size-3.5" />}
-              className="h-10 px-3.5 text-slate-600 hover:text-slate-900"
+              className="h-10 rounded-xl px-3.5 text-slate-600 hover:text-slate-900"
               title="Đặt lại bộ lọc về mặc định"
             >
               Đặt lại
@@ -191,9 +191,27 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <Input aria-label="Request ID chính xác" placeholder="Request ID chính xác" value={filter.requestId || ''} onChange={(event) => onFilterChange({ ...filter, requestId: event.target.value })} />
-        <Input aria-label="Mã đối tượng chính xác" placeholder="Mã đối tượng chính xác" value={filter.targetId || ''} onChange={(event) => onFilterChange({ ...filter, targetId: event.target.value })} />
-        <Input aria-label="Session ID chính xác" placeholder="Session ID chính xác" value={filter.actorSessionId || ''} onChange={(event) => onFilterChange({ ...filter, actorSessionId: event.target.value })} />
+        <Input
+          aria-label="Request ID chính xác"
+          placeholder="Request ID chính xác"
+          value={filter.requestId || ''}
+          onChange={(event) => onFilterChange({ ...filter, requestId: event.target.value })}
+          className="h-9 rounded-xl border-slate-200/90 bg-white text-xs"
+        />
+        <Input
+          aria-label="Mã đối tượng chính xác"
+          placeholder="Mã đối tượng chính xác"
+          value={filter.targetId || ''}
+          onChange={(event) => onFilterChange({ ...filter, targetId: event.target.value })}
+          className="h-9 rounded-xl border-slate-200/90 bg-white text-xs"
+        />
+        <Input
+          aria-label="Session ID chính xác"
+          placeholder="Session ID chính xác"
+          value={filter.actorSessionId || ''}
+          onChange={(event) => onFilterChange({ ...filter, actorSessionId: event.target.value })}
+          className="h-9 rounded-xl border-slate-200/90 bg-white text-xs"
+        />
       </div>
 
       {/* Hàng 2: Mốc thời gian nhanh (Time Presets) & Bộ chọn ngày */}

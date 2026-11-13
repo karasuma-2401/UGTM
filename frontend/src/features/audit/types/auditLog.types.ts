@@ -18,6 +18,8 @@ export interface AuditLogItem {
   timestamp: string; // ISO 8601 UTC
 }
 
+export type AuditLogSortField = 'timestamp' | 'actor' | 'action' | 'outcome';
+
 export interface AuditLogQueryParams {
   actorUserId?: string;
   actorSessionId?: string;
@@ -31,6 +33,8 @@ export interface AuditLogQueryParams {
   toUtc?: string;
   pageNumber?: number;
   pageSize?: number;
+  sortBy?: AuditLogSortField;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export type AuditTimePreset = 'all' | 'today' | '7d' | '30d' | 'custom';

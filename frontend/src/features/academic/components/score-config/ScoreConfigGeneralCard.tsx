@@ -59,9 +59,9 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
   return (
     <section
       aria-label="Thiết lập chung"
-      className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 sm:p-6 space-y-4"
+      className="bg-white border border-slate-200/80 rounded-2xl shadow-xs p-5 sm:p-6 space-y-4"
     >
-      <h2 className="text-base font-semibold text-slate-900">Thiết lập chung</h2>
+      <h2 className="text-base font-semibold tracking-tight text-slate-900">Thiết lập chung</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 min-[1400px]:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4">
         <div className="min-w-0 space-y-1.5 sm:col-span-2 min-[1400px]:col-span-1">
           <p className="text-sm font-medium text-slate-700">Đợt khóa luận</p>
@@ -77,7 +77,7 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
                   ? 'Chưa có đợt khóa luận'
                   : 'Chọn đợt khóa luận...'
             }
-            triggerClassName="h-10 w-full text-sm font-medium bg-slate-50/60"
+            triggerClassName="h-10 w-full rounded-xl border-slate-200/90 text-sm font-medium bg-slate-50/60"
             contentClassName="min-w-full"
             disabled={isLoadingBatches || batches.length === 0}
           />
@@ -90,7 +90,7 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
             value={calculationMethod}
             onChange={(val) => onCalculationMethodChange(val as ScoreCalculationMethod)}
             disabled={isReadOnly}
-            triggerClassName="h-10 text-sm bg-white"
+            triggerClassName="h-10 rounded-xl border-slate-200/90 text-sm bg-white"
           />
         </div>
 
@@ -109,7 +109,7 @@ export const ScoreConfigGeneralCard: React.FC<ScoreConfigGeneralCardProps> = ({
             onChange={handleMinScoreChange}
             placeholder="Ví dụ: 5.0"
             disabled={isReadOnly}
-            className="h-10 text-sm bg-white"
+            className="h-10 rounded-xl border-slate-200/90 text-sm bg-white"
           />
           <p id="reviewer-score-help" className="text-xs text-slate-500 leading-relaxed">
             Thang điểm 0–10. Để trống nếu không áp dụng điểm sàn.

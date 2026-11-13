@@ -21,7 +21,7 @@ export function UserAccountHeader({ user }: { user: UserSummary }) {
       <Avatar
         name={user.fullName}
         muted={user.status === 'Disabled'}
-        className="size-12 rounded-xl text-base"
+        className="size-12 text-base"
       />
       <div className="min-w-0 flex-1">
         <h2 className="break-words text-base font-semibold text-slate-900">{user.fullName}</h2>
@@ -57,10 +57,13 @@ export function UserAccountDetails({
   accountGroup: AccountGroup;
 }) {
   return (
-    <div className="space-y-7 p-5 sm:p-6">
-      <section aria-label="Thông tin cá nhân">
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Thông tin cá nhân</h3>
-        <dl className="divide-y divide-slate-100 text-sm">
+    <div className="space-y-4 p-5 sm:p-6">
+      <section
+        aria-label="Thông tin cá nhân"
+        className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-4"
+      >
+        <h3 className="text-sm font-semibold text-slate-900">Thông tin cá nhân</h3>
+        <dl className="divide-y divide-slate-200/70 text-sm">
           {[
             ['Họ và tên', user.fullName],
             ['Email', user.email],
@@ -70,18 +73,19 @@ export function UserAccountDetails({
             ],
             ['Số điện thoại', user.phoneNumber || 'Chưa cập nhật'],
           ].map(([label, value]) => (
-            <div key={label} className="grid grid-cols-[7rem_minmax(0,1fr)] gap-4 py-3">
+            <div key={label} className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-3 py-2.5 first:pt-1 last:pb-0">
               <dt className="text-slate-500">{label}</dt>
-              <dd className="break-words font-medium text-slate-800 [overflow-wrap:anywhere]">
+              <dd className="break-words font-medium text-slate-900 [overflow-wrap:anywhere]">
                 {value}
               </dd>
             </div>
           ))}
         </dl>
       </section>
+
       <section
         aria-label="Vai trò hệ thống"
-        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-4"
       >
         <h3 className="text-sm font-semibold text-slate-900">Vai trò hệ thống</h3>
         <div className="ml-auto flex flex-wrap justify-end gap-2">
@@ -92,18 +96,22 @@ export function UserAccountDetails({
           ))}
         </div>
       </section>
-      <section aria-label="Hoạt động tài khoản">
-        <h3 className="mb-3 text-sm font-semibold text-slate-900">Hoạt động tài khoản</h3>
-        <dl className="space-y-3 text-sm">
-          <div className="flex flex-wrap justify-between gap-2">
+
+      <section
+        aria-label="Hoạt động tài khoản"
+        className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-4"
+      >
+        <h3 className="text-sm font-semibold text-slate-900">Hoạt động tài khoản</h3>
+        <dl className="divide-y divide-slate-200/70 text-sm">
+          <div className="flex flex-wrap justify-between gap-2 py-2 first:pt-1">
             <dt className="text-slate-500">Ngày tạo</dt>
-            <dd className="font-medium text-slate-800">
+            <dd className="font-medium tabular-nums text-slate-800">
               {dateLabel(user.createdAt, 'Chưa có thông tin')}
             </dd>
           </div>
-          <div className="flex flex-wrap justify-between gap-2">
+          <div className="flex flex-wrap justify-between gap-2 py-2 last:pb-0">
             <dt className="text-slate-500">Truy cập gần nhất</dt>
-            <dd className="font-medium text-slate-800">
+            <dd className="font-medium tabular-nums text-slate-800">
               {dateLabel(user.lastLoginAt, 'Chưa đăng nhập')}
             </dd>
           </div>

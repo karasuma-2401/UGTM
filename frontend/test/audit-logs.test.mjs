@@ -47,3 +47,9 @@ test('role changes show only recorded grants and removals', () => {
   assert.equal(diff.beforeValue, 'Student');
   assert.equal(diff.afterValue, 'Admin');
 });
+
+test('auditLogApi forwards sortBy and sortOrder on list queries', async () => {
+  await api.auditLogApi.getAuditLogs({ sortBy: 'actor', sortOrder: 'asc', pageNumber: 1, pageSize: 10 });
+  assert.equal(request.params.sortBy, 'actor');
+  assert.equal(request.params.sortOrder, 'asc');
+});

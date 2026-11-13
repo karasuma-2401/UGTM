@@ -75,11 +75,12 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
 
   return (
     <Dialog
+      headerClassName="border-b border-slate-200/80 bg-white px-5 py-4 sm:px-6"
       title={
         <span className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100"
           >
             <FileSpreadsheet className="size-5" />
           </span>
@@ -110,7 +111,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
                 Chuẩn bị danh sách
               </h3>
             </div>
-            <div className="flex flex-col gap-3 rounded-xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm leading-6 text-slate-600">
                 Dùng file mẫu để điền đúng cấu trúc.
                 <br />
@@ -272,13 +273,13 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
             </p>
           </div>
         </div>
-        <div className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur-md sm:px-6">
+        <div className="sticky bottom-0 z-10 flex justify-end gap-2.5 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
           <Button
             type="button"
             variant="outline"
             disabled={mutation.isPending}
             onClick={onClose}
-            className="flex-1 sm:flex-none"
+            className="h-9 flex-1 rounded-xl px-4 text-xs font-semibold sm:flex-none"
           >
             Đóng
           </Button>
@@ -289,7 +290,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
             disabled={!file}
             isLoading={mutation.isPending}
             loadingText="Đang nhập danh sách…"
-            className="flex-1 sm:flex-none"
+            className="h-9 flex-1 rounded-xl px-4 text-xs font-semibold sm:flex-none"
           >
             Nhập sinh viên
           </Button>

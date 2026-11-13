@@ -53,6 +53,18 @@ public sealed class GetAuditLogsHandler(IAuditLogQueryReader queryReader)
             }
         }
 
+        var sortBy = Normalize(query.SortBy)?.ToLowerInvariant() ?? "timestamp";
+        if (sortBy is not ("timestamp" or "actor" or "action" or "outcome"))
+        {
+            return Result.Failure<GetAuditLogsQuery>(IdentityErrors.InvalidSort);
+        }
+
+        var sortOrder = Normalize(query.SortOrder)?.ToLowerInvariant() ?? "desc";
+        if (sortOrder is not ("asc" or "desc"))
+        {
+            return Result.Failure<GetAuditLogsQuery>(IdentityErrors.InvalidSort);
+        }
+
         var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
         var pageSize = query.PageSize switch
         {
@@ -70,7 +82,9 @@ public sealed class GetAuditLogsHandler(IAuditLogQueryReader queryReader)
             TargetId = Normalize(query.TargetId),
             Outcome = outcome,
             PageNumber = pageNumber,
-            PageSize = pageSize
+            PageSize = pageSize,
+            SortBy = sortBy,
+            SortOrder = sortOrder
         };
 
         return Result.Success(sanitizedQuery);

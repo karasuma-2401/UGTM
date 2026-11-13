@@ -204,7 +204,7 @@ export function UserForm({
                   return (
                     <Checkbox
                       key={role.id}
-                      className={`w-full rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${checked ? 'border-primary/40 bg-primary/5' : 'border-border bg-background'}`}
+                      className={`w-full rounded-xl border p-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${checked ? 'border-primary/40 bg-primary/5' : 'border-slate-200 bg-white'}`}
                       label={role.title}
                       checked={checked}
                       disabled={isSaving}
@@ -232,13 +232,13 @@ export function UserForm({
           </p>
         )}
       </div>
-      <div className="sticky bottom-0 flex flex-col-reverse justify-end gap-2.5 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur-md sm:flex-row sm:px-6">
+      <div className="sticky bottom-0 z-10 flex flex-col-reverse justify-end gap-2.5 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:flex-row sm:px-6">
         <Button
           type="button"
           variant="outline"
           disabled={isSaving}
           onClick={onCancel}
-          className="h-10 px-5"
+          className="h-9 rounded-xl px-4 text-xs font-semibold"
         >
           {user ? 'Hủy chỉnh sửa' : 'Đóng'}
         </Button>
@@ -249,7 +249,7 @@ export function UserForm({
           isLoading={isSaving}
           loadingText="Đang lưu..."
           leftIcon={user ? <Save /> : <UserPlus />}
-          className="h-10 px-5"
+          className="h-9 rounded-xl px-4 text-xs font-semibold"
         >
           {user ? 'Lưu thay đổi' : 'Tạo và gửi kích hoạt'}
         </Button>

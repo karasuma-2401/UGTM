@@ -130,7 +130,9 @@ export function useScoreConfig() {
 
   const handleSelectHistoryVersion = (selected: ScoreConfigurationDto) => {
     form.populateFromConfig(selected);
-    modals.setNotice(`Đang xem thông số phiên bản ${selected.versionNo} (${selected.status}).`);
+    modals.setNotice(
+      `Đã nạp thông số từ phiên bản v${selected.versionNo} (${selected.status}) vào biểu mẫu.`,
+    );
   };
 
   return {

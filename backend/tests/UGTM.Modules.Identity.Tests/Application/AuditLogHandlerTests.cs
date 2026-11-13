@@ -115,6 +115,47 @@ public sealed class AuditLogHandlerTests
         Assert.Throws<ArgumentException>(() => AuditIntegrationEventValidation.NormalizeOutcome("Unknown"));
     }
 
+    [Theory]
+    [InlineData(null, null, "timestamp", "desc")]
+    [InlineData(" Actor ", " ASC ", "actor", "asc")]
+    [InlineData("Action", "Desc", "action", "desc")]
+    [InlineData("OUTCOME", "asc", "outcome", "asc")]
+    public async Task HandleAsync_normalizes_sort_parameters(
+        string? sortBy,
+        string? sortOrder,
+        string expectedSortBy,
+        string expectedSortOrder)
+    {
+        var reader = new CapturingReader();
+        var handler = new GetAuditLogsHandler(reader);
+
+        var result = await handler.HandleAsync(
+            new GetAuditLogsQuery(SortBy: sortBy, SortOrder: sortOrder),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(reader.Query);
+        Assert.Equal(expectedSortBy, reader.Query!.SortBy);
+        Assert.Equal(expectedSortOrder, reader.Query!.SortOrder);
+    }
+
+    [Theory]
+    [InlineData("targetType", "asc")]
+    [InlineData("timestamp", "sideways")]
+    public async Task HandleAsync_rejects_invalid_sort_parameters(string? sortBy, string? sortOrder)
+    {
+        var reader = new CapturingReader();
+        var handler = new GetAuditLogsHandler(reader);
+
+        var result = await handler.HandleAsync(
+            new GetAuditLogsQuery(SortBy: sortBy, SortOrder: sortOrder),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidSort", result.Error.Code);
+        Assert.Null(reader.Query);
+    }
+
     private sealed class CapturingReader : IAuditLogQueryReader
     {
         public GetAuditLogsQuery? Query { get; private set; }

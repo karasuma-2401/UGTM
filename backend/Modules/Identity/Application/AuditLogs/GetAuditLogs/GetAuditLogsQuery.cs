@@ -12,4 +12,6 @@ public sealed record GetAuditLogsQuery(
     string? SearchTerm = null,
     string? RequestId = null,
     string? TargetId = null,
-    Guid? ActorSessionId = null);
+    Guid? ActorSessionId = null,
+    string? SortBy = null,
+    string? SortOrder = null);

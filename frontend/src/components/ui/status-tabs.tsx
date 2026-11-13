@@ -8,7 +8,7 @@ export interface StatusTabItem<T extends string = string> {
   count?: number | string;
   dotColor?: string;
   icon?: ReactNode;
-  tone?: 'primary' | 'warning' | 'muted' | 'danger';
+  tone?: 'primary' | 'success' | 'warning' | 'muted' | 'danger';
   activeBadgeClass?: string;
   inactiveBadgeClass?: string;
 }
@@ -27,6 +27,11 @@ const defaultToneClasses = {
     activeBadge: 'bg-blue-100 text-primary',
     inactiveBadge: 'bg-slate-200/80 text-slate-700',
     dot: 'bg-blue-600',
+  },
+  success: {
+    activeBadge: 'bg-emerald-100 text-emerald-800',
+    inactiveBadge: 'bg-emerald-50 text-emerald-700 border border-emerald-200/60',
+    dot: 'bg-emerald-500',
   },
   warning: {
     activeBadge: 'bg-amber-100 text-amber-800',

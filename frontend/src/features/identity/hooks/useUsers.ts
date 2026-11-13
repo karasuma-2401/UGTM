@@ -26,6 +26,7 @@ export function useUsers(accountGroup: AccountGroup) {
     filters.filters,
     filters.pageNumber,
     filters.pageSize,
+    filters.sort,
   );
   const actions = useUserActions({
     canManage,

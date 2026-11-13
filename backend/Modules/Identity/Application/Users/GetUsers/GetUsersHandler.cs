@@ -46,6 +46,18 @@ public sealed class GetUsersHandler(IUserQueryReader queryReader)
             }
         }
 
+        var sortBy = NormalizeSortBy(query.SortBy);
+        if (sortBy is null)
+        {
+            return Result.Failure<PagedResult<UserSummaryDto>>(IdentityErrors.InvalidSort);
+        }
+
+        var sortOrder = NormalizeSortOrder(query.SortOrder);
+        if (sortOrder is null)
+        {
+            return Result.Failure<PagedResult<UserSummaryDto>>(IdentityErrors.InvalidSort);
+        }
+
         var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
         var pageSize = query.PageSize switch
         {
@@ -54,8 +66,48 @@ public sealed class GetUsersHandler(IUserQueryReader queryReader)
             _ => query.PageSize
         };
 
-        var sanitizedQuery = query with { PageNumber = pageNumber, PageSize = pageSize, AccountGroup = accountGroup };
+        var sanitizedQuery = query with
+        {
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            AccountGroup = accountGroup,
+            SortBy = sortBy,
+            SortOrder = sortOrder
+        };
         var result = await queryReader.GetUsersAsync(sanitizedQuery, cancellationToken);
         return Result.Success(result);
+    }
+
+    private static string? NormalizeSortBy(string? sortBy)
+    {
+        if (string.IsNullOrWhiteSpace(sortBy))
+        {
+            return "createdat";
+        }
+
+        return sortBy.Trim().ToLowerInvariant() switch
+        {
+            "fullname" => "fullname",
+            "usercode" => "usercode",
+            "lastloginat" => "lastloginat",
+            "status" => "status",
+            "createdat" => "createdat",
+            _ => null
+        };
+    }
+
+    private static string? NormalizeSortOrder(string? sortOrder)
+    {
+        if (string.IsNullOrWhiteSpace(sortOrder))
+        {
+            return "desc";
+        }
+
+        return sortOrder.Trim().ToLowerInvariant() switch
+        {
+            "asc" => "asc",
+            "desc" => "desc",
+            _ => null
+        };
     }
 }

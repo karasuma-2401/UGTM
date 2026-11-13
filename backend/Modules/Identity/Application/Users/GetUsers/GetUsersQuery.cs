@@ -6,7 +6,9 @@ public sealed record GetUsersQuery(
     string? Status = null,
     int PageNumber = 1,
     int PageSize = 10,
-    string? AccountGroup = null);
+    string? AccountGroup = null,
+    string? SortBy = null,
+    string? SortOrder = null);
 
 public enum UserAccountGroup
 {

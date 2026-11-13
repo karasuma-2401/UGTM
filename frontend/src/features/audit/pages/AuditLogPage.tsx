@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ScrollText, RefreshCw, Download } from 'lucide-react';
+import { ScrollText, RefreshCw, FileSpreadsheet } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { ListCardHeader } from '@/components/ui/list-card-header';
+import { TableFloatingBar } from '@/components/ui/table-floating-bar';
+import { notify } from '@/shared/notifications';
 import { AuditLogStatusTabs, type AuditOutcomeStats } from '../components/AuditLogStatusTabs';
 import { AuditLogFilterBar } from '../components/AuditLogFilterBar';
 import { AuditLogTable } from '../components/AuditLogTable';
@@ -15,6 +17,7 @@ import type {
   AuditLogItem,
   AuditLogFilterState,
   AuditLogQueryParams,
+  AuditLogSortField,
   AuditTimePreset,
 } from '../types/auditLog.types';
 
@@ -99,6 +102,10 @@ export const AuditLogPage: React.FC = () => {
   const [stats, setStats] = useState<AuditOutcomeStats>(EMPTY_STATS);
   const [actions, setActions] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [sort, setSort] = useState<{ field: AuditLogSortField; direction: 'asc' | 'desc' }>({
+    field: 'timestamp',
+    direction: 'desc',
+  });
   const [detail, setDetail] = useState<AuditLogItem | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -139,7 +146,13 @@ export const AuditLogPage: React.FC = () => {
     setListError(null);
     auditLogApi
       .getAuditLogs(
-        { ...queryFor(JSON.parse(filterKey)), pageNumber: page, pageSize: size },
+        {
+          ...queryFor(JSON.parse(filterKey)),
+          pageNumber: page,
+          pageSize: size,
+          sortBy: sort.field,
+          sortOrder: sort.direction,
+        },
         controller.signal,
       )
       .then((result) => {
@@ -159,7 +172,7 @@ export const AuditLogPage: React.FC = () => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [filterKey, page, size, refresh]);
+  }, [filterKey, page, size, refresh, sort.field, sort.direction]);
   const statsKey = JSON.stringify({ ...applied, outcome: '' });
   useEffect(() => {
     const controller = new AbortController();
@@ -232,39 +245,58 @@ export const AuditLogPage: React.FC = () => {
       if (id) next.set('event', String(id));
       else next.delete('event');
     });
+  const handleSortChange = (field: AuditLogSortField) => {
+    setSelectedId(null);
+    setSort((prev) => ({
+      field,
+      direction: prev.field === field && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+    if (page !== 1) {
+      update((next) => {
+        next.delete('page');
+        next.delete('event');
+      });
+    }
+  };
   const exportCsv = async () => {
     setExporting(true);
     setError(null);
     try {
-      await auditLogApi.exportCsv(queryFor(applied));
+      await auditLogApi.exportCsv({
+        ...queryFor(applied),
+        sortBy: sort.field,
+        sortOrder: sort.direction,
+      });
     } catch (err) {
       setError(getAuditLogErrorMessage(err));
     } finally {
       setExporting(false);
     }
   };
+  const selectedLog = !listError ? logs.find((item) => item.id === selectedId) ?? null : null;
+
   return (
     <div className="min-w-0 space-y-5">
       <PageHeader compact accent title="Nhật ký thao tác" icon={<ScrollText />}>
         <Button
           type="button"
-          variant="outline"
-          size="sm"
+          variant="success"
           disabled={exporting}
           onClick={exportCsv}
-          leftIcon={<Download className="size-3.5" />}
+          leftIcon={<FileSpreadsheet className="size-4" />}
+          className="h-10 rounded-xl px-4 shadow-2xs"
         >
           {exporting ? 'Đang xuất...' : 'Xuất CSV'}
         </Button>
         <Button
           type="button"
           variant="outline"
-          size="sm"
           disabled={loading || loadingStats}
           onClick={() => setRefresh((v) => v + 1)}
           leftIcon={
-            <RefreshCw className={loading || loadingStats ? 'animate-spin size-3.5' : 'size-3.5'} />
+            <RefreshCw className={loading || loadingStats ? 'animate-spin size-4' : 'size-4'} />
           }
+          className="h-10 rounded-xl px-4 shadow-2xs"
         >
           Làm mới
         </Button>
@@ -302,7 +334,7 @@ export const AuditLogPage: React.FC = () => {
           </button>
         </InlineAlert>
       )}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
+      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-xs">
         <ListCardHeader
           title="Sự kiện hệ thống"
           icon={<ScrollText />}
@@ -316,14 +348,15 @@ export const AuditLogPage: React.FC = () => {
           <div className="flex items-center justify-end w-full">
             <AuditLogStatusTabs
               currentOutcome={applied.outcome}
-              onSelectOutcome={(outcome) =>
+              onSelectOutcome={(outcome) => {
+                setSelectedId(null);
                 update((next) => {
                   if (outcome) next.set('outcome', outcome);
                   else next.delete('outcome');
                   next.delete('page');
                   next.delete('event');
-                })
-              }
+                });
+              }}
               stats={stats}
               loading={loadingStats}
               error={Boolean(statsError)}
@@ -336,6 +369,8 @@ export const AuditLogPage: React.FC = () => {
           onApply={apply}
           onReset={() => {
             setFilter(INITIAL_FILTER);
+            setSelectedId(null);
+            setSort({ field: 'timestamp', direction: 'desc' });
             setError(null);
             update((next) => {
               writeFilter(next, INITIAL_FILTER);
@@ -350,28 +385,69 @@ export const AuditLogPage: React.FC = () => {
           <AuditLogTable
             logs={logs}
             selectedId={selectedId}
-            onSelect={(log) => setSelectedId(log.id)}
+            onSelect={(log) => setSelectedId((prev) => (prev === log.id ? null : log.id))}
             onViewDetails={(log) => setEvent(log.id)}
             pageNumber={page}
             pageSize={size}
             totalCount={totalCount}
-            onPageChange={(n) =>
+            sort={sort}
+            onSortChange={handleSortChange}
+            onPageChange={(n) => {
+              setSelectedId(null);
               update((next) => {
                 next.set('page', String(n));
                 next.delete('event');
-              })
-            }
-            onPageSizeChange={(n) =>
+              });
+            }}
+            onPageSizeChange={(n) => {
+              setSelectedId(null);
               update((next) => {
                 next.set('pageSize', String(n));
                 next.delete('page');
                 next.delete('event');
-              })
-            }
+              });
+            }}
             isLoading={loading}
           />
         )}
       </Card>
+
+      {selectedLog && (
+        <TableFloatingBar
+          aria-label="Thao tác với sự kiện đã chọn"
+          selectedCount={1}
+          totalCount={totalCount}
+          onClearSelection={() => setSelectedId(null)}
+        >
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className="h-8 rounded-xl text-xs font-semibold shadow-xs"
+            onClick={() => setEvent(selectedLog.id)}
+          >
+            Xem
+          </Button>
+          {selectedLog.requestId && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-xl text-xs font-semibold"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(selectedLog.requestId);
+                  notify.success('Đã sao chép Request ID.');
+                } catch {
+                  notify.error('Không thể sao chép Request ID. Vui lòng thử lại.');
+                }
+              }}
+            >
+              Sao chép Request ID
+            </Button>
+          )}
+        </TableFloatingBar>
+      )}
       <AuditLogDetailDrawer
         log={detail}
         open={Boolean(detail && eventId)}

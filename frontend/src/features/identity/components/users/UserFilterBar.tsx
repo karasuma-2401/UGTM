@@ -33,13 +33,13 @@ export function UserFilterBar({
     <div className="space-y-4">
       <form
         onSubmit={onApply}
-        className={`grid items-end gap-3 bg-white md:grid-cols-2 ${isStudent ? 'xl:grid-cols-[2fr_1fr_auto]' : 'xl:grid-cols-[2fr_1fr_1fr_auto]'}`}
+        className={`grid items-end gap-3 md:grid-cols-2 ${isStudent ? 'xl:grid-cols-[2fr_1fr_auto]' : 'xl:grid-cols-[2fr_1fr_1fr_auto]'}`}
       >
-        <label className="block space-y-2 text-sm text-slate-700">
+        <label className="block space-y-1.5 text-sm font-medium text-slate-700">
           <span>Tìm tài khoản</span>
           <Input
             leftIcon={<Search className="size-4" />}
-            className="h-10 rounded-lg bg-slate-50/70 shadow-none focus-visible:bg-white"
+            className="h-10 rounded-xl border-slate-200/90 bg-white shadow-none"
             placeholder={isStudent ? 'MSSV, họ tên hoặc email' : 'Mã cán bộ, họ tên hoặc email'}
             value={draftFilters.keyword}
             onChange={(event) =>
@@ -52,10 +52,10 @@ export function UserFilterBar({
         </label>
 
         {!isStudent && (
-          <div className="space-y-2 text-sm text-slate-700">
+          <div className="space-y-1.5 text-sm font-medium text-slate-700">
             <span>Vai trò</span>
             <Select<SystemRole | ''>
-              triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
+              triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white shadow-none"
               aria-label="Lọc theo vai trò"
               placeholder="Tất cả vai trò"
               value={draftFilters.role}
@@ -71,10 +71,10 @@ export function UserFilterBar({
           </div>
         )}
 
-        <div className="space-y-2 text-sm text-slate-700">
+        <div className="space-y-1.5 text-sm font-medium text-slate-700">
           <span>Trạng thái</span>
           <Select<AccountStatus | ''>
-            triggerClassName="h-10 rounded-lg bg-slate-50/70 shadow-none"
+            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white shadow-none"
             aria-label="Lọc theo trạng thái"
             placeholder="Tất cả trạng thái"
             value={draftFilters.status}
@@ -96,7 +96,7 @@ export function UserFilterBar({
             type="submit"
             variant="soft"
             leftIcon={<SlidersHorizontal />}
-            className="h-10 rounded-lg px-5"
+            className="h-10 rounded-xl px-5"
           >
             Áp dụng
           </Button>
@@ -104,7 +104,7 @@ export function UserFilterBar({
             type="button"
             variant="outline"
             leftIcon={<X />}
-            className="h-10 rounded-lg px-4"
+            className="h-10 rounded-xl px-4"
             disabled={!hasFilters}
             onClick={onClear}
           >

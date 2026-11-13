@@ -61,7 +61,7 @@ export function UserFormDialog({
     <>
       <Dialog
         variant={user ? 'drawer' : 'modal'}
-        headerClassName={user ? 'bg-gradient-to-r from-blue-50 via-white to-orange-50' : undefined}
+        headerClassName="border-b border-slate-200/80 bg-white px-5 py-4 sm:px-6"
         title={
           user ? (
             <UserAccountHeader user={user} />
@@ -69,7 +69,7 @@ export function UserFormDialog({
             <span className="flex items-center gap-3">
               <span
                 aria-hidden="true"
-                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary"
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary ring-1 ring-inset ring-blue-100"
               >
                 <UserPlus className="size-5" />
               </span>
@@ -89,11 +89,19 @@ export function UserFormDialog({
           {user && !editing ? (
             <>
               <UserAccountDetails user={user} accountGroup={accountGroup} />
-              <div className="sticky bottom-0 mt-auto flex justify-end gap-3 border-t border-slate-100 bg-white/95 px-5 py-4 backdrop-blur-md sm:px-6">
-                <Button variant="outline" onClick={() => requestClose('close')}>
+              <div className="sticky bottom-0 z-10 mt-auto flex justify-end gap-2.5 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+                <Button
+                  variant="outline"
+                  onClick={() => requestClose('close')}
+                  className="h-9 rounded-xl px-4 text-xs font-semibold"
+                >
                   Đóng
                 </Button>
-                <Button leftIcon={<Pencil />} onClick={() => setEditing(true)}>
+                <Button
+                  leftIcon={<Pencil />}
+                  onClick={() => setEditing(true)}
+                  className="h-9 rounded-xl px-4 text-xs font-semibold"
+                >
                   Chỉnh sửa
                 </Button>
               </div>

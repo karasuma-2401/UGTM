@@ -1,15 +1,13 @@
 import { useId, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { InfoCell } from '@/components/ui/info-cell';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
-import { SelectableTableRow } from '@/components/ui/selectable-table-row';
-import { SelectionIndicator } from '@/components/ui/selection-indicator';
 
 import { SYSTEM_ROLES } from '../../constants/systemRoles';
 import {
-  Eye,
   MoreHorizontal,
   Mail,
   ShieldOff,
@@ -28,6 +26,7 @@ import {
   type AccountStatus,
   type AccountGroup,
   type SystemRole,
+  type UsersSortField,
   type UserSummary,
 } from '../../types/user.types';
 
@@ -53,6 +52,8 @@ interface UsersTableProps {
   onResendActivation: (user: UserSummary) => void;
   selectedRowId?: string | null;
   onSelectRow?: (id: string) => void;
+  sort?: { field: UsersSortField; direction: 'asc' | 'desc' };
+  onSortChange?: (field: UsersSortField) => void;
 }
 
 const statusTones: Record<AccountStatus, StatusTone> = {
@@ -88,15 +89,14 @@ function UserRowActions({
     <div className="flex items-center justify-end gap-1">
       <Button
         type="button"
-        variant="ghost"
+        variant="outline"
         size="sm"
         disabled={disabled}
         onClick={() => onEdit(user)}
-        leftIcon={<Eye />}
         aria-label={`Xem chi tiết tài khoản ${user.fullName}`}
-        className="h-8 px-2 text-primary"
+        className="h-8 rounded-md border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
       >
-        Chi tiết
+        Xem
       </Button>
       <button
         ref={trigger}
@@ -113,13 +113,14 @@ function UserRowActions({
         id={id}
         popover="auto"
         aria-label={`Thao tác với ${user.fullName}`}
-        className="fixed inset-auto m-0 w-56 rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-lg"
+        className="fixed inset-auto m-0 w-max max-w-[calc(100vw-16px)] rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-lg"
         onToggle={(event) => {
           if (event.newState !== 'open') return;
           const rect = trigger.current?.getBoundingClientRect();
           const el = popup.current;
           if (!rect || !el) return;
-          el.style.left = Math.max(8, Math.min(rect.right - 224, window.innerWidth - 232)) + 'px';
+          const width = el.offsetWidth;
+          el.style.left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8)) + 'px';
           el.style.top =
             Math.max(
               8,
@@ -135,7 +136,7 @@ function UserRowActions({
             type="button"
             disabled={disabled}
             onClick={() => closeAndRun(onResendActivation)}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-primary"
+            className="flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-primary"
           >
             <Mail className="size-4" />
             Gửi email kích hoạt
@@ -150,14 +151,14 @@ function UserRowActions({
                 : undefined
             }
             onClick={() => closeAndRun(onChangeStatus)}
-            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm hover:bg-slate-50 focus-visible:outline-primary disabled:opacity-40 ${user.status === 'Active' ? 'text-rose-600' : 'text-emerald-700'}`}
+            className={`flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm hover:bg-slate-50 focus-visible:outline-primary disabled:opacity-40 ${user.status === 'Active' ? 'text-rose-600' : 'text-emerald-700'}`}
           >
             {user.status === 'Active' ? (
               <ShieldOff className="size-4" />
             ) : (
               <RotateCcw className="size-4" />
             )}
-            {user.status === 'Active' ? 'Vô hiệu hóa tài khoản' : 'Khôi phục tài khoản'}
+            {user.status === 'Active' ? 'Vô hiệu hóa' : 'Khôi phục tài khoản'}
           </button>
         )}
       </div>
@@ -187,175 +188,200 @@ export function UsersTable({
   onResendActivation,
   selectedRowId,
   onSelectRow,
+  sort,
+  onSortChange,
 }: UsersTableProps) {
-  return (
-    <div className="relative isolate">
-      <SelectionIndicator
-        activeKey={selectedRowId}
-        selector='tr[aria-selected="true"]'
-        variant="rail"
-        className="z-20 rounded-r bg-primary"
+  const renderRoleOrCode = (user: UserSummary) =>
+    accountGroup === 'Student' ? (
+      <span className="font-mono text-xs font-medium tabular-nums text-slate-700">
+        {user.userCode || 'Chưa cập nhật'}
+      </span>
+    ) : (
+      <InfoCell
+        className="gap-2.5"
+        titleClassName="block truncate text-xs font-semibold leading-5 text-slate-700"
+        descriptionClassName="mt-0.5 truncate text-xs font-normal leading-4 text-slate-500"
+        leading={(() => {
+          const { icon: Icon, tone } =
+            roleAppearance[user.roles[0]] ?? roleAppearance.CouncilMember;
+          return (
+            <span
+              aria-hidden="true"
+              className={`flex size-8 items-center justify-center rounded-lg ring-1 ring-inset ${tone}`}
+            >
+              <Icon className="size-4" />
+            </span>
+          );
+        })()}
+        title={
+          <span
+            title={user.roles
+              .map(
+                (name) =>
+                  SYSTEM_ROLES.find((role) => role.roleName === name)?.title ?? name,
+              )
+              .join(', ')}
+          >
+            {SYSTEM_ROLES.find((role) => role.roleName === user.roles[0])?.title ??
+              user.roles[0] ??
+              'Chưa phân vai trò'}
+            {user.roles.length > 1 && ` +${user.roles.length - 1}`}
+          </span>
+        }
+        description={
+          <span title={user.userCode || undefined}>
+            {user.userCode || 'Chưa cập nhật'}
+          </span>
+        }
       />
-      <table className="block w-full text-left text-sm md:table md:min-w-[900px] md:table-fixed">
-        <colgroup className="hidden md:table-column-group">
-          <col className="w-14" />
-          <col />
-          <col className="w-52" />
-          <col className="w-36" />
-          <col className="w-36" />
-          <col className="w-[176px]" />
-        </colgroup>
-        <thead className="hidden md:table-header-group h-11 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
-          <tr>
-            <th scope="col" className="w-14 px-3 py-4 text-center font-bold">
-              STT
-            </th>
-            {[
-              accountGroup === 'Student' ? 'Sinh viên' : 'Giảng viên / Cán bộ',
-              accountGroup === 'Student' ? 'MSSV' : 'Vai trò / Mã cán bộ',
-              'Lần truy cập',
-              'Trạng thái',
-              'Thao tác',
-            ].map((heading) => (
-              <th
-                key={heading}
-                scope="col"
-                className={`whitespace-nowrap px-4 py-4 font-bold ${heading === 'Thao tác' ? 'text-center' : ''}`}
-              >
-                {heading}
-              </th>
-            ))}
-          </tr>
-        </thead>
+    );
 
-        <tbody className="block divide-y divide-slate-100 md:table-row-group">
-          {users.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                Không tìm thấy tài khoản phù hợp.
-              </td>
-            </tr>
-          ) : (
-            users.map((user, index) => (
-              <SelectableTableRow
-                data-selection-item
-                hideSelectionMarker
-                key={user.id}
-                className="grid grid-cols-[1fr_auto] items-center gap-x-3 px-4 py-3 md:table-row md:h-[72px] md:p-0"
-                selected={selectedRowId === user.id}
-                onSelect={onSelectRow ? () => onSelectRow(user.id) : undefined}
-                onDoubleClick={(event) => {
-                  if (
-                    !canManage ||
-                    isChangingStatus ||
-                    (event.target as Element).closest(
-                      'button, a, input, select, textarea, [role="button"]',
-                    )
-                  )
-                    return;
-                  onEdit(user);
-                }}
-                title={canManage ? 'Nhấp đúp để xem chi tiết tài khoản' : undefined}
+  const columns: DataTableColumn<UserSummary, UsersSortField>[] = [
+    {
+      id: 'index',
+      header: 'STT',
+      widthClassName: 'w-14',
+      align: 'center',
+      headerClassName: 'whitespace-nowrap px-3 py-3.5',
+      cellClassName: 'px-3 py-3 text-xs tabular-nums text-slate-400',
+      cell: (_user, index) => (pageNumber - 1) * pageSize + index + 1,
+    },
+    {
+      id: 'account',
+      header: accountGroup === 'Student' ? 'Sinh viên' : 'Giảng viên / Cán bộ',
+      sortKey: 'fullname',
+      headerClassName: 'px-4 py-3.5',
+      cellClassName: 'px-4 py-3',
+      cell: (user) => (
+        <InfoCell
+          leading={<Avatar name={user.fullName} muted={user.status === 'Disabled'} />}
+          title={
+            <span className="min-w-0 truncate" title={user.fullName}>
+              {user.fullName}
+            </span>
+          }
+          titleClassName="flex-nowrap"
+          description={<span title={user.email}>{user.email}</span>}
+          descriptionClassName="truncate"
+          trailing={
+            user.id === currentUserId ? (
+              <Badge variant="info" className="px-1.5 py-0 text-xs">
+                Bạn
+              </Badge>
+            ) : undefined
+          }
+        />
+      ),
+    },
+    {
+      id: 'codeOrRole',
+      header: accountGroup === 'Student' ? 'MSSV' : 'Vai trò / Mã cán bộ',
+      sortKey: 'usercode',
+      widthClassName: 'w-52',
+      headerClassName: 'whitespace-nowrap px-4 py-3.5',
+      cellClassName: 'px-4 py-3',
+      cell: renderRoleOrCode,
+    },
+    {
+      id: 'lastLogin',
+      header: 'Lần truy cập',
+      sortKey: 'lastloginat',
+      widthClassName: 'w-36',
+      headerClassName: 'whitespace-nowrap px-4 py-3.5',
+      cellClassName: 'px-4 py-3 whitespace-nowrap text-xs text-slate-500',
+      cell: (user) => formatLastLogin(user.lastLoginAt),
+    },
+    {
+      id: 'status',
+      header: 'Trạng thái',
+      sortKey: 'status',
+      widthClassName: 'w-36',
+      headerClassName: 'whitespace-nowrap px-4 py-3.5',
+      cellClassName: 'px-4 py-3',
+      cell: (user) => (
+        <StatusBadge tone={statusTones[user.status]}>{STATUS_LABELS[user.status]}</StatusBadge>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Thao tác',
+      widthClassName: 'w-44',
+      align: 'center',
+      headerClassName: 'whitespace-nowrap px-4 py-3.5',
+      cellClassName: 'px-3 py-3 text-right',
+      cell: (user) =>
+        canManage ? (
+          <UserRowActions
+            user={user}
+            currentUserId={currentUserId}
+            disabled={isChangingStatus}
+            onEdit={onEdit}
+            onChangeStatus={onChangeStatus}
+            onResendActivation={onResendActivation}
+          />
+        ) : (
+          <span className="text-xs text-slate-400">Chỉ xem</span>
+        ),
+    },
+  ];
+
+  return (
+    <DataTable<UserSummary, UsersSortField>
+      ariaLabel={accountGroup === 'Student' ? 'Danh sách tài khoản sinh viên' : 'Danh sách giảng viên và cán bộ'}
+      data={users}
+      columns={columns}
+      getRowId={(user) => user.id}
+      selectedRowId={selectedRowId}
+      onRowSelect={onSelectRow ? (id) => onSelectRow(id) : undefined}
+      onRowOpen={canManage ? onEdit : undefined}
+      sort={sort}
+      onSortChange={onSortChange}
+      busy={isChangingStatus}
+      tableClassName="min-w-[900px]"
+      rowClassName="h-[72px]"
+      empty={{ title: 'Không tìm thấy tài khoản phù hợp.' }}
+      renderMobileItem={(user) => (
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <InfoCell
+              leading={<Avatar name={user.fullName} muted={user.status === 'Disabled'} />}
+              title={
+                <span className="min-w-0 truncate" title={user.fullName}>
+                  {user.fullName}
+                </span>
+              }
+              titleClassName="flex-nowrap"
+              description={<span title={user.email}>{user.email}</span>}
+              descriptionClassName="truncate"
+              trailing={
+                user.id === currentUserId ? (
+                  <Badge variant="info" className="px-1.5 py-0 text-xs">
+                    Bạn
+                  </Badge>
+                ) : undefined
+              }
+            />
+            <StatusBadge tone={statusTones[user.status]}>{STATUS_LABELS[user.status]}</StatusBadge>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
+            <div className="min-w-0 text-xs text-slate-600">
+              {renderRoleOrCode(user)}
+            </div>
+            {canManage ? (
+              <UserRowActions
+                user={user}
+                currentUserId={currentUserId}
                 disabled={isChangingStatus}
-              >
-                <td className="hidden px-3 py-3 text-center text-xs tabular-nums text-slate-400 md:table-cell">
-                  {(pageNumber - 1) * pageSize + index + 1}
-                </td>
-                <td className="block min-w-0 py-1 md:table-cell md:px-4 md:py-3">
-                  <InfoCell
-                    leading={<Avatar name={user.fullName} muted={user.status === 'Disabled'} />}
-                    title={
-                      <span className="min-w-0 truncate" title={user.fullName}>
-                        {user.fullName}
-                      </span>
-                    }
-                    titleClassName="flex-nowrap"
-                    description={<span title={user.email}>{user.email}</span>}
-                    descriptionClassName="truncate"
-                    trailing={
-                      user.id === currentUserId ? (
-                        <Badge variant="info" className="px-1.5 py-0 text-[10px]">
-                          Bạn
-                        </Badge>
-                      ) : undefined
-                    }
-                  />
-                </td>
-                <td className="block min-w-0 py-1 md:table-cell md:px-4 md:py-3">
-                  {accountGroup === 'Student' ? (
-                    <span className="font-medium tabular-nums text-slate-700">
-                      {user.userCode || 'Chưa cập nhật'}
-                    </span>
-                  ) : (
-                    <InfoCell
-                      className="gap-2.5"
-                      titleClassName="block truncate text-xs font-semibold leading-5 text-slate-700"
-                      descriptionClassName="mt-0.5 truncate text-[11px] font-normal leading-4"
-                      leading={(() => {
-                        const { icon: Icon, tone } =
-                          roleAppearance[user.roles[0]] ?? roleAppearance.CouncilMember;
-                        return (
-                          <span
-                            aria-hidden="true"
-                            className={`flex size-8 items-center justify-center rounded-lg ring-1 ring-inset ${tone}`}
-                          >
-                            <Icon className="size-4" />
-                          </span>
-                        );
-                      })()}
-                      title={
-                        <span
-                          title={user.roles
-                            .map(
-                              (name) =>
-                                SYSTEM_ROLES.find((role) => role.roleName === name)?.title ?? name,
-                            )
-                            .join(', ')}
-                        >
-                          {SYSTEM_ROLES.find((role) => role.roleName === user.roles[0])?.title ??
-                            user.roles[0] ??
-                            'Chưa phân vai trò'}
-                          {user.roles.length > 1 && ` +${user.roles.length - 1}`}
-                        </span>
-                      }
-                      description={
-                        <span title={user.userCode || undefined}>
-                          {user.userCode || 'Chưa cập nhật'}
-                        </span>
-                      }
-                    />
-                  )}
-                </td>
-
-                <td className="hidden whitespace-nowrap px-4 py-3 text-xs text-slate-500 md:table-cell">
-                  {formatLastLogin(user.lastLoginAt)}
-                </td>
-
-                <td className="block min-w-0 py-1 md:table-cell md:px-4 md:py-3">
-                  <StatusBadge tone={statusTones[user.status]}>
-                    {STATUS_LABELS[user.status]}
-                  </StatusBadge>
-                </td>
-
-                <td className="block py-1 text-right md:table-cell md:px-3 md:py-3">
-                  {canManage ? (
-                    <UserRowActions
-                      user={user}
-                      currentUserId={currentUserId}
-                      disabled={isChangingStatus}
-                      onEdit={onEdit}
-                      onChangeStatus={onChangeStatus}
-                      onResendActivation={onResendActivation}
-                    />
-                  ) : (
-                    <span className="text-xs text-slate-400">Chỉ xem</span>
-                  )}
-                </td>
-              </SelectableTableRow>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+                onEdit={onEdit}
+                onChangeStatus={onChangeStatus}
+                onResendActivation={onResendActivation}
+              />
+            ) : (
+              <span className="text-xs text-slate-400">Chỉ xem</span>
+            )}
+          </div>
+        </div>
+      )}
+    />
   );
 }

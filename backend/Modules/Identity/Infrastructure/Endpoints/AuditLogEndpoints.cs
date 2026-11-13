@@ -111,7 +111,9 @@ public static class AuditLogEndpoints
         public DateTime? ToUtc { get; init; }
         public int? PageNumber { get; init; }
         public int? PageSize { get; init; }
+        public string? SortBy { get; init; }
+        public string? SortOrder { get; init; }
         public GetAuditLogsQuery ToQuery() => new(ActorUserId, Action, TargetType, Outcome, FromUtc, ToUtc, PageNumber ?? 1, PageSize ?? 20,
-            SearchTerm, RequestId, TargetId, ActorSessionId);
+            SearchTerm, RequestId, TargetId, ActorSessionId, SortBy, SortOrder);
     }
 }

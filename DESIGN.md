@@ -127,3 +127,32 @@ Cập nhật 13/11/2026 theo lựa chọn sản phẩm: giữ luồng đăng ký
 - Nút Xem giữ nền trắng, viền xám 1px, bo nhẹ `rounded-md` và bóng nhẹ theo ảnh người dùng. Tiêu đề có thể mở chi tiết phải là button hỗ trợ bàn phím.
 - Chi tiết nhóm đọc theo groupId, gồm cả nhóm đã dừng. Các khối đề cương/giữa kỳ/cuối kỳ/milestones tải và thử lại độc lập; lỗi một phần không che những khối khác.
 - Liên hệ Khoa ghi rõ là soạn/sao chép nội dung, chưa gửi yêu cầu; không có thao tác gửi giả.
+
+## Quy chuẩn chung Modern Clean SaaS + Fluent Design (áp dụng toàn hệ thống)
+
+Khi thiết kế màn hình mới hoặc nâng cấp giao diện hiện có trong UGTM, áp dụng thống nhất các nguyên tắc sau:
+
+- **Ngôn ngữ thị giác & phân cấp**: Kết hợp **Modern Clean SaaS** và **Fluent Design** — nền canvas `#f8fafc`, thẻ trắng `rounded-2xl border border-slate-200/80 shadow-xs`, hạn chế thẻ lồng thẻ rườm rà và không lặp icon trang trí thừa.
+- **Dùng Gradient để nhấn đúng chỗ**: Giữ gradient làm điểm nhấn tinh tế (thanh accent trên `PageHeader`, vạch chọn tab, dải nhấn hoặc chip tóm tắt công thức ở khu vực xem trước/tổng hợp); không dùng `gradient-text` cho chữ tiêu đề/số liệu và không đổ nền gradient lên từng hàng dữ liệu.
+- **Bảng dữ liệu thống nhất (`DataTable`)**:
+  - Sử dụng `DataTable` (`frontend/src/components/ui/data-table.tsx`), cột sắp xếp qua `TableHead sortable` (sort phía server khi có phân trang), hiệu ứng chọn dòng `SelectionIndicator`, `TableFloatingBar` nổi ở đáy giữa màn hình khi chọn bản ghi, và `TablePagination` chuẩn (`10 / 20 / 50`).
+  - Các cột tiêu đề ngắn (`STT`, `MSSV`, `Trạng thái`, `Kết quả`, `Lần truy cập`, `Thao tác`) giữ `whitespace-nowrap` để không tách chữ thành 2 dòng.
+  - Nút mở chi tiết trên hàng bảng thống nhất nhãn chữ gọn `"Xem"` (`variant="outline"`, `rounded-md`, không kèm icon con mắt).
+- **Avatar thực thể đồng bộ**: Dùng `Avatar` (`frontend/src/components/ui/avatar.tsx`) dạng tròn (`rounded-full ring-2 ring-white`) phối màu pastel theo hash tên; trạng thái vô hiệu hóa chuyển sang tông trung tính.
+- **Popover / Select / Menu ngữ cảnh**: Khung menu thả xuống dùng `w-max` kết hợp giới hạn tràn màn hình (`max-w-[calc(100vw-16px)]`) để ôm khít nội dung chữ, không dư khoảng trắng bên phải và không cắt chữ. Nhãn hành động giữ ngắn gọn, trực tiếp (ví dụ `"Vô hiệu hóa"` thay vì `"Vô hiệu hóa tài khoản"`).
+- **Thao tác Excel / CSV**: Nút nhập/xuất bảng tính dùng tông màu xanh lá emerald (`variant="success"` / `variant="successOutline"`) kèm icon bảng tính (`FileSpreadsheet`) đồng nhất toàn hệ thống.
+- **Xem chi tiết nhiều nội dung & Lịch sử**: Không đổ trực tiếp khối dữ liệu chi tiết hoặc lịch sử phiên bản ra trang chính; mở qua `Dialog` (modal hoặc drawer) có chế độ chỉ đọc rõ ràng (ví dụ nhãn `"Chế độ chỉ đọc"`).
+- **Khối công thức & danh sách chip tóm tắt**: Không tạo thanh cuộn ngang (`overflow-x-auto`); tối ưu khoảng cách, kích thước chữ và breakpoint responsive (`lg:`, `min-[1440px]:`, `2xl:`) để nhóm thành phần tiêu chuẩn hiển thị trọn vẹn trên **1 dòng** ở màn hình desktop, đồng thời giữ `flex-wrap` mềm mại trên màn hình nhỏ hoặc khi số lượng phần tử lớn.
+- **Toast ổn định (`NotificationProvider` / Sonner)**: Giữ chiều cao/bố cục toast cố định khi rê chuột vào hoặc lúc thanh đếm ngược chạy để không bị giật/nhấp nháy giao diện.
+
+## Cấu hình điểm (`/admin/grade-config`)
+
+- `PageHeader` của `ScoreConfigPage` dùng `accent` và giữ tiêu đề tối giản không gắn icon trang trí đầu trang.
+- Lịch sử phiên bản cấu hình điểm mở qua modal `ScoreConfigHistoryDialog` cho phép chọn phiên bản và xem chi tiết ở chế độ chỉ đọc (`Chế độ chỉ đọc`) với nút `Quay lại danh sách`, thay vì đổ trực tiếp cấu hình cũ ra trang chính.
+- Khối **Xem trước cách tính** ở chân `ScoreComponentTable` dùng dải accent gradient phía trên, nền chuyển sắc nhẹ và phân tách trực quan: tên + trọng số trong pill gradient xanh dương (`font-medium` cho tên, `font-semibold tabular-nums` cho trọng số), mẫu số chia trong pill gradient cam/hổ phách. Không dùng scroll ngang; căn chỉnh breakpoint riêng cho cả chế độ `Weighted` và `Percentage` (`%`) để bộ thành phần tiêu chuẩn hiển thị gọn trên 1 dòng ở desktop và tự xuống dòng gọn trên mobile.
+
+## Tài khoản, Phân quyền & Nhật ký hệ thống (`/modules/identity/students`, `/modules/identity/staff`, `/admin/audit-logs`)
+
+- `UsersTable` và `AuditLogTable` dùng chung `DataTable` chuẩn với `Avatar` tròn pastel, nút `"Xem"` đồng bộ, header cột ngắn có `whitespace-nowrap`, hỗ trợ sort cột phía server và `TableFloatingBar` cho dòng đang chọn.
+- Menu thao tác phụ trên `UsersTable` dùng `popover="auto"` với `w-max` tự co vừa nhãn chữ; thao tác vô hiệu hóa hiển thị nhãn `"Vô hiệu hóa"`.
+- Nút `Xuất CSV` trên `AuditLogPage` sử dụng `variant="success"` kèm icon `FileSpreadsheet` đồng bộ phong cách Excel.
