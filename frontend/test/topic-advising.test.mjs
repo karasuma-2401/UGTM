@@ -228,6 +228,29 @@ function fixture({
     '@tanstack/react-query': {
       useQuery(options) {
         queries.push(options);
+        if (options.queryKey[0] === 'topic-advising-group-detail') {
+          return {
+            data: undefined,
+            isPending: false,
+            isFetching: false,
+            isError: false,
+            refetch: () => refetch.push('group-detail'),
+          };
+        }
+        if (options.queryKey[0] === 'topic-advising-group-progress') {
+          return {
+            data: {
+              syllabus: null,
+              midterm: null,
+              finalReport: null,
+              progressReports: [],
+            },
+            isPending: false,
+            isFetching: false,
+            isError: false,
+            refetch: () => refetch.push('group-progress'),
+          };
+        }
         const detail = options.queryKey[0] === 'topic-advising-detail';
         return {
           data: detail
@@ -274,7 +297,47 @@ function fixture({
           calls.push(['detail', ...args]);
           return topics.find((t) => t.id === args[1]);
         },
+        getGroupDetail: async (...args) => {
+          calls.push(['group-detail', ...args]);
+          return null;
+        },
       },
+    },
+    '@/features/thesis/services/syllabusApi': {
+      syllabusApi: {
+        getSyllabusHistory: async () => null,
+      },
+    },
+    '@/features/thesis/services/midtermApi': {
+      midtermApi: {
+        getMidtermHistory: async () => null,
+      },
+    },
+    '@/features/thesis/services/finalReportApi': {
+      finalReportApi: {
+        getFinalReportHistory: async () => null,
+      },
+    },
+    '@/features/thesis/services/milestoneApi': {
+      milestoneApi: {
+        getMilestones: async () => [],
+        getProgressReport: async () => null,
+      },
+    },
+    '@/features/thesis/types/milestone.types': {
+      PROGRESS_REPORT_STATUS_LABELS: {},
+    },
+    '@/features/thesis/types/syllabus.types': {
+      SYLLABUS_STATUS_LABELS: {},
+    },
+    '@/features/thesis/types/midterm.types': {
+      MIDTERM_STATUS_LABELS: {},
+    },
+    '@/features/thesis/types/finalReport.types': {
+      FINAL_REPORT_STATUS_LABELS: {},
+    },
+    '@/features/thesis/components/SimilarityReportPanel': {
+      SimilarityReportPanel: 'SimilarityReportPanel',
     },
   };
   for (const [file, name] of Object.entries({

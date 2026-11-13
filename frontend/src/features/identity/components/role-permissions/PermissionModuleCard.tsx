@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PermissionCheckboxItem } from './PermissionCheckboxItem';
 import type { PermissionDto } from '../../types/rolePermission.types';
+import { permissionModuleLabel } from '../../utils/permissionLabels';
 
 export interface PermissionModuleCardProps {
   moduleName: string;
@@ -24,6 +25,7 @@ export function PermissionModuleCard({
   disabled = false,
 }: PermissionModuleCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const moduleLabel = permissionModuleLabel(moduleName);
 
   const modulePermIds = permissions.map((p) => p.id);
   const selectedCount = modulePermIds.filter((id) => selectedPermissionIds.has(id)).length;
@@ -42,13 +44,14 @@ export function PermissionModuleCard({
       <div className="p-3.5 bg-[var(--color-bg-subtle,#f7f9fc)] border-b border-[var(--color-border-subtle,#edf1f7)] flex items-center justify-between gap-3 select-none">
         <div className="flex items-center gap-3 min-w-0">
           <Checkbox
+            aria-label={`Chọn quyền phân hệ ${moduleLabel}`}
             checked={isAllSelected ? true : isIndeterminate ? 'indeterminate' : false}
             disabled={disabled}
             onCheckedChange={handleModuleCheckboxChange}
           />
           <div className="flex items-center gap-2 min-w-0">
             <h4 className="text-sm font-bold text-[var(--color-text-heading,#10182c)] truncate">
-              Phân hệ {moduleName}
+              {moduleLabel}
             </h4>
             <Badge
               variant={selectedCount > 0 ? 'info' : 'outline'}
@@ -67,6 +70,8 @@ export function PermissionModuleCard({
             onClick={() => setIsExpanded(!isExpanded)}
             className="h-7 w-7 p-0 text-[var(--color-text-muted,#697e9f)] hover:text-[var(--color-text-heading,#10182c)]"
             title={isExpanded ? 'Thu gọn' : 'Mở rộng'}
+            aria-label={`${isExpanded ? 'Thu gọn' : 'Mở rộng'} phân hệ ${moduleLabel}`}
+            aria-expanded={isExpanded}
           >
             {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
           </Button>
@@ -89,4 +94,3 @@ export function PermissionModuleCard({
     </div>
   );
 }
-

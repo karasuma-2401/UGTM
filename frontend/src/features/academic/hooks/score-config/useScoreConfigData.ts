@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type {
   KltnBatchSummaryDto,
   ScoreConfigurationDto,
@@ -7,12 +7,33 @@ import { scoreConfigApi, getScoreConfigErrorMessage } from '../../services/score
 
 export function useScoreConfigData(onError: (msg: string) => void) {
   const [batches, setBatches] = useState<KltnBatchSummaryDto[]>([]);
-  const [selectedBatchId, setSelectedBatchId] = useState<string>('');
+  const [selectedBatchId, setSelectedBatchIdState] = useState<string>('');
   const [isLoadingBatches, setIsLoadingBatches] = useState<boolean>(true);
 
   const [currentConfig, setCurrentConfig] = useState<ScoreConfigurationDto | null>(null);
   const [historyConfigs, setHistoryConfigs] = useState<ScoreConfigurationDto[]>([]);
   const [isLoadingConfig, setIsLoadingConfig] = useState<boolean>(false);
+
+  const onErrorRef = useRef(onError);
+  const configRequestIdRef = useRef(0);
+  const selectedBatchIdRef = useRef(selectedBatchId);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
+  useEffect(() => {
+    selectedBatchIdRef.current = selectedBatchId;
+  }, [selectedBatchId]);
+
+  const setSelectedBatchId = useCallback((nextId: string) => {
+    configRequestIdRef.current += 1;
+    selectedBatchIdRef.current = nextId;
+    setSelectedBatchIdState(nextId);
+    setCurrentConfig((prev) => (prev?.batchId === nextId ? prev : null));
+    setHistoryConfigs((prev) => (prev.length > 0 && prev[0]?.batchId === nextId ? prev : []));
+    setIsLoadingConfig(Boolean(nextId));
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -28,7 +49,7 @@ export function useScoreConfigData(onError: (msg: string) => void) {
         }
       } catch (err) {
         if (isMounted) {
-          onError(getScoreConfigErrorMessage(err));
+          onErrorRef.current(getScoreConfigErrorMessage(err));
         }
       } finally {
         if (isMounted) {
@@ -37,17 +58,27 @@ export function useScoreConfigData(onError: (msg: string) => void) {
       }
     };
 
-    fetchBatches();
+    void fetchBatches();
     return () => {
       isMounted = false;
+      configRequestIdRef.current += 1;
     };
-  }, [onError]);
+  }, [setSelectedBatchId]);
 
   const loadBatchConfig = useCallback(async (batchId: string) => {
     if (!batchId) return null;
+    const requestId = ++configRequestIdRef.current;
+
+    setCurrentConfig((prev) => (prev?.batchId === batchId ? prev : null));
+    setHistoryConfigs((prev) => (prev.length > 0 && prev[0]?.batchId === batchId ? prev : []));
     setIsLoadingConfig(true);
+
     try {
       const history = await scoreConfigApi.getConfigurationHistory(batchId);
+      if (requestId !== configRequestIdRef.current || selectedBatchIdRef.current !== batchId) {
+        return null;
+      }
+
       setHistoryConfigs(history);
 
       const draftConfig = history.find((c) => c.status === 'Draft');
@@ -55,17 +86,24 @@ export function useScoreConfigData(onError: (msg: string) => void) {
 
       if (!targetConfig) {
         targetConfig = await scoreConfigApi.getActiveConfiguration(batchId);
+        if (requestId !== configRequestIdRef.current || selectedBatchIdRef.current !== batchId) {
+          return null;
+        }
       }
 
       setCurrentConfig(targetConfig);
       return targetConfig;
     } catch (err) {
-      onError(getScoreConfigErrorMessage(err));
+      if (requestId === configRequestIdRef.current && selectedBatchIdRef.current === batchId) {
+        onErrorRef.current(getScoreConfigErrorMessage(err));
+      }
       return null;
     } finally {
-      setIsLoadingConfig(false);
+      if (requestId === configRequestIdRef.current) {
+        setIsLoadingConfig(false);
+      }
     }
-  }, [onError]);
+  }, []);
 
   const currentBatch = useMemo(
     () => batches.find((b) => b.id === selectedBatchId) || null,

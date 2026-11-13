@@ -1,3 +1,5 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { OperationToast } from '@/shared/notifications';
 import { useQueryClient } from '@tanstack/react-query';
 import { UsersRound, GraduationCap, UserPlus, Clock3, ShieldOff, Upload, X } from 'lucide-react';
 
@@ -35,6 +37,8 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
   return (
     <div className="min-w-0 space-y-5">
       <PageHeader
+        compact
+        accent
         title="Tài khoản và phân quyền"
         icon={<UsersRound />}
         navigation={<IdentityNavigation />}
@@ -54,6 +58,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         {isStudent && canImport && (
           <Button
             type="button"
+            variant="success"
             disabled={actions.isUpdating}
             onClick={() => modals.setIsImportOpen(true)}
             leftIcon={<Upload />}
@@ -64,17 +69,9 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         )}
       </PageHeader>
 
-      {modals.notice && (
-        <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
-          {modals.notice}
-        </p>
-      )}
+      <OperationToast message={modals.notice} onConsumed={() => modals.setNotice('')} />
 
-      {actions.mutationError && (
-        <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
-          {getUserErrorMessage(actions.mutationError)}
-        </p>
-      )}
+      {actions.mutationError && <InlineAlert tone="error">{getUserErrorMessage(actions.mutationError)}</InlineAlert>}
 
       {modals.isFormOpen && canManage && (
         <UserFormDialog
@@ -113,26 +110,35 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         open={Boolean(actions.pendingStatusUser)}
         onClose={actions.cancelChangeStatus}
         onConfirm={actions.confirmChangeStatus}
-        type="warning"
+        type={actions.pendingStatusUser?.status === 'Active' ? 'error' : 'success'}
         title={
           actions.pendingStatusUser?.status === 'Active'
             ? 'Vô hiệu hóa tài khoản?'
             : 'Khôi phục tài khoản?'
         }
-        description={actions.pendingStatusUser?.fullName}
+        description={
+          actions.pendingStatusUser && (
+            <div className="space-y-2">
+              <p className="text-sm text-slate-800">
+                Bạn sắp {actions.pendingStatusUser.status === 'Active' ? 'vô hiệu hóa' : 'khôi phục'} tài khoản{' '}
+                <strong className="font-semibold text-slate-950">
+                  {actions.pendingStatusUser.fullName}
+                </strong>
+                {actions.pendingStatusUser.userCode ? (
+                  <span className="text-slate-500"> ({actions.pendingStatusUser.userCode})</span>
+                ) : null}
+                .
+              </p>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {actions.pendingStatusUser.status === 'Active'
+                  ? 'Tài khoản này sẽ bị thu hồi phiên đăng nhập và tạm ngưng quyền truy cập hệ thống.'
+                  : 'Tài khoản sẽ được mở khóa và người dùng có thể đăng nhập lại vào hệ thống.'}
+              </p>
+            </div>
+          )
+        }
         confirmText={actions.pendingStatusUser?.status === 'Active' ? 'Vô hiệu hóa' : 'Khôi phục'}
         isConfirming={actions.statusMutation.isPending}
-      />
-
-      <UserFilterBar
-        isStudent={isStudent}
-        draftFilters={filters.draftFilters}
-        filters={filters.filters}
-        hasFilters={filters.hasFilters}
-        onDraftChange={filters.setDraftFilters}
-        onApply={filters.handleApplyFilters}
-        onClear={filters.clearFilters}
-        onRemoveFilter={filters.removeFilter}
       />
 
       <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
@@ -140,7 +146,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
           title="Danh sách tài khoản"
           icon={isStudent ? <GraduationCap /> : <UsersRound />}
           description={`${data.formatCount(users?.totalCount)} ${isStudent ? 'sinh viên' : 'giảng viên / cán bộ'}`}
-          className="xl:grid-cols-[minmax(0,1fr)_420px]"
+          className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
         >
           <section
             className="w-full"
@@ -148,6 +154,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             aria-busy={data.statisticsQuery.isFetching}
           >
             <StatisticsBar
+              compact
               loading={data.statisticsQuery.isPending}
               items={[
                 {
@@ -182,7 +189,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                   label: 'Vô hiệu hóa',
                   value: data.formatCount(data.statistics?.disabled),
                   icon: <ShieldOff />,
-                  tone: 'muted',
+                  tone: 'danger',
                 },
               ]}
             />
@@ -207,14 +214,26 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             )}
           </section>
         </ListCardHeader>
+        <div className="border-b border-slate-100 p-4">
+          <UserFilterBar
+            isStudent={isStudent}
+            draftFilters={filters.draftFilters}
+            filters={filters.filters}
+            hasFilters={filters.hasFilters}
+            onDraftChange={filters.setDraftFilters}
+            onApply={filters.handleApplyFilters}
+            onClear={filters.clearFilters}
+            onRemoveFilter={filters.removeFilter}
+          />
+        </div>
 
         <div
           aria-busy={data.usersQuery.isFetching}
-          className={`h-[min(60vh,40rem)] min-h-[20rem] overflow-auto transition-opacity ${data.isRefreshing ? 'opacity-60' : ''}`}
+          className={`min-h-[12rem] overflow-x-auto transition-opacity ${data.isRefreshing ? 'opacity-60' : ''}`}
         >
           {data.usersQuery.isPending ? (
             <TableSkeleton
-              className="min-w-[1120px]"
+              className="min-w-[900px]"
               columns={[
                 { label: 'STT', width: 'w-14', variant: 'number' },
                 { label: isStudent ? 'Sinh viên' : 'Giảng viên / Cán bộ', variant: 'person' },
@@ -224,7 +243,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                 },
                 { label: 'Lần truy cập', width: 'w-36' },
                 { label: 'Trạng thái', width: 'w-36', variant: 'badge' },
-                { label: 'Thao tác', width: 'w-[280px]', variant: 'actions', actionCount: 2 },
+                { label: 'Thao tác', width: 'w-[176px]', variant: 'actions', actionCount: 2 },
               ]}
             />
           ) : data.usersQuery.isError ? (
@@ -274,35 +293,20 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         </div>
 
         {users && !data.usersQuery.isError && (
-          <>
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-3 text-sm">
-              <label htmlFor={`page-size-${accountGroup}`}>Số tài khoản mỗi trang</label>
-              <select
-                id={`page-size-${accountGroup}`}
-                value={filters.pageSize}
-                disabled={actions.isUpdating || data.usersQuery.isFetching}
-                className="rounded-md border border-slate-200 bg-white p-2"
-                onChange={(event) => {
-                  filters.setPageSize(Number(event.target.value));
-                  filters.setPageNumber(1);
-                }}
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
-            <TablePagination
-              pageNumber={users.pageNumber}
-              pageSize={users.pageSize}
-              totalCount={users.totalCount}
-              hasPreviousPage={users.hasPreviousPage}
-              hasNextPage={users.hasNextPage}
-              isLoading={data.usersQuery.isFetching || actions.isUpdating}
-              itemLabel={isStudent ? 'sinh viên' : 'giảng viên / cán bộ'}
-              onPageChange={filters.setPageNumber}
-            />
-          </>
+          <TablePagination
+            pageNumber={users.pageNumber}
+            pageSize={users.pageSize}
+            totalCount={users.totalCount}
+            hasPreviousPage={users.hasPreviousPage}
+            hasNextPage={users.hasNextPage}
+            isLoading={data.usersQuery.isFetching || actions.isUpdating}
+            itemLabel={isStudent ? 'sinh viên' : 'giảng viên / cán bộ'}
+            onPageChange={filters.setPageNumber}
+            onPageSizeChange={(size) => {
+              filters.setPageSize(size);
+              filters.setPageNumber(1);
+            }}
+          />
         )}
       </Card>
     </div>

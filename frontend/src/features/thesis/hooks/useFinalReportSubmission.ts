@@ -21,8 +21,9 @@ export function useFinalReportSubmission() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const statusQuery = useQuery({
-    queryKey: ['student-registration-status'],
+    queryKey: ['student-registration-status', user?.id],
     queryFn: ({ signal }) => syllabusApi.getMyStatus(signal),
+    enabled: Boolean(user?.id),
   });
 
   const groupId = statusQuery.data?.groupId;
@@ -38,35 +39,39 @@ export function useFinalReportSubmission() {
   );
 
   const groupDetailQuery = useQuery({
-    queryKey: ['student-group-detail', groupId, user?.id, currentBatch?.id],
-    queryFn: () =>
-      syllabusApi.getGroupDetail(groupId!, {
-        topicId: topicId ?? undefined,
-        topicTitle: topicTitleVi ?? undefined,
-        currentUser: user,
-        batchName: currentBatch?.batchName,
-      }),
-    enabled: Boolean(groupId),
+    queryKey: ['student-group-detail', user?.id, groupId, currentBatch?.id],
+    queryFn: ({ signal }) =>
+      syllabusApi.getGroupDetail(
+        groupId!,
+        {
+          topicId: topicId ?? undefined,
+          topicTitle: topicTitleVi ?? undefined,
+          currentUser: user,
+          batchName: currentBatch?.batchName,
+        },
+        signal,
+      ),
+    enabled: Boolean(user?.id && groupId),
   });
 
   const midtermHistoryQuery = useQuery({
-    queryKey: ['midterm-history', groupId],
+    queryKey: ['midterm-history', user?.id, groupId],
     queryFn: ({ signal }) => midtermApi.getMidtermHistory(groupId!, signal),
-    enabled: Boolean(groupId),
+    enabled: Boolean(user?.id && groupId),
     retry: false,
   });
 
   const historyQuery = useQuery({
-    queryKey: ['final-report-history', groupId],
+    queryKey: ['final-report-history', user?.id, groupId],
     queryFn: ({ signal }) => finalReportApi.getFinalReportHistory(groupId!, signal),
-    enabled: Boolean(groupId),
+    enabled: Boolean(user?.id && groupId),
     retry: false,
   });
 
   const feedbackQuery = useQuery({
-    queryKey: ['final-report-feedback', groupId],
+    queryKey: ['final-report-feedback', user?.id, groupId],
     queryFn: ({ signal }) => finalReportApi.getReviewerFeedback(groupId!, signal),
-    enabled: Boolean(groupId),
+    enabled: Boolean(user?.id && groupId),
     retry: false,
   });
 
@@ -84,6 +89,7 @@ export function useFinalReportSubmission() {
 
   const notEligibleReason = useMemo(() => {
     if (midtermHistoryQuery.isLoading) return null;
+    if (midtermHistoryQuery.isError) return null;
     if (!midtermApproved) {
       return 'Báo cáo giữa kỳ (Cổng 2) chưa được GVHD phê duyệt hoặc đang chờ đánh giá. Sinh viên chỉ được nộp báo cáo cuối kỳ sau khi GVHD cho phép tiếp tục ở Cổng 2.';
     }
@@ -91,7 +97,7 @@ export function useFinalReportSubmission() {
       return 'Báo cáo cuối kỳ đang được GVHD chấm điểm và khóa chỉnh sửa.';
     }
     return null;
-  }, [midtermHistoryQuery.isLoading, midtermApproved, currentStatus]);
+  }, [midtermHistoryQuery.isLoading, midtermHistoryQuery.isError, midtermApproved, currentStatus]);
 
   const canSubmit = Boolean(groupId && midtermApproved && currentStatus !== 'UnderEvaluation');
 
@@ -123,8 +129,8 @@ export function useFinalReportSubmission() {
     onSuccess: (data) => {
       setSelectedFile(null);
       setActionSuccess(`Nộp báo cáo cuối kỳ phiên bản v${data.versionNo} thành công!`);
-      void queryClient.invalidateQueries({ queryKey: ['final-report-history', groupId] });
-      void queryClient.invalidateQueries({ queryKey: ['student-registration-status'] });
+      void queryClient.invalidateQueries({ queryKey: ['final-report-history', user?.id, groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
     },
     onError: (err: Error) => {
       setActionError(err.message || 'Nộp báo cáo cuối kỳ thất bại. Vui lòng thử lại.');

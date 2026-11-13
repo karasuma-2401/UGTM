@@ -13,13 +13,21 @@ export function CurrentAcademicBatch() {
     <section
       aria-label="Đợt hiện hành"
       aria-busy={query.isFetching}
-      className="mx-3 my-2 rounded-lg border border-slate-200/80 bg-slate-50 p-3"
+      className="mx-3 my-2.5 rounded-xl border border-slate-200/80 bg-gradient-to-b from-slate-50/90 to-white p-3.5 shadow-2xs"
     >
-      <h2 className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-        Đợt hiện hành
-      </h2>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+          Đợt hiện hành
+        </h2>
+        {canRead && !query.isPending && !query.isError && currentBatches.length > 0 && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-500/20">
+            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+            Đang mở
+          </span>
+        )}
+      </div>
       {!canRead ? (
-        <p className="text-xs text-slate-500">Bạn chưa có quyền xem đợt KLTN.</p>
+        <p className="text-xs text-slate-500 leading-relaxed">Bạn chưa có quyền xem đợt KLTN.</p>
       ) : query.isPending ? (
         <p role="status" className="text-xs text-slate-500">
           Đang tải thông tin đợt...
@@ -43,17 +51,20 @@ export function CurrentAcademicBatch() {
       ) : (
         <>
           {currentBatches.length > 1 && (
-            <p className="mb-2 text-[11px] text-slate-500">
+            <p className="mb-2 text-[11px] font-medium text-slate-500">
               Có {currentBatches.length} đợt đang diễn ra
             </p>
           )}
           <ul className="max-h-44 space-y-2 overflow-y-auto">
             {currentBatches.map((batch) => (
-              <li key={batch.id}>
-                <p className="break-words text-xs font-semibold text-slate-800">
+              <li
+                key={batch.id}
+                className="rounded-lg border border-slate-200/70 bg-white px-2.5 py-2 shadow-2xs"
+              >
+                <p className="break-words text-xs font-semibold text-slate-800 leading-snug">
                   {batch.batchName}
                 </p>
-                <p className="mt-1 text-[11px] text-slate-500">
+                <p className="mt-1 inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
                   HK{batch.semester} - {batch.academicYear}
                 </p>
               </li>

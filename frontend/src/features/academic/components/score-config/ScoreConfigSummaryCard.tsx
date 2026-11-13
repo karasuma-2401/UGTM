@@ -15,6 +15,8 @@ export interface ScoreConfigSummaryCardProps {
   reviewerMinimumScore: number | null;
   versionNo?: number | null;
   status?: ScoreConfigurationStatus | null;
+  isValid?: boolean;
+  isLoading?: boolean;
 }
 
 export const ScoreConfigSummaryCard: React.FC<ScoreConfigSummaryCardProps> = ({
@@ -24,15 +26,15 @@ export const ScoreConfigSummaryCard: React.FC<ScoreConfigSummaryCardProps> = ({
   reviewerMinimumScore,
   versionNo,
   status,
+  isValid = true,
+  isLoading = false,
 }) => {
   const statusInfo = status ? CONFIG_STATUS_LABELS[status] : null;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-xs p-5 sm:p-6 space-y-5">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3.5">
-        <h3 className="text-base font-bold text-slate-900 tracking-tight">
-          Phạm vi cấu hình
-        </h3>
+    <div className="p-5 space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <h2 className="text-base font-semibold text-slate-900">Tóm tắt cấu hình</h2>
         {statusInfo && (
           <Badge variant={statusInfo.badgeVariant} className="text-xs px-2 py-0.5">
             {statusInfo.label} {versionNo ? `(v${versionNo})` : ''}
@@ -40,58 +42,58 @@ export const ScoreConfigSummaryCard: React.FC<ScoreConfigSummaryCardProps> = ({
         )}
       </div>
 
-      <div className="space-y-4 text-xs">
+      <div className="space-y-4 text-sm">
         <div>
-          <span className="text-slate-400 font-medium block mb-0.5">Phạm vi</span>
-          <span className="font-semibold text-slate-800 text-sm">
-            Cấu hình hệ thống
-          </span>
-        </div>
-
-        <div>
-          <span className="text-slate-400 font-medium block mb-0.5">Đợt áp dụng</span>
+          <span className="text-slate-500 block mb-1">Đợt áp dụng</span>
           <span className="font-semibold text-slate-800 text-sm">
             {batch ? `${batch.batchName} - ${batch.academicYear}` : 'Chưa chọn đợt'}
           </span>
         </div>
 
         <div>
-          <span className="text-slate-400 font-medium block mb-0.5">Phương thức</span>
+          <span className="text-slate-500 block mb-1">Phương thức</span>
           <span className="font-semibold text-slate-800 text-sm">
             {CALCULATION_METHOD_LABELS[calculationMethod]}
           </span>
         </div>
 
         <div>
-          <span className="text-slate-400 font-medium block mb-0.5">
+          <span className="text-slate-500 block mb-1">
             {calculationMethod === 'Percentage' ? 'Tổng tỷ lệ phần trăm' : 'Tổng hệ số'}
           </span>
-          <span className="font-semibold text-slate-800 text-sm">
-            {calculationMethod === 'Percentage'
-              ? `${totalWeight}% ${totalWeight === 100 ? '(Đủ 100%)' : '(Chưa đủ 100%)'}`
-              : `Tổng ${totalWeight} - Theo các nguồn thực sự áp dụng`}
+          <span className="font-semibold text-slate-800 text-sm tabular-nums">
+            {calculationMethod === 'Percentage' ? `${totalWeight}%` : totalWeight}
           </span>
+          <p
+            className={`mt-1 text-xs font-medium ${isValid ? 'text-emerald-700' : 'text-amber-700'}`}
+          >
+            {isLoading
+              ? 'Đang tải cấu hình'
+              : isValid
+                ? 'Tổng trọng số hợp lệ'
+                : 'Tổng trọng số chưa hợp lệ'}
+          </p>
         </div>
 
         <div>
-          <span className="text-slate-400 font-medium block mb-0.5">
-            Điểm sàn phản biện
-          </span>
+          <span className="text-slate-500 block mb-1">Điểm sàn phản biện</span>
           <span className="font-semibold text-slate-800 text-sm">
             {reviewerMinimumScore !== null
-              ? `${reviewerMinimumScore} - Giá trị mẫu`
+              ? `${reviewerMinimumScore} / 10`
               : 'Không áp dụng điểm sàn'}
           </span>
         </div>
 
-        <div className="border-t border-slate-100 pt-3 space-y-1.5">
-          <span className="font-bold text-slate-800 block text-xs">Lưu ý xử lý</span>
-          <ul className="space-y-1 text-slate-600 list-disc pl-4 leading-relaxed text-[11px]">
+        <details className="border-t border-slate-100 pt-3">
+          <summary className="cursor-pointer font-semibold text-slate-700 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded">
+            Lưu ý xử lý
+          </summary>
+          <ul className="mt-3 space-y-2 text-slate-600 list-disc pl-4 leading-relaxed text-xs">
             <li>Phần trăm có tổng 100%</li>
             <li>Hệ số nguyên hợp lệ và tổng dương</li>
             <li>Nguồn không áp dụng không tính vào mẫu số</li>
           </ul>
-        </div>
+        </details>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { DatePicker } from '@/components/ui/calendar';
 import React from 'react';
 import { Input } from '@/components/ui/input';
 
@@ -61,9 +62,7 @@ export const PeriodInfoCard: React.FC<PeriodInfoCardProps> = ({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-              Tên đợt
-            </label>
+            <label className="mb-1.5 block text-xs font-semibold text-slate-700">Tên đợt</label>
             <Input
               type="text"
               disabled={!canEdit}
@@ -76,15 +75,13 @@ export const PeriodInfoCard: React.FC<PeriodInfoCardProps> = ({
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-            Ngày bắt đầu
-          </label>
+          <label className="mb-1.5 block text-xs font-semibold text-slate-700">Ngày bắt đầu</label>
           <div className="relative">
-            <Input
-              type="date"
+            <DatePicker
+              aria-label="Ngày bắt đầu"
               disabled={!canEdit}
               value={startDate}
-              onChange={(e) => onStartDateChange(e.target.value)}
+              onValueChange={(value) => onStartDateChange(value)}
               className="h-10 text-sm border-slate-200"
             />
           </div>

@@ -1,3 +1,4 @@
+import { OperationToast } from '@/shared/notifications';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FilePenLine } from 'lucide-react';
@@ -132,11 +133,7 @@ function StudentRenameRequestContent() {
             : 'Đơn sẽ lần lượt qua giảng viên, Khoa và Phòng đào tạo.'}
         </p>
       )}
-      {notice && (
-        <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
-          {notice}
-        </p>
-      )}
+      <OperationToast message={notice} onConsumed={() => setNotice('')} />
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
         <div className="space-y-5">
           <Card className="space-y-5 border-slate-200 p-5 shadow-sm">

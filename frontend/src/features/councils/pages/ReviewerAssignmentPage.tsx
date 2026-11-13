@@ -1,4 +1,6 @@
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { OperationToast } from '@/shared/notifications';
+
 import { PageHeader } from '@/components/ui/page-header';
 import { SimilarityReportPanel } from '@/features/thesis/components/SimilarityReportPanel';
 import { useReviewerAssignment } from '../hooks/useReviewerAssignment';
@@ -28,6 +30,7 @@ export function ReviewerAssignmentPage() {
     selectedReviewerId,
     setSelectedReviewerId,
     notice,
+    setNotice,
     errorMessage,
     canManage,
     assignMutation,
@@ -47,25 +50,9 @@ export function ReviewerAssignmentPage() {
         </span>
       </PageHeader>
 
-      {errorMessage && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
-          <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold">Thao tác không thành công</p>
-            <p className="text-xs mt-0.5 text-rose-700">{errorMessage}</p>
-          </div>
-        </div>
-      )}
+      {errorMessage && <InlineAlert title="Không thể hoàn tất">{errorMessage}</InlineAlert>}
 
-      {notice && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3">
-          <CheckCircle2 className="size-5 shrink-0 text-emerald-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold">Thông báo</p>
-            <p className="text-xs mt-0.5 text-emerald-700">{notice}</p>
-          </div>
-        </div>
-      )}
+      <OperationToast message={notice} onConsumed={() => setNotice(null)} />
 
       <ReviewerAssignmentFilterBar
         keyword={keyword}

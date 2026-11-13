@@ -1,0 +1,47 @@
+/* Broader periods pull back; choosing a period brings its details closer. */
+.calendar-view {
+  transform-origin: center;
+  animation: calendar-expand 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.calendar-view[data-motion='drill'] {
+  animation-name: calendar-drill;
+}
+
+@keyframes calendar-expand {
+  from {
+    opacity: 0.25;
+    transform: scale(1.08);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes calendar-drill {
+  from {
+    opacity: 0.25;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-view,
+  .calendar-view[data-motion='drill'] {
+    animation: calendar-feedback 80ms linear;
+  }
+
+  @keyframes calendar-feedback {
+    from {
+      opacity: 0.7;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

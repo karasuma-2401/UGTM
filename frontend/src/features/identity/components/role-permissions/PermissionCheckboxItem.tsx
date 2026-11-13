@@ -17,7 +17,10 @@ export function PermissionCheckboxItem({
 }: PermissionCheckboxItemProps) {
   return (
     <div
-      onClick={() => {
+      onClick={(event) => {
+        // The checkbox label activates its input natively; let onCheckedChange
+        // handle that click instead of toggling once here and once on the input.
+        if ((event.target as Element).closest('label, input')) return;
         if (!disabled) {
           onToggle(permission.id, !checked);
         }
@@ -28,11 +31,13 @@ export function PermissionCheckboxItem({
         'hover:border-[var(--color-primary-border,#d4e4ff)] hover:bg-[var(--color-bg-subtle,#f7f9fc)]',
         checked &&
           'border-[var(--color-primary-border,#d4e4ff)] bg-[var(--color-primary-light,#eff6ff)]/50',
-        disabled && 'cursor-default opacity-70 hover:bg-white hover:border-[var(--color-border-subtle,#edf1f7)]',
+        disabled &&
+          'cursor-default opacity-70 hover:bg-white hover:border-[var(--color-border-subtle,#edf1f7)]',
       )}
     >
       <div className="flex items-center gap-3 min-w-0 pr-3">
         <Checkbox
+          aria-label={permission.permissionName || permission.permissionCode}
           checked={checked}
           disabled={disabled}
           onCheckedChange={(val) => onToggle(permission.id, val)}
@@ -42,14 +47,15 @@ export function PermissionCheckboxItem({
         <div className="flex flex-col text-left min-w-0">
           <span
             className={cn(
-              'text-xs font-semibold leading-snug truncate',
+              'text-sm font-medium leading-snug break-words',
               checked
                 ? 'text-[var(--color-primary-hover,#1d4ed8)]'
                 : 'text-[var(--color-text-main,#10182c)]',
             )}
           >
-            {permission.permissionName}
+            {permission.permissionName || permission.permissionCode}
           </span>
+          <span className="mt-1 break-all text-xs text-slate-500">{permission.permissionCode}</span>
         </div>
       </div>
 
@@ -68,4 +74,3 @@ export function PermissionCheckboxItem({
     </div>
   );
 }
-

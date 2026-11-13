@@ -1,0 +1,6 @@
+interface:
+  display_name: "Playwright — UGTM"
+  short_description: "Automate real browsers from the terminal"
+  icon_small: "./assets/playwright-small.svg"
+  icon_large: "./assets/playwright.png"
+  default_prompt: "Use $playwright to verify this UGTM browser workflow and report the observed result."

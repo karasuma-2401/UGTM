@@ -8,12 +8,20 @@ import type {
   CouncilApprovalStatus,
 } from '../types/councilApproval.types';
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function useCouncilApproval() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const batchesQuery = useAcademicBatches();
 
-  const [userSelectedBatchId, setUserSelectedBatchId] = useState<string>('');
+  const [userBatchFilter, setUserBatchFilter] = useState<string | null>(null);
+  const [appliedBatchFilter, setAppliedBatchFilter] = useState<string | null>(null);
   const [keyword, setKeyword] = useState<string>('');
   const [appliedKeyword, setAppliedKeyword] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<CouncilApprovalStatus>('all');
@@ -33,51 +41,38 @@ export function useCouncilApproval() {
     return batches.find((b) => b.status === 'Open') || batches[0] || null;
   }, [batches]);
 
-  const selectedBatchId = userSelectedBatchId || defaultBatch?.id || '';
+  const batchFilter = userBatchFilter !== null ? userBatchFilter : defaultBatch?.id || 'all';
+  const appliedBatchId = appliedBatchFilter !== null ? appliedBatchFilter : defaultBatch?.id || 'all';
 
   const selectedBatch = useMemo(
-    () => batches.find((b) => b.id === selectedBatchId) || defaultBatch,
-    [batches, selectedBatchId, defaultBatch],
+    () => batches.find((b) => b.id === appliedBatchId) || null,
+    [batches, appliedBatchId],
   );
 
+  const isBatchReady = !batchesQuery.isFetching || appliedBatchFilter !== null;
+
   const draftsQuery = useQuery({
-    queryKey: ['council-drafts', selectedBatch?.id, appliedKeyword, appliedStatusFilter],
+    queryKey: ['council-drafts', user?.id, appliedBatchId, appliedKeyword, appliedStatusFilter],
     queryFn: ({ signal }) =>
       councilApprovalApi.getCouncilDrafts(
         {
-          batchId: selectedBatch?.id,
+          batchId: appliedBatchId,
           keyword: appliedKeyword,
           status: appliedStatusFilter,
         },
         signal,
       ),
+    enabled: Boolean(user?.id && isBatchReady),
   });
 
-  const rawDrafts = useMemo(
+  const filteredDrafts = useMemo(
     () => draftsQuery.data || [],
     [draftsQuery.data],
   );
 
-  const filteredDrafts = useMemo(() => {
-    return rawDrafts.filter((item) => {
-      const matchKeyword =
-        !appliedKeyword.trim() ||
-        item.councilCode.toLowerCase().includes(appliedKeyword.toLowerCase()) ||
-        item.facultyName.toLowerCase().includes(appliedKeyword.toLowerCase()) ||
-        item.groupCode.toLowerCase().includes(appliedKeyword.toLowerCase());
-
-      const matchStatus =
-        appliedStatusFilter === 'all' ||
-        (appliedStatusFilter === 'draft' && item.status === 'Draft') ||
-        (appliedStatusFilter === 'active' && item.status === 'Active');
-
-      return matchKeyword && matchStatus;
-    });
-  }, [rawDrafts, appliedKeyword, appliedStatusFilter]);
-
   const pendingCount = useMemo(
-    () => rawDrafts.filter((d) => d.status === 'Draft').length,
-    [rawDrafts],
+    () => filteredDrafts.filter((d) => d.status === 'Draft').length,
+    [filteredDrafts],
   );
 
   const selectedCouncilId = useMemo(() => {
@@ -131,6 +126,7 @@ export function useCouncilApproval() {
   const handleApplyFilter = () => {
     setAppliedKeyword(keyword.trim());
     setAppliedStatusFilter(statusFilter);
+    setAppliedBatchFilter(batchFilter);
   };
 
   const handleResetFilter = () => {
@@ -138,6 +134,8 @@ export function useCouncilApproval() {
     setAppliedKeyword('');
     setStatusFilter('all');
     setAppliedStatusFilter('all');
+    setUserBatchFilter(null);
+    setAppliedBatchFilter(null);
   };
 
   const canApprove = useMemo(() => {
@@ -156,14 +154,17 @@ export function useCouncilApproval() {
         throw new Error('Vui lòng chọn một dự thảo Hội đồng.');
       }
 
-      const decisionNum =
-        customDecisionNumber.trim() || `QD-${selectedCouncil.councilCode}`;
-      const fileName = selectedFile?.name || selectedCouncil.decisionFileUrl || `${decisionNum}.pdf`;
+      const decisionNum = customDecisionNumber.trim();
+      if (!decisionNum) {
+        throw new Error('Vui lòng nhập số quyết định thành lập Hội đồng.');
+      }
+
+      const fileUrl = selectedFile?.name || selectedCouncil.decisionFileUrl || null;
 
       return await councilApprovalApi.approveCouncil(selectedCouncil.id, {
         decisionNumber: decisionNum,
-        signedDate: new Date().toISOString().split('T')[0],
-        decisionFileUrl: fileName,
+        signedDate: formatLocalDate(new Date()),
+        decisionFileUrl: fileUrl,
       });
     },
     onSuccess: () => {
@@ -175,11 +176,17 @@ export function useCouncilApproval() {
     },
   });
 
+  const loadErrorMessage = draftsQuery.isError
+    ? draftsQuery.error instanceof Error
+      ? draftsQuery.error.message
+      : 'Không thể tải danh sách Hội đồng.'
+    : null;
+
   return {
     batches,
+    batchFilter,
+    setBatchFilter: setUserBatchFilter,
     selectedBatch,
-    selectedBatchId,
-    setSelectedBatchId: setUserSelectedBatchId,
     keyword,
     setKeyword,
     statusFilter,
@@ -200,7 +207,7 @@ export function useCouncilApproval() {
     setCustomDecisionNumber,
     noticeMessage,
     setNoticeMessage,
-    errorMessage,
+    errorMessage: errorMessage || loadErrorMessage,
     setErrorMessage,
     canApprove,
     approveMutation,

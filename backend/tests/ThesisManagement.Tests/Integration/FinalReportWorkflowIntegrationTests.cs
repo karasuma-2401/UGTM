@@ -74,11 +74,7 @@ public sealed partial class FinalReportWorkflowIntegrationTests(PostgreSqlFixtur
 
     public async Task InitializeAsync()
     {
-        await using (var db = MigrationDb())
-        {
-            await ResetSchemasAsync(db);
-            await db.Database.MigrateAsync();
-        }
+        await database.ResetToMigratedAsync();
         await SeedAsync();
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Production" });
         builder.Logging.ClearProviders();
@@ -147,8 +143,6 @@ public sealed partial class FinalReportWorkflowIntegrationTests(PostgreSqlFixtur
                 await _app.DisposeAsync();
             }
         }
-        await using var db = MigrationDb();
-        await ResetSchemasAsync(db);
     }
 
     [Fact]
@@ -591,10 +585,6 @@ public sealed partial class FinalReportWorkflowIntegrationTests(PostgreSqlFixtur
         return new UGTMDbContext(options.Options);
     }
 
-    private static Task ResetSchemasAsync(UGTMDbContext db) => db.Database.ExecuteSqlRawAsync("""
-        DROP SCHEMA IF EXISTS identity, academic, topics, thesis, councils, notifications, public CASCADE;
-        CREATE SCHEMA public;
-        """);
 
     private static byte[] Document(string extension)
     {

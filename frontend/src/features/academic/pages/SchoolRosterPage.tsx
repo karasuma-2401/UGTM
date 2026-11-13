@@ -1,6 +1,9 @@
+import { OperationToast } from '@/shared/notifications';
 import React from 'react';
-import { UsersRound, CheckCircle2, AlertCircle } from 'lucide-react';
+import { UsersRound, RotateCcw } from 'lucide-react';
+import { InlineAlert } from '@/components/ui/inline-alert';
 import { PageHeader } from '@/components/ui/page-header';
+import { Button } from '@/components/ui/button';
 import { UserFormDialog } from '@/features/identity/components/users/UserFormDialog';
 import { userApi, getUserErrorMessage } from '@/features/identity/services/userApi';
 import type { UserFormValues } from '@/features/identity/types/user.types';
@@ -15,6 +18,18 @@ export const SchoolRosterPage: React.FC = () => {
   const { data, roster } = useSchoolRoster();
   const [isSingleSaving, setIsSingleSaving] = React.useState(false);
   const [singleError, setSingleError] = React.useState<string | null>(null);
+
+  const activeErrorMessage = roster.errorMessage || data.loadError;
+
+  const handleDismissError = () => {
+    roster.setErrorMessage(null);
+    data.setLoadError(null);
+  };
+
+  const handleRetryLoad = () => {
+    roster.setErrorMessage(null);
+    void data.reloadData();
+  };
 
   const handleSingleSave = async (values: UserFormValues) => {
     setIsSingleSaving(true);
@@ -45,42 +60,24 @@ export const SchoolRosterPage: React.FC = () => {
       >
       </PageHeader>
 
-      {roster.notice && (
-        <div
-          role="status"
-          className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 text-xs sm:text-sm text-emerald-800 flex items-center justify-between shadow-xs transition-all animate-in fade-in"
-        >
-          <div className="flex items-center gap-2.5">
-            <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
-            <span className="font-medium">{roster.notice}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => roster.setNotice(null)}
-            className="text-emerald-700 hover:text-emerald-950 font-bold ml-3 text-xs underline cursor-pointer"
-          >
-            Đóng
-          </button>
-        </div>
-      )}
+      <OperationToast message={roster.notice} onConsumed={() => roster.setNotice(null)} />
 
-      {roster.errorMessage && (
-        <div
-          role="alert"
-          className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-xs sm:text-sm text-rose-800 flex items-center justify-between shadow-xs transition-all animate-in fade-in"
-        >
-          <div className="flex items-center gap-2.5">
-            <AlertCircle className="size-5 text-rose-600 shrink-0" />
-            <span className="font-medium">{roster.errorMessage}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => roster.setErrorMessage(null)}
-            className="text-rose-700 hover:text-rose-950 font-bold ml-3 text-xs underline cursor-pointer"
-          >
-            Đóng
-          </button>
-        </div>
+      {activeErrorMessage && (
+        <InlineAlert onDismiss={handleDismissError} action={data.loadError ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRetryLoad}
+                disabled={data.isLoadingBatches}
+                className="h-8 text-xs border-rose-300 bg-white text-rose-700 hover:bg-rose-100 cursor-pointer"
+              >
+                <RotateCcw className="size-3.5 mr-1.5" />
+                Thử lại
+              </Button>
+            ) : undefined}>
+          {activeErrorMessage}
+        </InlineAlert>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
@@ -91,6 +88,7 @@ export const SchoolRosterPage: React.FC = () => {
             batches={data.batches}
             selectedBatchId={data.selectedBatchId}
             onSelectBatchId={data.setSelectedBatchId}
+            isLoadingBatches={data.isLoadingBatches}
             fileInfo={roster.fileInfo}
             onSelectFile={roster.handleSelectFile}
             onDownloadTemplate={roster.handleDownloadTemplate}

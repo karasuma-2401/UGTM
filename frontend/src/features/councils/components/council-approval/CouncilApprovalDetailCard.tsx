@@ -41,6 +41,11 @@ export function CouncilApprovalDetailCard({
             <p className="text-slate-800 font-medium">
               {selectedCouncil.groupCode} · {selectedCouncil.groupConditionLabel}
             </p>
+            {selectedCouncil.topicTitles.map((title) => (
+              <p key={title} className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">
+                {title}
+              </p>
+            ))}
           </div>
 
           <div>
@@ -60,6 +65,11 @@ export function CouncilApprovalDetailCard({
                 Thư ký: {selectedCouncil.secretaryName}
               </p>
             )}
+            {selectedCouncil.memberNames && selectedCouncil.memberNames.length > 0 && (
+              <p className="text-[11px] text-slate-500">
+                Ủy viên: {selectedCouncil.memberNames.join(', ')}
+              </p>
+            )}
           </div>
 
           <div>
@@ -69,6 +79,11 @@ export function CouncilApprovalDetailCard({
             <p className="text-slate-800 font-medium">
               {selectedCouncil.room} · {selectedCouncil.timeSlot}
             </p>
+            {selectedCouncil.defenseDate && (
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Ngày bảo vệ: {selectedCouncil.defenseDate}
+              </p>
+            )}
           </div>
 
           <div>

@@ -18,8 +18,9 @@ export function useMidtermSubmission() {
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   const statusQuery = useQuery({
-    queryKey: ['student-registration-status'],
+    queryKey: ['student-registration-status', user?.id],
     queryFn: ({ signal }) => syllabusApi.getMyStatus(signal),
+    enabled: Boolean(user?.id),
   });
 
   const groupId = statusQuery.data?.groupId;
@@ -31,28 +32,32 @@ export function useMidtermSubmission() {
   );
 
   const groupDetailQuery = useQuery({
-    queryKey: ['student-group-detail', groupId, user?.id, currentBatch?.id],
-    queryFn: () =>
-      syllabusApi.getGroupDetail(groupId!, {
-        topicId: topicId ?? undefined,
-        topicTitle: topicTitleVi ?? undefined,
-        currentUser: user,
-        batchName: currentBatch?.batchName,
-      }),
-    enabled: Boolean(groupId),
+    queryKey: ['student-group-detail', user?.id, groupId, currentBatch?.id],
+    queryFn: ({ signal }) =>
+      syllabusApi.getGroupDetail(
+        groupId!,
+        {
+          topicId: topicId ?? undefined,
+          topicTitle: topicTitleVi ?? undefined,
+          currentUser: user,
+          batchName: currentBatch?.batchName,
+        },
+        signal,
+      ),
+    enabled: Boolean(user?.id && groupId),
   });
 
   const syllabusHistoryQuery = useQuery({
-    queryKey: ['syllabus-history', groupId],
+    queryKey: ['syllabus-history', user?.id, groupId],
     queryFn: ({ signal }) => syllabusApi.getSyllabusHistory(groupId!, signal),
-    enabled: Boolean(groupId),
+    enabled: Boolean(user?.id && groupId),
     retry: false,
   });
 
   const historyQuery = useQuery({
-    queryKey: ['midterm-history', groupId],
+    queryKey: ['midterm-history', user?.id, groupId],
     queryFn: ({ signal }) => midtermApi.getMidtermHistory(groupId!, signal),
-    enabled: Boolean(groupId),
+    enabled: Boolean(user?.id && groupId),
     retry: false,
   });
 
@@ -80,8 +85,8 @@ export function useMidtermSubmission() {
     onSuccess: (data) => {
       setSelectedFile(null);
       setActionSuccess(`Nộp báo cáo giữa kỳ phiên bản v${data.versionNo} thành công!`);
-      void queryClient.invalidateQueries({ queryKey: ['midterm-history', groupId] });
-      void queryClient.invalidateQueries({ queryKey: ['student-registration-status'] });
+      void queryClient.invalidateQueries({ queryKey: ['midterm-history', user?.id, groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
     },
     onError: (err: Error) => {
       setActionError(err.message || 'Nộp báo cáo giữa kỳ thất bại. Vui lòng thử lại.');
@@ -106,7 +111,7 @@ export function useMidtermSubmission() {
   const isSyllabusApproved = syllabusStatus === 'Approved';
 
   let notEligibleReason: string | null = null;
-  if (!syllabusHistoryQuery.isLoading && !isSyllabusApproved) {
+  if (!syllabusHistoryQuery.isLoading && !syllabusHistoryQuery.isError && !isSyllabusApproved) {
     if (!syllabusHistoryQuery.data) {
       notEligibleReason =
         'Nhóm của bạn chưa nộp Đề cương chi tiết (Cổng 1). Vui lòng hoàn thành và chờ Khoa phê duyệt Đề cương trước khi nộp Báo cáo giữa kỳ.';

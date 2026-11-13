@@ -1,3 +1,5 @@
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { OperationToast } from '@/shared/notifications';
 import { useNavigate } from 'react-router-dom';
 import { useMilestoneReview } from '../hooks/useMilestoneReview';
 import {
@@ -8,7 +10,8 @@ import {
 } from '../components/milestone';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, AlertCircle, CheckCircle2, CalendarCheck } from 'lucide-react';
+import { ArrowLeft, AlertCircle, CalendarCheck, ShieldAlert, RotateCcw } from 'lucide-react';
+import { classifyThesisError, getThesisErrorMessage } from '../utils/thesisErrors';
 
 export function AdvisorMilestoneReviewPage() {
   const navigate = useNavigate();
@@ -24,6 +27,7 @@ export function AdvisorMilestoneReviewPage() {
     setFeedback,
     actionError,
     actionSuccess,
+    setActionSuccess,
     canReview,
     isSubmitting,
     isDownloading,
@@ -42,6 +46,55 @@ export function AdvisorMilestoneReviewPage() {
         <div className="inline-flex items-center gap-2 text-slate-500 text-sm">
           <span className="size-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           Đang tải dữ liệu báo cáo tiến độ...
+        </div>
+      </div>
+    );
+  }
+
+  if (reportQuery.isError) {
+    const errorKind = classifyThesisError(reportQuery.error);
+    const message = getThesisErrorMessage(
+      reportQuery.error,
+      'Không thể tải báo cáo tiến độ của mốc công việc này.',
+    );
+
+    return (
+      <div className="max-w-4xl mx-auto py-10 px-4">
+        <div className="p-8 text-center bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
+          <div className="size-12 mx-auto rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+            {errorKind === 'forbidden' ? (
+              <ShieldAlert className="size-6 text-amber-600" />
+            ) : (
+              <AlertCircle className="size-6" />
+            )}
+          </div>
+          <h2 className="text-lg font-bold text-slate-800">
+            {errorKind === 'forbidden'
+              ? 'Không có quyền truy cập báo cáo tiến độ'
+              : 'Không tải được dữ liệu báo cáo tiến độ'}
+          </h2>
+          <p className="text-sm text-slate-500 max-w-md mx-auto">{message}</p>
+          <div className="flex items-center justify-center gap-3">
+            {errorKind !== 'forbidden' && (
+              <Button
+                type="button"
+                onClick={() => void reportQuery.refetch()}
+                className="bg-primary text-white"
+              >
+                <RotateCcw className="size-4 mr-2" />
+                Thử lại
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/advisor/milestones')}
+              className="border-slate-300"
+            >
+              <ArrowLeft className="size-4 mr-2" />
+              Quay lại danh sách mốc
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -104,25 +157,9 @@ export function AdvisorMilestoneReviewPage() {
         />
       </PageHeader>
 
-      {actionError && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
-          <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold">Thao tác không thành công</p>
-            <p className="text-xs mt-0.5 text-rose-700">{actionError}</p>
-          </div>
-        </div>
-      )}
+      {actionError && <InlineAlert title="Không thể hoàn tất">{actionError}</InlineAlert>}
 
-      {actionSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-start gap-3">
-          <CheckCircle2 className="size-5 shrink-0 text-emerald-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold">Thông báo</p>
-            <p className="text-xs mt-0.5 text-emerald-700">{actionSuccess}</p>
-          </div>
-        </div>
-      )}
+      <OperationToast message={actionSuccess} onConsumed={() => setActionSuccess(null)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div className="lg:col-span-8 space-y-6">

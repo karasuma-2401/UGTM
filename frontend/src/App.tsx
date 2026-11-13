@@ -4,14 +4,17 @@ import { RouterProvider } from 'react-router-dom';
 import { queryClient } from './app/queryClient';
 import { router } from './app/router';
 import { AuthProvider } from './shared/auth';
+import { NotificationProvider } from './shared/notifications';
 
 function App() {
   return (
     <ConfigProvider>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <RouterProvider router={router} />
-        </AuthProvider>
+        <NotificationProvider>
+          <AuthProvider>
+            <RouterProvider router={router} />
+          </AuthProvider>
+        </NotificationProvider>
       </QueryClientProvider>
     </ConfigProvider>
   );

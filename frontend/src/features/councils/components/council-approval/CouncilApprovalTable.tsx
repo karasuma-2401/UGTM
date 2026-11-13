@@ -8,6 +8,24 @@ interface CouncilApprovalTableProps {
   isLoading?: boolean;
 }
 
+const STATUS_BADGE_MAP: Record<
+  CouncilDraftItemDto['status'],
+  { label: string; className: string }
+> = {
+  Draft: {
+    label: 'Chờ phê duyệt',
+    className: 'text-slate-700 bg-slate-100 border-slate-200',
+  },
+  Active: {
+    label: 'Đã phê duyệt',
+    className: 'text-emerald-700 bg-emerald-50 border-emerald-200/60',
+  },
+  Completed: {
+    label: 'Đã hoàn thành',
+    className: 'text-blue-700 bg-blue-50 border-blue-200/60',
+  },
+};
+
 export function CouncilApprovalTable({
   items,
   selectedCouncilId,
@@ -46,6 +64,7 @@ export function CouncilApprovalTable({
             ) : (
               items.map((item) => {
                 const isSelected = item.id === selectedCouncilId;
+                const badge = STATUS_BADGE_MAP[item.status] || STATUS_BADGE_MAP.Draft;
 
                 return (
                   <tr
@@ -66,15 +85,11 @@ export function CouncilApprovalTable({
                     </td>
 
                     <td className="py-3.5 pr-4">
-                      {item.status === 'Draft' ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-slate-700 bg-slate-100 border border-slate-200">
-                          Chờ phê duyệt
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/60">
-                          Đã phê duyệt
-                        </span>
-                      )}
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${badge.className}`}
+                      >
+                        {item.statusLabel || badge.label}
+                      </span>
                     </td>
 
                     <td className="py-3.5 pl-4 text-right">

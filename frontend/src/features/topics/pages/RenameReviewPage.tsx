@@ -1,3 +1,4 @@
+import { OperationToast } from '@/shared/notifications';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClipboardCheck } from 'lucide-react';
@@ -168,11 +169,7 @@ function RenameReviewContent({ level }: { level: Level }) {
           Chờ phê duyệt cấp {config.number}: {queue.length}
         </StatusBadge>
       </div>
-      {notice && (
-        <p role="status" className="rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
-          {notice}
-        </p>
-      )}
+      <OperationToast message={notice} onConsumed={() => setNotice('')} />
       {error && (
         <div role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">
           {getTopicErrorMessage(error)}{' '}

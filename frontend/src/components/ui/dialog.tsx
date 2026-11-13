@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from './button';
 import { cn } from '@/lib/utils';
+import { registerNotificationDialog } from '@/shared/notifications/dialog-host';
 
 export interface DialogProps {
   title?: ReactNode;
@@ -12,7 +13,9 @@ export interface DialogProps {
   busy?: boolean;
   closeLabel?: string;
   className?: string;
+  headerClassName?: string;
   hideHeader?: boolean;
+  variant?: 'modal' | 'drawer';
 }
 
 export function Dialog({
@@ -23,7 +26,9 @@ export function Dialog({
   busy = false,
   closeLabel = 'Đóng cửa sổ',
   className,
+  headerClassName,
   hideHeader = false,
+  variant = 'modal',
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -32,9 +37,11 @@ export function Dialog({
     const dialog = ref.current;
     if (!dialog || !open) return;
     if (!dialog.open) dialog.showModal();
+    const unregisterNotifications = registerNotificationDialog(dialog);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
+      unregisterNotifications();
       dialog.close();
       document.body.style.overflow = previousOverflow;
     };
@@ -52,15 +59,31 @@ export function Dialog({
         if (!busy) onClose();
       }}
       className={cn(
-        'fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 text-slate-800 shadow-2xl backdrop:bg-slate-900/50 backdrop:backdrop-blur-sm',
+        'fluent-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-0 text-slate-800 shadow-[0_24px_64px_-12px_rgba(15,23,42,0.2)] backdrop:bg-slate-950/45 backdrop:backdrop-blur-xs',
+        variant === 'drawer' &&
+          'fluent-drawer inset-y-0 left-auto right-0 m-0 h-dvh max-h-dvh w-full max-w-none rounded-none border-y-0 border-r-0 backdrop:bg-slate-950/20 sm:max-w-[560px]',
         className,
       )}
     >
+      {hideHeader && (
+        <span id={titleId} className="sr-only">
+          {title}
+        </span>
+      )}
       {!hideHeader && (
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-          <span id={titleId} className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <div
+          className={cn(
+            'sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-3.5 backdrop-blur-md',
+            variant === 'drawer' && 'min-h-20',
+            headerClassName,
+          )}
+        >
+          <div
+            id={titleId}
+            className="min-w-0 flex-1 text-sm font-semibold tracking-tight text-slate-900"
+          >
             {title}
-          </span>
+          </div>
           <Button
             type="button"
             variant="ghost"
@@ -68,7 +91,7 @@ export function Dialog({
             aria-label={closeLabel}
             disabled={busy}
             onClick={onClose}
-            className="h-8 w-8 rounded-full text-slate-500 hover:bg-slate-100"
+            className="ml-3 h-8 w-8 shrink-0 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
           >
             <X />
           </Button>

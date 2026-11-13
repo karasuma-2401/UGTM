@@ -65,31 +65,27 @@ export function useAdvisorMilestones() {
   }, [advisedGroups, selectedGroupId]);
 
   const syllabusQuery = useQuery({
-    queryKey: ['advisor-group-syllabus', selectedGroupId],
+    queryKey: ['advisor-group-syllabus', user?.id, selectedGroupId],
     queryFn: ({ signal }) =>
       selectedGroupId ? syllabusApi.getSyllabusHistory(selectedGroupId, signal) : null,
-    enabled: Boolean(selectedGroupId),
+    enabled: Boolean(user?.id && selectedGroupId),
     retry: false,
   });
 
   const milestonesQuery = useQuery({
-    queryKey: ['advisor-milestones-with-reports', selectedGroupId],
+    queryKey: ['advisor-milestones-with-reports', user?.id, selectedGroupId],
     queryFn: async ({ signal }) => {
       if (!selectedGroupId) return [];
       const milestones = await milestoneApi.getMilestones(selectedGroupId, signal);
       const withReports = await Promise.all(
         milestones.map(async (m) => {
-          try {
-            const report = await milestoneApi.getProgressReport(m.id, signal);
-            return { milestone: m, report };
-          } catch {
-            return { milestone: m, report: null };
-          }
+          const report = await milestoneApi.getProgressReport(m.id, signal);
+          return { milestone: m, report };
         })
       );
       return withReports;
     },
-    enabled: Boolean(selectedGroupId),
+    enabled: Boolean(user?.id && selectedGroupId),
   });
 
   const syllabusStatus = syllabusQuery.data?.currentStatus;
@@ -131,7 +127,7 @@ export function useAdvisorMilestones() {
       setSelectedMilestone(null);
       setActionSuccess(`Thiết lập mốc "${data.title}" thành công!`);
       void queryClient.invalidateQueries({
-        queryKey: ['advisor-milestones-with-reports', selectedGroupId],
+        queryKey: ['advisor-milestones-with-reports', user?.id, selectedGroupId],
       });
     },
     onError: (err: Error) => {

@@ -1,6 +1,6 @@
+import { DatePicker } from '@/components/ui/calendar';
 import React from 'react';
 import { Sliders } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
 interface PeriodDeadlinesCardProps {
@@ -56,43 +56,37 @@ export const PeriodDeadlinesCard: React.FC<PeriodDeadlinesCardProps> = ({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-            Đề cương
-          </label>
-          <Input
-            type="date"
+          <label className="mb-1.5 block text-xs font-semibold text-slate-700">Đề cương</label>
+          <DatePicker
+            aria-label="Hạn đề cương"
             disabled={!canEdit}
             value={syllabusDeadline}
             min={syllabusMinDate}
-            onChange={(e) => onSyllabusDeadlineChange(e.target.value)}
+            onValueChange={(value) => onSyllabusDeadlineChange(value)}
             className="h-10 text-sm border-slate-200"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-            Giữa kỳ
-          </label>
-          <Input
-            type="date"
+          <label className="mb-1.5 block text-xs font-semibold text-slate-700">Giữa kỳ</label>
+          <DatePicker
+            aria-label="Hạn giữa kỳ"
             disabled={!canEdit}
             value={midtermDeadline}
             min={midtermMinDate}
-            onChange={(e) => onMidtermDeadlineChange(e.target.value)}
+            onValueChange={(value) => onMidtermDeadlineChange(value)}
             className="h-10 text-sm border-slate-200"
           />
         </div>
 
         <div>
-          <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-            Cuối kỳ
-          </label>
-          <Input
-            type="date"
+          <label className="mb-1.5 block text-xs font-semibold text-slate-700">Cuối kỳ</label>
+          <DatePicker
+            aria-label="Hạn cuối kỳ"
             disabled={!canEdit}
             value={finalEvaluationDeadline}
             min={finalEvaluationMinDate}
-            onChange={(e) => onFinalEvaluationDeadlineChange(e.target.value)}
+            onValueChange={(value) => onFinalEvaluationDeadlineChange(value)}
             className="h-10 text-sm border-slate-200"
           />
         </div>
@@ -101,12 +95,12 @@ export const PeriodDeadlinesCard: React.FC<PeriodDeadlinesCardProps> = ({
           <label className="mb-1.5 block text-xs font-semibold text-slate-700">
             Bảo vệ / Lưu chiểu
           </label>
-          <Input
-            type="date"
+          <DatePicker
+            aria-label="Hạn bảo vệ / lưu chiểu"
             disabled={!canEdit}
             value={defenseDeadline}
             min={defenseMinDate}
-            onChange={(e) => onDefenseDeadlineChange(e.target.value)}
+            onValueChange={(value) => onDefenseDeadlineChange(value)}
             className="h-10 text-sm border-slate-200"
           />
         </div>

@@ -38,7 +38,8 @@ export const ScoreConfigCloneReasonDialog: React.FC<ScoreConfigCloneReasonDialog
     >
       <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
         <p className="text-slate-600 leading-relaxed">
-          Cấu hình hiện tại đang ở trạng thái <strong>Đang áp dụng (Active)</strong>. Theo quy định hệ thống, khi chỉnh sửa sẽ tự động tạo một phiên bản <strong>Bản nháp (Draft)</strong> kế tiếp.
+          Cấu hình hiện tại đang ở trạng thái <strong>Đang áp dụng</strong>. Theo quy định hệ thống,
+          khi chỉnh sửa sẽ tự động tạo một phiên bản <strong>Bản nháp</strong> kế tiếp.
         </p>
 
         {error && (
@@ -48,9 +49,7 @@ export const ScoreConfigCloneReasonDialog: React.FC<ScoreConfigCloneReasonDialog
         )}
 
         <div className="space-y-1.5">
-          <label className="font-semibold text-slate-700">
-            Lý do thay đổi cấu hình *
-          </label>
+          <label className="font-semibold text-slate-700">Lý do thay đổi cấu hình *</label>
           <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
