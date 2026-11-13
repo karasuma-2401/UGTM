@@ -140,6 +140,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IThesisUnitOfWork>(provider => provider.GetRequiredService<ThesisManagementDbContext>());
         services.AddScoped<IThesisRegistrationContract, ThesisRegistrationContract>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.DefenseCouncils.IDefenseGroupContract, DefenseGroupContract>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.DefenseCouncils.IAcademicResultsThesisReader, AcademicResultsThesisReader>();
         services.AddScoped<IThesisManagementAuditOutbox, ThesisManagementAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, ThesisManagementAuditEventSource>();
         services.Configure<S3StorageOptions>(configuration.GetSection(S3StorageOptions.SectionName));

@@ -5,7 +5,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
+using UGTM.Modules.DefenseCouncil.Application.AcademicResults.Common;
+using UGTM.Modules.DefenseCouncil.Application.AcademicResults.ExportAcademicResults;
+using UGTM.Modules.DefenseCouncil.Application.AcademicResults.GetAcademicResultDetail;
+using UGTM.Modules.DefenseCouncil.Application.AcademicResults.GetAcademicResults;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Infrastructure.Exporting;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.DecideAdvisorEvaluation;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.GetAdvisorEvaluation;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.SaveAdvisorEvaluation;
@@ -114,6 +119,13 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.StudentScoreSummaryHandler>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilScoreWriteGuard, UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.CouncilScoreWriteGuard>();
         services.AddScoped<UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.ICouncilMinuteWriteGuard, UGTM.Modules.DefenseCouncil.Application.ScoreSummaries.CouncilScoreWriteGuard>();
+
+        // Academic Affairs Results Use Cases
+        services.AddScoped<AcademicResultsWorkspaceLoader>();
+        services.AddScoped<IAcademicResultsExportFileGenerator, AcademicResultsExportFileGenerator>();
+        services.AddScoped<GetAcademicResultsHandler>();
+        services.AddScoped<GetAcademicResultDetailHandler>();
+        services.AddScoped<ExportAcademicResultsHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
@@ -126,6 +138,7 @@ public sealed class DefenseCouncilModule : IModule
         endpoints.MapReviewerAssignmentReadEndpoints();
         endpoints.MapReviewerEvaluationEndpoints();
         endpoints.MapReviewerEvaluationReadEndpoints();
+        endpoints.MapAcademicAffairsResultEndpoints();
         endpoints.MapGroup($"/api/modules/{Name}")
             .WithTags(Name)
             .MapGet("/ping", () => Results.Ok(new { module = Name, status = "ok" }))
