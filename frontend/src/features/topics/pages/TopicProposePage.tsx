@@ -16,6 +16,7 @@ import {
   Circle,
   ArrowLeft,
   FunnelX,
+  Info,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,6 @@ import { Select } from '@/components/ui/select';
 import { Dialog } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
 import { TopicsTable } from '../components/TopicsTable';
 import { TopicProposalSchedule } from '../components/TopicProposalSchedule';
@@ -46,7 +46,10 @@ import {
 } from '../proposalEditing';
 import { TopicPreview } from '../components/TopicPreview';
 import { TopicReviewNote } from '../components/TopicReviewNote';
-import { TopicStudentAssignmentField } from '../components/TopicStudentAssignmentField';
+import {
+  TopicStudentAssignmentField,
+  type StudentCodeLookupState,
+} from '../components/TopicStudentAssignmentField';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
@@ -79,11 +82,12 @@ type PendingConfirmation =
   | { kind: 'submit'; proposal: SaveProposal };
 
 const INITIAL_FILTERS: TopicFilters = { keyword: '', batchId: '', status: '' };
+const studentLookupCache = new Map<string, StudentCodeLookupState>();
 
 const textareaClass =
-  'min-h-28 w-full rounded-lg border border-input bg-slate-50/70 px-3 py-2 ' +
-  'text-sm shadow-sm placeholder:text-muted-foreground ' +
-  'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ' +
+  'min-h-28 w-full rounded-xl border border-input bg-slate-50/60 px-3.5 py-2.5 ' +
+  'text-sm shadow-none transition-colors placeholder:text-muted-foreground ' +
+  'focus-visible:border-primary focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 ' +
   'disabled:cursor-not-allowed disabled:opacity-50';
 
 export function TopicProposePage({
@@ -108,6 +112,7 @@ export function TopicProposePage({
   const [notice, setNotice] = useState('');
   const [formError, setFormError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<ProposalErrors>({});
+  const [studentLookups, setStudentLookups] = useState<Record<string, StudentCodeLookupState>>({});
   const [focusField, setFocusField] = useState<keyof TopicFormValues | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -188,6 +193,80 @@ export function TopicProposePage({
     return () => window.cancelAnimationFrame(frame);
   }, [focusField, isFormOpen, isPreviewOpen, recovery]);
 
+  const studentCodesKey = Array.from(
+    new Set(
+      (values.studentCodes ?? [])
+        .map((code) => code.trim().toUpperCase())
+        .filter(Boolean),
+    ),
+  ).join('|');
+  const knownStudentCodesKey = (selectedTopic?.group?.students ?? [])
+    .map((student) => student.userCode?.trim().toUpperCase())
+    .filter((code): code is string => Boolean(code))
+    .join('|');
+
+  useEffect(() => {
+    if (
+      !isFormOpen ||
+      !editable ||
+      Boolean(recovery) ||
+      !studentCodesKey ||
+      typeof topicApi.lookupStudentByCode !== 'function'
+    ) {
+      return;
+    }
+
+    const knownCodes = new Set(knownStudentCodesKey ? knownStudentCodesKey.split('|') : []);
+    const pendingCodes = studentCodesKey
+      .split('|')
+      .filter((code) => !knownCodes.has(code) && !studentLookupCache.has(code));
+
+    if (pendingCodes.length === 0) return;
+
+    let cancelled = false;
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = window.setTimeout(() => {
+      setStudentLookups((prev) => {
+        const next = { ...prev };
+        for (const code of pendingCodes) {
+          if (!studentLookupCache.has(code)) {
+            next[code] = { status: 'loading' };
+          }
+        }
+        return next;
+      });
+
+      void Promise.all(
+        pendingCodes.map(async (code) => {
+          try {
+            const match = await topicApi.lookupStudentByCode(code, controller?.signal);
+            if (cancelled || controller?.signal.aborted) return;
+            const resolved: StudentCodeLookupState = match
+              ? { status: 'found', fullName: match.fullName }
+              : { status: 'not_found' };
+            studentLookupCache.set(code, resolved);
+            setStudentLookups((prev) => ({
+              ...prev,
+              [code]: resolved,
+            }));
+          } catch {
+            if (cancelled || controller?.signal.aborted) return;
+            setStudentLookups((prev) => ({
+              ...prev,
+              [code]: { status: 'error' },
+            }));
+          }
+        }),
+      );
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      controller?.abort();
+      window.clearTimeout(timer);
+    };
+  }, [isFormOpen, editable, recovery, studentCodesKey, knownStudentCodesKey]);
+
   const hasFilters = [filters, draftFilters].some((value) =>
     Boolean(value.keyword || value.batchId || value.status),
   );
@@ -211,6 +290,11 @@ export function TopicProposePage({
       complete: Boolean(values.requirements.trim()),
     },
   ];
+  const completedChecklistCount = checklist.filter((item) => item.complete).length;
+  const isChecklistComplete = completedChecklistCount === checklist.length;
+  const assignedStudentCount =
+    selectedTopic?.group?.students?.length ??
+    (values.studentCodes?.filter((code) => code.trim()).length || 0);
 
   const batchesQuery = useAcademicBatches();
   const topicsQuery = useQuery({
@@ -339,6 +423,8 @@ export function TopicProposePage({
     }
   }
   function beginEditor(topic: Topic | null, initial: TopicFormValues, initialBaseline = initial) {
+    studentLookupCache.clear();
+    setStudentLookups({});
     setSelectedTopic(topic);
     setValues(initial);
     setBaseline(initialBaseline);
@@ -591,10 +677,19 @@ export function TopicProposePage({
 
       {isFormOpen && (
         <Dialog
-          title={isPreviewOpen ? 'Xem trước đề tài' : 'Đề xuất đề tài'}
+          title={
+            isPreviewOpen
+              ? 'Xem trước đề tài'
+              : selectedTopic
+                ? editable
+                  ? 'Chỉnh sửa đề tài'
+                  : 'Chi tiết đề tài'
+                : 'Đề xuất đề tài'
+          }
           busy={busy}
           onClose={closeForm}
-          className={isPreviewOpen ? 'max-w-3xl' : 'max-w-5xl'}
+          className={isPreviewOpen ? 'max-w-4xl' : 'max-w-5xl'}
+          headerClassName="border-b border-slate-200/80 px-5 py-3.5 sm:px-6"
         >
           {isPreviewOpen ? (
             <>
@@ -608,46 +703,31 @@ export function TopicProposePage({
                 }
                 batchLoading={Boolean(values.batchId) && !selectedBatch && batchesLoading}
               />
-              <div className="flex justify-end border-t border-slate-100 px-5 py-4">
+              <div className="sticky bottom-0 z-10 flex justify-end border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
                 <Button
                   type="button"
                   variant="outline"
                   leftIcon={<ArrowLeft />}
                   onClick={() => setIsPreviewOpen(false)}
+                  className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold"
                 >
                   {editable ? 'Quay lại chỉnh sửa' : 'Quay lại chi tiết'}
                 </Button>
               </div>
             </>
           ) : (
-            <div className="grid items-start gap-5 bg-slate-50/60 p-5 lg:grid-cols-[minmax(0,1fr)_260px]">
-              <Card className="min-w-0">
-                <CardHeader>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <CardTitle className="text-base">
-                      {selectedTopic
-                        ? editable
-                          ? 'Chỉnh sửa đề tài'
-                          : 'Thông tin đề tài'
-                        : 'Nội dung đề xuất'}
-                    </CardTitle>
-                    <TopicStatusBadge status={selectedTopic?.status ?? 'Draft'} />
-                  </div>
-                </CardHeader>
+            <form onSubmit={handleSubmit} noValidate>
+              <div className="grid grid-cols-1 lg:grid-cols-12">
+                <div className="space-y-5 bg-white p-5 sm:p-6 lg:col-span-8">
+                  {selectedTopic?.reviewNote && <TopicReviewNote note={selectedTopic.reviewNote} />}
 
-                <CardContent>
-                  {selectedTopic?.reviewNote && (
-                    <div className="mb-4">
-                      <TopicReviewNote note={selectedTopic.reviewNote} />
-                    </div>
-                  )}
                   {recovery && (
                     <div
                       role="status"
-                      className="mb-4 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+                      className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-sm text-amber-900"
                     >
-                      <p className="font-medium">Có nội dung chưa lưu lên hệ thống</p>
-                      <p className="text-xs">
+                      <p className="font-semibold">Có nội dung chưa lưu lên hệ thống</p>
+                      <p className="text-xs leading-relaxed text-amber-800">
                         Bản lưu trên thiết bị lúc{' '}
                         {new Date(recovery.savedAt).toLocaleString('vi-VN')}. Chọn khôi phục hoặc bỏ
                         bản lưu tạm để tiếp tục.
@@ -659,46 +739,62 @@ export function TopicProposePage({
                         </p>
                       )}
                       <div className="flex flex-wrap gap-2">
-                        <Button type="button" size="sm" variant="outline" onClick={restoreRecovery}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={restoreRecovery}
+                          className="h-8 rounded-lg border-amber-300 bg-white text-xs font-semibold text-amber-900 hover:bg-amber-100/70"
+                        >
                           Khôi phục nội dung
                         </Button>
-                        <Button type="button" size="sm" variant="ghost" onClick={discardRecovery}>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={discardRecovery}
+                          className="h-8 rounded-lg text-xs font-medium text-amber-900 hover:bg-amber-100/70"
+                        >
                           Bỏ bản lưu tạm
                         </Button>
                       </div>
                     </div>
                   )}
-                  <p
-                    className={`mb-5 rounded-lg p-3 text-sm ${selectedTopic?.status === 'NeedRevision' ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-700'}`}
+
+                  <div
+                    className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs leading-relaxed ${
+                      selectedTopic?.status === 'NeedRevision'
+                        ? 'border-amber-200 bg-amber-50/70 text-amber-900'
+                        : 'border-slate-200 bg-slate-50/80 text-slate-600'
+                    }`}
                   >
-                    {TOPIC_STATUS_HINTS[selectedTopic?.status ?? 'Draft']}
-                  </p>
-                  {hasUnsavedChanges && (
-                    <p role="status" className="mb-4 text-xs font-medium text-amber-700">
-                      Có thay đổi chưa lưu trên hệ thống
-                    </p>
-                  )}
-                  {editable && localSavedAt && (
-                    <p role="status" className="mb-4 text-xs text-slate-500">
-                      Đã lưu trên thiết bị lúc {new Date(localSavedAt).toLocaleTimeString('vi-VN')}.
-                      Dùng Lưu nháp để lưu lên hệ thống.
-                    </p>
-                  )}
+                    <Info
+                      className={`mt-0.5 size-4 shrink-0 ${
+                        selectedTopic?.status === 'NeedRevision' ? 'text-amber-600' : 'text-primary'
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <p>{TOPIC_STATUS_HINTS[selectedTopic?.status ?? 'Draft']}</p>
+                  </div>
+
                   {localError && (
-                    <p role="alert" className="mb-4 text-xs text-amber-700">
+                    <p
+                      role="alert"
+                      className="rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 text-xs font-medium text-amber-800"
+                    >
                       {localError}
                     </p>
                   )}
 
-                  <form onSubmit={handleSubmit} noValidate className="space-y-5">
-                    <fieldset
-                      disabled={busy || !editable || Boolean(recovery)}
-                      className="min-w-0 space-y-5"
-                    >
-                      <div className="space-y-2">
+                  <fieldset
+                    disabled={busy || !editable || Boolean(recovery)}
+                    className="min-w-0 space-y-5"
+                  >
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
                         <label
                           id="topic-batch-label"
-                          className="text-sm font-medium text-slate-700"
+                          className="block text-xs font-semibold text-slate-700"
                         >
                           Đợt khóa luận <span className="text-rose-600">*</span>
                         </label>
@@ -745,15 +841,15 @@ export function TopicProposePage({
                         )}
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label
                           htmlFor="topic-title-vi"
-                          className="flex items-center justify-between gap-2 text-sm font-medium text-slate-700"
+                          className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-700"
                         >
                           <span>
                             Tên đề tài tiếng Việt <span className="text-rose-600">*</span>
                           </span>
-                          <span className="text-[11px] font-normal tabular-nums text-slate-400">
+                          <span className="text-[11px] font-medium tabular-nums text-slate-400">
                             {values.titleVi.length}/300
                           </span>
                         </label>
@@ -769,18 +865,16 @@ export function TopicProposePage({
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label
                           htmlFor="topic-title-en"
-                          className="flex items-center justify-between gap-2 text-sm font-medium text-slate-700"
+                          className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-700"
                         >
                           <span>
                             Tên đề tài tiếng Anh{' '}
-                            <span className="text-[11px] font-normal text-slate-500">
-                              (cần khi gửi)
-                            </span>
+                            <span className="font-normal text-slate-400">(cần khi gửi)</span>
                           </span>
-                          <span className="text-[11px] font-normal tabular-nums text-slate-400">
+                          <span className="text-[11px] font-medium tabular-nums text-slate-400">
                             {values.titleEn.length}/350
                           </span>
                         </label>
@@ -795,19 +889,17 @@ export function TopicProposePage({
                         />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label
                           htmlFor="topic-description"
-                          className="text-sm font-medium text-slate-700"
+                          className="block text-xs font-semibold text-slate-700"
                         >
                           Mục tiêu và mô tả{' '}
-                          <span className="text-[11px] font-normal text-slate-500">
-                            (cần khi gửi)
-                          </span>
+                          <span className="font-normal text-slate-400">(cần khi gửi)</span>
                         </label>
                         <textarea
                           id="topic-description"
-                          className={`${textareaClass} ${fieldErrors.description ? 'border-rose-400 focus-visible:ring-rose-500' : ''}`}
+                          className={`${textareaClass} ${fieldErrors.description ? 'border-rose-400 focus-visible:border-rose-500 focus-visible:ring-rose-500/30' : ''}`}
                           aria-invalid={Boolean(fieldErrors.description)}
                           aria-describedby={
                             fieldErrors.description ? 'topic-description-error' : undefined
@@ -828,19 +920,17 @@ export function TopicProposePage({
                         )}
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <label
                           htmlFor="topic-requirements"
-                          className="text-sm font-medium text-slate-700"
+                          className="block text-xs font-semibold text-slate-700"
                         >
                           Yêu cầu công nghệ và kiến thức{' '}
-                          <span className="text-[11px] font-normal text-slate-500">
-                            (cần khi gửi)
-                          </span>
+                          <span className="font-normal text-slate-400">(cần khi gửi)</span>
                         </label>
                         <textarea
                           id="topic-requirements"
-                          className={`${textareaClass} ${fieldErrors.requirements ? 'border-rose-400 focus-visible:ring-rose-500' : ''}`}
+                          className={`${textareaClass} ${fieldErrors.requirements ? 'border-rose-400 focus-visible:border-rose-500 focus-visible:ring-rose-500/30' : ''}`}
                           aria-invalid={Boolean(fieldErrors.requirements)}
                           aria-describedby={
                             fieldErrors.requirements ? 'topic-requirements-error' : undefined
@@ -860,11 +950,13 @@ export function TopicProposePage({
                           </p>
                         )}
                       </div>
+                    </div>
 
-                      <div className="space-y-2">
+                    <div className="space-y-4 border-t border-slate-100 pt-5">
+                      <div className="space-y-1.5">
                         <label
                           id="topic-capacity-label"
-                          className="text-sm font-medium text-slate-700"
+                          className="block text-xs font-semibold text-slate-700"
                         >
                           Số sinh viên tối đa
                         </label>
@@ -884,140 +976,169 @@ export function TopicProposePage({
                           }
                         />
                       </div>
+
                       <TopicStudentAssignmentField
                         codes={values.studentCodes ?? []}
                         capacity={values.studentNumber}
                         currentStudents={selectedTopic?.group?.students}
+                        studentLookups={studentLookups}
                         disabled={busy || !editable || Boolean(recovery)}
                         error={fieldErrors.studentCodes}
                         onChange={(codes) => updateField('studentCodes', codes)}
                       />
-                    </fieldset>
+                    </div>
+                  </fieldset>
 
-                    {(formError || saveMutation.isError) && (
-                      <p role="alert" className="text-sm text-rose-600">
-                        {formError || getTopicErrorMessage(saveMutation.error)}
-                      </p>
-                    )}
+                  {(formError || saveMutation.isError) && (
+                    <p
+                      role="alert"
+                      className="rounded-xl border border-rose-200 bg-rose-50/80 px-3.5 py-2.5 text-xs font-medium text-rose-700"
+                    >
+                      {formError || getTopicErrorMessage(saveMutation.error)}
+                    </p>
+                  )}
+                </div>
 
-                    {editable && (
-                      <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-5">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={busy}
-                          onClick={closeForm}
-                          className="h-10 rounded-xl px-5 font-medium"
-                        >
-                          Đóng
-                        </Button>
-                        <Button
-                          type="submit"
-                          name="action"
-                          value="draft"
-                          variant="outline"
-                          leftIcon={<Save />}
-                          className="h-10 rounded-xl px-5 font-medium"
-                          disabled={busy || Boolean(recovery)}
-                          isLoading={
-                            saveMutation.isPending && !saveMutation.variables?.submitImmediately
-                          }
-                        >
-                          {selectedTopic?.status === 'NeedRevision' ? 'Lưu chỉnh sửa' : 'Lưu nháp'}
-                        </Button>
-                        <Button
-                          type="submit"
-                          name="action"
-                          value="submit"
-                          leftIcon={<Send />}
-                          className="h-10 rounded-xl px-5 font-medium"
-                          disabled={busy || Boolean(recovery)}
-                          isLoading={
-                            saveMutation.isPending &&
-                            saveMutation.variables?.submitImmediately === true
-                          }
-                        >
-                          {selectedTopic?.status === 'NeedRevision'
-                            ? 'Gửi duyệt lại'
-                            : 'Gửi Khoa thẩm định'}
-                        </Button>
+                <aside className="space-y-4 border-t border-slate-200/80 bg-slate-50/70 p-5 sm:p-6 lg:col-span-4 lg:border-l lg:border-t-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold tracking-tight text-slate-900">
+                      {editable ? 'Tóm tắt đề xuất' : 'Thông tin đề tài'}
+                    </h3>
+                    <TopicStatusBadge status={selectedTopic?.status ?? 'Draft'} />
+                  </div>
+
+                  {/* KPI Mini-Tiles matching PeriodSummaryCard & RosterGuideCard */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
+                      <span className="mb-0.5 block text-[11px] font-medium text-slate-500">
+                        Chỉ tiêu nhóm
+                      </span>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-lg font-bold tabular-nums text-slate-900">
+                          {values.studentNumber}
+                        </span>
+                        <span className="text-xs text-slate-500">sinh viên</span>
+                      </div>
+                      <span className="mt-1 inline-block text-[10px] text-slate-400">
+                        Tối đa cho đề tài
+                      </span>
+                    </div>
+
+                    {editable ? (
+                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
+                        <span className="mb-0.5 block text-[11px] font-medium text-slate-500">
+                          Mức hoàn thiện
+                        </span>
+                        <div className="flex items-baseline gap-1">
+                          <span
+                            className={`text-lg font-bold tabular-nums ${
+                              isChecklistComplete ? 'text-emerald-700' : 'text-slate-900'
+                            }`}
+                          >
+                            {completedChecklistCount}/{checklist.length}
+                          </span>
+                          <span className="text-xs text-slate-500">tiêu chí</span>
+                        </div>
+                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              isChecklistComplete ? 'bg-emerald-500' : 'bg-primary'
+                            }`}
+                            style={{
+                              width: `${Math.round((completedChecklistCount / checklist.length) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
+                        <span className="mb-0.5 block text-[11px] font-medium text-slate-500">
+                          Sinh viên ghi nhận
+                        </span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-lg font-bold tabular-nums text-slate-900">
+                            {assignedStudentCount}
+                          </span>
+                          <span className="text-xs text-slate-500">sinh viên</span>
+                        </div>
+                        <span className="mt-1 inline-block text-[10px] text-slate-400">
+                          Theo phân công hiện tại
+                        </span>
                       </div>
                     )}
-                  </form>
-                  {!editable && (
-                    <div className="mt-5 flex justify-end border-t border-slate-100 pt-5">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-10 rounded-xl px-5 font-medium"
-                        onClick={closeForm}
-                      >
-                        Đóng
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    {editable ? 'Trước khi gửi Khoa' : 'Thông tin đề tài'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-5 text-sm">
-                  <dl className="space-y-4">
-                    <div>
-                      <dt className="text-xs text-slate-500">Người đề xuất</dt>
-                      <dd className="mt-1 font-medium text-slate-800">{user?.fullName}</dd>
+                  {/* Key-Value Metadata Panel matching PeriodSummaryCard & RosterGuideCard */}
+                  <dl className="space-y-2.5 rounded-xl border border-slate-200 bg-white p-3.5 text-xs shadow-2xs">
+                    <div className="flex items-center justify-between gap-3">
+                      <dt className="shrink-0 font-medium text-slate-500">Người đề xuất:</dt>
+                      <dd className="truncate font-semibold text-slate-900" title={user?.fullName}>
+                        {user?.fullName}
+                      </dd>
                     </div>
-                    <div>
-                      <dt className="text-xs text-slate-500">Đợt khóa luận</dt>
-                      <dd className="mt-1 text-slate-800">
+                    <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-2.5">
+                      <dt className="shrink-0 font-medium text-slate-500">Đợt khóa luận:</dt>
+                      <dd
+                        className="truncate text-right font-semibold text-slate-900"
+                        title={
+                          selectedBatch?.batchName ||
+                          (values.batchId ? `Mã đợt: ${values.batchId}` : 'Chưa chọn đợt')
+                        }
+                      >
                         {selectedBatch?.batchName ||
                           (values.batchId && batchesLoading ? (
-                            <Skeleton className="h-5 w-32 max-w-full" />
+                            <Skeleton className="h-4 w-28 max-w-full" />
                           ) : values.batchId ? (
                             `Mã đợt: ${values.batchId}`
                           ) : (
-                            'Chưa chọn đợt'
+                            <span className="font-medium text-slate-400">Chưa chọn đợt</span>
                           ))}
                       </dd>
                     </div>
-                    <div>
-                      <dt className="text-xs text-slate-500">Chỉ tiêu</dt>
-                      <dd className="mt-1 text-slate-800">
-                        Tối đa {values.studentNumber} sinh viên
-                      </dd>
-                    </div>
                   </dl>
+
                   {values.batchId && <TopicProposalSchedule batchId={values.batchId} />}
 
                   <Button
                     type="button"
-                    variant="soft"
+                    variant="outline"
                     leftIcon={<Eye />}
-                    className="h-10 w-full rounded-lg"
+                    className="h-9 w-full rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 hover:bg-slate-50"
                     disabled={busy || Boolean(recovery)}
                     onClick={() => setIsPreviewOpen(true)}
                   >
                     Xem trước đề tài
                   </Button>
+
                   {editable && (
-                    <div className="border-t border-slate-100 pt-4">
-                      <p className="font-medium text-slate-800">Cần hoàn thành trước khi gửi</p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {checklist.filter((item) => item.complete).length}/{checklist.length} mục đã
-                        hoàn thành
-                      </p>
-                      <ul className="mt-3 space-y-3 text-xs leading-5">
+                    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold text-slate-800">
+                          Cần hoàn thành trước khi gửi
+                        </p>
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums ${
+                            isChecklistComplete
+                              ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                              : 'border-slate-200 bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          {completedChecklistCount}/{checklist.length} mục
+                        </span>
+                      </div>
+                      <ul className="space-y-2 text-xs leading-5">
                         {checklist.map((item) => (
                           <li
                             key={item.label}
-                            className={`flex items-start gap-2 ${item.complete ? 'text-emerald-700' : 'text-slate-500'}`}
+                            className={`flex items-start gap-2 ${
+                              item.complete ? 'font-medium text-emerald-700' : 'text-slate-600'
+                            }`}
                           >
                             {item.complete ? (
-                              <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                              <CheckCircle2
+                                className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                                aria-hidden="true"
+                              />
                             ) : (
                               <Circle
                                 className="mt-0.5 size-4 shrink-0 text-slate-300"
@@ -1033,7 +1154,7 @@ export function TopicProposePage({
                           </li>
                         ))}
                       </ul>
-                      <p className="mt-3 text-[11px] leading-5 text-slate-400">
+                      <p className="border-t border-slate-100 pt-2.5 text-[11px] leading-relaxed text-slate-400">
                         Lưu nháp chỉ cần đợt khóa luận, tên tiếng Việt và chỉ tiêu. Hoàn thành đủ 6
                         mục trước khi gửi Khoa thẩm định.
                       </p>
@@ -1041,13 +1162,17 @@ export function TopicProposePage({
                   )}
 
                   {batchesQuery.isError && (
-                    <div role="alert" className="space-y-2 text-rose-600">
+                    <div
+                      role="alert"
+                      className="space-y-2 rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-700"
+                    >
                       <p>{getTopicErrorMessage(batchesQuery.error)}</p>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => void batchesQuery.refetch()}
+                        className="h-8 rounded-lg border-rose-200 bg-white text-xs"
                       >
                         Tải lại danh sách đợt
                       </Button>
@@ -1055,13 +1180,87 @@ export function TopicProposePage({
                   )}
 
                   {batchesQuery.isSuccess && batches.length === 0 && (
-                    <p className="text-amber-700">
+                    <p className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-800">
                       Chưa có đợt khóa luận. Vui lòng liên hệ đơn vị quản lý.
                     </p>
                   )}
-                </CardContent>
-              </Card>
-            </div>
+                </aside>
+              </div>
+
+              <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+                <div className="min-w-0 text-xs">
+                  {hasUnsavedChanges ? (
+                    <span
+                      role="status"
+                      className="inline-flex items-center gap-1.5 font-medium text-amber-700"
+                    >
+                      <span className="size-1.5 rounded-full bg-amber-500" aria-hidden="true" />
+                      Có thay đổi chưa lưu trên hệ thống
+                    </span>
+                  ) : editable && localSavedAt ? (
+                    <span role="status" className="text-slate-500">
+                      Đã lưu trên thiết bị lúc {new Date(localSavedAt).toLocaleTimeString('vi-VN')}.
+                      Dùng Lưu nháp để lưu lên hệ thống.
+                    </span>
+                  ) : null}
+                </div>
+
+                {editable ? (
+                  <div className="ml-auto flex flex-wrap items-center justify-end gap-2.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={closeForm}
+                      className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold hover:bg-slate-50"
+                    >
+                      Đóng
+                    </Button>
+                    <Button
+                      type="submit"
+                      name="action"
+                      value="draft"
+                      variant="outline"
+                      leftIcon={<Save />}
+                      className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold hover:bg-slate-50"
+                      disabled={busy || Boolean(recovery)}
+                      isLoading={
+                        saveMutation.isPending && !saveMutation.variables?.submitImmediately
+                      }
+                    >
+                      {selectedTopic?.status === 'NeedRevision' ? 'Lưu chỉnh sửa' : 'Lưu nháp'}
+                    </Button>
+                    <Button
+                      type="submit"
+                      name="action"
+                      value="submit"
+                      leftIcon={<Send />}
+                      className="h-9 rounded-xl px-5 text-xs font-semibold shadow-xs transition-all active:scale-[0.98]"
+                      disabled={busy || Boolean(recovery)}
+                      isLoading={
+                        saveMutation.isPending &&
+                        saveMutation.variables?.submitImmediately === true
+                      }
+                    >
+                      {selectedTopic?.status === 'NeedRevision'
+                        ? 'Gửi duyệt lại'
+                        : 'Gửi Khoa thẩm định'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="ml-auto flex justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold hover:bg-slate-50"
+                      onClick={closeForm}
+                    >
+                      Đóng
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </form>
           )}
         </Dialog>
       )}

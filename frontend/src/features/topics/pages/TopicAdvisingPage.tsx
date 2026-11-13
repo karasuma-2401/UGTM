@@ -190,6 +190,7 @@ export function TopicAdvisingPage({
               label: 'Đã hoàn thành',
               value: count(statistics?.completed),
               icon: <CheckCircle2 />,
+              tone: 'success',
               active: filters.scope === 'completed',
               onClick: () =>
                 apply({
@@ -437,7 +438,8 @@ export function TopicAdvisingPage({
             {
               id: 'actions',
               header: 'Thao tác',
-              widthClassName: 'w-20',
+              widthClassName: 'w-28',
+              headerClassName: 'whitespace-nowrap',
               align: 'center',
               skeleton: { variant: 'actions' },
               cellClassName: 'px-3 py-4',

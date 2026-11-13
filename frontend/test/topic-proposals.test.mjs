@@ -721,6 +721,10 @@ function proposalPageFixture(options = {}) {
           submit: async (...args) => {
             apiCalls.push(['submit', ...args]);
           },
+          lookupStudentByCode: async (...args) => {
+            apiCalls.push(['lookupStudentByCode', ...args]);
+            return null;
+          },
         },
         getTopicErrorMessage: String,
       },
@@ -1621,4 +1625,54 @@ test('MSSV field retains excess entries after quota reduction and locks incomple
     currentStudents: [{ ...assignedTopic.group.students[0], userCode: null }],
   });
   assert.ok(walk(unknown, 'Input').every((input) => input.props.disabled));
+});
+
+test('student lookup API normalizes MSSV, returns null on 404 and field renders student names', async () => {
+  const calls = [];
+  const { topicApi } = apiFixture({
+    get: async (...args) => {
+      calls.push(args);
+      if (args[1].params.userCode === '24521603') {
+        return success({ userCode: '24521603', fullName: 'Nguyễn Văn A' });
+      }
+      const err = new Error('Not found');
+      err.isAxiosError = true;
+      err.response = { status: 404 };
+      throw err;
+    },
+  });
+  const signal = new AbortController().signal;
+  assert.deepEqual(await topicApi.lookupStudentByCode('  24521603 ', signal), {
+    userCode: '24521603',
+    fullName: 'Nguyễn Văn A',
+  });
+  assert.deepEqual(calls[0], [
+    '/api/topics/student-lookup',
+    { params: { userCode: '24521603' }, signal },
+  ]);
+  assert.equal(await topicApi.lookupStudentByCode('24529999'), null);
+  assert.equal(await topicApi.lookupStudentByCode('   '), null);
+
+  const { TopicStudentAssignmentField } = loadModule(
+    'features/topics/components/TopicStudentAssignmentField.tsx',
+    {
+      'react/jsx-runtime': jsxRuntime,
+      'lucide-react': icons,
+      '@/components/ui/input': { Input: 'input' },
+      '@/components/ui/button': { Button: 'button' },
+    },
+  );
+  const markup = renderToStaticMarkup(
+    TopicStudentAssignmentField({
+      codes: ['24521603', '24529999'],
+      capacity: 2,
+      studentLookups: {
+        '24521603': { status: 'found', fullName: 'Nguyễn Văn A' },
+        '24529999': { status: 'not_found' },
+      },
+      onChange() {},
+    }),
+  );
+  assert.match(markup, /Nguyễn Văn A/);
+  assert.match(markup, /Không tìm thấy sinh viên với MSSV này/);
 });

@@ -8,6 +8,7 @@ using UGTM.Modules.TopicCatalog.Application.Topics.Dtos;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetAllTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetMyTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetTopicTrackingDetail;
+using UGTM.Modules.TopicCatalog.Application.Topics.LookupStudentByCode;
 using UGTM.Modules.TopicCatalog.Application.Topics.PublishTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.ReviewTopic;
 using UGTM.Modules.TopicCatalog.Application.Topics.SubmitTopic;
@@ -186,6 +187,25 @@ public static class TopicEndpoints
             .Produces<ApiResponse<TopicStatisticsDto>>()
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/student-lookup", async (
+                string? userCode,
+                LookupStudentByCodeHandler handler,
+                CancellationToken cancellationToken = default)
+                => (await handler.HandleAsync(userCode, cancellationToken)).ToHttpResult())
+            .RequireAuthorization()
+            .WithSummary("GVHD hoặc Admin tra cứu họ tên sinh viên theo MSSV khi chỉ định sinh viên cho đề tài")
+            .WithDescription("""
+                Trả về mã số và họ tên của một sinh viên đang hoạt động theo MSSV (`userCode`) để giảng viên đối chiếu trước khi lưu đề tài.
+                Chỉ trả về `userCode` và `fullName` (không trả email, số điện thoại hay danh sách sinh viên).
+                Yêu cầu vai trò `Lecturer` hoặc `Admin`.
+                """)
+            .Produces<ApiResponse<TopicStudentLookupDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+
         return endpoints;
     }
 

@@ -264,6 +264,7 @@ export function TopicsTable({
       id: 'actions',
       header: 'Thao tác',
       widthClassName: 'w-32',
+      headerClassName: 'px-4 py-3.5 whitespace-nowrap',
       align: 'center',
       cellClassName: 'px-3 py-3',
       skeleton: { variant: 'actions', actionCount: 2 },

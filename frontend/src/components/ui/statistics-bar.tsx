@@ -8,24 +8,55 @@ const tones = {
     value: 'text-primary',
     label: 'text-slate-600',
     icon: 'text-primary bg-blue-100/70',
+    activeRing: 'ring-primary/30',
+    activeCardBorder: 'border-primary/40',
+    hoverCardBorder: 'hover:border-blue-300/80',
+    hover: 'hover:bg-primary/5',
+    focusRing: 'focus-visible:ring-ring',
+  },
+  success: {
+    background: 'bg-emerald-50/65',
+    value: 'text-emerald-700',
+    label: 'text-emerald-800/80',
+    icon: 'text-emerald-600 bg-emerald-100/70',
+    activeRing: 'ring-emerald-300',
+    activeCardBorder: 'border-emerald-500/40',
+    hoverCardBorder: 'hover:border-emerald-300/80',
+    hover: 'hover:bg-emerald-100/40',
+    focusRing: 'focus-visible:ring-emerald-500',
   },
   warning: {
     background: 'bg-amber-50/65',
-    value: 'text-amber-700',
+    value: 'text-amber-600',
     label: 'text-amber-800/80',
     icon: 'text-amber-600 bg-amber-100/70',
+    activeRing: 'ring-amber-300',
+    activeCardBorder: 'border-amber-500/40',
+    hoverCardBorder: 'hover:border-amber-300/80',
+    hover: 'hover:bg-amber-100/40',
+    focusRing: 'focus-visible:ring-amber-500',
   },
   muted: {
     background: 'bg-slate-50/80',
     value: 'text-slate-700',
     label: 'text-slate-500',
     icon: 'text-slate-500 bg-slate-200/60',
+    activeRing: 'ring-primary/30',
+    activeCardBorder: 'border-primary/40',
+    hoverCardBorder: 'hover:border-slate-300',
+    hover: 'hover:bg-primary/5',
+    focusRing: 'focus-visible:ring-ring',
   },
   danger: {
     background: 'bg-rose-50/80',
     value: 'text-rose-700',
     label: 'text-rose-700',
     icon: 'text-rose-600 bg-rose-100/70',
+    activeRing: 'ring-rose-300',
+    activeCardBorder: 'border-rose-500/40',
+    hoverCardBorder: 'hover:border-rose-300/80',
+    hover: 'hover:bg-rose-100/40',
+    focusRing: 'focus-visible:ring-rose-500',
   },
 };
 
@@ -76,7 +107,7 @@ export function StatisticsBar({
             className={cn(
               'relative flex min-w-0 transition-all duration-150',
               isCard
-                ? 'flex-col justify-between rounded-xl p-3 border border-slate-200/70 hover:border-slate-300'
+                ? 'flex-col justify-between rounded-xl p-3 border border-slate-200/70'
                 : 'items-center gap-2.5 rounded-lg px-3 py-2',
               compact && 'flex-none',
               loading
@@ -84,11 +115,11 @@ export function StatisticsBar({
                 : active
                   ? cn(
                       'bg-white shadow-xs ring-1',
-                      tone === 'danger' ? 'ring-rose-300' : 'ring-primary/30',
-                      isCard && 'border-primary/40 shadow-xs',
+                      colors.activeRing,
+                      isCard && cn(colors.activeCardBorder, 'shadow-xs'),
                     )
                   : isCard
-                    ? 'bg-white shadow-2xs hover:shadow-xs'
+                    ? cn('bg-white shadow-2xs hover:shadow-xs', onClick && colors.hoverCardBorder)
                     : colors.background,
             )}
           >
@@ -100,10 +131,10 @@ export function StatisticsBar({
                 disabled={loading}
                 onClick={onClick}
                 className={cn(
-                  'absolute inset-0 z-10 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 cursor-pointer disabled:cursor-wait',
-                  tone === 'danger'
-                    ? 'hover:bg-rose-100/40 focus-visible:ring-rose-500'
-                    : 'hover:bg-primary/5 focus-visible:ring-ring',
+                  'absolute inset-0 z-10 transition-colors focus-visible:outline-none focus-visible:ring-2 cursor-pointer disabled:cursor-wait',
+                  isCard ? 'rounded-xl' : 'rounded-lg',
+                  colors.hover,
+                  colors.focusRing,
                 )}
               />
             )}

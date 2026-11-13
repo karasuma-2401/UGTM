@@ -329,7 +329,7 @@ export function StudentTopicCatalogContent() {
                       <th
                         scope="col"
                         key={heading}
-                        className={`px-4 py-4 font-bold ${['STT', 'Thao tác'].includes(heading) ? 'text-center' : ''}`}
+                        className={`px-4 py-4 font-bold ${['STT', 'Thao tác'].includes(heading) ? 'whitespace-nowrap text-center' : ''}`}
                       >
                         {heading}
                       </th>

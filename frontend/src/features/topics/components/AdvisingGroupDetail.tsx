@@ -37,15 +37,25 @@ export function GroupStatusBadge({ status }: { status: string }) {
 function ProgressSection({
   title,
   query,
+  compact = false,
+  className = '',
   children,
 }: {
   title: string;
   query: { isPending: boolean; isError: boolean; error: unknown; refetch: () => unknown };
+  compact?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
+  const containerClass = compact
+    ? `space-y-1.5 ${className}`.trim()
+    : `space-y-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 ${className}`.trim();
+
   return (
-    <section className="space-y-2 border-t border-slate-200 pt-4">
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+    <section className={containerClass}>
+      <h3 className={compact ? 'text-xs font-medium text-slate-500' : 'text-sm font-semibold text-slate-900'}>
+        {title}
+      </h3>
       {query.isPending ? (
         <p role="status" className="text-sm text-slate-500">
           Đang tải…
@@ -123,211 +133,314 @@ export function AdvisingGroupDetail({
       setCopyNotice('Không thể sao chép tự động. Bạn có thể chọn nội dung bên dưới để sao chép.');
     }
   }
+  const confirmedCount = group
+    ? group.members.filter((s) => s.confirmationStatus === 'Confirmed').length
+    : 0;
+
   return (
     <>
-      <Dialog title="Chi tiết nhóm & tiến độ" onClose={onClose} className="max-w-4xl">
-        <div className="space-y-5 p-4 sm:p-6">
-          {detail.isPending ? (
+      <Dialog
+        title="Chi tiết nhóm & tiến độ"
+        onClose={onClose}
+        className="max-w-5xl"
+        headerClassName="border-b border-slate-200/80 px-5 py-3.5 sm:px-6"
+      >
+        {detail.isPending ? (
+          <div className="p-6">
             <p role="status" className="text-sm text-slate-500">
               Đang tải thông tin nhóm…
             </p>
-          ) : detail.isError ? (
-            <div role="alert" className="space-y-3 text-sm text-rose-700">
-              <p>{getTopicErrorMessage(detail.error)}</p>
-              <Button variant="outline" onClick={() => void detail.refetch()}>
-                Thử lại
-              </Button>
-            </div>
-          ) : (
-            group && (
-              <>
-                <div className="space-y-2">
-                  <GroupStatusBadge status={group.groupStatus ?? ''} />
-                  <h2 className="text-lg font-semibold leading-7 text-slate-900">
+          </div>
+        ) : detail.isError ? (
+          <div role="alert" className="space-y-3 p-6 text-sm text-rose-700">
+            <p>{getTopicErrorMessage(detail.error)}</p>
+            <Button variant="outline" onClick={() => void detail.refetch()}>
+              Thử lại
+            </Button>
+          </div>
+        ) : (
+          group && (
+            <div className="grid grid-cols-1 lg:grid-cols-12">
+              <div className="space-y-5 bg-white p-5 sm:p-6 lg:col-span-8">
+                <header className="space-y-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <GroupStatusBadge status={group.groupStatus ?? ''} />
+                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                      {groupLabel(group.groupId)}
+                    </span>
+                  </div>
+                  <h2 className="break-words text-xl font-bold leading-snug tracking-tight text-slate-900">
                     {group.topicTitleVi}
                   </h2>
                   {group.topicTitleEn && (
-                    <p className="text-sm text-slate-500">{group.topicTitleEn}</p>
+                    <p className="break-words text-sm leading-6 text-slate-500">
+                      {group.topicTitleEn}
+                    </p>
                   )}
-                  <p className="break-all text-xs text-slate-500">
-                    {groupLabel(group.groupId)} · Mã đầy đủ: {group.groupId}
+                  <p className="break-all font-mono text-xs text-slate-400">
+                    Mã đầy đủ: {group.groupId}
                   </p>
-                </div>
-                <dl className="grid gap-4 rounded-lg bg-slate-50 p-4 text-sm sm:grid-cols-3">
-                  <div>
-                    <dt className="text-slate-500">Đợt khóa luận</dt>
-                    <dd className="mt-1 break-words">{group.batchName ?? 'Chưa có tên đợt'}</dd>
+                </header>
+
+                <details className="rounded-xl border border-slate-200/80 bg-slate-50/50">
+                  <summary className="cursor-pointer select-none rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100/70">
+                    Nội dung đề tài
+                  </summary>
+                  <div className="space-y-3.5 rounded-b-xl border-t border-slate-200/80 bg-white px-4 py-4">
+                    <div className="space-y-1">
+                      <h3 className="text-xs font-semibold text-slate-500">Mục tiêu và mô tả</h3>
+                      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                        {group.description || 'Chưa có nội dung.'}
+                      </p>
+                    </div>
+                    <div className="space-y-1 border-t border-slate-100 pt-3">
+                      <h3 className="text-xs font-semibold text-slate-500">Yêu cầu</h3>
+                      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                        {group.requirements || 'Chưa có nội dung.'}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <dt className="text-slate-500">Giảng viên</dt>
-                    <dd className="mt-1">{group.advisor?.fullName ?? 'Chưa có tên giảng viên'}</dd>
+                </details>
+
+                <section className="space-y-3">
+                  <h3 className="text-sm font-semibold text-slate-900">Tiến độ hồ sơ & báo cáo</h3>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <ProgressSection title="Đề cương" query={syllabus}>
+                      <StatusBadge tone={syllabus.data ? 'info' : 'neutral'}>
+                        {syllabus.data
+                          ? (SYLLABUS_STATUS_LABELS[syllabus.data.currentStatus] ??
+                            syllabus.data.currentStatus)
+                          : 'Chưa nộp đề cương'}
+                      </StatusBadge>
+                    </ProgressSection>
+
+                    <ProgressSection title="Báo cáo giữa kỳ" query={midterm}>
+                      <StatusBadge tone={midterm.data ? 'info' : 'neutral'}>
+                        {midterm.data
+                          ? (MIDTERM_STATUS_LABELS[midterm.data.currentStatus] ??
+                            midterm.data.currentStatus)
+                          : 'Chưa nộp báo cáo giữa kỳ'}
+                      </StatusBadge>
+                    </ProgressSection>
+
+                    <ProgressSection
+                      title="Báo cáo cuối kỳ"
+                      query={finalReport}
+                      className="sm:col-span-2"
+                    >
+                      <StatusBadge tone={finalReport.data ? 'info' : 'neutral'}>
+                        {finalReport.data
+                          ? (FINAL_REPORT_STATUS_LABELS[
+                              finalReport.data.currentStatus as keyof typeof FINAL_REPORT_STATUS_LABELS
+                            ] ?? finalReport.data.currentStatus)
+                          : 'Chưa nộp báo cáo cuối kỳ'}
+                      </StatusBadge>
+                      {finalReport.data && (
+                        <div className="pt-1">
+                          <SimilarityReportPanel
+                            reportId={finalReport.data.finalReportId}
+                            versionNo={finalReport.data.currentVersionNo}
+                          />
+                        </div>
+                      )}
+                    </ProgressSection>
+
+                    <ProgressSection
+                      title="Mốc tiến độ"
+                      query={milestones}
+                      className="sm:col-span-2"
+                    >
+                      {!milestones.data?.length && (
+                        <p className="text-sm text-slate-500">Chưa thiết lập mốc tiến độ.</p>
+                      )}
+                      {milestoneRows.length > 0 && (
+                        <div className="space-y-2.5">
+                          {milestoneRows.map((milestone, index) => (
+                            <div
+                              key={milestone.id}
+                              className="space-y-1.5 rounded-lg border border-slate-200/80 bg-white p-3.5"
+                            >
+                              <p className="text-sm font-semibold text-slate-900">
+                                {milestone.title}
+                              </p>
+                              <ProgressSection
+                                title="Báo cáo tiến độ"
+                                query={reports[index]}
+                                compact
+                              >
+                                <StatusBadge tone={reports[index].data ? 'info' : 'neutral'}>
+                                  {reports[index].data
+                                    ? (PROGRESS_REPORT_STATUS_LABELS[
+                                        reports[index].data
+                                          .currentStatus as keyof typeof PROGRESS_REPORT_STATUS_LABELS
+                                      ] ?? reports[index].data.currentStatus)
+                                    : 'Chưa nộp'}
+                                </StatusBadge>
+                              </ProgressSection>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ProgressSection>
                   </div>
+                </section>
+              </div>
+
+              <aside className="space-y-4 border-t border-slate-200/80 bg-slate-50/70 p-5 sm:p-6 lg:col-span-4 lg:border-l lg:border-t-0">
+                <dl className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 text-sm">
                   <div>
-                    <dt className="text-slate-500">Đã xác nhận / chỉ tiêu</dt>
-                    <dd className="mt-1">
-                      {group.members.filter((s) => s.confirmationStatus === 'Confirmed').length}/
-                      {group.studentNumber ?? '—'} sinh viên
+                    <dt className="text-xs font-medium text-slate-500">Đã xác nhận / chỉ tiêu</dt>
+                    <dd className="mt-1 flex items-baseline justify-between gap-2">
+                      <span className="text-lg font-bold tabular-nums text-slate-900">
+                        {confirmedCount}/{group.studentNumber ?? '—'}
+                        <span className="ml-1.5 text-xs font-medium text-slate-500">sinh viên</span>
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="border-t border-slate-100 pt-2.5">
+                    <dt className="text-xs font-medium text-slate-500">Đợt khóa luận</dt>
+                    <dd className="mt-1 break-words font-medium text-slate-800">
+                      {group.batchName ?? 'Chưa có tên đợt'}
+                    </dd>
+                  </div>
+                  <div className="border-t border-slate-100 pt-2.5">
+                    <dt className="text-xs font-medium text-slate-500">Giảng viên</dt>
+                    <dd className="mt-1 font-medium text-slate-800">
+                      {group.advisor?.fullName ?? 'Chưa có tên giảng viên'}
                     </dd>
                   </div>
                 </dl>
+
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold">Thành viên & lời mời</h3>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-slate-900">Thành viên & lời mời</h3>
+                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-medium tabular-nums text-slate-600">
+                      {group.members.length}
+                    </span>
+                  </div>
                   {group.members.length === 0 && (
-                    <p className="text-sm text-slate-500">Nhóm chưa có thành viên.</p>
+                    <p className="rounded-xl border border-slate-200/80 bg-white p-3.5 text-sm text-slate-500">
+                      Nhóm chưa có thành viên.
+                    </p>
                   )}
-                  {group.members.map((student) => (
-                    <div
-                      key={student.studentId}
-                      className="space-y-1 border-l border-slate-200 pl-3 text-sm"
-                    >
-                      <p className="font-medium">
-                        {student.fullName ?? 'Chưa có tên sinh viên'}{' '}
-                        <span className="font-normal text-slate-500">
-                          · {student.userCode ?? 'Chưa có MSSV'}
-                        </span>
-                      </p>
-                      <p
-                        className={
-                          student.invitationExpired
-                            ? 'text-rose-700'
-                            : student.confirmationStatus === 'Confirmed'
-                              ? 'text-emerald-700'
-                              : 'text-amber-700'
-                        }
+                  <div className="space-y-2.5">
+                    {group.members.map((student) => (
+                      <div
+                        key={student.studentId}
+                        className="space-y-1.5 rounded-xl border border-slate-200/80 bg-white p-3.5 text-sm"
                       >
-                        {confirmationLabel(
-                          student.confirmationStatus,
-                          student.confirmationExpiresAtUtc,
-                          student.invitationExpired,
-                        )}
-                      </p>
-                      {student.email && <p className="break-all text-slate-600">{student.email}</p>}
-                      {student.confirmedAtUtc && (
-                        <p className="text-xs text-slate-500">
-                          Xác nhận lúc {formatAdvisingDate(student.confirmedAtUtc)}
+                        <div className="flex flex-wrap items-center justify-between gap-1.5">
+                          <p className="font-semibold text-slate-900">
+                            {student.fullName ?? 'Chưa có tên sinh viên'}
+                          </p>
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600">
+                            {student.userCode ?? 'Chưa có MSSV'}
+                          </span>
+                        </div>
+                        <p
+                          className={
+                            student.invitationExpired
+                              ? 'text-xs font-medium text-rose-700'
+                              : student.confirmationStatus === 'Confirmed'
+                                ? 'text-xs font-medium text-emerald-700'
+                                : 'text-xs font-medium text-amber-700'
+                          }
+                        >
+                          {confirmationLabel(
+                            student.confirmationStatus,
+                            student.confirmationExpiresAtUtc,
+                            student.invitationExpired,
+                          )}
                         </p>
-                      )}
-                      {student.confirmationStatus !== 'Confirmed' &&
-                        student.confirmationExpiresAtUtc && (
+                        {student.email && (
+                          <p className="break-all text-xs text-slate-600">{student.email}</p>
+                        )}
+                        {student.confirmedAtUtc && (
                           <p className="text-xs text-slate-500">
-                            Hạn xác nhận: {formatAdvisingDate(student.confirmationExpiresAtUtc)}
+                            Xác nhận lúc {formatAdvisingDate(student.confirmedAtUtc)}
                           </p>
                         )}
-                    </div>
-                  ))}
+                        {student.confirmationStatus !== 'Confirmed' &&
+                          student.confirmationExpiresAtUtc && (
+                            <p className="text-xs text-slate-500">
+                              Hạn xác nhận: {formatAdvisingDate(student.confirmationExpiresAtUtc)}
+                            </p>
+                          )}
+                      </div>
+                    ))}
+                  </div>
                   <p className="text-xs leading-5 text-slate-500">
                     Sinh viên được mời có 24 giờ để xác nhận theo hạn hệ thống. Sinh viên đăng ký
                     trực tiếp hoặc được giảng viên chỉ định có hiệu lực ngay.
                   </p>
                 </section>
-                <details className="border-t border-slate-200 pt-4">
-                  <summary className="cursor-pointer text-sm font-semibold">
-                    Nội dung đề tài
-                  </summary>
-                  <h3 className="mt-3 text-sm font-medium">Mục tiêu và mô tả</h3>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
-                    {group.description || 'Chưa có nội dung.'}
-                  </p>
-                  <h3 className="mt-3 text-sm font-medium">Yêu cầu</h3>
-                  <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">
-                    {group.requirements || 'Chưa có nội dung.'}
-                  </p>
-                </details>
-                <ProgressSection title="Đề cương" query={syllabus}>
-                  <p className="text-sm">
-                    {syllabus.data
-                      ? (SYLLABUS_STATUS_LABELS[syllabus.data.currentStatus] ??
-                        syllabus.data.currentStatus)
-                      : 'Chưa nộp đề cương'}
-                  </p>
-                </ProgressSection>
-                <ProgressSection title="Báo cáo giữa kỳ" query={midterm}>
-                  <p className="text-sm">
-                    {midterm.data
-                      ? (MIDTERM_STATUS_LABELS[midterm.data.currentStatus] ??
-                        midterm.data.currentStatus)
-                      : 'Chưa nộp báo cáo giữa kỳ'}
-                  </p>
-                </ProgressSection>
-                <ProgressSection title="Báo cáo cuối kỳ" query={finalReport}>
-                  <p className="text-sm">
-                    {finalReport.data
-                      ? (FINAL_REPORT_STATUS_LABELS[
-                          finalReport.data.currentStatus as keyof typeof FINAL_REPORT_STATUS_LABELS
-                        ] ?? finalReport.data.currentStatus)
-                      : 'Chưa nộp báo cáo cuối kỳ'}
-                  </p>
-                  {finalReport.data && (
-                    <SimilarityReportPanel
-                      reportId={finalReport.data.finalReportId}
-                      versionNo={finalReport.data.currentVersionNo}
-                    />
-                  )}
-                </ProgressSection>
-                <ProgressSection title="Mốc tiến độ" query={milestones}>
-                  {!milestones.data?.length && (
-                    <p className="text-sm text-slate-500">Chưa thiết lập mốc tiến độ.</p>
-                  )}
-                  {milestoneRows.map((milestone, index) => (
-                    <div key={milestone.id} className="space-y-1 py-2">
-                      <p className="text-sm font-medium">{milestone.title}</p>
-                      <ProgressSection title="Báo cáo tiến độ" query={reports[index]}>
-                        <p className="text-sm text-slate-600">
-                          {reports[index].data
-                            ? (PROGRESS_REPORT_STATUS_LABELS[
-                                reports[index].data
-                                  .currentStatus as keyof typeof PROGRESS_REPORT_STATUS_LABELS
-                              ] ?? reports[index].data.currentStatus)
-                            : 'Chưa nộp'}
-                        </p>
-                      </ProgressSection>
-                    </div>
-                  ))}
-                </ProgressSection>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setFacultyOpen(true);
-                    setCopyNotice('');
-                  }}
-                >
-                  Soạn nội dung liên hệ Khoa
-                </Button>
-              </>
-            )
-          )}
-          <div className="flex justify-end border-t border-slate-200 pt-4">
-            <Button variant="outline" onClick={onClose}>
-              Đóng
-            </Button>
+              </aside>
+            </div>
+          )
+        )}
+        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+          <div>
+            {group && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFacultyOpen(true);
+                  setCopyNotice('');
+                }}
+                className="h-9 rounded-xl border-slate-200 px-3.5 text-xs font-semibold"
+              >
+                Soạn nội dung liên hệ Khoa
+              </Button>
+            )}
           </div>
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold"
+          >
+            Đóng
+          </Button>
         </div>
       </Dialog>
       {facultyOpen && (
-        <Dialog title="Soạn nội dung liên hệ Khoa" onClose={() => setFacultyOpen(false)}>
-          <div className="space-y-4 p-5">
+        <Dialog
+          title="Soạn nội dung liên hệ Khoa"
+          onClose={() => setFacultyOpen(false)}
+          className="max-w-xl"
+          headerClassName="border-b border-slate-200/80 px-5 py-3.5 sm:px-6"
+        >
+          <div className="space-y-4 p-5 sm:p-6">
             <p className="text-sm text-slate-600">
               Sao chép nội dung để gửi qua kênh liên hệ của Khoa. Thao tác này chưa gửi yêu cầu.
             </p>
             <label className="block space-y-2 text-sm">
-              <span>Nội dung tham khảo</span>
+              <span className="font-medium text-slate-800">Nội dung tham khảo</span>
               <textarea
                 readOnly
                 value={facultyText}
                 rows={8}
-                className="w-full rounded-lg border border-slate-200 p-3"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm leading-relaxed text-slate-800 focus:border-primary focus:bg-white focus:outline-none"
               />
             </label>
-            <p role="status" className="text-sm">
+            <p role="status" className="text-sm text-emerald-700">
               {copyNotice}
             </p>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setFacultyOpen(false)}>
-                Đóng
-              </Button>
-              <Button onClick={() => void copy()}>Sao chép nội dung</Button>
-            </div>
+          </div>
+          <div className="flex justify-end gap-2.5 border-t border-slate-200/80 bg-slate-50/70 px-5 py-3.5 sm:px-6">
+            <Button
+              variant="outline"
+              onClick={() => setFacultyOpen(false)}
+              className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold"
+            >
+              Đóng
+            </Button>
+            <Button
+              onClick={() => void copy()}
+              className="h-9 rounded-xl px-4 text-xs font-semibold"
+            >
+              Sao chép nội dung
+            </Button>
           </div>
         </Dialog>
       )}

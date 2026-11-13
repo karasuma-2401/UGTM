@@ -34,6 +34,11 @@ export function getTopicErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Không thể thực hiện thao tác. Vui lòng thử lại.';
 }
 
+export interface TopicStudentLookupResult {
+  userCode: string;
+  fullName: string;
+}
+
 export const topicApi = {
   async getMyTopics(
     query: Partial<TopicFilters> & {
@@ -86,6 +91,30 @@ export const topicApi = {
   async submit(id: string): Promise<Topic> {
     const response = await httpClient.post<ApiResponse<Topic>>(`/api/topics/${id}/submit`);
     return unwrap(response.data);
+  },
+
+  async lookupStudentByCode(
+    userCode: string,
+    signal?: AbortSignal,
+  ): Promise<TopicStudentLookupResult | null> {
+    const normalized = userCode.trim().toUpperCase();
+    if (!normalized) return null;
+
+    try {
+      const response = await httpClient.get<ApiResponse<TopicStudentLookupResult>>(
+        '/api/topics/student-lookup',
+        {
+          params: { userCode: normalized },
+          signal,
+        },
+      );
+      return unwrap(response.data);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async save(

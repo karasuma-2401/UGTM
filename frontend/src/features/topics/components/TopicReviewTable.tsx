@@ -96,7 +96,7 @@ export function TopicReviewTable({
               <TableHead
                 key={label}
                 align={label === 'Thao tác' ? 'center' : 'left'}
-                className="px-4 py-3.5"
+                className={label === 'Thao tác' ? 'px-4 py-3.5 whitespace-nowrap' : 'px-4 py-3.5'}
               >
                 {label}
               </TableHead>
