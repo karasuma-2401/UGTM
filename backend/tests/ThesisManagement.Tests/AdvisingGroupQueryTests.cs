@@ -12,9 +12,12 @@ public sealed class AdvisingGroupQueryTests
         var user = new User(["Admin", "Lecturer"]);
         var groupId = Guid.NewGuid();
         var student = Guid.NewGuid();
-        var reader = new Reader { Page = new([
+        var reader = new Reader
+        {
+            Page = new([
             new() { GroupId = groupId, TopicId = Guid.NewGuid(), BatchId = Guid.NewGuid(), TitleVi = "Nhóm đã dừng", Status = "Stopped", ConfirmedStudentsCount = 1 }
-        ], 42, new(42, 30, 10, 2, 31, 3, 1), [new(groupId, student, "Confirmed", DateTime.UtcNow, DateTime.UtcNow, null)]) };
+        ], 42, new(42, 30, 10, 2, 31, 3, 1), [new(groupId, student, "Confirmed", DateTime.UtcNow, DateTime.UtcNow, null)])
+        };
         var students = new Students();
         var query = new GetAdvisingGroupsQuery(Scope: "stopped", SortBy: "title", SortOrder: "asc", PageNumber: 2, PageSize: 20);
         using var cancellation = new CancellationTokenSource();
@@ -82,7 +85,7 @@ public sealed class AdvisingGroupQueryTests
         public Guid? AdvisorId;
         public GetAdvisingGroupsQuery? Query;
         public CancellationToken CancellationToken;
-        public AdvisingGroupPage Page = new([], 0, new(0,0,0,0,0,0,0), []);
+        public AdvisingGroupPage Page = new([], 0, new(0, 0, 0, 0, 0, 0, 0), []);
         public Task<AdvisingGroupPage> GetAsync(Guid advisorId, GetAdvisingGroupsQuery query, CancellationToken cancellationToken)
         { AdvisorId = advisorId; Query = query; CancellationToken = cancellationToken; return Task.FromResult(Page); }
     }

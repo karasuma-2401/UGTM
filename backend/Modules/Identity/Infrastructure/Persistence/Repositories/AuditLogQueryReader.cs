@@ -52,27 +52,27 @@ public sealed class AuditLogQueryReader(IdentityDbContext db) : IAuditLogQueryRe
             actor == null ? null : actor.FullName, log.ActorSessionId, log.TargetType, log.TargetId,
             log.Action, log.Outcome, log.ReasonCode, log.RequestId, log.MetadataJson, log.Timestamp);
 
-    private static IOrderedQueryable<AuditRow> ApplySorting(IQueryable<AuditRow> rows, GetAuditLogsQuery query)
+    private IOrderedQueryable<AuditLog> ApplySorting(IQueryable<AuditLog> logs, GetAuditLogsQuery query)
     {
         var isAsc = string.Equals(query.SortOrder, "asc", StringComparison.OrdinalIgnoreCase);
         return (query.SortBy?.ToLowerInvariant()) switch
         {
             "actor" => isAsc
-                ? rows.OrderBy(x => (x.ActorFullName ?? x.ActorEmail) == null)
-                    .ThenBy(x => x.ActorFullName ?? x.ActorEmail)
+                ? logs.OrderBy(x => db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.FullName ?? u.Email).FirstOrDefault() == null)
+                    .ThenBy(x => db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.FullName ?? u.Email).FirstOrDefault())
                     .ThenByDescending(x => x.Id)
-                : rows.OrderBy(x => (x.ActorFullName ?? x.ActorEmail) == null)
-                    .ThenByDescending(x => x.ActorFullName ?? x.ActorEmail)
+                : logs.OrderBy(x => db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.FullName ?? u.Email).FirstOrDefault() == null)
+                    .ThenByDescending(x => db.Users.Where(u => u.Id == x.ActorUserId).Select(u => u.FullName ?? u.Email).FirstOrDefault())
                     .ThenByDescending(x => x.Id),
             "action" => isAsc
-                ? rows.OrderBy(x => x.Action).ThenByDescending(x => x.Id)
-                : rows.OrderByDescending(x => x.Action).ThenByDescending(x => x.Id),
+                ? logs.OrderBy(x => x.Action).ThenByDescending(x => x.Id)
+                : logs.OrderByDescending(x => x.Action).ThenByDescending(x => x.Id),
             "outcome" => isAsc
-                ? rows.OrderBy(x => x.Outcome).ThenByDescending(x => x.Id)
-                : rows.OrderByDescending(x => x.Outcome).ThenByDescending(x => x.Id),
+                ? logs.OrderBy(x => x.Outcome).ThenByDescending(x => x.Id)
+                : logs.OrderByDescending(x => x.Outcome).ThenByDescending(x => x.Id),
             _ => isAsc
-                ? rows.OrderBy(x => x.Timestamp).ThenBy(x => x.Id)
-                : rows.OrderByDescending(x => x.Timestamp).ThenByDescending(x => x.Id),
+                ? logs.OrderBy(x => x.Timestamp).ThenBy(x => x.Id)
+                : logs.OrderByDescending(x => x.Timestamp).ThenByDescending(x => x.Id),
         };
     }
 
@@ -82,8 +82,8 @@ public sealed class AuditLogQueryReader(IdentityDbContext db) : IAuditLogQueryRe
         var total = await source.CountAsync(cancellationToken);
         var offset = ((long)query.PageNumber - 1) * query.PageSize;
         if (offset > int.MaxValue) return new PagedResult<AuditLogDto>([], total, query.PageNumber, query.PageSize);
-        var rows = await ApplySorting(Project(source), query)
-            .Skip((int)offset).Take(query.PageSize).ToListAsync(cancellationToken);
+        var rows = await Project(ApplySorting(source, query)
+            .Skip((int)offset).Take(query.PageSize)).ToListAsync(cancellationToken);
         return new PagedResult<AuditLogDto>(rows.Select(ToDto).ToList(), total, query.PageNumber, query.PageSize);
     }
 
@@ -107,7 +107,7 @@ public sealed class AuditLogQueryReader(IdentityDbContext db) : IAuditLogQueryRe
 
     public async IAsyncEnumerable<AuditLogDto> ExportAsync(GetAuditLogsQuery query, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var rows = ApplySorting(Project(Filter(query)), query);
+        var rows = Project(ApplySorting(Filter(query), query));
         await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(cancellationToken)) yield return ToDto(row);
     }
 
