@@ -15,7 +15,8 @@ internal sealed class TopicSummaryReader(TopicCatalogDbContext db) : ITopicSumma
         return await db.Topics.AsNoTracking()
             .Where(topic => ids.Contains(topic.Id))
             .Select(topic => new TopicSummaryContractDto(
-                topic.Id, topic.BatchId, topic.AdvisorId, topic.TitleVi, topic.TitleEn))
+                topic.Id, topic.BatchId, topic.AdvisorId, topic.TitleVi, topic.TitleEn,
+                topic.Description, topic.Requirements, topic.StudentNumber))
             .ToDictionaryAsync(topic => topic.TopicId, cancellationToken);
     }
 }

@@ -9,7 +9,11 @@ public sealed record StudentGroupDetailDto(
     string? BatchName,
     StudentGroupAdvisorDto Advisor,
     IReadOnlyList<StudentGroupMemberDto> Members,
-    string GroupStatus);
+    string GroupStatus,
+    string? Description = null,
+    string? Requirements = null,
+    int? StudentNumber = null,
+    DateTime? CreatedAt = null);
 
 public sealed record StudentGroupAdvisorDto(Guid AdvisorId, string? FullName);
 
@@ -18,4 +22,9 @@ public sealed record StudentGroupMemberDto(
     string? UserCode,
     string? FullName,
     string? Email,
-    string ConfirmationStatus);
+    string ConfirmationStatus,
+    DateTime? JoinedAt = null,
+    DateTime? ConfirmedAtUtc = null,
+    DateTime? ConfirmationExpiresAtUtc = null,
+    Guid? InvitedByStudentId = null,
+    bool InvitationExpired = false);

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { AccountGroup } from '../types/user.types';
+import type { AccountGroup, UsersSortField } from '../types/user.types';
 import type { UserFilters } from './useUserFilters';
 import { userApi } from '../services/userApi';
 
@@ -9,11 +9,29 @@ export function useUserData(
   filters: UserFilters,
   pageNumber: number,
   pageSize: number,
+  sort?: { field: UsersSortField; direction: 'asc' | 'desc' },
 ) {
   const usersQuery = useQuery({
-    queryKey: ['admin-users', currentUserId, accountGroup, filters, pageNumber, pageSize],
+    queryKey: [
+      'admin-users',
+      currentUserId,
+      accountGroup,
+      filters,
+      pageNumber,
+      pageSize,
+      sort ?? null,
+    ],
     queryFn: ({ signal }) =>
-      userApi.getUsers({ ...filters, accountGroup, pageNumber, pageSize }, signal),
+      userApi.getUsers(
+        {
+          ...filters,
+          accountGroup,
+          pageNumber,
+          pageSize,
+          ...(sort ? { sortBy: sort.field, sortOrder: sort.direction } : {}),
+        },
+        signal,
+      ),
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === currentUserId && previousQuery?.queryKey[2] === accountGroup
         ? previousData

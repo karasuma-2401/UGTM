@@ -1,7 +1,7 @@
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { OperationToast } from '@/shared/notifications';
 import { useQueryClient } from '@tanstack/react-query';
-import { UsersRound, GraduationCap, UserPlus, Clock3, ShieldOff, Upload, X } from 'lucide-react';
+import { UsersRound, GraduationCap, UserPlus, Upload, X, Clock3, Ban } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { ListCardHeader } from '@/components/ui/list-card-header';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TablePagination } from '@/components/ui/table-pagination';
+import { TableFloatingBar } from '@/components/ui/table-floating-bar';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 
@@ -33,6 +34,8 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
   const { isStudent, canManage, canImport, currentUserId } = permissions;
 
   const users = data.data;
+  const selectedUser = users?.items.find((item) => item.id === modals.selectedRowId) ?? null;
+  const isBusy = actions.isUpdating || data.usersQuery.isFetching;
 
   return (
     <div className="min-w-0 space-y-5">
@@ -50,7 +53,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             disabled={actions.isUpdating}
             onClick={() => actions.handleOpenForm(null)}
             leftIcon={<UserPlus />}
-            className="h-10 rounded-lg px-4 shadow-sm"
+            className="h-10 rounded-xl px-4 shadow-2xs"
           >
             {isStudent ? 'Thêm sinh viên' : 'Thêm giảng viên / cán bộ'}
           </Button>
@@ -62,7 +65,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             disabled={actions.isUpdating}
             onClick={() => modals.setIsImportOpen(true)}
             leftIcon={<Upload />}
-            className="h-10 rounded-lg px-4 shadow-sm"
+            className="h-10 rounded-xl px-4 shadow-2xs"
           >
             Nhập Excel
           </Button>
@@ -141,7 +144,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         isConfirming={actions.statusMutation.isPending}
       />
 
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm">
+      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-xs">
         <ListCardHeader
           title="Danh sách tài khoản"
           icon={isStudent ? <GraduationCap /> : <UsersRound />}
@@ -149,12 +152,12 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
           className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
         >
           <section
-            className="w-full"
+            className="flex w-full flex-col items-stretch gap-2 lg:items-end"
             aria-label="Thống kê tài khoản"
             aria-busy={data.statisticsQuery.isFetching}
           >
             <StatisticsBar
-              compact
+              className="w-full lg:w-auto"
               loading={data.statisticsQuery.isPending}
               items={[
                 {
@@ -163,6 +166,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                   active:
                     !filters.filters.status && !filters.filters.keyword && !filters.filters.role,
                   label: 'Tổng tài khoản',
+                  actionLabel: 'Lọc tổng tài khoản',
                   value: data.formatCount(data.statistics?.total),
                   icon: <UsersRound />,
                   tone: 'primary',
@@ -175,6 +179,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                     !filters.filters.keyword &&
                     !filters.filters.role,
                   label: 'Chờ kích hoạt',
+                  actionLabel: 'Lọc tài khoản chờ kích hoạt',
                   value: data.formatCount(data.statistics?.pendingActivation),
                   icon: <Clock3 />,
                   tone: 'warning',
@@ -187,8 +192,9 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
                     !filters.filters.keyword &&
                     !filters.filters.role,
                   label: 'Vô hiệu hóa',
+                  actionLabel: 'Lọc tài khoản vô hiệu hóa',
                   value: data.formatCount(data.statistics?.disabled),
-                  icon: <ShieldOff />,
+                  icon: <Ban />,
                   tone: 'danger',
                 },
               ]}
@@ -214,7 +220,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             )}
           </section>
         </ListCardHeader>
-        <div className="border-b border-slate-100 p-4">
+        <div className="border-b border-slate-100 bg-slate-50/40 p-4 sm:px-5">
           <UserFilterBar
             isStudent={isStudent}
             draftFilters={filters.draftFilters}
@@ -268,10 +274,15 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               pageSize={users.pageSize}
               currentUserId={currentUserId}
               canManage={canManage}
-              isChangingStatus={actions.isUpdating || data.usersQuery.isFetching}
+              isChangingStatus={isBusy}
               onEdit={actions.handleOpenForm}
               selectedRowId={modals.selectedRowId}
-              onSelectRow={modals.setSelectedRowId}
+              onSelectRow={(id) => modals.setSelectedRowId((prev) => (prev === id ? null : id))}
+              sort={filters.sort}
+              onSortChange={(field) => {
+                modals.setSelectedRowId(null);
+                filters.handleSortChange(field);
+              }}
               onChangeStatus={actions.handleChangeStatus}
               onResendActivation={actions.handleResendActivation}
             />
@@ -301,14 +312,63 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             hasNextPage={users.hasNextPage}
             isLoading={data.usersQuery.isFetching || actions.isUpdating}
             itemLabel={isStudent ? 'sinh viên' : 'giảng viên / cán bộ'}
-            onPageChange={filters.setPageNumber}
+            onPageChange={(page) => {
+              modals.setSelectedRowId(null);
+              filters.setPageNumber(page);
+            }}
             onPageSizeChange={(size) => {
+              modals.setSelectedRowId(null);
               filters.setPageSize(size);
               filters.setPageNumber(1);
             }}
           />
         )}
       </Card>
+
+      {canManage && selectedUser && (
+        <TableFloatingBar
+          aria-label="Thao tác với tài khoản đã chọn"
+          selectedCount={1}
+          totalCount={users?.totalCount ?? 0}
+          onClearSelection={() => modals.setSelectedRowId(null)}
+        >
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className="h-8 rounded-xl text-xs font-semibold shadow-xs"
+            disabled={isBusy}
+            onClick={() => actions.handleOpenForm(selectedUser)}
+          >
+            Xem
+          </Button>
+          {selectedUser.status === 'PendingActivation' ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-xl text-xs font-semibold"
+              disabled={isBusy}
+              onClick={() => actions.handleResendActivation(selectedUser)}
+            >
+              Gửi email kích hoạt
+            </Button>
+          ) : (
+            selectedUser.id !== currentUserId && (
+              <Button
+                type="button"
+                variant={selectedUser.status === 'Active' ? 'dangerOutline' : 'successOutline'}
+                size="sm"
+                className="h-8 rounded-xl text-xs font-semibold"
+                disabled={isBusy}
+                onClick={() => actions.handleChangeStatus(selectedUser)}
+              >
+                {selectedUser.status === 'Active' ? 'Vô hiệu hóa' : 'Khôi phục'}
+              </Button>
+            )
+          )}
+        </TableFloatingBar>
+      )}
     </div>
   );
 }

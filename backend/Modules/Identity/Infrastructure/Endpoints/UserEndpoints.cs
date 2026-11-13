@@ -207,10 +207,12 @@ public static class UserEndpoints
         int pageNumber = 1,
         int pageSize = 10,
         string? accountGroup = null,
+        string? sortBy = null,
+        string? sortOrder = null,
         GetUsersHandler handler = null!,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetUsersQuery(keyword, role, status, pageNumber, pageSize, accountGroup);
+        var query = new GetUsersQuery(keyword, role, status, pageNumber, pageSize, accountGroup, sortBy, sortOrder);
         var result = await handler.HandleAsync(query, cancellationToken);
         return result.ToHttpResult();
     }

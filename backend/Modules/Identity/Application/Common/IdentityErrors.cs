@@ -137,4 +137,8 @@ public static class IdentityErrors
     public static readonly Error InvalidAuditLogFilter = Error.Validation(
         "Identity.InvalidAuditLogFilter",
         "Bộ lọc nhật ký hệ thống không hợp lệ.");
+
+    public static readonly Error InvalidSort = Error.Validation(
+        "Identity.InvalidSort",
+        "Tham số sắp xếp không hợp lệ.");
 }

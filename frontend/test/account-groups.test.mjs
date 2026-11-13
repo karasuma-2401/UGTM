@@ -247,6 +247,7 @@ function usersPageFixture(accountGroup, queryState = {}) {
     '@/components/ui/list-card-header': component('ListCardHeader'),
     '@/components/ui/statistics-bar': component('StatisticsBar'),
     '@/components/ui/table-pagination': component('TablePagination'),
+    '@/components/ui/table-floating-bar': component('TableFloatingBar'),
     '@/components/ui/table-skeleton': component('TableSkeleton'),
     '@/components/ui/confirm-dialog': component('ConfirmDialog'),
     '../components/users': {
@@ -409,6 +410,59 @@ test('Users keeps rows only within the same account/group and locks actions whil
     page.find((node) => node.props['aria-busy'] && node.props.className?.includes('opacity-60'))
       .length,
   );
+});
+
+test('Users supports server-side column sorting and renders TableFloatingBar for selected user', async () => {
+  const page = usersPageFixture('Student', {
+    isSuccess: true,
+    isPending: false,
+    isFetching: false,
+    data: {
+      items: [
+        {
+          id: 'sv-1',
+          email: 'sv1@gm.uit.edu.vn',
+          fullName: 'Nguyen Van A',
+          userCode: '24520001',
+          phoneNumber: null,
+          roles: ['Student'],
+          status: 'Active',
+          lastLoginAt: null,
+        },
+      ],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 20,
+      hasPreviousPage: false,
+      hasNextPage: false,
+    },
+  });
+
+  const tableBefore = page.find((node) => node.type === 'UsersTable')[0];
+  assert.equal(page.find((node) => node.type === 'TableFloatingBar').length, 0);
+
+  tableBefore.props.onSortChange('fullname');
+  page.render();
+  assert.deepEqual(await page.listQuery(), {
+    keyword: '',
+    role: '',
+    status: '',
+    accountGroup: 'Student',
+    pageNumber: 1,
+    pageSize: 20,
+    sortBy: 'fullname',
+    sortOrder: 'asc',
+  });
+
+  tableBefore.props.onSortChange('fullname');
+  page.render();
+  assert.equal((await page.listQuery()).sortOrder, 'desc');
+
+  page.find((node) => node.type === 'UsersTable')[0].props.onSelectRow('sv-1');
+  page.render();
+  const floatingBars = page.find((node) => node.type === 'TableFloatingBar');
+  assert.equal(floatingBars.length, 1);
+  assert.equal(floatingBars[0].props.selectedCount, 1);
 });
 
 test("editing only enables save for actual changes and restores clean state when reverted", () => {

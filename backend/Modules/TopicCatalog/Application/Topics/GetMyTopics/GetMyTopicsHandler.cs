@@ -67,6 +67,13 @@ public sealed class GetMyTopicsHandler(
             }
         }
 
+        var sortBy = string.IsNullOrWhiteSpace(query.SortBy) ? "createdat" : query.SortBy.Trim().ToLowerInvariant();
+        var sortOrder = string.IsNullOrWhiteSpace(query.SortOrder) ? "desc" : query.SortOrder.Trim().ToLowerInvariant();
+        if (sortBy is not ("title" or "studentnumber" or "createdat") || sortOrder is not ("asc" or "desc"))
+        {
+            return Result.Failure<PagedResult<TopicTrackingSummaryDto>>(TopicErrors.InvalidSort);
+        }
+
         var pageNumber = query.PageNumber < 1 ? 1 : query.PageNumber;
         var pageSize = query.PageSize switch
         {
@@ -79,6 +86,8 @@ public sealed class GetMyTopicsHandler(
         {
             PageNumber = pageNumber,
             PageSize = pageSize,
+            SortBy = sortBy,
+            SortOrder = sortOrder,
             Status = string.IsNullOrWhiteSpace(query.Status) ? null : query.Status.Trim(),
             RegistrationStatus = string.IsNullOrWhiteSpace(query.RegistrationStatus) ? null : query.RegistrationStatus.Trim()
         };

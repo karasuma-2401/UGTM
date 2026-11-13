@@ -1,6 +1,6 @@
 import { OperationToast } from '@/shared/notifications';
 import React from 'react';
-import { UsersRound, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -49,21 +49,23 @@ export const SchoolRosterPage: React.FC = () => {
   };
 
   const batchLabel = data.selectedBatch
-    ? `${data.selectedBatch.batchName} - HK${data.selectedBatch.semester} ${data.selectedBatch.academicYear}`
+    ? `${data.selectedBatch.batchName} - Học kỳ ${data.selectedBatch.semester} (Năm học ${data.selectedBatch.academicYear})`
     : undefined;
 
   return (
-    <div className="space-y-6 pb-12 max-w-7xl mx-auto min-w-0">
+    <div className="space-y-6 pb-12 animate-in fade-in-50 duration-300">
       <PageHeader
-        title="Danh sách nhà trường"
-        icon={<UsersRound />}
-      >
-      </PageHeader>
+        title="Danh sách Sinh viên & Giảng viên"
+        description="Nhập và đối chiếu danh sách sinh viên đủ điều kiện khóa luận và giảng viên hướng dẫn theo từng đợt đào tạo"
+      />
 
       <OperationToast message={roster.notice} onConsumed={() => roster.setNotice(null)} />
 
       {activeErrorMessage && (
-        <InlineAlert onDismiss={handleDismissError} action={data.loadError ? (
+        <InlineAlert
+          onDismiss={handleDismissError}
+          action={
+            data.loadError ? (
               <Button
                 type="button"
                 variant="outline"
@@ -75,11 +77,14 @@ export const SchoolRosterPage: React.FC = () => {
                 <RotateCcw className="size-3.5 mr-1.5" />
                 Thử lại
               </Button>
-            ) : undefined}>
+            ) : undefined
+          }
+        >
           {activeErrorMessage}
         </InlineAlert>
       )}
 
+      {/* Row 1: Config & Upload Card (8 cols) + Bento Guidelines Card (4 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         <div className="lg:col-span-8">
           <RosterConfigCard
@@ -105,6 +110,7 @@ export const SchoolRosterPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Row 2: Preview & Validation Table */}
       <RosterPreviewTable
         rows={roster.validatedRows}
         summary={roster.summary}
@@ -128,4 +134,3 @@ export const SchoolRosterPage: React.FC = () => {
     </div>
   );
 };
-

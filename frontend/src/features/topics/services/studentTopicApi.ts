@@ -2,6 +2,8 @@ import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
 import type { PagedResult } from '../types/topic.types';
 import type {
+  CatalogAvailabilityFilter,
+  CatalogSortField,
   PublishedTopic,
   StudentRegistrationStatus,
   RegistrationResult,
@@ -19,16 +21,28 @@ function unwrap<T>(response: ApiResponse<T>): T {
 
 export const studentTopicApi = {
   async getTopics(
-    query: { keyword: string; batchId: string; pageNumber: number; pageSize: number },
+    query: {
+      keyword: string;
+      batchId: string;
+      availability?: CatalogAvailabilityFilter;
+      sortBy?: CatalogSortField;
+      sortOrder?: 'asc' | 'desc';
+      pageNumber: number;
+      pageSize: number;
+    },
     signal?: AbortSignal,
   ): Promise<PagedResult<PublishedTopic>> {
     const response = await httpClient.get<ApiResponse<PagedResult<PublishedTopic>>>(
       '/api/topics/all-topics',
       {
         params: {
-          ...query,
+          pageNumber: query.pageNumber,
+          pageSize: query.pageSize,
           keyword: query.keyword.trim() || undefined,
           batchId: query.batchId || undefined,
+          ...(query.availability ? { availability: query.availability } : {}),
+          ...(query.sortBy ? { sortBy: query.sortBy } : {}),
+          ...(query.sortOrder ? { sortOrder: query.sortOrder } : {}),
         },
         signal,
       },

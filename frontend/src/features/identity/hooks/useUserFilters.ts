@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import type { AccountStatus, UsersQuery } from '../types/user.types';
+import type { AccountStatus, UsersQuery, UsersSortField } from '../types/user.types';
 
 export type UserFilters = Pick<UsersQuery, 'keyword' | 'role' | 'status'>;
 
@@ -14,6 +14,17 @@ export function useUserFilters() {
   const [filters, setFilters] = useState<UserFilters>(INITIAL_FILTERS);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [sort, setSort] = useState<{ field: UsersSortField; direction: 'asc' | 'desc' } | undefined>(
+    undefined,
+  );
+
+  const handleSortChange = (field: UsersSortField) => {
+    setSort((prev) => ({
+      field,
+      direction: prev?.field === field && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+    setPageNumber(1);
+  };
 
   const quickFilter = (status: AccountStatus | '') => {
     const next = { ...INITIAL_FILTERS, status };
@@ -34,6 +45,7 @@ export function useUserFilters() {
   const clearFilters = () => {
     setDraftFilters({ ...INITIAL_FILTERS });
     setFilters({ ...INITIAL_FILTERS });
+    setSort(undefined);
     setPageNumber(1);
   };
 
@@ -62,6 +74,9 @@ export function useUserFilters() {
     setPageNumber,
     pageSize,
     setPageSize,
+    sort,
+    setSort,
+    handleSortChange,
     quickFilter,
     handleApplyFilters,
     clearFilters,

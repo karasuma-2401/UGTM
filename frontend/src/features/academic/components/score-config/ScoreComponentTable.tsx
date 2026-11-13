@@ -1,6 +1,14 @@
 import React from 'react';
-import { Trash2, ShieldAlert, Plus, Minus } from 'lucide-react';
+import { Trash2, ShieldAlert, Plus, Minus, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
 import './score-config.css';
 import type { ScoreComponentInput, ScoreCalculationMethod } from '../../types/scoreConfig.types';
 import { Badge } from '@/components/ui/badge';
@@ -125,25 +133,36 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
   return (
     <section
       aria-label="Thành phần điểm"
-      className="score-components bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+      className="score-components bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden"
     >
       <div className="p-5 sm:px-6 border-b border-slate-100 flex flex-wrap gap-3 items-center justify-between">
         <div>
-          <h2 className="text-base font-semibold text-slate-900">
-            Thành phần điểm{' '}
-            <span className="ml-1 text-sm font-normal text-slate-500">({components.length})</span>
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h2 className="text-base font-semibold tracking-tight text-slate-900">
+              Thành phần điểm{' '}
+              <span className="ml-0.5 text-sm font-normal text-slate-500">
+                ({components.length})
+              </span>
+            </h2>
+            <span
+              role="status"
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                isDirty
+                  ? 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200/80'
+                  : 'bg-slate-100 text-slate-600'
+              }`}
+            >
+              {isReadOnly
+                ? 'Đang tải cấu hình'
+                : isDirty
+                  ? 'Có thay đổi chưa lưu'
+                  : hasSavedConfig
+                    ? 'Đã lưu'
+                    : 'Chưa có cấu hình đã lưu'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
             Danh sách các thành phần điểm và điều kiện áp dụng cho từng nguồn chấm.
-          </p>
-          <p role="status" className="mt-2 text-xs font-medium text-slate-600">
-            {isReadOnly
-              ? 'Đang tải cấu hình'
-              : isDirty
-                ? 'Có thay đổi chưa lưu'
-                : hasSavedConfig
-                  ? 'Đã lưu'
-                  : 'Chưa có cấu hình đã lưu'}
           </p>
         </div>
         {onAddComponent && (
@@ -154,6 +173,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
             onClick={onAddComponent}
             disabled={isReadOnly}
             leftIcon={<Plus className="size-4" />}
+            className="h-9 rounded-xl px-3.5 text-xs font-semibold"
           >
             Thêm đầu điểm
           </Button>
@@ -163,7 +183,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
       {!isReadOnly && !isValid && (
         <div
           role="status"
-          className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900"
+          className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 sm:px-6"
         >
           {components.length === 0
             ? 'Hãy thêm ít nhất một thành phần điểm.'
@@ -173,31 +193,25 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
         </div>
       )}
 
-      <div className="overflow-x-auto min-h-[220px]">
-        <table className="w-full text-left text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/60 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              <th scope="col" className="px-5 py-3.5 w-[22%]">
-                Nguồn / thành viên
-              </th>
-              <th scope="col" className="px-5 py-3.5 w-[36%]">
-                Điểm / trọng số
-              </th>
-              <th scope="col" className="px-5 py-3.5 w-[25%]">
-                Điều kiện
-              </th>
-              <th scope="col" className="px-5 py-3.5 w-[17%] text-right whitespace-nowrap">
+      <div className="min-h-[220px]">
+        <Table>
+          <TableHeader>
+            <tr>
+              <TableHead className="w-[24%] px-5 py-3.5">Nguồn / thành viên</TableHead>
+              <TableHead className="w-[36%] px-5 py-3.5">Điểm / trọng số</TableHead>
+              <TableHead className="w-[24%] px-5 py-3.5">Điều kiện</TableHead>
+              <TableHead align="right" className="w-[16%] px-5 py-3.5 whitespace-nowrap">
                 Phân loại
-              </th>
+              </TableHead>
             </tr>
-          </thead>
+          </TableHeader>
 
-          <tbody className="divide-y divide-slate-100">
+          <TableBody>
             {components.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-5 py-12 text-center text-slate-400 text-sm">
+                <TableCell colSpan={4} className="px-5 py-12 text-center text-slate-400 text-sm">
                   Chưa có đầu điểm nào trong cấu hình. Bấm "Thêm đầu điểm" để bắt đầu.
-                </td>
+                </TableCell>
               </tr>
             ) : (
               components.map((item, index) => {
@@ -211,19 +225,20 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                     : 0;
 
                 return (
-                  <tr
+                  <TableRow
                     key={item.componentCode || index}
-                    className="hover:bg-slate-50/50 transition-colors"
+                    hideSelectionMarker
+                    className="hover:bg-slate-50/70 transition-colors"
                   >
                     {/* Cột 1: Nguồn / thành viên */}
-                    <td data-label="Nguồn / thành viên" className="px-5 py-4">
-                      <div className="font-semibold text-slate-800 text-sm">
+                    <TableCell className="px-5 py-4">
+                      <div className="font-semibold text-slate-900 text-sm">
                         {item.componentName}
                       </div>
-                    </td>
+                    </TableCell>
 
                     {/* Cột 2: Điểm / Trọng số */}
-                    <td data-label="Trọng số" className="px-5 py-4 tabular-nums">
+                    <TableCell className="px-5 py-4 tabular-nums">
                       <div className="flex items-center gap-2 flex-wrap">
                         {isReadOnly ? (
                           <div className="flex items-baseline gap-1.5">
@@ -234,7 +249,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                               {calculationMethod === 'Percentage' ? '%' : 'hệ số'}
                             </span>
                             {calculationMethod === 'IntegerCoefficient' && (
-                              <span className="text-[11px] text-slate-400 font-medium">
+                              <span className="text-xs text-slate-400 font-medium">
                                 (≈ {percentEquiv}%)
                               </span>
                             )}
@@ -242,14 +257,14 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                         ) : (
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 md:flex-nowrap md:whitespace-nowrap">
                             <div className="flex items-center gap-2 whitespace-nowrap">
-                              <div className="inline-flex shrink-0 items-center rounded-lg border border-slate-200 bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+                              <div className="inline-flex shrink-0 items-center rounded-xl border border-slate-200 bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
                                 <button
                                   type="button"
                                   aria-label={`Giảm trọng số ${item.componentName}`}
                                   title={`Giảm ${weightStep}`}
                                   disabled={item.weight <= 0}
                                   onClick={() => handleStepWeight(index, -1)}
-                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-l-lg bg-slate-50 text-slate-600 transition-colors hover:bg-blue-50 hover:text-primary active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-slate-50"
+                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-l-xl bg-slate-50/80 text-slate-600 transition-colors hover:bg-blue-50 hover:text-primary active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-slate-50"
                                 >
                                   <Minus className="size-4" aria-hidden="true" />
                                 </button>
@@ -273,7 +288,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                                   title={`Tăng ${weightStep}`}
                                   disabled={item.weight >= maximumWeight}
                                   onClick={() => handleStepWeight(index, 1)}
-                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-r-lg bg-slate-50 text-slate-600 transition-colors hover:bg-blue-50 hover:text-primary active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-slate-50"
+                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-r-xl bg-slate-50/80 text-slate-600 transition-colors hover:bg-blue-50 hover:text-primary active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-slate-50"
                                 >
                                   <Plus className="size-4" aria-hidden="true" />
                                 </button>
@@ -291,13 +306,10 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                           </div>
                         )}
                       </div>
-                    </td>
+                    </TableCell>
 
                     {/* Cột 3: Điều kiện */}
-                    <td
-                      data-label="Điều kiện"
-                      className="px-5 py-4 text-xs leading-relaxed text-slate-600"
-                    >
+                    <TableCell className="px-5 py-4 text-xs leading-relaxed text-slate-600">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span>{getConditionText(item)}</span>
                         {item.minimumScore !== null && (
@@ -309,11 +321,11 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                           </span>
                         )}
                       </div>
-                    </td>
+                    </TableCell>
 
-                    {/* Cột 4: Phân loại & thao tác (Tăng width và không để wrap chữ) */}
-                    <td data-label="Phân loại" className="px-5 py-4 text-right whitespace-nowrap">
-                      <div className="inline-flex items-center justify-end gap-2.5 shrink-0">
+                    {/* Cột 4: Phân loại & thao tác */}
+                    <TableCell align="right" className="px-5 py-4 whitespace-nowrap">
+                      <div className="inline-flex items-center justify-end gap-2 shrink-0">
                         {getCategoryBadge(item)}
 
                         {isCustom && !isReadOnly && (
@@ -322,57 +334,108 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                             onClick={() => handleRemoveComponent(index)}
                             title="Xóa đầu điểm tùy biến"
                             aria-label={`Xóa ${item.componentName}`}
-                            className="p-2 rounded text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                           >
                             <Trash2 className="size-4" />
                           </button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
-      <div className="relative overflow-hidden p-5 sm:px-6 border-t border-slate-200 bg-gradient-to-br from-blue-100/80 via-blue-50/70 to-orange-100">
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 top-0 h-1 bg-[image:var(--gradient-brand)]"
-        />
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold text-slate-900">Xem trước cách tính</h3>
-          <span className="rounded-full border border-blue-100 bg-white px-3 py-1 text-xs font-semibold text-slate-700 tabular-nums">
+      <div className="relative overflow-hidden border-t border-slate-200/80 bg-gradient-to-br from-slate-50 via-blue-50/40 to-amber-50/35 p-5 sm:px-6">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-blue-500 via-indigo-500 to-amber-500 opacity-85" />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-sm ring-1 ring-blue-500/20">
+              <Calculator className="size-4" />
+            </span>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Xem trước cách tính</h3>
+              <p className="text-xs text-slate-500">
+                Công thức tổng hợp điểm theo trọng số hiện hành
+              </p>
+            </div>
+          </div>
+          <span className="rounded-full border border-blue-200/80 bg-white/90 px-3 py-1 text-xs font-semibold text-blue-700 shadow-xs tabular-nums">
             Tổng trọng số: {totalWeight}
             {calculationMethod === 'Percentage' ? '%' : ''}
           </span>
         </div>
+
         {components.length > 0 && totalWeight > 0 ? (
-          <p className="mt-3 rounded-xl border border-slate-200/80 bg-white/90 px-4 py-3 text-sm leading-7 text-slate-700 break-words">
-            ({' '}
-            {components.map((item, index) => (
-              <React.Fragment key={item.componentCode || index}>
-                {index > 0 && <span className="text-slate-400"> + </span>}
-                <span className="inline-block max-w-full break-words">
-                  <span className="font-medium text-slate-900">{item.componentName}</span> ×{' '}
-                  {item.weight}
+          <div
+            className={`mt-3.5 rounded-xl border border-slate-200/90 bg-white/95 px-3 py-2.5 shadow-xs lg:px-2 ${
+              calculationMethod === 'Percentage' ? '' : 'min-[1440px]:px-2.5 2xl:px-3.5'
+            }`}
+          >
+            <div
+              className={`flex flex-wrap items-center gap-x-1 gap-y-1.5 text-xs text-slate-700 lg:gap-x-0.5 lg:text-[10.5px] ${
+                calculationMethod === 'Percentage'
+                  ? ''
+                  : 'min-[1440px]:text-[11px] 2xl:gap-x-1 2xl:text-[11.5px]'
+              }`}
+            >
+              {components.map((item, index) => {
+                const isLast = index === components.length - 1;
+                return (
+                  <span
+                    key={item.componentCode || index}
+                    className={`inline-flex max-w-full items-center gap-1 lg:gap-0.5 ${
+                      calculationMethod === 'Percentage' ? '' : '2xl:gap-1'
+                    }`}
+                  >
+                    {index === 0 ? (
+                      <span className="font-semibold text-slate-400">(</span>
+                    ) : (
+                      <span className="font-semibold text-slate-400">+</span>
+                    )}
+                    <span
+                      className={`inline-flex min-w-0 max-w-full items-center gap-0.5 whitespace-nowrap rounded-md border border-blue-100/90 bg-gradient-to-r from-blue-50/80 to-indigo-50/55 px-1.5 py-0.5 lg:px-1 ${
+                        calculationMethod === 'Percentage' ? '' : 'min-[1440px]:px-1.5'
+                      }`}
+                    >
+                      <span className="truncate font-medium text-slate-900">
+                        {item.componentName}
+                      </span>
+                      <span className="text-[10.5px] text-slate-400">×</span>
+                      <span className="font-semibold text-blue-700 tabular-nums">
+                        {item.weight}
+                        {calculationMethod === 'Percentage' ? '%' : ''}
+                      </span>
+                    </span>
+                    {isLast && <span className="font-semibold text-slate-400">)</span>}
+                  </span>
+                );
+              })}
+              <span
+                className={`inline-flex items-center gap-1 whitespace-nowrap lg:gap-0.5 ${
+                  calculationMethod === 'Percentage' ? '' : '2xl:gap-1'
+                }`}
+              >
+                <span className="font-semibold text-slate-400">÷</span>
+                <span className="inline-flex items-center rounded-md border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50/70 px-1.5 py-0.5 font-semibold text-amber-800 tabular-nums">
+                  {totalWeight}
                   {calculationMethod === 'Percentage' ? '%' : ''}
                 </span>
-              </React.Fragment>
-            ))}{' '}
-            ) ÷ {totalWeight}
-            {calculationMethod === 'Percentage' ? '%' : ''}
-          </p>
+              </span>
+            </div>
+          </div>
         ) : (
-          <p className="mt-3 text-sm text-slate-600">
+          <div className="mt-3.5 rounded-xl border border-dashed border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600">
             {components.length === 0
               ? 'Thêm thành phần điểm để xem cách tính.'
               : 'Tổng trọng số phải lớn hơn 0 để xem cách tính.'}
-          </p>
+          </div>
         )}
-        <p className="mt-2 text-xs leading-relaxed text-slate-600">
+
+        <p className="mt-2.5 text-xs leading-relaxed text-slate-500">
           Minh họa khi tất cả thành phần trên đều áp dụng. Khi một nguồn không áp dụng, điểm và
           trọng số của nguồn đó được loại khỏi phép tính.
         </p>

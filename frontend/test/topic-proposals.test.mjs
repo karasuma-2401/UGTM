@@ -7,6 +7,7 @@ import * as React from 'react';
 import * as jsxRuntime from 'react/jsx-runtime';
 import * as icons from 'lucide-react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { DataTable } from './helpers/data-table.mjs';
 
 function loadModule(path, dependencies = {}, browserWindow = {}) {
   dependencies = {
@@ -205,16 +206,12 @@ test('topic list scopes privileged lecturer accounts to their own advisor ID and
   assert.deepEqual(calls[1], ['/api/topics/topic-1/tracking', { signal }]);
 });
 
-test('statistics use server totals across all pages and retain advisor/batch scope', async () => {
+test('statistics use one dedicated endpoint scoped by the server identity and batch', async () => {
   const calls = [];
   const { topicApi } = apiFixture({
     get: async (path, options) => {
       calls.push([path, options]);
-      const totals = { Submitted: 15, NeedRevision: 7 };
-      return success({
-        items: [{ id: 'one-row' }],
-        totalCount: totals[options.params.status] ?? 84,
-      });
+      return success({ total: 84, submitted: 15, needRevision: 7 });
     },
   });
   const signal = new AbortController().signal;
@@ -223,19 +220,9 @@ test('statistics use server totals across all pages and retain advisor/batch sco
     submitted: 15,
     needRevision: 7,
   });
-  assert.equal(calls.length, 3);
-  assert.deepEqual(
-    calls.map(([, options]) => options.params.status),
-    [undefined, 'Submitted', 'NeedRevision'],
-  );
-  for (const [path, options] of calls) {
-    assert.equal(path, '/api/topics/my-topics');
-    assert.equal(options.params.advisorId, 'admin-1');
-    assert.equal(options.params.batchId, 'batch-1');
-    assert.equal(options.params.pageNumber, 1);
-    assert.equal(options.params.pageSize, 1);
-    assert.equal(options.signal, signal);
-  }
+  assert.deepEqual(calls, [
+    ['/api/topics/my-statistics', { params: { batchId: 'batch-1' }, signal }],
+  ]);
 });
 
 test('empty filters are omitted and failed statistics do not silently display zero', async () => {
@@ -243,7 +230,7 @@ test('empty filters are omitted and failed statistics do not silently display ze
   const { topicApi } = apiFixture({
     get: async (_path, options) => {
       calls.push(options.params);
-      if (options.params.status === 'NeedRevision') throw new Error('Offline');
+      if (_path === '/api/topics/my-statistics') throw new Error('Offline');
       return success({ items: [], totalCount: 0 });
     },
   });
@@ -285,9 +272,12 @@ test('statistics quick filters are disabled during loading and expose selected s
     'react/jsx-runtime': jsxRuntime,
     '@/lib/utils': { cn },
   });
+  const { SELECTION_TONES } = loadModule('components/ui/selection-tones.ts', {});
   const { StatisticsBar } = loadModule('components/ui/statistics-bar.tsx', {
     'react/jsx-runtime': jsxRuntime,
     '@/lib/utils': { cn },
+    './selection-indicator': { SelectionIndicator: 'SelectionIndicator' },
+    './selection-tones': { SELECTION_TONES },
     './skeleton': { Skeleton },
   });
   const items = [
@@ -359,6 +349,16 @@ const { navigationSections } = loadModule('shared/layout/navigationConfig.ts', {
 function renderSidebar(roles) {
   const Link = ({ to, children, ...props }) =>
     React.createElement('a', { ...props, href: to }, children);
+  const { SidebarNavigation } = loadModule('shared/layout/SidebarNavigation.tsx', {
+    react: React,
+    'react/jsx-runtime': jsxRuntime,
+    'react-router-dom': { NavLink: ({ end: _end, ...props }) => React.createElement(Link, props) },
+    'lucide-react': icons,
+    '@/lib/utils': { cn: (...parts) => parts.filter(Boolean).join(' ') },
+    '@/components/ui/badge': {
+      Badge: ({ children }) => React.createElement('span', null, children),
+    },
+  });
   const { AppLayout } = loadModule('shared/layout/AppLayout.tsx', {
     react: React,
     'react/jsx-runtime': jsxRuntime,
@@ -393,6 +393,7 @@ function renderSidebar(roles) {
     '@/shared/auth/identityAccess': { getIdentityAccess: () => ({ canAccess: false }) },
     './navigationConfig': { navigationSections },
     './CurrentAcademicBatch': { CurrentAcademicBatch: () => null },
+    './SidebarNavigation': { SidebarNavigation },
   });
   return renderToStaticMarkup(React.createElement(AppLayout));
 }
@@ -448,48 +449,43 @@ test('only Draft and NeedRevision permit editing', () => {
   }
 });
 
-test('guidance uses the live proposal page and links to separate group tabs on one route', () => {
+test('guidance has two tabs, preserves batch scope and resolves legacy group bookmarks', () => {
   function render(search = '') {
     const { TopicGuidancePage } = loadModule('features/topics/pages/TopicGuidancePage.tsx', {
       'lucide-react': icons,
       'react/jsx-runtime': jsxRuntime,
-      'react-router-dom': { Link: 'Link', useSearchParams: () => [new URLSearchParams(search)] },
-      '@/components/ui/button': { Button: 'Button' },
-      '@/components/ui/badge': { Badge: 'Badge' },
+      'react-router-dom': { useSearchParams: () => [new URLSearchParams(search), () => {}] },
+      '@/components/ui/navigation-tabs': { NavigationTabs: 'NavigationTabs' },
       './TopicProposePage': { TopicProposePage: 'TopicProposePage' },
       './TopicAdvisingPage': { TopicAdvisingPage: 'TopicAdvisingPage' },
       '@/components/ui/page-header': { PageHeader: 'PageHeader' },
+      '../types/advising.types': loadModule('features/topics/types/advising.types.ts'),
+      '../types/topic.types': loadModule('features/topics/types/topic.types.ts'),
     });
     return TopicGuidancePage();
   }
-  const page = render();
+  const page = render('batchId=batch-real');
   assert.equal(page.type, 'TopicProposePage');
-  assert.equal(page.props.pageTitle, 'Đề tài hướng dẫn');
-  const navigation = page.props.navigation;
-  assert.equal(navigation.props.children.length, 3);
+  assert.equal(page.props.initialFilters.batchId, 'batch-real');
   assert.deepEqual(
-    navigation.props.children.map((button) => button.props.children.props.to),
-    ['/topics/advising', '/topics/advising?tab=registrations', '/topics/advising?tab=advising'],
+    page.props.navigation.props.tabs.map((tab) => [tab.label, tab.href]),
+    [
+      ['Đề tài của tôi', '/topics/advising?batchId=batch-real'],
+      ['Nhóm & tiến độ', '/topics/advising?tab=groups&batchId=batch-real'],
+    ],
   );
-  for (const tab of ['registrations', 'advising']) {
-    const groups = render(`tab=${tab}`);
+  for (const tab of ['registrations', 'advising', 'groups']) {
+    const groups = render(`tab=${tab}&batchId=batch-real&status=ReadyForReviewerAssignment`);
     const pane = findElement(groups, (node) => node.type === 'TopicAdvisingPage');
-    assert.equal(pane.props.embedded, true);
-    assert.equal(pane.props.initialTab, tab);
-    assert.equal(pane.props.initialBatchId, '');
-    assert.doesNotMatch(JSON.stringify(groups), /Dữ liệu nhóm mẫu|2026-1/);
+    assert.equal(pane.props.initialFilters.batchId, 'batch-real');
+    assert.equal(pane.props.initialFilters.status, 'ReadyForReviewerAssignment');
+    assert.equal(pane.props.initialFilters.scope, tab === 'registrations' ? 'all' : 'active');
     assert.equal(
-      findElement(groups, (node) => node.type === 'TopicProposePage'),
-      undefined,
+      findElement(groups, (node) => node.type === 'PageHeader').props.navigation.props.tabs.length,
+      2,
     );
   }
   assert.equal(render('tab=invalid').type, 'TopicProposePage');
-  const scoped = findElement(
-    render('tab=advising&batchId=batch-real&status=InProgress'),
-    (node) => node.type === 'TopicAdvisingPage',
-  );
-  assert.equal(scoped.props.initialBatchId, 'batch-real');
-  assert.equal(scoped.props.initialStatus, 'InProgress');
 });
 
 function findElement(node, predicate) {
@@ -590,6 +586,8 @@ function proposalPageFixture(options = {}) {
     'TablePagination',
     'TableSkeleton',
     'Skeleton',
+    'TableActiveFilters',
+    'TableFloatingBar',
   ];
   const components = Object.fromEntries(componentNames.map((name) => [name, () => null]));
   const dependency = (name) => ({ [name]: components[name] });
@@ -689,12 +687,15 @@ function proposalPageFixture(options = {}) {
       '@/components/ui/dialog': dependency('Dialog'),
       '@/components/ui/confirm-dialog': dependency('ConfirmDialog'),
       '@/components/ui/statistics-bar': dependency('StatisticsBar'),
+      '@/components/ui/status-tabs': dependency('StatusTabs'),
       '@/components/ui/list-card-header': dependency('ListCardHeader'),
       '@/components/ui/card': Object.fromEntries(
         ['Card', 'CardContent', 'CardHeader', 'CardTitle'].map((key) => [key, components[key]]),
       ),
       '@/components/ui/table-pagination': dependency('TablePagination'),
       '@/components/ui/table-skeleton': dependency('TableSkeleton'),
+      '@/components/ui/table': dependency('TableActiveFilters'),
+      '@/components/ui/table-floating-bar': dependency('TableFloatingBar'),
       '@/components/ui/skeleton': dependency('Skeleton'),
       '../components/TopicStatusBadge': dependency('TopicStatusBadge'),
       '../components/TopicsTable': dependency('TopicsTable'),
@@ -723,6 +724,10 @@ function proposalPageFixture(options = {}) {
           submit: async (...args) => {
             apiCalls.push(['submit', ...args]);
           },
+          lookupStudentByCode: async (...args) => {
+            apiCalls.push(['lookupStudentByCode', ...args]);
+            return null;
+          },
         },
         getTopicErrorMessage: String,
       },
@@ -734,7 +739,7 @@ function proposalPageFixture(options = {}) {
       cursor = 0;
       effectCursor = 0;
       mutationCursor = 0;
-      tree = TopicProposePage();
+      tree = TopicProposePage(options.pageProps);
       effects.forEach((effect) => {
         if (effect.pending) {
           effect.pending = false;
@@ -806,7 +811,6 @@ test('proposal refresh retains only the same lecturer data and locks table actio
   );
   assert.equal(query.placeholderData(previous, undefined), undefined);
   assert.equal(page.component('TopicsTable').props.busy, true);
-  assert.equal(page.component('TablePagination').props.isLoading, true);
 });
 
 test('Bỏ lọc clears applied and pending filters immediately and resets pagination', () => {
@@ -824,7 +828,7 @@ test('Bỏ lọc clears applied and pending filters immediately and resets pagin
   page.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
   page.render();
   assert.deepEqual(page.query()[2], { keyword: 'test', batchId: 'batch-1', status: 'Draft' });
-  page.component('TablePagination').props.onPageChange(3);
+  page.component('TopicsTable').props.pagination.onPageChange(3);
   page.render();
   assert.equal(page.query()[3], 3);
   page
@@ -857,7 +861,7 @@ test('status filters retain the batch, reset pagination and statistics support q
   page.render();
   page.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
   page.render();
-  page.component('TablePagination').props.onPageChange(2);
+  page.component('TopicsTable').props.pagination.onPageChange(2);
   page.render();
   page
     .find((node) => node.props['aria-label'] === 'Lọc theo trạng thái đề tài')
@@ -1046,6 +1050,110 @@ const fullTopic = {
   isPublished: false,
 };
 
+test('topic titles select the row; only row double-click or the view action opens details', () => {
+  const { TopicsTable } = loadModule('features/topics/components/TopicsTable.tsx', {
+    '@/components/ui/data-table': { DataTable },
+    react: React,
+    'react/jsx-runtime': jsxRuntime,
+    'lucide-react': icons,
+    '@/components/ui/button': { Button: 'Button' },
+    '@/components/ui/checkbox': { Checkbox: 'Checkbox' },
+    '@/components/ui/skeleton': { Skeleton: 'Skeleton' },
+    '@/components/ui/selectable-table-row': { SelectableTableRow: 'SelectableTableRow' },
+    '@/components/ui/selection-indicator': { SelectionIndicator: 'SelectionIndicator' },
+    '@/components/ui/table': Object.fromEntries(
+      ['Table', 'TableHeader', 'TableHead', 'TableBody', 'TableCell'].map((name) => [name, name]),
+    ),
+    '../types/topic.types': { canEditTopic: () => true },
+    './TopicStatusBadge': { TopicStatusBadge: 'TopicStatusBadge' },
+  });
+  const { SelectableTableRow } = loadModule('components/ui/selectable-table-row.tsx', {
+    'react/jsx-runtime': jsxRuntime,
+    '@/lib/utils': { cn: (...classes) => classes.filter(Boolean).join(' ') },
+  });
+  const opened = [];
+  const selected = [];
+  const render = (busy = false) =>
+    TopicsTable({
+      topics: [fullTopic],
+      batches: [],
+      pageNumber: 1,
+      pageSize: 10,
+      busy,
+      onOpen: (topic) => opened.push(topic.id),
+      onSelectRow: (id) => selected.push(id),
+      onCopy() {},
+      onSubmit() {},
+    });
+  const tree = DataTable(render().props);
+  const row = findElement(tree, (node) => node.type === 'SelectableTableRow');
+  const title = findElement(row, (node) => node.props.children === fullTopic.titleVi);
+  assert.equal(title.type, 'span');
+  assert.equal(title.props.onClick, undefined);
+  const titleEvent = { target: { closest: () => null } };
+  SelectableTableRow(row.props).props.onClick(titleEvent);
+  assert.deepEqual(selected, [fullTopic.id]);
+  assert.deepEqual(opened, []);
+  row.props.onDoubleClick(titleEvent);
+  assert.deepEqual(opened, [fullTopic.id]);
+  row.props.onDoubleClick({ target: { closest: () => ({ tagName: 'BUTTON' }) } });
+  assert.equal(opened.length, 1);
+  const busyRow = findElement(
+    DataTable(render(true).props),
+    (node) => node.type === 'SelectableTableRow',
+  );
+  busyRow.props.onDoubleClick(titleEvent);
+  SelectableTableRow(busyRow.props).props.onClick(titleEvent);
+  assert.equal(opened.length, 1);
+  assert.equal(selected.length, 1);
+  assert.equal(
+    findElement(
+      tree,
+      (node) => node.type === 'button' && node.props.children === fullTopic.titleVi,
+    ),
+    undefined,
+  );
+});
+
+test('proposal list uses the applied batch instead of editor state and offers single-row actions', () => {
+  const changes = [];
+  const page = proposalPageFixture({
+    listedTopic: fullTopic,
+    pageProps: {
+      initialFilters: { keyword: '', batchId: 'batch-1', status: '' },
+      onFiltersChange: (value) => changes.push(value),
+    },
+  });
+  assert.equal(page.query()[2].batchId, 'batch-1');
+  assert.doesNotMatch(JSON.stringify(page.render()), /Học kỳ hiện tại/);
+  const table = page.component('TopicsTable');
+  assert.equal(table.props.selectedIds, undefined);
+  assert.equal(table.props.onToggleSelect, undefined);
+  table.props.onSelectRow(fullTopic.id);
+  page.render();
+  assert.equal(page.component('TableFloatingBar').props.selectedCount, 1);
+  page.component('TopicsTable').props.pagination.onPageChange(2);
+  page.render();
+  assert.equal(page.component('TableFloatingBar'), undefined);
+  page.button('Bỏ lọc').props.onClick();
+  page.render();
+  assert.deepEqual(changes.at(-1), { keyword: '', batchId: '', status: '' });
+});
+
+test('proposal sorting sends the requested order to the server and resets page and selection', async () => {
+  const page = proposalPageFixture({ listedTopic: fullTopic });
+  page.component('TopicsTable').props.pagination.onPageChange(2);
+  page.component('TopicsTable').props.onSelectRow(fullTopic.id);
+  page.render();
+  page.component('TopicsTable').props.onSortChange('title');
+  page.render();
+  assert.deepEqual(page.listOptions().queryKey.slice(3), [1, 20, 'title', 'asc']);
+  assert.equal(page.component('TopicsTable').props.selectedRowId, null);
+  page.component('TopicsTable').props.onSortChange('title');
+  page.render();
+  assert.deepEqual(page.listOptions().queryKey.slice(5), ['title', 'desc']);
+});
+
 test('legacy drafts with no capacity save the displayed capacity before table or form submission', async () => {
   const legacy = { ...fullTopic, studentNumber: null };
   const shortcut = proposalPageFixture({ listedTopic: legacy });
@@ -1072,7 +1180,7 @@ test('legacy drafts with no capacity save the displayed capacity before table or
 
 test('saving from a later filtered page resets pagination and refreshes both proposal and review caches', async () => {
   const page = proposalPageFixture({ listedTopic: fullTopic });
-  page.component('TablePagination').props.onPageChange(3);
+  page.component('TopicsTable').props.pagination.onPageChange(3);
   page.render();
   page.component('TopicsTable').props.onSubmit(fullTopic);
   await page.settle();
@@ -1085,7 +1193,7 @@ test('saving from a later filtered page resets pagination and refreshes both pro
     ['my-proposed-topics'],
     ['topic-review'],
     ['topic-advising'],
-    ['topic-advising-detail'],
+    ['topic-advising-group-detail'],
   ]);
 });
 
@@ -1266,9 +1374,12 @@ test('removing one active filter chip retains the other filters and resets pagin
   page.render();
   page.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
   page.render();
-  page.component('TablePagination').props.onPageChange(3);
+  page.component('TopicsTable').props.pagination.onPageChange(3);
   page.render();
-  page.find((node) => node.props['aria-label'] === 'Bỏ lọc trạng thái').props.onClick();
+  page
+    .component('TableActiveFilters')
+    .props.chips.find((chip) => chip.key === 'status')
+    .onRemove();
   page.render();
   assert.deepEqual(page.query()[2], { keyword: 'test', batchId: 'batch-1', status: '' });
   assert.equal(page.query()[3], 1);
@@ -1517,4 +1628,54 @@ test('MSSV field retains excess entries after quota reduction and locks incomple
     currentStudents: [{ ...assignedTopic.group.students[0], userCode: null }],
   });
   assert.ok(walk(unknown, 'Input').every((input) => input.props.disabled));
+});
+
+test('student lookup API normalizes MSSV, returns null on 404 and field renders student names', async () => {
+  const calls = [];
+  const { topicApi } = apiFixture({
+    get: async (...args) => {
+      calls.push(args);
+      if (args[1].params.userCode === '24521603') {
+        return success({ userCode: '24521603', fullName: 'Nguyễn Văn A' });
+      }
+      const err = new Error('Not found');
+      err.isAxiosError = true;
+      err.response = { status: 404 };
+      throw err;
+    },
+  });
+  const signal = new AbortController().signal;
+  assert.deepEqual(await topicApi.lookupStudentByCode('  24521603 ', signal), {
+    userCode: '24521603',
+    fullName: 'Nguyễn Văn A',
+  });
+  assert.deepEqual(calls[0], [
+    '/api/topics/student-lookup',
+    { params: { userCode: '24521603' }, signal },
+  ]);
+  assert.equal(await topicApi.lookupStudentByCode('24529999'), null);
+  assert.equal(await topicApi.lookupStudentByCode('   '), null);
+
+  const { TopicStudentAssignmentField } = loadModule(
+    'features/topics/components/TopicStudentAssignmentField.tsx',
+    {
+      'react/jsx-runtime': jsxRuntime,
+      'lucide-react': icons,
+      '@/components/ui/input': { Input: 'input' },
+      '@/components/ui/button': { Button: 'button' },
+    },
+  );
+  const markup = renderToStaticMarkup(
+    TopicStudentAssignmentField({
+      codes: ['24521603', '24529999'],
+      capacity: 2,
+      studentLookups: {
+        '24521603': { status: 'found', fullName: 'Nguyễn Văn A' },
+        '24529999': { status: 'not_found' },
+      },
+      onChange() {},
+    }),
+  );
+  assert.match(markup, /Nguyễn Văn A/);
+  assert.match(markup, /Không tìm thấy sinh viên với MSSV này/);
 });

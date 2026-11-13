@@ -147,7 +147,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
       onClose={handleClose}
       title="Thêm đầu điểm vào cấu hình"
       className="max-w-lg"
-      headerClassName="border-b border-slate-200 bg-gradient-to-r from-blue-100/80 via-blue-50/70 to-orange-100 py-4 before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[image:var(--gradient-brand)]"
+      headerClassName="border-b border-slate-200/80 bg-white px-5 py-4 sm:px-6"
     >
       <form
         onSubmit={handleSubmit}
@@ -176,7 +176,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
                 value={componentCode}
                 onChange={(e) => setComponentCode(e.target.value.toUpperCase())}
                 placeholder="VD: DIEM_DO_AN"
-                className="h-10 uppercase font-mono text-sm"
+                className="h-10 rounded-xl uppercase font-mono text-sm"
                 required
               />
             </div>
@@ -194,7 +194,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
                 placeholder="1"
-                className="h-10 text-sm"
+                className="h-10 rounded-xl text-sm"
                 required
               />
             </div>
@@ -210,7 +210,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
               value={componentName}
               onChange={(e) => setComponentName(e.target.value)}
               placeholder="VD: Điểm đánh giá đồ án tốt nghiệp"
-              className="h-10 text-sm"
+              className="h-10 rounded-xl text-sm"
               required
             />
           </div>
@@ -222,7 +222,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
               options={sourceOptions}
               value={source}
               onChange={(val) => setSource(val as ScoreComponentSource)}
-              triggerClassName="h-10 text-sm"
+              triggerClassName="h-10 rounded-xl text-sm"
             />
           </div>
 
@@ -233,7 +233,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
               options={applicabilityOptions}
               value={applicability}
               onChange={(val) => setApplicability(val as ScoreComponentApplicability)}
-              triggerClassName="h-10 text-sm"
+              triggerClassName="h-10 rounded-xl text-sm"
             />
           </div>
 
@@ -251,11 +251,11 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
               value={minimumScore}
               onChange={(e) => setMinimumScore(e.target.value)}
               placeholder="Để trống nếu không áp dụng điểm sàn"
-              className="h-10 text-sm"
+              className="h-10 rounded-xl text-sm"
             />
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-3">
+          <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 space-y-3">
             <p className="font-semibold text-slate-800">Quy tắc áp dụng</p>
             <Checkbox
               id="isRequired"
@@ -273,11 +273,11 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
           </div>
         </div>
 
-        <div className="sticky bottom-0 border-t border-slate-200 bg-white px-5 py-4 flex flex-wrap items-center justify-end gap-2 sm:px-6">
-          <Button type="button" variant="outline" onClick={handleClose}>
+        <div className="sticky bottom-0 z-10 border-t border-slate-200/80 bg-white/95 backdrop-blur-md px-5 py-3.5 flex flex-wrap items-center justify-end gap-2.5 sm:px-6">
+          <Button type="button" variant="outline" onClick={handleClose} className="h-9 rounded-xl px-4 text-xs font-semibold">
             Hủy
           </Button>
-          <Button type="submit" className="bg-primary text-white hover:bg-primary/90">
+          <Button type="submit" className="h-9 rounded-xl px-4 text-xs font-semibold">
             Thêm vào bảng
           </Button>
         </div>

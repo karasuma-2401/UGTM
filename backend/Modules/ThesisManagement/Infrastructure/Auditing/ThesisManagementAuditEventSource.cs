@@ -10,6 +10,18 @@ public sealed class ThesisManagementAuditEventSource(ThesisManagementDbContext d
 {
     public string SourceName => "ThesisManagement";
 
+    public async Task<AuditOutboxHealth> GetHealthAsync(CancellationToken cancellationToken)
+    {
+        var pending = db.AuditOutboxMessages.AsNoTracking().Where(x => x.ProcessedAt == null);
+        var summary = await pending.GroupBy(_ => 1).Select(g => new
+        {
+            Count = g.Count(),
+            Failed = g.Count(x => x.AttemptCount > 0),
+            Oldest = g.Min(x => (DateTime?)x.CreatedAt)
+        }).SingleOrDefaultAsync(cancellationToken);
+        return new AuditOutboxHealth(SourceName, summary?.Count ?? 0, summary?.Failed ?? 0, summary?.Oldest);
+    }
+
     public async Task ProcessBatchAsync(
         Func<AuditIntegrationEvent, CancellationToken, Task> handler,
         DateTime nowUtc,

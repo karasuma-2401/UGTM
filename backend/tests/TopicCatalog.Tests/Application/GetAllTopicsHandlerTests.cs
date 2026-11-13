@@ -1,4 +1,5 @@
 using UGTM.BuildingBlocks.Application.Responses;
+using UGTM.Modules.TopicCatalog.Application.Common;
 using UGTM.Modules.TopicCatalog.Application.Topics.Dtos;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetAllTopics;
 using UGTM.Modules.TopicCatalog.Tests.Fakes;
@@ -112,5 +113,49 @@ public sealed class GetAllTopicsHandlerTests
         Assert.True(result.IsSuccess);
         Assert.Empty(result.Value.Items);
         Assert.Equal(0, result.Value.TotalCount);
+    }
+
+    [Theory]
+    [InlineData("title", "asc", "available", true)]
+    [InlineData(" availableSlots ", " DESC ", "FULL", true)]
+    [InlineData("studentNumber", "asc", "all", true)]
+    [InlineData(null, null, null, true)]
+    [InlineData("advisor", "asc", null, false)]
+    [InlineData("title", "sideways", null, false)]
+    [InlineData("title", "asc", "unknown", false)]
+    public async Task GetAllTopicsHandler_validates_sort_and_availability_filters(
+        string? sortBy,
+        string? sortOrder,
+        string? availability,
+        bool valid)
+    {
+        var stubReader = new StubTopicQueryReader();
+        var handler = new GetAllTopicsHandler(stubReader);
+
+        var result = await handler.HandleAsync(
+            new GetAllTopicsQuery(null, null, 1, 10, availability, sortBy, sortOrder),
+            CancellationToken.None);
+
+        Assert.Equal(valid, result.IsSuccess);
+        if (valid)
+        {
+            Assert.NotNull(stubReader.LastGetAllQuery);
+            Assert.Equal(sortBy?.Trim().ToLowerInvariant() ?? "createdat", stubReader.LastGetAllQuery.SortBy);
+            Assert.Equal(sortOrder?.Trim().ToLowerInvariant() ?? "desc", stubReader.LastGetAllQuery.SortOrder);
+            var expectedAvailability = string.IsNullOrWhiteSpace(availability) ||
+                string.Equals(availability.Trim(), "all", StringComparison.OrdinalIgnoreCase)
+                ? null
+                : availability.Trim().ToLowerInvariant();
+            Assert.Equal(expectedAvailability, stubReader.LastGetAllQuery.Availability);
+        }
+        else
+        {
+            Assert.Null(stubReader.LastGetAllQuery);
+            Assert.Contains(result.Error.Code, new[]
+            {
+                TopicErrors.InvalidCatalogSort.Code,
+                TopicErrors.InvalidAvailabilityFilter.Code
+            });
+        }
     }
 }

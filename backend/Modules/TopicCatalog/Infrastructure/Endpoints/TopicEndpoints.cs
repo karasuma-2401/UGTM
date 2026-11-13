@@ -8,6 +8,7 @@ using UGTM.Modules.TopicCatalog.Application.Topics.Dtos;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetAllTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetMyTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetTopicTrackingDetail;
+using UGTM.Modules.TopicCatalog.Application.Topics.LookupStudentByCode;
 using UGTM.Modules.TopicCatalog.Application.Topics.PublishTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.ReviewTopic;
 using UGTM.Modules.TopicCatalog.Application.Topics.SubmitTopic;
@@ -33,6 +34,9 @@ public static class TopicEndpoints
                 - `batchId`: Lọc theo đợt KLTN.
                 - `pageNumber`: Số trang (>= 1, mặc định 1).
                 - `pageSize`: Số lượng đề tài trên một trang (1 đến 100, mặc định 10).
+                - `availability`: Lọc theo tình trạng chỗ trống (`all`, `available` - còn chỗ trống, `full` - đã đủ chỉ tiêu / tạm hết chỗ).
+                - `sortBy`: `title`, `studentNumber`, `availableSlots` hoặc `createdAt` (mặc định `createdAt`).
+                - `sortOrder`: `asc` hoặc `desc` (mặc định `desc`); sắp xếp trước khi phân trang.
 
                 Không yêu cầu quyền đặc thù. Sinh viên chỉ tra cứu được các đề tài đã được duyệt và công bố.
                 - 200 OK: Danh sách đề tài phân trang `PagedResult<TopicSummaryDto>`.
@@ -53,6 +57,8 @@ public static class TopicEndpoints
                 - `advisorId`: Dành cho Văn phòng Khoa (`Faculty`), Quản trị viên (`Admin`) hoặc Hội đồng (`CouncilMember`) khi muốn lọc theo một GVHD cụ thể.
                 - `pageNumber`: Số trang (mặc định 1).
                 - `pageSize`: Kích thước trang (1 đến 100, mặc định 10).
+                - `sortBy`: `title`, `studentNumber` hoặc `createdAt` (mặc định `createdAt`).
+                - `sortOrder`: `asc` hoặc `desc` (mặc định `desc`); sắp xếp trước khi phân trang.
 
                 Yêu cầu Bearer token.
                 - Vai trò `Lecturer` (GVHD): Xem danh sách đề tài do chính mình hướng dẫn.
@@ -176,6 +182,33 @@ public static class TopicEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
 
+        group.MapGet("/my-statistics", async (GetMyTopicStatisticsHandler handler,
+                Guid? batchId = null, CancellationToken cancellationToken = default)
+                => (await handler.HandleAsync(batchId, cancellationToken)).ToHttpResult())
+            .RequireAuthorization()
+            .WithSummary("Thống kê đề tài của giảng viên hiện tại theo đợt, không tải nhóm/thành viên")
+            .Produces<ApiResponse<TopicStatisticsDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/student-lookup", async (
+                string? userCode,
+                LookupStudentByCodeHandler handler,
+                CancellationToken cancellationToken = default)
+                => (await handler.HandleAsync(userCode, cancellationToken)).ToHttpResult())
+            .RequireAuthorization()
+            .WithSummary("GVHD hoặc Admin tra cứu họ tên sinh viên theo MSSV khi chỉ định sinh viên cho đề tài")
+            .WithDescription("""
+                Trả về mã số và họ tên của một sinh viên đang hoạt động theo MSSV (`userCode`) để giảng viên đối chiếu trước khi lưu đề tài.
+                Chỉ trả về `userCode` và `fullName` (không trả email, số điện thoại hay danh sách sinh viên).
+                Yêu cầu vai trò `Lecturer` hoặc `Admin`.
+                """)
+            .Produces<ApiResponse<TopicStudentLookupDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+
         return endpoints;
     }
 
@@ -184,10 +217,13 @@ public static class TopicEndpoints
         Guid? batchId,
         int pageNumber = 1,
         int pageSize = 10,
+        string? availability = null,
+        string? sortBy = null,
+        string? sortOrder = null,
         GetAllTopicsHandler handler = null!,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetAllTopicsQuery(keyword, batchId, pageNumber, pageSize);
+        var query = new GetAllTopicsQuery(keyword, batchId, pageNumber, pageSize, availability, sortBy, sortOrder);
         var result = await handler.HandleAsync(query, cancellationToken);
         return result.ToHttpResult();
     }
@@ -200,10 +236,12 @@ public static class TopicEndpoints
         Guid? advisorId,
         int pageNumber = 1,
         int pageSize = 10,
+        string? sortBy = null,
+        string? sortOrder = null,
         GetMyTopicsHandler handler = null!,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetMyTopicsQuery(keyword, batchId, status, registrationStatus, advisorId, pageNumber, pageSize);
+        var query = new GetMyTopicsQuery(keyword, batchId, status, registrationStatus, advisorId, pageNumber, pageSize, sortBy, sortOrder);
         var result = await handler.HandleAsync(query, cancellationToken);
         return result.ToHttpResult();
     }

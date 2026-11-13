@@ -8,6 +8,7 @@ import type {
   TopicFilters,
   TopicFormValues,
   TopicStatistics,
+  TopicSortField,
 } from '../types/topic.types';
 
 function unwrap<T>(response: ApiResponse<T>): T {
@@ -33,12 +34,19 @@ export function getTopicErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Không thể thực hiện thao tác. Vui lòng thử lại.';
 }
 
+export interface TopicStudentLookupResult {
+  userCode: string;
+  fullName: string;
+}
+
 export const topicApi = {
   async getMyTopics(
     query: Partial<TopicFilters> & {
       advisorId?: string;
       pageNumber: number;
       pageSize: number;
+      sortBy?: TopicSortField;
+      sortOrder?: 'asc' | 'desc';
     },
     signal?: AbortSignal,
   ): Promise<PagedResult<Topic>> {
@@ -59,20 +67,18 @@ export const topicApi = {
   },
 
   async getStatistics(
-    advisorId: string,
+    _advisorId: string,
     batchId?: string,
     signal?: AbortSignal,
   ): Promise<TopicStatistics> {
-    const [all, submitted, needRevision] = await Promise.all(
-      (['', 'Submitted', 'NeedRevision'] as const).map((status) =>
-        topicApi.getMyTopics({ advisorId, batchId, status, pageNumber: 1, pageSize: 1 }, signal),
-      ),
+    const response = await httpClient.get<ApiResponse<TopicStatistics>>(
+      '/api/topics/my-statistics',
+      {
+        params: { batchId: batchId || undefined },
+        signal,
+      },
     );
-    return {
-      total: all.totalCount,
-      submitted: submitted.totalCount,
-      needRevision: needRevision.totalCount,
-    };
+    return unwrap(response.data);
   },
 
   async getDetail(id: string, signal?: AbortSignal): Promise<Topic> {
@@ -85,6 +91,30 @@ export const topicApi = {
   async submit(id: string): Promise<Topic> {
     const response = await httpClient.post<ApiResponse<Topic>>(`/api/topics/${id}/submit`);
     return unwrap(response.data);
+  },
+
+  async lookupStudentByCode(
+    userCode: string,
+    signal?: AbortSignal,
+  ): Promise<TopicStudentLookupResult | null> {
+    const normalized = userCode.trim().toUpperCase();
+    if (!normalized) return null;
+
+    try {
+      const response = await httpClient.get<ApiResponse<TopicStudentLookupResult>>(
+        '/api/topics/student-lookup',
+        {
+          params: { userCode: normalized },
+          signal,
+        },
+      );
+      return unwrap(response.data);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   async save(

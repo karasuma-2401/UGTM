@@ -73,41 +73,100 @@ public sealed class TopicQueryReader : ITopicQueryReader
             topicsQuery = ApplyKeywordFilter(topicsQuery, query.Keyword);
         }
 
-        var totalCount = await CountSafeAsync(topicsQuery, cancellationToken);
+        var availabilityFilter = query.Availability?.Trim();
+        var filterAvailable = string.Equals(availabilityFilter, "available", StringComparison.OrdinalIgnoreCase);
+        var filterFull = string.Equals(availabilityFilter, "full", StringComparison.OrdinalIgnoreCase);
+        var sortBySlots = string.Equals(query.SortBy?.Trim(), "availableSlots", StringComparison.OrdinalIgnoreCase);
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
 
-        var pagedQuery = topicsQuery
-            .OrderByDescending(t => t.CreatedAt)
-            .ThenByDescending(t => t.Id)
-            .Skip((query.PageNumber - 1) * query.PageSize)
-            .Take(query.PageSize);
+        int totalCount;
+        List<(Topic Topic, int Confirmed, int Reserved, int? Available)> pagedRows;
 
-        var pagedTopics = await ToListSafeAsync(pagedQuery, cancellationToken);
+        if (!filterAvailable && !filterFull && !sortBySlots)
+        {
+            totalCount = await CountSafeAsync(topicsQuery, cancellationToken);
+
+            var pagedQuery = SortTopics(topicsQuery, query.SortBy, query.SortOrder)
+                .Skip((query.PageNumber - 1) * query.PageSize)
+                .Take(query.PageSize);
+
+            var pagedTopics = await ToListSafeAsync(pagedQuery, cancellationToken);
+            var registrations = await _registrationContract.GetRegistrationsByTopicIdsAsync(
+                pagedTopics.Select(t => t.Id), cancellationToken);
+
+            pagedRows = pagedTopics.Select(topic =>
+            {
+                registrations.TryGetValue(topic.Id, out var registration);
+                var (confirmed, reserved, available) = ComputeSlotOccupancy(topic, registration, nowUtc);
+                return (topic, confirmed, reserved, available);
+            }).ToList();
+        }
+        else
+        {
+            var candidateQuery = sortBySlots
+                ? topicsQuery.OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.Id)
+                : SortTopics(topicsQuery, query.SortBy, query.SortOrder);
+
+            var candidateTopics = await ToListSafeAsync(candidateQuery, cancellationToken);
+            var registrations = await _registrationContract.GetRegistrationsByTopicIdsAsync(
+                candidateTopics.Select(t => t.Id), cancellationToken);
+
+            IEnumerable<(Topic Topic, int Confirmed, int Reserved, int? Available)> computed = candidateTopics.Select(topic =>
+            {
+                registrations.TryGetValue(topic.Id, out var registration);
+                var (confirmed, reserved, available) = ComputeSlotOccupancy(topic, registration, nowUtc);
+                return (topic, confirmed, reserved, available);
+            });
+
+            if (filterAvailable)
+            {
+                computed = computed.Where(row => row.Available is > 0);
+            }
+            else if (filterFull)
+            {
+                computed = computed.Where(row => row.Available is 0);
+            }
+
+            if (sortBySlots)
+            {
+                var ascending = string.Equals(query.SortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+                computed = (ascending
+                        ? computed.OrderBy(row => row.Available == null).ThenBy(row => row.Available)
+                        : computed.OrderBy(row => row.Available == null).ThenByDescending(row => row.Available))
+                    .ThenByDescending(row => row.Topic.CreatedAt)
+                    .ThenByDescending(row => row.Topic.Id);
+            }
+
+            var filteredList = computed.ToList();
+            totalCount = filteredList.Count;
+            pagedRows = filteredList
+                .Skip((query.PageNumber - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .ToList();
+        }
+
         var advisorNames = _advisorNameReader is null
             ? new Dictionary<Guid, string>()
             : await _advisorNameReader.GetNamesByIdsAsync(
-                pagedTopics.Select(topic => topic.AdvisorId).Distinct(), cancellationToken);
-        var registrations = await _registrationContract.GetRegistrationsByTopicIdsAsync(
-            pagedTopics.Select(t => t.Id), cancellationToken);
-        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
-        var items = pagedTopics.Select(topic =>
-        {
-            registrations.TryGetValue(topic.Id, out var registration);
-            var confirmed = registration?.Members.Count(member => member.ConfirmationStatus == "Confirmed") ?? 0;
-            // Match registration-write occupancy. Expired invitations free their
-            // slot at the deadline, even before the cleanup worker removes them.
-            var reserved = registration?.Members.Count(member =>
-                member.ConfirmationStatus == "Pending" &&
-                (!member.ConfirmationExpiresAtUtc.HasValue || member.ConfirmationExpiresAtUtc.Value > nowUtc)) ?? 0;
-            int? available = topic.StudentNumber is 1 or 2
-                ? Math.Max(0, topic.StudentNumber.Value - confirmed - reserved)
-                : null;
-            return new TopicSummaryDto(
-                topic.Id, topic.BatchId, topic.AdvisorId, topic.TitleVi, topic.TitleEn,
-                topic.Description, topic.Requirements, topic.Status.ToString(),
-                topic.StudentNumber, topic.CreatedAt, IsPublished: true, ReviewNote: null,
-                ConfirmedStudentsCount: confirmed, ReservedSlots: reserved, AvailableSlots: available,
-                AdvisorName: advisorNames.GetValueOrDefault(topic.AdvisorId));
-        }).ToList();
+                pagedRows.Select(row => row.Topic.AdvisorId).Distinct(), cancellationToken);
+
+        var items = pagedRows.Select(row => new TopicSummaryDto(
+            row.Topic.Id,
+            row.Topic.BatchId,
+            row.Topic.AdvisorId,
+            row.Topic.TitleVi,
+            row.Topic.TitleEn,
+            row.Topic.Description,
+            row.Topic.Requirements,
+            row.Topic.Status.ToString(),
+            row.Topic.StudentNumber,
+            row.Topic.CreatedAt,
+            IsPublished: true,
+            ReviewNote: null,
+            ConfirmedStudentsCount: row.Confirmed,
+            ReservedSlots: row.Reserved,
+            AvailableSlots: row.Available,
+            AdvisorName: advisorNames.GetValueOrDefault(row.Topic.AdvisorId))).ToList();
 
         return new PagedResult<TopicSummaryDto>(
             items,
@@ -115,6 +174,43 @@ public sealed class TopicQueryReader : ITopicQueryReader
             query.PageNumber,
             query.PageSize);
     }
+
+    private static (int Confirmed, int Reserved, int? Available) ComputeSlotOccupancy(
+        Topic topic,
+        TopicRegistrationContractDto? registration,
+        DateTime nowUtc)
+    {
+        var confirmed = registration?.Members.Count(member => member.ConfirmationStatus == "Confirmed") ?? 0;
+        // Match registration-write occupancy. Expired invitations free their
+        // slot at the deadline, even before the cleanup worker removes them.
+        var reserved = registration?.Members.Count(member =>
+            member.ConfirmationStatus == "Pending" &&
+            (!member.ConfirmationExpiresAtUtc.HasValue || member.ConfirmationExpiresAtUtc.Value > nowUtc)) ?? 0;
+        int? available = topic.StudentNumber is 1 or 2
+            ? Math.Max(0, topic.StudentNumber.Value - confirmed - reserved)
+            : null;
+        return (confirmed, reserved, available);
+    }
+
+    private static IOrderedQueryable<Topic> SortTopics(
+        IQueryable<Topic> topics,
+        string? sortBy,
+        string? sortOrder)
+    {
+        var ascending = string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+        var ordered = sortBy?.ToLowerInvariant() switch
+        {
+            "title" => ascending ? topics.OrderBy(t => t.TitleVi) : topics.OrderByDescending(t => t.TitleVi),
+            "studentnumber" => ascending
+                ? topics.OrderBy(t => t.StudentNumber == null).ThenBy(t => t.StudentNumber)
+                : topics.OrderBy(t => t.StudentNumber == null).ThenByDescending(t => t.StudentNumber),
+            _ => ascending ? topics.OrderBy(t => t.CreatedAt) : topics.OrderByDescending(t => t.CreatedAt)
+        };
+        return ordered.ThenByDescending(t => t.Id);
+    }
+
+    private static IOrderedQueryable<Topic> SortMyTopics(IQueryable<Topic> topics, GetMyTopicsQuery query)
+        => SortTopics(topics, query.SortBy, query.SortOrder);
 
     public async Task<PagedResult<TopicTrackingSummaryDto>> GetMyTopicsAsync(
         GetMyTopicsQuery query,
@@ -155,9 +251,7 @@ public sealed class TopicQueryReader : ITopicQueryReader
         {
             var totalCount = await CountSafeAsync(topicsQuery, cancellationToken);
 
-            var pagedQuery = topicsQuery
-                .OrderByDescending(t => t.CreatedAt)
-                .ThenByDescending(t => t.Id)
+            var pagedQuery = SortMyTopics(topicsQuery, query)
                 .Skip((query.PageNumber - 1) * query.PageSize)
                 .Take(query.PageSize);
 
@@ -187,9 +281,7 @@ public sealed class TopicQueryReader : ITopicQueryReader
         }
         else
         {
-            var candidateQuery = topicsQuery
-                .OrderByDescending(t => t.CreatedAt)
-                .ThenByDescending(t => t.Id);
+            var candidateQuery = SortMyTopics(topicsQuery, query);
 
             var candidateTopics = await ToListSafeAsync(candidateQuery, cancellationToken);
 

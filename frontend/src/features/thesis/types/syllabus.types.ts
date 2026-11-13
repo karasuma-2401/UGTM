@@ -69,6 +69,11 @@ export interface StudentMemberDetail {
   fullName: string;
   email: string;
   confirmationStatus: string;
+  joinedAt?: string | null;
+  confirmedAtUtc?: string | null;
+  confirmationExpiresAtUtc?: string | null;
+  invitedByStudentId?: string | null;
+  invitationExpired?: boolean;
 }
 
 export interface AdvisorDetail {

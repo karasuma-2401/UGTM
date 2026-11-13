@@ -1,8 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { ArrowUpRight, GraduationCap } from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { InfoCell } from '@/components/ui/info-cell';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StatusBadge } from '@/components/ui/status-badge';
 import { useAuth } from '@/shared/auth';
 import { syllabusApi } from '@/features/thesis/services/syllabusApi';
 import { midtermApi } from '@/features/thesis/services/midtermApi';
@@ -111,34 +115,68 @@ export function StudentTopicGroupDialog({
           </div>
         ) : group.data ? (
           <>
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">{group.data.topicTitleVi}</h2>
-              {group.data.topicTitleEn && (
-                <p className="mt-1 text-sm text-slate-500">{group.data.topicTitleEn}</p>
-              )}
-              <p className="mt-2 text-xs text-slate-600">
-                {group.data.batchName || `Mã đợt: ${group.data.batchId}`} ·{' '}
-                {GROUP_STATUS_LABELS[group.data.groupStatus] ?? group.data.groupStatus}
-              </p>
-              <p className="mt-1 text-xs text-slate-600">
-                Giảng viên hướng dẫn: {group.data.advisor.fullName || 'Chưa cập nhật'}
-              </p>
-            </div>
-            <section className="space-y-2" aria-label="Thành viên nhóm">
-              <h3 className="text-sm font-semibold text-slate-800">Thành viên nhóm</h3>
-              {group.data.members.map((member) => (
-                <div key={member.studentId} className="rounded-lg bg-slate-50 p-3 text-sm">
-                  <p className="font-medium text-slate-800">
-                    {member.fullName || member.userCode || 'Chưa cập nhật tên'}
-                    {member.userCode && (
-                      <span className="ml-2 font-normal text-slate-500">{member.userCode}</span>
-                    )}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-600">
-                    {memberStatusLabels[member.confirmationStatus] ?? member.confirmationStatus}
-                  </p>
+            <div className="rounded-xl border border-slate-200/80 bg-gradient-to-r from-slate-50/80 via-white to-blue-50/40 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <h2 className="text-lg font-semibold leading-snug text-slate-900">
+                    {group.data.topicTitleVi}
+                  </h2>
+                  {group.data.topicTitleEn && (
+                    <p className="text-sm text-slate-500">{group.data.topicTitleEn}</p>
+                  )}
                 </div>
-              ))}
+                <StatusBadge tone="info">
+                  {GROUP_STATUS_LABELS[group.data.groupStatus as keyof typeof GROUP_STATUS_LABELS] ??
+                    group.data.groupStatus}
+                </StatusBadge>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-600">
+                <span>{group.data.batchName || `Mã đợt: ${group.data.batchId}`}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <GraduationCap className="size-3.5 text-slate-400" aria-hidden="true" />
+                  Giảng viên hướng dẫn:{' '}
+                  <strong className="font-medium text-slate-800">
+                    {group.data.advisor.fullName || 'Chưa cập nhật'}
+                  </strong>
+                </span>
+              </div>
+            </div>
+            <section className="space-y-2.5" aria-label="Thành viên nhóm">
+              <h3 className="text-sm font-semibold text-slate-800">Thành viên nhóm</h3>
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {group.data.members.map((member) => {
+                  const displayName = member.fullName || member.userCode || 'Chưa cập nhật tên';
+                  const statusTone =
+                    member.confirmationStatus === 'Confirmed'
+                      ? 'success'
+                      : member.confirmationStatus === 'Expired'
+                        ? 'error'
+                        : 'warning';
+                  return (
+                    <div
+                      key={member.studentId}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-3 text-sm"
+                    >
+                      <InfoCell
+                        leading={<Avatar name={displayName} className="size-8 text-[11px]" />}
+                        title={
+                          <span className="text-sm font-medium text-slate-800">{displayName}</span>
+                        }
+                        description={
+                          member.userCode ? (
+                            <span className="font-mono text-xs text-slate-500">
+                              {member.userCode}
+                            </span>
+                          ) : undefined
+                        }
+                      />
+                      <StatusBadge tone={statusTone}>
+                        {memberStatusLabels[member.confirmationStatus] ?? member.confirmationStatus}
+                      </StatusBadge>
+                    </div>
+                  );
+                })}
+              </div>
             </section>
           </>
         ) : null}
@@ -229,15 +267,16 @@ export function StudentTopicGroupDialog({
             )}
           </section>
         )}
-        <div className="flex justify-end border-t border-slate-100 pt-4">
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4">
           <Link
             to="/topics/rename"
             onClick={onClose}
-            className="mr-auto inline-flex items-center text-sm font-medium text-primary hover:underline"
+            className="mr-auto inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >
-            Xin đổi tên đề tài
+            <span>Xin đổi tên đề tài</span>
+            <ArrowUpRight className="size-3.5" aria-hidden="true" />
           </Link>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} className="h-9 rounded-xl">
             Đóng
           </Button>
         </div>

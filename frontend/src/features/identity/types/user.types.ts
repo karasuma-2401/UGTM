@@ -36,6 +36,8 @@ export interface PagedResult<T> {
   hasPreviousPage: boolean;
 }
 
+export type UsersSortField = 'fullname' | 'usercode' | 'lastloginat' | 'status';
+
 export interface UsersQuery {
   accountGroup?: AccountGroup;
   keyword: string;
@@ -43,6 +45,8 @@ export interface UsersQuery {
   status: AccountStatus | '';
   pageNumber: number;
   pageSize: number;
+  sortBy?: UsersSortField;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface ImportUsersResult {

@@ -79,6 +79,8 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.ReviewerEvaluations.IReviewerFeedbackGroupReader, ReviewerFeedbackGroupReader>();
         services.AddScoped<IStudentGroupDetailReader, StudentGroupDetailReader>();
         services.AddScoped<GetStudentGroupDetailHandler>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.StudentGroups.GetAdvisingGroups.IAdvisingGroupQueryReader, AdvisingGroupQueryReader>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.StudentGroups.GetAdvisingGroups.GetAdvisingGroupsHandler>();
         services.AddScoped<ISyllabusReviewQueryReader, SyllabusReviewQueryReader>();
         services.AddScoped<GetSyllabusReviewQueueHandler>();
         services.AddScoped<IMidtermReportReviewQueryReader, MidtermReportReviewQueryReader>();

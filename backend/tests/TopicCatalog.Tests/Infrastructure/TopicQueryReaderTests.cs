@@ -10,7 +10,56 @@ namespace UGTM.Modules.TopicCatalog.Tests.Infrastructure;
 
 public sealed class TopicQueryReaderTests
 {
+    [Theory]
+    [InlineData("title", "asc", "Alpha", null)]
+    [InlineData("title", "desc", "Zeta", null)]
+    [InlineData("studentNumber", "asc", "Alpha", null)]
+    [InlineData("studentNumber", "desc", "Zeta", null)]
+    [InlineData("createdAt", "asc", "Alpha", null)]
+    [InlineData("createdAt", "desc", "Zeta", null)]
+    [InlineData("title", "asc", "Alpha", "Empty")]
+    [InlineData("studentNumber", "desc", "Zeta", "Empty")]
+    public async Task My_topics_sort_before_paging_with_or_without_registration_filter(
+        string field, string direction, string expectedFirst, string? registrationStatus)
+    {
+        var advisor = Guid.NewGuid();
+        var topics = new List<Topic>
+        {
+            new() { Id = Guid.NewGuid(), AdvisorId = advisor, TitleVi = "Zeta", StudentNumber = 2, CreatedAt = BaseTime.AddDays(1) },
+            new() { Id = Guid.NewGuid(), AdvisorId = advisor, TitleVi = "Alpha", StudentNumber = 1, CreatedAt = BaseTime },
+            new() { Id = Guid.NewGuid(), AdvisorId = Guid.NewGuid(), TitleVi = "Another advisor", CreatedAt = BaseTime.AddDays(2) }
+        };
+        var reader = TopicQueryReader.CreateInMemory(topics, new FakeRegistrationContract(), new FakeStudentInfoReader());
+        var query = new GetMyTopicsQuery(PageSize: 1, SortBy: field, SortOrder: direction, RegistrationStatus: registrationStatus);
+        var first = await reader.GetMyTopicsAsync(query, advisor, false);
+        var second = await reader.GetMyTopicsAsync(query with { PageNumber = 2 }, advisor, false);
+        Assert.Equal(2, first.TotalCount);
+        Assert.Equal(expectedFirst, Assert.Single(first.Items).TitleVi);
+        Assert.NotEqual(first.Items[0].Id, Assert.Single(second.Items).Id);
+    }
+
     private static readonly DateTime BaseTime = new(2026, 10, 17, 8, 0, 0, DateTimeKind.Utc);
+
+    [Theory]
+    [InlineData("asc")]
+    [InlineData("desc")]
+    public async Task My_topic_capacity_sort_keeps_missing_capacity_last_and_breaks_ties_by_id(string direction)
+    {
+        var advisor = Guid.NewGuid();
+        var low = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var high = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        var topics = new List<Topic>
+        {
+            new() { Id = low, AdvisorId = advisor, TitleVi = "Same", StudentNumber = 1 },
+            new() { Id = high, AdvisorId = advisor, TitleVi = "Same", StudentNumber = 1 },
+            new() { Id = Guid.NewGuid(), AdvisorId = advisor, TitleVi = "Unknown", StudentNumber = null }
+        };
+        var reader = TopicQueryReader.CreateInMemory(topics, new FakeRegistrationContract(), new FakeStudentInfoReader());
+        var page = await reader.GetMyTopicsAsync(new GetMyTopicsQuery(SortBy: "studentNumber", SortOrder: direction), advisor, false);
+        Assert.Equal(high, page.Items[0].Id);
+        Assert.Equal(low, page.Items[1].Id);
+        Assert.Null(page.Items[2].StudentNumber);
+    }
 
     [Fact]
     public async Task GetAllTopicsAsync_only_returns_published_topics_and_orders_deterministically()
@@ -128,6 +177,85 @@ public sealed class TopicQueryReaderTests
         // Tie-breaker: idHigh must come before idLow when CreatedAt is equal
         Assert.Equal(idHigh, result.Items[0].Id);
         Assert.Equal(idLow, result.Items[1].Id);
+    }
+
+    [Theory]
+    [InlineData("title", "asc", null, 3, "Alpha")]
+    [InlineData("title", "desc", null, 3, "Zeta")]
+    [InlineData("availableSlots", "desc", null, 3, "Beta")]
+    [InlineData("availableSlots", "asc", null, 3, "Zeta")]
+    [InlineData("createdAt", "desc", "available", 2, "Beta")]
+    [InlineData("createdAt", "desc", "full", 1, "Zeta")]
+    public async Task GetAllTopicsAsync_sorts_and_filters_by_availability_before_paging(
+        string sortBy,
+        string sortOrder,
+        string? availability,
+        int expectedTotal,
+        string expectedFirstTitle)
+    {
+        var batchId = Guid.NewGuid();
+        var advisorId = Guid.NewGuid();
+        var fullTopic = new Topic
+        {
+            Id = Guid.NewGuid(),
+            BatchId = batchId,
+            AdvisorId = advisorId,
+            TitleVi = "Zeta",
+            Status = TopicStatus.Published,
+            StudentNumber = 1,
+            CreatedAt = BaseTime.AddMinutes(1)
+        };
+        var oneSlotLeftTopic = new Topic
+        {
+            Id = Guid.NewGuid(),
+            BatchId = batchId,
+            AdvisorId = advisorId,
+            TitleVi = "Alpha",
+            Status = TopicStatus.Published,
+            StudentNumber = 2,
+            CreatedAt = BaseTime.AddMinutes(2)
+        };
+        var twoSlotsLeftTopic = new Topic
+        {
+            Id = Guid.NewGuid(),
+            BatchId = batchId,
+            AdvisorId = advisorId,
+            TitleVi = "Beta",
+            Status = TopicStatus.Published,
+            StudentNumber = 2,
+            CreatedAt = BaseTime.AddMinutes(3)
+        };
+        var registrations = new Dictionary<Guid, TopicRegistrationContractDto>
+        {
+            [fullTopic.Id] = new(
+                Guid.NewGuid(),
+                fullTopic.Id,
+                "Registered",
+                BaseTime,
+                [new TopicMemberContractDto(Guid.NewGuid(), batchId, BaseTime, "Confirmed", null)]),
+            [oneSlotLeftTopic.Id] = new(
+                Guid.NewGuid(),
+                oneSlotLeftTopic.Id,
+                "Registered",
+                BaseTime,
+                [
+                    new TopicMemberContractDto(Guid.NewGuid(), batchId, BaseTime, "Confirmed", null),
+                    new TopicMemberContractDto(Guid.NewGuid(), batchId, BaseTime, "Pending", BaseTime.AddMinutes(-5)) // expired -> does NOT take slot
+                ])
+        };
+
+        var reader = TopicQueryReader.CreateInMemory(
+            [fullTopic, oneSlotLeftTopic, twoSlotsLeftTopic],
+            new FakeRegistrationContract(registrations),
+            new FakeStudentInfoReader(),
+            new FixedTimeProvider(BaseTime));
+
+        var result = await reader.GetAllTopicsAsync(
+            new GetAllTopicsQuery(null, batchId, 1, 1, availability, sortBy, sortOrder),
+            CancellationToken.None);
+
+        Assert.Equal(expectedTotal, result.TotalCount);
+        Assert.Equal(expectedFirstTitle, Assert.Single(result.Items).TitleVi);
     }
 
     [Theory]

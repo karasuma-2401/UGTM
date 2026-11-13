@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import ugtmLogo from '../../../assets/logo_UGTM.svg';
 import {
   Search,
@@ -10,16 +10,15 @@ import {
   ArrowUpRight,
   CornerDownLeft,
   ChevronLeft,
-  ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/shared/auth';
 import { getIdentityAccess } from '@/shared/auth/identityAccess';
 import { navigationSections, type NavItemConfig } from './navigationConfig';
 import { CurrentAcademicBatch } from './CurrentAcademicBatch';
+import { SidebarNavigation } from './SidebarNavigation';
 
 export type NavItem = NavItemConfig;
 
@@ -45,6 +44,46 @@ export function AppLayout() {
   const [commandQuery, setCommandQuery] = useState('');
   const location = useLocation();
   const pageContent = useRef<HTMLElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const closeOnDesktop = () => {
+      if (desktop.matches) setSidebarOpen(false);
+    };
+    closeOnDesktop();
+    desktop.addEventListener('change', closeOnDesktop);
+    const element = sidebar.current;
+    const trigger = menuTrigger.current;
+    element?.querySelector<HTMLButtonElement>('[aria-label="Đóng menu điều hướng"]')?.focus();
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSidebarOpen(false);
+      }
+      if (event.key !== 'Tab' || !element) return;
+      const controls = Array.from(
+        element.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      ).filter((control) => control.getClientRects().length > 0);
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener('keydown', trapFocus);
+    return () => {
+      desktop.removeEventListener('change', closeOnDesktop);
+      document.removeEventListener('keydown', trapFocus);
+      trigger?.focus();
+    };
+  }, [sidebarOpen]);
   useLayoutEffect(() => {
     const element = pageContent.current;
     if (!element) return;
@@ -163,13 +202,13 @@ export function AppLayout() {
     if (!user?.roles || user.roles.length === 0) return user?.email || 'Thành viên';
     return user.roles.map((r) => ROLE_DISPLAY_LABELS[r] || r).join(', ');
   }, [user]);
-  const totalVisibleItems = visibleSections.reduce((acc, s) => acc + s.items.length, 0);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex text-slate-900">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
+          aria-hidden="true"
           className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-xs lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
@@ -177,196 +216,139 @@ export function AppLayout() {
 
       {/* Sidebar */}
       <aside
+        id="app-sidebar"
+        ref={sidebar}
+        aria-label="Menu điều hướng"
+        role={sidebarOpen ? 'dialog' : undefined}
+        aria-modal={sidebarOpen ? true : undefined}
         className={cn(
-          'relative fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200/80 flex flex-col transition-all duration-200 ease-out lg:static lg:translate-x-0',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-          sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-64 w-64',
+          'fixed inset-y-0 left-0 z-50 flex w-72 max-w-[calc(100vw-2rem)] shrink-0 flex-col border-r border-slate-200 bg-slate-50 transition-[width,transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0 lg:visible',
+          sidebarOpen ? 'visible translate-x-0' : 'invisible -translate-x-full',
+          sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-72',
         )}
       >
-        {/* Toggle Button docked on the sidebar border (Modern SaaS pill style) */}
         <button
           type="button"
           onClick={toggleSidebarCollapse}
           aria-label={sidebarCollapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
+          aria-expanded={!sidebarCollapsed}
+          aria-controls="app-sidebar"
           title={sidebarCollapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
-          className="hidden lg:flex absolute -right-3.5 top-5 z-20 size-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+          className="absolute -right-3.5 top-16 z-10 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200/70 bg-white text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:flex"
         >
           {sidebarCollapsed ? (
-            <ChevronRightIcon className="size-3.5" />
+            <ChevronRight className="size-4 stroke-[1.75]" />
           ) : (
-            <ChevronLeft className="size-3.5" />
+            <ChevronLeft className="size-4 stroke-[1.75]" />
           )}
         </button>
-
         {/* Sidebar Header / Brand */}
         <div
           className={cn(
-            'h-16 flex items-center border-b border-slate-100 transition-all duration-200',
-            sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4',
+            'flex min-h-20 shrink-0 items-center justify-between gap-2 px-5 py-4',
+            sidebarCollapsed && 'lg:min-h-16 lg:justify-center lg:px-2 lg:py-0',
           )}
         >
           <Link
             to="/"
             title="UGTM - Quản lý Khóa luận ĐH"
             className={cn(
-              'flex items-center min-w-0 group',
-              sidebarCollapsed ? 'justify-center' : 'gap-3',
+              'flex min-w-0 flex-col items-start gap-1.5 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary',
+              sidebarCollapsed && 'lg:items-center',
             )}
           >
-            <img src={ugtmLogo} alt="UGTM Logo" className="h-5 w-auto object-contain shrink-0" />
-            {!sidebarCollapsed && (
-              <>
-                <div className="h-4 w-px bg-slate-200 shrink-0" aria-hidden="true" />
-                <div className="min-w-0">
-                  <div className="text-xs font-medium text-slate-500 truncate">
-                    Quản lý Khóa luận ĐH
-                  </div>
-                </div>
-              </>
-            )}
+            <img
+              src={ugtmLogo}
+              alt="UGTM"
+              className={cn('h-5 w-auto shrink-0 object-contain', sidebarCollapsed && 'lg:h-3.5')}
+            />
+            <span className={cn('text-xs text-slate-600', sidebarCollapsed && 'lg:hidden')}>
+              Quản lý Khóa luận ĐH
+            </span>
           </Link>
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
             aria-label="Đóng menu điều hướng"
-            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+            className="flex size-11 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary lg:hidden"
           >
             <X className="size-5" />
           </button>
         </div>
 
-        {!sidebarCollapsed && <CurrentAcademicBatch />}
+        <div className={cn('shrink-0', sidebarCollapsed && 'lg:hidden')}>
+          <CurrentAcademicBatch />
+        </div>
 
         {/* Navigation sections & items */}
-        <nav
-          aria-label="Điều hướng chính"
-          className={cn(
-            'flex-1 overflow-y-auto py-2 transition-all duration-200',
-            sidebarCollapsed ? 'px-2 space-y-4' : 'px-3 space-y-5',
-          )}
-        >
-          {totalVisibleItems === 0 ? (
-            <div className="px-3 py-6 text-center text-xs text-slate-400 font-medium">
-              {!sidebarCollapsed && 'Không có phân hệ nào khả dụng cho tài khoản này'}
-            </div>
-          ) : (
-            visibleSections.map((section) => (
-              <div key={section.id} className="space-y-1">
-                {section.title && !sidebarCollapsed && (
-                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 py-1">
-                    {section.title}
-                  </div>
-                )}
-                {section.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive =
-                    item.path === '/'
-                      ? location.pathname === item.path
-                      : location.pathname === item.path ||
-                        location.pathname.startsWith(`${item.path}/`);
-
-                  return (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setSidebarOpen(false)}
-                      title={sidebarCollapsed ? item.label : undefined}
-                      style={isActive ? { background: 'var(--gradient-brand)' } : undefined}
-                      className={cn(
-                        'relative flex items-center rounded-xl text-sm transition-all duration-150 group',
-                        sidebarCollapsed
-                          ? 'justify-center p-2.5 my-1'
-                          : 'justify-between px-3 py-2',
-                        isActive
-                          ? 'text-white shadow-sm font-semibold'
-                          : 'font-medium text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'flex items-center min-w-0',
-                          sidebarCollapsed ? 'justify-center' : 'gap-3',
-                        )}
-                      >
-                        <Icon
-                          className={cn(
-                            'size-4.5 shrink-0 transition-colors',
-                            isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700',
-                          )}
-                        />
-                        {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-                      </div>
-                      {item.badge && !sidebarCollapsed && (
-                        <Badge
-                          variant={isActive ? 'outline' : 'secondary'}
-                          className={cn(
-                            'text-[10px] px-1.5 py-0 ml-2 shrink-0',
-                            isActive && 'border-white/40 text-white bg-white/20',
-                          )}
-                        >
-                          {item.badge}
-                        </Badge>
-                      )}
-                    </NavLink>
-                  );
-                })}
-              </div>
-            ))
-          )}
-        </nav>
+        <SidebarNavigation
+          key={user?.id ?? 'anonymous'}
+          sections={visibleSections}
+          pathname={location.pathname}
+          activePath={activeNavEntry?.path}
+          collapsed={sidebarCollapsed}
+          collapsible={hasRole('Admin')}
+          userId={user?.id}
+          onNavigate={() => setSidebarOpen(false)}
+        />
 
         {/* Sidebar Footer User profile */}
         <div
           className={cn(
-            'p-3 border-t border-slate-100 bg-slate-50/40 transition-all duration-200',
-            sidebarCollapsed && 'p-2',
+            'shrink-0 border-t border-slate-200 px-4 py-3',
+            sidebarCollapsed && 'lg:p-2',
           )}
         >
           <div
-            className={cn(
-              'flex items-center rounded-xl border border-slate-200/60 bg-white shadow-2xs',
-              sidebarCollapsed ? 'justify-center p-1.5' : 'gap-3 px-2.5 py-2',
-            )}
+            className={cn('flex items-center gap-2.5', sidebarCollapsed && 'lg:flex-col lg:gap-1')}
           >
             <div
               title={sidebarCollapsed ? user?.fullName || 'Người dùng' : undefined}
-              className="size-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0 ring-1 ring-primary/20"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700"
             >
               {userInitial}
             </div>
-            {!sidebarCollapsed && (
-              <>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-slate-900 truncate">
-                    {user?.fullName || 'Người dùng'}
-                  </div>
-                  <div className="text-[11px] text-slate-500 truncate">{primaryRoleLabel}</div>
+            <div
+              className={cn(
+                'flex min-w-0 flex-1 items-center gap-2',
+                sidebarCollapsed && 'lg:contents',
+              )}
+            >
+              <div className={cn('min-w-0 flex-1', sidebarCollapsed && 'lg:hidden')}>
+                <div className="truncate text-[length:var(--font-size-md)] font-medium text-slate-800">
+                  {user?.fullName || 'Người dùng'}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void logout()}
-                  disabled={isLoggingOut}
-                  title="Đăng xuất khỏi hệ thống"
-                  aria-label="Đăng xuất khỏi hệ thống"
-                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <LogOut className="size-4" />
-                </button>
-              </>
-            )}
+                <div className="truncate text-xs text-slate-600" title={primaryRoleLabel}>
+                  {primaryRoleLabel}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void logout()}
+                disabled={isLoggingOut}
+                title="Đăng xuất khỏi hệ thống"
+                aria-label="Đăng xuất khỏi hệ thống"
+                className="flex size-11 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50 lg:size-8"
+              >
+                <LogOut className="size-4" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div inert={sidebarOpen ? true : undefined} className="flex-1 flex flex-col min-w-0">
         {/* Top Translucent Header */}
         <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/75 px-4 lg:px-8 flex items-center justify-between gap-4 sticky top-0 z-30">
           <div className="flex items-center gap-3 min-w-0">
             <button
+              ref={menuTrigger}
               type="button"
               onClick={() => setSidebarOpen(true)}
               aria-label="Mở menu điều hướng"
+              aria-expanded={sidebarOpen}
+              aria-controls="app-sidebar"
               className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100"
             >
               <Menu className="size-5" />

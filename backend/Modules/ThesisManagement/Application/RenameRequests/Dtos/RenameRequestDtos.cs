@@ -11,6 +11,11 @@ public sealed record ReviewRenameRequestInputDto(
     string Decision,
     string? RejectionReason);
 
+public sealed record RenameRequestMemberDto(
+    Guid StudentId,
+    string? UserCode,
+    string? FullName);
+
 public sealed record RenameRequestDto(
     Guid Id,
     Guid GroupId,
@@ -27,7 +32,12 @@ public sealed record RenameRequestDto(
     DateTime? AdvisorConfirmedAt,
     DateTime? FacultyApprovedAt,
     DateTime? AaApprovedAt,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    Guid? BatchId = null,
+    string? BatchName = null,
+    Guid? AdvisorId = null,
+    string? AdvisorName = null,
+    IReadOnlyList<RenameRequestMemberDto>? Members = null);
 
 public static class RenameRequestMapper
 {
@@ -48,4 +58,33 @@ public static class RenameRequestMapper
         r.FacultyApprovedAt,
         r.AaApprovedAt,
         r.CreatedAt);
+
+    public static RenameRequestDto ToDto(
+        RenameRequest r,
+        Guid? batchId,
+        string? batchName,
+        Guid? advisorId,
+        string? advisorName,
+        IReadOnlyList<RenameRequestMemberDto>? members) => new(
+        r.Id,
+        r.GroupId,
+        r.RequestedByStudentId,
+        r.OldTitleVi,
+        r.NewTitleVi,
+        r.OldTitleEn,
+        r.NewTitleEn,
+        r.Reason,
+        r.Status.ToString(),
+        r.RejectionReason,
+        r.RejectedBy,
+        r.RejectedAt,
+        r.AdvisorConfirmedAt,
+        r.FacultyApprovedAt,
+        r.AaApprovedAt,
+        r.CreatedAt,
+        batchId,
+        batchName,
+        advisorId,
+        advisorName,
+        members);
 }

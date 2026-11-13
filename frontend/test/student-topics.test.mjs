@@ -271,7 +271,11 @@ test('registration window matches Open, stage start and inclusive UTC deadline; 
 
 function nodes(tree) {
   if (Array.isArray(tree)) return tree.flatMap(nodes);
-  return React.isValidElement(tree) ? [tree, ...nodes(tree.props.children)] : [];
+  if (!React.isValidElement(tree)) return [];
+  if (typeof tree.type === 'function' && tree.type.name === 'DataTable') {
+    return [tree, ...nodes(tree.type(tree.props))];
+  }
+  return [tree, ...nodes(tree.props.children)];
 }
 function text(tree) {
   if (Array.isArray(tree)) return tree.map(text).join(' ');
@@ -422,6 +426,7 @@ function uiFixture(file, exportName, props = {}, options = {}) {
     dependencies[`../components/${name}`] = { [name]: name };
   }
   for (const [file, name] of Object.entries({
+    avatar: 'Avatar',
     button: 'Button',
     dialog: 'Dialog',
     input: 'Input',
@@ -436,8 +441,35 @@ function uiFixture(file, exportName, props = {}, options = {}) {
     'table-skeleton': 'TableSkeleton',
     'table-pagination': 'TablePagination',
     'selectable-table-row': 'SelectableTableRow',
+    'table-floating-bar': 'TableFloatingBar',
   }))
     dependencies[`@/components/ui/${file}`] = { [name]: name };
+  dependencies['@/components/ui/table'] = { TableActiveFilters: 'TableActiveFilters' };
+  dependencies['@/components/ui/data-table'] = {
+    DataTable: function DataTable(dtProps) {
+      if (dtProps.error) return React.createElement('div', { role: 'alert' }, dtProps.error.message);
+      if (dtProps.loading) return React.createElement('TableSkeleton', {});
+      return React.createElement(
+        'DataTable',
+        { sort: dtProps.sort, onSortChange: dtProps.onSortChange },
+        ...dtProps.data.map((row, index) => {
+          const id = dtProps.getRowId(row);
+          return React.createElement(
+            'SelectableTableRow',
+            {
+              key: id,
+              selected: dtProps.selectedRowId === id,
+              disabled: dtProps.busy,
+              onSelect: () => dtProps.onRowSelect?.(id, row),
+              onDoubleClick: () => dtProps.onRowOpen?.(row),
+            },
+            ...dtProps.columns.map((col) => col.cell(row, index)),
+          );
+        }),
+        dtProps.pagination ? React.createElement('TablePagination', dtProps.pagination) : null,
+      );
+    },
+  };
   dependencies['@/components/ui/confirm-dialog'] = { ConfirmDialog: 'ConfirmDialog' };
   const component = load(source(file), dependencies)[exportName];
   return {
@@ -583,21 +615,23 @@ test('confirmation expiry and conflicts preserve the invitation input for retry 
   assert.match(text(tree), /Yêu cầu đã hết hạn/);
 });
 
-test('catalog paging, filtering and scope totals follow server data and reset correctly', () => {
+test('catalog paging, filtering, sorting and scope totals follow server data and reset correctly', () => {
   const ui = uiFixture('pages/StudentTopicCatalogPage.tsx', 'StudentTopicCatalogContent');
   let tree = ui.render();
   const queries = ui.queries();
   assert.deepEqual(queries[0].queryKey, [
     'student-topics',
     'student-1',
-    { keyword: '', batchId: '' },
+    { keyword: '', batchId: '', availability: '' },
     1,
     10,
+    'createdAt',
+    'desc',
   ]);
   const old = { items: [published] };
   assert.equal(
     queries[0].placeholderData(old, {
-      queryKey: ['student-topics', 'someone-else', { keyword: '', batchId: '' }],
+      queryKey: ['student-topics', 'someone-else', { keyword: '', batchId: '', availability: '' }, 1, 10, 'createdAt', 'desc'],
     }),
     undefined,
   );
@@ -606,15 +640,22 @@ test('catalog paging, filtering and scope totals follow server data and reset co
   find(tree, (n) => n.props['aria-label'] === 'Tìm tên đề tài').props.onChange({
     target: { value: ' học sâu ' },
   });
+  find(tree, (n) => n.props['aria-label'] === 'Lọc theo tình trạng chỗ trống').props.onChange(
+    'available',
+  );
   tree = ui.render();
   find(tree, (n) => n.type === 'form').props.onSubmit({ preventDefault() {} });
   tree = ui.render();
   assert.equal(ui.queries()[0].queryKey[3], 1);
   assert.equal(ui.queries()[0].queryKey[2].keyword, 'học sâu');
+  assert.equal(ui.queries()[0].queryKey[2].availability, 'available');
   assert.equal(ui.queries()[1].queryKey[0], 'student-topics-total');
-  find(tree, (n) => n.props.id === 'student-topic-page-size').props.onChange({
-    target: { value: '20' },
-  });
+  find(tree, (n) => n.type?.name === 'DataTable').props.onSortChange('availableSlots');
+  tree = ui.render();
+  assert.equal(ui.queries()[0].queryKey[3], 1);
+  assert.equal(ui.queries()[0].queryKey[5], 'availableSlots');
+  assert.equal(ui.queries()[0].queryKey[6], 'desc');
+  find(tree, (n) => n.type === 'TablePagination').props.onPageSizeChange(20);
   tree = ui.render();
   assert.equal(find(tree, (n) => n.type === 'TablePagination').props.pageSize, 20);
   assert.equal(
@@ -626,7 +667,7 @@ test('catalog paging, filtering and scope totals follow server data and reset co
 test('success refreshes related data and displays an invitation receipt without making A wait for B', () => {
   const ui = uiFixture('pages/StudentTopicCatalogPage.tsx', 'StudentTopicCatalogContent');
   let tree = ui.render();
-  button(tree, 'Chi tiết').props.onClick({ stopPropagation() {} });
+  button(tree, 'Xem').props.onClick({ stopPropagation() {} });
   tree = ui.render();
   find(tree, (n) => n.type === 'StudentTopicRegistrationDialog').props.onRegistered(
     { ...result, isPendingConfirmation: true, confirmationExpiresAtUtc: '2099-10-28T00:00:00Z' },
@@ -848,11 +889,12 @@ test('an availability refresh replaces the selected snapshot and full rows remai
   find(tree, (node) => node.type === 'SelectableTableRow').props.onSelect();
   tree = ui.render();
   assert.equal(find(tree, (node) => node.type === 'SelectableTableRow').props.selected, true);
+  assert.equal(find(tree, (node) => node.type === 'TableFloatingBar').props.selectedCount, 1);
   assert.equal(
     nodes(tree).some((node) => node.type === 'StudentTopicRegistrationDialog'),
     false,
   );
-  button(tree, 'Chi tiết').props.onClick({ stopPropagation() {} });
+  button(tree, 'Xem').props.onClick({ stopPropagation() {} });
   const full = { ...published, confirmedStudentsCount: 2, reservedSlots: 0, availableSlots: 0 };
   ui.controls.queryState['student-topics'] = {
     data: { items: [full], totalCount: 1, pageNumber: 1, pageSize: 10 },
@@ -862,5 +904,5 @@ test('an availability refresh replaces the selected snapshot and full rows remai
     find(tree, (node) => node.type === 'StudentTopicRegistrationDialog').props.topic.availableSlots,
     0,
   );
-  assert.equal(button(tree, 'Chi tiết').props.disabled, false);
+  assert.equal(button(tree, 'Xem').props.disabled, false);
 });

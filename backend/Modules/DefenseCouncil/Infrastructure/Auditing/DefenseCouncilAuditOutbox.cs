@@ -32,7 +32,7 @@ public sealed class DefenseCouncilAuditOutbox(
             entry.TargetType,
             entry.TargetId,
             entry.Action,
-            entry.Outcome,
+            AuditIntegrationEventValidation.NormalizeOutcome(entry.Outcome),
             entry.ReasonCode,
             metadataJson,
             occurredAtUtc);

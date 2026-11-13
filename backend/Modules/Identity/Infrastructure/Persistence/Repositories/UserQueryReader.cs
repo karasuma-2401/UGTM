@@ -47,9 +47,27 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
 
         var totalCount = await usersQuery.CountAsync(cancellationToken);
 
-        var pagedUsers = await usersQuery
-            .OrderByDescending(u => u.CreatedAt)
-            .ThenBy(u => u.Id)
+        var isAsc = string.Equals(query.SortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+        var sortedUsers = (query.SortBy?.ToLowerInvariant()) switch
+        {
+            "fullname" => isAsc
+                ? usersQuery.OrderBy(u => u.FullName).ThenBy(u => u.Id)
+                : usersQuery.OrderByDescending(u => u.FullName).ThenBy(u => u.Id),
+            "usercode" => isAsc
+                ? usersQuery.OrderBy(u => u.UserCode == null).ThenBy(u => u.UserCode).ThenBy(u => u.Id)
+                : usersQuery.OrderBy(u => u.UserCode == null).ThenByDescending(u => u.UserCode).ThenBy(u => u.Id),
+            "lastloginat" => isAsc
+                ? usersQuery.OrderBy(u => u.LastLoginAt == null).ThenBy(u => u.LastLoginAt).ThenBy(u => u.Id)
+                : usersQuery.OrderBy(u => u.LastLoginAt == null).ThenByDescending(u => u.LastLoginAt).ThenBy(u => u.Id),
+            "status" => isAsc
+                ? usersQuery.OrderBy(u => u.Status).ThenBy(u => u.Id)
+                : usersQuery.OrderByDescending(u => u.Status).ThenBy(u => u.Id),
+            _ => isAsc
+                ? usersQuery.OrderBy(u => u.CreatedAt).ThenBy(u => u.Id)
+                : usersQuery.OrderByDescending(u => u.CreatedAt).ThenBy(u => u.Id),
+        };
+
+        var pagedUsers = await sortedUsers
             .Skip((query.PageNumber - 1) * query.PageSize)
             .Take(query.PageSize)
             .Select(u => new

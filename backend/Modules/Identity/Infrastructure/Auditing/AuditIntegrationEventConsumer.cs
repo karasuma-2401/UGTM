@@ -33,7 +33,7 @@ public sealed class AuditIntegrationEventConsumer(IdentityDbContext db)
             integrationEvent.TargetType,
             integrationEvent.TargetId,
             integrationEvent.Action,
-            integrationEvent.Outcome,
+            integrationEvent.Outcome == "Succeeded" ? "Success" : integrationEvent.Outcome,
             integrationEvent.ReasonCode,
             integrationEvent.RequestId,
             integrationEvent.MetadataJson,

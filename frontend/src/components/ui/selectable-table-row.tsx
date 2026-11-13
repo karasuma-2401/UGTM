@@ -1,7 +1,8 @@
-import type { ComponentPropsWithoutRef } from 'react';
+import type { ComponentPropsWithoutRef, Ref } from 'react';
 import { cn } from '@/lib/utils';
 
-interface SelectableTableRowProps extends Omit<ComponentPropsWithoutRef<'tr'>, 'onSelect'> {
+export interface SelectableTableRowProps extends Omit<ComponentPropsWithoutRef<'tr'>, 'onSelect'> {
+  ref?: Ref<HTMLTableRowElement>;
   selected?: boolean;
   onSelect?: () => void;
   disabled?: boolean;
@@ -37,6 +38,15 @@ export function SelectableTableRow({
       )}
       onClick={(event) => {
         if (disabled) return;
+        if (
+          typeof (event?.target as HTMLElement)?.closest === 'function' &&
+          (event.target as HTMLElement).closest(
+            'button, a, input, select, textarea, [role="button"], [role="checkbox"], label',
+          )
+        ) {
+          onClick?.(event);
+          return;
+        }
         onSelect?.();
         onClick?.(event);
       }}

@@ -1,6 +1,7 @@
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Identity.Contracts.Users;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
@@ -14,6 +15,7 @@ using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
 using UGTM.Modules.TopicCatalog.Contracts.RenameRequests;
+using UGTM.Modules.TopicCatalog.Contracts.Topics;
 
 namespace UGTM.Modules.ThesisManagement.Tests;
 
@@ -756,6 +758,29 @@ public sealed class RenameRequestApplicationTests
         Assert.Empty(otherLecturer.Value);
     }
 
+    [Fact]
+    public async Task GetRenameRequests_Enriches_Batch_Advisor_And_Members()
+    {
+        var group = CreateInProgressGroup();
+        var f = new Fixtures(group);
+        f.RenameRequests.Add(RenameRequest.Create(Guid.NewGuid(), group.Id, StudentId, "Tên cũ", "Tên mới", null, null, "Lý do", Now));
+
+        var result = await f.GetListHandler(f.FacultyUser())
+            .HandleAsync(new GetRenameRequestsQuery(null, null));
+
+        Assert.True(result.IsSuccess);
+        var dto = Assert.Single(result.Value);
+        Assert.Equal(BatchId, dto.BatchId);
+        Assert.Equal("KLTN HK2 2026", dto.BatchName);
+        Assert.Equal(AdvisorId, dto.AdvisorId);
+        Assert.Equal("TS. Nguyễn Văn A", dto.AdvisorName);
+        Assert.NotNull(dto.Members);
+        var member = Assert.Single(dto.Members);
+        Assert.Equal(StudentId, member.StudentId);
+        Assert.Equal("22100001", member.UserCode);
+        Assert.Equal("Trần Minh B", member.FullName);
+    }
+
     #endregion
 
     private static StudentGroup CreateInProgressGroup()
@@ -805,7 +830,14 @@ public sealed class RenameRequestApplicationTests
             => new(RenameRequests, Groups, TopicContract, user);
 
         public GetRenameRequestsHandler GetListHandler(ICurrentUser user)
-            => new(RenameRequests, Groups, TopicContract, user);
+            => new(
+                RenameRequests,
+                Groups,
+                new FakeTopicSummaryReader(TopicId, BatchId, AdvisorId, "Nghiên cứu AI cũ", "Old AI Research"),
+                new FakeBatchSummaryReader(BatchId, "KLTN HK2 2026"),
+                new FakeStudentInfoReader(StudentId, "22100001", "Trần Minh B"),
+                new FakeAdvisorNameReader(AdvisorId, "TS. Nguyễn Văn A"),
+                user);
 
         public ICurrentUser StudentUser() => User(StudentId, roles: ["Student"]);
         public ICurrentUser AdvisorUser() => User(AdvisorId, roles: ["Lecturer"]);
@@ -955,6 +987,78 @@ public sealed class RenameRequestApplicationTests
     {
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
             => Task.FromResult(1);
+    }
+
+    private sealed class FakeTopicSummaryReader(
+        Guid topicId,
+        Guid batchId,
+        Guid advisorId,
+        string titleVi,
+        string? titleEn) : ITopicSummaryReader
+    {
+        public Task<IReadOnlyDictionary<Guid, TopicSummaryContractDto>> GetByIdsAsync(
+            IEnumerable<Guid> topicIds,
+            CancellationToken cancellationToken = default)
+        {
+            IReadOnlyDictionary<Guid, TopicSummaryContractDto> map = topicIds.Contains(topicId)
+                ? new Dictionary<Guid, TopicSummaryContractDto>
+                {
+                    [topicId] = new(topicId, batchId, advisorId, titleVi, titleEn),
+                }
+                : new Dictionary<Guid, TopicSummaryContractDto>();
+            return Task.FromResult(map);
+        }
+    }
+
+    private sealed class FakeBatchSummaryReader(Guid batchId, string batchName) : IBatchSummaryReader
+    {
+        public Task<IReadOnlyDictionary<Guid, BatchSummaryContractDto>> GetByIdsAsync(
+            IEnumerable<Guid> batchIds,
+            CancellationToken cancellationToken = default)
+        {
+            IReadOnlyDictionary<Guid, BatchSummaryContractDto> map = batchIds.Contains(batchId)
+                ? new Dictionary<Guid, BatchSummaryContractDto>
+                {
+                    [batchId] = new(batchId, batchName),
+                }
+                : new Dictionary<Guid, BatchSummaryContractDto>();
+            return Task.FromResult(map);
+        }
+    }
+
+    private sealed class FakeStudentInfoReader(Guid studentId, string userCode, string fullName) : IStudentInfoReader
+    {
+        public Task<IReadOnlyDictionary<Guid, StudentInfoContractDto>> GetStudentsByIdsAsync(
+            IEnumerable<Guid> studentIds,
+            CancellationToken cancellationToken = default)
+        {
+            IReadOnlyDictionary<Guid, StudentInfoContractDto> map = studentIds.Contains(studentId)
+                ? new Dictionary<Guid, StudentInfoContractDto>
+                {
+                    [studentId] = new(studentId, "sv@example.edu", fullName, userCode, null),
+                }
+                : new Dictionary<Guid, StudentInfoContractDto>();
+            return Task.FromResult(map);
+        }
+
+        public Task<StudentInfoContractDto?> GetStudentByIdOrCodeAsync(
+            Guid? studentIdArg,
+            string? userCodeArg,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<StudentInfoContractDto?>(null);
+    }
+
+    private sealed class FakeAdvisorNameReader(Guid advisorId, string fullName) : IAdvisorNameReader
+    {
+        public Task<IReadOnlyDictionary<Guid, string>> GetNamesByIdsAsync(
+            IEnumerable<Guid> advisorIds,
+            CancellationToken cancellationToken = default)
+        {
+            IReadOnlyDictionary<Guid, string> map = advisorIds.Contains(advisorId)
+                ? new Dictionary<Guid, string> { [advisorId] = fullName }
+                : new Dictionary<Guid, string>();
+            return Task.FromResult(map);
+        }
     }
 
     private sealed class FixedTimeProvider(DateTime now) : TimeProvider

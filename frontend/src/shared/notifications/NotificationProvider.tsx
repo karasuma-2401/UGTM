@@ -67,7 +67,9 @@ function NotificationViewport() {
       if (host.matches(':popover-open')) host.hidePopover();
       parent.appendChild(host);
     }
-    if (toasts.length && host.showPopover && !host.matches(':popover-open')) host.showPopover();
+    if (host.showPopover && parent.isConnected && !host.matches(':popover-open')) {
+      host.showPopover();
+    }
   }, [dialog, host, toasts.length]);
   useLayoutEffect(() => () => host.remove(), [host]);
 

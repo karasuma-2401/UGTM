@@ -1,67 +1,108 @@
-import { Link, useSearchParams } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { FileText, Users, GraduationCap } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { FileText, Users } from 'lucide-react';
+import { NavigationTabs, type TabItem } from '@/components/ui/navigation-tabs';
 import { TopicProposePage } from './TopicProposePage';
 import { TopicAdvisingPage } from './TopicAdvisingPage';
 import { PageHeader } from '@/components/ui/page-header';
-
-const tabs = [
-  { id: 'topics', label: 'Đề tài của tôi', icon: FileText },
-  { id: 'registrations', label: 'Nhóm đăng ký', icon: Users },
-  { id: 'advising', label: 'Đang hướng dẫn', icon: GraduationCap },
-] as const;
+import {
+  GROUP_STATUS_LABELS,
+  type AdvisingFilters,
+  type GroupScope,
+} from '../types/advising.types';
+import { TOPIC_STATUS_LABELS, type TopicFilters } from '../types/topic.types';
 
 export function TopicGuidancePage() {
   const [params, setParams] = useSearchParams();
   const selected = params.get('tab');
-  const tab = selected === 'registrations' || selected === 'advising' ? selected : 'topics';
-  const status = params.get('status') ?? '';
+  // Existing bookmarks continue to resolve to the unified group view.
+  const isGroups = ['groups', 'registrations', 'advising'].includes(selected ?? '');
+  const batchId = params.get('batchId') ?? '';
+  const href = (tab: 'topics' | 'groups') => {
+    const query = new URLSearchParams();
+    if (tab === 'groups') query.set('tab', 'groups');
+    if (batchId) query.set('batchId', batchId);
+    return `/topics/advising${query.size ? `?${query}` : ''}`;
+  };
+  const tabs: TabItem[] = [
+    { id: 'topics', label: 'Đề tài của tôi', icon: FileText, href: href('topics') },
+    { id: 'groups', label: 'Nhóm & tiến độ', icon: Users, href: href('groups') },
+  ];
   const navigation = (
-    <nav
-      className="flex gap-1 overflow-x-auto border-b border-slate-200"
-      aria-label="Đề tài hướng dẫn"
-    >
-      {tabs.map((item) => (
-        <Button
-          key={item.id}
-          asChild
-          variant="ghost"
-          className={`h-12 shrink-0 rounded-none border-b-2 px-4 shadow-none transition-colors ${tab === item.id ? 'border-primary bg-primary/5 text-primary hover:bg-primary/5 hover:text-primary' : 'border-transparent text-slate-500 hover:bg-slate-100/60 hover:text-slate-800'}`}
-        >
-          <Link
-            to={item.id === 'topics' ? '/topics/advising' : `/topics/advising?tab=${item.id}`}
-            aria-current={tab === item.id ? 'page' : undefined}
-          >
-            <item.icon className="size-4" aria-hidden="true" />
-            {item.label}
-          </Link>
-        </Button>
-      ))}
-    </nav>
+    <NavigationTabs
+      tabs={tabs}
+      activeId={isGroups ? 'groups' : 'topics'}
+      ariaLabel="Đề tài hướng dẫn"
+      continuityKey="topics-guidance-tabs"
+    />
   );
-
-  // Router links also pass through the proposal editor's unsaved-changes blocker.
-  if (tab === 'topics')
-    return <TopicProposePage pageTitle="Đề tài hướng dẫn" navigation={navigation} />;
-
+  const status = params.get('status') ?? '';
+  const keyword = params.get('keyword') ?? '';
+  function changeTopicFilters(filters: TopicFilters) {
+    setParams(
+      {
+        ...(filters.batchId ? { batchId: filters.batchId } : {}),
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(filters.keyword ? { keyword: filters.keyword } : {}),
+      },
+      { flushSync: true },
+    );
+  }
+  if (!isGroups)
+    return (
+      <TopicProposePage
+        key={params.toString()}
+        pageTitle="Đề tài hướng dẫn"
+        navigation={navigation}
+        initialFilters={{
+          batchId,
+          keyword,
+          status: Object.hasOwn(TOPIC_STATUS_LABELS, status)
+            ? (status as TopicFilters['status'])
+            : '',
+        }}
+        onFiltersChange={changeTopicFilters}
+      />
+    );
+  const requestedScope = params.get('scope') ?? (selected === 'registrations' ? 'all' : 'active');
+  const scope: GroupScope =
+    status === 'Stopped'
+      ? 'stopped'
+      : status === 'Completed'
+        ? 'completed'
+        : ['active', 'all', 'completed', 'stopped'].includes(requestedScope)
+          ? (requestedScope as GroupScope)
+          : 'active';
+  const confirmation = params.get('confirmation') ?? '';
+  const filters: AdvisingFilters = {
+    batchId,
+    keyword,
+    scope,
+    status: Object.hasOwn(GROUP_STATUS_LABELS, status) ? (status as AdvisingFilters['status']) : '',
+    confirmation: confirmation === 'pending' || confirmation === 'expired' ? confirmation : '',
+  };
   return (
-    <div className="min-w-0 space-y-5">
-      <PageHeader icon={<FileText />} title="Đề tài hướng dẫn" navigation={navigation} />
+    <div className="space-y-4 pb-8">
+      <PageHeader
+        compact
+        accent
+        title="Đề tài hướng dẫn"
+        description="Quản lý đề xuất, thành viên và tiến độ thực hiện khóa luận"
+        navigation={navigation}
+      />
       <TopicAdvisingPage
-        key={`${tab}:${status}:${params.get('batchId') ?? ''}`}
-        embedded
-        initialTab={tab}
-        initialStatus={status}
-        initialBatchId={params.get('batchId') ?? ''}
-        onQuickFilter={(next, filter, batchId) =>
+        key={params.toString()}
+        initialFilters={filters}
+        onFiltersChange={(next) =>
           setParams(
-            next === 'topics'
-              ? {}
-              : {
-                  tab: next,
-                  ...(batchId ? { batchId } : {}),
-                  ...(filter ? { status: filter } : {}),
-                },
+            {
+              tab: 'groups',
+              ...(next.batchId ? { batchId: next.batchId } : {}),
+              ...(next.scope !== 'active' ? { scope: next.scope } : {}),
+              ...(next.status ? { status: next.status } : {}),
+              ...(next.confirmation ? { confirmation: next.confirmation } : {}),
+              ...(next.keyword ? { keyword: next.keyword } : {}),
+            },
+            { flushSync: true },
           )
         }
       />

@@ -7,6 +7,30 @@ namespace UGTM.Modules.TopicCatalog.Tests.Application;
 
 public sealed class GetMyTopicsHandlerTests
 {
+    [Theory]
+    [InlineData("title", "asc", true)]
+    [InlineData(" STUDENTNUMBER ", " DESC ", true)]
+    [InlineData(null, null, true)]
+    [InlineData("password", "asc", false)]
+    [InlineData("createdAt", "sideways", false)]
+    public async Task Sort_parameters_are_validated_and_normalized(string? field, string? direction, bool valid)
+    {
+        var reader = new StubTopicQueryReader();
+        var handler = new GetMyTopicsHandler(reader, FakeCurrentUser.AsLecturer(Guid.NewGuid()));
+        var result = await handler.HandleAsync(new GetMyTopicsQuery(SortBy: field, SortOrder: direction));
+        Assert.Equal(valid, result.IsSuccess);
+        if (valid)
+        {
+            Assert.Equal(field?.Trim().ToLowerInvariant() ?? "createdat", reader.LastGetMyQuery!.SortBy);
+            Assert.Equal(direction?.Trim().ToLowerInvariant() ?? "desc", reader.LastGetMyQuery.SortOrder);
+        }
+        else
+        {
+            Assert.Equal(TopicErrors.InvalidSort.Code, result.Error.Code);
+            Assert.Null(reader.LastGetMyQuery);
+        }
+    }
+
     // ==========================================
     // 1. AUTHENTICATION & ROLE AUTHORIZATION TESTS
     // ==========================================

@@ -88,6 +88,8 @@ export interface TopicFilters {
   status: TopicStatus | '';
 }
 
+export type TopicSortField = 'title' | 'studentNumber' | 'createdAt';
+
 export interface TopicStatistics {
   total: number;
   submitted: number;

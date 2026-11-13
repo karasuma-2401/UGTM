@@ -12,6 +12,7 @@ using UGTM.Modules.TopicCatalog.Application.Topics.PublishTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetAllTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetMyTopics;
 using UGTM.Modules.TopicCatalog.Application.Topics.GetTopicTrackingDetail;
+using UGTM.Modules.TopicCatalog.Application.Topics.LookupStudentByCode;
 using UGTM.Modules.TopicCatalog.Infrastructure.Endpoints;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -55,7 +56,10 @@ public sealed class TopicCatalogModule : IModule
         // Query Handlers
         services.AddScoped<GetAllTopicsHandler>();
         services.AddScoped<GetMyTopicsHandler>();
+        services.AddScoped<ITopicStatisticsReader, TopicStatisticsReader>();
+        services.AddScoped<GetMyTopicStatisticsHandler>();
         services.AddScoped<GetTopicTrackingDetailHandler>();
+        services.AddScoped<LookupStudentByCodeHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

@@ -1,9 +1,16 @@
-import { ClipboardCheck, Eye, FileText } from 'lucide-react';
+import { ClipboardCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { InfoCell } from '@/components/ui/info-cell';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SelectableTableRow } from '@/components/ui/selectable-table-row';
+import { SelectionIndicator } from '@/components/ui/selection-indicator';
+import {
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableCell,
+} from '@/components/ui/table';
 import type { Topic, TopicBatch } from '../types/topic.types';
 import { TopicStatusBadge } from './TopicStatusBadge';
 
@@ -48,7 +55,14 @@ export function TopicReviewTable({
   const canSelectAll = new Set(selectable.map((topic) => topic.batchId)).size === 1;
 
   return (
-    <table className="w-full min-w-[1240px] table-fixed text-left text-sm">
+    <div className="relative isolate">
+      <SelectionIndicator
+        activeKey={selectedRowId}
+        selector='tr[aria-selected="true"]'
+        variant="rail"
+        className="z-20 rounded-r bg-primary"
+      />
+      <Table className="min-w-[1240px] table-fixed">
       <colgroup>
         <col className="w-14" />
         <col className="w-12" />
@@ -59,12 +73,12 @@ export function TopicReviewTable({
         <col className="w-44" />
         <col className="w-44" />
       </colgroup>
-      <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
+      <TableHeader>
         <tr>
-          <th scope="col" className="px-3 py-4 text-center font-bold">
+          <TableHead align="center" className="w-14 px-3 py-3.5">
             STT
-          </th>
-          <th scope="col" className="px-4">
+          </TableHead>
+          <TableHead className="w-12 px-4 py-3.5">
             <Checkbox
               aria-label="Chọn tất cả đề tài đã duyệt cùng đợt trên trang này"
               checked={allSelected ? true : selected.length ? 'indeterminate' : false}
@@ -76,35 +90,49 @@ export function TopicReviewTable({
               }
               onCheckedChange={(checked) => onSelect(checked ? selectable : [])}
             />
-          </th>
+          </TableHead>
           {['Đề tài', 'Giảng viên hướng dẫn', 'Đợt KLTN', 'Chỉ tiêu', 'Trạng thái', 'Thao tác'].map(
             (label) => (
-              <th
+              <TableHead
                 key={label}
-                scope="col"
-                className={`px-4 py-4 font-bold ${label === 'Thao tác' ? 'text-center' : ''}`}
+                align={label === 'Thao tác' ? 'center' : 'left'}
+                className={label === 'Thao tác' ? 'px-4 py-3.5 whitespace-nowrap' : 'px-4 py-3.5'}
               >
                 {label}
-              </th>
+              </TableHead>
             ),
           )}
         </tr>
-      </thead>
-      <tbody className="divide-y divide-slate-100">
+      </TableHeader>
+      <TableBody>
         {topics.map((topic, index) => {
           const checked = selected.some((item) => item.id === topic.id);
           return (
             <SelectableTableRow
               key={topic.id}
+              data-selection-item
+              hideSelectionMarker
+              title="Nhấp đúp để xem chi tiết"
               className="h-[88px]"
               selected={checked || selectedRowId === topic.id}
               onSelect={onSelectRow ? () => onSelectRow(topic.id) : undefined}
+              onDoubleClick={(event) => {
+                if (
+                  (event.target as Element).closest(
+                    'button, a, input, select, textarea, [role="button"]',
+                  )
+                )
+                  return;
+                onOpen(topic);
+              }}
               disabled={busy}
             >
-              <td className="px-3 py-4 text-center text-xs tabular-nums text-slate-400">
-                {(pageNumber - 1) * pageSize + index + 1}
-              </td>
-              <td className="px-4 py-4" onClick={(event) => event.stopPropagation()}>
+              <TableCell align="center" className="px-3 py-4">
+                <span className="text-xs tabular-nums text-slate-400 font-medium">
+                  {(pageNumber - 1) * pageSize + index + 1}
+                </span>
+              </TableCell>
+              <TableCell className="px-4 py-4" onClick={(event) => event.stopPropagation()}>
                 <Checkbox
                   aria-label={`Chọn công bố đề tài ${topic.titleVi}`}
                   checked={checked}
@@ -121,28 +149,31 @@ export function TopicReviewTable({
                     )
                   }
                 />
-              </td>
-              <td className="px-4 py-4">
-                <InfoCell
-                  leading={
+              </TableCell>
+              <TableCell className="px-4 py-4">
+                <div className="space-y-1 min-w-0">
+                  <span
+                    className="line-clamp-2 block text-sm font-semibold text-slate-900 leading-snug hover:text-primary transition-colors cursor-pointer"
+                    onClick={() => onOpen(topic)}
+                    title={topic.titleVi}
+                  >
+                    {topic.titleVi}
+                  </span>
+                  {topic.titleEn ? (
                     <span
-                      aria-hidden="true"
-                      className="flex size-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600 ring-1 ring-inset ring-blue-100"
+                      className="truncate block text-xs text-slate-500 font-normal"
+                      title={topic.titleEn}
                     >
-                      <FileText className="size-4" />
+                      {topic.titleEn}
                     </span>
-                  }
-                  title={
-                    <span className="line-clamp-2" title={topic.titleVi}>
-                      {topic.titleVi}
+                  ) : (
+                    <span className="block text-xs text-slate-400 italic">
+                      Chưa có tên tiếng Anh
                     </span>
-                  }
-                  titleClassName="block text-sm leading-5"
-                  description={topic.titleEn || 'Chưa có tên tiếng Anh'}
-                  descriptionClassName="truncate text-[11px]"
-                />
-              </td>
-              <td
+                  )}
+                </div>
+              </TableCell>
+              <TableCell
                 aria-busy={!advisorNames[topic.advisorId] && advisorsLoading}
                 className="break-words px-4 py-4 text-xs text-slate-600"
               >
@@ -152,37 +183,44 @@ export function TopicReviewTable({
                   ) : (
                     <span title={topic.advisorId}>Mã GVHD: {topic.advisorId}</span>
                   ))}
-              </td>
-              <td className="px-4 py-4 text-xs text-slate-500">
+              </TableCell>
+              <TableCell className="px-4 py-4 text-xs text-slate-500">
                 {batches.find((batch) => batch.id === topic.batchId)?.batchName ||
                   (batchesLoading ? (
                     <Skeleton className="h-4 w-28 max-w-full" />
                   ) : (
                     <span title={topic.batchId}>Mã đợt: {topic.batchId}</span>
                   ))}
-              </td>
-              <td className="px-4 py-4 text-xs text-slate-500">{topic.studentNumber ?? '—'} SV</td>
-              <td className="px-4 py-4">
+              </TableCell>
+              <TableCell className="px-4 py-4 text-xs font-medium text-slate-700 tabular-nums">
+                {topic.studentNumber ?? '—'} SV
+              </TableCell>
+              <TableCell className="px-4 py-4">
                 <TopicStatusBadge status={topic.status} />
-              </td>
-              <td className="px-4 py-4 text-center">
+              </TableCell>
+              <TableCell align="center" className="px-4 py-4">
                 <Button
                   type="button"
-                  variant={topic.status === 'Submitted' ? 'default' : 'soft'}
+                  variant={topic.status === 'Submitted' ? 'default' : 'outline'}
                   size="sm"
-                  className="h-9 w-28 cursor-pointer rounded-lg shadow-none"
-                  leftIcon={topic.status === 'Submitted' ? <ClipboardCheck /> : <Eye />}
+                  className={
+                    topic.status === 'Submitted'
+                      ? 'h-8.5 px-3 cursor-pointer rounded-xl text-xs font-semibold'
+                      : 'h-8.5 px-4 rounded-lg border-slate-200 bg-white font-medium text-xs text-slate-700 shadow-2xs hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer'
+                  }
+                  leftIcon={topic.status === 'Submitted' ? <ClipboardCheck className="size-3.5" /> : undefined}
                   disabled={busy}
                   onClick={() => onOpen(topic)}
                   aria-label={`${topic.status === 'Submitted' ? 'Thẩm định' : 'Xem chi tiết'} đề tài ${topic.titleVi}`}
                 >
-                  {topic.status === 'Submitted' ? 'Thẩm định' : 'Chi tiết'}
+                  {topic.status === 'Submitted' ? 'Thẩm định' : 'Xem'}
                 </Button>
-              </td>
+              </TableCell>
             </SelectableTableRow>
           );
         })}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
+    </div>
   );
 }

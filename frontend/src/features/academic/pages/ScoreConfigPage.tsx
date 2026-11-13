@@ -1,4 +1,5 @@
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { PageHeader } from '@/components/ui/page-header';
 import { OperationToast } from '@/shared/notifications';
 import React from 'react';
 import { History, Wand2, Save, Send } from 'lucide-react';
@@ -18,42 +19,34 @@ export const ScoreConfigPage: React.FC = () => {
   const { data, form, modals, actions } = useScoreConfig();
 
   return (
-    <div className="space-y-6 pb-10 max-w-[1440px] mx-auto selection:bg-blue-100 selection:text-blue-950">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-            Cấu hình đợt điểm
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Thiết lập cách tính điểm và trọng số cho từng đợt khóa luận.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+    <div className="space-y-6 pb-10 selection:bg-blue-100 selection:text-blue-950">
+      <PageHeader
+        accent
+        title="Cấu hình đợt điểm"
+        description="Thiết lập cách tính điểm và trọng số cho từng đợt khóa luận."
+      >
+        <Button
+          type="button"
+          variant="outline"
+          onClick={actions.handleApplyDefaultTemplateClick}
+          className="h-10 rounded-xl px-4 shadow-2xs"
+          leftIcon={<Wand2 className="size-4 text-primary" />}
+        >
+          Cấu hình đợt mẫu
+        </Button>
+
+        {data.historyConfigs.length > 0 && (
           <Button
             type="button"
             variant="outline"
-            size="sm"
-            onClick={actions.handleApplyDefaultTemplateClick}
-            className="rounded-lg h-10 text-xs shadow-sm"
-            leftIcon={<Wand2 className="size-3.5 text-primary" />}
+            onClick={() => modals.setIsHistoryModalOpen(true)}
+            className="h-10 rounded-xl px-4 shadow-2xs"
+            leftIcon={<History className="size-4 text-slate-500" />}
           >
-            Cấu hình đợt mẫu
+            Lịch sử phiên bản ({data.historyConfigs.length})
           </Button>
-
-          {data.historyConfigs.length > 0 && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => modals.setIsHistoryModalOpen(true)}
-              className="rounded-lg h-10 text-xs shadow-sm"
-              leftIcon={<History className="size-3.5 text-slate-500" />}
-            >
-              Lịch sử phiên bản ({data.historyConfigs.length})
-            </Button>
-          )}
-        </div>
-      </header>
+        )}
+      </PageHeader>
 
       <OperationToast message={modals.notice} onConsumed={() => modals.setNotice(null)} />
 
@@ -66,8 +59,8 @@ export const ScoreConfigPage: React.FC = () => {
         </InlineAlert>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(250px,280px)] gap-5 items-start">
-        <div className="min-w-0 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div className="min-w-0 lg:col-span-8 space-y-6">
           <ScoreConfigGeneralCard
             batches={data.batches}
             selectedBatchId={data.selectedBatchId}
@@ -95,7 +88,7 @@ export const ScoreConfigPage: React.FC = () => {
 
         <aside
           aria-label="Tóm tắt và lưu cấu hình"
-          className="min-w-0 xl:sticky xl:top-6 rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm"
+          className="min-w-0 lg:col-span-4 lg:sticky lg:top-6 rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-xs"
         >
           <ScoreConfigSummaryCard
             batch={data.currentBatch}
@@ -107,7 +100,7 @@ export const ScoreConfigPage: React.FC = () => {
             isValid={form.isValid}
             isLoading={data.isLoadingConfig || data.isLoadingBatches}
           />
-          <div className="border-t border-slate-200 bg-slate-50/70 p-5 space-y-3">
+          <div className="border-t border-slate-200/80 bg-slate-50/70 p-5 space-y-3">
             <p role="status" className="flex items-center gap-2 text-xs font-medium text-slate-600">
               <span
                 className={`size-2 shrink-0 rounded-full ${form.isDirty ? 'bg-amber-500' : 'bg-slate-400'}`}
@@ -115,31 +108,26 @@ export const ScoreConfigPage: React.FC = () => {
               />
               {form.isDirty ? 'Có thay đổi chưa lưu' : 'Không có thay đổi chưa lưu'}
             </p>
-            <button
+            <Button
               type="button"
               onClick={actions.handleSaveClick}
               disabled={actions.isSaving || data.isLoadingConfig || data.isLoadingBatches}
-              className="w-full inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 shadow-sm h-11 text-white bg-primary hover:bg-blue-700 disabled:pointer-events-none disabled:opacity-50 cursor-pointer"
+              className="w-full h-10 rounded-xl font-semibold shadow-2xs"
+              isLoading={actions.isSaving}
+              leftIcon={<Save className="size-4" />}
             >
-              {actions.isSaving ? (
-                <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Save className="size-4" />
-              )}
-              <span>
-                {data.currentConfig?.status === 'Draft'
-                  ? 'Lưu bản nháp'
-                  : data.currentConfig?.status === 'Active'
-                    ? 'Sửa cấu hình'
-                    : 'Lưu cấu hình'}
-              </span>
-            </button>
+              {data.currentConfig?.status === 'Draft'
+                ? 'Lưu bản nháp'
+                : data.currentConfig?.status === 'Active'
+                  ? 'Sửa cấu hình'
+                  : 'Lưu cấu hình'}
+            </Button>
 
             {data.currentConfig?.status === 'Draft' && (
               <Button
                 type="button"
-                variant="default"
-                className="w-full rounded-lg h-11 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-semibold text-sm cursor-pointer disabled:pointer-events-none disabled:opacity-50"
+                variant="success"
+                className="w-full h-10 rounded-xl font-semibold shadow-2xs"
                 onClick={actions.handlePublish}
                 disabled={
                   !form.isValid ||
@@ -148,15 +136,10 @@ export const ScoreConfigPage: React.FC = () => {
                   data.isLoadingConfig ||
                   data.isLoadingBatches
                 }
-                leftIcon={
-                  actions.isPublishing ? (
-                    <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Send className="size-4" />
-                  )
-                }
+                isLoading={actions.isPublishing}
+                leftIcon={<Send className="size-4" />}
               >
-                <span>{form.isDirty ? 'Lưu & Công bố' : 'Công bố'}</span>
+                {form.isDirty ? 'Lưu & Công bố' : 'Công bố'}
               </Button>
             )}
 

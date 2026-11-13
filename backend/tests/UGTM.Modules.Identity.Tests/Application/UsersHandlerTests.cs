@@ -695,6 +695,49 @@ public sealed class UsersHandlerTests
         Assert.Null(stubReader.LastQuery);
     }
 
+    [Theory]
+    [InlineData(null, null, "createdat", "desc")]
+    [InlineData(" FullName ", " ASC ", "fullname", "asc")]
+    [InlineData("userCode", "DeSc", "usercode", "desc")]
+    [InlineData("lastLoginAt", "asc", "lastloginat", "asc")]
+    [InlineData("STATUS", "DESC", "status", "desc")]
+    public async Task GetUsersHandler_normalizes_sort_parameters(
+        string? sortBy,
+        string? sortOrder,
+        string expectedSortBy,
+        string expectedSortOrder)
+    {
+        var stubReader = new StubUserQueryReader();
+        var handler = new GetUsersHandler(stubReader);
+
+        var result = await handler.HandleAsync(
+            new GetUsersQuery(SortBy: sortBy, SortOrder: sortOrder),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(stubReader.LastQuery);
+        Assert.Equal(expectedSortBy, stubReader.LastQuery!.SortBy);
+        Assert.Equal(expectedSortOrder, stubReader.LastQuery!.SortOrder);
+    }
+
+    [Theory]
+    [InlineData("email", "asc")]
+    [InlineData("fullname", "up")]
+    [InlineData("drop table users", null)]
+    public async Task GetUsersHandler_rejects_invalid_sort_parameters(string? sortBy, string? sortOrder)
+    {
+        var stubReader = new StubUserQueryReader();
+        var handler = new GetUsersHandler(stubReader);
+
+        var result = await handler.HandleAsync(
+            new GetUsersQuery(SortBy: sortBy, SortOrder: sortOrder),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidSort", result.Error.Code);
+        Assert.Null(stubReader.LastQuery);
+    }
+
     [Fact]
     public async Task CreateUserHandler_and_UpdateUserHandler_reject_null_or_whitespace_role_elements()
     {

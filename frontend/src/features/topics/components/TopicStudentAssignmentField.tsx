@@ -1,12 +1,19 @@
-import { UsersRound, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, UsersRound, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import type { TopicStudent } from '../types/topic.types';
+
+export type StudentCodeLookupState =
+  | { status: 'loading' }
+  | { status: 'found'; fullName: string }
+  | { status: 'not_found' }
+  | { status: 'error' };
 
 interface TopicStudentAssignmentFieldProps {
   codes: string[];
   capacity: 1 | 2;
   currentStudents?: TopicStudent[];
+  studentLookups?: Record<string, StudentCodeLookupState>;
   disabled?: boolean;
   error?: string;
   onChange: (codes: string[]) => void;
@@ -16,6 +23,7 @@ export function TopicStudentAssignmentField({
   codes,
   capacity,
   currentStudents = [],
+  studentLookups,
   disabled = false,
   error,
   onChange,
@@ -62,47 +70,85 @@ export function TopicStudentAssignmentField({
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
-        {Array.from({ length: Math.max(capacity, Math.min(codes.length, 2)) }, (_, index) => (
-          <div key={index} className="space-y-1.5">
-            <label
-              htmlFor={`topic-student-code-${index + 1}`}
-              className="text-xs font-medium text-slate-600"
-            >
-              MSSV {index + 1}
-            </label>
-            <Input
-              id={`topic-student-code-${index + 1}`}
-              value={codes[index] ?? ''}
-              onChange={(event) => changeCode(index, event.target.value)}
-              disabled={locked}
-              autoComplete="off"
-              spellCheck={false}
-              maxLength={20}
-              placeholder="Nhập mã số sinh viên"
-              className="h-10 rounded-lg bg-white shadow-none"
-              isInvalid={Boolean(error)}
-              aria-describedby={
-                error
-                  ? 'topic-student-codes-help topic-student-codes-error'
-                  : 'topic-student-codes-help'
-              }
-              rightIcon={
-                codes[index] && !locked ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-6"
-                    aria-label={`Xóa MSSV ${index + 1}`}
-                    onClick={() => changeCode(index, '')}
-                  >
-                    <X className="size-3" />
-                  </Button>
-                ) : undefined
-              }
-            />
-          </div>
-        ))}
+        {Array.from({ length: Math.max(capacity, Math.min(codes.length, 2)) }, (_, index) => {
+          const rawCode = codes[index] ?? '';
+          const normalizedCode = rawCode.trim().toUpperCase();
+          const currentMatch = normalizedCode
+            ? currentStudents.find(
+                (student) => student.userCode?.trim().toUpperCase() === normalizedCode,
+              )
+            : undefined;
+          const lookup = normalizedCode && !currentMatch ? studentLookups?.[normalizedCode] : undefined;
+
+          return (
+            <div key={index} className="space-y-1.5">
+              <label
+                htmlFor={`topic-student-code-${index + 1}`}
+                className="text-xs font-medium text-slate-600"
+              >
+                MSSV {index + 1}
+              </label>
+              <Input
+                id={`topic-student-code-${index + 1}`}
+                value={rawCode}
+                onChange={(event) => changeCode(index, event.target.value)}
+                disabled={locked}
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={20}
+                placeholder="Nhập mã số sinh viên"
+                className="h-10 rounded-lg bg-white shadow-none"
+                isInvalid={Boolean(error)}
+                aria-describedby={
+                  error
+                    ? 'topic-student-codes-help topic-student-codes-error'
+                    : 'topic-student-codes-help'
+                }
+                rightIcon={
+                  rawCode && !locked ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-6"
+                      aria-label={`Xóa MSSV ${index + 1}`}
+                      onClick={() => changeCode(index, '')}
+                    >
+                      <X className="size-3" />
+                    </Button>
+                  ) : undefined
+                }
+              />
+              {currentMatch ? (
+                <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                  <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                  <span className="truncate" title={currentMatch.fullName}>
+                    {currentMatch.fullName}
+                  </span>
+                </p>
+              ) : lookup?.status === 'found' ? (
+                <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                  <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                  <span className="truncate" title={lookup.fullName}>
+                    {lookup.fullName}
+                  </span>
+                </p>
+              ) : lookup?.status === 'loading' ? (
+                <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden="true" />
+                  <span>Đang kiểm tra MSSV...</span>
+                </p>
+              ) : lookup?.status === 'not_found' ? (
+                <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
+                  <AlertCircle className="size-3.5 shrink-0 text-amber-600" aria-hidden="true" />
+                  <span>Không tìm thấy sinh viên với MSSV này</span>
+                </p>
+              ) : lookup?.status === 'error' ? (
+                <p className="text-xs text-slate-400">Không tra cứu được tên sinh viên lúc này</p>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p id="topic-student-codes-help" className="text-xs leading-5 text-slate-500">

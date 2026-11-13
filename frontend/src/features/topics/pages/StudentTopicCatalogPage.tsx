@@ -1,7 +1,17 @@
 import { OperationToast } from '@/shared/notifications';
 import { useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, FileText, GraduationCap, Search, SlidersHorizontal, FunnelX, Eye, MailCheck, ShieldAlert } from 'lucide-react';
+import {
+  BookOpen,
+  Eye,
+  FunnelX,
+  MailCheck,
+  Search,
+  Send,
+  ShieldAlert,
+  SlidersHorizontal,
+} from 'lucide-react';
+import { Avatar } from '@/components/ui/avatar';
 import { PageHeader } from '@/components/ui/page-header';
 import { ListCardHeader } from '@/components/ui/list-card-header';
 import { Card } from '@/components/ui/card';
@@ -11,24 +21,45 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { InfoCell } from '@/components/ui/info-cell';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
-import { StatusBadge } from '@/components/ui/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TableSkeleton } from '@/components/ui/table-skeleton';
-import { TablePagination } from '@/components/ui/table-pagination';
-import { SelectableTableRow } from '@/components/ui/selectable-table-row';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { TableActiveFilters } from '@/components/ui/table';
+import { TableFloatingBar } from '@/components/ui/table-floating-bar';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { studentTopicApi } from '../services/studentTopicApi';
 import { getTopicErrorMessage } from '../services/topicApi';
+import { validateStudentRegistration } from '../studentRegistration';
 import { StudentRegistrationStatusCard } from '../components/StudentRegistrationStatusCard';
 import { StudentTopicRegistrationDialog } from '../components/StudentTopicRegistrationDialog';
 import { StudentParticipationDialog } from '../components/StudentParticipationDialog';
 import { StudentTopicGroupDialog } from '../components/StudentTopicGroupDialog';
 import { TopicCapacityStatus } from '../components/TopicCapacityStatus';
-import type { PublishedTopic, RegistrationReceipt } from '../types/studentTopic.types';
+import type {
+  CatalogAvailabilityFilter,
+  CatalogSortField,
+  PublishedTopic,
+  RegistrationReceipt,
+} from '../types/studentTopic.types';
 
 const PAGE_SIZES = [10, 20, 50] as const;
-const EMPTY_FILTERS = { keyword: '', batchId: '' };
+
+interface CatalogFilters {
+  keyword: string;
+  batchId: string;
+  availability: CatalogAvailabilityFilter;
+}
+
+const EMPTY_FILTERS: CatalogFilters = {
+  keyword: '',
+  batchId: '',
+  availability: '',
+};
+
+const AVAILABILITY_LABELS: Record<Exclude<CatalogAvailabilityFilter, ''>, string> = {
+  available: 'Chỉ đề tài còn chỗ',
+  full: 'Đã đủ / tạm hết chỗ',
+};
 
 export function StudentTopicCatalogPage() {
   const { user } = useAuth();
@@ -42,8 +73,10 @@ export function StudentTopicCatalogContent() {
   const canBrowse = student || hasRole('Admin');
   const canReadBatches = hasPermission('academic.batches.read');
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState(EMPTY_FILTERS);
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [draft, setDraft] = useState<CatalogFilters>(EMPTY_FILTERS);
+  const [filters, setFilters] = useState<CatalogFilters>(EMPTY_FILTERS);
+  const [sortBy, setSortBy] = useState<CatalogSortField>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(PAGE_SIZES[0]);
   const [selection, setSelection] = useState<PublishedTopic | null>(null);
@@ -56,19 +89,35 @@ export function StudentTopicCatalogContent() {
   const [notice, setNotice] = useState('');
   const batchesQuery = useAcademicBatches();
   const batches = batchesQuery.data ?? [];
+
+  const isDefaultSort = sortBy === 'createdAt' && sortOrder === 'desc';
+
   const topicsQuery = useQuery({
-    queryKey: ['student-topics', user?.id, filters, page, pageSize],
+    queryKey: ['student-topics', user?.id, filters, page, pageSize, sortBy, sortOrder],
     queryFn: ({ signal }) =>
-      studentTopicApi.getTopics({ ...filters, pageNumber: page, pageSize }, signal),
+      studentTopicApi.getTopics(
+        {
+          keyword: filters.keyword,
+          batchId: filters.batchId,
+          ...(filters.availability ? { availability: filters.availability } : {}),
+          ...(!isDefaultSort ? { sortBy, sortOrder } : {}),
+          pageNumber: page,
+          pageSize,
+        },
+        signal,
+      ),
     enabled: Boolean(user?.id) && canBrowse,
     refetchInterval: 60_000,
     placeholderData: (previousData, previousQuery) =>
       previousQuery &&
       previousQuery.queryKey[1] === user?.id &&
-      JSON.stringify(previousQuery.queryKey[2]) === JSON.stringify(filters)
+      JSON.stringify(previousQuery.queryKey[2]) === JSON.stringify(filters) &&
+      previousQuery.queryKey[5] === sortBy &&
+      previousQuery.queryKey[6] === sortOrder
         ? previousData
         : undefined,
   });
+
   const totalQuery = useQuery({
     queryKey: ['student-topics-total', user?.id, filters.batchId],
     queryFn: ({ signal }) =>
@@ -79,12 +128,14 @@ export function StudentTopicCatalogContent() {
     enabled: Boolean(user?.id) && canBrowse,
     refetchInterval: 60_000,
   });
+
   const statusQuery = useQuery({
     queryKey: ['student-registration', user?.id],
     queryFn: ({ signal }) => studentTopicApi.getMyStatus(signal),
     enabled: Boolean(user?.id) && student,
     refetchInterval: 30_000,
   });
+
   const registeredGroupId =
     statusQuery.data?.confirmationStatus === 'Confirmed' ? statusQuery.data.groupId : null;
   const registeredGroupQuery = useQuery({
@@ -92,6 +143,7 @@ export function StudentTopicCatalogContent() {
     queryFn: ({ signal }) => studentTopicApi.getGroupDetail(registeredGroupId!, signal),
     enabled: Boolean(user?.id && student && registeredGroupId),
   });
+
   const data = topicsQuery.isError ? undefined : topicsQuery.data;
   const status = statusQuery.isError
     ? undefined
@@ -100,6 +152,7 @@ export function StudentTopicCatalogContent() {
       : statusQuery.data;
   const total = totalQuery.isError ? undefined : totalQuery.data?.totalCount;
   const refreshing = topicsQuery.isFetching;
+
   function refresh() {
     for (const key of [
       'student-topics',
@@ -117,51 +170,231 @@ export function StudentTopicCatalogContent() {
       void queryClient.invalidateQueries({ queryKey: [key] });
     }
   }
+
+  function applyFilters(next: CatalogFilters) {
+    const normalized: CatalogFilters = {
+      ...next,
+      keyword: next.keyword.trim(),
+    };
+    setDraft(normalized);
+    setFilters(normalized);
+    setPage(1);
+    setSelectedRowId(null);
+  }
+
   function apply(event: FormEvent) {
     event.preventDefault();
-    setFilters({ ...draft, keyword: draft.keyword.trim() });
-    setPage(1);
-    setSelectedRowId(null);
+    applyFilters(draft);
   }
+
   function reset() {
-    setFilters(EMPTY_FILTERS);
-    setDraft(EMPTY_FILTERS);
+    applyFilters(EMPTY_FILTERS);
+  }
+
+  function handleSort(field: CatalogSortField) {
+    if (sortBy === field) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(field);
+      setSortOrder(field === 'title' ? 'asc' : 'desc');
+    }
     setPage(1);
     setSelectedRowId(null);
   }
+
   function openInvitation() {
     if (!student) return;
     setSelection(null);
     setInvitationOpen(true);
   }
+
   function batchName(id: string) {
     return batches.find((batch) => batch.id === id)?.batchName;
   }
+
   function openTopic(topic: PublishedTopic) {
     setSelectedRowId(topic.id);
     setSelection(topic);
     void topicsQuery.refetch();
   }
+
   if (!canBrowse) return <p role="alert">Bạn không có quyền xem danh mục đề tài này.</p>;
 
+  const hasFilters = Boolean(filters.keyword || filters.batchId || filters.availability);
+  const selectedBatchName = batches.find((batch) => batch.id === filters.batchId)?.batchName ?? 'Đợt đã chọn';
+  const selectedTopic = data?.items.find((topic) => topic.id === selectedRowId) ?? null;
+  const canQuickRegister = Boolean(
+    student && selectedTopic && !validateStudentRegistration(selectedTopic, '', user?.userCode, status),
+  );
+
+  const renderAdvisorCell = (topic: PublishedTopic) => {
+    const advisorDisplay = topic.advisorName || 'Giảng viên hướng dẫn';
+    return (
+      <InfoCell
+        leading={
+          <Avatar
+            name={advisorDisplay}
+            muted={!topic.advisorName}
+            className="size-8 text-[11px]"
+          />
+        }
+        title={
+          <span className="truncate text-xs font-medium text-slate-800">{advisorDisplay}</span>
+        }
+        description={
+          !topic.advisorName ? (
+            <span className="truncate font-mono text-[10px] text-slate-400" title={topic.advisorId}>
+              {topic.advisorId}
+            </span>
+          ) : undefined
+        }
+      />
+    );
+  };
+
+  const renderBatchCell = (topic: PublishedTopic) => {
+    const resolvedName = batchName(topic.batchId);
+    if (resolvedName) {
+      return <span className="text-xs text-slate-600">{resolvedName}</span>;
+    }
+    if (canReadBatches && batchesQuery.isPending) {
+      return <Skeleton className="h-4 w-28 max-w-full" />;
+    }
+    return (
+      <span className="text-xs text-slate-500" title={topic.batchId}>
+        Mã đợt: {topic.batchId}
+      </span>
+    );
+  };
+
+  const renderViewButton = (topic: PublishedTopic) => (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-8 rounded-md border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+      disabled={refreshing}
+      aria-label={`Xem đề tài ${topic.titleVi}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        openTopic(topic);
+      }}
+    >
+      Xem
+    </Button>
+  );
+
+  const columns: DataTableColumn<PublishedTopic, CatalogSortField>[] = [
+    {
+      id: 'number',
+      header: 'STT',
+      widthClassName: 'w-14',
+      align: 'center',
+      headerClassName: 'px-3 py-3.5 whitespace-nowrap',
+      cellClassName: 'px-3 py-4',
+      skeleton: { variant: 'number' },
+      cell: (_, index) => (
+        <span className="text-xs font-medium tabular-nums text-slate-400">
+          {((data?.pageNumber ?? page) - 1) * (data?.pageSize ?? pageSize) + index + 1}
+        </span>
+      ),
+    },
+    {
+      id: 'title',
+      header: 'Đề tài',
+      sortKey: 'title',
+      title: 'Sắp xếp theo tên đề tài',
+      headerClassName: 'px-4 py-3.5 whitespace-nowrap',
+      cellClassName: 'px-4 py-4',
+      skeleton: { variant: 'topic' },
+      cell: (topic) => (
+        <div className="min-w-0 space-y-1">
+          <span
+            className="line-clamp-2 block text-sm font-semibold leading-snug text-slate-900"
+            title={topic.titleVi}
+          >
+            {topic.titleVi}
+          </span>
+          {topic.titleEn ? (
+            <span
+              className="block truncate text-[11px] font-normal text-slate-500"
+              title={topic.titleEn}
+            >
+              {topic.titleEn}
+            </span>
+          ) : (
+            <span className="block text-[11px] italic text-slate-400">
+              Chưa có tên tiếng Anh
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 'advisor',
+      header: 'Giảng viên',
+      widthClassName: 'w-56',
+      headerClassName: 'px-4 py-3.5 whitespace-nowrap',
+      cellClassName: 'px-4 py-4',
+      skeleton: { variant: 'person' },
+      cell: renderAdvisorCell,
+    },
+    {
+      id: 'batch',
+      header: 'Đợt KLTN',
+      widthClassName: 'w-44',
+      headerClassName: 'px-4 py-3.5 whitespace-nowrap',
+      cellClassName: 'px-4 py-4',
+      cell: renderBatchCell,
+    },
+    {
+      id: 'capacity',
+      header: 'Đăng ký',
+      widthClassName: 'w-52',
+      sortKey: 'availableSlots',
+      title: 'Sắp xếp theo số chỗ trống còn lại',
+      headerClassName: 'px-4 py-3.5 whitespace-nowrap',
+      cellClassName: 'px-4 py-4',
+      skeleton: { variant: 'badge' },
+      cell: (topic) => <TopicCapacityStatus topic={topic} />,
+    },
+    {
+      id: 'actions',
+      header: 'Thao tác',
+      widthClassName: 'w-24',
+      align: 'center',
+      headerClassName: 'px-4 py-3.5 whitespace-nowrap',
+      cellClassName: 'px-3 py-4',
+      skeleton: { variant: 'actions', actionCount: 1 },
+      cell: renderViewButton,
+    },
+  ];
+
   return (
-    <div className="min-w-0 space-y-5">
-      <PageHeader title="Theo dõi & đăng ký đề tài" icon={<GraduationCap />}>
-        {student ? (
+    <div className="min-w-0 space-y-5 pb-24">
+      <PageHeader
+        title="Theo dõi & đăng ký đề tài"
+        description={
+          student
+            ? 'Tra cứu đề tài đã công bố, theo dõi chỗ trống và gửi đăng ký thực hiện khóa luận'
+            : 'Tra cứu danh mục đề tài đã công bố và tình trạng chỉ tiêu theo đợt KLTN'
+        }
+      >
+        {student && (
           <Button
             type="button"
             variant="outline"
             leftIcon={<MailCheck />}
             onClick={openInvitation}
-            className="h-10 rounded-lg shadow-none"
+            className="h-10 rounded-xl border-slate-200 bg-white shadow-2xs hover:border-slate-300"
           >
             Xác nhận lời mời
           </Button>
-        ) : (
-          <StatusBadge tone="neutral">Chỉ xem</StatusBadge>
         )}
       </PageHeader>
+
       <OperationToast message={student ? notice : ''} onConsumed={() => setNotice('')} />
+
       {student && (
         <StudentRegistrationStatusCard
           status={status}
@@ -174,281 +407,300 @@ export function StudentTopicCatalogContent() {
           onViewGroup={() => setGroupOpen(true)}
         />
       )}
-      <form
-        onSubmit={apply}
-        className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200/80 bg-white p-4"
-      >
-        <div className="min-w-60 flex-1">
-          <Input
-            value={draft.keyword}
-            aria-label="Tìm tên đề tài"
-            placeholder="Tìm tên đề tài tiếng Việt hoặc tiếng Anh"
-            leftIcon={<Search />}
-            onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
-            className="h-10 rounded-lg shadow-none"
-          />
-        </div>
-        <Select<string>
-          aria-label="Lọc theo đợt KLTN"
-          value={draft.batchId}
-          containerClassName="w-full sm:w-64"
-          triggerClassName="h-10 rounded-lg shadow-none"
-          disabled={!canReadBatches || batchesQuery.isPending}
-          searchable
-          options={[
-            { value: '', label: 'Tất cả đợt KLTN' },
-            ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
-          ]}
-          onChange={(batchId) => setDraft({ ...draft, batchId })}
-        />
-        <Button type="submit" leftIcon={<SlidersHorizontal />} className="h-10 rounded-lg">
-          Áp dụng
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          leftIcon={<FunnelX />}
-          onClick={reset}
-          className="h-10 rounded-lg shadow-none"
-        >
-          Bỏ lọc
-        </Button>
-      </form>
-      {batchesQuery.isError && (
-        <p role="alert" className="text-sm text-amber-700">
-          Chưa tải được danh sách đợt KLTN.{' '}
-          <Button
-            type="button"
-            size="sm"
-            variant="link"
-            onClick={() => void batchesQuery.refetch()}
-          >
-            Thử lại danh sách đợt
-          </Button>
-        </p>
-      )}
+
       <Card
         ref={catalogRef}
-        className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-sm"
+        className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]"
       >
         <ListCardHeader
           title="Danh mục đề tài đã công bố"
           icon={<BookOpen />}
-          className={
-            student ? 'xl:grid-cols-[minmax(0,1fr)_440px]' : 'xl:grid-cols-[minmax(0,1fr)_180px]'
-          }
+          className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
           description={
-            data
-              ? `${data.totalCount.toLocaleString('vi-VN')} đề tài${filters.keyword ? ' phù hợp' : ''}`
-              : 'Tra cứu và đăng ký đề tài'
+            filters.batchId
+              ? `Đợt đang lọc: ${selectedBatchName}`
+              : hasFilters
+                ? 'Đang lọc theo điều kiện đã chọn'
+                : student
+                  ? 'Chọn đề tài còn chỗ để xem chi tiết hoặc gửi đăng ký'
+                  : 'Toàn bộ danh mục đề tài đã công bố theo từng đợt KLTN'
           }
         >
-          <StatisticsBar
-            loading={totalQuery.isPending || (student && statusQuery.isPending)}
-            items={[
-              {
-                key: 'topics',
-                label: 'Tổng đề tài',
-                value: total ?? '—',
-                icon: <BookOpen />,
-                tone: 'primary',
-                active: !filters.keyword,
-                actionLabel: 'Xem tất cả đề tài trong đợt đang lọc',
-                onClick: () => {
-                  const next = { ...filters, keyword: '' };
-                  setDraft(next);
-                  setFilters(next);
-                  setPage(1);
-                  setSelectedRowId(null);
-                  catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          <div className="flex w-full items-center lg:justify-end">
+            <StatisticsBar
+              loading={totalQuery.isPending || (student && statusQuery.isPending)}
+              items={[
+                {
+                  key: 'topics',
+                  label: 'Tổng đề tài',
+                  value: total ?? '—',
+                  icon: <BookOpen />,
+                  tone: 'primary',
+                  active: !filters.keyword && !filters.availability,
+                  actionLabel: 'Xem tất cả đề tài trong đợt đang lọc',
+                  onClick: () => {
+                    applyFilters({ ...filters, keyword: '', availability: '' });
+                    catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  },
                 },
-              },
-              ...(student
-                ? [
-                    {
-                      key: 'warnings',
-                      label: 'Lần cảnh báo',
-                      value: status?.violationCount ?? '—',
-                      icon: <ShieldAlert />,
-                      tone: 'warning' as const,
-                      actionLabel: 'Xem số lần cảnh báo',
-                      onClick: () => setWarningsOpen(true),
-                    },
-                  ]
-                : []),
-            ]}
-          />
-        </ListCardHeader>
-        <div aria-busy={refreshing} className="h-[min(60vh,40rem)] min-h-[20rem] overflow-auto">
-          {topicsQuery.isPending ? (
-            <TableSkeleton
-              className="min-w-[1080px]"
-              columns={[
-                { label: 'STT', width: 'w-14', variant: 'number' },
-                { label: 'Đề tài', variant: 'topic' },
-                { label: 'Giảng viên', width: 'w-48', variant: 'person' },
-                { label: 'Đợt KLTN', width: 'w-44' },
-                { label: 'Đăng ký', width: 'w-40', variant: 'badge' },
-                { label: 'Thao tác', width: 'w-40', variant: 'actions' },
+                ...(student
+                  ? [
+                      {
+                        key: 'warnings',
+                        label: 'Lần cảnh báo',
+                        value: status?.violationCount ?? '—',
+                        icon: <ShieldAlert />,
+                        tone: 'warning' as const,
+                        actionLabel: 'Xem số lần cảnh báo',
+                        onClick: () => setWarningsOpen(true),
+                      },
+                    ]
+                  : []),
               ]}
             />
-          ) : topicsQuery.isError ? (
-            <div role="alert" className="space-y-3 p-10 text-center">
-              <p className="text-sm text-rose-700">{getTopicErrorMessage(topicsQuery.error)}</p>
-              <Button type="button" variant="outline" onClick={() => void topicsQuery.refetch()}>
-                Thử lại danh mục
-              </Button>
-            </div>
-          ) : !data?.items.length ? (
-            <div className="flex min-h-64 flex-col items-center justify-center gap-3 p-8 text-center">
-              <Search className="size-9 text-slate-300" />
-              <p className="font-medium text-slate-700">
-                {filters.keyword || filters.batchId
-                  ? 'Không có đề tài phù hợp với bộ lọc.'
-                  : 'Chưa có đề tài được công bố.'}
-              </p>
-              {(filters.keyword || filters.batchId) && (
-                <Button type="button" variant="outline" onClick={reset}>
-                  Bỏ bộ lọc
-                </Button>
-              )}
-            </div>
-          ) : (
-            <table className="w-full min-w-[1080px] table-fixed text-left text-sm">
-              <colgroup>
-                <col className="w-14" />
-                <col />
-                <col className="w-48" />
-                <col className="w-44" />
-                <col className="w-40" />
-                <col className="w-40" />
-              </colgroup>
-              <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
-                <tr>
-                  {['STT', 'Đề tài', 'Giảng viên', 'Đợt KLTN', 'Đăng ký', 'Thao tác'].map(
-                    (heading) => (
-                      <th
-                        scope="col"
-                        key={heading}
-                        className={`px-4 py-4 font-bold ${['STT', 'Thao tác'].includes(heading) ? 'text-center' : ''}`}
-                      >
-                        {heading}
-                      </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {data.items.map((topic, index) => (
-                  <SelectableTableRow
-                    key={topic.id}
-                    selected={selectedRowId === topic.id}
-                    disabled={refreshing}
-                    className="h-[88px]"
-                    onSelect={() => setSelectedRowId(topic.id)}
-                  >
-                    <td className="px-3 py-4 text-center text-xs tabular-nums text-slate-400">
-                      {(data.pageNumber - 1) * data.pageSize + index + 1}
-                    </td>
-                    <td className="px-4 py-4">
-                      <InfoCell
-                        title={
-                          <span className="line-clamp-2" title={topic.titleVi}>
-                            {topic.titleVi}
-                          </span>
-                        }
-                        description={topic.titleEn || undefined}
-                        titleClassName="block text-sm leading-5"
-                        descriptionClassName="truncate text-[11px]"
-                        leading={
-                          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-primary ring-1 ring-inset ring-blue-100">
-                            <FileText className="size-4" aria-hidden="true" />
-                          </span>
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="text-xs font-medium text-slate-700">
-                        {topic.advisorName || 'Giảng viên hướng dẫn'}
-                      </p>
-                      {!topic.advisorName && (
-                        <p
-                          className="mt-1 truncate font-mono text-[10px] text-slate-400"
-                          title={topic.advisorId}
-                        >
-                          {topic.advisorId}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-xs text-slate-500">
-                      {batchName(topic.batchId) ||
-                        (canReadBatches && batchesQuery.isPending ? (
-                          <Skeleton className="h-4 w-28" />
-                        ) : (
-                          <span title={topic.batchId}>Mã đợt: {topic.batchId}</span>
-                        ))}
-                    </td>
-                    <td className="px-4 py-4">
-                      <TopicCapacityStatus topic={topic} />
-                    </td>
-                    <td className="px-4 py-4 text-center">
-                      <Button
-                        type="button"
-                        variant="soft"
-                        size="sm"
-                        className="h-9 w-28 rounded-lg shadow-none"
-                        leftIcon={<Eye />}
-                        disabled={refreshing}
-                        aria-label={`Xem đề tài ${topic.titleVi}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openTopic(topic);
-                        }}
-                      >
-                        Chi tiết
-                      </Button>
-                    </td>
-                  </SelectableTableRow>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-        {data && !topicsQuery.isError && (
-          <>
-            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-3 text-sm">
-              <label htmlFor="student-topic-page-size">Số dòng mỗi trang</label>
-              <select
-                id="student-topic-page-size"
-                value={pageSize}
-                className="rounded-md border border-slate-200 bg-white p-2"
-                onChange={(event) => {
-                  setPageSize(Number(event.target.value));
-                  setPage(1);
-                  setSelectedRowId(null);
-                }}
-              >
-                {PAGE_SIZES.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <TablePagination
-              pageNumber={data.pageNumber}
-              pageSize={data.pageSize}
-              totalCount={data.totalCount}
-              itemLabel="đề tài"
-              isLoading={refreshing}
-              onPageChange={(next) => {
-                setPage(next);
-                setSelectedRowId(null);
-              }}
+          </div>
+        </ListCardHeader>
+
+        <form
+          onSubmit={apply}
+          className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/40 px-4 py-3.5 sm:px-6"
+        >
+          <div className="min-w-60 flex-1">
+            <Input
+              value={draft.keyword}
+              aria-label="Tìm tên đề tài"
+              placeholder="Tìm tên đề tài tiếng Việt hoặc tiếng Anh"
+              leftIcon={<Search />}
+              onChange={(event) =>
+                setDraft((prev) => ({ ...prev, keyword: event.target.value }))
+              }
+              className="h-10 rounded-xl shadow-none"
             />
+          </div>
+          <Select<string>
+            aria-label="Lọc theo đợt KLTN"
+            placeholder="Tất cả đợt KLTN"
+            value={draft.batchId}
+            containerClassName="w-full sm:w-64"
+            triggerClassName="h-10 rounded-xl shadow-none"
+            disabled={!canReadBatches || batchesQuery.isPending}
+            searchable
+            options={[
+              { value: '', label: 'Tất cả đợt KLTN' },
+              ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
+            ]}
+            onChange={(batchId) => setDraft((prev) => ({ ...prev, batchId }))}
+          />
+          <Select<CatalogAvailabilityFilter>
+            aria-label="Lọc theo tình trạng chỗ trống"
+            placeholder="Tất cả tình trạng chỗ"
+            value={draft.availability}
+            containerClassName="w-full sm:w-52"
+            triggerClassName="h-10 rounded-xl shadow-none"
+            options={[
+              { value: '', label: 'Tất cả tình trạng chỗ' },
+              { value: 'available', label: 'Chỉ đề tài còn chỗ' },
+              { value: 'full', label: 'Đã đủ / tạm hết chỗ' },
+            ]}
+            onChange={(availability) => setDraft((prev) => ({ ...prev, availability }))}
+          />
+          <div className="flex items-center gap-2">
+            <Button type="submit" leftIcon={<SlidersHorizontal />} className="h-10 rounded-xl">
+              Áp dụng
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              leftIcon={<FunnelX />}
+              onClick={reset}
+              className="h-10 rounded-xl shadow-none"
+            >
+              Bỏ lọc
+            </Button>
+          </div>
+        </form>
+
+        {batchesQuery.isError && (
+          <p
+            role="alert"
+            className="border-b border-amber-100 bg-amber-50/70 px-5 py-2.5 text-xs text-amber-800 sm:px-6"
+          >
+            Chưa tải được danh sách đợt KLTN.{' '}
+            <Button
+              type="button"
+              size="sm"
+              variant="link"
+              className="h-auto p-0 text-xs"
+              onClick={() => void batchesQuery.refetch()}
+            >
+              Thử lại danh sách đợt
+            </Button>
+          </p>
+        )}
+
+        <TableActiveFilters
+          chips={[
+            ...(filters.keyword
+              ? [
+                  {
+                    key: 'keyword',
+                    label: 'Từ khóa',
+                    value: filters.keyword,
+                    onRemove: () => applyFilters({ ...filters, keyword: '' }),
+                  },
+                ]
+              : []),
+            ...(filters.batchId
+              ? [
+                  {
+                    key: 'batchId',
+                    label: 'Đợt KLTN',
+                    value: selectedBatchName,
+                    onRemove: () => applyFilters({ ...filters, batchId: '' }),
+                  },
+                ]
+              : []),
+            ...(filters.availability
+              ? [
+                  {
+                    key: 'availability',
+                    label: 'Chỗ trống',
+                    value: AVAILABILITY_LABELS[filters.availability],
+                    onRemove: () => applyFilters({ ...filters, availability: '' }),
+                  },
+                ]
+              : []),
+          ]}
+          onClearAll={reset}
+        />
+
+        <DataTable<PublishedTopic, CatalogSortField>
+          ariaLabel="Danh mục đề tài đã công bố"
+          data={data?.items ?? []}
+          columns={columns}
+          getRowId={(topic) => topic.id}
+          selectedRowId={selectedRowId}
+          onRowSelect={(id) => setSelectedRowId(id)}
+          onRowOpen={openTopic}
+          sort={{ field: sortBy, direction: sortOrder }}
+          onSortChange={handleSort}
+          loading={topicsQuery.isPending}
+          busy={refreshing}
+          error={
+            topicsQuery.isError
+              ? {
+                  message: getTopicErrorMessage(topicsQuery.error),
+                  onRetry: () => void topicsQuery.refetch(),
+                }
+              : null
+          }
+          tableClassName="min-w-[960px]"
+          rowClassName="h-[88px]"
+          empty={{
+            icon: <BookOpen className="size-8" />,
+            title:
+              page > 1 && data?.totalCount
+                ? 'Trang này không còn đề tài'
+                : hasFilters
+                  ? 'Không có đề tài phù hợp'
+                  : 'Chưa có đề tài công bố',
+            description:
+              page > 1 && data?.totalCount
+                ? 'Danh sách có thể đã thay đổi. Quay lại trang đầu để xem các đề tài hiện có.'
+                : hasFilters
+                  ? 'Thử đổi từ khóa, đợt KLTN hoặc bỏ bớt bộ lọc đang áp dụng.'
+                  : 'Các đề tài sau khi được Khoa thẩm định và công bố sẽ hiển thị tại đây.',
+            action:
+              page > 1 && data?.totalCount ? (
+                <Button type="button" variant="outline" onClick={() => setPage(1)}>
+                  Về trang đầu
+                </Button>
+              ) : hasFilters ? (
+                <Button type="button" variant="outline" onClick={reset}>
+                  Bỏ lọc
+                </Button>
+              ) : undefined,
+          }}
+          pagination={
+            data && !topicsQuery.isError
+              ? {
+                  pageNumber: data.pageNumber,
+                  pageSize: data.pageSize,
+                  totalCount: data.totalCount,
+                  itemLabel: 'đề tài',
+                  isLoading: refreshing,
+                  onPageChange: (next) => {
+                    setPage(next);
+                    setSelectedRowId(null);
+                  },
+                  onPageSizeChange: (nextSize) => {
+                    setPageSize(nextSize);
+                    setPage(1);
+                    setSelectedRowId(null);
+                  },
+                }
+              : undefined
+          }
+          renderMobileItem={(topic) => (
+            <div className="space-y-3">
+              <TopicCapacityStatus topic={topic} />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold leading-snug text-slate-900">{topic.titleVi}</p>
+                {topic.titleEn && <p className="text-xs text-slate-500">{topic.titleEn}</p>}
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <div className="min-w-0 space-y-1">
+                  {renderAdvisorCell(topic)}
+                  <p className="text-xs text-slate-500">{renderBatchCell(topic)}</p>
+                </div>
+                {renderViewButton(topic)}
+              </div>
+            </div>
+          )}
+        />
+      </Card>
+
+      <TableFloatingBar
+        selectedCount={selectedTopic ? 1 : 0}
+        totalCount={data?.totalCount}
+        onClearSelection={() => setSelectedRowId(null)}
+      >
+        {selectedTopic && (
+          <>
+            <span
+              className="hidden max-w-60 truncate text-xs font-medium text-slate-600 md:inline-block"
+              title={selectedTopic.titleVi}
+            >
+              {selectedTopic.titleVi}
+            </span>
+            {student ? (
+              <Button
+                type="button"
+                size="sm"
+                leftIcon={canQuickRegister ? <Send className="size-3.5" /> : <Eye className="size-3.5" />}
+                className="h-8 rounded-xl px-3 text-xs"
+                disabled={refreshing}
+                onClick={() => openTopic(selectedTopic)}
+              >
+                {canQuickRegister ? 'Đăng ký nhanh' : 'Xem chi tiết'}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                leftIcon={<Eye className="size-3.5" />}
+                className="h-8 rounded-xl px-3 text-xs shadow-none"
+                disabled={refreshing}
+                onClick={() => openTopic(selectedTopic)}
+              >
+                Xem chi tiết
+              </Button>
+            )}
           </>
         )}
-      </Card>
+      </TableFloatingBar>
+
       {selection && (
         <StudentTopicRegistrationDialog
           key={selection.id}
@@ -470,6 +722,7 @@ export function StudentTopicCatalogContent() {
           }}
         />
       )}
+
       {student && invitationOpen && (
         <StudentParticipationDialog
           onClose={() => setInvitationOpen(false)}
@@ -482,18 +735,20 @@ export function StudentTopicCatalogContent() {
           }}
         />
       )}
+
       {student && groupOpen && status?.confirmationStatus === 'Confirmed' && status.groupId && (
         <StudentTopicGroupDialog groupId={status.groupId} onClose={() => setGroupOpen(false)} />
       )}
+
       {student && warningsOpen && (
         <Dialog
           title="Lần cảnh báo"
           onClose={() => setWarningsOpen(false)}
           className="max-w-md"
         >
-          <div className="space-y-4 p-5 text-sm leading-6 text-slate-700">
+          <div className="space-y-4 p-5 text-sm leading-6 text-slate-700 sm:p-6">
             <p>Số lần cảnh báo do quá hạn xác nhận lời mời tham gia đề tài.</p>
-            <p className="font-medium text-slate-900">
+            <p className="font-semibold text-slate-900">
               {status?.violationCount === 0
                 ? 'Bạn chưa có lần cảnh báo nào.'
                 : status
@@ -501,7 +756,7 @@ export function StudentTopicCatalogContent() {
                   : 'Chưa tải được số lần cảnh báo.'}
             </p>
             {status?.isRegistrationBlocked && (
-              <p className="text-rose-700">
+              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-rose-700">
                 Quyền đăng ký đang bị khóa. Vui lòng liên hệ Khoa để được hỗ trợ.
               </p>
             )}

@@ -20,11 +20,11 @@ export function PageHeader({
   accent = !compact,
 }: PageHeaderProps) {
   return (
-    <header className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]">
+    <header className="relative z-20 rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]">
       {accent && (
         <div
           aria-hidden="true"
-          className="h-1 bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]"
+          className="h-1 rounded-t-2xl bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]"
         />
       )}
       <div
@@ -52,7 +52,7 @@ export function PageHeader({
       </div>
       {navigation && (
         <div
-          className={`border-t border-slate-100/90 bg-slate-50/40 ${compact ? '' : 'px-3 sm:px-4'}`}
+          className={`rounded-b-2xl border-t border-slate-100/90 bg-slate-50/40 ${compact ? '' : 'px-3 sm:px-4'}`}
         >
           {navigation}
         </div>
