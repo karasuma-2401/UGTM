@@ -15,6 +15,34 @@ export const SYLLABUS_STATUS_LABELS: Record<SyllabusStatus, string> = {
   Rejected: 'Không đạt',
 };
 
+export type SubmissionLinkCategory = 'SourceCode' | 'Demo' | 'Documentation' | 'Other';
+
+export interface SubmissionProductLinkInput {
+  category: SubmissionLinkCategory;
+  label?: string;
+  url: string;
+}
+
+export interface SubmissionProductLinkDto {
+  id: string;
+  displayOrder: number;
+  category: SubmissionLinkCategory | string;
+  label?: string | null;
+  url: string;
+}
+
+export interface SubmissionAttachmentDto {
+  id: string;
+  displayOrder: number;
+  fileName: string;
+  contentType: string;
+  fileSize: number;
+  fileExtension: string;
+  checksumSha256: string;
+  uploadedBy: string;
+  uploadedAtUtc: string;
+}
+
 export interface SubmissionFileDto {
   id: string;
   fileName: string;
