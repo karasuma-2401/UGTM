@@ -73,6 +73,8 @@ export function useAcademicResults() {
       return mergeScoreAndAcademicRows(scoreItems, academicItems);
     },
     enabled: Boolean(user?.id && resolvedBatchId && canRead),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const allRows = useMemo(() => listQuery.data ?? [], [listQuery.data]);
@@ -180,31 +182,35 @@ export function useAcademicResults() {
     : null;
 
   const detailTargetGroupId = draftDialogGroupId ?? resolvedInspectedGroupId;
+  const detailTargetRow = detailTargetGroupId ? (rowsByGroupId.get(detailTargetGroupId) ?? null) : null;
+  const hasSummaryRecord = Boolean(detailTargetRow?.summaryId);
 
   const detailQuery = useQuery({
-    queryKey: ['academic-result-detail', user?.id, detailTargetGroupId],
+    queryKey: ['academic-result-detail', user?.id, detailTargetGroupId, hasSummaryRecord],
     queryFn: async ({ signal }) => {
       const groupId = detailTargetGroupId!;
       const [summary, readiness, academicDetail] = await Promise.all([
-        academicResultsApi.getScoreSummaryDetail(groupId, signal),
+        hasSummaryRecord
+          ? academicResultsApi.getScoreSummaryDetail(groupId, signal)
+          : Promise.resolve(null),
         academicResultsApi.getScoreReadiness(groupId, signal),
         academicResultsApi.getAcademicResultDetail(groupId, signal),
       ]);
       return { summary, readiness, academicDetail };
     },
     enabled: Boolean(user?.id && detailTargetGroupId && canRead),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const invalidateResults = useCallback(
     async (groupId?: string) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['academic-results-list'] }),
-        groupId
-          ? queryClient.invalidateQueries({
-              queryKey: ['academic-result-detail', user?.id, groupId],
-            })
-          : queryClient.invalidateQueries({ queryKey: ['academic-result-detail'] }),
-      ]);
+      await queryClient.invalidateQueries({ queryKey: ['academic-results-list'] });
+      await (groupId
+        ? queryClient.invalidateQueries({
+            queryKey: ['academic-result-detail', user?.id, groupId],
+          })
+        : queryClient.invalidateQueries({ queryKey: ['academic-result-detail'] }));
     },
     [queryClient, user?.id],
   );
