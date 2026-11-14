@@ -54,11 +54,20 @@ export const navigationSections: NavSectionConfig[] = [
         label: 'Kế hoạch đợt',
         path: '/academic/periods',
         icon: CalendarRange,
+        roles: ['Admin'],
+      },
+      
+      {
+        label: 'Cấu hình điểm',
+        path: '/admin/grade-config',
+        icon: SlidersHorizontal,
+        roles: ['Admin'],
       },
       {
         label: 'Danh sách Sinh viên & Giảng viên',
         path: '/academic/roster',
         icon: UsersRound,
+        roles: ['Admin'],
       },
     ],
   },
@@ -151,16 +160,9 @@ export const navigationSections: NavSectionConfig[] = [
         icon: ShieldCheck,
       },
       {
-        label: 'Cấu hình điểm',
-        path: '/admin/grade-config',
-        icon: SlidersHorizontal,
-        roles: ['Admin'],
-      },
-      {
         label: 'Nhật ký hoạt động',
         path: '/admin/audit-logs',
         icon: ScrollText,
-        roles: ['Admin'],
       },
     ],
   },
