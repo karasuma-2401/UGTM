@@ -13,6 +13,7 @@ import {
   UserCheck,
   FilePenLine,
   BarChart3,
+  Gavel,
   SquarePen,
 } from 'lucide-react';
 
@@ -148,6 +149,12 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/councils/similarity-reports',
         icon: FileText,
         roles: ['CouncilMember'],
+      },
+      {
+        label: 'Chấm điểm Hội đồng',
+        path: '/councils/grading',
+        icon: Gavel,
+        roles: ['CouncilMember', 'Admin'],
       },
       {
         label: 'Phê duyệt hội đồng',
