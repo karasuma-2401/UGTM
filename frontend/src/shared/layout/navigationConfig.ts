@@ -13,6 +13,7 @@ import {
   UserCheck,
   FilePenLine,
   BarChart3,
+  SquarePen,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -112,6 +113,12 @@ export const navigationSections: NavSectionConfig[] = [
     id: 'progress',
     title: 'Tiến độ & đánh giá',
     items: [
+      {
+        label: 'Chấm điểm khóa luận',
+        path: '/thesis/lecturer-grading',
+        icon: SquarePen,
+        roles: ['Lecturer', 'Admin'],
+      },
       {
         label: 'Tiến độ sinh viên',
         path: '/advisor/milestones',
