@@ -28,18 +28,10 @@ import { useAcademicResults } from '../hooks/results/useAcademicResults';
 import type { MergedResultRow, ResultSortField } from '../types/results.types';
 import { formatScoreDecimal } from '../utils/scoreSummaryFormatting';
 
-const batchStatusLabels: Record<string, string> = {
-  Draft: 'Nháp',
-  Open: 'Đang mở',
-  Closed: 'Đã đóng',
-  Archived: 'Lưu trữ',
-};
-
 export const AcademicResultsPage: React.FC = () => {
   const {
     permissions,
     batches,
-    selectedBatch,
     selectedBatchId,
     isLoadingBatches,
     rows,
@@ -53,7 +45,8 @@ export const AcademicResultsPage: React.FC = () => {
     filterKey,
     sort,
     inspectedGroupId,
-    inspectedRow,
+    reviewDrawerGroupId,
+    reviewDrawerRow,
     checkedGroupIds,
     detailData,
     isLoadingDetail,
@@ -81,10 +74,6 @@ export const AcademicResultsPage: React.FC = () => {
       })),
     [batches],
   );
-
-  const batchSubtitle = selectedBatch
-    ? `${selectedBatch.batchName} - ${selectedBatch.academicYear} - HK${selectedBatch.semester} - ${batchStatusLabels[selectedBatch.status] ?? selectedBatch.status}`
-    : 'Theo dõi tổng hợp điểm, rà soát bảng điểm dự thảo và công bố kết quả theo đợt';
 
   const statItems: StatisticItem[] = useMemo(
     () => [
@@ -224,6 +213,7 @@ export const AcademicResultsPage: React.FC = () => {
       {
         id: 'condition',
         header: 'Điều kiện hồ sơ',
+        widthClassName: 'w-48 xl:w-60',
         headerClassName: 'whitespace-nowrap',
         cell: (row) => (
           <span className="text-xs text-slate-600 line-clamp-2">{row.conditionSummary}</span>
@@ -255,8 +245,7 @@ export const AcademicResultsPage: React.FC = () => {
             className="h-8 rounded-md px-3 text-xs font-medium"
             onClick={(event) => {
               event.stopPropagation();
-              actions.setInspectedGroupId(row.groupId);
-              actions.openDraftDialog(row.groupId);
+              actions.openReviewDrawer(row.groupId);
             }}
           >
             Xem
@@ -397,11 +386,10 @@ export const AcademicResultsPage: React.FC = () => {
         className="grid-flow-row sm:grid-flow-col"
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <section
-          aria-label="Hồ sơ trong đợt"
-          className="min-w-0 lg:col-span-8 rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden"
-        >
+      <section
+        aria-label="Hồ sơ trong đợt"
+        className="w-full min-w-0 rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden"
+      >
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
             <div>
               <h2 className="text-base font-semibold text-slate-900">Hồ sơ trong đợt</h2>
@@ -459,10 +447,7 @@ export const AcademicResultsPage: React.FC = () => {
             getRowId={(row) => row.groupId}
             selectedRowId={inspectedGroupId}
             onRowSelect={(id) => actions.setInspectedGroupId(id)}
-            onRowOpen={(row) => {
-              actions.setInspectedGroupId(row.groupId);
-              actions.openDraftDialog(row.groupId);
-            }}
+            onRowOpen={(row) => actions.openReviewDrawer(row.groupId)}
             sort={sort}
             onSortChange={actions.handleSortChange}
             loading={isLoadingList}
@@ -548,8 +533,7 @@ export const AcademicResultsPage: React.FC = () => {
                     className="h-8 rounded-md px-3 text-xs"
                     onClick={(event) => {
                       event.stopPropagation();
-                      actions.setInspectedGroupId(row.groupId);
-                      actions.openDraftDialog(row.groupId);
+                      actions.openReviewDrawer(row.groupId);
                     }}
                   >
                     Xem
@@ -558,30 +542,26 @@ export const AcademicResultsPage: React.FC = () => {
               </div>
             )}
           />
-        </section>
+      </section>
 
-        <aside
-          aria-label="Hồ sơ đang rà soát"
-          className="min-w-0 lg:col-span-4 lg:sticky lg:top-6 rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden"
-        >
-          <AcademicResultsReviewPanel
-            row={inspectedRow}
-            detail={detailData}
-            isLoading={isLoadingDetail}
-            error={detailError}
-            canCalculate={permissions.canCalculate}
-            canPublish={permissions.canPublish}
-            isCalculating={isCalculating}
-            calculatingGroupId={calculatingGroupId}
-            onCalculate={actions.calculateScore}
-            onOpenDraftDialog={actions.openDraftDialog}
-            onPublishSingle={(groupId) => actions.openPublishConfirm([groupId])}
-            onRetry={() => {
-              void actions.refreshList();
-            }}
-          />
-        </aside>
-      </div>
+      <AcademicResultsReviewPanel
+        open={Boolean(reviewDrawerGroupId && reviewDrawerRow)}
+        row={reviewDrawerRow}
+        detail={detailData}
+        isLoading={isLoadingDetail}
+        error={detailError}
+        canCalculate={permissions.canCalculate}
+        canPublish={permissions.canPublish}
+        isCalculating={isCalculating}
+        calculatingGroupId={calculatingGroupId}
+        onClose={actions.closeReviewDrawer}
+        onCalculate={actions.calculateScore}
+        onOpenDraftDialog={actions.openDraftDialog}
+        onPublishSingle={(groupId) => actions.openPublishConfirm([groupId])}
+        onRetry={() => {
+          void actions.refreshList();
+        }}
+      />
 
       <SynthesisPrinciplesCard />
 

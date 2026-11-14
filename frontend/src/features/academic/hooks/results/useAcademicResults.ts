@@ -44,6 +44,7 @@ export function useAcademicResults() {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [inspectedGroupId, setInspectedGroupId] = useState<string | null>(null);
+  const [reviewDrawerGroupId, setReviewDrawerGroupId] = useState<string | null>(null);
   const [checkedGroupIds, setCheckedGroupIds] = useState<string[]>([]);
   const [draftDialogGroupId, setDraftDialogGroupId] = useState<string | null>(null);
   const [publishConfirmGroupIds, setPublishConfirmGroupIds] = useState<string[]>([]);
@@ -177,11 +178,22 @@ export function useAcademicResults() {
     [checkedGroupIds, rowsByGroupId],
   );
 
+  const resolvedReviewDrawerGroupId = useMemo(() => {
+    if (!reviewDrawerGroupId || !rowsByGroupId.has(reviewDrawerGroupId)) {
+      return null;
+    }
+    return reviewDrawerGroupId;
+  }, [reviewDrawerGroupId, rowsByGroupId]);
+
   const inspectedRow: MergedResultRow | null = resolvedInspectedGroupId
     ? (rowsByGroupId.get(resolvedInspectedGroupId) ?? null)
     : null;
 
-  const detailTargetGroupId = draftDialogGroupId ?? resolvedInspectedGroupId;
+  const reviewDrawerRow: MergedResultRow | null = resolvedReviewDrawerGroupId
+    ? (rowsByGroupId.get(resolvedReviewDrawerGroupId) ?? null)
+    : null;
+
+  const detailTargetGroupId = draftDialogGroupId ?? resolvedReviewDrawerGroupId;
   const detailTargetRow = detailTargetGroupId ? (rowsByGroupId.get(detailTargetGroupId) ?? null) : null;
   const hasSummaryRecord = Boolean(detailTargetRow?.summaryId);
 
@@ -300,6 +312,7 @@ export function useAcademicResults() {
     setPageNumber(1);
     setCheckedGroupIds([]);
     setInspectedGroupId(null);
+    setReviewDrawerGroupId(null);
     setDraftDialogGroupId(null);
     setPublishConfirmGroupIds([]);
     setErrorMessage(null);
@@ -385,6 +398,8 @@ export function useAcademicResults() {
     sort,
     inspectedGroupId: resolvedInspectedGroupId,
     inspectedRow,
+    reviewDrawerGroupId: resolvedReviewDrawerGroupId,
+    reviewDrawerRow,
     checkedGroupIds: resolvedCheckedGroupIds,
     detailData: detailQuery.data ?? null,
     isLoadingDetail: detailQuery.isLoading,
@@ -412,6 +427,11 @@ export function useAcademicResults() {
         setPageNumber(1);
       },
       setInspectedGroupId,
+      openReviewDrawer: (groupId: string) => {
+        setInspectedGroupId(groupId);
+        setReviewDrawerGroupId(groupId);
+      },
+      closeReviewDrawer: () => setReviewDrawerGroupId(null),
       toggleGroupChecked,
       toggleAllEligibleChecked,
       clearCheckedGroups: () => setCheckedGroupIds([]),
@@ -427,7 +447,7 @@ export function useAcademicResults() {
         }
       },
       exportReport: (format: ResultsExportFormat) => exportMutation.mutate(format),
-      refreshList: () => invalidateResults(resolvedInspectedGroupId ?? undefined),
+      refreshList: () => invalidateResults(detailTargetGroupId ?? undefined),
       dismissError: () => setErrorMessage(null),
     },
   };

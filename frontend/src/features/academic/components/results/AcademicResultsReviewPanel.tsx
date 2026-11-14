@@ -3,6 +3,7 @@ import { Calculator, CheckCircle2, FileSearch, Lock, RefreshCw, Send } from 'luc
 import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -20,6 +21,7 @@ import {
 } from '../../utils/scoreSummaryFormatting';
 
 interface AcademicResultsReviewPanelProps {
+  open: boolean;
   row: MergedResultRow | null;
   detail: {
     summary: ScoreSummaryDto | null;
@@ -32,6 +34,7 @@ interface AcademicResultsReviewPanelProps {
   canPublish: boolean;
   isCalculating: boolean;
   calculatingGroupId: string | null;
+  onClose: () => void;
   onCalculate: (groupId: string, expectedSummaryVersion: number | null) => void;
   onOpenDraftDialog: (groupId: string) => void;
   onPublishSingle: (groupId: string) => void;
@@ -39,6 +42,7 @@ interface AcademicResultsReviewPanelProps {
 }
 
 export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProps> = ({
+  open,
   row,
   detail,
   isLoading,
@@ -47,21 +51,14 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
   canPublish,
   isCalculating,
   calculatingGroupId,
+  onClose,
   onCalculate,
   onOpenDraftDialog,
   onPublishSingle,
   onRetry,
 }) => {
-  if (!row) {
-    return (
-      <div className="p-6 text-center space-y-2">
-        <p className="text-sm font-semibold text-slate-800">Chưa chọn hồ sơ</p>
-        <p className="text-xs text-slate-500 leading-relaxed">
-          Chọn một nhóm trong danh sách bên trái để rà soát nguồn điểm, điều kiện lưu chiểu và trạng
-          thái công bố.
-        </p>
-      </div>
-    );
+  if (!open || !row) {
+    return null;
   }
 
   const summary = detail?.summary ?? null;
@@ -96,17 +93,28 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
     (code) => code !== 'ScoreSummary.AlreadyPublished',
   );
 
+  const headerContent = (
+    <div className="flex items-center justify-between gap-3">
+      <h2 className="text-base font-bold text-slate-900 tracking-tight truncate">
+        Hồ sơ đang rà soát - {row.groupCode}
+      </h2>
+      <StatusBadge tone={row.displayStatusTone}>{row.displayStatusLabel}</StatusBadge>
+    </div>
+  );
+
   return (
-    <div className="flex flex-col divide-y divide-slate-100">
-      <div className="px-5 py-4 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-base font-bold text-slate-900 tracking-tight">
-              Hồ sơ đang rà soát - {row.groupCode}
-            </h2>
-          </div>
-          <StatusBadge tone={row.displayStatusTone}>{row.displayStatusLabel}</StatusBadge>
-        </div>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      closeOnBackdropClick
+      variant="drawer"
+      title={headerContent}
+      closeLabel={`Đóng hồ sơ ${row.groupCode}`}
+      className="sm:max-w-[520px] bg-white"
+      headerClassName="border-b border-slate-200/80 bg-white/95 px-5 py-4 sm:px-6"
+    >
+      <div className="flex min-h-[calc(100dvh-5.5rem)] flex-col divide-y divide-slate-100">
+        <div className="px-5 sm:px-6 py-4 space-y-3">
 
         <div className="space-y-1">
           <p className="text-xs font-medium text-slate-500">Đề tài</p>
@@ -163,13 +171,13 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
       </div>
 
       {isLoading ? (
-        <div className="p-5 space-y-3">
+        <div className="flex-1 p-5 sm:p-6 space-y-3">
           <Skeleton className="h-4 w-28" />
           <Skeleton className="h-14 w-full rounded-xl" />
           <Skeleton className="h-24 w-full rounded-xl" />
         </div>
       ) : error ? (
-        <div className="p-5">
+        <div className="flex-1 p-5 sm:p-6">
           <InlineAlert
             title="Không tải được chi tiết hồ sơ"
             action={
@@ -184,7 +192,7 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
         </div>
       ) : (
         <>
-          <div className="px-5 py-4 space-y-3">
+          <div className="px-5 sm:px-6 py-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Nguồn điểm
@@ -275,7 +283,7 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
             )}
           </div>
 
-          <div className="px-5 py-4 space-y-2.5">
+          <div className="flex-1 px-5 sm:px-6 py-4 space-y-2.5">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Điều kiện & lưu chiểu
             </h3>
@@ -330,7 +338,7 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
             )}
           </div>
 
-          <div className="px-5 py-4 bg-slate-50/50 space-y-2.5">
+          <div className="mt-auto sticky bottom-0 px-5 sm:px-6 py-4 bg-slate-50/95 backdrop-blur-md space-y-2.5">
             {canCalculate && !isPublished && (
               <Button
                 type="button"
@@ -381,6 +389,7 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
           </div>
         </>
       )}
-    </div>
+      </div>
+    </Dialog>
   );
 };
