@@ -93,9 +93,8 @@ export function usePeriod() {
       },
       onSuccess: async (targetBatchId, message, isNew) => {
         modals.setNotice(message);
-        if (isNew) {
-          await fetchBatches(targetBatchId);
-        } else {
+        await fetchBatches(targetBatchId);
+        if (!isNew) {
           const result = await loadBatchDetail(targetBatchId);
           if (result?.detail && result.detail.id === targetBatchId) {
             populateFromDetail(result.detail);

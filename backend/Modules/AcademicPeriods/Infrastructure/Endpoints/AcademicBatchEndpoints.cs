@@ -94,16 +94,18 @@ public static class AcademicBatchEndpoints
                 `orderIndex` phải liên tục từ 1 đến 7, `stageCode` không trùng, các khoảng ngày phải
                 phủ kín batch, liền nhau, không chồng lấn và deadline phải thuộc stage tương ứng.
 
-                Batch ở trạng thái `Open` bắt buộc có `changeReason`. Batch `Closed` hoặc `Archived`
+                Batch ở trạng thái `Draft` có thể cập nhật kèm `batchName`, `academicYear`, `semester` và `startDate`.
+                Batch ở trạng thái `Open` không được phép sửa các thông tin đợt đó (`409 Conflict`: "Không thể sửa đợt hiện hành")
+                và bắt buộc có `changeReason` khi điều chỉnh lịch. Batch `Closed` hoặc `Archived`
                 không được thay đổi lịch. Thay đổi thành công được ghi audit outbox cùng transaction.
 
                 Yêu cầu Bearer token và permission `academic.batches.manage` (`Admin`/`AcademicAffairs`).
                 - 200 OK: Lịch được cập nhật và trả về chi tiết batch mới nhất.
-                - 400 Bad Request: Lịch 7 stage hoặc change reason không hợp lệ.
+                - 400 Bad Request: Lịch 7 stage, thông tin đợt hoặc change reason không hợp lệ.
                 - 401 Unauthorized: Chưa xác thực.
                 - 403 Forbidden: Không có quyền quản lý đợt KLTN.
                 - 404 Not Found: Không tìm thấy batch.
-                - 409 Conflict: Trạng thái batch không cho phép cập nhật lịch.
+                - 409 Conflict: Không thể sửa đợt hiện hành (`Open`), trùng năm học/học kỳ, hoặc trạng thái batch không cho phép cập nhật.
                 """)
             .Produces<ApiResponse<KltnBatchDetailDto>>()
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
@@ -256,7 +258,11 @@ public static class AcademicBatchEndpoints
             new UpdateKltnBatchScheduleCommand(
                 batchId,
                 request.Stages ?? [],
-                request.ChangeReason),
+                request.ChangeReason,
+                request.BatchName,
+                request.AcademicYear,
+                request.Semester,
+                request.StartDate),
             cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> OpenAsync(
@@ -298,5 +304,9 @@ public static class AcademicBatchEndpoints
 
     public sealed record UpdateKltnBatchScheduleRequest(
         IReadOnlyCollection<UpdateStageScheduleItem>? Stages,
-        string? ChangeReason);
+        string? ChangeReason,
+        string? BatchName = null,
+        string? AcademicYear = null,
+        int? Semester = null,
+        DateOnly? StartDate = null);
 }

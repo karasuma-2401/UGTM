@@ -47,6 +47,10 @@ export interface UpdateStageScheduleItem {
 export interface UpdateKltnBatchScheduleRequest {
   stages: UpdateStageScheduleItem[];
   changeReason?: string | null;
+  batchName?: string | null;
+  academicYear?: string | null;
+  semester?: number | null;
+  startDate?: string | null;
 }
 
 export interface StandardStageMetadata {

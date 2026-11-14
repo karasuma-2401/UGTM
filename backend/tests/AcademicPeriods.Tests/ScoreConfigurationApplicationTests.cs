@@ -282,6 +282,8 @@ public sealed class ScoreConfigurationApplicationTests
             => Task.CompletedTask;
         public Task<bool> ExistsAsync(string academicYear, int semester, CancellationToken cancellationToken = default)
             => Task.FromResult(false);
+        public Task<bool> ExistsAsync(string academicYear, int semester, Guid excludeBatchId, CancellationToken cancellationToken = default)
+            => Task.FromResult(false);
         public void Add(KltnBatch value) => throw new NotSupportedException();
         public void AddStages(IEnumerable<Stage> stages) => throw new NotSupportedException();
     }

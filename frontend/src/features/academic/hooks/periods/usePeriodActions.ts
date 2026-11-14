@@ -194,6 +194,10 @@ export function usePeriodActions() {
         successMsg = 'Khởi tạo đợt KLTN và cấu hình lịch trình giai đoạn thành công!';
       } else if (targetBatchId) {
         await periodApi.updateSchedule(targetBatchId, {
+          batchName: batchName.trim(),
+          academicYear: academicYear.trim(),
+          semester,
+          startDate,
           stages: stagesPayload,
           changeReason: changeReason || undefined,
         });
