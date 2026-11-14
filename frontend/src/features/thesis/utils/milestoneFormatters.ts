@@ -1,4 +1,5 @@
 import type { ProgressReportStatus } from '../types/milestone.types';
+import type { SubmissionLinkCategory } from '../types/syllabus.types';
 
 export type ProgressReportDecision = 'Accepted' | 'NeedRevision';
 
@@ -181,6 +182,139 @@ export function getSafeHttpUrl(raw?: string | null): string | null {
     const parsed = new URL(raw.trim());
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
       return parsed.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export interface FormattedSourceLink {
+  hostLabel: string;
+  displayText: string;
+  isLocalPortalUrl: boolean;
+}
+
+export function formatGitSourceLink(rawUrl: string): FormattedSourceLink {
+  try {
+    const parsed = new URL(rawUrl);
+    const host = parsed.hostname.toLowerCase();
+    const isLocalHost =
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      (typeof window !== 'undefined' && parsed.origin === window.location.origin);
+
+    const path = `${parsed.pathname}${parsed.search}`.replace(/\/+$/, '');
+    const shortPath = path.length > 42 ? `${path.slice(0, 39)}…` : path;
+
+    if (host.includes('github.com')) {
+      return {
+        hostLabel: 'GitHub',
+        displayText: `github.com${shortPath}`,
+        isLocalPortalUrl: false,
+      };
+    }
+    if (host.includes('gitlab.com')) {
+      return {
+        hostLabel: 'GitLab',
+        displayText: `gitlab.com${shortPath}`,
+        isLocalPortalUrl: false,
+      };
+    }
+    if (host.includes('drive.google.com') || host.includes('docs.google.com')) {
+      return {
+        hostLabel: 'Google Drive',
+        displayText: `${host}${shortPath}`,
+        isLocalPortalUrl: false,
+      };
+    }
+    if (isLocalHost) {
+      return {
+        hostLabel: 'Liên kết đính kèm',
+        displayText: `${parsed.host}${shortPath}`,
+        isLocalPortalUrl: true,
+      };
+    }
+    return {
+      hostLabel: 'Liên kết ngoài',
+      displayText: `${parsed.host}${shortPath}`,
+      isLocalPortalUrl: false,
+    };
+  } catch {
+    return {
+      hostLabel: 'Liên kết sản phẩm',
+      displayText: rawUrl,
+      isLocalPortalUrl: false,
+    };
+  }
+}
+
+export function formatFileSizeDelta(
+  currentBytes?: number | null,
+  previousBytes?: number | null,
+): string | null {
+  if (
+    currentBytes == null ||
+    previousBytes == null ||
+    !Number.isFinite(currentBytes) ||
+    !Number.isFinite(previousBytes)
+  ) {
+    return null;
+  }
+  const diff = currentBytes - previousBytes;
+  if (Math.abs(diff) < 1024) return 'Dung lượng tương đương bản trước';
+  const sign = diff > 0 ? '+' : '−';
+  const absDiff = Math.abs(diff);
+  const formatted = absDiff < 1024 * 1024
+    ? `${(absDiff / 1024).toFixed(0)} KB`
+    : `${(absDiff / (1024 * 1024)).toFixed(2)} MB`;
+  return `${sign}${formatted} so với bản trước`;
+}
+
+export const SUBMISSION_LINK_CATEGORY_LABELS: Record<SubmissionLinkCategory, string> = {
+  SourceCode: 'Mã nguồn',
+  Demo: 'Demo / Video',
+  Documentation: 'Tài liệu / Thiết kế',
+  Other: 'Khác',
+};
+
+export const SUBMISSION_LINK_CATEGORIES: SubmissionLinkCategory[] = [
+  'SourceCode',
+  'Demo',
+  'Documentation',
+  'Other',
+];
+
+export function detectLinkCategory(rawUrl: string): SubmissionLinkCategory | null {
+  try {
+    const host = new URL(rawUrl.trim()).hostname.toLowerCase();
+    if (
+      host.includes('github.com') ||
+      host.includes('gitlab.com') ||
+      host.includes('bitbucket.org') ||
+      host.includes('codeberg.org')
+    ) {
+      return 'SourceCode';
+    }
+    if (
+      host.includes('youtu.be') ||
+      host.includes('youtube.com') ||
+      host.includes('loom.com') ||
+      host.includes('vimeo.com') ||
+      host.includes('vercel.app') ||
+      host.includes('netlify.app')
+    ) {
+      return 'Demo';
+    }
+    if (
+      host.includes('figma.com') ||
+      host.includes('docs.google.com') ||
+      host.includes('drive.google.com') ||
+      host.includes('notion.so') ||
+      host.includes('overleaf.com') ||
+      host.includes('canva.com')
+    ) {
+      return 'Documentation';
     }
     return null;
   } catch {
