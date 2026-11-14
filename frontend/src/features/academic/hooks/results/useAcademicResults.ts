@@ -46,7 +46,6 @@ export function useAcademicResults() {
   const [inspectedGroupId, setInspectedGroupId] = useState<string | null>(null);
   const [reviewDrawerGroupId, setReviewDrawerGroupId] = useState<string | null>(null);
   const [checkedGroupIds, setCheckedGroupIds] = useState<string[]>([]);
-  const [draftDialogGroupId, setDraftDialogGroupId] = useState<string | null>(null);
   const [publishConfirmGroupIds, setPublishConfirmGroupIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -193,7 +192,7 @@ export function useAcademicResults() {
     ? (rowsByGroupId.get(resolvedReviewDrawerGroupId) ?? null)
     : null;
 
-  const detailTargetGroupId = draftDialogGroupId ?? resolvedReviewDrawerGroupId;
+  const detailTargetGroupId = resolvedReviewDrawerGroupId;
   const detailTargetRow = detailTargetGroupId ? (rowsByGroupId.get(detailTargetGroupId) ?? null) : null;
   const hasSummaryRecord = Boolean(detailTargetRow?.summaryId);
 
@@ -274,7 +273,6 @@ export function useAcademicResults() {
     onSuccess: async (dto) => {
       setErrorMessage(null);
       setPublishConfirmGroupIds([]);
-      setDraftDialogGroupId(null);
       setCheckedGroupIds([]);
       await invalidateResults();
       notify.success(`Đã công bố chính thức kết quả cho ${dto.publishedCount} nhóm.`);
@@ -313,7 +311,6 @@ export function useAcademicResults() {
     setCheckedGroupIds([]);
     setInspectedGroupId(null);
     setReviewDrawerGroupId(null);
-    setDraftDialogGroupId(null);
     setPublishConfirmGroupIds([]);
     setErrorMessage(null);
   }, []);
@@ -378,8 +375,6 @@ export function useAcademicResults() {
     [publishConfirmGroupIds, rowsByGroupId],
   );
 
-  const draftDialogRow = draftDialogGroupId ? (rowsByGroupId.get(draftDialogGroupId) ?? null) : null;
-
   return {
     permissions: { canRead, canCalculate, canPublish, canExport },
     batches,
@@ -404,8 +399,6 @@ export function useAcademicResults() {
     detailData: detailQuery.data ?? null,
     isLoadingDetail: detailQuery.isLoading,
     detailError: detailQuery.isError ? extractApiError(detailQuery.error).message : null,
-    draftDialogGroupId,
-    draftDialogRow,
     publishConfirmRows,
     errorMessage,
     isLoadingList: listQuery.isLoading,
@@ -435,8 +428,6 @@ export function useAcademicResults() {
       toggleGroupChecked,
       toggleAllEligibleChecked,
       clearCheckedGroups: () => setCheckedGroupIds([]),
-      openDraftDialog: (groupId: string) => setDraftDialogGroupId(groupId),
-      closeDraftDialog: () => setDraftDialogGroupId(null),
       openPublishConfirm,
       closePublishConfirm: () => setPublishConfirmGroupIds([]),
       calculateScore: (groupId: string, expectedSummaryVersion: number | null) =>

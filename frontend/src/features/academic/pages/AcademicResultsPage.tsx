@@ -20,7 +20,6 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { TableFloatingBar } from '@/components/ui/table-floating-bar';
 import {
   AcademicResultsReviewPanel,
-  DraftScoreSummaryDialog,
   PublishScoresConfirmDialog,
   SynthesisPrinciplesCard,
 } from '../components/results';
@@ -51,8 +50,6 @@ export const AcademicResultsPage: React.FC = () => {
     detailData,
     isLoadingDetail,
     detailError,
-    draftDialogGroupId,
-    draftDialogRow,
     publishConfirmRows,
     errorMessage,
     isLoadingList,
@@ -556,7 +553,6 @@ export const AcademicResultsPage: React.FC = () => {
         calculatingGroupId={calculatingGroupId}
         onClose={actions.closeReviewDrawer}
         onCalculate={actions.calculateScore}
-        onOpenDraftDialog={actions.openDraftDialog}
         onPublishSingle={(groupId) => actions.openPublishConfirm([groupId])}
         onRetry={() => {
           void actions.refreshList();
@@ -583,19 +579,6 @@ export const AcademicResultsPage: React.FC = () => {
           </Button>
         </TableFloatingBar>
       )}
-
-      <DraftScoreSummaryDialog
-        open={Boolean(draftDialogGroupId && draftDialogRow)}
-        row={draftDialogRow}
-        detail={detailData}
-        isLoading={isLoadingDetail}
-        canCalculate={permissions.canCalculate}
-        canPublish={permissions.canPublish}
-        isCalculating={isCalculating && calculatingGroupId === draftDialogGroupId}
-        onClose={actions.closeDraftDialog}
-        onCalculate={actions.calculateScore}
-        onConfirmPublish={(groupId) => actions.openPublishConfirm([groupId])}
-      />
 
       <PublishScoresConfirmDialog
         open={publishConfirmRows.length > 0}
