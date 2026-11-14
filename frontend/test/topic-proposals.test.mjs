@@ -407,8 +407,9 @@ test('actual AppLayout renders one guidance entry for Lecturer and Admin, includ
     ['Admin', 'Lecturer'],
   ]) {
     const markup = renderSidebar(roles);
-    assert.match(markup, /href="\/topics\/advising"/);
-    assert.equal((markup.match(/href="\/topics\/advising"/g) ?? []).length, 1);
+    const sidebarMarkup = markup.match(/<aside[\s\S]*?<\/aside>/)?.[0] ?? '';
+    assert.match(sidebarMarkup, /href="\/topics\/advising"/);
+    assert.equal((sidebarMarkup.match(/href="\/topics\/advising"/g) ?? []).length, 1);
     assert.doesNotMatch(markup, /href="\/topics\/propose"/);
     assert.match(markup, /Đề tài hướng dẫn/);
     assert.doesNotMatch(markup, /Không có phân hệ nào khả dụng/);
