@@ -28,6 +28,7 @@ import {
 } from '../features/thesis';
 import { ReviewerAssignmentPage, CouncilApprovalPage } from '../features/councils';
 import { CouncilSimilarityReportsPage } from '../features/thesis/pages/CouncilSimilarityReportsPage';
+import { LecturerGradingPage } from '../features/thesis/pages/LecturerGradingPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -167,6 +168,10 @@ export const router = createBrowserRouter([
             <AcademicResultsPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'thesis/lecturer-grading',
+        element: <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}><LecturerGradingPage /></ProtectedRoute>,
       },
       {
         path: 'advisor/milestones',
