@@ -1,10 +1,12 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
+using UGTM.Modules.ThesisManagement.Application.PlagiarismAI;
 using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
@@ -23,12 +25,25 @@ public sealed class SubmitFinalReportHandler(
     IThesisSubmissionObjectStorage objectStorage,
     IThesisManagementAuditOutbox auditOutbox,
     IThesisUnitOfWork unitOfWork,
-    ILogger<SubmitFinalReportHandler> logger)
+    ILogger<SubmitFinalReportHandler> logger,
+    IOptions<PlagiarismAiOptions>? plagiarismOptions = null,
+    ISubmissionProductLinkRepository? productLinkRepository = null,
+    ISubmissionAttachmentRepository? attachmentRepository = null,
+    IThesisSubmissionImageValidator? imageValidator = null)
 {
     public async Task<Result<FinalReportSubmissionDto>> HandleAsync(
         SubmitFinalReportCommand command,
         CancellationToken cancellationToken = default)
     {
+        if (!SubmissionProductLinkValidator.TryNormalize(
+                command.ProductLinks,
+                null,
+                requireAtLeastOne: false,
+                out var normalizedLinks))
+        {
+            return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.InvalidRequest);
+        }
+
         var eligibility = await eligibilityChecker.CheckAsync(command.GroupId, cancellationToken);
         if (eligibility.IsFailure)
         {
@@ -70,6 +85,26 @@ public sealed class SubmitFinalReportHandler(
         var report = existingReport ?? FinalReport.CreateSubmitted(
             Guid.NewGuid(), context.Group.Id, FinalReportVersionType.InitialFinal, context.SubmittedAtUtc);
         var versionNo = isFirstSubmission ? 1 : checked(report.CurrentVersionNo + 1);
+
+        IReadOnlyList<SubmissionEvidenceHelper.PreparedAttachment> preparedAttachments;
+        try
+        {
+            preparedAttachments = await SubmissionEvidenceHelper.PrepareImagesAsync(
+                command.EvidenceImages,
+                imageValidator,
+                objectKeyFactory,
+                SubmissionEntityType.FinalReport,
+                report.Id,
+                versionNo,
+                context.StudentId,
+                context.SubmittedAtUtc,
+                cancellationToken);
+        }
+        catch (ThesisSubmissionFileValidationException)
+        {
+            return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.InvalidAttachment);
+        }
+
         var objectKey = objectKeyFactory.Create(
             SubmissionEntityType.FinalReport, report.Id, versionNo, file.FileExtension);
         var submissionFile = new SubmissionFile
@@ -87,9 +122,26 @@ public sealed class SubmitFinalReportHandler(
             UploadedBy = context.StudentId,
             UploadedAt = context.SubmittedAtUtc
         };
+        var linkEntities = SubmissionEvidenceHelper.BuildProductLinks(
+            normalizedLinks,
+            SubmissionEntityType.FinalReport,
+            report.Id,
+            versionNo,
+            context.StudentId,
+            context.SubmittedAtUtc);
+        var attachmentEntities = preparedAttachments.Select(item => item.Entity).ToArray();
+        var uploadedKeys = new List<string>(1 + preparedAttachments.Count);
+
         var response = new FinalReportSubmissionDto(
-            report.Id, report.GroupId, report.VersionType.ToString(), versionNo,
-            report.Status.ToString(), context.SubmittedAtUtc, SyllabusSubmissionMapper.ToDto(submissionFile));
+            report.Id,
+            report.GroupId,
+            report.VersionType.ToString(),
+            versionNo,
+            report.Status.ToString(),
+            context.SubmittedAtUtc,
+            SyllabusSubmissionMapper.ToDto(submissionFile),
+            linkEntities.Select(SubmissionSupplementalMapper.ToDto).ToArray(),
+            attachmentEntities.Select(SubmissionSupplementalMapper.ToDto).ToArray());
 
         var saveAttempted = false;
         try
@@ -98,11 +150,13 @@ public sealed class SubmitFinalReportHandler(
             await objectStorage.UploadAsync(
                 new ThesisSubmissionObjectWriteRequest(objectKey, file.ContentType, file.FileSize),
                 content, cancellationToken);
+            uploadedKeys.Add(objectKey);
+            await SubmissionEvidenceHelper.UploadAllAsync(preparedAttachments, objectStorage, uploadedKeys, cancellationToken);
 
             if (context.Group.Status != requiredGroupStatus
                 || (isFirstSubmission && !context.Group.TrySubmitFinalReport()))
             {
-                await TryDeleteObjectAsync(objectKey);
+                await TryDeleteObjectsAsync(uploadedKeys);
                 return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.InvalidGroupState);
             }
 
@@ -114,20 +168,29 @@ public sealed class SubmitFinalReportHandler(
             {
                 if (!report.TrySubmitRevision(context.SubmittedAtUtc))
                 {
-                    await TryDeleteObjectAsync(objectKey);
+                    await TryDeleteObjectsAsync(uploadedKeys);
                     return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.ConcurrencyConflict);
                 }
 
                 finalReportRepository.TrackGroupConcurrency(report, context.Group);
             }
             submissionFileRepository.Add(submissionFile);
+            if (linkEntities.Count > 0)
+            {
+                productLinkRepository?.AddRange(linkEntities);
+            }
+            if (attachmentEntities.Length > 0)
+            {
+                attachmentRepository?.AddRange(attachmentEntities);
+            }
 
             var plagiarismScan = FinalReportPlagiarismScan.Create(
                 Guid.NewGuid(),
                 report.Id,
                 submissionFile.Id,
                 versionNo,
-                context.SubmittedAtUtc);
+                context.SubmittedAtUtc,
+                plagiarismOptions?.Value.GetNormalizedWorkerPartition());
             plagiarismScanRepository.Add(plagiarismScan);
             auditOutbox.Add(new AuditIntegrationEntry(
                 "FinalReport",
@@ -146,6 +209,8 @@ public sealed class SubmitFinalReportHandler(
                     submissionFile.FileSize,
                     submissionFile.ContentType,
                     submissionFile.ChecksumSha256,
+                    LinkCount = linkEntities.Count,
+                    AttachmentCount = attachmentEntities.Length,
                     IsResubmission = !isFirstSubmission
                 }), context.SubmittedAtUtc);
 
@@ -156,20 +221,20 @@ public sealed class SubmitFinalReportHandler(
                 cancellationToken);
             if (saveError is not null)
             {
-                await TryDeleteObjectAsync(objectKey);
+                await TryDeleteObjectsAsync(uploadedKeys);
                 return Result.Failure<FinalReportSubmissionDto>(saveError);
             }
         }
         catch
         {
-            await CompensateFailedSubmissionAsync(submissionFile, saveAttempted);
+            await CompensateFailedSubmissionAsync(submissionFile, uploadedKeys, saveAttempted);
             throw;
         }
 
         return Result.Success(response);
     }
 
-    private async Task CompensateFailedSubmissionAsync(SubmissionFile file, bool saveAttempted)
+    private async Task CompensateFailedSubmissionAsync(SubmissionFile file, IReadOnlyCollection<string> uploadedKeys, bool saveAttempted)
     {
         if (saveAttempted)
         {
@@ -192,7 +257,15 @@ public sealed class SubmitFinalReportHandler(
             }
         }
 
-        await TryDeleteObjectAsync(file.ObjectKey);
+        await TryDeleteObjectsAsync(uploadedKeys.Count > 0 ? uploadedKeys : [file.ObjectKey]);
+    }
+
+    private async Task TryDeleteObjectsAsync(IEnumerable<string> objectKeys)
+    {
+        foreach (var objectKey in objectKeys)
+        {
+            await TryDeleteObjectAsync(objectKey);
+        }
     }
 
     private async Task TryDeleteObjectAsync(string objectKey)

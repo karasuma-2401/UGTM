@@ -1,3 +1,4 @@
+using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 
 namespace UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.Dtos;
@@ -12,7 +13,9 @@ public sealed record ProgressReportSubmissionDto(
     string? StudentNote,
     bool IsLate,
     DateTime SubmittedAtUtc,
-    SubmissionFileDto File);
+    SubmissionFileDto File,
+    IReadOnlyList<SubmissionProductLinkDto>? ProductLinks = null,
+    IReadOnlyList<SubmissionAttachmentDto>? Attachments = null);
 
 public sealed record ProgressReportReviewDto(
     int VersionNo,
@@ -30,7 +33,9 @@ public sealed record ProgressReportVersionDto(
     bool IsLate,
     string Status,
     SubmissionFileDto? File,
-    ProgressReportReviewDto? Review);
+    ProgressReportReviewDto? Review,
+    IReadOnlyList<SubmissionProductLinkDto>? ProductLinks = null,
+    IReadOnlyList<SubmissionAttachmentDto>? Attachments = null);
 
 public sealed record ProgressReportHistoryDto(
     Guid ProgressReportId,

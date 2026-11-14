@@ -1,3 +1,4 @@
+using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 
 namespace UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.Dtos;
@@ -15,4 +16,6 @@ public sealed record FinalReportHistoryItemDto(
     int VersionNo,
     SubmissionFileDto File,
     string? PlagiarismStatus = null,
-    double? SimilarityCoverage = null);
+    double? SimilarityCoverage = null,
+    IReadOnlyList<SubmissionProductLinkDto>? ProductLinks = null,
+    IReadOnlyList<SubmissionAttachmentDto>? Attachments = null);

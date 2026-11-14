@@ -28,6 +28,10 @@ public static class ProgressReportErrors
         "ProgressReport.InvalidFile",
         "Tệp báo cáo tiến độ không hợp lệ. Chỉ chấp nhận PDF, DOC hoặc DOCX tối đa 20 MB với nội dung khớp định dạng.");
 
+    public static readonly Error InvalidAttachment = Error.Validation(
+        "ProgressReport.InvalidAttachment",
+        "Ảnh minh chứng không hợp lệ. Chỉ chấp nhận tối đa 5 ảnh PNG, JPG, JPEG hoặc WEBP (tối đa 5 MB mỗi ảnh).");
+
     public static readonly Error InvalidSubmissionState = Error.Conflict(
         "ProgressReport.InvalidSubmissionState",
         "Trạng thái hiện tại không cho phép nộp báo cáo tiến độ.");
