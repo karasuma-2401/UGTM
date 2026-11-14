@@ -52,7 +52,7 @@ export function PageHeader({
       </div>
       {navigation && (
         <div
-          className={`rounded-b-2xl border-t border-slate-100/90 bg-slate-50/40 ${compact ? '' : 'px-3 sm:px-4'}`}
+          className={`overflow-hidden rounded-b-2xl border-t border-slate-100/90 bg-slate-50/40 ${compact ? '' : 'px-3 sm:px-4'}`}
         >
           {navigation}
         </div>
