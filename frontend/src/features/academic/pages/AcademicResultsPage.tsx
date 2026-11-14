@@ -83,7 +83,7 @@ export const AcademicResultsPage: React.FC = () => {
   );
 
   const batchSubtitle = selectedBatch
-    ? `${selectedBatch.batchName} · ${selectedBatch.academicYear} · HK${selectedBatch.semester} · ${batchStatusLabels[selectedBatch.status] ?? selectedBatch.status}`
+    ? `${selectedBatch.batchName} - ${selectedBatch.academicYear} - HK${selectedBatch.semester} - ${batchStatusLabels[selectedBatch.status] ?? selectedBatch.status}`
     : 'Theo dõi tổng hợp điểm, rà soát bảng điểm dự thảo và công bố kết quả theo đợt';
 
   const statItems: StatisticItem[] = useMemo(
@@ -200,7 +200,7 @@ export const AcademicResultsPage: React.FC = () => {
                     .map((name, index) =>
                       row.studentCodes[index] ? `${name} (${row.studentCodes[index]})` : name,
                     )
-                    .join(' · ')
+                    .join(' - ')
                 : row.conditionSummary}
             </p>
           </div>
@@ -292,7 +292,11 @@ export const AcademicResultsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 selection:bg-blue-100 selection:text-blue-950">
-      <PageHeader accent title="Tổng hợp kết quả" description={batchSubtitle}>
+      <PageHeader
+        accent
+        title="Tổng hợp kết quả"
+        actionsClassName="w-full justify-between"
+      >
         <div className="w-full sm:w-80 md:w-96">
           <Select
             aria-label="Chọn đợt khóa luận"
@@ -303,74 +307,76 @@ export const AcademicResultsPage: React.FC = () => {
             placeholder="Chọn đợt khóa luận..."
             size="lg"
             triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300"
-            contentClassName="w-max min-w-full sm:min-w-[420px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-slate-200/90 shadow-lg"
+            contentClassName="w-max min-w-full sm:min-w-[420px] max-w-[90vw] left-0 right-auto p-1.5 rounded-xl border-slate-200/90 shadow-lg"
             optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
           />
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label="Làm mới danh sách kết quả"
-          disabled={!selectedBatchId || isFetchingList}
-          onClick={() => actions.refreshList()}
-          className="size-10 rounded-xl border-slate-200 bg-white text-slate-600 hover:text-slate-900 shadow-2xs"
-          title="Làm mới"
-        >
-          <RefreshCw className={`size-4 ${isFetchingList ? 'animate-spin' : ''}`} />
-        </Button>
-
-        {permissions.canExport && (
-          <>
-            <Button
-              type="button"
-              variant="successOutline"
-              className="h-10 rounded-xl px-3.5 text-xs font-semibold"
-              disabled={!selectedBatchId || isExporting || allRowsCount === 0}
-              isLoading={isExporting && exportingFormat === 'xlsx'}
-              loadingText="Đang xuất..."
-              leftIcon={<FileSpreadsheet className="size-4" />}
-              onClick={() => actions.exportReport('xlsx')}
-            >
-              Xuất Excel
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 rounded-xl px-3.5 text-xs font-semibold"
-              disabled={!selectedBatchId || isExporting || allRowsCount === 0}
-              isLoading={isExporting && exportingFormat === 'pdf'}
-              loadingText="Đang xuất..."
-              leftIcon={<FileText className="size-4" />}
-              onClick={() => actions.exportReport('pdf')}
-            >
-              Xuất PDF
-            </Button>
-          </>
-        )}
-
-        {permissions.canPublish && (
+        <div className="flex flex-wrap items-center gap-2.5 ml-auto justify-end">
           <Button
             type="button"
-            variant="default"
-            className="h-10 rounded-xl px-4 text-xs font-semibold"
-            disabled={
-              !selectedBatchId ||
-              isPublishing ||
-              (checkedGroupIds.length === 0 && eligibleGroupIds.length === 0)
-            }
-            leftIcon={<Send className="size-4" />}
-            onClick={() => actions.openPublishConfirm()}
+            variant="outline"
+            size="icon"
+            aria-label="Làm mới danh sách kết quả"
+            disabled={!selectedBatchId || isFetchingList}
+            onClick={() => actions.refreshList()}
+            className="size-10 rounded-xl border-slate-200 bg-white text-slate-600 hover:text-slate-900 shadow-2xs"
+            title="Làm mới"
           >
-            {checkedGroupIds.length > 0
-              ? `Công bố kết quả (${checkedGroupIds.length})`
-              : eligibleGroupIds.length > 0
-                ? `Công bố đủ điều kiện (${eligibleGroupIds.length})`
-                : 'Công bố kết quả'}
+            <RefreshCw className={`size-4 ${isFetchingList ? 'animate-spin' : ''}`} />
           </Button>
-        )}
+
+          {permissions.canExport && (
+            <>
+              <Button
+                type="button"
+                variant="successOutline"
+                className="h-10 rounded-xl px-3.5 text-xs font-semibold"
+                disabled={!selectedBatchId || isExporting || allRowsCount === 0}
+                isLoading={isExporting && exportingFormat === 'xlsx'}
+                loadingText="Đang xuất..."
+                leftIcon={<FileSpreadsheet className="size-4" />}
+                onClick={() => actions.exportReport('xlsx')}
+              >
+                Xuất Excel
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-xl px-3.5 text-xs font-semibold"
+                disabled={!selectedBatchId || isExporting || allRowsCount === 0}
+                isLoading={isExporting && exportingFormat === 'pdf'}
+                loadingText="Đang xuất..."
+                leftIcon={<FileText className="size-4" />}
+                onClick={() => actions.exportReport('pdf')}
+              >
+                Xuất PDF
+              </Button>
+            </>
+          )}
+
+          {permissions.canPublish && (
+            <Button
+              type="button"
+              variant="default"
+              className="h-10 rounded-xl px-4 text-xs font-semibold"
+              disabled={
+                !selectedBatchId ||
+                isPublishing ||
+                (checkedGroupIds.length === 0 && eligibleGroupIds.length === 0)
+              }
+              leftIcon={<Send className="size-4" />}
+              onClick={() => actions.openPublishConfirm()}
+            >
+              {checkedGroupIds.length > 0
+                ? `Công bố kết quả (${checkedGroupIds.length})`
+                : eligibleGroupIds.length > 0
+                  ? `Công bố đủ điều kiện (${eligibleGroupIds.length})`
+                  : 'Công bố kết quả'}
+            </Button>
+          )}
+        </div>
       </PageHeader>
 
       {errorMessage && (
@@ -400,7 +406,7 @@ export const AcademicResultsPage: React.FC = () => {
             <div>
               <h2 className="text-base font-semibold text-slate-900">Hồ sơ trong đợt</h2>
               <p className="text-xs text-slate-500 mt-0.5 tabular-nums">
-                {stats.all} nhóm · {stats.readyToPublish} đủ điều kiện công bố · {stats.published}{' '}
+                {stats.all} nhóm - {stats.readyToPublish} đủ điều kiện công bố - {stats.published}{' '}
                 đã công bố
               </p>
             </div>

@@ -89,8 +89,8 @@ export const DraftScoreSummaryDialog: React.FC<DraftScoreSummaryDialogProps> = (
         <div className="flex flex-wrap items-center gap-2.5">
           <span>
             {isPublished
-              ? `Bảng điểm chính thức · ${row.groupCode}`
-              : `Bảng điểm dự thảo · ${row.groupCode}`}
+              ? `Bảng điểm chính thức - ${row.groupCode}`
+              : `Bảng điểm dự thảo - ${row.groupCode}`}
           </span>
           <StatusBadge tone={row.displayStatusTone}>{row.displayStatusLabel}</StatusBadge>
           {summary?.configVersionNo ? (

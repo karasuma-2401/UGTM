@@ -47,7 +47,7 @@ export const PublishScoresConfirmDialog: React.FC<PublishScoresConfirmDialogProp
                 {rows.map((row) => (
                   <li key={row.groupId} className="flex items-center justify-between gap-2">
                     <span className="truncate">
-                      <strong className="font-semibold">{row.groupCode}</strong> · {row.topicTitleVi}
+                      <strong className="font-semibold">{row.groupCode}</strong> - {row.topicTitleVi}
                     </span>
                     <span className="shrink-0 font-semibold text-slate-900 tabular-nums">
                       {formatScoreDecimal(row.finalScore)}

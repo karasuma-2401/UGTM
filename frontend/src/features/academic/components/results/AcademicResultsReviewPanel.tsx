@@ -82,11 +82,13 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
     academic?.students.map((student) => ({
       id: student.studentId,
       name: student.fullName,
+      userCode: student.studentCode,
       code: student.studentCode,
     })) ??
     row.studentNames.map((name, index) => ({
       id: `${row.groupId}-${index}`,
       name,
+      userCode: row.studentCodes[index] ?? '',
       code: row.studentCodes[index] ?? '',
     }));
 
@@ -100,9 +102,8 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-base font-bold text-slate-900 tracking-tight">
-              Hồ sơ đang rà soát · {row.groupCode}
+              Hồ sơ đang rà soát - {row.groupCode}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">{row.facultyName}</p>
           </div>
           <StatusBadge tone={row.displayStatusTone}>{row.displayStatusLabel}</StatusBadge>
         </div>
@@ -119,17 +120,16 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
           <div className="space-y-1">
             <p className="text-xs font-medium text-slate-500">Sinh viên</p>
             {studentItems.length > 0 ? (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-start gap-2.5">
                 <AvatarGroup items={studentItems} max={3} size="sm" />
-                <div className="min-w-0 text-xs text-slate-700 leading-relaxed">
-                  {studentItems.map((student, index) => (
-                    <span key={student.id}>
-                      {index > 0 && ' · '}
+                <div className="min-w-0 space-y-0.5 text-xs text-slate-700 leading-relaxed">
+                  {studentItems.map((student) => (
+                    <div key={student.id} className="truncate">
                       <span className="font-medium text-slate-800">{student.name}</span>
                       {student.code ? (
                         <span className="text-slate-500 tabular-nums"> ({student.code})</span>
                       ) : null}
-                    </span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -139,9 +139,24 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
           </div>
 
           {academic?.advisorName && (
-            <div className="flex items-center justify-between text-xs pt-0.5">
-              <span className="text-slate-500">GVHD</span>
-              <span className="font-medium text-slate-800">{academic.advisorName}</span>
+            <div className="space-y-1 pt-0.5">
+              <p className="text-xs font-medium text-slate-500">GVHD</p>
+              <div className="flex items-center gap-2.5">
+                <AvatarGroup
+                  items={[
+                    {
+                      id: academic.advisorId || academic.advisorName,
+                      name: academic.advisorName,
+                    },
+                  ]}
+                  max={1}
+                  size="sm"
+                  ariaLabel="Giảng viên hướng dẫn"
+                />
+                <span className="min-w-0 truncate text-xs font-medium text-slate-800">
+                  {academic.advisorName}
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -217,7 +232,7 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
                       >
                         {formatScoreDecimal(component.score, 1)}
                       </span>
-                      <span className="text-slate-500"> · Hệ số {component.weight}</span>
+                      <span className="text-slate-500"> - Hệ số {component.weight}</span>
                     </div>
                   </div>
                 ))}
@@ -341,7 +356,7 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
                 leftIcon={<FileSearch className="size-3.5" />}
                 onClick={() => onOpenDraftDialog(row.groupId)}
               >
-                {isPublished ? `Xem bảng điểm ${row.groupCode}` : `Rà soát dự thảo ${row.groupCode}`}
+                {isPublished ? `Xem bảng điểm - Nhóm ${row.groupCode}` : `Rà soát dự thảo - Nhóm ${row.groupCode}`}
               </Button>
 
               {canRunPublish && (

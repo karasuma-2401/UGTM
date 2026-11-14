@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
 
 interface PageHeaderProps {
   title: string;
@@ -6,6 +7,7 @@ interface PageHeaderProps {
   icon?: ReactNode;
   children?: ReactNode;
   navigation?: ReactNode;
+  actionsClassName?: string;
   compact?: boolean;
   accent?: boolean;
 }
@@ -16,6 +18,7 @@ export function PageHeader({
   icon,
   children,
   navigation,
+  actionsClassName,
   compact = false,
   accent = !compact,
 }: PageHeaderProps) {
@@ -48,7 +51,11 @@ export function PageHeader({
             )}
           </div>
         </div>
-        {children && <div className="flex flex-wrap items-center gap-2.5">{children}</div>}
+        {children && (
+          <div className={cn('flex flex-wrap items-center gap-2.5', actionsClassName)}>
+            {children}
+          </div>
+        )}
       </div>
       {navigation && (
         <div

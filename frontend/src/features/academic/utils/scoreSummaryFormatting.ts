@@ -80,7 +80,7 @@ function resolveDisplayState(
       filterKey: 'published',
       displayStatusLabel: 'Đã công bố',
       displayStatusTone: 'success',
-      conditionSummary: academicItem?.detailLabel || 'Lưu chiểu đạt · Đã mở cho sinh viên',
+      conditionSummary: academicItem?.detailLabel || 'Lưu chiểu đạt - Đã mở cho sinh viên',
     };
   }
 
@@ -91,7 +91,7 @@ function resolveDisplayState(
         displayStatusLabel: 'Cần tính lại',
         displayStatusTone: 'warning',
         conditionSummary: scoreItem.isLegacy
-          ? 'Dữ liệu cũ · Cần tính lại theo cấu hình đợt'
+          ? 'Dữ liệu cũ - Cần tính lại theo cấu hình đợt'
           : 'Nguồn điểm hoặc cấu hình thay đổi',
       };
     }
@@ -101,7 +101,7 @@ function resolveDisplayState(
         filterKey: 'readyToPublish',
         displayStatusLabel: 'Đủ điều kiện',
         displayStatusTone: 'info',
-        conditionSummary: 'Đủ điểm · Lưu chiểu đạt · Chờ công bố',
+        conditionSummary: 'Đủ điểm - Lưu chiểu đạt - Chờ công bố',
       };
     }
   }
@@ -111,7 +111,7 @@ function resolveDisplayState(
       filterKey: 'needsCalculation',
       displayStatusLabel: 'Sẵn sàng tính',
       displayStatusTone: 'orange',
-      conditionSummary: 'Đủ điểm & lưu chiểu đạt · Chưa tính dự thảo',
+      conditionSummary: 'Đủ điểm & lưu chiểu đạt - Chưa tính dự thảo',
     };
   }
 
@@ -120,7 +120,7 @@ function resolveDisplayState(
       filterKey: 'needsAction',
       displayStatusLabel: 'Chờ lưu chiểu',
       displayStatusTone: 'warning',
-      conditionSummary: 'Đủ điểm chấm · Chưa nghiệm thu lưu chiểu',
+      conditionSummary: 'Đủ điểm chấm - Chưa nghiệm thu lưu chiểu',
     };
   }
 
