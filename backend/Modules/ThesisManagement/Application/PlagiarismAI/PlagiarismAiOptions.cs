@@ -11,5 +11,9 @@ public sealed class PlagiarismAiOptions
     public int PollingIntervalSeconds { get; set; } = 30;
     public int MaxColabWaitingMinutes { get; set; } = 120;
     public int BatchResumeSize { get; set; } = 20;
+    public string? WorkerPartition { get; set; }
+
+    public string? GetNormalizedWorkerPartition()
+        => string.IsNullOrWhiteSpace(WorkerPartition) ? null : WorkerPartition.Trim();
 }
 

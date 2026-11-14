@@ -1,3 +1,5 @@
+using UGTM.Modules.ThesisManagement.Application.Common;
+
 namespace UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.SubmitProgressReport;
 
 public sealed record SubmitProgressReportCommand(
@@ -5,4 +7,6 @@ public sealed record SubmitProgressReportCommand(
     string? FileName,
     Stream? Content,
     string? GitUrl,
-    string? StudentNote);
+    string? StudentNote,
+    IReadOnlyList<SubmissionProductLinkInput>? ProductLinks = null,
+    IReadOnlyList<SubmissionAttachmentUpload>? EvidenceImages = null);

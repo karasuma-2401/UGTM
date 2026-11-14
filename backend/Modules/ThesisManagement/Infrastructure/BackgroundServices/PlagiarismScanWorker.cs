@@ -45,8 +45,13 @@ public sealed class PlagiarismScanWorker(
             await using var scope = scopeFactory.CreateAsyncScope();
             var scanRepository = scope.ServiceProvider.GetRequiredService<IFinalReportPlagiarismScanRepository>();
             var executeHandler = scope.ServiceProvider.GetRequiredService<ExecutePlagiarismScanHandler>();
-            // AI schedules its own waiting jobs. Poll them without discarding their job IDs.
-            var activeScans = await scanRepository.GetActiveOrPendingScansAsync(limit: 20, cancellationToken);
+            // AI schedules its own waiting jobs. Poll only scans owned by this worker partition.
+            var batchLimit = Math.Clamp(options.Value.BatchResumeSize, 1, 100);
+            var workerPartition = options.Value.GetNormalizedWorkerPartition();
+            var activeScans = await scanRepository.GetActiveOrPendingScansAsync(
+                limit: batchLimit,
+                workerPartition: workerPartition,
+                cancellationToken: cancellationToken);
             foreach (var scan in activeScans)
             {
                 if (cancellationToken.IsCancellationRequested)

@@ -11,6 +11,7 @@ import * as icons from 'lucide-react';
 let currentQuery;
 let queryOptions;
 const dependencies = {
+  react: React,
   'react/jsx-runtime': jsxRuntime,
   '@tanstack/react-query': {
     useQuery: (options) => {

@@ -1,18 +1,28 @@
-import { ArrowUpRight, Download, FileText, GitBranch } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { RichTextContent } from '@/components/ui/rich-text-content';
-import type { SubmissionFileDto } from '../../types/syllabus.types';
+import type {
+  SubmissionAttachmentDto,
+  SubmissionFileDto,
+  SubmissionProductLinkDto,
+} from '../../types/syllabus.types';
 import {
   formatFileSize,
   formatMilestoneDateTime,
-  getSafeHttpUrl,
 } from '../../utils/milestoneFormatters';
+import {
+  SubmissionAttachmentGallery,
+  SubmissionProductLinksList,
+} from '../shared';
 
 export interface AdvisorMilestoneSubmissionViewCardProps {
   versionNo: number;
   groupCode?: string;
   file?: SubmissionFileDto | null;
   gitUrl?: string | null;
+  productLinks?: SubmissionProductLinkDto[] | null;
+  attachments?: SubmissionAttachmentDto[] | null;
+  resolveAttachmentUrl?: (attachmentId: string) => Promise<string | null>;
   studentNote?: string | null;
   onDownloadFile: (fileId: string) => void;
   isDownloading?: boolean;
@@ -23,11 +33,15 @@ export function AdvisorMilestoneSubmissionViewCard({
   groupCode = 'Nhóm KLTN',
   file,
   gitUrl,
+  productLinks,
+  attachments,
+  resolveAttachmentUrl,
   studentNote,
   onDownloadFile,
   isDownloading = false,
 }: AdvisorMilestoneSubmissionViewCardProps) {
-  const safeGitUrl = getSafeHttpUrl(gitUrl);
+  const hasLinks = Boolean((productLinks && productLinks.length > 0) || gitUrl);
+  const hasAttachments = Boolean(attachments && attachments.length > 0);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs">
@@ -76,23 +90,26 @@ export function AdvisorMilestoneSubmissionViewCard({
           </div>
 
           <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
-            <p className="text-xs font-semibold text-slate-600">Liên kết mã nguồn (Git)</p>
-            {safeGitUrl ? (
-              <a
-                href={safeGitUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex max-w-full items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-              >
-                <GitBranch className="size-4 shrink-0" aria-hidden="true" />
-                <span className="truncate">{gitUrl}</span>
-                <ArrowUpRight className="size-3.5 shrink-0" aria-hidden="true" />
-              </a>
+            <p className="text-xs font-semibold text-slate-600">Liên kết sản phẩm / mã nguồn</p>
+            {hasLinks ? (
+              <div className="mt-2">
+                <SubmissionProductLinksList links={productLinks} legacyGitUrl={gitUrl} />
+              </div>
             ) : (
-              <p className="mt-2 text-sm text-slate-500">{gitUrl || 'Không có liên kết Git'}</p>
+              <p className="mt-2 text-sm text-slate-500">Không có liên kết đính kèm</p>
             )}
           </div>
         </div>
+
+        {hasAttachments && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-slate-600">Ảnh minh chứng sản phẩm</p>
+            <SubmissionAttachmentGallery
+              attachments={attachments}
+              resolveAttachmentUrl={resolveAttachmentUrl}
+            />
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <p className="text-xs font-semibold text-slate-600">Ghi chú của sinh viên</p>

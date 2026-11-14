@@ -1,4 +1,9 @@
-import type { SubmissionFileDto, SubmissionFileDownloadDto } from './syllabus.types';
+import type {
+  SubmissionAttachmentDto,
+  SubmissionFileDownloadDto,
+  SubmissionFileDto,
+  SubmissionProductLinkDto,
+} from './syllabus.types';
 
 export type FinalReportStatus =
   | 'Submitted'
@@ -21,11 +26,17 @@ export interface FinalReportSubmissionDto {
   status: FinalReportStatus | string;
   submittedAtUtc: string;
   file: SubmissionFileDto;
+  productLinks?: SubmissionProductLinkDto[];
+  attachments?: SubmissionAttachmentDto[];
 }
 
 export interface FinalReportHistoryItemDto {
   versionNo: number;
   file: SubmissionFileDto;
+  plagiarismStatus?: string | null;
+  similarityCoverage?: number | null;
+  productLinks?: SubmissionProductLinkDto[];
+  attachments?: SubmissionAttachmentDto[];
 }
 
 export interface FinalReportHistoryDto {

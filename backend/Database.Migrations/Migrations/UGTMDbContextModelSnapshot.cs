@@ -2762,6 +2762,11 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("version_no");
 
+                    b.Property<string>("WorkerPartition")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("worker_partition");
+
                     b.HasKey("Id")
                         .HasName("pk_final_report_plagiarism_scan");
 
@@ -2773,6 +2778,9 @@ namespace UGTM.Database.Migrations.Migrations
 
                     b.HasIndex("SubmissionFileId")
                         .HasDatabaseName("ix_final_report_plagiarism_scan_submission_file_id");
+
+                    b.HasIndex("WorkerPartition")
+                        .HasDatabaseName("ix_final_report_plagiarism_scan_worker_partition");
 
                     b.HasIndex("FinalReportId", "VersionNo")
                         .IsUnique()
@@ -3801,6 +3809,91 @@ namespace UGTM.Database.Migrations.Migrations
                     b.ToTable("student_registration_penalty", "thesis");
                 });
 
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionAttachment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChecksumSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("checksum_sha256");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("display_order");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("FileExtension")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("file_extension");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint")
+                        .HasColumnName("file_size");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("object_key");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("uploaded_at");
+
+                    b.Property<Guid>("UploadedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by");
+
+                    b.Property<int>("VersionNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_submission_attachment");
+
+                    b.HasIndex("UploadedBy")
+                        .HasDatabaseName("ix_submission_attachment_uploaded_by");
+
+                    b.HasIndex("EntityType", "EntityId", "VersionNo", "DisplayOrder")
+                        .HasDatabaseName("ix_submission_attachment_entity_version");
+
+                    b.ToTable("submission_attachment", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_submission_attachment_version_no", "version_no > 0");
+                        });
+                });
+
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionFile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3885,6 +3978,72 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDatabaseName("ix_submission_file_entity_type_entity_id_version_no");
 
                     b.ToTable("submission_file", "thesis");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionProductLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("display_order");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("label");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("url");
+
+                    b.Property<int>("VersionNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_submission_product_link");
+
+                    b.HasIndex("EntityType", "EntityId", "VersionNo", "DisplayOrder")
+                        .HasDatabaseName("ix_submission_product_link_entity_version");
+
+                    b.ToTable("submission_product_link", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_submission_product_link_version_no", "version_no > 0");
+                        });
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionReview", b =>

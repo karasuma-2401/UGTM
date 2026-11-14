@@ -1,5 +1,6 @@
 import { httpClient } from '@/shared/api';
 import type { ApiResponse, PagedResult } from '@/shared/api/types';
+import { buildUploadProgressHandler } from './submissionUploadHelper';
 import type {
   MidtermReportSubmissionDto,
   MidtermReportSubmissionHistoryDto,
@@ -23,7 +24,8 @@ function unwrap<T>(response: ApiResponse<T>): T {
 export const midtermApi = {
   async submitMidtermReport(
     groupId: string,
-    file: File
+    file: File,
+    onUploadProgress?: (percent: number) => void
   ): Promise<MidtermReportSubmissionDto> {
     const formData = new FormData();
     formData.append('file', file);
@@ -35,6 +37,7 @@ export const midtermApi = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        onUploadProgress: buildUploadProgressHandler(onUploadProgress),
       }
     );
 

@@ -26,7 +26,10 @@ public sealed class SubmitProgressReportHandler(
     ICurrentUser currentUser,
     TimeProvider timeProvider,
     IThesisUploadLifecycle uploadLifecycle,
-    ISyllabusRepository? syllabusRepository = null)
+    ISyllabusRepository? syllabusRepository = null,
+    ISubmissionProductLinkRepository? productLinkRepository = null,
+    ISubmissionAttachmentRepository? attachmentRepository = null,
+    IThesisSubmissionImageValidator? imageValidator = null)
 {
     public async Task<Result<ProgressReportSubmissionDto>> HandleAsync(
         SubmitProgressReportCommand command,
@@ -41,10 +44,16 @@ public sealed class SubmitProgressReportHandler(
             || string.IsNullOrWhiteSpace(command.FileName)
             || command.Content is null
             || !command.Content.CanRead
-            || !TryNormalizeGitUrl(command.GitUrl, out var gitUrl))
+            || !SubmissionProductLinkValidator.TryNormalize(
+                command.ProductLinks,
+                command.GitUrl,
+                requireAtLeastOne: true,
+                out var normalizedLinks))
         {
             return Result.Failure<ProgressReportSubmissionDto>(ProgressReportErrors.InvalidRequest);
         }
+
+        var gitUrl = normalizedLinks[0].Url;
 
         var milestone = await milestoneRepository.GetByIdAsync(command.MilestoneId, cancellationToken);
         if (milestone is null)
@@ -111,6 +120,25 @@ public sealed class SubmitProgressReportHandler(
         }
 
         var reportId = report?.Id ?? Guid.NewGuid();
+        IReadOnlyList<SubmissionEvidenceHelper.PreparedAttachment> preparedAttachments;
+        try
+        {
+            preparedAttachments = await SubmissionEvidenceHelper.PrepareImagesAsync(
+                command.EvidenceImages,
+                imageValidator,
+                objectKeyFactory,
+                SubmissionEntityType.ProgressReport,
+                reportId,
+                versionNo,
+                currentUser.UserId.Value,
+                occurredAt,
+                cancellationToken);
+        }
+        catch (ThesisSubmissionFileValidationException)
+        {
+            return Result.Failure<ProgressReportSubmissionDto>(ProgressReportErrors.InvalidAttachment);
+        }
+
         var objectKey = objectKeyFactory.Create(
             SubmissionEntityType.ProgressReport,
             reportId,
@@ -132,12 +160,23 @@ public sealed class SubmitProgressReportHandler(
             UploadedAt = occurredAt
         };
 
+        var linkEntities = SubmissionEvidenceHelper.BuildProductLinks(
+            normalizedLinks,
+            SubmissionEntityType.ProgressReport,
+            reportId,
+            versionNo,
+            currentUser.UserId.Value,
+            occurredAt);
+        var attachmentEntities = preparedAttachments.Select(item => item.Entity).ToArray();
+        var uploadedExtraKeys = new List<string>(preparedAttachments.Count);
+
         var uploadAttempt = await uploadLifecycle.BeginAsync(objectKey, cancellationToken);
         try
         {
             await using var content = new MemoryStream(validatedFile.Content.ToArray(), writable: false);
             await objectStorage.UploadAsync(new ThesisSubmissionObjectWriteRequest(
                 objectKey, validatedFile.ContentType, validatedFile.FileSize), content, cancellationToken);
+            await SubmissionEvidenceHelper.UploadAllAsync(preparedAttachments, objectStorage, uploadedExtraKeys, cancellationToken);
             if (isFirstSubmission)
             {
                 report = ProgressReport.CreateSubmitted(reportId, milestone.Id, group.Id, command.StudentNote, occurredAt);
@@ -145,6 +184,7 @@ public sealed class SubmitProgressReportHandler(
             }
             else if (!report!.TrySubmitRevision(command.StudentNote, occurredAt))
             {
+                await TryDeleteExtraObjectsAsync(uploadedExtraKeys);
                 return Result.Failure<ProgressReportSubmissionDto>(ProgressReportErrors.InvalidSubmissionState);
             }
 
@@ -159,6 +199,14 @@ public sealed class SubmitProgressReportHandler(
                 occurredAt > milestone.Deadline);
             progressReportRepository.AddVersion(version);
             submissionFileRepository.Add(submissionFile);
+            if (linkEntities.Count > 0)
+            {
+                productLinkRepository?.AddRange(linkEntities);
+            }
+            if (attachmentEntities.Length > 0)
+            {
+                attachmentRepository?.AddRange(attachmentEntities);
+            }
             auditOutbox.Add(
                 new AuditIntegrationEntry(
                     "ProgressReport",
@@ -173,6 +221,8 @@ public sealed class SubmitProgressReportHandler(
                         version.VersionNo,
                         version.IsLate,
                         version.GitUrl,
+                        LinkCount = linkEntities.Count,
+                        AttachmentCount = attachmentEntities.Length,
                         FileId = submissionFile.Id,
                         submissionFile.FileName
                     }),
@@ -184,6 +234,7 @@ public sealed class SubmitProgressReportHandler(
                 ProgressReportErrors.ConcurrencyConflict, cancellationToken);
             if (saveError is not null)
             {
+                await TryDeleteExtraObjectsAsync(uploadedExtraKeys);
                 return Result.Failure<ProgressReportSubmissionDto>(saveError);
             }
 
@@ -197,7 +248,14 @@ public sealed class SubmitProgressReportHandler(
                 version.StudentNote,
                 version.IsLate,
                 version.SubmittedAt,
-                SyllabusSubmissionMapper.ToDto(submissionFile)));
+                SyllabusSubmissionMapper.ToDto(submissionFile),
+                linkEntities.Select(SubmissionSupplementalMapper.ToDto).ToArray(),
+                attachmentEntities.Select(SubmissionSupplementalMapper.ToDto).ToArray()));
+        }
+        catch
+        {
+            await TryDeleteExtraObjectsAsync(uploadedExtraKeys);
+            throw;
         }
         finally
         {
@@ -205,24 +263,25 @@ public sealed class SubmitProgressReportHandler(
         }
     }
 
-    private static bool TryNormalizeGitUrl(string? value, out string? normalizedUrl)
+    private async Task TryDeleteExtraObjectsAsync(IReadOnlyCollection<string> objectKeys)
     {
-        normalizedUrl = null;
-        if (string.IsNullOrWhiteSpace(value) || value.Trim().Length > 2048)
+        if (objectKeys.Count == 0)
         {
-            return false;
+            return;
         }
 
-        var candidate = value.Trim();
-        if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri)
-            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
-            || string.IsNullOrWhiteSpace(uri.Host))
+        using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        foreach (var objectKey in objectKeys)
         {
-            return false;
+            try
+            {
+                await objectStorage.DeleteAsync(objectKey, cleanup.Token);
+            }
+            catch
+            {
+                // Best-effort compensation cleanup for auxiliary evidence objects.
+            }
         }
-
-        normalizedUrl = uri.AbsoluteUri;
-        return true;
     }
 
 }

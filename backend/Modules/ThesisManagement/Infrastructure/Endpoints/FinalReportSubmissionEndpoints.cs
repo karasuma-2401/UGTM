@@ -8,6 +8,7 @@ using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.SubmitFinalReport;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportHistory;
+using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportAttachmentDownload;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportFileDownload;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.BeginFinalReportEvaluation;
 using UGTM.Modules.ThesisManagement.Application.Storage;
@@ -17,7 +18,7 @@ namespace UGTM.Modules.ThesisManagement.Infrastructure.Endpoints;
 
 public static class FinalReportSubmissionEndpoints
 {
-    private const long MaximumRequestSizeBytes = ThesisSubmissionFileValidator.MaximumFileSizeBytes + 64 * 1024;
+    private const long MaximumRequestSizeBytes = SubmissionMultipartHelper.MaximumCombinedRequestSizeBytes;
 
     public static IEndpointRouteBuilder MapFinalReportSubmissionEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -84,6 +85,19 @@ public static class FinalReportSubmissionEndpoints
                 nhánh này kiểm tra lại binding, không mở lịch sử và hủy phân công sẽ chặn cấp link mới.
                 Bucket luôn private. Response chỉ gồm fileId, downloadUrl và expiresAtUtc; không có trường objectKey.
                 400: fileId rỗng; 401: chưa đăng nhập; 403: không có quyền; 404: không có file hoặc sai loại file.
+                """)
+            .Produces<ApiResponse<SubmissionFileDownloadDto>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+
+        endpoints.MapGet("/api/thesis/final-report-attachments/{attachmentId:guid}/download", DownloadAttachmentAsync)
+            .WithTags("ThesisManagement.FinalReport")
+            .RequireAuthorization()
+            .WithSummary("Lấy URL tạm thời cho ảnh minh chứng báo cáo cuối kỳ")
+            .WithDescription("""
+                Kiểm tra quyền xem báo cáo cuối kỳ (hoặc GVPB đang phân công active) trước khi cấp presigned URL 5 phút cho ảnh minh chứng.
                 """)
             .Produces<ApiResponse<SubmissionFileDownloadDto>>()
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
@@ -167,21 +181,43 @@ public static class FinalReportSubmissionEndpoints
             return InvalidRequest();
         }
 
-        var file = form.Files.GetFile("file");
-        if (file is null || form.Files.Count != 1 || file.Length == 0)
+        if (!SubmissionMultipartHelper.TryCollectFiles(form, out var file, out var images, out var imageTooLarge))
         {
+            if (imageTooLarge)
+            {
+                return PayloadTooLarge();
+            }
+
             return Results.BadRequest(ApiResponse<FinalReportSubmissionDto>.Fail(ApiError.Create(
                 FinalReportSubmissionErrors.InvalidFile.Code, FinalReportSubmissionErrors.InvalidFile.Message)));
         }
 
-        if (file.Length > ThesisSubmissionFileValidator.MaximumFileSizeBytes)
+        if (file!.Length > ThesisSubmissionFileValidator.MaximumFileSizeBytes)
         {
             return PayloadTooLarge();
         }
 
-        await using var stream = file.OpenReadStream();
-        return (await handler.HandleAsync(new SubmitFinalReportCommand(groupId, file.FileName, stream), cancellationToken))
-            .ToHttpResult();
+        if (!SubmissionMultipartHelper.TryExtractProductLinks(form, out var productLinks))
+        {
+            return InvalidRequest();
+        }
+
+        var (imageUploads, imageStreams) = await SubmissionMultipartHelper.OpenImageStreamsAsync(images);
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            return (await handler.HandleAsync(
+                new SubmitFinalReportCommand(groupId, file.FileName, stream, productLinks, imageUploads),
+                cancellationToken))
+                .ToHttpResult();
+        }
+        finally
+        {
+            foreach (var imageStream in imageStreams)
+            {
+                await imageStream.DisposeAsync();
+            }
+        }
     }
 
     private static async Task<IResult> BeginEvaluationAsync(Guid finalReportId, HttpRequest request,
@@ -217,6 +253,10 @@ public static class FinalReportSubmissionEndpoints
     private static async Task<IResult> DownloadAsync(Guid fileId, GetFinalReportFileDownloadHandler handler,
         CancellationToken cancellationToken)
         => (await handler.HandleAsync(new GetFinalReportFileDownloadQuery(fileId), cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> DownloadAttachmentAsync(Guid attachmentId, GetFinalReportAttachmentDownloadHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(new GetFinalReportAttachmentDownloadQuery(attachmentId), cancellationToken)).ToHttpResult();
 
     private static IResult InvalidRequest()
         => Results.BadRequest(ApiResponse<FinalReportSubmissionDto>.Fail(ApiError.Create(

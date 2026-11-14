@@ -3,16 +3,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { syllabusApi } from '../services/syllabusApi';
+import { validateReportFile } from '../services/submissionUploadHelper';
 import type { SyllabusStatus } from '../types/syllabus.types';
-
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx'];
 
 export function useSyllabusSubmission() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const batchesQuery = useAcademicBatches();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
@@ -61,25 +60,25 @@ export function useSyllabusSubmission() {
         throw new Error('Không tìm thấy thông tin nhóm của bạn.');
       }
 
-      const fileNameLower = file.name.toLowerCase();
-      const hasValidExt = ALLOWED_EXTENSIONS.some((ext) => fileNameLower.endsWith(ext));
-      if (!hasValidExt) {
-        throw new Error('Chỉ chấp nhận tệp định dạng .pdf, .doc hoặc .docx.');
+      const fileError = validateReportFile(file);
+      if (fileError) {
+        throw new Error(fileError);
       }
 
-      if (file.size > MAX_FILE_SIZE_BYTES) {
-        throw new Error('Dung lượng tệp không được vượt quá 20 MB.');
-      }
-
-      return await syllabusApi.submitSyllabus(groupId, file);
+      setUploadProgress(1);
+      return await syllabusApi.submitSyllabus(groupId, file, {
+        onUploadProgress: (percent) => setUploadProgress(percent),
+      });
     },
     onSuccess: (data) => {
       setSelectedFile(null);
+      setUploadProgress(null);
       setActionSuccess(`Nộp đề cương phiên bản v${data.versionNo} thành công!`);
       void queryClient.invalidateQueries({ queryKey: ['syllabus-history', user?.id, groupId] });
       void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
     },
     onError: (err: Error) => {
+      setUploadProgress(null);
       setActionError(err.message || 'Nộp đề cương thất bại. Vui lòng thử lại.');
     },
   });
@@ -109,6 +108,7 @@ export function useSyllabusSubmission() {
     historyQuery,
     selectedFile,
     setSelectedFile,
+    uploadProgress,
     actionError,
     setActionError,
     actionSuccess,
