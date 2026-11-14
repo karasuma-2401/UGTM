@@ -7,6 +7,7 @@ import {
   X,
   LogOut,
   ChevronRight,
+  Check,
   ArrowUpRight,
   CornerDownLeft,
   ChevronLeft,
@@ -42,10 +43,14 @@ export function AppLayout() {
   });
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState('');
+  const [openMenuPath, setOpenMenuPath] = useState<string | null>(null);
   const location = useLocation();
   const pageContent = useRef<HTMLElement>(null);
   const sidebar = useRef<HTMLElement>(null);
   const menuTrigger = useRef<HTMLButtonElement>(null);
+  const sectionMenuRef = useRef<HTMLDivElement>(null);
+  const sectionMenuTriggerRef = useRef<HTMLButtonElement>(null);
+  const sectionMenuOpen = openMenuPath === location.pathname;
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -155,20 +160,39 @@ export function AppLayout() {
     function handleGlobalShortcut(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
+        setOpenMenuPath(null);
         setCommandOpen((prev) => !prev);
       } else if (event.key === 'Escape') {
         setCommandOpen(false);
+        setOpenMenuPath((prev) => {
+          if (prev !== null && sectionMenuRef.current?.contains(document.activeElement)) {
+            requestAnimationFrame(() => sectionMenuTriggerRef.current?.focus());
+          }
+          return null;
+        });
       }
     }
     window.addEventListener('keydown', handleGlobalShortcut);
     return () => window.removeEventListener('keydown', handleGlobalShortcut);
   }, []);
 
+  useEffect(() => {
+    if (!sectionMenuOpen) return;
+    function handlePointerDown(event: MouseEvent) {
+      if (sectionMenuRef.current && !sectionMenuRef.current.contains(event.target as Node)) {
+        setOpenMenuPath(null);
+      }
+    }
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [sectionMenuOpen]);
+
   const flatNavItems = useMemo(
     () =>
       visibleSections.flatMap((section) =>
         section.items.map((item) => ({
           ...item,
+          sectionId: section.id,
           sectionTitle: section.title || 'Tổng quan',
         })),
       ),
@@ -196,6 +220,13 @@ export function AppLayout() {
       .sort((a, b) => b.path.length - a.path.length);
     return exactOrPrefix[0] ?? null;
   }, [flatNavItems, location.pathname]);
+
+  const activeSectionItems = useMemo(() => {
+    if (!activeNavEntry) return [];
+    return (
+      visibleSections.find((section) => section.id === activeNavEntry.sectionId)?.items ?? []
+    );
+  }, [visibleSections, activeNavEntry]);
 
   const userInitial = user?.fullName ? user.fullName.trim().charAt(0).toUpperCase() : 'U';
   const primaryRoleLabel = useMemo(() => {
@@ -359,15 +390,82 @@ export function AppLayout() {
                 <>
                   {activeNavEntry.sectionTitle && (
                     <>
-                      <span className="text-slate-500 hidden md:inline truncate">
-                        {activeNavEntry.sectionTitle}
-                      </span>
+                      <div ref={sectionMenuRef} className="relative hidden md:block min-w-0">
+                        <button
+                          ref={sectionMenuTriggerRef}
+                          type="button"
+                          onClick={() =>
+                            setOpenMenuPath((prev) =>
+                              prev === location.pathname ? null : location.pathname,
+                            )
+                          }
+                          aria-expanded={sectionMenuOpen}
+                          aria-haspopup="menu"
+                          aria-controls={sectionMenuOpen ? 'header-section-menu' : undefined}
+                          className={cn(
+                            'inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium transition-colors select-none cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
+                            sectionMenuOpen
+                              ? 'bg-slate-100 text-slate-900'
+                              : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900',
+                          )}
+                        >
+                          <span className="truncate">{activeNavEntry.sectionTitle}</span>
+                        </button>
+                        {sectionMenuOpen && activeSectionItems.length > 0 && (
+                          <div
+                            id="header-section-menu"
+                            role="menu"
+                            aria-label={activeNavEntry.sectionTitle}
+                            className="absolute left-0 top-full z-50 mt-1.5 min-w-64 w-max max-w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-lg animate-in fade-in-0 zoom-in-95 duration-150"
+                          >
+                            {activeSectionItems.map((item) => {
+                              const Icon = item.icon;
+                              const isCurrent = item.path === activeNavEntry.path;
+                              return (
+                                <Link
+                                  key={item.path}
+                                  to={item.path}
+                                  role="menuitem"
+                                  aria-current={isCurrent ? 'page' : undefined}
+                                  onClick={() => setOpenMenuPath(null)}
+                                  className={cn(
+                                    'flex items-center justify-between gap-2.5 rounded-lg px-3 py-2 text-[length:var(--font-size-md)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary',
+                                    isCurrent
+                                      ? 'bg-primary/10 font-semibold text-primary'
+                                      : 'font-normal text-slate-700 hover:bg-slate-50 hover:text-slate-950',
+                                  )}
+                                >
+                                  <span className="flex min-w-0 items-center gap-2.5">
+                                    <Icon
+                                      aria-hidden="true"
+                                      className={cn(
+                                        'size-4 shrink-0 stroke-[1.75]',
+                                        isCurrent ? 'text-primary' : 'text-slate-400',
+                                      )}
+                                    />
+                                    <span className="truncate">{item.label}</span>
+                                  </span>
+                                  {isCurrent && (
+                                    <Check
+                                      aria-hidden="true"
+                                      className="size-4 shrink-0 text-primary"
+                                    />
+                                  )}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                       <ChevronRight className="size-4 text-slate-300 shrink-0 hidden md:inline" />
                     </>
                   )}
-                  <span className="font-semibold text-slate-900 truncate">
+                  <Link
+                    to={activeNavEntry.path}
+                    className="min-w-0 truncate rounded-md px-1.5 py-1 -mx-1.5 font-semibold text-slate-900 transition-colors hover:bg-slate-100 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
                     {activeNavEntry.label}
-                  </span>
+                  </Link>
                 </>
               )}
             </nav>
@@ -378,6 +476,7 @@ export function AppLayout() {
             <button
               type="button"
               onClick={() => {
+                setOpenMenuPath(null);
                 setCommandQuery('');
                 setCommandOpen(true);
               }}

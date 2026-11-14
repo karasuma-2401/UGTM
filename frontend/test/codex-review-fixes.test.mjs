@@ -277,10 +277,11 @@ test('[P1 #3] usePeriodData ignores stale batch detail response when switching b
 test('[P1 #3 & #5] usePeriodActions blocks mismatched batch save and reports partial gate update failures with retry', async () => {
   const { reactMock, render } = createHookRunner();
   const updatedScheduleFor = [];
+  const gateUpserts = [];
   let midtermShouldFail = true;
   const errors = [];
   const successes = [];
-  const partials = [];
+  const gateSuccesses = [];
 
   const { usePeriodActions } = loadTsModule('features/academic/hooks/periods/usePeriodActions.ts', {
     react: reactMock,
@@ -291,7 +292,8 @@ test('[P1 #3 & #5] usePeriodActions blocks mismatched batch save and reports par
           updatedScheduleFor.push(batchId);
         },
         openBatch: async () => ({}),
-        upsertReviewGateConfiguration: async (_batchId, gateType) => {
+        upsertReviewGateConfiguration: async (batchId, gateType) => {
+          gateUpserts.push([batchId, gateType]);
           if (gateType === 'Midterm' && midtermShouldFail) {
             throw new Error('Midterm gate error');
           }
@@ -326,51 +328,64 @@ test('[P1 #3 & #5] usePeriodActions blocks mismatched batch save and reports par
     onSuccess: async (_id, msg) => {
       successes.push(msg);
     },
-    onPartialSuccess: async (_id, _isNew, failedGates) => {
-      partials.push(failedGates);
-    },
     onError: (msg) => {
       errors.push(msg);
     },
   };
 
-  // 1. Mismatched batch ID must be blocked
   let actions = render(() => usePeriodActions());
   await actions.executeSave({
     ...baseParams,
     selectedBatchId: 'batch-b',
-    currentBatch: { id: 'batch-a', status: 'Upcoming' },
+    currentBatch: { id: 'batch-a', status: 'Draft' },
     isLoadingDetail: false,
   });
   assert.equal(updatedScheduleFor.length, 0, 'Should not save when currentBatch.id !== selectedBatchId');
   assert.equal(errors.length, 1);
 
-  // 2. Synced batch ID where Midterm gate fails -> partial save reported, not full success
   errors.length = 0;
   actions = render(() => usePeriodActions());
   await actions.executeSave({
     ...baseParams,
     selectedBatchId: 'batch-b',
-    currentBatch: { id: 'batch-b', status: 'Upcoming' },
+    currentBatch: { id: 'batch-b', status: 'Draft' },
     isLoadingDetail: false,
+  });
+  assert.deepEqual(updatedScheduleFor, ['batch-b']);
+  assert.equal(gateUpserts.length, 0, 'executeSave must only call batch schedule API, not review gates');
+  assert.equal(successes.length, 1);
+  assert.equal(errors.length, 0);
+
+  actions = render(() => usePeriodActions());
+  await actions.handleSaveGates({
+    selectedBatchId: 'batch-b',
+    currentBatch: { id: 'batch-b', status: 'Draft' },
+    isLoadingDetail: false,
+    syllabus: { initial: '2026-09-15', faculty: '2026-09-18', final: '2026-09-20' },
+    midterm: { initial: '2026-10-15', faculty: '2026-10-18', final: '2026-10-20' },
+    onSyllabusDeadlineChange: () => {},
+    onMidtermDeadlineChange: () => {},
+    onSuccess: (gates) => {
+      gateSuccesses.push(gates);
+    },
+    onError: (msg) => {
+      errors.push(msg);
+    },
   });
   actions = render(() => usePeriodActions());
 
-  assert.deepEqual(updatedScheduleFor, ['batch-b']);
-  assert.equal(successes.length, 0, 'Full onSuccess must not be called when a gate fails');
-  assert.equal(partials.length, 1, 'onPartialSuccess should be called');
+  assert.equal(gateSuccesses.length, 0, 'Full onSuccess must not be called when a gate fails');
   assert.equal(errors.length, 1, 'onError should report failed gate');
   assert.equal(actions.failedGateUpdates.length, 1);
   assert.equal(actions.failedGateUpdates[0].gateType, 'Midterm');
 
-  // 3. Retry failed gates succeeds once Midterm gate recovers
   midtermShouldFail = false;
   await actions.retryFailedGates({
     selectedBatchId: 'batch-b',
     onSuccess: (_id, msg) => successes.push(msg),
     onError: (msg) => errors.push(msg),
   });
-  assert.equal(successes.length, 1, 'Retrying failed gate should call onSuccess');
+  assert.equal(successes.length, 2, 'Retrying failed gate should call onSuccess');
 });
 
 test('[P1 #4] useScoreConfigActions saves unsaved draft changes before publishing and aborts publish if save fails', async () => {

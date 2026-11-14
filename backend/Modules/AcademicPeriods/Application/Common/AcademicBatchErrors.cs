@@ -28,6 +28,10 @@ public static class AcademicBatchErrors
         "AcademicBatch.InvalidStatusTransition",
         "Không thể chuyển trạng thái đợt khóa luận theo yêu cầu.");
 
+    public static readonly Error ActiveBatchCannotBeModified = Error.Conflict(
+        "AcademicBatch.ActiveBatchCannotBeModified",
+        "Không thể sửa đợt hiện hành");
+
     public static readonly Error ScoreConfigurationRequired = Error.Conflict(
         "AcademicBatch.ScoreConfigurationRequired",
         "Cần công bố một cấu hình điểm đang hoạt động trước khi mở đợt.");

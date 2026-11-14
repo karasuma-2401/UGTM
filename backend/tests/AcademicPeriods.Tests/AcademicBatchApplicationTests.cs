@@ -165,6 +165,130 @@ public sealed class AcademicBatchApplicationTests
     }
 
     [Fact]
+    public async Task Update_draft_batch_allows_updating_metadata_and_shifted_schedule()
+    {
+        var batch = AcademicPeriodTestData.DraftBatch();
+        var unitOfWork = new FakeUnitOfWork();
+        var audit = new FakeAuditOutbox();
+        var repository = new FakeBatchRepository(batch);
+        var handler = new UpdateKltnBatchScheduleHandler(
+            repository,
+            audit,
+            unitOfWork,
+            AuthorizedUser(PermissionCodes.AcademicBatchesManage),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
+        var shiftDays = 7;
+        var newStartDate = batch.StartDate.AddDays(shiftDays);
+        var shiftedItems = batch.Stages
+            .OrderBy(stage => stage.OrderIndex)
+            .Select(stage => new UpdateStageScheduleItem(
+                stage.OrderIndex,
+                stage.StageCode,
+                stage.StageName,
+                stage.StartDate.AddDays(shiftDays),
+                stage.EndDate.AddDays(shiftDays),
+                new DateTimeOffset(stage.DeadlineAtUtc.AddDays(shiftDays))))
+            .ToArray();
+
+        var result = await handler.HandleAsync(new UpdateKltnBatchScheduleCommand(
+            batch.Id,
+            shiftedItems,
+            null,
+            "KLTN HK2 Cập nhật",
+            "2027-2028",
+            2,
+            newStartDate));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("KLTN HK2 Cập nhật", result.Value.BatchName);
+        Assert.Equal("2027-2028", result.Value.AcademicYear);
+        Assert.Equal(2, result.Value.Semester);
+        Assert.Equal(newStartDate, result.Value.StartDate);
+        Assert.Equal(shiftedItems[^1].EndDate, result.Value.EndDate);
+        Assert.Equal(2, unitOfWork.SaveCount);
+        Assert.Single(audit.Entries);
+    }
+
+    [Fact]
+    public async Task Update_draft_batch_rejects_duplicate_academic_year_and_semester()
+    {
+        var batch = AcademicPeriodTestData.DraftBatch();
+        var unitOfWork = new FakeUnitOfWork();
+        var audit = new FakeAuditOutbox();
+        var handler = new UpdateKltnBatchScheduleHandler(
+            new FakeBatchRepository(batch) { Exists = true },
+            audit,
+            unitOfWork,
+            AuthorizedUser(PermissionCodes.AcademicBatchesManage),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
+        var items = batch.Stages.Select(stage => new UpdateStageScheduleItem(
+            stage.OrderIndex,
+            stage.StageCode,
+            stage.StageName,
+            stage.StartDate,
+            stage.EndDate,
+            new DateTimeOffset(stage.DeadlineAtUtc))).ToArray();
+
+        var result = await handler.HandleAsync(new UpdateKltnBatchScheduleCommand(
+            batch.Id,
+            items,
+            null,
+            batch.BatchName,
+            "2027-2028",
+            2,
+            batch.StartDate));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(AcademicBatchErrors.DuplicateAcademicPeriod.Code, result.Error.Code);
+        Assert.Equal(0, unitOfWork.SaveCount);
+        Assert.Empty(audit.Entries);
+    }
+
+    [Fact]
+    public async Task Update_open_batch_metadata_returns_active_batch_cannot_be_modified()
+    {
+        var batch = AcademicPeriodTestData.DraftBatch();
+        batch.Open(
+            ActiveScoreConfiguration(batch.Id),
+            AcademicPeriodTestData.ActorId,
+            AcademicPeriodTestData.OccurredAtUtc.AddMinutes(1));
+        var unitOfWork = new FakeUnitOfWork();
+        var audit = new FakeAuditOutbox();
+        var handler = new UpdateKltnBatchScheduleHandler(
+            new FakeBatchRepository(batch),
+            audit,
+            unitOfWork,
+            AuthorizedUser(PermissionCodes.AcademicBatchesManage),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
+        var shiftDays = 7;
+        var shiftedItems = batch.Stages
+            .OrderBy(stage => stage.OrderIndex)
+            .Select(stage => new UpdateStageScheduleItem(
+                stage.OrderIndex,
+                stage.StageCode,
+                stage.StageName,
+                stage.StartDate.AddDays(shiftDays),
+                stage.EndDate.AddDays(shiftDays),
+                new DateTimeOffset(stage.DeadlineAtUtc.AddDays(shiftDays))))
+            .ToArray();
+
+        var result = await handler.HandleAsync(new UpdateKltnBatchScheduleCommand(
+            batch.Id,
+            shiftedItems,
+            "Doi ngay bat dau",
+            batch.BatchName,
+            batch.AcademicYear,
+            batch.Semester,
+            batch.StartDate.AddDays(shiftDays)));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(AcademicBatchErrors.ActiveBatchCannotBeModified.Code, result.Error.Code);
+        Assert.Equal("Không thể sửa đợt hiện hành", result.Error.Message);
+        Assert.Equal(0, unitOfWork.SaveCount);
+        Assert.Empty(audit.Entries);
+    }
+
+    [Fact]
     public async Task Open_batch_requires_an_active_score_configuration()
     {
         var batch = AcademicPeriodTestData.DraftBatch();
@@ -252,6 +376,8 @@ public sealed class AcademicBatchApplicationTests
         public Task ReloadAsync(KltnBatch value, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
         public Task<bool> ExistsAsync(string academicYear, int semester, CancellationToken cancellationToken = default)
+            => Task.FromResult(Exists);
+        public Task<bool> ExistsAsync(string academicYear, int semester, Guid excludeBatchId, CancellationToken cancellationToken = default)
             => Task.FromResult(Exists);
         public void Add(KltnBatch value) => Added = value;
         public void AddStages(IEnumerable<Stage> stages) => AddedStages = stages.ToArray();

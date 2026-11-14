@@ -38,11 +38,6 @@ interface SavePeriodParams {
   defenseDeadline: string;
   changeReason?: string;
   onBatchCreated?: (createdBatchId: string) => Promise<void> | void;
-  onPartialSuccess?: (
-    targetBatchId: string,
-    isNew: boolean,
-    failedGates: FailedGateUpdate[],
-  ) => Promise<void> | void;
   onSuccess: (targetBatchId: string, message: string, isNew: boolean) => Promise<void>;
   onError: (msg: string) => void;
 }
@@ -79,18 +74,6 @@ interface RetryFailedGatesParams {
   onError: (msg: string) => void;
 }
 
-function buildAutoGatePayload(deadlineDate: string): UpsertReviewGateConfigurationRequest {
-  const finalUtc = toUtcDeadlineIso(deadlineDate, '23:59:00');
-  const [y, m, d] = deadlineDate.split('-').map(Number);
-  const facultyDate = new Date(y, m - 1, d - 2, 23, 59, 0, 0);
-  const initialDate = new Date(y, m - 1, d - 5, 23, 59, 0, 0);
-  return {
-    initialSubmissionDeadlineUtc: initialDate.toISOString(),
-    facultyResponseDeadlineUtc: facultyDate.toISOString(),
-    finalClosureDeadlineUtc: finalUtc,
-  };
-}
-
 export function usePeriodActions() {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isOpenLoading, setIsOpenLoading] = useState<boolean>(false);
@@ -115,7 +98,6 @@ export function usePeriodActions() {
     defenseDeadline,
     changeReason,
     onBatchCreated,
-    onPartialSuccess,
     onSuccess,
     onError,
   }: SavePeriodParams) => {
@@ -194,6 +176,10 @@ export function usePeriodActions() {
         successMsg = 'Khởi tạo đợt KLTN và cấu hình lịch trình giai đoạn thành công!';
       } else if (targetBatchId) {
         await periodApi.updateSchedule(targetBatchId, {
+          batchName: batchName.trim(),
+          academicYear: academicYear.trim(),
+          semester,
+          startDate,
           stages: stagesPayload,
           changeReason: changeReason || undefined,
         });
@@ -202,64 +188,6 @@ export function usePeriodActions() {
       }
 
       if (targetBatchId) {
-        const gatesToUpdate: Array<{
-          gateType: 'Syllabus' | 'Midterm';
-          label: string;
-          deadlineDate: string;
-          payload: UpsertReviewGateConfigurationRequest;
-        }> = [];
-
-        if (syllabusDeadline) {
-          gatesToUpdate.push({
-            gateType: 'Syllabus',
-            label: 'Cổng 1 (Đề cương)',
-            deadlineDate: syllabusDeadline,
-            payload: buildAutoGatePayload(syllabusDeadline),
-          });
-        }
-
-        if (midtermDeadline) {
-          gatesToUpdate.push({
-            gateType: 'Midterm',
-            label: 'Cổng 2 (Giữa kỳ)',
-            deadlineDate: midtermDeadline,
-            payload: buildAutoGatePayload(midtermDeadline),
-          });
-        }
-
-        const gateFailures: FailedGateUpdate[] = [];
-
-        for (const gate of gatesToUpdate) {
-          try {
-            await periodApi.upsertReviewGateConfiguration(
-              targetBatchId,
-              gate.gateType,
-              gate.payload,
-            );
-          } catch (gateErr) {
-            gateFailures.push({
-              batchId: targetBatchId,
-              gateType: gate.gateType,
-              label: gate.label,
-              deadlineDate: gate.deadlineDate,
-              payload: gate.payload,
-              errorMessage: getPeriodErrorMessage(gateErr),
-            });
-          }
-        }
-
-        if (gateFailures.length > 0) {
-          setFailedGateUpdates(gateFailures);
-          await onPartialSuccess?.(targetBatchId, isNew, gateFailures);
-          const failedSummary = gateFailures
-            .map((f) => `${f.label}: ${f.errorMessage}`)
-            .join('; ');
-          onError(
-            `Đã lưu lịch trình giai đoạn của đợt, nhưng cập nhật hạn chót cổng thẩm định thất bại (${failedSummary}). Vui lòng thử lại phần bị lỗi.`,
-          );
-          return;
-        }
-
         await onSuccess(targetBatchId, successMsg, isNew);
       }
     } catch (err) {

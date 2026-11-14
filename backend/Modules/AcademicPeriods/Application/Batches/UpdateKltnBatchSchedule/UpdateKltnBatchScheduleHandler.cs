@@ -3,6 +3,7 @@ using UGTM.Modules.AcademicPeriods.Application.Auditing;
 using UGTM.Modules.AcademicPeriods.Application.Batches.Dtos;
 using UGTM.Modules.AcademicPeriods.Application.Common;
 using UGTM.Modules.AcademicPeriods.Application.Persistence;
+using UGTM.Modules.AcademicPeriods.Domain.Enums;
 using UGTM.Modules.AcademicPeriods.Domain.Repositories;
 using UGTM.Modules.AcademicPeriods.Domain.Scheduling;
 using UGTM.Modules.Identity.Contracts.Auditing;
@@ -37,6 +38,46 @@ public sealed class UpdateKltnBatchScheduleHandler(
             return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.NotFound);
         }
 
+        var requestedBatchName = command.BatchName?.Trim() ?? batch.BatchName;
+        var requestedAcademicYear = command.AcademicYear?.Trim() ?? batch.AcademicYear;
+        var requestedSemester = command.Semester ?? batch.Semester;
+        var requestedStartDate = command.StartDate ?? batch.StartDate;
+
+        var hasMetadataChanges =
+            (command.BatchName is not null && !string.Equals(requestedBatchName, batch.BatchName, StringComparison.Ordinal))
+            || (command.AcademicYear is not null && !string.Equals(requestedAcademicYear, batch.AcademicYear, StringComparison.Ordinal))
+            || (command.Semester.HasValue && requestedSemester != batch.Semester)
+            || (command.StartDate.HasValue && requestedStartDate != batch.StartDate);
+
+        if (hasMetadataChanges)
+        {
+            if (batch.Status == BatchStatus.Open)
+            {
+                return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.ActiveBatchCannotBeModified);
+            }
+
+            if (batch.Status != BatchStatus.Draft)
+            {
+                return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.InvalidStatusTransition);
+            }
+
+            if (string.IsNullOrWhiteSpace(requestedBatchName)
+                || requestedBatchName.Length > 100
+                || string.IsNullOrWhiteSpace(requestedAcademicYear)
+                || requestedAcademicYear.Length > 20
+                || requestedSemester <= 0)
+            {
+                return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.InvalidRequest);
+            }
+
+            if ((!string.Equals(requestedAcademicYear, batch.AcademicYear, StringComparison.Ordinal)
+                 || requestedSemester != batch.Semester)
+                && await batchRepository.ExistsAsync(requestedAcademicYear, requestedSemester, batch.Id, cancellationToken))
+            {
+                return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.DuplicateAcademicPeriod);
+            }
+        }
+
         var schedule = command.Stages.Select(stage => new StageSchedule(
             stage.OrderIndex,
             stage.StageCode,
@@ -46,7 +87,7 @@ public sealed class UpdateKltnBatchScheduleHandler(
             stage.DeadlineAtUtc.UtcDateTime)).ToArray();
         try
         {
-            batch.ValidateScheduleReplacement(schedule, command.ChangeReason);
+            batch.ValidateScheduleReplacement(schedule, command.ChangeReason, requestedStartDate);
         }
         catch (ArgumentException)
         {
@@ -69,6 +110,17 @@ public sealed class UpdateKltnBatchScheduleHandler(
                 await batchRepository.ReloadAsync(batch, transactionCancellationToken);
 
                 var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
+                if (hasMetadataChanges)
+                {
+                    batch.UpdateDraftDetails(
+                        requestedBatchName,
+                        requestedAcademicYear,
+                        requestedSemester,
+                        requestedStartDate,
+                        currentUser.UserId!.Value,
+                        occurredAt);
+                }
+
                 batch.ReplaceSchedule(
                     schedule,
                     command.ChangeReason,
@@ -85,6 +137,10 @@ public sealed class UpdateKltnBatchScheduleHandler(
                         null,
                         new
                         {
+                            batch.BatchName,
+                            batch.AcademicYear,
+                            batch.Semester,
+                            batch.StartDate,
                             ChangeReason = string.IsNullOrWhiteSpace(command.ChangeReason) ? null : command.ChangeReason.Trim(),
                             Stages = batch.Stages.OrderBy(x => x.OrderIndex).Select(x => new
                             {
@@ -105,9 +161,16 @@ public sealed class UpdateKltnBatchScheduleHandler(
         {
             return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.ConcurrencyConflict);
         }
-        catch (AcademicPeriodsUniqueConstraintException)
+        catch (ArgumentException)
         {
-            return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.ConcurrencyConflict);
+            return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.InvalidRequest);
+        }
+        catch (AcademicPeriodsUniqueConstraintException ex)
+        {
+            return Result.Failure<KltnBatchDetailDto>(
+                ex.ConstraintName == "ix_kltn_batch_academic_year_semester"
+                    ? AcademicBatchErrors.DuplicateAcademicPeriod
+                    : AcademicBatchErrors.ConcurrencyConflict);
         }
     }
 }

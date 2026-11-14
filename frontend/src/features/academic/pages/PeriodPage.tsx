@@ -76,6 +76,7 @@ export const PeriodPage: React.FC = () => {
 
       {modals.errorMessage && (
         <InlineAlert
+          onDismiss={() => modals.setErrorMessage(null)}
           action={
             actions.failedGateUpdates.length > 0 ? (
               <Button

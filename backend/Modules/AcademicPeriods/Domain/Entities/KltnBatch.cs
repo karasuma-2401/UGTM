@@ -109,7 +109,7 @@ public sealed class KltnBatch : AggregateRoot<Guid>
 
         var actorId = RequireId(updatedBy, nameof(updatedBy));
         var occurredAt = RequireUtc(updatedAt, nameof(updatedAt));
-        var values = PrepareSchedule(schedule);
+        var values = PrepareSchedule(schedule, StartDate);
 
         _stages.Clear();
         _stages.AddRange(values.Select(value => Stage.Create(Id, value, TimeZoneId, Status == BatchStatus.Open)));
@@ -118,12 +118,35 @@ public sealed class KltnBatch : AggregateRoot<Guid>
         UpdatedAt = occurredAt;
     }
 
+    public void UpdateDraftDetails(
+        string batchName,
+        string academicYear,
+        int semester,
+        DateOnly startDate,
+        Guid updatedBy,
+        DateTime updatedAt)
+    {
+        if (Status != BatchStatus.Draft)
+        {
+            throw new InvalidOperationException("Only a draft batch can update its core details.");
+        }
+
+        BatchName = RequireText(batchName, nameof(batchName), 100);
+        AcademicYear = RequireText(academicYear, nameof(academicYear), 20);
+        Semester = semester > 0
+            ? semester
+            : throw new ArgumentOutOfRangeException(nameof(semester), "Semester must be positive.");
+        StartDate = startDate;
+        Touch(updatedBy, updatedAt);
+    }
+
     public void ValidateScheduleReplacement(
         IEnumerable<StageSchedule> schedule,
-        string? changeReason)
+        string? changeReason,
+        DateOnly? expectedStartDate = null)
     {
         EnsureScheduleCanBeReplaced(changeReason);
-        _ = PrepareSchedule(schedule);
+        _ = PrepareSchedule(schedule, expectedStartDate ?? StartDate);
     }
 
     public void RemoveStagesForScheduleReplacement(string? changeReason)
@@ -179,7 +202,7 @@ public sealed class KltnBatch : AggregateRoot<Guid>
         Status = BatchStatus.Archived;
     }
 
-    private void ValidateSchedule(IReadOnlyList<StageSchedule> schedule)
+    private void ValidateSchedule(IReadOnlyList<StageSchedule> schedule, DateOnly expectedStartDate)
     {
         if (schedule.Count != RequiredStageCount)
         {
@@ -197,7 +220,7 @@ public sealed class KltnBatch : AggregateRoot<Guid>
             throw new ArgumentException("Stage codes must be unique within a batch.", nameof(schedule));
         }
 
-        if (schedule[0].StartDate != StartDate || schedule[^1].EndDate <= StartDate)
+        if (schedule[0].StartDate != expectedStartDate || schedule[^1].EndDate <= expectedStartDate)
         {
             throw new ArgumentException("The schedule must start on the batch start date and end after it.", nameof(schedule));
         }
@@ -205,7 +228,7 @@ public sealed class KltnBatch : AggregateRoot<Guid>
         for (var index = 0; index < schedule.Count; index++)
         {
             var current = schedule[index];
-            if (current.StartDate < StartDate || current.EndDate < current.StartDate)
+            if (current.StartDate < expectedStartDate || current.EndDate < current.StartDate)
             {
                 throw new ArgumentException("Every stage must be contained in the batch date range.", nameof(schedule));
             }
@@ -230,11 +253,11 @@ public sealed class KltnBatch : AggregateRoot<Guid>
         }
     }
 
-    private StageSchedule[] PrepareSchedule(IEnumerable<StageSchedule> schedule)
+    private StageSchedule[] PrepareSchedule(IEnumerable<StageSchedule> schedule, DateOnly expectedStartDate)
     {
         var values = schedule?.OrderBy(x => x.OrderIndex).ToArray()
             ?? throw new ArgumentNullException(nameof(schedule));
-        ValidateSchedule(values);
+        ValidateSchedule(values, expectedStartDate);
         return values;
     }
 

@@ -11,4 +11,8 @@ public sealed record UpdateStageScheduleItem(
 public sealed record UpdateKltnBatchScheduleCommand(
     Guid BatchId,
     IReadOnlyCollection<UpdateStageScheduleItem> Stages,
-    string? ChangeReason);
+    string? ChangeReason,
+    string? BatchName = null,
+    string? AcademicYear = null,
+    int? Semester = null,
+    DateOnly? StartDate = null);

@@ -92,6 +92,21 @@ public sealed class KltnBatchTests
             AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
     }
 
+    [Fact]
+    public void Open_batch_cannot_update_draft_details()
+    {
+        var batch = AcademicPeriodTestData.DraftBatch();
+        batch.Open(ActiveScoreConfiguration(batch.Id), AcademicPeriodTestData.ActorId, AcademicPeriodTestData.OccurredAtUtc.AddMinutes(1));
+
+        Assert.Throws<InvalidOperationException>(() => batch.UpdateDraftDetails(
+            "Updated Name",
+            batch.AcademicYear,
+            batch.Semester,
+            batch.StartDate.AddDays(7),
+            AcademicPeriodTestData.ActorId,
+            AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
+    }
+
     private static ScoreWeightConfig ActiveScoreConfiguration(Guid batchId)
     {
         var configuration = ScoreWeightConfig.CreateDraft(
