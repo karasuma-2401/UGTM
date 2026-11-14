@@ -191,6 +191,9 @@ test('[P1 #2] useSyllabusSubmission scopes query keys by user.id and disables qu
     '../services/syllabusApi': {
       syllabusApi: {},
     },
+    '../services/submissionUploadHelper': {
+      validateReportFile: () => null,
+    },
   });
 
   useSyllabusSubmission();
@@ -461,6 +464,9 @@ test('[P1 #6 & P2 #7] thesis APIs preserve HTTP errors without fake fallback dat
 
   // syllabusApi.getGroupDetail must rethrow 403 instead of fabricating Confirmed group
   const { syllabusApi } = loadTsModule('features/thesis/services/syllabusApi.ts', {
+    './submissionUploadHelper': {
+      buildUploadProgressHandler: () => undefined,
+    },
     '@/shared/api': {
       httpClient: {
         get: async () => {

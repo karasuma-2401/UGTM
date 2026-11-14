@@ -1,36 +1,47 @@
-import { InlineAlert } from '@/components/ui/inline-alert';
-import { OperationToast } from '@/shared/notifications';
-import { Link } from 'react-router-dom';
-import { FileUp, BookOpen, AlertCircle, Clock, ShieldAlert, RotateCcw } from 'lucide-react';
-import { PageHeader } from '@/components/ui/page-header';
+import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ThesisSubmissionNavigation } from '../components/navigation';
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
+import { useFinalReportSubmission } from '../hooks/useFinalReportSubmission';
+import { FINAL_REPORT_STATUS_LABELS, type FinalReportStatus } from '../types/finalReport.types';
+import { ThesisSubmissionWorkspace } from '../components/shared';
+import { SimilarityReportPanel } from '../components/SimilarityReportPanel';
 import {
+  FinalReportSummaryCard,
   FinalReportUploadCard,
   FinalReportVersionCard,
-  FinalReportSummaryCard,
   ReviewerFeedbackDialog,
 } from '../components/finalReport';
-import { useFinalReportSubmission } from '../hooks/useFinalReportSubmission';
-import { SimilarityReportPanel } from '../components/SimilarityReportPanel';
-import { classifyThesisError, getThesisErrorMessage } from '../utils/thesisErrors';
+
+const headerToneMap: Record<string, StatusTone> = {
+  Draft: 'neutral',
+  Submitted: 'info',
+  UnderEvaluation: 'warning',
+  Approved: 'success',
+  Rejected: 'error',
+};
 
 export function FinalReportSubmissionPage() {
   const {
     statusQuery,
     groupDetailQuery,
     midtermHistoryQuery,
-    feedbackQuery,
     historyQuery,
+    feedbackQuery,
     selectedFile,
-    productNote,
-    setProductNote,
+    productLinks,
+    setProductLinks,
+    selectedImages,
+    setSelectedImages,
+    uploadProgress,
     isFeedbackOpen,
     setIsFeedbackOpen,
     actionError,
+    setActionError,
     actionSuccess,
     setActionSuccess,
     currentStatus,
+    versions,
     latestVersion,
     canSubmit,
     notEligibleReason,
@@ -41,202 +52,139 @@ export function FinalReportSubmissionPage() {
   } = useFinalReportSubmission();
 
   const groupDetail = groupDetailQuery.data;
+  const midtermApproved = midtermHistoryQuery.data?.currentStatus === 'Approved';
+  const nextVersionNo = (historyQuery.data?.currentVersionNo || 0) + 1;
+  const headerStatusLabel =
+    FINAL_REPORT_STATUS_LABELS[currentStatus as FinalReportStatus] || 'Chưa nộp';
+  const headerStatusTone = headerToneMap[currentStatus] || 'neutral';
 
-  const handleSubmit = () => {
-    if (selectedFile) {
-      submitMutation.mutate(selectedFile);
-    }
-  };
+  const isLockedOrDone = !canSubmit || currentStatus === 'Approved';
+  const showUploadCard =
+    (canSubmit && currentStatus !== 'Approved') ||
+    !midtermApproved ||
+    (!historyQuery.isLoading && versions.length === 0 && currentStatus !== 'Approved');
 
-  if (statusQuery.isError) {
-    const errorKind = classifyThesisError(statusQuery.error);
-    const message = getThesisErrorMessage(
-      statusQuery.error,
-      'Không thể tải trạng thái đăng ký đề tài của bạn.',
-    );
+  const uploadCard = showUploadCard ? (
+    <FinalReportUploadCard
+      selectedFile={selectedFile}
+      productLinks={productLinks}
+      selectedImages={selectedImages}
+      uploadProgress={uploadProgress}
+      onProductLinksChange={setProductLinks}
+      onImagesChange={setSelectedImages}
+      onFileSelect={(file) => {
+        if (file) {
+          handleFileSelect(file);
+        } else {
+          handleRemoveFile();
+        }
+      }}
+      onSubmit={() => {
+        if (selectedFile && canSubmit) {
+          submitMutation.mutate(selectedFile);
+        }
+      }}
+      onOpenFeedback={() => setIsFeedbackOpen(true)}
+      isSubmitting={submitMutation.isPending}
+      canSubmit={canSubmit}
+      midtermApproved={midtermApproved}
+      currentStatus={currentStatus}
+      nextVersionNo={nextVersionNo}
+      disabled={!canSubmit || submitMutation.isPending}
+      disabledReason={notEligibleReason}
+      latestFileName={latestVersion?.file.fileName ?? null}
+    />
+  ) : null;
 
-    return (
-      <div className="max-w-4xl mx-auto py-10 px-4">
-        <div className="p-8 text-center bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <div className="size-12 mx-auto rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
-            {errorKind === 'forbidden' ? (
-              <ShieldAlert className="size-6 text-amber-600" />
-            ) : (
-              <AlertCircle className="size-6" />
-            )}
-          </div>
-          <h2 className="text-lg font-bold text-slate-800">
-            {errorKind === 'forbidden'
-              ? 'Không có quyền truy cập báo cáo cuối kỳ'
-              : 'Không tải được thông tin đề tài KLTN'}
-          </h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">{message}</p>
-          {errorKind !== 'forbidden' && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void statusQuery.refetch()}
-              className="border-slate-300"
-            >
-              <RotateCcw className="size-4 mr-2" />
-              Thử lại
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const versionCard = (
+    <FinalReportVersionCard
+      versions={versions}
+      currentStatus={currentStatus}
+      currentVersionNo={historyQuery.data?.currentVersionNo}
+      onDownload={(fileId) => void handleDownload(fileId)}
+      onOpenFeedback={() => setIsFeedbackOpen(true)}
+      isLoading={historyQuery.isLoading}
+    />
+  );
 
-  if (!statusQuery.isLoading && !statusQuery.data?.hasRegistered) {
-    return (
-      <div className="max-w-4xl mx-auto py-10 px-4">
-        <div className="p-8 text-center bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <div className="size-12 mx-auto rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-            <AlertCircle className="size-6" />
-          </div>
-          <h2 className="text-lg font-bold text-slate-800">
-            Chưa có thông tin đề tài KLTN
-          </h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
-            Bạn chưa đăng ký đề tài nào trong đợt KLTN này hoặc đăng ký chưa được xác nhận. Vui lòng tra cứu và đăng ký đề tài trước khi nộp báo cáo cuối kỳ.
-          </p>
-          <Button asChild className="bg-primary text-white">
-            <Link to="/topics/catalog">
-              <BookOpen className="size-4 mr-2" />
-              Xem danh mục đề tài
-            </Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const badgeText =
-    currentStatus === 'Approved'
-      ? 'Đạt chuyển phản biện'
-      : currentStatus === 'UnderEvaluation'
-        ? 'Đang chấm điểm'
-        : currentStatus === 'Submitted'
-          ? 'Đã nộp v' + (latestVersion?.versionNo ?? 1)
-          : canSubmit
-            ? 'Sẵn sàng nộp'
-            : 'Chưa đủ điều kiện';
-
-  const badgeVariant =
-    currentStatus === 'Approved'
-      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-      : currentStatus === 'UnderEvaluation'
-        ? 'bg-amber-50 text-amber-700 border-amber-200'
-        : canSubmit
-          ? 'bg-blue-50 text-blue-700 border-blue-200/80'
-          : 'bg-slate-100 text-slate-600 border-slate-200';
+  const similarityPanel = historyQuery.data?.finalReportId ? (
+    <SimilarityReportPanel
+      reportId={historyQuery.data.finalReportId}
+      versionNo={latestVersion?.versionNo}
+    />
+  ) : null;
 
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 space-y-6">
-      <PageHeader
-        title="Nộp báo cáo cuối kỳ"
-        description="Tuần 11–18 · Sau khi được GVHD cho phép tiếp tục ở Cổng 2."
-        icon={<FileUp />}
-        navigation={<ThesisSubmissionNavigation />}
-      >
-        <span
-          className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border ${badgeVariant}`}
+    <ThesisSubmissionWorkspace
+      activeTab="final-report"
+      statusQuery={statusQuery}
+      groupDetail={groupDetail}
+      groupDetailLoading={groupDetailQuery.isLoading}
+      headerBadge={<StatusBadge tone={headerStatusTone}>{headerStatusLabel}</StatusBadge>}
+      actionError={actionError}
+      onDismissError={() => setActionError(null)}
+      actionSuccess={actionSuccess}
+      onDismissSuccess={() => setActionSuccess(null)}
+      sidebar={
+        <FinalReportSummaryCard
+          groupDetail={groupDetail}
+          isLoading={groupDetailQuery.isLoading}
+          isError={groupDetailQuery.isError}
+          onRetry={() => void groupDetailQuery.refetch()}
+        />
+      }
+    >
+      {historyQuery.isError && (
+        <InlineAlert
+          tone="error"
+          title="Không thể tải thông tin báo cáo cuối kỳ"
+          action={
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void historyQuery.refetch()}
+            >
+              <RefreshCw className="size-3.5 mr-1.5" />
+              Thử lại
+            </Button>
+          }
         >
-          {badgeText}
-        </span>
-      </PageHeader>
-
-      {notEligibleReason && (
-        <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 flex items-start gap-3.5 shadow-xs">
-          <div className="p-2 rounded-lg bg-amber-100/80 text-amber-700 shrink-0 mt-0.5">
-            <Clock className="size-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm text-amber-900">
-              Lưu ý điều kiện nộp Báo cáo cuối kỳ
-            </p>
-            <p className="text-xs mt-1 text-amber-800/90 leading-relaxed">
-              {notEligibleReason}
-            </p>
-          </div>
-        </div>
+          Đã xảy ra lỗi khi đồng bộ dữ liệu báo cáo cuối kỳ. Vui lòng thử lại sau.
+        </InlineAlert>
       )}
 
-      { (historyQuery.isError || midtermHistoryQuery.isError) && (() => {
-        const err = historyQuery.error || midtermHistoryQuery.error;
-        const kind = classifyThesisError(err);
-        const msg = getThesisErrorMessage(err, 'Không thể tải dữ liệu báo cáo cuối kỳ.');
-        return (
-          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-start gap-3">
-              {kind === 'forbidden' ? (
-                <ShieldAlert className="size-5 text-amber-600 shrink-0 mt-0.5" />
-              ) : (
-                <AlertCircle className="size-5 text-rose-600 shrink-0 mt-0.5" />
-              )}
-              <div>
-                <p className="text-sm font-semibold">
-                  {kind === 'forbidden'
-                    ? 'Không có quyền truy cập dữ liệu báo cáo cuối kỳ'
-                    : 'Không tải được dữ liệu báo cáo cuối kỳ'}
-                </p>
-                <p className="text-xs mt-0.5 text-rose-700">{msg}</p>
-              </div>
-            </div>
-            {kind !== 'forbidden' && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  void midtermHistoryQuery.refetch();
-                  void historyQuery.refetch();
-                }}
-                className="h-8 text-xs border-rose-300 bg-white text-rose-700 hover:bg-rose-100"
-              >
-                <RotateCcw className="size-3.5 mr-1.5" />
-                Thử lại
-              </Button>
-            )}
-          </div>
-        );
-      })()}
+      {currentStatus === 'UnderEvaluation' && (
+        <InlineAlert tone="warning" title="Báo cáo cuối kỳ đang được GVHD chấm điểm">
+          Hồ sơ tạm khóa chỉnh sửa trong khi giảng viên hướng dẫn đánh giá trước phản biện.
+        </InlineAlert>
+      )}
 
-      {actionError && <InlineAlert title="Không thể hoàn tất">{actionError}</InlineAlert>}
+      {currentStatus === 'Approved' && (
+        <InlineAlert tone="success" title="GVHD đã đồng ý chuyển phản biện">
+          Báo cáo toàn văn của nhóm đã đủ điều kiện chuyển Hội đồng / Giảng viên phản biện. Nhấn Xem góp ý GVPB khi có nhận xét chính thức.
+        </InlineAlert>
+      )}
 
-      <OperationToast message={actionSuccess} onConsumed={() => setActionSuccess(null)} />
+      {currentStatus === 'Rejected' && (
+        <InlineAlert tone="error" title="Cần chỉnh sửa lại báo cáo cuối kỳ">
+          Báo cáo cần được chỉnh sửa theo trao đổi với GVHD. Hãy tải lên phiên bản mới để nộp lại.
+        </InlineAlert>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-8 space-y-6">
-          <FinalReportUploadCard
-            selectedFile={selectedFile}
-            productNote={productNote}
-            onProductNoteChange={setProductNote}
-            onFileSelect={handleFileSelect}
-            onRemoveFile={handleRemoveFile}
-            disabled={!canSubmit || submitMutation.isPending}
-            latestFileName={latestVersion?.file.fileName}
-          />
-
-          <FinalReportVersionCard
-            latestVersion={latestVersion}
-            currentStatus={currentStatus}
-            hasSelectedFile={Boolean(selectedFile)}
-            isSubmitting={submitMutation.isPending}
-            canSubmit={canSubmit}
-            onSubmit={handleSubmit}
-            onOpenFeedback={() => setIsFeedbackOpen(true)}
-            onDownloadFile={handleDownload}
-          />
-          {historyQuery.data && (
-            <SimilarityReportPanel reportId={historyQuery.data.finalReportId} versionNo={historyQuery.data.currentVersionNo} />
-          )}
-        </div>
-
-        <div className="lg:col-span-4">
-          <FinalReportSummaryCard groupDetail={groupDetail} />
-        </div>
-      </div>
+      {isLockedOrDone ? (
+        <>
+          {versionCard}
+          {similarityPanel}
+          {uploadCard}
+        </>
+      ) : (
+        <>
+          {uploadCard}
+          {versionCard}
+          {similarityPanel}
+        </>
+      )}
 
       <ReviewerFeedbackDialog
         open={isFeedbackOpen}
@@ -244,6 +192,6 @@ export function FinalReportSubmissionPage() {
         comment={feedbackQuery.data?.comment}
         isLoading={feedbackQuery.isLoading}
       />
-    </div>
+    </ThesisSubmissionWorkspace>
   );
 }

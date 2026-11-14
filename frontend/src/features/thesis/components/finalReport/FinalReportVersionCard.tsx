@@ -1,88 +1,79 @@
-import React from 'react';
-import { Send, MessageSquareQuote, ExternalLink } from 'lucide-react';
+import { MessageSquareQuote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
 import type { FinalReportHistoryItemDto } from '../../types/finalReport.types';
+import { finalReportApi } from '../../services/finalReportApi';
+import { VersionHistoryTimeline, type TimelineVersionItem } from '../shared';
 
 interface FinalReportVersionCardProps {
-  latestVersion: FinalReportHistoryItemDto | null;
+  versions: FinalReportHistoryItemDto[];
   currentStatus: string;
-  hasSelectedFile: boolean;
-  isSubmitting: boolean;
-  canSubmit: boolean;
-  onSubmit: () => void;
-  onOpenFeedback: () => void;
-  onDownloadFile: (fileId: string) => void;
+  currentVersionNo?: number;
+  onDownload: (fileId: string) => void;
+  onOpenFeedback?: () => void;
+  isLoading?: boolean;
 }
 
-export const FinalReportVersionCard: React.FC<FinalReportVersionCardProps> = ({
-  latestVersion,
-  currentStatus,
-  hasSelectedFile,
-  isSubmitting,
-  canSubmit,
-  onSubmit,
-  onOpenFeedback,
-  onDownloadFile,
-}) => {
-  const versionLabel = latestVersion
-    ? `v${latestVersion.versionNo} · ${latestVersion.file.fileName}`
-    : 'Chưa có phiên bản nào được nộp';
+const statusToneMap: Record<string, { tone: StatusTone; label: string }> = {
+  Submitted: { tone: 'info', label: 'Đã nộp' },
+  UnderEvaluation: { tone: 'warning', label: 'Đang chấm' },
+  Approved: { tone: 'success', label: 'Chuyển phản biện' },
+  Rejected: { tone: 'error', label: 'Cần chỉnh sửa' },
+};
 
-  const statusLabel =
-    currentStatus === 'Approved'
-      ? 'Đã duyệt chuyển phản biện'
-      : currentStatus === 'UnderEvaluation'
-        ? 'Đang chấm điểm'
-        : currentStatus === 'Submitted'
-          ? 'Đã nộp'
-          : 'Bản nháp';
+export function FinalReportVersionCard({
+  versions,
+  currentStatus,
+  currentVersionNo,
+  onDownload,
+  onOpenFeedback,
+  isLoading = false,
+}: FinalReportVersionCardProps) {
+  const highestNo = currentVersionNo || versions[versions.length - 1]?.versionNo;
+  const latestStatusMeta = statusToneMap[currentStatus] || {
+    tone: 'neutral' as StatusTone,
+    label: 'Đã nộp',
+  };
+
+  const items: TimelineVersionItem[] = versions.map((version) => {
+    const isCurrent = version.versionNo === highestNo;
+    return {
+      key: version.versionNo,
+      versionNo: version.versionNo,
+      fileId: version.file.id,
+      fileName: version.file.fileName,
+      fileSize: version.file.fileSize,
+      timestampUtc: version.file.uploadedAtUtc,
+      productLinks: version.productLinks,
+      attachments: version.attachments,
+      statusBadge: isCurrent ? (
+        <StatusBadge tone={latestStatusMeta.tone}>{latestStatusMeta.label}</StatusBadge>
+      ) : (
+        <StatusBadge tone="neutral">Bản cũ</StatusBadge>
+      ),
+    };
+  });
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-2">
-        <h3 className="text-sm font-bold text-slate-800">Phiên bản hồ sơ</h3>
-        <p className="text-sm font-semibold text-slate-700">{versionLabel}</p>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span>{statusLabel}</span>
-          {latestVersion && (
-            <>
-              <span>·</span>
-              <button
-                type="button"
-                onClick={() => onDownloadFile(latestVersion.file.id)}
-                className="font-medium text-blue-600 hover:text-blue-700 hover:underline inline-flex items-center gap-1"
-              >
-                <span>Xem trước</span>
-                <ExternalLink className="size-3" />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <Button
-          type="button"
-          onClick={onSubmit}
-          disabled={!canSubmit || !hasSelectedFile || isSubmitting}
-          isLoading={isSubmitting}
-          loadingText="Đang nộp báo cáo…"
-          className="bg-[#2054A5] hover:bg-[#1a4485] text-white font-semibold px-5 h-10 shadow-xs"
-        >
-          <Send className="size-4 mr-2" />
-          Nộp cuối kỳ
-        </Button>
-
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onOpenFeedback}
-          className="font-semibold text-slate-700 border-slate-200 bg-white hover:bg-slate-50 h-10 px-4"
-        >
-          <MessageSquareQuote className="size-4 mr-2 text-slate-500" />
-          Xem góp ý
-        </Button>
-      </div>
-    </div>
+    <VersionHistoryTimeline
+      title="Phiên bản báo cáo cuối kỳ"
+      items={items}
+      onDownload={onDownload}
+      resolveAttachmentUrl={(attachmentId) =>
+        finalReportApi.getAttachmentUrl(attachmentId).then((res) => res.downloadUrl)
+      }
+      downloadLabel="Tải tệp"
+      isLoading={isLoading}
+      emptyTitle="Chưa có phiên bản báo cáo cuối kỳ"
+      emptyDescription="Sau khi hoàn thành Cổng 2 (Báo cáo giữa kỳ), tải lên báo cáo toàn văn để GVHD chấm và hệ thống đối chiếu tương đồng."
+      headerAction={
+        onOpenFeedback ? (
+          <Button type="button" variant="outline" size="sm" onClick={onOpenFeedback}>
+            <MessageSquareQuote className="size-3.5 mr-1.5 text-[#2054a5]" />
+            Xem góp ý GVPB
+          </Button>
+        ) : undefined
+      }
+    />
   );
-};
+}
