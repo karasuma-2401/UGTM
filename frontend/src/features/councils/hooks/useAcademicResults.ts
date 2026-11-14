@@ -4,18 +4,18 @@ import { useAuth } from '@/shared/auth';
 import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { notify } from '@/shared/notifications';
-import { academicResultsApi, extractApiError } from '../../services/academicResultsApi';
+import { academicResultsApi, extractApiError } from '../services/academicResultsApi';
 import type {
   MergedResultRow,
   ResultFilterKey,
   ResultsExportFormat,
   ResultSortField,
-} from '../../types/results.types';
+} from '../types/results.types';
 import {
   extractPublicationFailureMessage,
   mapFilterKeyToExportStatus,
   mergeScoreAndAcademicRows,
-} from '../../utils/scoreSummaryFormatting';
+} from '../utils/scoreSummaryFormatting';
 
 export function useAcademicResults() {
   const queryClient = useQueryClient();
@@ -44,8 +44,8 @@ export function useAcademicResults() {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [inspectedGroupId, setInspectedGroupId] = useState<string | null>(null);
+  const [reviewDrawerGroupId, setReviewDrawerGroupId] = useState<string | null>(null);
   const [checkedGroupIds, setCheckedGroupIds] = useState<string[]>([]);
-  const [draftDialogGroupId, setDraftDialogGroupId] = useState<string | null>(null);
   const [publishConfirmGroupIds, setPublishConfirmGroupIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -177,11 +177,22 @@ export function useAcademicResults() {
     [checkedGroupIds, rowsByGroupId],
   );
 
+  const resolvedReviewDrawerGroupId = useMemo(() => {
+    if (!reviewDrawerGroupId || !rowsByGroupId.has(reviewDrawerGroupId)) {
+      return null;
+    }
+    return reviewDrawerGroupId;
+  }, [reviewDrawerGroupId, rowsByGroupId]);
+
   const inspectedRow: MergedResultRow | null = resolvedInspectedGroupId
     ? (rowsByGroupId.get(resolvedInspectedGroupId) ?? null)
     : null;
 
-  const detailTargetGroupId = draftDialogGroupId ?? resolvedInspectedGroupId;
+  const reviewDrawerRow: MergedResultRow | null = resolvedReviewDrawerGroupId
+    ? (rowsByGroupId.get(resolvedReviewDrawerGroupId) ?? null)
+    : null;
+
+  const detailTargetGroupId = resolvedReviewDrawerGroupId;
   const detailTargetRow = detailTargetGroupId ? (rowsByGroupId.get(detailTargetGroupId) ?? null) : null;
   const hasSummaryRecord = Boolean(detailTargetRow?.summaryId);
 
@@ -262,7 +273,6 @@ export function useAcademicResults() {
     onSuccess: async (dto) => {
       setErrorMessage(null);
       setPublishConfirmGroupIds([]);
-      setDraftDialogGroupId(null);
       setCheckedGroupIds([]);
       await invalidateResults();
       notify.success(`Đã công bố chính thức kết quả cho ${dto.publishedCount} nhóm.`);
@@ -300,7 +310,7 @@ export function useAcademicResults() {
     setPageNumber(1);
     setCheckedGroupIds([]);
     setInspectedGroupId(null);
-    setDraftDialogGroupId(null);
+    setReviewDrawerGroupId(null);
     setPublishConfirmGroupIds([]);
     setErrorMessage(null);
   }, []);
@@ -365,8 +375,6 @@ export function useAcademicResults() {
     [publishConfirmGroupIds, rowsByGroupId],
   );
 
-  const draftDialogRow = draftDialogGroupId ? (rowsByGroupId.get(draftDialogGroupId) ?? null) : null;
-
   return {
     permissions: { canRead, canCalculate, canPublish, canExport },
     batches,
@@ -385,12 +393,12 @@ export function useAcademicResults() {
     sort,
     inspectedGroupId: resolvedInspectedGroupId,
     inspectedRow,
+    reviewDrawerGroupId: resolvedReviewDrawerGroupId,
+    reviewDrawerRow,
     checkedGroupIds: resolvedCheckedGroupIds,
     detailData: detailQuery.data ?? null,
     isLoadingDetail: detailQuery.isLoading,
     detailError: detailQuery.isError ? extractApiError(detailQuery.error).message : null,
-    draftDialogGroupId,
-    draftDialogRow,
     publishConfirmRows,
     errorMessage,
     isLoadingList: listQuery.isLoading,
@@ -412,11 +420,14 @@ export function useAcademicResults() {
         setPageNumber(1);
       },
       setInspectedGroupId,
+      openReviewDrawer: (groupId: string) => {
+        setInspectedGroupId(groupId);
+        setReviewDrawerGroupId(groupId);
+      },
+      closeReviewDrawer: () => setReviewDrawerGroupId(null),
       toggleGroupChecked,
       toggleAllEligibleChecked,
       clearCheckedGroups: () => setCheckedGroupIds([]),
-      openDraftDialog: (groupId: string) => setDraftDialogGroupId(groupId),
-      closeDraftDialog: () => setDraftDialogGroupId(null),
       openPublishConfirm,
       closePublishConfirm: () => setPublishConfirmGroupIds([]),
       calculateScore: (groupId: string, expectedSummaryVersion: number | null) =>
@@ -427,7 +438,7 @@ export function useAcademicResults() {
         }
       },
       exportReport: (format: ResultsExportFormat) => exportMutation.mutate(format),
-      refreshList: () => invalidateResults(resolvedInspectedGroupId ?? undefined),
+      refreshList: () => invalidateResults(detailTargetGroupId ?? undefined),
       dismissError: () => setErrorMessage(null),
     },
   };

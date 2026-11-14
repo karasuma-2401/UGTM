@@ -11,6 +11,7 @@ export interface DialogProps {
   onClose: () => void;
   open?: boolean;
   busy?: boolean;
+  closeOnBackdropClick?: boolean;
   closeLabel?: string;
   className?: string;
   headerClassName?: string;
@@ -19,12 +20,27 @@ export interface DialogProps {
   style?: CSSProperties;
 }
 
+function isOutsideElementRect(
+  element: HTMLElement,
+  clientX: number,
+  clientY: number,
+): boolean {
+  const rect = element.getBoundingClientRect();
+  return (
+    clientX < rect.left ||
+    clientX > rect.right ||
+    clientY < rect.top ||
+    clientY > rect.bottom
+  );
+}
+
 export function Dialog({
   title,
   children,
   onClose,
   open = true,
   busy = false,
+  closeOnBackdropClick = false,
   closeLabel = 'Đóng cửa sổ',
   className,
   headerClassName,
@@ -33,6 +49,7 @@ export function Dialog({
   style,
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
+  const backdropMouseDownRef = useRef(false);
   const titleId = useId();
 
   useEffect(() => {
@@ -60,6 +77,23 @@ export function Dialog({
       onCancel={(event) => {
         event.preventDefault();
         if (!busy) onClose();
+      }}
+      onMouseDown={(event) => {
+        backdropMouseDownRef.current =
+          event.target === event.currentTarget &&
+          isOutsideElementRect(event.currentTarget, event.clientX, event.clientY);
+      }}
+      onClick={(event) => {
+        if (
+          closeOnBackdropClick &&
+          !busy &&
+          backdropMouseDownRef.current &&
+          event.target === event.currentTarget &&
+          isOutsideElementRect(event.currentTarget, event.clientX, event.clientY)
+        ) {
+          onClose();
+        }
+        backdropMouseDownRef.current = false;
       }}
       className={cn(
         'fluent-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-0 text-slate-800 shadow-[0_24px_64px_-12px_rgba(15,23,42,0.2)] backdrop:bg-slate-950/45 backdrop:backdrop-blur-xs',

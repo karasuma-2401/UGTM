@@ -23,7 +23,7 @@ function loadTsModule(relativePath, dependencies = {}) {
 
 test('mergeScoreAndAcademicRows classifies all score and archival states accurately', () => {
   const { mergeScoreAndAcademicRows } = loadTsModule(
-    '../src/features/academic/utils/scoreSummaryFormatting.ts',
+    '../src/features/councils/utils/scoreSummaryFormatting.ts',
   );
 
   const scoreItems = [
@@ -193,7 +193,7 @@ test('mergeScoreAndAcademicRows classifies all score and archival states accurat
 
 test('extractPublicationFailureMessage maps per-group conflict codes to readable messages', () => {
   const { extractPublicationFailureMessage } = loadTsModule(
-    '../src/features/academic/utils/scoreSummaryFormatting.ts',
+    '../src/features/councils/utils/scoreSummaryFormatting.ts',
   );
 
   const rowsByGroupId = new Map([

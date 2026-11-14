@@ -26,7 +26,7 @@ import {
   AdvisorMilestoneReviewPage,
   FinalReportSubmissionPage,
 } from '../features/thesis';
-import { ReviewerAssignmentPage, CouncilApprovalPage } from '../features/councils';
+import { ReviewerAssignmentPage, CouncilApprovalPage, ResultsEntryPage } from '../features/councils';
 import { CouncilSimilarityReportsPage } from '../features/thesis/pages/CouncilSimilarityReportsPage';
 import { LecturerGradingPage } from '../features/thesis/pages/LecturerGradingPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
@@ -34,7 +34,7 @@ import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 import { ProtectedRoute } from '../shared/auth';
 import { RolePermissionPage } from '../features/identity';
 import { AuditLogPage } from '../features/audit';
-import { ScoreConfigPage, PeriodPage, SchoolRosterPage, AcademicResultsPage } from '../features/academic';
+import { ScoreConfigPage, PeriodPage, SchoolRosterPage } from '../features/academic';
 
 export const router = createBrowserRouter([
   {
@@ -164,8 +164,8 @@ export const router = createBrowserRouter([
       {
         path: 'councils/results',
         element: (
-          <ProtectedRoute allowedRoles={['Faculty', 'AcademicAffairs', 'Admin']}>
-            <AcademicResultsPage />
+          <ProtectedRoute allowedRoles={['Faculty', 'AcademicAffairs', 'Admin', 'Student']}>
+            <ResultsEntryPage />
           </ProtectedRoute>
         ),
       },
