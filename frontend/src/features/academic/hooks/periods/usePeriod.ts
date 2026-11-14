@@ -22,9 +22,19 @@ export function usePeriod() {
   const form = usePeriodSchedule();
   const actions = usePeriodActions();
 
-  const { selectedBatchId, loadBatchDetail, fetchBatches } = data;
+  const { selectedBatchId, setSelectedBatchId: setRawSelectedBatchId, loadBatchDetail, fetchBatches } = data;
   const { resetForm, populateFromDetail } = form;
   const { clearFailedGateUpdates } = actions;
+  const { setErrorMessage } = modals;
+
+  const setSelectedBatchId = useCallback(
+    (nextId: string) => {
+      setErrorMessage(null);
+      clearFailedGateUpdates();
+      setRawSelectedBatchId(nextId);
+    },
+    [setErrorMessage, clearFailedGateUpdates, setRawSelectedBatchId],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -47,12 +57,13 @@ export function usePeriod() {
 
   const reloadCurrentBatch = useCallback(async () => {
     if (selectedBatchId !== 'new') {
+      setErrorMessage(null);
       const result = await loadBatchDetail(selectedBatchId);
       if (result?.detail && result.detail.id === selectedBatchId) {
         populateFromDetail(result.detail);
       }
     }
-  }, [selectedBatchId, loadBatchDetail, populateFromDetail]);
+  }, [selectedBatchId, setErrorMessage, loadBatchDetail, populateFromDetail]);
 
   const executeSave = async (reason?: string) => {
     modals.setNotice(null);
@@ -74,22 +85,6 @@ export function usePeriod() {
       changeReason: reason,
       onBatchCreated: async (createdBatchId) => {
         await fetchBatches(createdBatchId);
-      },
-      onPartialSuccess: async (targetBatchId, isNew, failedGates) => {
-        if (isNew) {
-          await fetchBatches(targetBatchId);
-        }
-        const result = await loadBatchDetail(targetBatchId);
-        if (result?.detail && result.detail.id === targetBatchId) {
-          populateFromDetail(result.detail);
-          for (const fg of failedGates) {
-            if (fg.gateType === 'Syllabus') {
-              form.handleSyllabusDeadlineChange(fg.deadlineDate);
-            } else if (fg.gateType === 'Midterm') {
-              form.handleMidtermDeadlineChange(fg.deadlineDate);
-            }
-          }
-        }
       },
       onSuccess: async (targetBatchId, message, isNew) => {
         modals.setNotice(message);
@@ -188,7 +183,10 @@ export function usePeriod() {
 
   return {
     permissions,
-    data,
+    data: {
+      ...data,
+      setSelectedBatchId,
+    },
     form,
     modals,
     actions: {
