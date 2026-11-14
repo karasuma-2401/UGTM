@@ -154,6 +154,12 @@ export const navigationSections: NavSectionConfig[] = [
         icon: BarChart3,
         roles: ['Faculty', 'AcademicAffairs', 'Admin'],
       },
+      {
+        label: 'Kết quả',
+        path: '/councils/results',
+        icon: BarChart3,
+        roles: ['Student'],
+      },
     ],
   },
   {

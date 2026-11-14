@@ -23,7 +23,7 @@ import {
   PublishScoresConfirmDialog,
   SynthesisPrinciplesCard,
 } from '../components/results';
-import { useAcademicResults } from '../hooks/results/useAcademicResults';
+import { useAcademicResults } from '../hooks/useAcademicResults';
 import type { MergedResultRow, ResultSortField } from '../types/results.types';
 import { formatScoreDecimal } from '../utils/scoreSummaryFormatting';
 

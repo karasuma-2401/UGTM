@@ -4,18 +4,18 @@ import { useAuth } from '@/shared/auth';
 import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { notify } from '@/shared/notifications';
-import { academicResultsApi, extractApiError } from '../../services/academicResultsApi';
+import { academicResultsApi, extractApiError } from '../services/academicResultsApi';
 import type {
   MergedResultRow,
   ResultFilterKey,
   ResultsExportFormat,
   ResultSortField,
-} from '../../types/results.types';
+} from '../types/results.types';
 import {
   extractPublicationFailureMessage,
   mapFilterKeyToExportStatus,
   mergeScoreAndAcademicRows,
-} from '../../utils/scoreSummaryFormatting';
+} from '../utils/scoreSummaryFormatting';
 
 export function useAcademicResults() {
   const queryClient = useQueryClient();
