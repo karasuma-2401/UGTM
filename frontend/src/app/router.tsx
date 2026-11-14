@@ -33,7 +33,7 @@ import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 import { ProtectedRoute } from '../shared/auth';
 import { RolePermissionPage } from '../features/identity';
 import { AuditLogPage } from '../features/audit';
-import { ScoreConfigPage, PeriodPage, SchoolRosterPage } from '../features/academic';
+import { ScoreConfigPage, PeriodPage, SchoolRosterPage, AcademicResultsPage } from '../features/academic';
 
 export const router = createBrowserRouter([
   {
@@ -157,6 +157,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['AcademicAffairs', 'Admin']}>
             <CouncilApprovalPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'councils/results',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'AcademicAffairs', 'Admin']}>
+            <AcademicResultsPage />
           </ProtectedRoute>
         ),
       },

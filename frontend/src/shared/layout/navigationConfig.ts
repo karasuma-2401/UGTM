@@ -12,6 +12,7 @@ import {
   CalendarCheck,
   UserCheck,
   FilePenLine,
+  BarChart3,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -146,6 +147,12 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/councils/approval',
         icon: ClipboardCheck,
         roles: ['AcademicAffairs', 'Admin'],
+      },
+      {
+        label: 'Tổng hợp kết quả',
+        path: '/councils/results',
+        icon: BarChart3,
+        roles: ['Faculty', 'AcademicAffairs', 'Admin'],
       },
     ],
   },
