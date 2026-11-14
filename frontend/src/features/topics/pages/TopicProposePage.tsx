@@ -20,10 +20,12 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Dialog } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TopicStatusBadge } from '../components/TopicStatusBadge';
 import { TopicsTable } from '../components/TopicsTable';
@@ -84,12 +86,6 @@ type PendingConfirmation =
 const INITIAL_FILTERS: TopicFilters = { keyword: '', batchId: '', status: '' };
 const studentLookupCache = new Map<string, StudentCodeLookupState>();
 
-const textareaClass =
-  'min-h-28 w-full rounded-xl border border-input bg-slate-50/60 px-3.5 py-2.5 ' +
-  'text-sm shadow-none transition-colors placeholder:text-muted-foreground ' +
-  'focus-visible:border-primary focus-visible:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 ' +
-  'disabled:cursor-not-allowed disabled:opacity-50';
-
 export function TopicProposePage({
   pageTitle = 'Đề xuất đề tài',
   navigation,
@@ -123,6 +119,15 @@ export function TopicProposePage({
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [draftFilters, setDraftFilters] = useState<TopicFilters>(initialFilters);
   const [filters, setFilters] = useState<TopicFilters>(initialFilters);
+  const initialFiltersKey = `${initialFilters.batchId}|${initialFilters.status}|${initialFilters.keyword}`;
+  const [syncedInitialFiltersKey, setSyncedInitialFiltersKey] = useState(initialFiltersKey);
+  if (initialFiltersKey !== syncedInitialFiltersKey) {
+    setSyncedInitialFiltersKey(initialFiltersKey);
+    setFilters(initialFilters);
+    setDraftFilters(initialFilters);
+    setPageNumber(1);
+    setSelectedRowId(null);
+  }
   const [recovery, setRecovery] = useState<LocalProposal | null>(null);
   const [localSavedAt, setLocalSavedAt] = useState('');
   const [localError, setLocalError] = useState('');
@@ -181,9 +186,9 @@ export function TopicProposePage({
     };
     const frame = window.requestAnimationFrame(() => {
       const container = document.getElementById(ids[focusField]);
-      const target = container?.matches('input, textarea')
+      const target = container?.matches('input, textarea, [contenteditable="true"]')
         ? container
-        : container?.querySelector('input, button');
+        : container?.querySelector('input, [contenteditable="true"], button');
       if (target instanceof HTMLElement) {
         target.focus();
         target.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -312,6 +317,8 @@ export function TopicProposePage({
     queryKey: ['my-proposed-topics', user?.id, 'statistics', filters.batchId],
     enabled: Boolean(user?.id),
     queryFn: ({ signal }) => topicApi.getStatistics(user!.id, filters.batchId || undefined, signal),
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
   });
   const statistics = statisticsQuery.isError ? undefined : statisticsQuery.data;
   const formatCount = (count: number | undefined) =>
@@ -891,23 +898,27 @@ export function TopicProposePage({
 
                       <div className="space-y-1.5">
                         <label
-                          htmlFor="topic-description"
+                          id="topic-description-label"
                           className="block text-xs font-semibold text-slate-700"
                         >
                           Mục tiêu và mô tả{' '}
                           <span className="font-normal text-slate-400">(cần khi gửi)</span>
                         </label>
-                        <textarea
+                        <RichTextEditor
                           id="topic-description"
-                          className={`${textareaClass} ${fieldErrors.description ? 'border-rose-400 focus-visible:border-rose-500 focus-visible:ring-rose-500/30' : ''}`}
-                          aria-invalid={Boolean(fieldErrors.description)}
-                          aria-describedby={
+                          ariaLabelledBy="topic-description-label"
+                          ariaDescribedBy={
                             fieldErrors.description ? 'topic-description-error' : undefined
                           }
                           value={values.description}
-                          onChange={(event) => updateField('description', event.target.value)}
+                          invalid={Boolean(fieldErrors.description)}
+                          disabled={busy || !editable || Boolean(recovery)}
+                          expandable
+                          expandedTitle="Soạn mục tiêu và mô tả đề tài"
+                          expandedSubtitle={values.titleVi.trim() || undefined}
                           placeholder="Trình bày mục tiêu, phạm vi nghiên cứu và sản phẩm dự kiến..."
-                          rows={5}
+                          minHeightClassName="min-h-[160px]"
+                          onChange={(nextValue) => updateField('description', nextValue)}
                         />
                         {fieldErrors.description && (
                           <p
@@ -922,23 +933,27 @@ export function TopicProposePage({
 
                       <div className="space-y-1.5">
                         <label
-                          htmlFor="topic-requirements"
+                          id="topic-requirements-label"
                           className="block text-xs font-semibold text-slate-700"
                         >
                           Yêu cầu công nghệ và kiến thức{' '}
                           <span className="font-normal text-slate-400">(cần khi gửi)</span>
                         </label>
-                        <textarea
+                        <RichTextEditor
                           id="topic-requirements"
-                          className={`${textareaClass} ${fieldErrors.requirements ? 'border-rose-400 focus-visible:border-rose-500 focus-visible:ring-rose-500/30' : ''}`}
-                          aria-invalid={Boolean(fieldErrors.requirements)}
-                          aria-describedby={
+                          ariaLabelledBy="topic-requirements-label"
+                          ariaDescribedBy={
                             fieldErrors.requirements ? 'topic-requirements-error' : undefined
                           }
                           value={values.requirements}
-                          onChange={(event) => updateField('requirements', event.target.value)}
+                          invalid={Boolean(fieldErrors.requirements)}
+                          disabled={busy || !editable || Boolean(recovery)}
+                          expandable
+                          expandedTitle="Soạn yêu cầu công nghệ và kiến thức"
+                          expandedSubtitle={values.titleVi.trim() || undefined}
                           placeholder="Công nghệ dự kiến, kiến thức nền tảng cần có..."
-                          rows={3}
+                          minHeightClassName="min-h-[130px]"
+                          onChange={(nextValue) => updateField('requirements', nextValue)}
                         />
                         {fieldErrors.requirements && (
                           <p
@@ -1162,27 +1177,27 @@ export function TopicProposePage({
                   )}
 
                   {batchesQuery.isError && (
-                    <div
-                      role="alert"
-                      className="space-y-2 rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-xs text-rose-700"
+                    <InlineAlert
+                      tone="error"
+                      action={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void batchesQuery.refetch()}
+                        >
+                          Tải lại danh sách đợt
+                        </Button>
+                      }
                     >
-                      <p>{getTopicErrorMessage(batchesQuery.error)}</p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => void batchesQuery.refetch()}
-                        className="h-8 rounded-lg border-rose-200 bg-white text-xs"
-                      >
-                        Tải lại danh sách đợt
-                      </Button>
-                    </div>
+                      {getTopicErrorMessage(batchesQuery.error)}
+                    </InlineAlert>
                   )}
 
                   {batchesQuery.isSuccess && batches.length === 0 && (
-                    <p className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-800">
+                    <InlineAlert tone="warning">
                       Chưa có đợt khóa luận. Vui lòng liên hệ đơn vị quản lý.
-                    </p>
+                    </InlineAlert>
                   )}
                 </aside>
               </div>
@@ -1304,7 +1319,7 @@ export function TopicProposePage({
         <StatisticsBar
           layout="card"
           className="grid-cols-3"
-          loading={statisticsQuery.isPending || statisticsQuery.isFetching}
+          loading={statisticsQuery.isPending && !statistics}
           items={[
             {
               key: 'total',
@@ -1343,11 +1358,12 @@ export function TopicProposePage({
           </div>
         )}
       </section>
-      <form
-        onSubmit={handleApplyFilters}
-        aria-label="Bộ lọc đề tài"
-        className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4"
-      >
+      <Card className="rounded-2xl border-slate-200/80 p-4 shadow-xs sm:p-5">
+        <form
+          onSubmit={handleApplyFilters}
+          aria-label="Bộ lọc đề tài"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+        >
         <label className="block space-y-1.5 sm:col-span-2">
           <span className="text-xs font-medium text-slate-700">Tìm kiếm đề tài</span>
           <Input
@@ -1401,53 +1417,53 @@ export function TopicProposePage({
             </p>
           </details>
         </div>
-      </form>
+        </form>
+      </Card>
 
       {filters.batchId && <TopicProposalSchedule batchId={filters.batchId} />}
 
       {!canReadBatches && !isFormOpen && (
-        <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
+        <InlineAlert tone="warning">
           Bạn chưa có quyền xem danh sách đợt khóa luận. Liên hệ quản trị viên để được cấp quyền.
-        </p>
+        </InlineAlert>
       )}
 
       {batchesQuery.isError && !isFormOpen && (
-        <div
-          role="alert"
-          className="flex flex-wrap items-center gap-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700"
+        <InlineAlert
+          tone="error"
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void batchesQuery.refetch()}
+            >
+              Tải lại danh sách đợt
+            </Button>
+          }
         >
-          <p>{getTopicErrorMessage(batchesQuery.error)}</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void batchesQuery.refetch()}
-          >
-            Tải lại danh sách đợt
-          </Button>
-        </div>
+          {getTopicErrorMessage(batchesQuery.error)}
+        </InlineAlert>
       )}
 
       {/* Row 2: Table Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs transition-all hover:border-slate-300">
-        <div className="p-5 sm:px-6 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white">
-          <div>
-            <h2 className="text-base font-bold text-slate-900 tracking-tight">
+      <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-xs transition-all hover:border-slate-300">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b border-slate-100/90 bg-gradient-to-r from-slate-50/80 via-white to-white px-5 py-4 sm:px-6">
+          <div className="space-y-0.5">
+            <CardTitle className="text-base font-semibold tracking-tight text-slate-900">
               Danh sách đề tài đã đề xuất
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            </CardTitle>
+            <p className="text-xs text-slate-500">
               {filters.batchId
                 ? 'Đang lọc theo đợt khóa luận đã chọn'
                 : 'Theo dõi tiến trình thẩm định và kết quả duyệt đề tài'}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs">
-              {topicsQuery.isError ? '—' : (topicsQuery.data?.totalCount ?? '—')} đề tài
-            </span>
-          </div>
-        </div>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold tabular-nums text-slate-700 shadow-2xs">
+            {topicsQuery.isError ? '—' : (topicsQuery.data?.totalCount ?? '—')} đề tài
+          </span>
+        </CardHeader>
 
         <TableActiveFilters
           chips={[
@@ -1557,7 +1573,7 @@ export function TopicProposePage({
               : undefined
           }
         />
-      </div>
+      </Card>
 
       {/* Floating Action Dock for Selected Row / Topics */}
       {selectedRowId && (

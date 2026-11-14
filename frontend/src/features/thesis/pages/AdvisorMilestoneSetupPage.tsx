@@ -1,179 +1,353 @@
-import { InlineAlert } from '@/components/ui/inline-alert';
-import { OperationToast } from '@/shared/notifications';
-import { useNavigate } from 'react-router-dom';
-import { useAdvisorMilestones } from '../hooks/useAdvisorMilestones';
+import { useMemo } from 'react';
 import {
-  AdvisorMilestoneTable,
-  AdvisorMilestoneForm,
-  AdvisorGroupPlanCard,
-} from '../components/milestone';
-import { PageHeader } from '@/components/ui/page-header';
-import { Select } from '@/components/ui/select';
+  CheckCircle2,
+  ClipboardCheck,
+  Clock3,
+  Flag,
+  Layers,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Users,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Target, Users, ShieldAlert, RotateCcw } from 'lucide-react';
-import { classifyThesisError, getThesisErrorMessage } from '../utils/thesisErrors';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { PageHeader } from '@/components/ui/page-header';
+import { Select, type SelectOption } from '@/components/ui/select';
+import { StatisticsBar, type StatisticItem } from '@/components/ui/statistics-bar';
+import { cn } from '@/lib/utils';
+import {
+  AdvisorGroupPlanCard,
+  AdvisorMilestoneCreateDialog,
+  AdvisorMilestoneReviewDialog,
+  AdvisorMilestoneTable,
+} from '../components/milestone';
+import { useAdvisorMilestones, type MilestoneStatusFilter } from '../hooks/useAdvisorMilestones';
 
 export function AdvisorMilestoneSetupPage() {
-  const navigate = useNavigate();
   const {
-    topicsQuery,
-    milestonesQuery,
+    batches,
+    selectedBatchId,
+    setSelectedBatchId,
+    batchesLoading,
+
     advisedGroups,
+    selectedGroup,
     selectedGroupId,
     setSelectedGroupId,
-    selectedGroup,
+    groupsLoading,
+    topicsError,
+
     milestones,
+    filteredMilestones,
+    stats,
+    statusFilter,
+    setStatusFilter,
+
     selectedMilestone,
-    setSelectedMilestone,
-    actionError,
-    actionSuccess,
-    setActionSuccess,
-    createMutation,
+    selectedMilestoneId,
+    selectMilestone,
+
+    milestonesLoading,
+    isFetching,
+    milestonesError,
+
     canCreateMilestones,
     ineligibleReason,
+
+    createDialogOpen,
+    openCreateDialog,
+    closeCreateDialog,
+    createMilestone,
+    isCreating,
+    createError,
+
+    reviewingMilestone,
+    openReviewDialog,
+    closeReviewDialog,
+    reviewReport,
+    isReviewing,
+    reviewError,
+
+    downloadingFileId,
+    handleDownloadFile,
+    refresh,
   } = useAdvisorMilestones();
 
-  const groupCode = selectedGroup?.groupCode || 'Nhóm KLTN';
+  const batchOptions = useMemo<SelectOption<string>[]>(
+    () =>
+      batches.map((batch) => ({
+        value: batch.id,
+        label: batch.batchName,
+        description: batch.status === 'Open' ? 'Đợt đang mở' : 'Đợt đã đóng',
+      })),
+    [batches],
+  );
 
-  const groupOptions = advisedGroups.map((g) => ({
-    value: g.groupId,
-    label: `${g.groupCode} - ${g.studentNames}`,
-  }));
+  const groupOptions = useMemo<SelectOption<string>[]>(
+    () =>
+      advisedGroups.map((group) => ({
+        value: group.groupId,
+        label: `${group.groupCode} · ${group.studentNames}`,
+        description: group.topicTitleVi,
+      })),
+    [advisedGroups],
+  );
+
+  const statisticsItems = useMemo<StatisticItem[]>(() => {
+    const toggle = (target: MilestoneStatusFilter) => {
+      setStatusFilter(statusFilter === target ? 'All' : target);
+    };
+
+    return [
+      {
+        key: 'all',
+        label: 'Tổng mốc tiến độ',
+        value: stats.total,
+        icon: <Flag className="size-4" aria-hidden="true" />,
+        tone: 'primary',
+        active: statusFilter === 'All',
+        onClick: () => setStatusFilter('All'),
+      },
+      {
+        key: 'submitted',
+        label: 'Chờ GV đánh giá',
+        value: stats.submitted,
+        icon: <ClipboardCheck className="size-4" aria-hidden="true" />,
+        tone: 'warning',
+        active: statusFilter === 'Submitted',
+        onClick: () => toggle('Submitted'),
+      },
+      {
+        key: 'need-revision',
+        label: 'Cần chỉnh sửa',
+        value: stats.needRevision,
+        icon: <RotateCcw className="size-4" aria-hidden="true" />,
+        tone: 'danger',
+        active: statusFilter === 'NeedRevision',
+        onClick: () => toggle('NeedRevision'),
+      },
+      {
+        key: 'accepted',
+        label: 'Đã đạt',
+        value: stats.accepted,
+        icon: <CheckCircle2 className="size-4" aria-hidden="true" />,
+        tone: 'success',
+        active: statusFilter === 'Accepted',
+        onClick: () => toggle('Accepted'),
+      },
+      {
+        key: 'not-submitted',
+        label: 'Chưa nộp',
+        value: stats.notSubmitted,
+        icon: <Clock3 className="size-4" aria-hidden="true" />,
+        tone: 'muted',
+        active: statusFilter === 'NotSubmitted',
+        onClick: () => toggle('NotSubmitted'),
+      },
+    ];
+  }, [setStatusFilter, stats, statusFilter]);
+
+  const showEmptyGroupsBanner = !groupsLoading && !topicsError && advisedGroups.length === 0;
 
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 space-y-6">
+    <div className="space-y-6 pb-8">
       <PageHeader
-        title="Thiết lập milestones"
-        description={`GVHD thiết lập mốc riêng cho ${groupCode}.`}
-        icon={<Target />}
+        accent
+        title="Tiến độ sinh viên"
+        description="Giao mốc kiểm tra, theo dõi tiến độ nộp báo cáo và nhận xét trực tiếp cho từng nhóm hướng dẫn."
       >
-        <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
-          {milestones.length} mốc đang theo dõi
-        </span>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isFetching}
+            onClick={() => void refresh()}
+            className="h-9 gap-1.5 rounded-xl border-slate-200 bg-white shadow-2xs hover:border-slate-300"
+          >
+            <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} aria-hidden="true" />
+            <span>Làm mới</span>
+          </Button>
+
+          <Button
+            type="button"
+            size="sm"
+            disabled={!canCreateMilestones}
+            title={
+              !canCreateMilestones && ineligibleReason
+                ? ineligibleReason
+                : undefined
+            }
+            onClick={openCreateDialog}
+            className="h-9 gap-1.5 rounded-xl"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            <span>Thêm mốc tiến độ</span>
+          </Button>
+        </div>
       </PageHeader>
 
-      <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:max-w-xl">
-          <label
-            htmlFor="select-group"
-            className="text-xs font-semibold text-slate-700 uppercase tracking-wide whitespace-nowrap flex items-center gap-1.5"
-          >
-            <Users className="size-4 text-slate-500" />
-            Nhóm hướng dẫn
-          </label>
-          <div className="flex-1 min-w-0">
+      {/* Fluent context toolbar: Batch + Advised group selector */}
+      <section
+        aria-label="Bộ lọc đợt và nhóm hướng dẫn"
+        className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs"
+      >
+        <div className="grid gap-4 lg:grid-cols-[minmax(240px,1fr)_minmax(320px,1.5fr)]">
+          <div className="space-y-1.5">
+            <label
+              htmlFor="advisor-milestone-batch-select"
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 select-none"
+            >
+              <Layers className="size-3.5 text-slate-500" aria-hidden="true" />
+              <span>Đợt khóa luận</span>
+            </label>
             <Select
-              options={groupOptions}
-              value={selectedGroupId || ''}
-              onChange={(val) => {
-                setSelectedGroupId(val ? String(val) : null);
-                setSelectedMilestone(null);
+              id="advisor-milestone-batch-select"
+              options={batchOptions}
+              value={selectedBatchId}
+              disabled={batchesLoading || batches.length === 0}
+              placeholder={batchesLoading ? 'Đang tải đợt khóa luận...' : 'Chọn đợt khóa luận'}
+              noOptionsMessage="Chưa có đợt khóa luận nào"
+              onChange={(value) => {
+                if (typeof value === 'string' && value) {
+                  setSelectedBatchId(value);
+                }
               }}
-              placeholder="Chọn nhóm hướng dẫn"
-              triggerClassName="h-10 text-sm bg-white"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label
+              htmlFor="advisor-milestone-group-select"
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 select-none"
+            >
+              <Users className="size-3.5 text-slate-500" aria-hidden="true" />
+              <span>Nhóm hướng dẫn ({advisedGroups.length})</span>
+            </label>
+            <Select
+              id="advisor-milestone-group-select"
+              options={groupOptions}
+              value={selectedGroupId ?? ''}
+              disabled={groupsLoading || advisedGroups.length === 0}
+              placeholder={
+                groupsLoading
+                  ? 'Đang tải danh sách nhóm...'
+                  : advisedGroups.length === 0
+                    ? 'Không có nhóm nào trong đợt này'
+                    : 'Chọn nhóm hướng dẫn'
+              }
+              noOptionsMessage="Không tìm thấy nhóm hướng dẫn"
+              onChange={(value) => {
+                if (typeof value === 'string' && value) {
+                  setSelectedGroupId(value);
+                }
+              }}
             />
           </div>
         </div>
+      </section>
 
-        {advisedGroups.length === 0 && !topicsQuery.isLoading && !topicsQuery.isError && (
-          <span className="text-xs text-amber-700 font-medium bg-amber-50 px-3 py-1.5 rounded-md border border-amber-200">
-            Bạn chưa có nhóm khóa luận nào được phân công trong đợt này.
-          </span>
-        )}
-      </div>
-
-      {(topicsQuery.isError || milestonesQuery.isError) && (() => {
-        const err = topicsQuery.error || milestonesQuery.error;
-        const kind = classifyThesisError(err);
-        const msg = getThesisErrorMessage(err, 'Không thể tải dữ liệu mốc tiến độ.');
-        return (
-          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              {kind === 'forbidden' ? (
-                <ShieldAlert className="size-5 shrink-0 text-amber-600 mt-0.5" />
-              ) : (
-                <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
-              )}
-              <div>
-                <p className="font-semibold">
-                  {kind === 'forbidden'
-                    ? 'Không có quyền truy cập danh sách mốc tiến độ'
-                    : 'Không tải được danh sách mốc tiến độ'}
-                </p>
-                <p className="text-xs mt-0.5 text-rose-700">{msg}</p>
-              </div>
-            </div>
-            {kind !== 'forbidden' && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (topicsQuery.isError) void topicsQuery.refetch();
-                  if (milestonesQuery.isError) void milestonesQuery.refetch();
-                }}
-                className="h-8 text-xs border-rose-300 bg-white text-rose-700 hover:bg-rose-100"
-              >
-                <RotateCcw className="size-3.5 mr-1.5" />
-                Thử lại
-              </Button>
-            )}
-          </div>
-        );
-      })()}
-
-      {!canCreateMilestones && ineligibleReason && !topicsQuery.isError && (
-        <div className="p-4 rounded-xl bg-amber-50/90 border border-amber-200 text-amber-900 flex items-start gap-3.5 shadow-xs">
-          <div className="p-2 rounded-lg bg-amber-100/80 text-amber-700 shrink-0 mt-0.5">
-            <AlertCircle className="size-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm text-amber-900">
-              Nhóm chưa ở trạng thái cho phép thiết lập mốc tiến độ
-            </p>
-            <p className="text-xs mt-1 text-amber-800/90 leading-relaxed">
-              {ineligibleReason}
-            </p>
-          </div>
-        </div>
+      {topicsError && (
+        <InlineAlert
+          tone="error"
+          title="Không tải được danh sách nhóm hướng dẫn"
+          action={
+            <Button type="button" size="sm" variant="outline" onClick={() => void refresh()}>
+              Thử lại
+            </Button>
+          }
+        >
+          {topicsError}
+        </InlineAlert>
       )}
 
-      {actionError && <InlineAlert title="Không thể hoàn tất">{actionError}</InlineAlert>}
+      {showEmptyGroupsBanner && (
+        <InlineAlert tone="info" title="Chưa có nhóm hướng dẫn trong đợt này">
+          Tài khoản hiện tại chưa được phân công nhóm sinh viên thực hiện khóa luận ở đợt đã chọn.
+          Hãy chọn đợt khóa luận khác hoặc đăng nhập bằng tài khoản giảng viên hướng dẫn có nhóm.
+        </InlineAlert>
+      )}
 
-      <OperationToast message={actionSuccess} onConsumed={() => setActionSuccess(null)} />
+      {selectedGroup && ineligibleReason && (
+        <InlineAlert tone="warning" title="Chưa thể thiết lập thêm mốc tiến độ">
+          {ineligibleReason}
+        </InlineAlert>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-8 space-y-6">
-          <AdvisorMilestoneTable
-            milestones={milestones}
-            selectedMilestoneId={selectedMilestone?.milestone.id}
-            onSelectMilestone={(item) => setSelectedMilestone(item)}
-            onReviewMilestone={(id) => navigate(`/advisor/milestones/${id}/review`)}
+      {selectedGroup && (
+        <>
+          <StatisticsBar
+            layout="card"
+            loading={milestonesLoading && milestones.length === 0}
+            items={statisticsItems}
+            className="grid-cols-2 sm:grid-cols-3 lg:grid-cols-5"
           />
 
-          <AdvisorMilestoneForm
-            selectedMilestone={selectedMilestone}
-            isSubmitting={createMutation.isPending}
-            disabled={!canCreateMilestones}
-            disabledReason={ineligibleReason}
-            onSubmit={(data) => createMutation.mutate(data)}
-            onResetForm={() => setSelectedMilestone(null)}
-            onNavigateReview={() => {
-              if (selectedMilestone) {
-                navigate(`/advisor/milestones/${selectedMilestone.milestone.id}/review`);
-              }
-            }}
-          />
-        </div>
+          <div className="grid items-start gap-6 lg:grid-cols-12">
+            <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)] lg:col-span-8">
+              <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-slate-100/90 bg-gradient-to-r from-slate-50/80 via-white to-white px-5 py-3.5">
+                <CardTitle className="text-base font-semibold tracking-tight text-slate-900">
+                  Danh sách mốc tiến độ
+                </CardTitle>
+                <span className="text-xs font-medium tabular-nums text-slate-500">
+                  {statusFilter === 'All'
+                    ? `${milestones.length} mốc`
+                    : `${filteredMilestones.length}/${milestones.length} mốc`}
+                </span>
+              </CardHeader>
 
-        <div className="lg:col-span-4 sticky top-6">
-          <AdvisorGroupPlanCard
-            group={selectedGroup}
-            milestones={milestones}
-            selectedMilestone={selectedMilestone}
-          />
-        </div>
-      </div>
+              <AdvisorMilestoneTable
+                milestones={filteredMilestones}
+                selectedMilestoneId={selectedMilestoneId}
+                onSelectMilestone={selectMilestone}
+                onOpenReview={openReviewDialog}
+                loading={milestonesLoading}
+                busy={isFetching && !milestonesLoading}
+                error={milestonesError}
+                onRetry={() => void refresh()}
+                hasActiveFilter={statusFilter !== 'All'}
+                onClearFilter={() => setStatusFilter('All')}
+                canCreate={canCreateMilestones}
+                onOpenCreate={openCreateDialog}
+              />
+            </Card>
+
+            <div className="min-w-0 lg:col-span-4 lg:sticky lg:top-6">
+              <AdvisorGroupPlanCard
+                selectedGroup={selectedGroup}
+                selectedMilestone={selectedMilestone}
+                stats={stats}
+                onOpenReview={openReviewDialog}
+                onDownloadFile={(fileId, fileName) => void handleDownloadFile(fileId, fileName)}
+                downloadingFileId={downloadingFileId}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      <AdvisorMilestoneCreateDialog
+        open={createDialogOpen}
+        onClose={closeCreateDialog}
+        selectedGroup={selectedGroup}
+        existingMilestones={milestones}
+        onSubmit={createMilestone}
+        isSubmitting={isCreating}
+        serverError={createError}
+      />
+
+      <AdvisorMilestoneReviewDialog
+        item={reviewingMilestone}
+        selectedGroup={selectedGroup}
+        onClose={closeReviewDialog}
+        onSubmitReview={reviewReport}
+        onDownloadFile={handleDownloadFile}
+        downloadingFileId={downloadingFileId}
+        isSubmitting={isReviewing}
+        serverError={reviewError}
+      />
     </div>
   );
 }

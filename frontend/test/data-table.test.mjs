@@ -51,13 +51,19 @@ test('DataTable delegates selection and double-click and isolates nested actions
   const tree = DataTable({
     ...base,
     selectedRowId: 'a',
+    isRowSelected: (item) => item.id === 'z' || item.id === 'a',
     onRowSelect: (id) => selected.push(id),
     onRowOpen: (row) => opened.push(row.id),
   });
+  const firstRow = all(tree, 'SelectableTableRow')[0];
   const row = all(tree, 'SelectableTableRow')[1];
+  assert.equal(firstRow.props.selected, true);
+  assert.equal(firstRow.props['data-active-row'], undefined);
   assert.equal(row.props.selected, true);
+  assert.equal(row.props['data-active-row'], 'true');
   assert.equal(row.props.hideSelectionMarker, true);
   assert.equal(all(tree, 'SelectionIndicator')[0].props.activeKey, 'a');
+  assert.equal(all(tree, 'SelectionIndicator')[0].props.selector, 'tr[data-active-row="true"]');
   row.props.onSelect();
   assert.deepEqual(selected, ['a']);
   assert.deepEqual(opened, []);

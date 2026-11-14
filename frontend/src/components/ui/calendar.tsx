@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calendarDate, calendarISO, calendarDisplay, calendarInputValue } from './calendar-utils';
 import './calendar.css';
@@ -20,6 +20,10 @@ export interface DatePickerProps {
   'aria-labelledby'?: string;
   'aria-describedby'?: string;
 }
+
+const HOURS = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, '0'));
+const MINUTES = Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, '0'));
+const QUICK_TIME_PRESETS = ['08:00', '12:00', '17:00', '23:59'] as const;
 
 const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const control =
@@ -48,11 +52,26 @@ function CalendarField({
   const field = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(() => calendarDate(value) ?? new Date());
-  const [view, setView] = useState<'days' | 'months' | 'years'>('days');
+  const [view, setView] = useState<'days' | 'months' | 'years' | 'time'>('days');
   const [viewMotion, setViewMotion] = useState<'expand' | 'drill'>('expand');
   const [focusedDay, setFocusedDay] = useState('');
   const [draft, setDraft] = useState({ source: value, text: calendarDisplay(value, withTime) });
+  const [timeDraft, setTimeDraft] = useState<{
+    source: string;
+    part: 'hour' | 'minute';
+    text: string;
+  } | null>(null);
   const text = draft.source === value ? draft.text : calendarDisplay(value, withTime);
+  const currentHour = value.slice(11, 13) || '00';
+  const currentMinute = value.slice(14, 16) || '00';
+  const hourInputValue =
+    timeDraft && timeDraft.source === value && timeDraft.part === 'hour'
+      ? timeDraft.text
+      : currentHour;
+  const minuteInputValue =
+    timeDraft && timeDraft.source === value && timeDraft.part === 'minute'
+      ? timeDraft.text
+      : currentMinute;
   const today = calendarISO(new Date());
   const minimum = min?.slice(0, 10);
   const maximum = max?.slice(0, 10);
@@ -135,10 +154,51 @@ function CalendarField({
     commit(next);
   };
   const changeTime = (hour: string, minute: string) => {
-    let next = `${value.slice(0, 10) || focusedDay}T${hour}:${minute}`;
+    let next = `${value.slice(0, 10) || focusedDay || today}T${hour}:${minute}`;
     if (min && next < min) next = min;
     if (max && next > max) next = max;
+    setTimeDraft(null);
     commit(next, false);
+  };
+  const stepTime = (part: 'hour' | 'minute', delta: number) => {
+    const limit = part === 'hour' ? 24 : 60;
+    const base = Number(part === 'hour' ? currentHour : currentMinute);
+    const nextPart = String((base + delta + limit) % limit).padStart(2, '0');
+    changeTime(
+      part === 'hour' ? nextPart : currentHour,
+      part === 'minute' ? nextPart : currentMinute,
+    );
+  };
+  const handleTimePartChange = (part: 'hour' | 'minute', raw: string) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 2);
+    if (!digits) {
+      setTimeDraft({ source: value, part, text: '' });
+      return;
+    }
+    const maxPart = part === 'hour' ? 23 : 59;
+    const clamped = Math.min(maxPart, Number(digits));
+    if (digits.length >= 2) {
+      const padded = String(clamped).padStart(2, '0');
+      changeTime(
+        part === 'hour' ? padded : currentHour,
+        part === 'minute' ? padded : currentMinute,
+      );
+      return;
+    }
+    setTimeDraft({ source: value, part, text: digits });
+  };
+  const handleTimePartBlur = (part: 'hour' | 'minute') => {
+    if (!timeDraft || timeDraft.source !== value || timeDraft.part !== part) return;
+    if (!timeDraft.text) {
+      setTimeDraft(null);
+      return;
+    }
+    const maxPart = part === 'hour' ? 23 : 59;
+    const padded = String(Math.min(maxPart, Number(timeDraft.text))).padStart(2, '0');
+    changeTime(
+      part === 'hour' ? padded : currentHour,
+      part === 'minute' ? padded : currentMinute,
+    );
   };
   const gridKey = (event: KeyboardEvent<HTMLButtonElement>, day: string) => {
     const date = calendarDate(day)!;
@@ -170,17 +230,19 @@ function CalendarField({
     setFocusedDay(minimum && first < minimum ? minimum : first);
   };
   const changeView = (next: typeof view) => {
-    const levels = { days: 0, months: 1, years: 2 };
+    const levels = { time: 0, days: 0, months: 1, years: 2 };
     setViewMotion(levels[next] > levels[view] ? 'expand' : 'drill');
     setView(next);
   };
   const decade = Math.floor(month.getFullYear() / 10) * 10;
   const heading =
-    view === 'days'
-      ? `Tháng ${month.getMonth() + 1}, ${month.getFullYear()}`
-      : view === 'months'
-        ? String(month.getFullYear())
-        : `${decade} – ${decade + 9}`;
+    view === 'time'
+      ? 'Chọn giờ nộp'
+      : view === 'days'
+        ? `Tháng ${month.getMonth() + 1}, ${month.getFullYear()}`
+        : view === 'months'
+          ? String(month.getFullYear())
+          : `${decade} – ${decade + 9}`;
   const periodUnavailable = (year: number, monthIndex?: number) => {
     if (year < 100 || year > 9999) return true;
     const first = `${year}-${String((monthIndex ?? 0) + 1).padStart(2, '0')}-01`;
@@ -318,48 +380,158 @@ function CalendarField({
           <button
             type="button"
             aria-label={
-              view === 'days' ? 'Chọn tháng' : view === 'months' ? 'Chọn năm' : 'Khoảng năm'
+              view === 'time'
+                ? 'Quay lại lịch'
+                : view === 'days'
+                  ? 'Chọn tháng'
+                  : view === 'months'
+                    ? 'Chọn năm'
+                    : 'Khoảng năm'
             }
             disabled={view === 'years'}
             className="min-w-0 flex-1 rounded-md px-2 py-2 text-left text-sm font-semibold hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:text-slate-600 disabled:hover:bg-transparent"
-            onClick={() => changeView(view === 'days' ? 'months' : 'years')}
+            onClick={() =>
+              changeView(view === 'time' ? 'days' : view === 'days' ? 'months' : 'years')
+            }
           >
             {heading}
           </button>
-          <div className="flex gap-1">
+          {view === 'time' ? (
             <button
               type="button"
-              aria-label={
-                view === 'days'
-                  ? 'Tháng trước'
-                  : view === 'months'
-                    ? 'Năm trước'
-                    : 'Thập niên trước'
-              }
-              className={control}
-              disabled={navigationDisabled(-1)}
-              onClick={() => navigate(-1)}
+              onClick={() => changeView('days')}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <ChevronLeft className="size-4" />
+              <CalendarDays className="size-3.5" aria-hidden="true" />
+              <span>Chọn ngày</span>
             </button>
-            <button
-              type="button"
-              aria-label={
-                view === 'days' ? 'Tháng sau' : view === 'months' ? 'Năm sau' : 'Thập niên sau'
-              }
-              className={control}
-              disabled={navigationDisabled(1)}
-              onClick={() => navigate(1)}
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
+          ) : (
+            <div className="flex gap-1">
+              <button
+                type="button"
+                aria-label={
+                  view === 'days'
+                    ? 'Tháng trước'
+                    : view === 'months'
+                      ? 'Năm trước'
+                      : 'Thập niên trước'
+                }
+                className={control}
+                disabled={navigationDisabled(-1)}
+                onClick={() => navigate(-1)}
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                aria-label={
+                  view === 'days' ? 'Tháng sau' : view === 'months' ? 'Năm sau' : 'Thập niên sau'
+                }
+                className={control}
+                disabled={navigationDisabled(1)}
+                onClick={() => navigate(1)}
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </div>
+          )}
         </div>
         <p className="sr-only" aria-live="polite">
           {heading}
         </p>
         <div key={view} className="calendar-view min-h-[17.5rem]" data-motion={viewMotion}>
-          {view !== 'days' && (
+          {view === 'time' && (
+            <div className="flex h-[17.5rem] flex-col gap-3">
+              <div className="grid grid-cols-4 gap-1.5" role="group" aria-label="Mốc giờ gợi ý">
+                {QUICK_TIME_PRESETS.map((preset) => {
+                  const [presetHour, presetMinute] = preset.split(':');
+                  const active = currentHour === presetHour && currentMinute === presetMinute;
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => changeTime(presetHour, presetMinute)}
+                      className={cn(
+                        'rounded-lg border py-1.5 text-xs font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                        active
+                          ? 'border-primary bg-primary font-semibold text-white'
+                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100',
+                      )}
+                    >
+                      {preset}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="grid min-h-0 flex-1 grid-cols-2 gap-2.5">
+                <div className="flex min-h-0 flex-col rounded-xl border border-slate-200/80 bg-slate-50/50 p-1.5">
+                  <span className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Giờ
+                  </span>
+                  <div
+                    role="listbox"
+                    aria-label="Chọn giờ"
+                    className="grid min-h-0 flex-1 grid-cols-2 gap-1 overflow-y-auto pr-0.5"
+                  >
+                    {HOURS.map((hour) => {
+                      const active = hour === currentHour;
+                      return (
+                        <button
+                          key={hour}
+                          type="button"
+                          role="option"
+                          aria-selected={active}
+                          onClick={() => changeTime(hour, currentMinute)}
+                          className={cn(
+                            'rounded-lg py-1.5 text-center text-xs font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                            active
+                              ? 'bg-primary font-semibold text-white'
+                              : 'text-slate-700 hover:bg-white',
+                          )}
+                        >
+                          {hour}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex min-h-0 flex-col rounded-xl border border-slate-200/80 bg-slate-50/50 p-1.5">
+                  <span className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Phút
+                  </span>
+                  <div
+                    role="listbox"
+                    aria-label="Chọn phút"
+                    className="grid min-h-0 flex-1 grid-cols-2 gap-1 overflow-y-auto pr-0.5"
+                  >
+                    {MINUTES.map((minute) => {
+                      const active = minute === currentMinute;
+                      return (
+                        <button
+                          key={minute}
+                          type="button"
+                          role="option"
+                          aria-selected={active}
+                          onClick={() => changeTime(currentHour, minute)}
+                          className={cn(
+                            'rounded-lg py-1.5 text-center text-xs font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                            active
+                              ? 'bg-primary font-semibold text-white'
+                              : 'text-slate-700 hover:bg-white',
+                          )}
+                        >
+                          {minute}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {(view === 'months' || view === 'years') && (
             <div
               role="group"
               aria-label={view === 'months' ? 'Danh sách tháng' : 'Danh sách năm'}
@@ -457,42 +629,67 @@ function CalendarField({
         </div>
         {withTime && (
           <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-            <label htmlFor={`${inputId}-hour`} className="text-sm font-medium">
-              Giờ
+            <label htmlFor={`${inputId}-hour`} className="text-xs font-medium text-slate-600">
+              Giờ nộp
             </label>
-            <div className="flex items-center gap-1">
-              <select
-                id={`${inputId}-hour`}
-                aria-label="Giờ"
-                value={value.slice(11, 13) || '00'}
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-sm focus-visible:outline-primary"
-                onChange={(event) => changeTime(event.target.value, value.slice(14, 16) || '00')}
+            <div className="flex items-center gap-1.5">
+              <div className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-1 transition-colors hover:border-slate-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+                <input
+                  id={`${inputId}-hour`}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={2}
+                  aria-label="Giờ"
+                  value={hourInputValue}
+                  onChange={(event) => handleTimePartChange('hour', event.target.value)}
+                  onBlur={() => handleTimePartBlur('hour')}
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowUp') {
+                      event.preventDefault();
+                      stepTime('hour', 1);
+                    } else if (event.key === 'ArrowDown') {
+                      event.preventDefault();
+                      stepTime('hour', -1);
+                    }
+                  }}
+                  className="h-6 w-7 rounded bg-transparent text-center text-sm font-semibold tabular-nums text-slate-900 outline-none hover:bg-slate-50 focus:bg-blue-50/70 focus:text-primary"
+                />
+                <span aria-hidden="true" className="px-0.5 text-sm font-semibold text-slate-400">
+                  :
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={2}
+                  aria-label="Phút"
+                  value={minuteInputValue}
+                  onChange={(event) => handleTimePartChange('minute', event.target.value)}
+                  onBlur={() => handleTimePartBlur('minute')}
+                  onKeyDown={(event) => {
+                    if (event.key === 'ArrowUp') {
+                      event.preventDefault();
+                      stepTime('minute', 1);
+                    } else if (event.key === 'ArrowDown') {
+                      event.preventDefault();
+                      stepTime('minute', -1);
+                    }
+                  }}
+                  className="h-6 w-7 rounded bg-transparent text-center text-sm font-semibold tabular-nums text-slate-900 outline-none hover:bg-slate-50 focus:bg-blue-50/70 focus:text-primary"
+                />
+              </div>
+
+              <button
+                type="button"
+                aria-label={view === 'time' ? 'Quay lại chọn ngày' : 'Chọn nhanh giờ phút'}
+                aria-pressed={view === 'time'}
+                onClick={() => changeView(view === 'time' ? 'days' : 'time')}
+                className={cn(
+                  control,
+                  view === 'time' && 'bg-primary/10 text-primary hover:bg-primary/15',
+                )}
               >
-                {Array.from({ length: 24 }, (_, hour) => {
-                  const text = String(hour).padStart(2, '0');
-                  return (
-                    <option key={text} value={text}>
-                      {text}
-                    </option>
-                  );
-                })}
-              </select>
-              <span aria-hidden="true">:</span>
-              <select
-                aria-label="Phút"
-                value={value.slice(14, 16) || '00'}
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-sm focus-visible:outline-primary"
-                onChange={(event) => changeTime(value.slice(11, 13) || '00', event.target.value)}
-              >
-                {Array.from({ length: 60 }, (_, minute) => {
-                  const text = String(minute).padStart(2, '0');
-                  return (
-                    <option key={text} value={text}>
-                      {text}
-                    </option>
-                  );
-                })}
-              </select>
+                <Clock3 className="size-4" aria-hidden="true" />
+              </button>
             </div>
           </div>
         )}

@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, Users, CheckCircle2, Mail, Ban } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AvatarGroup } from '@/components/ui/avatar-group';
+import { Card } from '@/components/ui/card';
+import { InlineAlert } from '@/components/ui/inline-alert';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
@@ -94,6 +96,15 @@ export function TopicAdvisingPage({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [detailGroupId, setDetailGroupId] = useState<string | null>(null);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const initialFiltersKey = `${initialFilters.batchId}|${initialFilters.scope}|${initialFilters.status}|${initialFilters.confirmation}|${initialFilters.keyword}`;
+  const [syncedInitialFiltersKey, setSyncedInitialFiltersKey] = useState(initialFiltersKey);
+  if (initialFiltersKey !== syncedInitialFiltersKey) {
+    setSyncedInitialFiltersKey(initialFiltersKey);
+    setFilters(initialFilters);
+    setDraft(initialFilters);
+    setPageNumber(1);
+    setSelectedRowId(null);
+  }
   const batchesQuery = useAcademicBatches();
   const canReadBatches = hasPermission('academic.batches.read');
   const query = useQuery({
@@ -101,6 +112,8 @@ export function TopicAdvisingPage({
     queryFn: ({ signal }) =>
       advisingApi.getGroups({ ...filters, pageNumber, pageSize, sortBy, sortOrder }, signal),
     enabled: Boolean(user?.id),
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
     refetchInterval: 60_000,
   });
   const data = query.isError ? undefined : query.data;
@@ -173,7 +186,7 @@ export function TopicAdvisingPage({
         <StatisticsBar
           layout="card"
           className="grid-cols-2 sm:grid-cols-4"
-          loading={query.isPending || query.isFetching}
+          loading={query.isPending && !statistics}
           items={[
             {
               key: 'active',
@@ -232,7 +245,7 @@ export function TopicAdvisingPage({
         />
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-xs">
         <form
           onSubmit={submit}
           className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"
@@ -314,17 +327,30 @@ export function TopicAdvisingPage({
           </div>
         </form>
         {batchesQuery.isError && (
-          <div role="alert" className="px-4 pb-3 text-sm text-amber-700">
-            Không thể tải danh sách đợt.{' '}
-            <Button variant="link" size="sm" onClick={() => void batchesQuery.refetch()}>
-              Thử lại danh sách đợt
-            </Button>
+          <div className="px-4 pb-3">
+            <InlineAlert
+              tone="warning"
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void batchesQuery.refetch()}
+                >
+                  Thử lại danh sách đợt
+                </Button>
+              }
+            >
+              Không thể tải danh sách đợt.
+            </InlineAlert>
           </div>
         )}
         {!canReadBatches && (
-          <p className="px-4 pb-3 text-xs text-slate-500">
-            Bạn chưa có quyền đọc danh sách đợt; vẫn có thể xem các nhóm của mình.
-          </p>
+          <div className="px-4 pb-3">
+            <InlineAlert tone="info">
+              Bạn chưa có quyền đọc danh sách đợt; vẫn có thể xem các nhóm của mình.
+            </InlineAlert>
+          </div>
         )}
         <TableActiveFilters
           chips={[
@@ -524,7 +550,7 @@ export function TopicAdvisingPage({
             </>
           )}
         />
-      </section>
+      </Card>
       {detailGroupId && (
         <AdvisingGroupDetail
           key={`${user?.id}:${detailGroupId}`}

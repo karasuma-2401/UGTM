@@ -110,7 +110,7 @@ export function DataTable<T, SortKey extends string = string>({
               {onRowSelect && (
                 <SelectionIndicator
                   activeKey={selectedRowId}
-                  selector='tr[aria-selected="true"]'
+                  selector='tr[data-active-row="true"]'
                   variant="rail"
                   className="z-20 rounded-r bg-primary"
                 />
@@ -154,6 +154,7 @@ export function DataTable<T, SortKey extends string = string>({
                       <SelectableTableRow
                         key={id}
                         data-selection-item
+                        data-active-row={onRowSelect && selectedRowId === id ? 'true' : undefined}
                         hideSelectionMarker={Boolean(onRowSelect)}
                         selected={isRowSelected?.(row) ?? selectedRowId === id}
                         onSelect={onRowSelect ? () => onRowSelect(id, row) : undefined}
