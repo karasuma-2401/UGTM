@@ -796,6 +796,37 @@ public sealed class CouncilScoringTests
         Assert.Equal(0m, result.Value.ScoreDifference);
     }
 
+    [Fact]
+    public async Task SubmitCouncilScore_WithPerStudentScores_ComputesStudentTotalsAndGroupAverage()
+    {
+        _currentUser.UserId = _chairmanUserId;
+        var student1Id = Guid.NewGuid();
+        var student2Id = Guid.NewGuid();
+        var handler = CreateSubmitHandler();
+
+        var result = await handler.HandleAsync(new SubmitCouncilScoreCommand(
+            _assignmentId,
+            null,
+            "Nhận xét hội đồng cho 2 sinh viên",
+            [
+                new StudentCriterionScoresInputDto(student1Id, [
+                    new CriterionScoreInputDto(_crit1Id, 5.5m),
+                    new CriterionScoreInputDto(_crit2Id, 3.5m) // SV1 = 9.0
+                ]),
+                new StudentCriterionScoresInputDto(student2Id, [
+                    new CriterionScoreInputDto(_crit1Id, 4.5m),
+                    new CriterionScoreInputDto(_crit2Id, 3.5m) // SV2 = 8.0
+                ])
+            ]));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(8.5m, result.Value.Score);
+        Assert.NotNull(result.Value.StudentScores);
+        Assert.Equal(2, result.Value.StudentScores.Count);
+        Assert.Equal(9.0m, result.Value.StudentScores.Single(s => s.StudentId == student1Id).Score);
+        Assert.Equal(8.0m, result.Value.StudentScores.Single(s => s.StudentId == student2Id).Score);
+    }
+
     private static AdvisorEvaluation CreateFakeAdvisorEvaluation(Guid groupId, decimal score)
     {
         var evalType = typeof(AdvisorEvaluation);

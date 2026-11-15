@@ -309,6 +309,71 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
                   </InlineAlert>
                 )}
 
+                {academic && academic.students.length > 0 && (
+                  <section className="space-y-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-slate-900">
+                        Kết quả theo từng sinh viên
+                      </h3>
+                      <span className="text-xs text-slate-500">
+                        Chấm điểm cá nhân hóa theo từng thành viên trong nhóm
+                      </span>
+                    </div>
+                    <div className="overflow-x-auto rounded-xl border border-slate-200/80">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-50/90">
+                            <TableHead>Sinh viên</TableHead>
+                            <TableHead className="text-right whitespace-nowrap">Điểm CBHD</TableHead>
+                            <TableHead className="text-right whitespace-nowrap">Điểm CBPB</TableHead>
+                            <TableHead className="text-right whitespace-nowrap">Điểm HĐ</TableHead>
+                            <TableHead className="text-right whitespace-nowrap">Tổng kết</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {academic.students.map((student) => {
+                            const advScore = student.advisorScore ?? academic.advisorScore;
+                            const revScore = student.reviewerScore ?? academic.reviewerScore;
+                            const cScore = student.councilScore ?? academic.councilScore;
+                            const finScore =
+                              student.finalScore ?? summary?.finalScore ?? academic.finalScore;
+                            return (
+                              <TableRow key={student.studentId}>
+                                <TableCell className="font-medium text-slate-900">
+                                  <div>{student.fullName}</div>
+                                  <div className="text-xs text-slate-500 tabular-nums">
+                                    {student.studentCode}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-slate-700">
+                                  {advScore !== null && advScore !== undefined
+                                    ? formatScoreDecimal(advScore, 2)
+                                    : '—'}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-slate-700">
+                                  {revScore !== null && revScore !== undefined
+                                    ? formatScoreDecimal(revScore, 2)
+                                    : '—'}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-slate-700">
+                                  {cScore !== null && cScore !== undefined
+                                    ? formatScoreDecimal(cScore, 2)
+                                    : '—'}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums font-bold text-primary">
+                                  {finScore !== null && finScore !== undefined
+                                    ? formatScoreDecimal(finScore, 2)
+                                    : '—'}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </section>
+                )}
+
                 <section className="space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="text-sm font-semibold text-slate-900">Nguồn điểm</h3>

@@ -28,7 +28,7 @@ public sealed class GetCouncilsOverviewHandler(
             return Result.Failure<IReadOnlyList<CouncilOverviewItemDto>>(CouncilErrors.Forbidden);
         }
 
-        var isAuthorized = currentUser.Roles.Any(r => r is "Faculty" or "AcademicAffairs" or "Admin");
+        var isAuthorized = currentUser.Roles.Any(r => r is "Faculty" or "AcademicAffairs" or "Admin" or "Lecturer" or "CouncilMember");
         if (!isAuthorized)
         {
             return Result.Failure<IReadOnlyList<CouncilOverviewItemDto>>(CouncilErrors.Forbidden);

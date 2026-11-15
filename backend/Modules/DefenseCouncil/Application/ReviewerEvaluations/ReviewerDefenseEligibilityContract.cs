@@ -84,6 +84,10 @@ public sealed class ReviewerDefenseEligibilityContract(IReviewerAssignmentThesis
             });
         if (evaluation.DefenseApproval != DefenseApprovalStatus.Approved) return Block(result, ReviewerDefenseEligibilityReason.DefenseRejected);
         if (evaluation.Score < resolution.MinimumScore) return Block(result, ReviewerDefenseEligibilityReason.ScoreBelowMinimum);
+        var details = await evaluations.GetEvaluationDetailsByEvaluationIdAsync(evaluation.Id, token);
+        var studentTotals = Councils.Dtos.StudentEvaluationGroupingHelper.ComputeStudentTotalsFromEntities(details);
+        if (studentTotals.Count > 0 && studentTotals.Values.Any(studentScore => studentScore < resolution.MinimumScore))
+            return Block(result, ReviewerDefenseEligibilityReason.ScoreBelowMinimum);
         return result with { CanProceed = true };
     }
 

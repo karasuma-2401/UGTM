@@ -157,7 +157,8 @@ public sealed class GetCouncilScheduleHandler(
                 reviewerId != Guid.Empty ? reviewerId : null,
                 reviewerName,
                 isReviewerInCouncil,
-                groupStudents);
+                groupStudents,
+                a.Id);
         }).ToList();
 
         return Result.Success(new CouncilScheduleResponseDto(

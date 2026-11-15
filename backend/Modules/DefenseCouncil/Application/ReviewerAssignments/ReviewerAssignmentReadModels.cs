@@ -16,10 +16,13 @@ public sealed record ReviewerAssignmentEligibilityItemDto(Guid GroupId, Guid Top
     Guid AdvisorEvaluationId, Guid FinalReportId, Guid SubmissionFileId, int ReportVersionNo,
     string SubmissionChecksumSha256, DateTime ApprovedAtUtc, bool HasActiveAssignment, Guid? ActiveAssignmentId, bool CanAssign);
 
+public sealed record ReviewerAssignmentStudentDto(Guid StudentId, string FullName, string? UserCode);
+
 public sealed record ReviewerAssignmentTaskDto(Guid Id, Guid GroupId, Guid TopicId, Guid BatchId,
     string TopicTitleVi, string? TopicTitleEn, DateTime AssignedAtUtc, uint AssignmentVersion, bool IsLegacy,
     Guid? FinalReportId, int? ReportVersionNo, Guid? SubmissionFileId,
-    ReviewerAssignmentReportFileContractDto? ReportFile, bool CanDownloadReport, string? AccessBlockCode);
+    ReviewerAssignmentReportFileContractDto? ReportFile, bool CanDownloadReport, string? AccessBlockCode,
+    IReadOnlyList<ReviewerAssignmentStudentDto>? Students = null);
 
 public sealed record ReviewerAssignmentListQuery(Guid? BatchId = null, Guid? GroupId = null, Guid? ReviewerId = null,
     bool? IsActive = null, bool IncludeHistory = false, string? Keyword = null, int PageNumber = 1, int PageSize = 20);

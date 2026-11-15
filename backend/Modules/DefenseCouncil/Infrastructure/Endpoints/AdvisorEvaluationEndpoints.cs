@@ -204,7 +204,9 @@ public static class AdvisorEvaluationEndpoints
             body?.Score,
             body?.Comment,
             idempotencyKey,
-            body?.Details), cancellationToken)).ToHttpResult();
+            body?.Details,
+            body?.StudentScores,
+            body?.Action), cancellationToken)).ToHttpResult();
     }
 
     private static async Task<IResult> GetAsync(
@@ -288,7 +290,9 @@ public static class AdvisorEvaluationEndpoints
         uint? ExpectedEvaluationVersion,
         decimal? Score,
         string? Comment,
-        List<CriterionScoreInputDto>? Details = null);
+        List<CriterionScoreInputDto>? Details = null,
+        List<StudentCriterionScoresInputDto>? StudentScores = null,
+        string? Action = null);
 
     public sealed record DecideAdvisorEvaluationRequest(
         int ExpectedReportVersionNo,

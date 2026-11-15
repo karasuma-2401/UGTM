@@ -188,7 +188,7 @@ public static class ReviewerEvaluationEndpoints
         var fields = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
         foreach (var property in root.EnumerateObject())
         {
-            if (!new[] { "assignmentId", "action", "expectedAssignmentVersion", "expectedEvaluationVersion", "score", "comment", "defenseApproval", "details" }
+            if (!new[] { "assignmentId", "action", "expectedAssignmentVersion", "expectedEvaluationVersion", "score", "comment", "defenseApproval", "details", "studentScores" }
                     .Contains(property.Name, StringComparer.OrdinalIgnoreCase) || !fields.TryAdd(property.Name, property.Value)) return null;
         }
         if (!fields.TryGetValue("assignmentId", out var id) || id.ValueKind != JsonValueKind.String || !id.TryGetGuid(out var assignmentId)
@@ -227,28 +227,78 @@ public static class ReviewerEvaluationEndpoints
             details = [];
             foreach (var item in det.EnumerateArray())
             {
-                if (item.ValueKind != JsonValueKind.Object) return null;
-                Guid critId = Guid.Empty;
-                decimal? critScore = null;
-                foreach (var prop in item.EnumerateObject())
-                {
-                    if (string.Equals(prop.Name, "criteriaId", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (prop.Value.ValueKind != JsonValueKind.String || !prop.Value.TryGetGuid(out critId) || critId == Guid.Empty) return null;
-                    }
-                    else if (string.Equals(prop.Name, "score", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (prop.Value.ValueKind != JsonValueKind.Number || !prop.Value.TryGetDecimal(out var s)) return null;
-                        critScore = s;
-                    }
-                    else return null;
-                }
-                if (critId == Guid.Empty || !critScore.HasValue) return null;
-                details.Add(new CriterionScoreInputDto(critId, critScore.Value));
+                if (!TryParseCriterionScoreInput(item, out var criterionInput)) return null;
+                details.Add(criterionInput);
             }
         }
 
-        return new(assignmentId, parsedAction, assignmentVersion, evaluationVersion, score, comment, decision, key, details);
+        List<StudentCriterionScoresInputDto>? studentScores = null;
+        if (fields.TryGetValue("studentScores", out var ss) && ss.ValueKind != JsonValueKind.Null)
+        {
+            if (ss.ValueKind != JsonValueKind.Array) return null;
+            studentScores = [];
+            foreach (var studentItem in ss.EnumerateArray())
+            {
+                if (studentItem.ValueKind != JsonValueKind.Object) return null;
+                Guid studentId = Guid.Empty;
+                List<CriterionScoreInputDto>? sDetails = null;
+                foreach (var prop in studentItem.EnumerateObject())
+                {
+                    if (string.Equals(prop.Name, "studentId", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (prop.Value.ValueKind != JsonValueKind.String || !prop.Value.TryGetGuid(out studentId) || studentId == Guid.Empty) return null;
+                    }
+                    else if (string.Equals(prop.Name, "details", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (prop.Value.ValueKind != JsonValueKind.Array) return null;
+                        sDetails = [];
+                        foreach (var dItem in prop.Value.EnumerateArray())
+                        {
+                            if (!TryParseCriterionScoreInput(dItem, out var cInput)) return null;
+                            sDetails.Add(cInput);
+                        }
+                    }
+                    else return null;
+                }
+                if (studentId == Guid.Empty || sDetails is null) return null;
+                studentScores.Add(new StudentCriterionScoresInputDto(studentId, sDetails));
+            }
+        }
+
+        return new(assignmentId, parsedAction, assignmentVersion, evaluationVersion, score, comment, decision, key, details, studentScores);
+    }
+
+    private static bool TryParseCriterionScoreInput(JsonElement item, out CriterionScoreInputDto parsed)
+    {
+        parsed = default!;
+        if (item.ValueKind != JsonValueKind.Object) return false;
+        Guid critId = Guid.Empty;
+        decimal? critScore = null;
+        Guid? studentId = null;
+        foreach (var prop in item.EnumerateObject())
+        {
+            if (string.Equals(prop.Name, "criteriaId", StringComparison.OrdinalIgnoreCase))
+            {
+                if (prop.Value.ValueKind != JsonValueKind.String || !prop.Value.TryGetGuid(out critId) || critId == Guid.Empty) return false;
+            }
+            else if (string.Equals(prop.Name, "score", StringComparison.OrdinalIgnoreCase))
+            {
+                if (prop.Value.ValueKind != JsonValueKind.Number || !prop.Value.TryGetDecimal(out var s)) return false;
+                critScore = s;
+            }
+            else if (string.Equals(prop.Name, "studentId", StringComparison.OrdinalIgnoreCase))
+            {
+                if (prop.Value.ValueKind != JsonValueKind.Null)
+                {
+                    if (prop.Value.ValueKind != JsonValueKind.String || !prop.Value.TryGetGuid(out var sid) || sid == Guid.Empty) return false;
+                    studentId = sid;
+                }
+            }
+            else return false;
+        }
+        if (critId == Guid.Empty || !critScore.HasValue) return false;
+        parsed = new CriterionScoreInputDto(critId, critScore.Value, studentId);
+        return true;
     }
 
     private static bool TryEnum<T>(JsonElement value, out T parsed) where T : struct, Enum

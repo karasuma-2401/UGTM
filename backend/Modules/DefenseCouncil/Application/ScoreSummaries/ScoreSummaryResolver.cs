@@ -112,8 +112,10 @@ public sealed class ScoreSummaryResolver(ThesisGradeCalculator calculator)
         foreach (var s in facts.Scores)
         {
             var details = facts.Details.Where(d => d.EvaluationId == s.Id).ToArray();
-            if (details.Length == 0 || details.Any(d => d.Score < 0 || d.CriteriaId == Guid.Empty) || details.Select(d => d.CriteriaId).Distinct().Count() != details.Length
-                || Math.Round(details.Sum(d => d.Score), 2) != s.Score) return Fail("MissingRequiredSource");
+            var detailInputs = details.Select(d => new Councils.Dtos.CriterionScoreInputDto(d.CriteriaId, d.Score, d.StudentId)).ToList();
+            if (details.Length == 0 || details.Any(d => d.Score < 0 || d.CriteriaId == Guid.Empty)
+                || Councils.Dtos.StudentEvaluationGroupingHelper.HasDuplicateCriteriaPerScope(detailInputs)
+                || Councils.Dtos.StudentEvaluationGroupingHelper.ComputeAggregateScore(detailInputs) != s.Score) return Fail("MissingRequiredSource");
         }
         return Result.Success(new ValidatedSources(a, r, e, assignment, council, minute, members, required, inside));
     }

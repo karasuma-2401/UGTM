@@ -876,7 +876,8 @@ public static class CouncilEndpoints
         var command = new SubmitCouncilScoreCommand(
             assignmentId,
             body.Details,
-            body.Feedback);
+            body.Feedback,
+            body.StudentScores);
 
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();

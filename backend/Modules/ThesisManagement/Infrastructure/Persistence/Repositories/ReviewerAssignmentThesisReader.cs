@@ -31,8 +31,10 @@ internal sealed class ReviewerAssignmentThesisReader(ThesisManagementDbContext c
         if (groups.Count == 0) return [];
         var ids = groups.Select(group => group.Id).ToArray();
         var members = await context.StudentGroupMembers.AsNoTracking().Where(member => ids.Contains(member.GroupId))
-            .Select(member => new { member.GroupId, member.BatchId }).Distinct().ToListAsync(token);
-        var batches = members.GroupBy(member => member.GroupId).ToDictionary(group => group.Key, group => group.Select(member => member.BatchId).ToArray());
+            .OrderBy(member => member.JoinedAt).ThenBy(member => member.StudentId)
+            .Select(member => new { member.GroupId, member.BatchId, member.StudentId }).ToListAsync(token);
+        var batches = members.GroupBy(member => member.GroupId).ToDictionary(group => group.Key, group => group.Select(member => member.BatchId).Distinct().ToArray());
+        var studentIdsByGroup = members.GroupBy(member => member.GroupId).ToDictionary(group => group.Key, group => (IReadOnlyList<Guid>)group.Select(member => member.StudentId).Distinct().ToArray());
         var reports = await context.FinalReports.AsNoTracking().Where(report => ids.Contains(report.GroupId)
                 && report.VersionType == FinalReportVersionType.InitialFinal)
             .Select(report => new { report.Id, report.GroupId, report.CurrentVersionNo, report.Status }).ToDictionaryAsync(report => report.GroupId, token);
@@ -47,10 +49,12 @@ internal sealed class ReviewerAssignmentThesisReader(ThesisManagementDbContext c
             var report = reports.GetValueOrDefault(group.Id);
             var file = files.GetValueOrDefault(group.Id);
             var batchIds = batches.GetValueOrDefault(group.Id);
+            var studentIds = studentIdsByGroup.GetValueOrDefault(group.Id) ?? [];
             return new ReviewerAssignmentThesisContractDto(group.Id, group.TopicId, batchIds is { Length: 1 } ? batchIds[0] : null,
                 group.Status == StudentGroupStatus.ReadyForReviewerAssignment, report?.Id,
                 report?.Status == FinalReportStatus.UnderEvaluation, report?.CurrentVersionNo, file?.Id, file?.ChecksumSha256,
-                file is null ? null : new(file.Id, file.FileName, file.ContentType, file.FileSize, file.VersionNo));
+                file is null ? null : new(file.Id, file.FileName, file.ContentType, file.FileSize, file.VersionNo),
+                studentIds);
         }).ToArray();
     }
     public Task<ReviewerAssignmentThesisContractDto?> GetAsync(Guid groupId, CancellationToken cancellationToken = default)

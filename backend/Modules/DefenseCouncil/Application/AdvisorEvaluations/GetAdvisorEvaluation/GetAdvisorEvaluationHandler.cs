@@ -58,7 +58,7 @@ public sealed class GetAdvisorEvaluationHandler(
 
         var details = await evaluationRepository.GetEvaluationDetailsByEvaluationIdAsync(evaluation.Id, cancellationToken);
         var detailDtos = details.Select(d => new EvaluationDetailResponseDto(
-            d.Id, d.CriteriaId, d.Criteria.CriteriaCode, d.Criteria.CriteriaName, d.Score, d.Criteria.MaxScore)).ToList();
+            d.Id, d.CriteriaId, d.Criteria.CriteriaCode, d.Criteria.CriteriaName, d.Score, d.Criteria.MaxScore, d.StudentId)).ToList();
 
         return Result.Success(AdvisorEvaluationDtoMapper.ToDto(evaluation, detailDtos));
     }

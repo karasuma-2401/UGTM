@@ -6,8 +6,24 @@ using UGTM.Modules.Identity.Contracts.Authorization;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
 
-public sealed record GradingCriterionInput(string? Code, string? Name, decimal MaxScore);
-public sealed record GradingCriterionDto(Guid Id, string Code, string Name, decimal MaxScore, int Order);
+public sealed record GradingCriterionInput(
+    string? Code,
+    string? Name,
+    decimal MaxScore,
+    string? SectionCode = null,
+    string? SectionName = null,
+    int? SectionOrder = null,
+    string? Elo = null);
+public sealed record GradingCriterionDto(
+    Guid Id,
+    string Code,
+    string Name,
+    decimal MaxScore,
+    int Order,
+    string? SectionCode = null,
+    string? SectionName = null,
+    int? SectionOrder = null,
+    string? Elo = null);
 public sealed record GradingRubricDto(Guid BatchId, bool Locked, IReadOnlyList<GradingCriterionDto> Criteria);
 
 public sealed class GradingRubricManager(DefenseCouncilDbContext db, IKltnBatchReader batches, ICurrentUser user)
@@ -36,6 +52,10 @@ public sealed class GradingRubricManager(DefenseCouncilDbContext db, IKltnBatchR
         if (inputs is null || inputs.Count is < 1 or > 100 || inputs.Any(x => x is null ||
             string.IsNullOrWhiteSpace(x.Code) || x.Code.Trim().Length > 20 ||
             string.IsNullOrWhiteSpace(x.Name) || x.Name.Trim().Length > 250 ||
+            (x.SectionCode is not null && x.SectionCode.Trim().Length > 20) ||
+            (x.SectionName is not null && x.SectionName.Trim().Length > 250) ||
+            (x.SectionOrder is not null && x.SectionOrder.Value < 1) ||
+            (x.Elo is not null && x.Elo.Trim().Length > 100) ||
             x.MaxScore <= 0 || x.MaxScore > 10 || decimal.Round(x.MaxScore, 2) != x.MaxScore) ||
             inputs.Sum(x => x.MaxScore) != 10m ||
             inputs.Select(x => x.Code!.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Count() != inputs.Count)
@@ -54,6 +74,10 @@ public sealed class GradingRubricManager(DefenseCouncilDbContext db, IKltnBatchR
             BatchId = batchId,
             CriteriaCode = input.Code!.Trim().ToUpperInvariant(),
             CriteriaName = input.Name!.Trim(),
+            SectionCode = string.IsNullOrWhiteSpace(input.SectionCode) ? null : input.SectionCode.Trim(),
+            SectionName = string.IsNullOrWhiteSpace(input.SectionName) ? null : input.SectionName.Trim(),
+            SectionOrder = input.SectionOrder,
+            Elo = string.IsNullOrWhiteSpace(input.Elo) ? null : input.Elo.Trim(),
             MaxScore = input.MaxScore,
             OrderIndex = index + 1
         }).ToList();
@@ -74,7 +98,16 @@ public sealed class GradingRubricManager(DefenseCouncilDbContext db, IKltnBatchR
         => await db.Database.SqlQuery<Guid>($"SELECT batch_id AS \"Value\" FROM councils.grading_rubric_usage WHERE batch_id = {batchId}").AnyAsync(token);
 
     private static GradingRubricDto ToDto(Guid batchId, bool locked, IEnumerable<GradingCriteria> criteria)
-        => new(batchId, locked, criteria.Select(c => new GradingCriterionDto(c.Id, c.CriteriaCode, c.CriteriaName, c.MaxScore, c.OrderIndex)).ToList());
+        => new(batchId, locked, criteria.Select(c => new GradingCriterionDto(
+            c.Id,
+            c.CriteriaCode,
+            c.CriteriaName,
+            c.MaxScore,
+            c.OrderIndex,
+            c.SectionCode,
+            c.SectionName,
+            c.SectionOrder,
+            c.Elo)).ToList());
 
     private bool CanManage() => user.IsAuthenticated && user.UserId.HasValue && user.Roles.Any(role =>
         role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || role.Equals("Faculty", StringComparison.OrdinalIgnoreCase) ||

@@ -25,10 +25,57 @@ public sealed class StudentScoreSummaryHandler(ScoreSummaryAccess access, IRevie
         var revision = history!.Revisions.SingleOrDefault(r => r.Id == summary.PublishedRevisionId && r.GroupId == groupId && r.BatchId == group.BatchId);
         if (revision is null || !TryReadSnapshot(revision.SourceSnapshot, groupId, group.TopicId, revision.BatchId, out var title))
             return Result.Failure<StudentScoreSummaryDto>(Error.Forbidden("ScoreSummary.ArchivalNotConfirmed", "Nhóm chưa hoàn thành nộp lưu chiểu nên chưa thể tra cứu điểm chính thức."));
-        var components = history.Components.Where(c => c.RevisionId == revision.Id && !c.IsIgnoredInCalculation && c.Weight > 0)
-            .OrderBy(c => c.ComponentCode, StringComparer.Ordinal).Select(c => new StudentScoreComponentDto(c.ComponentName ?? c.ComponentCode, c.Score, c.Weight)).ToArray();
-        if (components.Length == 0) return Result.Failure<StudentScoreSummaryDto>(ScoreSummaryErrors.Conflict("ContextInvalid"));
-        return Result.Success(new StudentScoreSummaryDto(groupId, title, "PublishedToStudent", summary.PublishedAt.Value, revision.FinalScore, revision.CalculationFormula, components));
+        var rawComponents = history.Components.Where(c => c.RevisionId == revision.Id && !c.IsIgnoredInCalculation && c.Weight > 0)
+            .OrderBy(c => c.ComponentCode, StringComparer.Ordinal).ToArray();
+        if (rawComponents.Length == 0) return Result.Failure<StudentScoreSummaryDto>(ScoreSummaryErrors.Conflict("ContextInvalid"));
+
+        var facts = (await store.FactsAsync([groupId], false, token)).GetValueOrDefault(groupId);
+        var studentId = access.ActorId;
+        var hasPerStudentDetails = facts?.Details.Any(d => d.StudentId == studentId) == true;
+
+        var components = rawComponents.Select(c =>
+        {
+            var resolvedScore = hasPerStudentDetails && facts is not null
+                ? ResolveStudentComponentScore(c, facts, studentId) ?? c.Score
+                : c.Score;
+            return new StudentScoreComponentDto(c.ComponentName ?? c.ComponentCode, resolvedScore, c.Weight);
+        }).ToArray();
+
+        var finalScore = hasPerStudentDetails && revision.TotalWeight > 0
+            ? Math.Round(components.Sum(c => c.Score * c.Weight) / revision.TotalWeight, 2, MidpointRounding.AwayFromZero)
+            : revision.FinalScore;
+
+        return Result.Success(new StudentScoreSummaryDto(groupId, title, "PublishedToStudent", summary.PublishedAt.Value, finalScore, revision.CalculationFormula, components));
+    }
+
+    private static decimal? ResolveStudentComponentScore(Domain.Entities.ScoreSummaryComponent component, ScoreFacts facts, Guid studentId)
+    {
+        if (string.IsNullOrWhiteSpace(component.SourceReferences)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(component.SourceReferences);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return null;
+            var sourceScores = new List<decimal>();
+            foreach (var elem in doc.RootElement.EnumerateArray())
+            {
+                var idStr = elem.ValueKind == JsonValueKind.String ? elem.GetString() : null;
+                if (Guid.TryParse(idStr, out var evalId))
+                {
+                    var studentDetails = facts.Details.Where(d => d.EvaluationId == evalId && d.StudentId == studentId).ToList();
+                    if (studentDetails.Count > 0)
+                    {
+                        sourceScores.Add(Math.Round(studentDetails.Sum(d => d.Score), 2, MidpointRounding.AwayFromZero));
+                    }
+                }
+            }
+            return sourceScores.Count > 0
+                ? Math.Round(sourceScores.Average(), 2, MidpointRounding.AwayFromZero)
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static bool TryReadSnapshot(string snapshot, Guid group, Guid topic, Guid batch, out string title)

@@ -20,13 +20,18 @@ public sealed record AdvisorEvaluationDto(
     DateTime? DecisionAtUtc,
     uint EvaluationVersion,
     bool IsLocked,
-    IReadOnlyList<EvaluationDetailResponseDto>? Details = null);
+    IReadOnlyList<EvaluationDetailResponseDto>? Details = null,
+    IReadOnlyList<StudentEvaluationScoreDto>? StudentScores = null);
 
 internal static class AdvisorEvaluationDtoMapper
 {
-    public static AdvisorEvaluationDto ToDto(AdvisorEvaluation evaluation, IReadOnlyList<EvaluationDetailResponseDto>? details = null)
+    public static AdvisorEvaluationDto ToDto(
+        AdvisorEvaluation evaluation,
+        IReadOnlyList<EvaluationDetailResponseDto>? details = null,
+        int totalCriteriaCount = 0)
     {
         ArgumentNullException.ThrowIfNull(evaluation);
+        var studentScores = StudentEvaluationGroupingHelper.BuildStudentScores(details, totalCriteriaCount);
         return new AdvisorEvaluationDto(
             evaluation.Id,
             evaluation.GroupId,
@@ -44,6 +49,7 @@ internal static class AdvisorEvaluationDtoMapper
             evaluation.DecisionAt,
             evaluation.Version,
             evaluation.IsLocked,
-            details);
+            details,
+            studentScores);
     }
 }

@@ -13,7 +13,8 @@ public enum ReviewerEvaluationAction { SaveDraft, Submit }
 public sealed record SaveReviewerEvaluationCommand(Guid AssignmentId, ReviewerEvaluationAction Action,
     uint ExpectedAssignmentVersion, uint? ExpectedEvaluationVersion, decimal? Score, string? Comment,
     DefenseApprovalStatus? DefenseApproval, Guid IdempotencyKey,
-    IReadOnlyList<CriterionScoreInputDto>? Details = null);
+    IReadOnlyList<CriterionScoreInputDto>? Details = null,
+    IReadOnlyList<StudentCriterionScoresInputDto>? StudentScores = null);
 public sealed record SaveReviewerEvaluationResponse(ReviewerEvaluationDto Evaluation, int StatusCode);
 
 public static class ReviewerEvaluationInput
@@ -25,9 +26,14 @@ public static class ReviewerEvaluationInput
             || !Enum.IsDefined(command.Action) || (command.DefenseApproval.HasValue && !Enum.IsDefined(command.DefenseApproval.Value)))
             return Result.Failure<SaveReviewerEvaluationCommand>(ReviewerEvaluationErrors.InvalidRequest);
 
-        if (command.Details is { Count: > 0 } details)
+        var normalizedDetails = StudentEvaluationGroupingHelper.NormalizeInputs(command.Details, command.StudentScores);
+        if (normalizedDetails is { Count: > 0 } details)
         {
-            if (details.Select(d => d.CriteriaId).Distinct().Count() != details.Count)
+            if (StudentEvaluationGroupingHelper.HasInvalidStudentId(details)
+                || StudentEvaluationGroupingHelper.HasMixedStudentAndGroupLevelDetails(details))
+                return Result.Failure<SaveReviewerEvaluationCommand>(ReviewerEvaluationErrors.InvalidRequest);
+
+            if (StudentEvaluationGroupingHelper.HasDuplicateCriteriaPerScope(details))
                 return Result.Failure<SaveReviewerEvaluationCommand>(ReviewerEvaluationErrors.DuplicateCriteria);
         }
 
@@ -40,17 +46,28 @@ public static class ReviewerEvaluationInput
         {
             if (content.Comment is null || content.DefenseApproval is null)
                 return Result.Failure<SaveReviewerEvaluationCommand>(ReviewerEvaluationErrors.IncompleteEvaluation);
-            if (command.Details is not { Count: > 0 } && content.Score is null)
+            if (normalizedDetails is not { Count: > 0 } && content.Score is null)
                 return Result.Failure<SaveReviewerEvaluationCommand>(ReviewerEvaluationErrors.IncompleteEvaluation);
         }
 
-        return Result.Success(command with { Score = content.Score, Comment = content.Comment, DefenseApproval = content.DefenseApproval });
+        return Result.Success(command with
+        {
+            Score = content.Score,
+            Comment = content.Comment,
+            DefenseApproval = content.DefenseApproval,
+            Details = normalizedDetails
+        });
     }
 
     public static string Fingerprint(SaveReviewerEvaluationCommand normalized)
     {
         var detailsString = normalized.Details != null
-            ? string.Join(";", normalized.Details.OrderBy(d => d.CriteriaId).Select(d => $"{d.CriteriaId:N}:{d.Score.ToString("F2", CultureInfo.InvariantCulture)}"))
+            ? string.Join(";", normalized.Details
+                .OrderBy(d => d.StudentId ?? Guid.Empty)
+                .ThenBy(d => d.CriteriaId)
+                .Select(d => d.StudentId.HasValue
+                    ? $"{d.StudentId.Value:N}:{d.CriteriaId:N}:{d.Score.ToString("F2", CultureInfo.InvariantCulture)}"
+                    : $"{d.CriteriaId:N}:{d.Score.ToString("F2", CultureInfo.InvariantCulture)}"))
             : string.Empty;
         var json = JsonSerializer.Serialize(new object?[] { normalized.AssignmentId.ToString("N"), normalized.Action.ToString(),
             normalized.ExpectedAssignmentVersion, normalized.ExpectedEvaluationVersion,
