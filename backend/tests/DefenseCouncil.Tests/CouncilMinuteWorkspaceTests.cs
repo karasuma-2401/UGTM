@@ -289,6 +289,7 @@ public sealed class CouncilMinuteWorkspaceTests : IAsyncLifetime
     [Theory]
     [InlineData("Admin")]
     [InlineData("AcademicAffairs")]
+    [InlineData("Faculty")]
     public async Task Workspace_and_preview_allow_authorized_administrators(string role)
     {
         var ids = SetupTestCouncil();
