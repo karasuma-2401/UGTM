@@ -25,6 +25,8 @@ import {
   AdvisorMilestoneSetupPage,
   AdvisorMilestoneReviewPage,
   FinalReportSubmissionPage,
+  StudentArchivalPage,
+  ArchivalReviewPage,
 } from '../features/thesis';
 import { ReviewerAssignmentPage, CouncilApprovalPage, ResultsEntryPage } from '../features/councils';
 import { CouncilSimilarityReportsPage } from '../features/thesis/pages/CouncilSimilarityReportsPage';
@@ -113,6 +115,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute allowedRoles={['Student', 'Admin']}>
             <FinalReportSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/archival',
+        element: (
+          <ProtectedRoute allowedRoles={['Student']}>
+            <StudentArchivalPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/review/archival',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin']}>
+            <ArchivalReviewPage />
           </ProtectedRoute>
         ),
       },

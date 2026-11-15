@@ -13,6 +13,8 @@ import {
   UserCheck,
   FilePenLine,
   BarChart3,
+  Archive,
+  FolderCheck,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -153,6 +155,18 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/councils/results',
         icon: BarChart3,
         roles: ['Faculty', 'AcademicAffairs', 'Admin'],
+      },
+      {
+        label: 'Hồ sơ lưu chiểu',
+        path: '/thesis/archival',
+        icon: Archive,
+        roles: ['Student'],
+      },
+      {
+        label: 'Duyệt hồ sơ lưu chiểu',
+        path: '/thesis/review/archival',
+        icon: FolderCheck,
+        roles: ['Faculty', 'Admin'],
       },
       {
         label: 'Kết quả',
