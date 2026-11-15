@@ -13,6 +13,8 @@ import {
   UserCheck,
   FilePenLine,
   BarChart3,
+  Archive,
+  FolderCheck,
   Gavel,
   SquarePen,
 } from 'lucide-react';
@@ -20,6 +22,7 @@ import {
 export interface NavItemConfig {
   label: string;
   path: string;
+  activePaths?: string[];
   icon: ComponentType<{ className?: string }>;
   badge?: string;
   permission?: string | string[];
@@ -127,8 +130,15 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Lecturer', 'Admin'],
       },
       {
+        label: 'Xác nhận lưu chiểu',
+        path: '/advisor/archival',
+        icon: Archive,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
         label: 'Báo cáo & tiến độ',
-        path: '/thesis/proposal',
+        path: '/thesis/milestones',
+        activePaths: ['/thesis/proposal', '/thesis/midterm', '/thesis/final-report'],
         icon: FileText,
         roles: ['Student', 'Admin'],
       },
@@ -167,6 +177,18 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/councils/results',
         icon: BarChart3,
         roles: ['Faculty', 'AcademicAffairs', 'Admin'],
+      },
+      {
+        label: 'Hồ sơ lưu chiểu',
+        path: '/thesis/archival',
+        icon: Archive,
+        roles: ['Student'],
+      },
+      {
+        label: 'Duyệt hồ sơ lưu chiểu',
+        path: '/thesis/review/archival',
+        icon: FolderCheck,
+        roles: ['Faculty', 'Admin'],
       },
       {
         label: 'Kết quả',
