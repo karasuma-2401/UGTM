@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using UGTM.BuildingBlocks.Application.Responses;
+using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetProgressReport;
+using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetProgressReportAttachmentDownload;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetProgressReportFileDownload;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.ReviewProgressReport;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.SubmitProgressReport;
@@ -15,8 +18,6 @@ namespace UGTM.Modules.ThesisManagement.Infrastructure.Endpoints;
 
 public static class ProgressReportSubmissionEndpoints
 {
-    private const long MultipartOverheadBytes = 64 * 1024;
-
     public static IEndpointRouteBuilder MapProgressReportSubmissionEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var report = endpoints.MapGroup("/api/thesis/progress-milestones/{milestoneId:guid}/report")
@@ -25,7 +26,7 @@ public static class ProgressReportSubmissionEndpoints
 
         report.MapPost("", SubmitAsync)
             .DisableAntiforgery()
-            .WithMetadata(new RequestSizeLimitAttribute(ThesisSubmissionFileValidator.MaximumFileSizeBytes + MultipartOverheadBytes))
+            .WithMetadata(new RequestSizeLimitAttribute(SubmissionMultipartHelper.MaximumCombinedRequestSizeBytes))
             .Accepts<IFormFile>("multipart/form-data")
             .WithSummary("Nộp báo cáo tiến độ theo Milestone")
             .WithDescription("""
@@ -113,30 +114,132 @@ public static class ProgressReportSubmissionEndpoints
             .Produces(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
+        endpoints.MapGet("/api/thesis/progress-report-attachments/{attachmentId:guid}/download", DownloadAttachmentAsync)
+            .WithTags("ThesisManagement.ProgressReports")
+            .RequireAuthorization()
+            .WithSummary("Lấy URL tạm thời cho ảnh minh chứng báo cáo tiến độ")
+            .WithDescription("""
+                Sau khi kiểm tra quyền, trả presigned URL chỉ có hiệu lực 5 phút cho ảnh minh chứng đính kèm báo cáo tiến độ.
+                """)
+            .Produces<ApiResponse<SubmissionFileDownloadDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+
         return endpoints;
     }
 
     private static async Task<IResult> SubmitAsync(
         Guid milestoneId,
-        [FromForm(Name = "file")] IFormFile? file,
-        [FromForm(Name = "gitUrl")] string? gitUrl,
-        [FromForm(Name = "studentNote")] string? studentNote,
+        HttpRequest request,
         SubmitProgressReportHandler handler,
         CancellationToken cancellationToken)
     {
-        if (file is null)
+        if (request.ContentLength > SubmissionMultipartHelper.MaximumCombinedRequestSizeBytes)
         {
+            return PayloadTooLarge("Tổng dung lượng tệp và ảnh minh chứng vượt quá giới hạn cho phép.");
+        }
+
+        var bodyLimit = request.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        if (bodyLimit is { IsReadOnly: false })
+        {
+            bodyLimit.MaxRequestBodySize = Math.Min(
+                bodyLimit.MaxRequestBodySize ?? SubmissionMultipartHelper.MaximumCombinedRequestSizeBytes,
+                SubmissionMultipartHelper.MaximumCombinedRequestSizeBytes);
+        }
+
+        if (!request.HasFormContentType
+            || !request.ContentType!.StartsWith("multipart/form-data", StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.StatusCode(StatusCodes.Status415UnsupportedMediaType);
+        }
+
+        IFormCollection form;
+        try
+        {
+            form = await request.ReadFormAsync(cancellationToken);
+        }
+        catch (BadHttpRequestException exception) when (exception.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            return PayloadTooLarge("Tổng dung lượng tệp và ảnh minh chứng vượt quá giới hạn cho phép.");
+        }
+        catch (BadHttpRequestException)
+        {
+            return InvalidProgressRequest();
+        }
+        catch (InvalidDataException)
+        {
+            return InvalidProgressRequest();
+        }
+        catch (IOException)
+        {
+            return InvalidProgressRequest();
+        }
+
+        if (!SubmissionMultipartHelper.TryCollectFiles(form, out var file, out var images, out var imageTooLarge))
+        {
+            if (imageTooLarge)
+            {
+                return PayloadTooLarge("Mỗi ảnh minh chứng không được vượt quá 5 MB.");
+            }
+
             return Results.Json(
                 ApiResponse<ProgressReportSubmissionDto>.Fail(
-                    ApiError.Create("ProgressReport.InvalidFile", "Phải cung cấp tệp báo cáo tiến độ.")),
+                    ApiError.Create("ProgressReport.InvalidFile", "Phải cung cấp đúng một tệp báo cáo tiến độ và tối đa 5 ảnh minh chứng hợp lệ.")),
                 statusCode: StatusCodes.Status400BadRequest);
         }
 
-        await using var stream = file.OpenReadStream();
-        return (await handler.HandleAsync(
-            new SubmitProgressReportCommand(milestoneId, file.FileName, stream, gitUrl, studentNote),
-            cancellationToken)).ToHttpResult();
+        if (file!.Length > ThesisSubmissionFileValidator.MaximumFileSizeBytes)
+        {
+            return PayloadTooLarge("Tệp báo cáo tiến độ không được vượt quá 20 MB.");
+        }
+
+        if (!SubmissionMultipartHelper.TryExtractProductLinks(form, out var productLinks))
+        {
+            return InvalidProgressRequest();
+        }
+
+        var gitUrl = form["gitUrl"].FirstOrDefault();
+        var studentNote = form["studentNote"].FirstOrDefault();
+
+        var (imageUploads, imageStreams) = await SubmissionMultipartHelper.OpenImageStreamsAsync(images);
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            return (await handler.HandleAsync(
+                new SubmitProgressReportCommand(
+                    milestoneId,
+                    file.FileName,
+                    stream,
+                    gitUrl,
+                    studentNote,
+                    productLinks,
+                    imageUploads),
+                cancellationToken)).ToHttpResult();
+        }
+        finally
+        {
+            foreach (var imageStream in imageStreams)
+            {
+                await imageStream.DisposeAsync();
+            }
+        }
     }
+
+    private static IResult InvalidProgressRequest()
+        => Results.BadRequest(ApiResponse<ProgressReportSubmissionDto>.Fail(ApiError.Create(
+            ProgressReportErrors.InvalidRequest.Code, ProgressReportErrors.InvalidRequest.Message)));
+
+    private static IResult PayloadTooLarge(string message)
+        => Results.Json(
+            ApiResponse<ProgressReportSubmissionDto>.Fail(ApiError.Create("ProgressReport.FileTooLarge", message)),
+            statusCode: StatusCodes.Status413PayloadTooLarge);
+
+    private static async Task<IResult> DownloadAttachmentAsync(
+        Guid attachmentId,
+        GetProgressReportAttachmentDownloadHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(new GetProgressReportAttachmentDownloadQuery(attachmentId), cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> ReviewAsync(
         Guid milestoneId,

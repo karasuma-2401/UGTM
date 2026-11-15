@@ -60,7 +60,9 @@ using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.SubmitFinalReport;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportHistory;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportFileDownload;
+using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportAttachmentDownload;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.BeginFinalReportEvaluation;
+using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetProgressReportAttachmentDownload;
 using UGTM.Modules.ThesisManagement.Contracts.AdvisorEvaluations;
 using UGTM.Modules.ThesisManagement.Application.StudentGroups.GetStudentGroupDetail;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusReviewQueue;
@@ -133,10 +135,13 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<FinalReportReadAccessChecker>();
         services.AddScoped<GetFinalReportHistoryHandler>();
         services.AddScoped<GetFinalReportFileDownloadHandler>();
+        services.AddScoped<GetFinalReportAttachmentDownloadHandler>();
         services.AddScoped<BeginFinalReportEvaluationHandler>();
         services.AddScoped<IProgressMilestoneRepository, ProgressMilestoneRepository>();
         services.AddScoped<IProgressReportRepository, ProgressReportRepository>();
         services.AddScoped<ISubmissionFileRepository, SubmissionFileRepository>();
+        services.AddScoped<ISubmissionProductLinkRepository, SubmissionProductLinkRepository>();
+        services.AddScoped<ISubmissionAttachmentRepository, SubmissionAttachmentRepository>();
         services.AddScoped<ISubmissionReviewRepository, SubmissionReviewRepository>();
         services.AddScoped<IRenameRequestRepository, RenameRequestRepository>();
         services.AddScoped<IThesisUnitOfWork>(provider => provider.GetRequiredService<ThesisManagementDbContext>());
@@ -162,6 +167,7 @@ public sealed class ThesisManagementModule : IModule
             return S3ClientFactory.Create(options, options.Endpoint);
         });
         services.AddSingleton<IThesisSubmissionFileValidator, ThesisSubmissionFileValidator>();
+        services.AddSingleton<IThesisSubmissionImageValidator, ThesisSubmissionImageValidator>();
         services.AddSingleton<IThesisSubmissionObjectKeyFactory, ThesisSubmissionObjectKeyFactory>();
         services.AddSingleton<IThesisSubmissionObjectStorage, S3ThesisSubmissionObjectStorage>();
         services.AddSingleton<TimeProvider>(TimeProvider.System);
@@ -181,6 +187,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<ReviewProgressReportHandler>();
         services.AddScoped<GetProgressReportHandler>();
         services.AddScoped<GetProgressReportFileDownloadHandler>();
+        services.AddScoped<GetProgressReportAttachmentDownloadHandler>();
         services.AddScoped<IReviewGateDeadlineEnforcer, ReviewGateDeadlineEnforcer>();
         services.AddHostedService<ReviewGateDeadlineEnforcementWorker>();
 

@@ -26,10 +26,12 @@ public interface IFinalReportPlagiarismScanRepository
 
     Task<IReadOnlyList<FinalReportPlagiarismScan>> GetActiveOrPendingScansAsync(
         int limit = 50,
+        string? workerPartition = null,
         CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<FinalReportPlagiarismScan>> GetResumableScansAsync(
         int limit = 50,
+        string? workerPartition = null,
         CancellationToken cancellationToken = default);
 
     void Add(FinalReportPlagiarismScan scan);

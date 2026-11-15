@@ -310,6 +310,75 @@ public sealed class PlagiarismReportApplicationTests
     }
 
     [Fact]
+    public async Task GetPlagiarismReportHandler_Syncs_Queued_Scan_On_Read_When_Ai_Already_Completed()
+    {
+        var report = FinalReport.CreateSubmitted(Guid.NewGuid(), GroupId, FinalReportVersionType.InitialFinal, Now);
+        var file = new SubmissionFile
+        {
+            Id = Guid.NewGuid(),
+            EntityType = SubmissionEntityType.FinalReport,
+            EntityId = report.Id,
+            VersionNo = 1,
+            FileName = "Benchmarking Metric Ground Navigation.pdf",
+            ObjectKey = "final/key.pdf",
+            ContentType = "application/pdf",
+            ChecksumSha256 = "6ce05613e46b0dfdd18d61245cabb2cb99c7448972e9ae3c43b8d376faa504a5",
+            FileSize = 2_140_000,
+            FileExtension = ".pdf",
+            UploadedBy = StudentId,
+            UploadedAt = Now
+        };
+        var scan = FinalReportPlagiarismScan.Create(
+            Guid.NewGuid(),
+            report.Id,
+            file.Id,
+            1,
+            Now,
+            workerPartition: "local-docker-test");
+        typeof(FinalReportPlagiarismScan).GetProperty(nameof(FinalReportPlagiarismScan.SubmissionFile))!
+            .SetValue(scan, file);
+        var jobId = Guid.NewGuid();
+        scan.MarkQueued(jobId, Now.AddMinutes(1));
+        scan.RecordPollAttempt(Now.AddMinutes(2), DateTime.UtcNow.AddMinutes(10));
+
+        var aiClient = new FakeCompletedAiClient(SampleReportJson);
+        var uow = new FakeThesisUnitOfWork();
+        var executeHandler = new ExecutePlagiarismScanHandler(
+            aiClient,
+            null!,
+            uow,
+            Microsoft.Extensions.Options.Options.Create(new PlagiarismAiOptions()),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ExecutePlagiarismScanHandler>.Instance);
+
+        var reportRepo = new FakeFinalReportRepository(report);
+        var scanRepo = new FakeScanRepository(scan);
+        var group = new StudentGroup(GroupId, TopicId, Now);
+        group.AddConfirmedMember(StudentId, Guid.NewGuid(), Now);
+        var groupRepo = new FakeStudentGroupRepository(group);
+        var advisorContract = new FakeAdvisorAssignmentContract(TopicId, AdvisorId);
+        var currentUser = StudentUser(StudentId);
+        var accessChecker = new FinalReportReadAccessChecker(currentUser, advisorContract);
+        var handler = new GetPlagiarismReportHandler(
+            reportRepo,
+            scanRepo,
+            groupRepo,
+            accessChecker,
+            currentUser,
+            advisorContract,
+            new FakeCouncilReportAccess(),
+            executeHandler);
+
+        var result = await handler.HandleAsync(new GetPlagiarismReportQuery(report.Id));
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value.IsReceiptOnly);
+        Assert.NotNull(result.Value.Receipt);
+        Assert.Equal("Completed", result.Value.Receipt!.Status);
+        Assert.Equal(PlagiarismScanStatus.Completed, scan.Status);
+        Assert.Equal(1, uow.SaveCalls);
+        Assert.Equal("local-docker-test", scan.WorkerPartition);
+    }
+
+    [Fact]
     public async Task ResumePendingPlagiarismScansHandler_Rejects_Student_And_Advisor()
     {
         var (report, scan) = CreateCompletedReportWithScan();
@@ -571,11 +640,13 @@ public sealed class PlagiarismReportApplicationTests
 
         public Task<IReadOnlyList<FinalReportPlagiarismScan>> GetActiveOrPendingScansAsync(
             int limit = 50,
+            string? workerPartition = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<FinalReportPlagiarismScan>>([scan]);
 
         public Task<IReadOnlyList<FinalReportPlagiarismScan>> GetResumableScansAsync(
             int limit = 50,
+            string? workerPartition = null,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<FinalReportPlagiarismScan>>([scan]);
 
@@ -619,5 +690,33 @@ public sealed class PlagiarismReportApplicationTests
             Task.FromResult<IReadOnlyList<SubmissionFile>>(file is not null ? [file] : []);
 
         public void Add(SubmissionFile submissionFile) { }
+    }
+
+    private sealed class FakeThesisUnitOfWork : UGTM.Modules.ThesisManagement.Application.Persistence.IThesisUnitOfWork
+    {
+        public int SaveCalls { get; private set; }
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            SaveCalls++;
+            return Task.FromResult(1);
+        }
+    }
+
+    private sealed class FakeCompletedAiClient(string rawJson) : IPlagiarismAiClient
+    {
+        public Task<PlagiarismJobStatusDto?> GetJobStatusAsync(Guid jobId, CancellationToken ct = default)
+            => Task.FromResult<PlagiarismJobStatusDto?>(
+                new PlagiarismJobStatusDto(jobId, "scan", "completed", null, 0, 5, null, DateTime.UtcNow));
+
+        public Task<JsonElement?> GetReportRawJsonAsync(Guid jobId, int schema = 3, int page = 1, int pageSize = 100, CancellationToken ct = default)
+        {
+            using var doc = JsonDocument.Parse(rawJson);
+            return Task.FromResult<JsonElement?>(doc.RootElement.Clone());
+        }
+
+        public Task<ScanJobSubmissionResult> SubmitScanJobAsync(string corpusId, Guid submissionId, int version, Stream fileStream, string fileName, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<bool> RetryJobAsync(Guid jobId, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<ScanJobSubmissionResult> IndexCorpusDocumentAsync(string corpusId, string sourceId, int version, Stream fileStream, string fileName, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<bool> CheckHealthAsync(CancellationToken ct = default) => Task.FromResult(true);
     }
 }

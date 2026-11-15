@@ -4,16 +4,15 @@ import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { syllabusApi } from '../services/syllabusApi';
 import { midtermApi } from '../services/midtermApi';
+import { validateReportFile } from '../services/submissionUploadHelper';
 import type { MidtermReportStatus } from '../types/midterm.types';
-
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx'];
 
 export function useMidtermSubmission() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const batchesQuery = useAcademicBatches();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
@@ -70,25 +69,25 @@ export function useMidtermSubmission() {
         throw new Error('Không tìm thấy thông tin nhóm của bạn.');
       }
 
-      const fileNameLower = file.name.toLowerCase();
-      const hasValidExt = ALLOWED_EXTENSIONS.some((ext) => fileNameLower.endsWith(ext));
-      if (!hasValidExt) {
-        throw new Error('Chỉ chấp nhận tệp định dạng .pdf, .doc hoặc .docx.');
+      const fileError = validateReportFile(file);
+      if (fileError) {
+        throw new Error(fileError);
       }
 
-      if (file.size > MAX_FILE_SIZE_BYTES) {
-        throw new Error('Dung lượng tệp không được vượt quá 20 MB.');
-      }
-
-      return await midtermApi.submitMidtermReport(groupId, file);
+      setUploadProgress(1);
+      return await midtermApi.submitMidtermReport(groupId, file, (percent) =>
+        setUploadProgress(percent),
+      );
     },
     onSuccess: (data) => {
       setSelectedFile(null);
+      setUploadProgress(null);
       setActionSuccess(`Nộp báo cáo giữa kỳ phiên bản v${data.versionNo} thành công!`);
       void queryClient.invalidateQueries({ queryKey: ['midterm-history', user?.id, groupId] });
       void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
     },
     onError: (err: Error) => {
+      setUploadProgress(null);
       setActionError(err.message || 'Nộp báo cáo giữa kỳ thất bại. Vui lòng thử lại.');
     },
   });
@@ -146,6 +145,7 @@ export function useMidtermSubmission() {
     historyQuery,
     selectedFile,
     setSelectedFile,
+    uploadProgress,
     actionError,
     setActionError,
     actionSuccess,

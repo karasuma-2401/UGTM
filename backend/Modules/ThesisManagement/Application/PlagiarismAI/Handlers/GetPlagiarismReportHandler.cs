@@ -26,7 +26,8 @@ public sealed class GetPlagiarismReportHandler(
     FinalReportReadAccessChecker readAccessChecker,
     ICurrentUser currentUser,
     ITopicAdvisorAssignmentContract advisorAssignmentContract,
-    ICouncilReportAccess councilReportAccess)
+    ICouncilReportAccess councilReportAccess,
+    ExecutePlagiarismScanHandler? executeScanHandler = null)
 {
     public async Task<Result<PlagiarismReportResultDto>> HandleAsync(
         GetPlagiarismReportQuery query,
@@ -85,6 +86,22 @@ public sealed class GetPlagiarismReportHandler(
         if (scan is null)
         {
             return Result.Failure<PlagiarismReportResultDto>(PlagiarismScanErrors.NotFound);
+        }
+
+        var nowUtc = DateTime.UtcNow;
+        var shouldSyncActiveJob = executeScanHandler is not null
+            && scan.JobId.HasValue
+            && scan.JobId.Value != Guid.Empty
+            && scan.Status is PlagiarismScanStatus.Queued
+                or PlagiarismScanStatus.Processing
+                or PlagiarismScanStatus.WaitingForCompute
+            && ((scan.NextCheckAfterUtc.HasValue && scan.NextCheckAfterUtc.Value > nowUtc)
+                || !scan.LastPolledAt.HasValue
+                || nowUtc - scan.LastPolledAt.Value >= TimeSpan.FromSeconds(5));
+
+        if (shouldSyncActiveJob)
+        {
+            await executeScanHandler!.SyncActiveJobAsync(scan, cancellationToken);
         }
 
         var isStudentOnly = HasRole("Student") && !isAdmin && !isFaculty && !isAssignedAdvisor && !isCouncil;

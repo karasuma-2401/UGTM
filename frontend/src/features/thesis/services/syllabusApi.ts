@@ -1,5 +1,6 @@
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
+import { buildUploadProgressHandler } from './submissionUploadHelper';
 import type {
   SyllabusSubmissionDto,
   SyllabusSubmissionHistoryDto,
@@ -46,8 +47,13 @@ export const syllabusApi = {
   async submitSyllabus(
     groupId: string,
     file: File,
-    signal?: AbortSignal,
+    signalOrOptions?: AbortSignal | { signal?: AbortSignal; onUploadProgress?: (percent: number) => void },
   ): Promise<SyllabusSubmissionDto> {
+    const resolved =
+      signalOrOptions && typeof signalOrOptions === 'object' && 'aborted' in signalOrOptions
+        ? { signal: signalOrOptions as AbortSignal }
+        : (signalOrOptions as { signal?: AbortSignal; onUploadProgress?: (percent: number) => void } | undefined);
+
     const formData = new FormData();
     formData.append('file', file);
 
@@ -56,7 +62,8 @@ export const syllabusApi = {
       formData,
       {
         headers: { 'Content-Type': 'multipart/form-data' },
-        signal,
+        signal: resolved?.signal,
+        onUploadProgress: buildUploadProgressHandler(resolved?.onUploadProgress),
       },
     );
     return unwrap(response.data);

@@ -8,6 +8,10 @@ public static class FinalReportSubmissionErrors
         "FinalReport.InvalidFile",
         "Tệp báo cáo cuối kỳ không hợp lệ. Chỉ chấp nhận PDF, DOC hoặc DOCX tối đa 20 MiB với nội dung khớp định dạng.");
 
+    public static readonly Error InvalidAttachment = Error.Validation(
+        "FinalReport.InvalidAttachment",
+        "Ảnh minh chứng không hợp lệ. Chỉ chấp nhận tối đa 5 ảnh PNG, JPG, JPEG hoặc WEBP (tối đa 5 MB mỗi ảnh).");
+
     public static readonly Error EvaluationStarted = Error.Conflict(
         "FinalReport.EvaluationStarted",
         "Báo cáo cuối kỳ đã bắt đầu chấm; không thể nộp lại.");

@@ -11,7 +11,8 @@ public sealed class FinalReportPlagiarismScan
         Guid finalReportId,
         Guid submissionFileId,
         int versionNo,
-        DateTime createdAtUtc)
+        DateTime createdAtUtc,
+        string? workerPartition)
     {
         if (id == Guid.Empty || finalReportId == Guid.Empty || submissionFileId == Guid.Empty)
         {
@@ -35,6 +36,7 @@ public sealed class FinalReportPlagiarismScan
         Status = PlagiarismScanStatus.PendingSubmission;
         CreatedAt = createdAtUtc;
         AttemptCount = 0;
+        AssignWorkerPartition(workerPartition);
     }
 
     public Guid Id { get; private set; }
@@ -59,6 +61,7 @@ public sealed class FinalReportPlagiarismScan
     public DateTime? LastPolledAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
     public DateTime? NextCheckAfterUtc { get; private set; }
+    public string? WorkerPartition { get; private set; }
     public uint Version { get; private set; }
 
     public FinalReport FinalReport { get; private set; } = null!;
@@ -69,8 +72,20 @@ public sealed class FinalReportPlagiarismScan
         Guid finalReportId,
         Guid submissionFileId,
         int versionNo,
-        DateTime createdAtUtc)
-        => new(id, finalReportId, submissionFileId, versionNo, createdAtUtc);
+        DateTime createdAtUtc,
+        string? workerPartition = null)
+        => new(id, finalReportId, submissionFileId, versionNo, createdAtUtc, workerPartition);
+
+    public void AssignWorkerPartition(string? workerPartition)
+    {
+        var normalized = string.IsNullOrWhiteSpace(workerPartition) ? null : workerPartition.Trim();
+        if (normalized is { Length: > 100 })
+        {
+            throw new ArgumentOutOfRangeException(nameof(workerPartition), "Worker partition cannot exceed 100 characters.");
+        }
+
+        WorkerPartition = normalized;
+    }
 
     public void MarkQueued(Guid jobId, DateTime nowUtc)
     {

@@ -1,4 +1,8 @@
-import type { SubmissionFileDto } from './syllabus.types';
+import type {
+  SubmissionAttachmentDto,
+  SubmissionFileDto,
+  SubmissionProductLinkDto,
+} from './syllabus.types';
 
 export type ProgressReportStatus =
   | 'NotSubmitted'
@@ -42,6 +46,8 @@ export interface ProgressReportSubmissionDto {
   isLate: boolean;
   submittedAtUtc: string;
   file: SubmissionFileDto;
+  productLinks?: SubmissionProductLinkDto[];
+  attachments?: SubmissionAttachmentDto[];
 }
 
 export interface ProgressReportReviewDto {
@@ -62,6 +68,8 @@ export interface ProgressReportVersionDto {
   status: string;
   file?: SubmissionFileDto | null;
   review?: ProgressReportReviewDto | null;
+  productLinks?: SubmissionProductLinkDto[];
+  attachments?: SubmissionAttachmentDto[];
 }
 
 export interface ProgressReportHistoryDto {

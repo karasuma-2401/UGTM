@@ -16,7 +16,9 @@ public sealed class GetFinalReportHistoryHandler(
     IFinalReportPlagiarismScanRepository plagiarismScanRepository,
     FinalReportReadAccessChecker accessChecker,
     ICurrentUser currentUser,
-    ITopicAdvisorAssignmentContract advisorAssignments)
+    ITopicAdvisorAssignmentContract advisorAssignments,
+    ISubmissionProductLinkRepository? productLinkRepository = null,
+    ISubmissionAttachmentRepository? attachmentRepository = null)
 {
     public async Task<Result<FinalReportHistoryDto>> HandleAsync(
         GetFinalReportHistoryQuery query, CancellationToken cancellationToken = default)
@@ -48,7 +50,29 @@ public sealed class GetFinalReportHistoryHandler(
         }
         var files = await submissionFileRepository.GetByEntityAsync(SubmissionEntityType.FinalReport, report.Id, cancellationToken);
         var scans = await plagiarismScanRepository.GetByReportIdAsync(report.Id, cancellationToken);
+        var links = productLinkRepository is not null
+            ? await productLinkRepository.GetByEntityAsync(SubmissionEntityType.FinalReport, report.Id, cancellationToken)
+            : [];
+        var attachments = attachmentRepository is not null
+            ? await attachmentRepository.GetByEntityAsync(SubmissionEntityType.FinalReport, report.Id, cancellationToken)
+            : [];
         var scanMap = scans.ToDictionary(s => s.VersionNo);
+        var linksByVersion = links
+            .GroupBy(link => link.VersionNo)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<SubmissionProductLinkDto>)g
+                    .OrderBy(item => item.DisplayOrder)
+                    .Select(SubmissionSupplementalMapper.ToDto)
+                    .ToArray());
+        var attachmentsByVersion = attachments
+            .GroupBy(attachment => attachment.VersionNo)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<SubmissionAttachmentDto>)g
+                    .OrderBy(item => item.DisplayOrder)
+                    .Select(SubmissionSupplementalMapper.ToDto)
+                    .ToArray());
 
         bool HasRole(string role) => currentUser.Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
         var advisor = await advisorAssignments.GetByTopicIdAsync(group.TopicId, cancellationToken);
@@ -69,7 +93,9 @@ public sealed class GetFinalReportHistoryHandler(
                     file.VersionNo,
                     SyllabusSubmissionMapper.ToDto(file),
                     statusStr,
-                    similarityCoverage);
+                    similarityCoverage,
+                    linksByVersion.TryGetValue(file.VersionNo, out var versionLinks) ? versionLinks : [],
+                    attachmentsByVersion.TryGetValue(file.VersionNo, out var versionAttachments) ? versionAttachments : []);
             })
             .ToArray();
         return Result.Success(new FinalReportHistoryDto(report.Id, report.GroupId, report.VersionType.ToString(),

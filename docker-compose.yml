@@ -27,6 +27,7 @@ services:
       - PlagiarismAi__BaseUrl=${PLAGIARISM_AI_BASE_URL:-http://host.docker.internal:8000}
       - PlagiarismAi__ApiKey=${PLAGIARISM_AI_API_KEY:-}
       - PlagiarismAi__DefaultCorpus=${PLAGIARISM_AI_DEFAULT_CORPUS:-uit-kltn-library-v1}
+      - PlagiarismAi__WorkerPartition=local-docker-${UGTM_DEVELOPER_ID:-${COMPUTERNAME:-unset}}
       - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
       - Identity__Email__PublicWebBaseUrl=http://localhost:3000
       # Each machine has its own Data Protection key volume, so the partition must be unique per developer.

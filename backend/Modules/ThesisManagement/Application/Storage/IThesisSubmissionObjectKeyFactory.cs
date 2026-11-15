@@ -8,4 +8,6 @@ namespace UGTM.Modules.ThesisManagement.Application.Storage;
 public interface IThesisSubmissionObjectKeyFactory
 {
     string Create(SubmissionEntityType entityType, Guid entityId, int versionNo, string fileExtension);
+
+    string CreateAttachment(SubmissionEntityType entityType, Guid entityId, int versionNo, string fileExtension);
 }

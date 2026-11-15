@@ -1,19 +1,18 @@
-import { InlineAlert } from '@/components/ui/inline-alert';
-import { OperationToast } from '@/shared/notifications';
-import { useStudentMilestones } from '../hooks/useStudentMilestones';
-import {
-  MilestoneStatusBadge,
-  StudentMilestoneUploadCard,
-  StudentMilestoneHistoryTable,
-  StudentMilestoneDetailCard,
-} from '../components/milestone';
-import { ThesisSubmissionNavigation } from '../components/navigation';
-import { PageHeader } from '@/components/ui/page-header';
-import { Select } from '@/components/ui/select';
+import { Flag, RefreshCw } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, BookOpen, Flag, ShieldAlert, RotateCcw } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { classifyThesisError, getThesisErrorMessage } from '../utils/thesisErrors';
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useStudentMilestones } from '../hooks/useStudentMilestones';
+import { useThesisJourneySummary } from '../hooks/useThesisJourneySummary';
+import { ThesisSubmissionWorkspace } from '../components/shared';
+import {
+  MilestoneSelectorStrip,
+  MilestoneStatusBadge,
+  StudentMilestoneBriefCard,
+  StudentMilestoneHistoryTable,
+  StudentMilestoneUploadCard,
+} from '../components/milestone';
 
 export function StudentMilestoneSubmissionPage() {
   const {
@@ -33,241 +32,242 @@ export function StudentMilestoneSubmissionPage() {
     canSubmit,
     selectedFile,
     setSelectedFile,
-    gitUrl,
-    setGitUrl,
+    productLinks,
+    setProductLinks,
+    selectedImages,
+    setSelectedImages,
+    uploadProgress,
     studentNote,
     setStudentNote,
     actionError,
+    setActionError,
     actionSuccess,
     setActionSuccess,
     submitMutation,
     handleDownload,
   } = useStudentMilestones();
 
+  const groupId = statusQuery.data?.groupId;
   const groupDetail = groupDetailQuery.data;
-  const groupCode =
-    groupDetail?.groupCode ||
-    (statusQuery.data?.groupId
-      ? `Nhóm ${statusQuery.data.groupId.slice(0, 4).toUpperCase()}`
-      : 'Nhóm KLTN');
+  const journey = useThesisJourneySummary(groupId);
 
-  const milestoneCode = String(selectedMilestoneIndex + 1).padStart(2, '0');
+  const lockedTitle =
+    currentStatus === 'Accepted'
+      ? 'Mốc báo cáo này đã Đạt'
+      : currentStatus === 'Submitted'
+        ? 'Bài nộp đang chờ GVHD đánh giá'
+        : 'Khu vực nộp sản phẩm tạm khóa';
 
-  if (statusQuery.isError) {
-    const errorKind = classifyThesisError(statusQuery.error);
-    const message = getThesisErrorMessage(
-      statusQuery.error,
-      'Không thể tải trạng thái đăng ký đề tài của bạn.',
-    );
+  const lockedReason =
+    currentStatus === 'Accepted'
+      ? 'GVHD đã xác nhận Đạt cho mốc báo cáo này. Nhóm không cần nộp thêm phiên bản mới.'
+      : currentStatus === 'Submitted'
+        ? 'Hệ thống tạm khóa chỉnh sửa trong lúc GVHD xem xét phiên bản hiện tại.'
+        : null;
 
-    return (
-      <div className="max-w-4xl mx-auto py-10 px-4">
-        <div className="p-8 text-center bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <div className="size-12 mx-auto rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
-            {errorKind === 'forbidden' ? (
-              <ShieldAlert className="size-6 text-amber-600" />
-            ) : (
-              <AlertCircle className="size-6" />
-            )}
-          </div>
-          <h2 className="text-lg font-bold text-slate-800">
-            {errorKind === 'forbidden'
-              ? 'Không có quyền truy cập mốc tiến độ'
-              : 'Không tải được thông tin đề tài KLTN'}
-          </h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">{message}</p>
-          {errorKind !== 'forbidden' && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void statusQuery.refetch()}
-              className="border-slate-300"
-            >
-              <RotateCcw className="size-4 mr-2" />
-              Thử lại
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (!statusQuery.isLoading && !statusQuery.data?.hasRegistered) {
-    return (
-      <div className="max-w-4xl mx-auto py-10 px-4">
-        <div className="p-8 text-center bg-white rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <div className="size-12 mx-auto rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-            <AlertCircle className="size-6" />
-          </div>
-          <h2 className="text-lg font-bold text-slate-800">
-            Chưa có thông tin đề tài KLTN
-          </h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
-            Bạn chưa đăng ký đề tài nào trong đợt KLTN này hoặc đăng ký chưa được xác nhận. Vui lòng tra cứu và đăng ký đề tài trước khi nộp tiến độ.
-          </p>
-          <Button asChild className="bg-primary text-white">
-            <Link to="/topics/catalog">
-              <BookOpen className="size-4 mr-2" />
-              Xem danh mục đề tài
-            </Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const milestoneOptions = milestones.map((m, idx) => ({
-    value: m.id,
-    label: `Mốc ${String(idx + 1).padStart(2, '0')} - ${m.title}`,
-  }));
-
-  const getDisabledReason = () => {
-    if (milestones.length === 0) {
-      return 'GVHD chưa thiết lập mốc tiến độ nào cho nhóm.';
-    }
-    if (currentStatus === 'Submitted') {
-      return 'Báo cáo của mốc này đang ở trạng thái Chờ đánh giá từ GVHD.';
-    }
-    if (currentStatus === 'Accepted') {
-      return 'Mốc báo cáo này đã được GVHD đánh giá Đạt.';
-    }
-    return null;
+  const handleSelectMilestone = (id: string) => {
+    setSelectedMilestoneId(id);
+    setSelectedFile(null);
+    setActionError(null);
+    setActionSuccess(null);
   };
 
+  const nextPendingIndex =
+    currentStatus === 'Accepted'
+      ? (() => {
+          const revisionIndex = journey.milestoneItems.findIndex(
+            (item) => item.milestone.id !== selectedMilestoneId && item.status === 'NeedRevision',
+          );
+          if (revisionIndex >= 0) return revisionIndex;
+          return journey.milestoneItems.findIndex(
+            (item) => item.milestone.id !== selectedMilestoneId && item.status === 'NotSubmitted',
+          );
+        })()
+      : -1;
+  const nextPendingItem = nextPendingIndex >= 0 ? journey.milestoneItems[nextPendingIndex] : null;
+  const nextActionLabel = nextPendingItem
+    ? `Tiếp theo: Mốc ${String(nextPendingIndex + 1).padStart(2, '0')}`
+    : undefined;
+
+  const showUploadCard = canSubmit || (!reportQuery.isLoading && versions.length === 0);
+
+  const uploadCard = showUploadCard ? (
+    <StudentMilestoneUploadCard
+      versionNo={nextVersionNo}
+      selectedFile={selectedFile}
+      productLinks={productLinks}
+      selectedImages={selectedImages}
+      studentNote={studentNote}
+      uploadProgress={uploadProgress}
+      onFileSelect={(file) => {
+        setActionError(null);
+        setActionSuccess(null);
+        setSelectedFile(file);
+      }}
+      onProductLinksChange={setProductLinks}
+      onImagesChange={setSelectedImages}
+      onNoteChange={setStudentNote}
+      onSubmit={() => submitMutation.mutate()}
+      isSubmitting={submitMutation.isPending}
+      canSubmit={canSubmit}
+      disabled={!canSubmit || submitMutation.isPending}
+      lockedTitle={lockedTitle}
+      disabledReason={lockedReason}
+    />
+  ) : null;
+
+  const historyCard = (
+    <StudentMilestoneHistoryTable
+      versions={versions}
+      deadlineUtc={selectedMilestone?.deadlineUtc}
+      onDownload={(fileId) => void handleDownload(fileId)}
+      isLoading={reportQuery.isLoading}
+      omitLatestReview
+    />
+  );
+
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 space-y-6">
-      <PageHeader
-        title="Nộp sản phẩm theo mốc"
-        description={
-          selectedMilestone
-            ? `Mốc báo cáo ${milestoneCode} - ${selectedMilestone.title}`
-            : 'Theo dõi và nộp báo cáo tiến độ theo yêu cầu của GVHD'
-        }
-        icon={<Flag />}
-        navigation={<ThesisSubmissionNavigation />}
-      >
-        <MilestoneStatusBadge
-          status={currentStatus}
-          versionNo={report?.currentVersionNo}
-          className="text-xs px-3 py-1.5"
-        />
-      </PageHeader>
-
-      <div className="p-4 rounded-xl bg-white border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:max-w-xl">
-          <label
-            htmlFor="select-milestone"
-            className="text-xs font-semibold text-slate-700 uppercase tracking-wide whitespace-nowrap"
-          >
-            Mốc báo cáo
-          </label>
-          <div className="flex-1 min-w-0">
-            <Select
-              options={milestoneOptions}
-              value={selectedMilestoneId || ''}
-              onChange={(val) => {
-                setSelectedMilestoneId(val ? String(val) : null);
-                setSelectedFile(null);
-                setStudentNote('');
-              }}
-              placeholder={
-                milestonesQuery.isLoading
-                  ? 'Đang tải danh sách mốc...'
-                  : milestones.length === 0
-                  ? 'Chưa có mốc tiến độ'
-                  : 'Chọn mốc báo cáo'
-              }
-              triggerClassName="h-10 text-sm bg-white"
-            />
-          </div>
+    <ThesisSubmissionWorkspace
+      activeTab="milestones"
+      statusQuery={statusQuery}
+      groupDetail={groupDetail}
+      groupDetailLoading={groupDetailQuery.isLoading}
+      headerBadge={
+        selectedMilestone ? (
+          <MilestoneStatusBadge
+            status={currentStatus}
+            versionNo={report?.currentVersionNo ? report.currentVersionNo : null}
+          />
+        ) : undefined
+      }
+      actionError={actionError}
+      onDismissError={() => setActionError(null)}
+      actionSuccess={actionSuccess}
+      onDismissSuccess={() => setActionSuccess(null)}
+    >
+      {milestonesQuery.isError ? (
+        <InlineAlert
+          tone="error"
+          title="Không thể tải danh sách mốc báo cáo"
+          action={
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void milestonesQuery.refetch()}
+            >
+              <RefreshCw className="size-3.5 mr-1.5" />
+              Thử lại
+            </Button>
+          }
+        >
+          Đã xảy ra lỗi khi tải danh sách mốc tiến độ của nhóm. Vui lòng thử lại sau.
+        </InlineAlert>
+      ) : milestonesQuery.isLoading ? (
+        <div className="space-y-5">
+          <Skeleton className="h-36 w-full rounded-2xl" />
+          <Skeleton className="h-56 w-full rounded-2xl" />
         </div>
-
-        {milestones.length === 0 && !milestonesQuery.isLoading && !milestonesQuery.isError && (
-          <span className="text-xs text-amber-700 font-medium bg-amber-50 px-3 py-1.5 rounded-md border border-amber-200">
-            GVHD chưa tạo mốc tiến độ nào cho nhóm bạn.
-          </span>
-        )}
-      </div>
-
-      {(milestonesQuery.isError || reportQuery.isError) && (() => {
-        const err = milestonesQuery.error || reportQuery.error;
-        const kind = classifyThesisError(err);
-        const msg = getThesisErrorMessage(err, 'Không thể tải dữ liệu mốc tiến độ.');
-        return (
-          <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-start gap-3">
-              {kind === 'forbidden' ? (
-                <ShieldAlert className="size-5 shrink-0 text-amber-600 mt-0.5" />
-              ) : (
-                <AlertCircle className="size-5 shrink-0 text-rose-600 mt-0.5" />
-              )}
-              <div>
-                <p className="font-semibold">
-                  {kind === 'forbidden'
-                    ? 'Không có quyền truy cập mốc tiến độ'
-                    : 'Không tải được dữ liệu mốc tiến độ'}
-                </p>
-                <p className="text-xs mt-0.5 text-rose-700">{msg}</p>
-              </div>
+      ) : milestones.length === 0 ? (
+        <Card className="p-10 bg-white border-slate-200/80 shadow-xs rounded-2xl text-center">
+          <div className="max-w-md mx-auto space-y-2.5">
+            <div className="size-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+              <Flag className="size-6" />
             </div>
-            {kind !== 'forbidden' && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  void milestonesQuery.refetch();
-                  if (selectedMilestoneId) void reportQuery.refetch();
-                }}
-                className="h-8 text-xs border-rose-300 bg-white text-rose-700 hover:bg-rose-100"
+            <h2 className="text-base font-bold text-slate-900">Chưa có mốc báo cáo tiến độ</h2>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Giảng viên hướng dẫn chưa thiết lập mốc báo cáo tiến độ nào cho nhóm. Bạn vẫn có thể theo dõi trạng thái Đề cương chi tiết ở Cổng 1.
+            </p>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          <aside className="lg:col-span-4 lg:sticky lg:top-6 space-y-4 min-w-0">
+            <MilestoneSelectorStrip
+              items={journey.milestoneItems}
+              selectedMilestoneId={selectedMilestoneId}
+              onSelect={handleSelectMilestone}
+              isLoading={milestonesQuery.isLoading}
+            />
+
+            {groupDetail && (
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs px-4 py-3.5 space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-slate-800 truncate" title={groupDetail.topicTitleVi}>
+                    {groupDetail.topicCode || 'Đề tài nhóm'}
+                  </span>
+                  {groupDetail.groupCode && (
+                    <span className="font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md shrink-0">
+                      {groupDetail.groupCode}
+                    </span>
+                  )}
+                </div>
+                <p className="text-slate-600 line-clamp-2 leading-relaxed">
+                  {groupDetail.topicTitleVi}
+                </p>
+                {groupDetail.advisor?.fullName && (
+                  <p className="text-slate-500 pt-1 border-t border-slate-100 truncate">
+                    GVHD: <span className="font-medium text-slate-700">{groupDetail.advisor.fullName}</span>
+                  </p>
+                )}
+              </div>
+            )}
+          </aside>
+
+          <div
+            key={selectedMilestoneId ?? 'milestone-detail'}
+            className="lg:col-span-8 space-y-5 min-w-0 fluent-detail-enter"
+          >
+            {selectedMilestone && (
+              <StudentMilestoneBriefCard
+                milestone={selectedMilestone}
+                milestoneIndex={selectedMilestoneIndex >= 0 ? selectedMilestoneIndex : 0}
+                currentStatus={currentStatus}
+                currentVersionNo={report?.currentVersionNo}
+                versions={versions}
+                nextActionLabel={nextActionLabel}
+                onJumpToNextMilestone={
+                  nextPendingItem
+                    ? () => handleSelectMilestone(nextPendingItem.milestone.id)
+                    : undefined
+                }
+              />
+            )}
+
+            {reportQuery.isError && (
+              <InlineAlert
+                tone="warning"
+                title="Không tải được chi tiết bài nộp"
+                action={
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void reportQuery.refetch()}
+                  >
+                    <RefreshCw className="size-3.5 mr-1.5" />
+                    Tải lại
+                  </Button>
+                }
               >
-                <RotateCcw className="size-3.5 mr-1.5" />
-                Thử lại
-              </Button>
+                Chưa thể đồng bộ lịch sử các phiên bản đã nộp cho mốc này.
+              </InlineAlert>
+            )}
+
+            {canSubmit ? (
+              <>
+                {uploadCard}
+                {historyCard}
+              </>
+            ) : (
+              <>
+                {historyCard}
+                {uploadCard}
+              </>
             )}
           </div>
-        );
-      })()}
-
-      {actionError && <InlineAlert title="Không thể hoàn tất">{actionError}</InlineAlert>}
-
-      <OperationToast message={actionSuccess} onConsumed={() => setActionSuccess(null)} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-8 space-y-6">
-          <StudentMilestoneUploadCard
-            versionNo={nextVersionNo}
-            selectedFile={selectedFile}
-            gitUrl={gitUrl}
-            studentNote={studentNote}
-            onFileSelect={setSelectedFile}
-            onGitUrlChange={setGitUrl}
-            onNoteChange={setStudentNote}
-            disabled={!canSubmit || submitMutation.isPending || milestones.length === 0}
-            disabledReason={getDisabledReason()}
-          />
-
-          <StudentMilestoneHistoryTable
-            versions={versions}
-            nextVersionNo={nextVersionNo}
-            selectedFile={selectedFile}
-            groupCode={groupCode}
-            canSubmit={canSubmit && milestones.length > 0}
-            isSubmitting={submitMutation.isPending}
-            onSubmit={() => submitMutation.mutate()}
-            onDownload={handleDownload}
-          />
         </div>
-
-        <div className="lg:col-span-4 sticky top-6">
-          <StudentMilestoneDetailCard
-            milestone={selectedMilestone}
-            report={report}
-            groupDetail={groupDetail}
-            milestoneIndex={selectedMilestoneIndex}
-          />
-        </div>
-      </div>
-    </div>
+      )}
+    </ThesisSubmissionWorkspace>
   );
 }

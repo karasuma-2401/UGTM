@@ -1,3 +1,4 @@
+using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 
 namespace UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.Dtos;
@@ -9,4 +10,6 @@ public sealed record FinalReportSubmissionDto(
     int VersionNo,
     string Status,
     DateTime SubmittedAtUtc,
-    SubmissionFileDto File);
+    SubmissionFileDto File,
+    IReadOnlyList<SubmissionProductLinkDto>? ProductLinks = null,
+    IReadOnlyList<SubmissionAttachmentDto>? Attachments = null);

@@ -31,6 +31,8 @@ import {
 } from '../features/thesis';
 import { ReviewerAssignmentPage, CouncilApprovalPage, ResultsEntryPage } from '../features/councils';
 import { CouncilSimilarityReportsPage } from '../features/thesis/pages/CouncilSimilarityReportsPage';
+import { LecturerGradingPage } from '../features/thesis/pages/LecturerGradingPage';
+import { CouncilGradingPage } from '../features/councils/pages/CouncilGradingPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -172,6 +174,10 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute allowedRoles={['CouncilMember']}><CouncilSimilarityReportsPage /></ProtectedRoute>,
       },
       {
+        path: 'councils/grading',
+        element: <ProtectedRoute allowedRoles={['CouncilMember', 'Admin']}><CouncilGradingPage /></ProtectedRoute>,
+      },
+      {
         path: 'councils/approval',
         element: (
           <ProtectedRoute allowedRoles={['AcademicAffairs', 'Admin']}>
@@ -186,6 +192,10 @@ export const router = createBrowserRouter([
             <ResultsEntryPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'thesis/lecturer-grading',
+        element: <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}><LecturerGradingPage /></ProtectedRoute>,
       },
       {
         path: 'advisor/milestones',

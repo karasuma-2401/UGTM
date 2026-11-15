@@ -4,10 +4,12 @@ import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { syllabusApi } from '../services/syllabusApi';
 import { milestoneApi } from '../services/milestoneApi';
+import { validateReportFile } from '../services/submissionUploadHelper';
+import {
+  validateProductLinksDraft,
+  type ProductLinkDraft,
+} from '../components/shared/SubmissionProductLinksEditor';
 import type { ProgressReportStatus } from '../types/milestone.types';
-
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx'];
 
 export function useStudentMilestones() {
   const queryClient = useQueryClient();
@@ -16,7 +18,9 @@ export function useStudentMilestones() {
 
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [gitUrl, setGitUrl] = useState('');
+  const [productLinks, setProductLinks] = useState<ProductLinkDraft[]>([]);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [studentNote, setStudentNote] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -102,34 +106,32 @@ export function useStudentMilestones() {
         throw new Error('Vui lòng chọn tệp báo cáo tiến độ.');
       }
 
-      const fileNameLower = selectedFile.name.toLowerCase();
-      const hasValidExt = ALLOWED_EXTENSIONS.some((ext) => fileNameLower.endsWith(ext));
-      if (!hasValidExt) {
-        throw new Error('Chỉ chấp nhận tệp định dạng .pdf, .doc hoặc .docx.');
+      const fileError = validateReportFile(selectedFile);
+      if (fileError) {
+        throw new Error(fileError);
       }
 
-      if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
-        throw new Error('Dung lượng tệp không được vượt quá 20 MB.');
+      const { validLinks, error: linksError } = validateProductLinksDraft(productLinks, true);
+      if (linksError) {
+        throw new Error(linksError);
       }
 
-      if (!gitUrl.trim()) {
-        throw new Error('Vui lòng cung cấp đường dẫn kho mã nguồn hoặc sản phẩm (Git URL).');
-      }
-
-      const trimmedGitUrl = gitUrl.trim();
-      if (!trimmedGitUrl.startsWith('http://') && !trimmedGitUrl.startsWith('https://')) {
-        throw new Error('Đường dẫn kho mã nguồn phải bắt đầu bằng http:// hoặc https://');
-      }
-
+      setUploadProgress(1);
       return await milestoneApi.submitProgressReport(selectedMilestoneId, {
         file: selectedFile,
-        gitUrl: trimmedGitUrl,
+        gitUrl: validLinks[0]?.url,
+        productLinks: validLinks,
+        images: selectedImages,
         studentNote: studentNote.trim() || undefined,
+        onUploadProgress: (percent) => setUploadProgress(percent),
       });
     },
     onSuccess: (data) => {
       setSelectedFile(null);
+      setProductLinks([]);
+      setSelectedImages([]);
       setStudentNote('');
+      setUploadProgress(null);
       setActionSuccess(`Nộp sản phẩm phiên bản v${data.versionNo} thành công!`);
       void queryClient.invalidateQueries({
         queryKey: ['student-milestone-report', user?.id, selectedMilestoneId],
@@ -139,6 +141,7 @@ export function useStudentMilestones() {
       });
     },
     onError: (err: Error) => {
+      setUploadProgress(null);
       setActionError(err.message || 'Nộp sản phẩm thất bại. Vui lòng thử lại.');
     },
   });
@@ -174,8 +177,11 @@ export function useStudentMilestones() {
     canSubmit,
     selectedFile,
     setSelectedFile,
-    gitUrl,
-    setGitUrl,
+    productLinks,
+    setProductLinks,
+    selectedImages,
+    setSelectedImages,
+    uploadProgress,
     studentNote,
     setStudentNote,
     actionError,

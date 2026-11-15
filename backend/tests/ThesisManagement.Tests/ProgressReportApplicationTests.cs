@@ -1,6 +1,7 @@
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
+using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetProgressReport;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.ReviewProgressReport;
@@ -137,6 +138,83 @@ public sealed class ProgressReportApplicationTests
         Assert.Single(fixtures.ObjectStorage.UploadedObjectKeys);
     }
 
+    [Fact]
+    public async Task Member_can_submit_up_to_five_categorized_links_and_evidence_images()
+    {
+        var fixtures = new WorkflowFixtures();
+        var links = new SubmissionProductLinkInput[]
+        {
+            new("SourceCode", "Backend API", "https://github.com/ugtm/backend"),
+            new("Demo", "Video Demo", "https://youtu.be/demo123"),
+            new("Documentation", "Figma UI", "https://figma.com/file/xyz"),
+            new("Other", "Slide", "https://docs.google.com/presentation/1"),
+            new("SourceCode", "Mobile App", "https://github.com/ugtm/mobile"),
+        };
+        var pngHeader = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00 };
+        var images = new SubmissionAttachmentUpload[]
+        {
+            new("screen-1.png", new MemoryStream(pngHeader)),
+            new("screen-2.png", new MemoryStream(pngHeader)),
+        };
+
+        var submitResult = await fixtures.Submit(StudentUser(), null, links, images);
+        var history = await fixtures.GetHistory(StudentUser());
+
+        Assert.True(submitResult.IsSuccess);
+        Assert.Equal("https://github.com/ugtm/backend", submitResult.Value.GitUrl);
+        Assert.Equal(5, submitResult.Value.ProductLinks?.Count);
+        Assert.Equal(2, submitResult.Value.Attachments?.Count);
+        Assert.Equal(3, fixtures.ObjectStorage.UploadedObjectKeys.Count);
+        Assert.True(history.IsSuccess);
+        var version = Assert.Single(history.Value.Versions);
+        Assert.Equal(5, version.ProductLinks?.Count);
+        Assert.Equal(2, version.Attachments?.Count);
+    }
+
+    [Fact]
+    public async Task Fake_png_evidence_image_is_rejected_before_object_upload()
+    {
+        var fixtures = new WorkflowFixtures();
+        var links = new SubmissionProductLinkInput[]
+        {
+            new("SourceCode", "Repo", "https://github.com/ugtm/backend"),
+        };
+        var fakeImages = new SubmissionAttachmentUpload[]
+        {
+            new("not-an-image.png", new MemoryStream("not really a png"u8.ToArray())),
+        };
+
+        var result = await fixtures.Submit(StudentUser(), null, links, fakeImages);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("ProgressReport.InvalidAttachment", result.Error.Code);
+        Assert.Empty(fixtures.ObjectStorage.UploadedObjectKeys);
+    }
+
+    [Fact]
+    public async Task More_than_five_links_or_five_images_are_rejected_before_object_upload()
+    {
+        var fixtures = new WorkflowFixtures();
+        var sixLinks = Enumerable.Range(1, 6)
+            .Select(i => new SubmissionProductLinkInput("SourceCode", $"Link {i}", $"https://github.com/ugtm/repo-{i}"))
+            .ToArray();
+
+        var tooManyLinksResult = await fixtures.Submit(StudentUser(), null, sixLinks);
+        Assert.True(tooManyLinksResult.IsFailure);
+        Assert.Equal("ProgressReport.InvalidRequest", tooManyLinksResult.Error.Code);
+
+        var validLink = new SubmissionProductLinkInput[] { new("SourceCode", "Repo", "https://github.com/ugtm/repo") };
+        var pngHeader = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00 };
+        var sixImages = Enumerable.Range(1, 6)
+            .Select(i => new SubmissionAttachmentUpload($"img-{i}.png", new MemoryStream(pngHeader)))
+            .ToArray();
+
+        var tooManyImagesResult = await fixtures.Submit(StudentUser(), null, validLink, sixImages);
+        Assert.True(tooManyImagesResult.IsFailure);
+        Assert.Equal("ProgressReport.InvalidAttachment", tooManyImagesResult.Error.Code);
+        Assert.Empty(fixtures.ObjectStorage.UploadedObjectKeys);
+    }
+
     private static ICurrentUser StudentUser() => new FakeCurrentUser(StudentId, roles: ["Student"]);
     private static ICurrentUser AdvisorUser() => new FakeCurrentUser(AdvisorId, roles: ["Advisor"]);
 
@@ -148,6 +226,8 @@ public sealed class ProgressReportApplicationTests
         private readonly FakeMilestoneRepository _milestones;
         private readonly FakeProgressReportRepository _reports = new();
         private readonly FakeSubmissionFileRepository _files = new();
+        private readonly FakeSubmissionProductLinkRepository _productLinks = new();
+        private readonly FakeSubmissionAttachmentRepository _attachments = new();
         private readonly FakeAdvisorAssignmentContract _advisorAssignments;
         private readonly FakeUnitOfWork _unitOfWork = new();
         private readonly TimeProvider _timeProvider = new FixedTimeProvider(Now);
@@ -181,7 +261,9 @@ public sealed class ProgressReportApplicationTests
 
         public Task<BuildingBlocks.Domain.Result<Application.ProgressReportSubmissions.Dtos.ProgressReportSubmissionDto>> Submit(
             ICurrentUser user,
-            string gitUrl)
+            string? gitUrl,
+            IReadOnlyList<SubmissionProductLinkInput>? productLinks = null,
+            IReadOnlyList<SubmissionAttachmentUpload>? evidenceImages = null)
             => new SubmitProgressReportHandler(
                 _milestones,
                 _reports,
@@ -195,13 +277,18 @@ public sealed class ProgressReportApplicationTests
                 user,
                 _timeProvider,
                 new FakeThesisUploadLifecycle(),
-                new ApprovedSyllabusRepository(_group.Id))
+                new ApprovedSyllabusRepository(_group.Id),
+                _productLinks,
+                _attachments,
+                new ThesisSubmissionImageValidator())
                 .HandleAsync(new SubmitProgressReportCommand(
                     _milestone.Id,
                     "tien-do.pdf",
                     new MemoryStream("%PDF-1.7\nprogress"u8.ToArray()),
                     gitUrl,
-                    "Ghi chú tiến độ."));
+                    "Ghi chú tiến độ.",
+                    productLinks,
+                    evidenceImages));
 
         public Task<BuildingBlocks.Domain.Result<Application.ProgressReportSubmissions.Dtos.ProgressReportReviewDto>> Review(
             ICurrentUser user,
@@ -225,7 +312,9 @@ public sealed class ProgressReportApplicationTests
                 _groups,
                 _files,
                 _advisorAssignments,
-                user)
+                user,
+                _productLinks,
+                _attachments)
                 .HandleAsync(new GetProgressReportQuery(_milestone.Id));
     }
 
@@ -279,6 +368,30 @@ public sealed class ProgressReportApplicationTests
         public Task<IReadOnlyList<SubmissionFile>> GetByEntityAsync(SubmissionEntityType entityType, Guid entityId, CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<SubmissionFile>>(_files.Where(file => file.EntityType == entityType && file.EntityId == entityId).ToArray());
         public void Add(SubmissionFile file) => _files.Add(file);
+    }
+
+    private sealed class FakeSubmissionProductLinkRepository : ISubmissionProductLinkRepository
+    {
+        private readonly List<SubmissionProductLink> _links = [];
+        public Task<IReadOnlyList<SubmissionProductLink>> GetByEntityAsync(SubmissionEntityType entityType, Guid entityId, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<SubmissionProductLink>>(
+                _links.Where(link => link.EntityType == entityType && link.EntityId == entityId)
+                    .OrderBy(link => link.DisplayOrder)
+                    .ToArray());
+        public void AddRange(IEnumerable<SubmissionProductLink> links) => _links.AddRange(links);
+    }
+
+    private sealed class FakeSubmissionAttachmentRepository : ISubmissionAttachmentRepository
+    {
+        private readonly List<SubmissionAttachment> _attachments = [];
+        public Task<SubmissionAttachment?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+            => Task.FromResult(_attachments.SingleOrDefault(attachment => attachment.Id == id));
+        public Task<IReadOnlyList<SubmissionAttachment>> GetByEntityAsync(SubmissionEntityType entityType, Guid entityId, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<SubmissionAttachment>>(
+                _attachments.Where(attachment => attachment.EntityType == entityType && attachment.EntityId == entityId)
+                    .OrderBy(attachment => attachment.DisplayOrder)
+                    .ToArray());
+        public void AddRange(IEnumerable<SubmissionAttachment> attachments) => _attachments.AddRange(attachments);
     }
 
     private sealed class FakeAdvisorAssignmentContract(Guid topicId, Guid advisorId) : ITopicAdvisorAssignmentContract

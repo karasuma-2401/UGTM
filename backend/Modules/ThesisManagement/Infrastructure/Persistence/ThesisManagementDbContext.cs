@@ -30,6 +30,8 @@ public sealed class ThesisManagementDbContext(DbContextOptions<ThesisManagementD
     public DbSet<StudentRegistrationPenalty> StudentRegistrationPenalties => Set<StudentRegistrationPenalty>();
     public DbSet<TopicRegistrationEmail> TopicRegistrationEmails => Set<TopicRegistrationEmail>();
     public DbSet<SubmissionFile> SubmissionFiles => Set<SubmissionFile>();
+    public DbSet<SubmissionAttachment> SubmissionAttachments => Set<SubmissionAttachment>();
+    public DbSet<SubmissionProductLink> SubmissionProductLinks => Set<SubmissionProductLink>();
     public DbSet<ThesisUploadAttempt> ThesisUploadAttempts => Set<ThesisUploadAttempt>();
     public DbSet<SubmissionReview> SubmissionReviews => Set<SubmissionReview>();
     public DbSet<Syllabus> Syllabuses => Set<Syllabus>();

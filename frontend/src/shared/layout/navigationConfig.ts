@@ -15,6 +15,8 @@ import {
   BarChart3,
   Archive,
   FolderCheck,
+  Gavel,
+  SquarePen,
 } from 'lucide-react';
 
 export interface NavItemConfig {
@@ -116,6 +118,12 @@ export const navigationSections: NavSectionConfig[] = [
     title: 'Tiến độ & đánh giá',
     items: [
       {
+        label: 'Chấm điểm khóa luận',
+        path: '/thesis/lecturer-grading',
+        icon: SquarePen,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
         label: 'Tiến độ sinh viên',
         path: '/advisor/milestones',
         icon: CalendarCheck,
@@ -151,6 +159,12 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/councils/similarity-reports',
         icon: FileText,
         roles: ['CouncilMember'],
+      },
+      {
+        label: 'Chấm điểm Hội đồng',
+        path: '/councils/grading',
+        icon: Gavel,
+        roles: ['CouncilMember', 'Admin'],
       },
       {
         label: 'Phê duyệt hội đồng',

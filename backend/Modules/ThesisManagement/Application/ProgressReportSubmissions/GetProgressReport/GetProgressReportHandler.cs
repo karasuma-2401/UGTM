@@ -14,7 +14,9 @@ public sealed class GetProgressReportHandler(
     IStudentGroupRepository groupRepository,
     ISubmissionFileRepository submissionFileRepository,
     ITopicAdvisorAssignmentContract advisorAssignmentContract,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ISubmissionProductLinkRepository? productLinkRepository = null,
+    ISubmissionAttachmentRepository? attachmentRepository = null)
 {
     public async Task<Result<ProgressReportHistoryDto>> HandleAsync(
         GetProgressReportQuery query,
@@ -53,7 +55,29 @@ public sealed class GetProgressReportHandler(
             Domain.Enums.SubmissionEntityType.ProgressReport,
             report.Id,
             cancellationToken);
+        var links = productLinkRepository is not null
+            ? await productLinkRepository.GetByEntityAsync(Domain.Enums.SubmissionEntityType.ProgressReport, report.Id, cancellationToken)
+            : [];
+        var attachments = attachmentRepository is not null
+            ? await attachmentRepository.GetByEntityAsync(Domain.Enums.SubmissionEntityType.ProgressReport, report.Id, cancellationToken)
+            : [];
         var fileByVersion = files.ToDictionary(file => file.VersionNo);
+        var linksByVersion = links
+            .GroupBy(link => link.VersionNo)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<SubmissionProductLinkDto>)g
+                    .OrderBy(item => item.DisplayOrder)
+                    .Select(SubmissionSupplementalMapper.ToDto)
+                    .ToArray());
+        var attachmentsByVersion = attachments
+            .GroupBy(attachment => attachment.VersionNo)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<SubmissionAttachmentDto>)g
+                    .OrderBy(item => item.DisplayOrder)
+                    .Select(SubmissionSupplementalMapper.ToDto)
+                    .ToArray());
         var history = versions.Select(version => new ProgressReportVersionDto(
             version.VersionNo,
             version.GitUrl,
@@ -72,7 +96,13 @@ public sealed class GetProgressReportHandler(
                     version.AdvisorFeedback,
                     version.ReviewedBy.Value,
                     version.ReviewedAt.Value)
-                : null)).ToArray();
+                : null,
+            linksByVersion.TryGetValue(version.VersionNo, out var versionLinks)
+                ? versionLinks
+                : [],
+            attachmentsByVersion.TryGetValue(version.VersionNo, out var versionAttachments)
+                ? versionAttachments
+                : [])).ToArray();
 
         return Result.Success(new ProgressReportHistoryDto(
             report.Id,

@@ -5,9 +5,11 @@ import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches
 import { syllabusApi } from '../services/syllabusApi';
 import { midtermApi } from '../services/midtermApi';
 import { finalReportApi } from '../services/finalReportApi';
-
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx'];
+import { validateReportFile } from '../services/submissionUploadHelper';
+import {
+  validateProductLinksDraft,
+  type ProductLinkDraft,
+} from '../components/shared/SubmissionProductLinksEditor';
 
 export function useFinalReportSubmission() {
   const queryClient = useQueryClient();
@@ -15,7 +17,9 @@ export function useFinalReportSubmission() {
   const batchesQuery = useAcademicBatches();
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [productNote, setProductNote] = useState<string>('Kho mã nguồn và kết quả thực nghiệm');
+  const [productLinks, setProductLinks] = useState<ProductLinkDraft[]>([]);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
@@ -114,25 +118,34 @@ export function useFinalReportSubmission() {
         throw new Error('Bạn cần được GVHD duyệt đạt báo cáo giữa kỳ trước khi nộp báo cáo cuối kỳ.');
       }
 
-      const fileNameLower = file.name.toLowerCase();
-      const hasValidExt = ALLOWED_EXTENSIONS.some((ext) => fileNameLower.endsWith(ext));
-      if (!hasValidExt) {
-        throw new Error('Chỉ chấp nhận tệp định dạng .pdf, .doc hoặc .docx.');
+      const fileError = validateReportFile(file);
+      if (fileError) {
+        throw new Error(fileError);
       }
 
-      if (file.size > MAX_FILE_SIZE_BYTES) {
-        throw new Error('Dung lượng tệp không được vượt quá 20 MB.');
+      const { validLinks, error: linksError } = validateProductLinksDraft(productLinks, false);
+      if (linksError) {
+        throw new Error(linksError);
       }
 
-      return await finalReportApi.submitFinalReport(groupId, file);
+      setUploadProgress(1);
+      return await finalReportApi.submitFinalReport(groupId, file, {
+        productLinks: validLinks,
+        images: selectedImages,
+        onUploadProgress: (percent) => setUploadProgress(percent),
+      });
     },
     onSuccess: (data) => {
       setSelectedFile(null);
+      setProductLinks([]);
+      setSelectedImages([]);
+      setUploadProgress(null);
       setActionSuccess(`Nộp báo cáo cuối kỳ phiên bản v${data.versionNo} thành công!`);
       void queryClient.invalidateQueries({ queryKey: ['final-report-history', user?.id, groupId] });
       void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
     },
     onError: (err: Error) => {
+      setUploadProgress(null);
       setActionError(err.message || 'Nộp báo cáo cuối kỳ thất bại. Vui lòng thử lại.');
     },
   });
@@ -154,14 +167,9 @@ export function useFinalReportSubmission() {
   const handleFileSelect = (file: File) => {
     setActionError(null);
     setActionSuccess(null);
-    const fileNameLower = file.name.toLowerCase();
-    const hasValidExt = ALLOWED_EXTENSIONS.some((ext) => fileNameLower.endsWith(ext));
-    if (!hasValidExt) {
-      setActionError('Chỉ chấp nhận tệp định dạng .pdf, .doc hoặc .docx.');
-      return;
-    }
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      setActionError('Dung lượng tệp không được vượt quá 20 MB.');
+    const fileError = validateReportFile(file);
+    if (fileError) {
+      setActionError(fileError);
       return;
     }
     setSelectedFile(file);
@@ -179,8 +187,11 @@ export function useFinalReportSubmission() {
     historyQuery,
     feedbackQuery,
     selectedFile,
-    productNote,
-    setProductNote,
+    productLinks,
+    setProductLinks,
+    selectedImages,
+    setSelectedImages,
+    uploadProgress,
     isFeedbackOpen,
     setIsFeedbackOpen,
     actionError,

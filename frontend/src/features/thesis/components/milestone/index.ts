@@ -4,6 +4,8 @@ export * from './AdvisorMilestoneForm';
 export * from './AdvisorMilestoneCreateDialog';
 export * from './AdvisorMilestoneReviewDialog';
 export * from './AdvisorGroupPlanCard';
+export * from './MilestoneSelectorStrip';
+export * from './StudentMilestoneBriefCard';
 export * from './StudentMilestoneUploadCard';
 export * from './StudentMilestoneHistoryTable';
 export * from './StudentMilestoneDetailCard';

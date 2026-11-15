@@ -1,5 +1,6 @@
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
+import { buildUploadProgressHandler } from './submissionUploadHelper';
 import type {
   ProgressMilestoneDto,
   CreateProgressMilestoneRequest,
@@ -7,7 +8,10 @@ import type {
   ProgressReportReviewDto,
   ProgressReportSubmissionDto,
 } from '../types/milestone.types';
-import type { SubmissionFileDownloadDto } from '../types/syllabus.types';
+import type {
+  SubmissionFileDownloadDto,
+  SubmissionProductLinkInput,
+} from '../types/syllabus.types';
 
 function unwrap<T>(response: ApiResponse<T>): T {
   if (!response.success) {
@@ -60,12 +64,28 @@ export const milestoneApi = {
 
   async submitProgressReport(
     milestoneId: string,
-    data: { file: File; gitUrl?: string; studentNote?: string }
+    data: {
+      file: File;
+      gitUrl?: string;
+      studentNote?: string;
+      productLinks?: SubmissionProductLinkInput[];
+      images?: File[];
+      onUploadProgress?: (percent: number) => void;
+    }
   ): Promise<ProgressReportSubmissionDto> {
     const formData = new FormData();
     formData.append('file', data.file);
-    if (data.gitUrl) formData.append('gitUrl', data.gitUrl);
+    const primaryUrl = data.gitUrl || data.productLinks?.[0]?.url;
+    if (primaryUrl) formData.append('gitUrl', primaryUrl);
     if (data.studentNote) formData.append('studentNote', data.studentNote);
+    if (data.productLinks && data.productLinks.length > 0) {
+      formData.append('productLinks', JSON.stringify(data.productLinks));
+    }
+    if (data.images && data.images.length > 0) {
+      for (const image of data.images) {
+        formData.append('images', image);
+      }
+    }
 
     const response = await httpClient.post<ApiResponse<ProgressReportSubmissionDto>>(
       `/api/thesis/progress-milestones/${milestoneId}/report`,
@@ -74,6 +94,7 @@ export const milestoneApi = {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
+        onUploadProgress: buildUploadProgressHandler(data.onUploadProgress),
       }
     );
     return unwrap(response.data);
@@ -93,6 +114,13 @@ export const milestoneApi = {
   async getDownloadUrl(fileId: string): Promise<SubmissionFileDownloadDto> {
     const response = await httpClient.get<ApiResponse<SubmissionFileDownloadDto>>(
       `/api/thesis/progress-report-files/${fileId}/download`
+    );
+    return unwrap(response.data);
+  },
+
+  async getAttachmentUrl(attachmentId: string): Promise<SubmissionFileDownloadDto> {
+    const response = await httpClient.get<ApiResponse<SubmissionFileDownloadDto>>(
+      `/api/thesis/progress-report-attachments/${attachmentId}/download`
     );
     return unwrap(response.data);
   },

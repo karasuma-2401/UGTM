@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from './button';
@@ -17,6 +17,7 @@ export interface DialogProps {
   headerClassName?: string;
   hideHeader?: boolean;
   variant?: 'modal' | 'drawer';
+  style?: CSSProperties;
 }
 
 function isOutsideElementRect(
@@ -45,6 +46,7 @@ export function Dialog({
   headerClassName,
   hideHeader = false,
   variant = 'modal',
+  style,
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const backdropMouseDownRef = useRef(false);
@@ -71,6 +73,7 @@ export function Dialog({
       ref={ref}
       aria-labelledby={titleId}
       aria-busy={busy}
+      style={style}
       onCancel={(event) => {
         event.preventDefault();
         if (!busy) onClose();

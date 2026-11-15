@@ -11,6 +11,7 @@ import {
   MilestoneStatusBadge,
 } from '../components/milestone';
 import { useMilestoneReview } from '../hooks/useMilestoneReview';
+import { milestoneApi } from '../services/milestoneApi';
 import { classifyThesisError, getThesisErrorMessage } from '../utils/thesisErrors';
 
 export function AdvisorMilestoneReviewPage() {
@@ -150,6 +151,11 @@ export function AdvisorMilestoneReviewPage() {
             groupCode={groupCode}
             file={latestVersion?.file}
             gitUrl={latestVersion?.gitUrl}
+            productLinks={latestVersion?.productLinks}
+            attachments={latestVersion?.attachments}
+            resolveAttachmentUrl={(attachmentId) =>
+              milestoneApi.getAttachmentUrl(attachmentId).then((res) => res.downloadUrl)
+            }
             studentNote={latestVersion?.studentNote}
             onDownloadFile={handleDownload}
             isDownloading={isDownloading}

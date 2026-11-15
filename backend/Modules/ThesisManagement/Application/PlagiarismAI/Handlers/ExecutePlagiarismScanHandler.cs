@@ -72,10 +72,40 @@ public sealed class ExecutePlagiarismScanHandler(
         if (jobId.HasValue && jobId.Value != Guid.Empty && !await plagiarismAiClient.RetryJobAsync(jobId.Value, cancellationToken))
             return false;
         scan.ResetForRetry(DateTime.UtcNow);
+        scan.AssignWorkerPartition(_options.GetNormalizedWorkerPartition());
         if (jobId.HasValue && jobId.Value != Guid.Empty)
             scan.MarkQueued(jobId.Value, DateTime.UtcNow);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    public async Task<bool> SyncActiveJobAsync(FinalReportPlagiarismScan scan, CancellationToken cancellationToken = default)
+    {
+        if (scan.SubmissionFile is null || !scan.JobId.HasValue || scan.JobId.Value == Guid.Empty)
+        {
+            return false;
+        }
+
+        if (scan.Status is not (PlagiarismScanStatus.Queued
+            or PlagiarismScanStatus.Processing
+            or PlagiarismScanStatus.WaitingForCompute))
+        {
+            return false;
+        }
+
+        try
+        {
+            return await HandleActivePollAsync(scan, DateTime.UtcNow, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Live sync failed for plagiarism scan {ScanId}; returning persisted status.", scan.Id);
+            return false;
+        }
     }
 
     private async Task<bool> HandlePendingSubmissionAsync(

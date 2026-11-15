@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Application.Common;
@@ -18,7 +19,8 @@ public sealed class ResumePendingPlagiarismScansHandler(
     IFinalReportPlagiarismScanRepository scanRepository,
     ICurrentUser currentUser,
     ExecutePlagiarismScanHandler executeScanHandler,
-    ILogger<ResumePendingPlagiarismScansHandler> logger)
+    ILogger<ResumePendingPlagiarismScansHandler> logger,
+    IOptions<PlagiarismAiOptions>? plagiarismOptions = null)
 {
     public async Task<Result<ResumePendingPlagiarismScansResult>> HandleAsync(
         ResumePendingPlagiarismScansCommand command,
@@ -35,7 +37,10 @@ public sealed class ResumePendingPlagiarismScansHandler(
         }
 
         var limit = Math.Clamp(command.Limit, 1, 100);
-        var pendingScans = await scanRepository.GetResumableScansAsync(limit, cancellationToken);
+        var pendingScans = await scanRepository.GetResumableScansAsync(
+            limit,
+            plagiarismOptions?.Value.GetNormalizedWorkerPartition(),
+            cancellationToken);
 
         var resumedIds = new List<Guid>();
         var successCount = 0;

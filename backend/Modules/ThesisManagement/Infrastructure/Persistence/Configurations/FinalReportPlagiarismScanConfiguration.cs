@@ -34,6 +34,9 @@ public class FinalReportPlagiarismScanConfiguration : IEntityTypeConfiguration<F
         builder.HasIndex(x => x.JobId)
             .HasDatabaseName("ix_final_report_plagiarism_scan_job_id");
 
+        builder.HasIndex(x => x.WorkerPartition)
+            .HasDatabaseName("ix_final_report_plagiarism_scan_worker_partition");
+
         builder.Property(x => x.FinalReportId)
             .IsRequired();
 
@@ -102,6 +105,10 @@ public class FinalReportPlagiarismScanConfiguration : IEntityTypeConfiguration<F
             .IsRequired(false);
 
         builder.Property(x => x.NextCheckAfterUtc)
+            .IsRequired(false);
+
+        builder.Property(x => x.WorkerPartition)
+            .HasMaxLength(100)
             .IsRequired(false);
 
         builder.Property(x => x.Version)

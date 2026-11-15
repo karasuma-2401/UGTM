@@ -54,6 +54,7 @@ internal sealed class FinalReportPlagiarismScanRepository(ThesisManagementDbCont
 
     public async Task<IReadOnlyList<FinalReportPlagiarismScan>> GetActiveOrPendingScansAsync(
         int limit = 50,
+        string? workerPartition = null,
         CancellationToken cancellationToken = default)
     {
         var activeStatuses = new[]
@@ -65,11 +66,15 @@ internal sealed class FinalReportPlagiarismScanRepository(ThesisManagementDbCont
         };
 
         var now = DateTime.UtcNow;
+        var normalizedPartition = NormalizePartition(workerPartition);
 
         return await context.FinalReportPlagiarismScans
             .Include(x => x.FinalReport)
             .Include(x => x.SubmissionFile)
             .Where(scan => activeStatuses.Contains(scan.Status)
+                && (normalizedPartition == null
+                    ? scan.WorkerPartition == null
+                    : scan.WorkerPartition == normalizedPartition)
                 && (scan.NextCheckAfterUtc == null || scan.NextCheckAfterUtc <= now))
             .OrderBy(scan => scan.CreatedAt)
             .Take(limit)
@@ -78,6 +83,7 @@ internal sealed class FinalReportPlagiarismScanRepository(ThesisManagementDbCont
 
     public async Task<IReadOnlyList<FinalReportPlagiarismScan>> GetResumableScansAsync(
         int limit = 50,
+        string? workerPartition = null,
         CancellationToken cancellationToken = default)
     {
         var resumableStatuses = new[]
@@ -85,14 +91,22 @@ internal sealed class FinalReportPlagiarismScanRepository(ThesisManagementDbCont
             PlagiarismScanStatus.ComputeUnavailable
         };
 
+        var normalizedPartition = NormalizePartition(workerPartition);
+
         return await context.FinalReportPlagiarismScans
             .Include(x => x.FinalReport)
             .Include(x => x.SubmissionFile)
-            .Where(scan => resumableStatuses.Contains(scan.Status))
+            .Where(scan => resumableStatuses.Contains(scan.Status)
+                && (normalizedPartition == null
+                    ? scan.WorkerPartition == null
+                    : scan.WorkerPartition == normalizedPartition))
             .OrderBy(scan => scan.CreatedAt)
             .Take(limit)
             .ToListAsync(cancellationToken);
     }
+
+    private static string? NormalizePartition(string? workerPartition)
+        => string.IsNullOrWhiteSpace(workerPartition) ? null : workerPartition.Trim();
 
     public void Add(FinalReportPlagiarismScan scan)
     {
