@@ -20,6 +20,7 @@ import {
 export interface NavItemConfig {
   label: string;
   path: string;
+  activePaths?: string[];
   icon: ComponentType<{ className?: string }>;
   badge?: string;
   permission?: string | string[];
@@ -122,7 +123,8 @@ export const navigationSections: NavSectionConfig[] = [
       },
       {
         label: 'Báo cáo & tiến độ',
-        path: '/thesis/proposal',
+        path: '/thesis/milestones',
+        activePaths: ['/thesis/proposal', '/thesis/midterm', '/thesis/final-report'],
         icon: FileText,
         roles: ['Student', 'Admin'],
       },

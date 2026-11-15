@@ -42,7 +42,7 @@ const WORKFLOW_DESCRIPTIONS: Record<string, string> = {
   '/topics/catalog': 'Tra cứu danh mục đề tài công bố, đăng ký cá nhân hoặc mời thành viên nhóm.',
   '/topics/rename': 'Gửi đơn đề nghị điều chỉnh tên đề tài khóa luận trong giai đoạn cho phép.',
   '/topics/rename/review': 'Xem xét và phê duyệt yêu cầu đổi tên đề tài theo cấp thẩm quyền.',
-  '/thesis/proposal': 'Nộp đề cương, báo cáo giữa kỳ, mốc tiến độ và báo cáo cuối kỳ.',
+  '/thesis/milestones': 'Nộp đề cương, báo cáo giữa kỳ, mốc tiến độ và báo cáo cuối kỳ.',
   '/topics/review': 'Thẩm định nội dung đề tài do giảng viên đề xuất và công bố danh mục.',
   '/thesis/review/syllabus': 'Thẩm định hồ sơ đề cương và báo cáo giữa kỳ của các nhóm sinh viên.',
   '/councils/reviewer-assignments': 'Phân công giảng viên phản biện và thành lập hội đồng bảo vệ.',

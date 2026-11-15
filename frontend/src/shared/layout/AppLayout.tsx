@@ -211,14 +211,22 @@ export function AppLayout() {
   }, [flatNavItems, commandQuery]);
 
   const activeNavEntry = useMemo(() => {
-    const exactOrPrefix = flatNavItems
-      .filter((item) =>
-        item.path === '/'
-          ? location.pathname === '/'
-          : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`),
-      )
-      .sort((a, b) => b.path.length - a.path.length);
-    return exactOrPrefix[0] ?? null;
+    let bestEntry: (typeof flatNavItems)[number] | null = null;
+    let bestLength = -1;
+    for (const item of flatNavItems) {
+      const candidates = item.activePaths ? [item.path, ...item.activePaths] : [item.path];
+      for (const candidate of candidates) {
+        const matched =
+          candidate === '/'
+            ? location.pathname === '/'
+            : location.pathname === candidate || location.pathname.startsWith(`${candidate}/`);
+        if (matched && candidate.length > bestLength) {
+          bestLength = candidate.length;
+          bestEntry = item;
+        }
+      }
+    }
+    return bestEntry;
   }, [flatNavItems, location.pathname]);
 
   const activeSectionItems = useMemo(() => {
@@ -554,7 +562,7 @@ export function AppLayout() {
               ) : (
                 filteredCommandItems.map((item) => {
                   const Icon = item.icon;
-                  const isCurrent = location.pathname === item.path;
+                  const isCurrent = activeNavEntry?.path === item.path;
                   return (
                     <Link
                       key={item.path}

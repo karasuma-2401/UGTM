@@ -156,7 +156,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'thesis/progress',
-        element: <Navigate to="/thesis/proposal" replace />,
+        element: <Navigate to="/thesis/milestones" replace />,
       },
       {
         path: 'councils/reviewer-assignments',
