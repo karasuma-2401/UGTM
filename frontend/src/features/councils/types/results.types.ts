@@ -142,6 +142,10 @@ export interface AcademicResultStudentDto {
   studentCode: string;
   fullName: string;
   email: string;
+  advisorScore?: number | null;
+  reviewerScore?: number | null;
+  councilScore?: number | null;
+  finalScore?: number | null;
 }
 
 export interface AcademicResultScoreSourceDto {
