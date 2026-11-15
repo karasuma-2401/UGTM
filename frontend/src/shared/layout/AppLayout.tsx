@@ -261,7 +261,7 @@ export function AppLayout() {
         role={sidebarOpen ? 'dialog' : undefined}
         aria-modal={sidebarOpen ? true : undefined}
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-72 max-w-[calc(100vw-2rem)] shrink-0 flex-col border-r border-slate-200 bg-slate-50 transition-[width,transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0 lg:visible',
+          'fixed inset-y-0 left-0 z-50 flex w-72 max-w-[calc(100vw-2rem)] shrink-0 flex-col border-r border-slate-200 bg-slate-50 transition-[width,transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0 lg:visible print:hidden',
           sidebarOpen ? 'visible translate-x-0' : 'invisible -translate-x-full',
           sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-72',
         )}
@@ -379,7 +379,7 @@ export function AppLayout() {
       {/* Main Content Area */}
       <div inert={sidebarOpen ? true : undefined} className="flex-1 flex flex-col min-w-0">
         {/* Top Translucent Header */}
-        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/75 px-4 lg:px-8 flex items-center justify-between gap-4 sticky top-0 z-30">
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/75 px-4 lg:px-8 flex items-center justify-between gap-4 sticky top-0 z-30 print:hidden">
           <div className="flex items-center gap-3 min-w-0">
             <button
               ref={menuTrigger}
@@ -515,7 +515,10 @@ export function AppLayout() {
         </header>
 
         {/* Page Content Body */}
-        <main ref={pageContent} className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main
+          ref={pageContent}
+          className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto print:p-0 print:max-w-none"
+        >
           <Outlet />
         </main>
       </div>

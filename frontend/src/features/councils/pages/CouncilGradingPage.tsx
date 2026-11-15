@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   CalendarClock,
   CheckCircle2,
   Clock3,
+  FileCheck2,
   FilePenLine,
   Gavel,
   Layers,
@@ -829,22 +831,33 @@ export function CouncilGradingPage() {
                   ))}
                 </div>
               </div>
-              <span
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${
-                  isLocked
-                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <span
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${
+                    isLocked
+                      ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                      : activeGroup.isSubmitted
+                        ? 'bg-blue-50 text-blue-700 ring-blue-200'
+                        : 'bg-white text-slate-600 ring-slate-200'
+                  }`}
+                >
+                  {isLocked && <Lock className="size-3.5" aria-hidden="true" />}
+                  {isLocked
+                    ? 'Đã khóa biên bản'
                     : activeGroup.isSubmitted
-                      ? 'bg-blue-50 text-blue-700 ring-blue-200'
-                      : 'bg-white text-slate-600 ring-slate-200'
-                }`}
-              >
-                {isLocked && <Lock className="size-3.5" aria-hidden="true" />}
-                {isLocked
-                  ? 'Đã khóa biên bản'
-                  : activeGroup.isSubmitted
-                    ? 'Đã gửi điểm Hội đồng'
-                    : 'Đang chấm điểm'}
-              </span>
+                      ? 'Đã gửi điểm Hội đồng'
+                      : 'Đang chấm điểm'}
+                </span>
+                {activeGroup.assignmentId && (
+                  <Link
+                    to={`/councils/minutes?assignmentId=${activeGroup.assignmentId}`}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-primary shadow-xs transition-colors hover:border-primary/40 hover:bg-blue-50/60"
+                  >
+                    <FileCheck2 className="size-3.5" aria-hidden="true" />
+                    Biên bản hội đồng
+                  </Link>
+                )}
+              </div>
             </div>
           </section>
 

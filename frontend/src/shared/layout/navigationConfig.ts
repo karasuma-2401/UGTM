@@ -15,6 +15,7 @@ import {
   BarChart3,
   Archive,
   FolderCheck,
+  FileCheck2,
   Gavel,
   SquarePen,
 } from 'lucide-react';
@@ -165,6 +166,12 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/councils/grading',
         icon: Gavel,
         roles: ['CouncilMember', 'Admin'],
+      },
+      {
+        label: 'Biên bản hội đồng',
+        path: '/councils/minutes',
+        icon: FileCheck2,
+        roles: ['CouncilMember', 'Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
       },
       {
         label: 'Phê duyệt hội đồng',
