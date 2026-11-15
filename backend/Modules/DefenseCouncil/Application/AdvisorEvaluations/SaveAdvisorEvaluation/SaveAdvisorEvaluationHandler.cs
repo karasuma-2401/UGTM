@@ -52,7 +52,7 @@ public sealed class SaveAdvisorEvaluationHandler(
             {
                 return Result.Failure<AdvisorEvaluationDto>(workflowResult.Error);
             }
-            return Result.Success(workflowResult.Response ?? AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!, workflowResult.Details));
+            return Result.Success(workflowResult.Response ?? AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!, workflowResult.Details, workflowResult.TotalCriteriaCount));
         }
         catch (DefenseCouncilConcurrencyException)
         {
@@ -140,11 +140,27 @@ public sealed class SaveAdvisorEvaluationHandler(
             return SaveWorkflowResult.Failure(existingError);
         }
 
+        var normalizedAction = string.IsNullOrWhiteSpace(command.Action) ? "Submit" : command.Action.Trim();
+        var isDraft = string.Equals(normalizedAction, "SaveDraft", StringComparison.OrdinalIgnoreCase);
+        if (!isDraft && !string.Equals(normalizedAction, "Submit", StringComparison.OrdinalIgnoreCase))
+        {
+            return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.InvalidRequest);
+        }
+
+        var normalizedDetails = StudentEvaluationGroupingHelper.NormalizeInputs(command.Details, command.StudentScores);
+
         decimal finalScore;
         Dictionary<Guid, GradingCriteria>? criteriaMap = null;
-        if (command.Details is { Count: > 0 } details)
+        int totalCriteriaCount = 0;
+        if (normalizedDetails is { Count: > 0 } details)
         {
-            if (details.Select(d => d.CriteriaId).Distinct().Count() != details.Count)
+            if (StudentEvaluationGroupingHelper.HasInvalidStudentId(details)
+                || StudentEvaluationGroupingHelper.HasMixedStudentAndGroupLevelDetails(details))
+            {
+                return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.InvalidRequest);
+            }
+
+            if (StudentEvaluationGroupingHelper.HasDuplicateCriteriaPerScope(details))
             {
                 return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.DuplicateCriteria);
             }
@@ -154,6 +170,7 @@ public sealed class SaveAdvisorEvaluationHandler(
                 ? await evaluationRepository.GetGradingCriteriaByBatchIdAsync(batchId, cancellationToken)
                 : [];
 
+            totalCriteriaCount = batchCriteria.Count;
             criteriaMap = batchCriteria.ToDictionary(c => c.Id);
 
             foreach (var item in details)
@@ -174,29 +191,64 @@ public sealed class SaveAdvisorEvaluationHandler(
                 }
             }
 
-            var submittedIds = details.Select(d => d.CriteriaId).ToHashSet();
-            foreach (var req in batchCriteria)
+            if (!isDraft)
             {
-                if (!submittedIds.Contains(req.Id))
+                var hasStudentScope = details.Any(d => d.StudentId.HasValue && d.StudentId.Value != Guid.Empty);
+                if (hasStudentScope)
                 {
-                    return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.MissingRequiredCriteria(req.CriteriaName));
+                    foreach (var studentGroup in details.GroupBy(d => d.StudentId!.Value))
+                    {
+                        var submittedIds = studentGroup.Select(d => d.CriteriaId).ToHashSet();
+                        foreach (var req in batchCriteria)
+                        {
+                            if (!submittedIds.Contains(req.Id))
+                            {
+                                return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.MissingRequiredCriteria(req.CriteriaName));
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    var submittedIds = details.Select(d => d.CriteriaId).ToHashSet();
+                    foreach (var req in batchCriteria)
+                    {
+                        if (!submittedIds.Contains(req.Id))
+                        {
+                            return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.MissingRequiredCriteria(req.CriteriaName));
+                        }
+                    }
                 }
             }
 
-            finalScore = Math.Round(details.Sum(d => d.Score), 2);
+            finalScore = StudentEvaluationGroupingHelper.ComputeAggregateScore(details);
         }
         else
         {
             if (!command.Score.HasValue)
             {
-                return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.InvalidScore);
+                if (isDraft)
+                {
+                    finalScore = 0m;
+                }
+                else
+                {
+                    return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.InvalidScore);
+                }
             }
-            finalScore = command.Score.Value;
+            else
+            {
+                finalScore = command.Score.Value;
+            }
         }
+
+        var effectiveComment = isDraft && string.IsNullOrWhiteSpace(command.Comment)
+            ? "Bản nháp đánh giá"
+            : command.Comment;
 
         try
         {
-            AdvisorEvaluation.ValidateEvaluationInput(finalScore, command.Comment);
+            AdvisorEvaluation.ValidateEvaluationInput(finalScore, effectiveComment);
         }
         catch (ArgumentOutOfRangeException exception) when (string.Equals(exception.ParamName, "score", StringComparison.Ordinal))
         {
@@ -226,7 +278,7 @@ public sealed class SaveAdvisorEvaluationHandler(
                 lockedReport.SubmissionFileId,
                 lockedReport.SubmissionChecksumSha256,
                 finalScore,
-                command.Comment!,
+                effectiveComment!,
                 actorId,
                 nowUtc);
             evaluationRepository.Add(evaluation);
@@ -234,20 +286,21 @@ public sealed class SaveAdvisorEvaluationHandler(
         else
         {
             evaluation = existing!;
-            if (!evaluation.TryUpdate(finalScore, command.Comment!, actorId, nowUtc))
+            if (!evaluation.TryUpdate(finalScore, effectiveComment!, actorId, nowUtc))
             {
                 return SaveWorkflowResult.Failure(AdvisorEvaluationErrors.Locked);
             }
         }
 
         List<EvaluationDetailResponseDto>? detailDtos = null;
-        if (command.Details is { Count: > 0 } detailsToSave)
+        if (normalizedDetails is { Count: > 0 } detailsToSave)
         {
             var detailsList = detailsToSave.Select(d => new EvaluationDetail
             {
                 Id = Guid.NewGuid(),
                 CriteriaId = d.CriteriaId,
                 EvaluationId = evaluation.Id,
+                StudentId = d.StudentId,
                 Score = d.Score
             }).ToList();
 
@@ -256,7 +309,7 @@ public sealed class SaveAdvisorEvaluationHandler(
             detailDtos = detailsToSave.Select(d =>
             {
                 var crit = criteriaMap![d.CriteriaId];
-                return new EvaluationDetailResponseDto(Guid.Empty, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore);
+                return new EvaluationDetailResponseDto(Guid.Empty, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore, d.StudentId);
             }).ToList();
         }
 
@@ -273,7 +326,7 @@ public sealed class SaveAdvisorEvaluationHandler(
                 evaluation.SubmissionFileId,
                 Operation = created ? "Created" : "Updated"
             }), nowUtc);
-        return SaveWorkflowResult.Changed(evaluation, idempotencyRecord, detailDtos);
+        return SaveWorkflowResult.Changed(evaluation, idempotencyRecord, detailDtos, totalCriteriaCount);
     }
 
     private static Task<SaveWorkflowResult> CompleteIdempotencyRecordAsync(
@@ -286,7 +339,7 @@ public sealed class SaveAdvisorEvaluationHandler(
         }
 
         workflowResult.IdempotencyRecord.SetResponsePayload(
-            JsonSerializer.Serialize(AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!, workflowResult.Details)));
+            JsonSerializer.Serialize(AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!, workflowResult.Details, workflowResult.TotalCriteriaCount)));
         return Task.FromResult(workflowResult);
     }
 
@@ -327,16 +380,25 @@ public sealed class SaveAdvisorEvaluationHandler(
 
     private static string CreateFingerprint(SaveAdvisorEvaluationCommand command)
     {
-        var detailsCanonical = command.Details != null
-            ? string.Join(";", command.Details.OrderBy(d => d.CriteriaId).Select(d => $"{d.CriteriaId:N}:{d.Score.ToString("G29", CultureInfo.InvariantCulture)}"))
+        var normalized = StudentEvaluationGroupingHelper.NormalizeInputs(command.Details, command.StudentScores);
+        var detailsCanonical = normalized != null
+            ? string.Join(";", normalized
+                .OrderBy(d => d.StudentId ?? Guid.Empty)
+                .ThenBy(d => d.CriteriaId)
+                .Select(d => d.StudentId.HasValue
+                    ? $"{d.StudentId.Value:N}:{d.CriteriaId:N}:{d.Score.ToString("G29", CultureInfo.InvariantCulture)}"
+                    : $"{d.CriteriaId:N}:{d.Score.ToString("G29", CultureInfo.InvariantCulture)}"))
             : string.Empty;
+        var actionSuffix = string.IsNullOrWhiteSpace(command.Action)
+            ? string.Empty
+            : $"\n{command.Action.Trim().ToUpperInvariant()}";
         var canonical = string.Join("\n",
             command.FinalReportId.ToString("N"),
             command.ExpectedReportVersionNo.ToString(CultureInfo.InvariantCulture),
             command.ExpectedEvaluationVersion?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
             command.Score?.ToString("G29", CultureInfo.InvariantCulture) ?? string.Empty,
             command.Comment ?? string.Empty,
-            detailsCanonical);
+            detailsCanonical) + actionSuffix;
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 
@@ -345,10 +407,11 @@ public sealed class SaveAdvisorEvaluationHandler(
         AdvisorEvaluationIdempotencyRecord? IdempotencyRecord,
         AdvisorEvaluationDto? Response,
         Error? Error,
-        IReadOnlyList<EvaluationDetailResponseDto>? Details = null)
+        IReadOnlyList<EvaluationDetailResponseDto>? Details = null,
+        int TotalCriteriaCount = 0)
     {
-        public static SaveWorkflowResult Changed(AdvisorEvaluation evaluation, AdvisorEvaluationIdempotencyRecord record, IReadOnlyList<EvaluationDetailResponseDto>? details = null)
-            => new(evaluation, record, null, null, details);
+        public static SaveWorkflowResult Changed(AdvisorEvaluation evaluation, AdvisorEvaluationIdempotencyRecord record, IReadOnlyList<EvaluationDetailResponseDto>? details = null, int totalCriteriaCount = 0)
+            => new(evaluation, record, null, null, details, totalCriteriaCount);
         public static SaveWorkflowResult Replayed(AdvisorEvaluationDto response)
             => new(null, null, response, null, null);
         public static SaveWorkflowResult Failure(Error error)

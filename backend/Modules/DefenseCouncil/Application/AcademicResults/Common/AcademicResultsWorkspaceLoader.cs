@@ -585,6 +585,41 @@ public sealed class AcademicResultsWorkspaceLoader(
             detailLabel,
             finalScore);
 
+        var enrichedStudents = students.Select(s =>
+        {
+            var stuAdv = ResolveStudentEvaluationScore(advisorEval?.Id, s.StudentId, facts) ?? advisorScore;
+            var stuRev = ResolveStudentEvaluationScore(reviewerEval?.Id, s.StudentId, facts) ?? reviewerScore;
+            decimal? stuCouncil = councilScore;
+            if (facts is not null)
+            {
+                var stuCouncilScores = facts.Scores
+                    .Where(cs => !cs.IsIgnoredInCalculation)
+                    .Select(cs => ResolveStudentEvaluationScore(cs.Id, s.StudentId, facts) ?? cs.Score)
+                    .ToList();
+                if (stuCouncilScores.Count > 0)
+                {
+                    stuCouncil = Math.Round(stuCouncilScores.Average(), 2);
+                }
+            }
+
+            decimal? stuFinal = finalScore;
+            if (facts is not null && facts.Details.Any(d => d.StudentId == s.StudentId))
+            {
+                if (stuAdv.HasValue && stuRev.HasValue && stuCouncil.HasValue)
+                {
+                    stuFinal = Math.Round(stuAdv.Value * 0.20m + stuRev.Value * 0.20m + stuCouncil.Value * 0.60m, 2, MidpointRounding.AwayFromZero);
+                }
+            }
+
+            return s with
+            {
+                AdvisorScore = stuAdv,
+                ReviewerScore = stuRev,
+                CouncilScore = stuCouncil,
+                FinalScore = stuFinal
+            };
+        }).ToList();
+
         var detail = new AcademicResultDetailDto(
             group.GroupId,
             groupCode,
@@ -597,7 +632,7 @@ public sealed class AcademicResultsWorkspaceLoader(
             topicTitleEn,
             advisorId,
             advisorName,
-            students,
+            enrichedStudents,
             statusCode,
             statusLabel,
             detailLabel,
@@ -619,17 +654,17 @@ public sealed class AcademicResultsWorkspaceLoader(
         var councilScoreStr = councilScore.HasValue ? councilScore.Value.ToString("F2") : "";
         var finalScoreStr = finalScore.HasValue ? finalScore.Value.ToString("F2") : "";
 
-        var exportRows = students.Count > 0
-            ? students.Select(s => new AcademicResultExportRowDto(
+        var exportRows = enrichedStudents.Count > 0
+            ? enrichedStudents.Select(s => new AcademicResultExportRowDto(
                 s.StudentCode,
                 s.FullName,
                 groupCode,
                 topicTitleVi,
                 DefaultFacultyName,
-                advisorScoreStr,
-                reviewerScoreStr,
-                councilScoreStr,
-                finalScoreStr,
+                s.AdvisorScore.HasValue ? s.AdvisorScore.Value.ToString("F2") : advisorScoreStr,
+                s.ReviewerScore.HasValue ? s.ReviewerScore.Value.ToString("F2") : reviewerScoreStr,
+                s.CouncilScore.HasValue ? s.CouncilScore.Value.ToString("F2") : councilScoreStr,
+                s.FinalScore.HasValue ? s.FinalScore.Value.ToString("F2") : finalScoreStr,
                 archiveStatusLabel,
                 statusLabel)).ToList()
             : [new AcademicResultExportRowDto(
@@ -646,6 +681,21 @@ public sealed class AcademicResultsWorkspaceLoader(
                 statusLabel)];
 
         return new AcademicResultComputedRow(listItem, detail, exportRows);
+    }
+
+    private static decimal? ResolveStudentEvaluationScore(Guid? evaluationId, Guid studentId, ScoreFacts? facts)
+    {
+        if (!evaluationId.HasValue || evaluationId.Value == Guid.Empty || facts is null)
+        {
+            return null;
+        }
+
+        var studentDetails = facts.Details
+            .Where(d => d.EvaluationId == evaluationId.Value && d.StudentId == studentId)
+            .ToList();
+        return studentDetails.Count > 0
+            ? Math.Round(studentDetails.Sum(d => d.Score), 2, MidpointRounding.AwayFromZero)
+            : null;
     }
 
     public static string NormalizePhase(string phase)

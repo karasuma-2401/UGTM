@@ -46,16 +46,23 @@ internal sealed class ScoreSummaryStore(DefenseCouncilDbContext db) : IScoreSumm
         var members = await db.CouncilMembers.AsNoTracking().Where(m => councilIds.Contains(m.CouncilId)).ToListAsync(token);
         var minutes = await db.CouncilMinutes.AsNoTracking().Where(m => assignmentIds.Contains(m.CouncilAssignmentId)).ToListAsync(token);
         var scoresAll = await db.CouncilScores.AsNoTracking().Where(s => assignmentIds.Contains(s.CouncilAssignmentId)).ToListAsync(token);
-        var scoreIds = scoresAll.Select(s => s.Id).ToArray();
-        var details = await db.EvaluationDetails.AsNoTracking().Where(d => scoreIds.Contains(d.EvaluationId)).ToListAsync(token);
         var reviewersAll = await db.ReviewerAssignments.AsNoTracking().Where(r => groups.Contains(r.GroupId) && r.IsActive).ToListAsync(token);
         var reviewerIds = reviewersAll.Select(r => r.Id).ToArray();
         var evaluations = await db.ReviewerEvaluations.AsNoTracking().Where(e => reviewerIds.Contains(e.AssignmentId)).ToListAsync(token);
+        var allEvaluationIds = scoresAll.Select(s => s.Id)
+            .Concat(advisors.Select(a => a.Id))
+            .Concat(evaluations.Select(e => e.Id))
+            .Distinct()
+            .ToArray();
+        var details = await db.EvaluationDetails.AsNoTracking().Where(d => allEvaluationIds.Contains(d.EvaluationId)).ToListAsync(token);
         return groups.ToDictionary(g => g, g =>
         {
             var aa = assignments.Where(a => a.GroupId == g).ToArray(); var cc = aa.Select(a => a.CouncilId).ToHashSet(); var ai = aa.Select(a => a.Id).ToHashSet();
             var rr = reviewersAll.Where(r => r.GroupId == g).ToArray(); var ri = rr.Select(r => r.Id).ToHashSet(); var ss = scoresAll.Where(s => ai.Contains(s.CouncilAssignmentId)).ToArray(); var si = ss.Select(s => s.Id).ToHashSet();
-            return new ScoreFacts(advisors.Where(a => a.GroupId == g).ToArray(), rr, evaluations.Where(e => ri.Contains(e.AssignmentId)).ToArray(), aa, councils.Where(c => cc.Contains(c.Id)).ToArray(), members.Where(m => cc.Contains(m.CouncilId)).ToArray(), minutes.Where(m => ai.Contains(m.CouncilAssignmentId)).ToArray(), ss, details.Where(d => si.Contains(d.EvaluationId)).ToArray());
+            var groupAdvisors = advisors.Where(a => a.GroupId == g).ToArray();
+            var groupEvals = evaluations.Where(e => ri.Contains(e.AssignmentId)).ToArray();
+            var evalIds = si.Concat(groupAdvisors.Select(a => a.Id)).Concat(groupEvals.Select(e => e.Id)).ToHashSet();
+            return new ScoreFacts(groupAdvisors, rr, groupEvals, aa, councils.Where(c => cc.Contains(c.Id)).ToArray(), members.Where(m => cc.Contains(m.CouncilId)).ToArray(), minutes.Where(m => ai.Contains(m.CouncilAssignmentId)).ToArray(), ss, details.Where(d => evalIds.Contains(d.EvaluationId)).ToArray());
         });
     }
     public Task<ScoreSummary?> SummaryAsync(Guid group, bool locked, CancellationToken token)

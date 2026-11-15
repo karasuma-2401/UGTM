@@ -158,12 +158,10 @@ public sealed class CouncilRepository(
     }
 
     public Task<Council?> GetCouncilByGroupIdAsync(Guid groupId, CancellationToken ct = default)
-        => db.CouncilAssignments
-            .Where(a => a.GroupId == groupId)
-            .Select(a => a.Council)
+        => db.Councils
             .Include(c => c.Members)
             .Include(c => c.Assignments)
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(c => c.Assignments.Any(a => a.GroupId == groupId), ct);
 
     public async Task<IReadOnlyDictionary<Guid, Guid>> GetActiveReviewerIdsByGroupIdsAsync(
         IEnumerable<Guid> groupIds,

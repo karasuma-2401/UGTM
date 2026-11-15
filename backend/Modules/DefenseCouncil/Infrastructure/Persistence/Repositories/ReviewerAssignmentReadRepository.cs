@@ -13,7 +13,7 @@ namespace UGTM.Modules.DefenseCouncil.Infrastructure.Persistence.Repositories;
 
 internal sealed class ReviewerAssignmentReadRepository(DefenseCouncilDbContext context,
     IReviewerAssignmentThesisReader thesis, IReviewerAssignmentTopicReader topics, IReviewerAssignmentBatchReader batches,
-    IReviewerCandidateReader candidates, IAdvisorNameReader names) : IReviewerAssignmentReadRepository
+    IReviewerCandidateReader candidates, IAdvisorNameReader names, ICouncilUserInfoReader userInfoReader) : IReviewerAssignmentReadRepository
 {
     public async Task<PagedResult<ReviewerAssignmentListItemDto>> ListAsync(ReviewerAssignmentListQuery request, bool canManage, CancellationToken token)
     {
@@ -85,6 +85,13 @@ internal sealed class ReviewerAssignmentReadRepository(DefenseCouncilDbContext c
         var topicMap = (await topics.GetManyAsync(groups.Values.Select(value => value.TopicId).Distinct().ToArray(), token)).ToDictionary(value => value.TopicId);
         var batchIds = (await batches.GetManyAsync(topicMap.Values.Select(value => value.BatchId).Distinct().ToArray(), token)).Select(value => value.BatchId).ToHashSet();
         var approvals = await ApprovedAsync(page.Select(value => value.GroupId).ToArray(), token);
+        var allStudentIds = groups.Values
+            .SelectMany(value => value.StudentIds ?? [])
+            .Distinct()
+            .ToArray();
+        var studentInfoMap = allStudentIds.Length > 0
+            ? await userInfoReader.GetUsersByIdsAsync(allStudentIds, token)
+            : new Dictionary<Guid, CouncilUserInfoContractDto>();
         var items = page.Select(assignment =>
         {
             var group = groups.GetValueOrDefault(assignment.GroupId);
@@ -98,9 +105,19 @@ internal sealed class ReviewerAssignmentReadRepository(DefenseCouncilDbContext c
                     || !string.Equals(assignment.SubmissionChecksumSha256, approval.SubmissionChecksumSha256, StringComparison.OrdinalIgnoreCase)
                     ? "BindingInvalid" : null;
             if (group is null || topic is null) throw new InvalidOperationException("Reviewer task group/topic foreign key context is missing.");
+            var students = (group.StudentIds ?? [])
+                .Select(studentId =>
+                {
+                    var info = studentInfoMap.GetValueOrDefault(studentId);
+                    return new ReviewerAssignmentStudentDto(
+                        studentId,
+                        info?.FullName ?? info?.UserCode ?? "Sinh viên",
+                        info?.UserCode);
+                })
+                .ToArray();
             return new ReviewerAssignmentTaskDto(assignment.Id, assignment.GroupId, topic.TopicId, topic.BatchId, topic.TitleVi, topic.TitleEn,
                 assignment.AssignedAt, assignment.Version, assignment.IsLegacy, assignment.FinalReportId, assignment.ReportVersionNo,
-                assignment.SubmissionFileId, block is null ? group.ReportFile : null, block is null, block);
+                assignment.SubmissionFileId, block is null ? group.ReportFile : null, block is null, block, students);
         }).ToArray();
         return new(items, total, request.PageNumber, request.PageSize);
     }

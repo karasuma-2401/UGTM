@@ -62,12 +62,19 @@ public sealed class SubmitCouncilScoreHandler(
             return Result.Failure<CouncilScoreResponseDto>(CouncilErrors.MinuteLocked);
         }
 
-        if (command.Details == null || command.Details.Count == 0)
+        var normalizedDetails = StudentEvaluationGroupingHelper.NormalizeInputs(command.Details, command.StudentScores);
+        if (normalizedDetails == null || normalizedDetails.Count == 0)
         {
             return Result.Failure<CouncilScoreResponseDto>(CouncilErrors.CriteriaRequired);
         }
 
-        if (command.Details.Select(d => d.CriteriaId).Distinct().Count() != command.Details.Count)
+        if (StudentEvaluationGroupingHelper.HasInvalidStudentId(normalizedDetails)
+            || StudentEvaluationGroupingHelper.HasMixedStudentAndGroupLevelDetails(normalizedDetails))
+        {
+            return Result.Failure<CouncilScoreResponseDto>(CouncilErrors.CriteriaRequired);
+        }
+
+        if (StudentEvaluationGroupingHelper.HasDuplicateCriteriaPerScope(normalizedDetails))
         {
             return Result.Failure<CouncilScoreResponseDto>(CouncilErrors.DuplicateCriteriaInRequest);
         }
@@ -75,7 +82,7 @@ public sealed class SubmitCouncilScoreHandler(
         var batchCriteria = await councilRepository.GetGradingCriteriaByBatchIdAsync(assignment.Council.BatchId, ct);
         var criteriaMap = batchCriteria.ToDictionary(c => c.Id);
 
-        foreach (var item in command.Details)
+        foreach (var item in normalizedDetails)
         {
             if (!criteriaMap.TryGetValue(item.CriteriaId, out var criterion))
             {
@@ -93,16 +100,34 @@ public sealed class SubmitCouncilScoreHandler(
             }
         }
 
-        var submittedIds = command.Details.Select(d => d.CriteriaId).ToHashSet();
-        foreach (var req in batchCriteria)
+        var hasStudentScope = normalizedDetails.Any(d => d.StudentId.HasValue && d.StudentId.Value != Guid.Empty);
+        if (hasStudentScope)
         {
-            if (!submittedIds.Contains(req.Id))
+            foreach (var studentGroup in normalizedDetails.GroupBy(d => d.StudentId!.Value))
             {
-                return Result.Failure<CouncilScoreResponseDto>(CouncilErrors.MissingRequiredCriteria(req.CriteriaName));
+                var submittedIds = studentGroup.Select(d => d.CriteriaId).ToHashSet();
+                foreach (var req in batchCriteria)
+                {
+                    if (!submittedIds.Contains(req.Id))
+                    {
+                        return Result.Failure<CouncilScoreResponseDto>(CouncilErrors.MissingRequiredCriteria(req.CriteriaName));
+                    }
+                }
+            }
+        }
+        else
+        {
+            var submittedIds = normalizedDetails.Select(d => d.CriteriaId).ToHashSet();
+            foreach (var req in batchCriteria)
+            {
+                if (!submittedIds.Contains(req.Id))
+                {
+                    return Result.Failure<CouncilScoreResponseDto>(CouncilErrors.MissingRequiredCriteria(req.CriteriaName));
+                }
             }
         }
 
-        var totalScore = Math.Round(command.Details.Sum(d => d.Score), 2);
+        var totalScore = StudentEvaluationGroupingHelper.ComputeAggregateScore(normalizedDetails);
         var evaluatedAt = clock.GetUtcNow().UtcDateTime;
 
         var existingScore = await councilRepository.GetCouncilScoreAsync(command.AssignmentId, member.Id, ct);
@@ -118,11 +143,12 @@ public sealed class SubmitCouncilScoreHandler(
             EvaluatedAt = evaluatedAt
         };
 
-        var detailsList = command.Details.Select(d => new EvaluationDetail
+        var detailsList = normalizedDetails.Select(d => new EvaluationDetail
         {
             Id = Guid.NewGuid(),
             CriteriaId = d.CriteriaId,
             EvaluationId = scoreId,
+            StudentId = d.StudentId,
             Score = d.Score
         }).ToList();
 
@@ -151,7 +177,7 @@ public sealed class SubmitCouncilScoreHandler(
         var detailDtos = detailsList.Select(d =>
         {
             var crit = criteriaMap[d.CriteriaId];
-            return new EvaluationDetailResponseDto(d.Id, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore);
+            return new EvaluationDetailResponseDto(d.Id, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore, d.StudentId);
         }).ToList();
 
         return Result.Success(new CouncilScoreResponseDto(
@@ -162,6 +188,7 @@ public sealed class SubmitCouncilScoreHandler(
             totalScore,
             councilScore.Feedback,
             evaluatedAt,
-            detailDtos));
+            detailDtos,
+            StudentEvaluationGroupingHelper.BuildStudentScores(detailDtos, batchCriteria.Count)));
     }
 }

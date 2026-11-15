@@ -81,7 +81,8 @@ public sealed record CouncilScheduleGroupDto(
     Guid? ReviewerId,
     string? ReviewerName,
     bool IsReviewerInCouncil,
-    IReadOnlyList<CouncilScheduleStudentDto> Students);
+    IReadOnlyList<CouncilScheduleStudentDto> Students,
+    Guid? AssignmentId = null);
 
 public sealed record CouncilScheduleMemberDto(
     Guid UserId,
@@ -105,11 +106,17 @@ public sealed record CouncilScheduleResponseDto(
 
 public sealed record CriterionScoreInputDto(
     Guid CriteriaId,
-    decimal Score);
+    decimal Score,
+    Guid? StudentId = null);
+
+public sealed record StudentCriterionScoresInputDto(
+    Guid StudentId,
+    IReadOnlyList<CriterionScoreInputDto> Details);
 
 public sealed record SubmitCouncilScoreInputDto(
-    IReadOnlyList<CriterionScoreInputDto> Details,
-    string? Feedback = null);
+    IReadOnlyList<CriterionScoreInputDto>? Details = null,
+    string? Feedback = null,
+    IReadOnlyList<StudentCriterionScoresInputDto>? StudentScores = null);
 
 public sealed record EvaluationDetailResponseDto(
     Guid Id,
@@ -117,7 +124,15 @@ public sealed record EvaluationDetailResponseDto(
     string CriteriaCode,
     string CriteriaName,
     decimal Score,
-    decimal MaxScore);
+    decimal MaxScore,
+    Guid? StudentId = null);
+
+public sealed record StudentEvaluationScoreDto(
+    Guid StudentId,
+    decimal? Score,
+    int CompletedCriteriaCount,
+    int TotalCriteriaCount,
+    IReadOnlyList<EvaluationDetailResponseDto> Details);
 
 public sealed record CouncilScoreResponseDto(
     Guid Id,
@@ -127,7 +142,8 @@ public sealed record CouncilScoreResponseDto(
     decimal Score,
     string? Feedback,
     DateTime EvaluatedAt,
-    IReadOnlyList<EvaluationDetailResponseDto> Details);
+    IReadOnlyList<EvaluationDetailResponseDto> Details,
+    IReadOnlyList<StudentEvaluationScoreDto>? StudentScores = null);
 
 public sealed record MemberScoreDetailDto(
     Guid CouncilMemberId,

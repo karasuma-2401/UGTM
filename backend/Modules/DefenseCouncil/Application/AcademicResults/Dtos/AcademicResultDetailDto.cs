@@ -4,7 +4,11 @@ public sealed record AcademicResultStudentDto(
     Guid StudentId,
     string StudentCode,
     string FullName,
-    string Email);
+    string Email,
+    decimal? AdvisorScore = null,
+    decimal? ReviewerScore = null,
+    decimal? CouncilScore = null,
+    decimal? FinalScore = null);
 
 public sealed record AcademicResultScoreSourceDto(
     string SourceCode,

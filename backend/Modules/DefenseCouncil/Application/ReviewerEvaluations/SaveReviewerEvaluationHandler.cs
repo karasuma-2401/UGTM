@@ -80,9 +80,11 @@ public sealed class SaveReviewerEvaluationHandler(
 
         decimal? scoreToApply = command.Score;
         List<EvaluationDetailResponseDto>? detailDtos = null;
+        int totalCriteriaCount = 0;
         if (command.Details is { Count: > 0 } details)
         {
             var batchCriteria = await evaluations.GetGradingCriteriaByBatchIdAsync(access.Binding.BatchId, token);
+            totalCriteriaCount = batchCriteria.Count;
             var criteriaMap = batchCriteria.ToDictionary(c => c.Id);
 
             foreach (var item in details)
@@ -103,21 +105,39 @@ public sealed class SaveReviewerEvaluationHandler(
 
             if (command.Action == ReviewerEvaluationAction.Submit)
             {
-                var submittedIds = details.Select(d => d.CriteriaId).ToHashSet();
-                foreach (var req in batchCriteria)
+                var hasStudentScope = details.Any(d => d.StudentId.HasValue && d.StudentId.Value != Guid.Empty);
+                if (hasStudentScope)
                 {
-                    if (!submittedIds.Contains(req.Id))
+                    foreach (var studentGroup in details.GroupBy(d => d.StudentId!.Value))
                     {
-                        return Abort(ReviewerEvaluationErrors.MissingRequiredCriteria(req.CriteriaName));
+                        var submittedIds = studentGroup.Select(d => d.CriteriaId).ToHashSet();
+                        foreach (var req in batchCriteria)
+                        {
+                            if (!submittedIds.Contains(req.Id))
+                            {
+                                return Abort(ReviewerEvaluationErrors.MissingRequiredCriteria(req.CriteriaName));
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    var submittedIds = details.Select(d => d.CriteriaId).ToHashSet();
+                    foreach (var req in batchCriteria)
+                    {
+                        if (!submittedIds.Contains(req.Id))
+                        {
+                            return Abort(ReviewerEvaluationErrors.MissingRequiredCriteria(req.CriteriaName));
+                        }
                     }
                 }
             }
 
-            scoreToApply = Math.Round(details.Sum(d => d.Score), 2);
+            scoreToApply = StudentEvaluationGroupingHelper.ComputeAggregateScore(details);
             detailDtos = details.Select(d =>
             {
                 var crit = criteriaMap[d.CriteriaId];
-                return new EvaluationDetailResponseDto(Guid.Empty, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore);
+                return new EvaluationDetailResponseDto(Guid.Empty, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore, d.StudentId);
             }).ToList();
         }
         else if (command.Action == ReviewerEvaluationAction.Submit && scoreToApply is null)
@@ -144,6 +164,7 @@ public sealed class SaveReviewerEvaluationHandler(
                 Id = Guid.NewGuid(),
                 CriteriaId = d.CriteriaId,
                 EvaluationId = evaluation.Id,
+                StudentId = d.StudentId,
                 Score = d.Score
             }).ToList();
             await evaluations.SaveEvaluationDetailsAsync(evaluation.Id, detailsList, token);
@@ -152,14 +173,14 @@ public sealed class SaveReviewerEvaluationHandler(
         var receipt = ReviewerEvaluationIdempotencyRecord.Create(Guid.NewGuid(), actor, Operation, command.IdempotencyKey, fingerprint, status, now);
         receipts.Add(receipt);
         return ReviewerAssignmentTransactionResult<SaveResult>.Commit(new(Assignment: assignment, Evaluation: evaluation,
-            Receipt: receipt, TopicId: access.Binding.TopicId, BatchId: access.Binding.BatchId, StatusCode: status, Details: detailDtos));
+            Receipt: receipt, TopicId: access.Binding.TopicId, BatchId: access.Binding.BatchId, StatusCode: status, Details: detailDtos, TotalCriteriaCount: totalCriteriaCount));
     }
 
     private Task<SaveResult> CompleteReceiptAsync(SaveResult result, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         audit.AddSaved(result.Evaluation!, result.Assignment!);
-        var response = ReviewerEvaluationDtoMapper.ToDto(result.Evaluation!, result.Assignment!, result.TopicId, result.BatchId, result.Details);
+        var response = ReviewerEvaluationDtoMapper.ToDto(result.Evaluation!, result.Assignment!, result.TopicId, result.BatchId, result.Details, result.TotalCriteriaCount);
         result.Receipt!.SetResponsePayload(JsonSerializer.Serialize(response));
         return Task.FromResult(result with { Response = response });
     }
@@ -168,5 +189,5 @@ public sealed class SaveReviewerEvaluationHandler(
     private sealed record SaveResult(Error? Error = null, ReviewerEvaluationDto? Response = null, int StatusCode = 200,
         ReviewerAssignment? Assignment = null, ReviewerEvaluation? Evaluation = null,
         ReviewerEvaluationIdempotencyRecord? Receipt = null, Guid TopicId = default, Guid BatchId = default,
-        IReadOnlyList<EvaluationDetailResponseDto>? Details = null);
+        IReadOnlyList<EvaluationDetailResponseDto>? Details = null, int TotalCriteriaCount = 0);
 }

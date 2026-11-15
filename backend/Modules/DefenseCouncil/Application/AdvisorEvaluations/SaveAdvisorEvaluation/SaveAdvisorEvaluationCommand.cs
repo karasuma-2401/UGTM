@@ -9,4 +9,6 @@ public sealed record SaveAdvisorEvaluationCommand(
     decimal? Score,
     string? Comment,
     Guid IdempotencyKey,
-    IReadOnlyList<CriterionScoreInputDto>? Details = null);
+    IReadOnlyList<CriterionScoreInputDto>? Details = null,
+    IReadOnlyList<StudentCriterionScoresInputDto>? StudentScores = null,
+    string? Action = null);

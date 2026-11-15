@@ -10,17 +10,20 @@ public sealed record ReviewerEvaluationDto(
     bool IsLegacy, decimal? Score, string? Comment, string? DefenseApproval, bool IsLocked,
     bool IsVisibleToStudent, bool IsIgnoredInCalculation, Guid CreatedBy, DateTime CreatedAtUtc,
     Guid UpdatedBy, DateTime UpdatedAtUtc, Guid? SubmittedBy, DateTime? SubmittedAtUtc,
-    IReadOnlyList<EvaluationDetailResponseDto>? Details = null);
+    IReadOnlyList<EvaluationDetailResponseDto>? Details = null,
+    IReadOnlyList<StudentEvaluationScoreDto>? StudentScores = null);
 
 public static class ReviewerEvaluationDtoMapper
 {
     public static ReviewerEvaluationDto ToDto(ReviewerEvaluation value, ReviewerAssignment assignment, Guid topicId, Guid batchId,
-        IReadOnlyList<EvaluationDetailResponseDto>? details = null)
+        IReadOnlyList<EvaluationDetailResponseDto>? details = null,
+        int totalCriteriaCount = 0)
         => new(value.Id, assignment.Id, assignment.GroupId, topicId, batchId, assignment.ReviewerId,
             assignment.AdvisorEvaluationId!.Value, assignment.FinalReportId!.Value, assignment.ReportVersionNo!.Value,
             assignment.SubmissionFileId!.Value, assignment.SubmissionChecksumSha256!, assignment.Version, value.Version,
             value.Status!.Value.ToString(), value.IsLegacy, value.Score, value.Comment, value.DefenseApproval?.ToString(),
             value.IsLocked, value.IsVisibleToStudent, value.IsIgnoredInCalculation, value.CreatedBy!.Value,
             value.CreatedAtUtc!.Value, value.EvaluatedBy!.Value, value.EvaluatedAt, value.SubmittedBy, value.SubmittedAtUtc,
-            details);
+            details,
+            StudentEvaluationGroupingHelper.BuildStudentScores(details, totalCriteriaCount));
 }

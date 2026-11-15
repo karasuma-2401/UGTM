@@ -4,7 +4,8 @@ public sealed record ReviewerAssignmentThesisContractDto(
     Guid GroupId, Guid TopicId, Guid? BatchId, bool IsReady,
     Guid? FinalReportId, bool IsUnderEvaluation, int? ReportVersionNo,
     Guid? SubmissionFileId, string? SubmissionChecksumSha256,
-    ReviewerAssignmentReportFileContractDto? ReportFile = null);
+    ReviewerAssignmentReportFileContractDto? ReportFile = null,
+    IReadOnlyList<Guid>? StudentIds = null);
 
 public sealed record ReviewerAssignmentReportFileContractDto(Guid FileId, string FileName, string ContentType,
     long SizeBytes, int VersionNo);

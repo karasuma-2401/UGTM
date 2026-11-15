@@ -1166,12 +1166,21 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("numeric(4,2)")
                         .HasColumnName("score");
 
+                    b.Property<Guid?>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
                     b.HasKey("Id")
                         .HasName("pk_evaluation_detail");
 
-                    b.HasIndex("CriteriaId", "EvaluationId")
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("ix_evaluation_detail_student_id");
+
+                    b.HasIndex("CriteriaId", "EvaluationId", "StudentId")
                         .IsUnique()
-                        .HasDatabaseName("ix_evaluation_detail_criteria_id_evaluation_id");
+                        .HasDatabaseName("ix_evaluation_detail_criteria_id_evaluation_id_student_id");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("CriteriaId", "EvaluationId", "StudentId"), false);
 
                     b.ToTable("evaluation_detail", "councils");
                 });
@@ -1199,6 +1208,11 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(250)")
                         .HasColumnName("criteria_name");
 
+                    b.Property<string>("Elo")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("elo");
+
                     b.Property<decimal>("MaxScore")
                         .HasPrecision(4, 2)
                         .HasColumnType("numeric(4,2)")
@@ -1209,6 +1223,20 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
                         .HasColumnName("order_index");
+
+                    b.Property<string>("SectionCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("section_code");
+
+                    b.Property<string>("SectionName")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("section_name");
+
+                    b.Property<int?>("SectionOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("section_order");
 
                     b.HasKey("Id")
                         .HasName("pk_grading_criteria");

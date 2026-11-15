@@ -462,6 +462,120 @@ public sealed class AdvisorAndReviewerGradingCriteriaTests
     }
 
     // =========================================================================
+    // 3. Per-Student Grading Tests (GVHD & GVPB)
+    // =========================================================================
+
+    [Fact]
+    public async Task SaveAdvisorEvaluation_WithPerStudentScores_ComputesStudentTotalsAndGroupAverage()
+    {
+        var repo = new FakeAdvisorEvaluationRepo();
+        repo.CriteriaList.AddRange(_criteria);
+        var student1Id = Guid.NewGuid();
+        var student2Id = Guid.NewGuid();
+
+        var handler = CreateAdvisorHandler(repo);
+        var command = new SaveAdvisorEvaluationCommand(
+            _finalReportId,
+            1,
+            null,
+            null,
+            "Nhận xét chung cho nhóm 2 sinh viên",
+            Guid.NewGuid(),
+            StudentScores:
+            [
+                new StudentCriterionScoresInputDto(student1Id, [
+                    new CriterionScoreInputDto(_crit1Id, 5.5m),
+                    new CriterionScoreInputDto(_crit2Id, 3.5m) // SV1 = 9.0
+                ]),
+                new StudentCriterionScoresInputDto(student2Id, [
+                    new CriterionScoreInputDto(_crit1Id, 4.5m),
+                    new CriterionScoreInputDto(_crit2Id, 3.5m) // SV2 = 8.0
+                ])
+            ]);
+
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(8.5m, result.Value.Score); // Average of 9.0 and 8.0
+        Assert.NotNull(result.Value.StudentScores);
+        Assert.Equal(2, result.Value.StudentScores.Count);
+        Assert.Equal(9.0m, result.Value.StudentScores.Single(s => s.StudentId == student1Id).Score);
+        Assert.Equal(8.0m, result.Value.StudentScores.Single(s => s.StudentId == student2Id).Score);
+    }
+
+    [Fact]
+    public async Task SaveAdvisorEvaluation_SaveDraft_WithPartialPerStudentDetails_Succeeds()
+    {
+        var repo = new FakeAdvisorEvaluationRepo();
+        repo.CriteriaList.AddRange(_criteria);
+        var student1Id = Guid.NewGuid();
+
+        var handler = CreateAdvisorHandler(repo);
+        var command = new SaveAdvisorEvaluationCommand(
+            _finalReportId,
+            1,
+            null,
+            null,
+            null,
+            Guid.NewGuid(),
+            Details:
+            [
+                new CriterionScoreInputDto(_crit1Id, 5.0m, student1Id)
+            ],
+            Action: "SaveDraft");
+
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(5.0m, result.Value.Score);
+        Assert.NotNull(result.Value.StudentScores);
+        var sv1 = Assert.Single(result.Value.StudentScores);
+        Assert.Equal(student1Id, sv1.StudentId);
+        Assert.Equal(1, sv1.CompletedCriteriaCount);
+        Assert.Equal(2, sv1.TotalCriteriaCount);
+    }
+
+    [Fact]
+    public async Task SaveReviewerEvaluation_Submit_WithPerStudentScores_ComputesStudentTotalsAndGroupAverage()
+    {
+        var repo = new FakeReviewerEvaluationRepo();
+        repo.CriteriaList.AddRange(_criteria);
+        var student1Id = Guid.NewGuid();
+        var student2Id = Guid.NewGuid();
+
+        var handler = CreateReviewerHandler(repo);
+        var command = new SaveReviewerEvaluationCommand(
+            _assignmentId,
+            ReviewerEvaluationAction.Submit,
+            1,
+            null,
+            null,
+            "Nhận xét phản biện cho 2 sinh viên",
+            DefenseApprovalStatus.Approved,
+            Guid.NewGuid(),
+            StudentScores:
+            [
+                new StudentCriterionScoresInputDto(student1Id, [
+                    new CriterionScoreInputDto(_crit1Id, 5.0m),
+                    new CriterionScoreInputDto(_crit2Id, 3.0m) // SV1 = 8.0
+                ]),
+                new StudentCriterionScoresInputDto(student2Id, [
+                    new CriterionScoreInputDto(_crit1Id, 4.0m),
+                    new CriterionScoreInputDto(_crit2Id, 3.0m) // SV2 = 7.0
+                ])
+            ]);
+
+        var result = await handler.HandleAsync(command);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(7.5m, result.Value.Evaluation.Score); // Average of 8.0 and 7.0
+        Assert.NotNull(result.Value.Evaluation.StudentScores);
+        Assert.Equal(2, result.Value.Evaluation.StudentScores.Count);
+        Assert.Equal(8.0m, result.Value.Evaluation.StudentScores.Single(s => s.StudentId == student1Id).Score);
+        Assert.Equal(7.0m, result.Value.Evaluation.StudentScores.Single(s => s.StudentId == student2Id).Score);
+    }
+
+    // =========================================================================
     // Test Helpers & Fakes
     // =========================================================================
 
