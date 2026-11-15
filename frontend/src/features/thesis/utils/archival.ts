@@ -3,6 +3,7 @@ import type {
   AcademicResultDetailDto,
   AcademicResultListItemDto,
 } from '@/features/councils/types/results.types';
+import type { AdvisingGroup } from '@/features/topics/types/advising.types';
 import type {
   ArchivalFilterKey,
   ArchivalMetadataInput,
@@ -10,6 +11,7 @@ import type {
   ArchivalStats,
   FinalSubmissionSummaryDto,
 } from '../types/archival.types';
+import type { StudentGroupDetailDto } from '../types/syllabus.types';
 
 export const ARCHIVAL_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 export const ARCHIVAL_ABSTRACT_MAX_LENGTH = 10_000;
@@ -148,6 +150,38 @@ export function computeArchivalStats(
   return stats;
 }
 
+interface ResolvedGroupMeta {
+  groupCode?: string | null;
+  topicTitleVi?: string | null;
+  topicTitleEn?: string | null;
+  studentNames: string[];
+  studentCodes: string[];
+  advisorName?: string | null;
+}
+
+function buildArchivalRows(
+  summaries: readonly FinalSubmissionSummaryDto[],
+  resolveMeta: (groupId: string) => ResolvedGroupMeta,
+): ArchivalReviewRow[] {
+  return summaries.map((summary, index) => {
+    const meta = resolveMeta(summary.groupId);
+    const display = getArchivalStatusDisplay(summary.status);
+    const fallbackCode = `N${String(index + 1).padStart(2, '0')}`;
+
+    return {
+      ...summary,
+      groupCode: meta.groupCode || fallbackCode,
+      topicTitleVi: meta.topicTitleVi || summary.topicTitle,
+      topicTitleEn: meta.topicTitleEn ?? null,
+      studentNames: meta.studentNames,
+      studentCodes: meta.studentCodes,
+      advisorName: meta.advisorName ?? null,
+      statusLabel: display.label,
+      statusTone: display.tone,
+    };
+  });
+}
+
 export function mergeArchivalSummaryRows(
   summaries: readonly FinalSubmissionSummaryDto[],
   academicItems: readonly AcademicResultListItemDto[],
@@ -155,31 +189,63 @@ export function mergeArchivalSummaryRows(
 ): ArchivalReviewRow[] {
   const academicByGroupId = new Map(academicItems.map((item) => [item.groupId, item]));
 
-  return summaries.map((summary, index) => {
-    const academic = academicByGroupId.get(summary.groupId);
-    const detail = detailByGroupId[summary.groupId];
-    const display = getArchivalStatusDisplay(summary.status);
-    const fallbackCode = `N${String(index + 1).padStart(2, '0')}`;
-
-    const studentNames =
-      detail && detail.students.length > 0
-        ? detail.students.map((s) => s.fullName)
-        : (academic?.studentNames ?? []);
-    const studentCodes =
-      detail && detail.students.length > 0
-        ? detail.students.map((s) => s.studentCode)
-        : (academic?.studentCodes ?? []);
+  return buildArchivalRows(summaries, (groupId) => {
+    const academic = academicByGroupId.get(groupId);
+    const detail = detailByGroupId[groupId];
 
     return {
-      ...summary,
-      groupCode: detail?.groupCode || academic?.groupCode || fallbackCode,
-      topicTitleVi: detail?.topicTitleVi || academic?.topicTitleVi || summary.topicTitle,
+      groupCode: detail?.groupCode || academic?.groupCode,
+      topicTitleVi: detail?.topicTitleVi || academic?.topicTitleVi,
       topicTitleEn: detail?.topicTitleEn ?? academic?.topicTitleEn ?? null,
+      studentNames:
+        detail && detail.students.length > 0
+          ? detail.students.map((s) => s.fullName)
+          : (academic?.studentNames ?? []),
+      studentCodes:
+        detail && detail.students.length > 0
+          ? detail.students.map((s) => s.studentCode)
+          : (academic?.studentCodes ?? []),
+      advisorName: detail?.advisorName ?? null,
+    };
+  });
+}
+
+export function mergeAdvisorArchivalRows(
+  summaries: readonly FinalSubmissionSummaryDto[],
+  advisingGroups: readonly AdvisingGroup[],
+  detailByGroupId: Readonly<Record<string, StudentGroupDetailDto | undefined>>,
+): ArchivalReviewRow[] {
+  const advisingByGroupId = new Map(advisingGroups.map((group) => [group.groupId, group]));
+
+  return buildArchivalRows(summaries, (groupId) => {
+    const advising = advisingByGroupId.get(groupId);
+    const detail = detailByGroupId[groupId];
+
+    const detailMembers = detail?.members.filter((m) => m.confirmationStatus === 'Confirmed') ?? [];
+    const fallbackMembers = detail?.members ?? [];
+    const activeDetailMembers = detailMembers.length > 0 ? detailMembers : fallbackMembers;
+
+    const advisingConfirmed =
+      advising?.students.filter((s) => s.confirmationStatus === 'Confirmed') ?? [];
+    const advisingAll = advising?.students ?? [];
+    const activeAdvising = advisingConfirmed.length > 0 ? advisingConfirmed : advisingAll;
+
+    const studentNames =
+      activeDetailMembers.length > 0
+        ? activeDetailMembers.map((m) => m.fullName)
+        : activeAdvising.map((s) => s.fullName || 'Chưa cập nhật');
+    const studentCodes =
+      activeDetailMembers.length > 0
+        ? activeDetailMembers.map((m) => m.userCode)
+        : activeAdvising.map((s) => s.userCode || '');
+
+    return {
+      groupCode: detail?.groupCode,
+      topicTitleVi: detail?.topicTitleVi || advising?.titleVi,
+      topicTitleEn: detail?.topicTitleEn ?? advising?.titleEn ?? null,
       studentNames,
       studentCodes,
-      advisorName: detail?.advisorName ?? null,
-      statusLabel: display.label,
-      statusTone: display.tone,
+      advisorName: detail?.advisor?.fullName ?? null,
     };
   });
 }

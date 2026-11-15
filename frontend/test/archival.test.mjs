@@ -189,7 +189,105 @@ test('getArchivalStatusDisplay and formatArchivalBlockingReason map backend stat
   );
 });
 
-test('navigationConfig exposes Student and Faculty archival routes under progress section', () => {
+test('mergeAdvisorArchivalRows resolves group metadata from advisingGroups and StudentGroupDetailDto', () => {
+  const { mergeAdvisorArchivalRows } = loadTsModule('../src/features/thesis/utils/archival.ts');
+
+  const summaries = [
+    {
+      id: 'sub-1',
+      submissionId: 'sub-1',
+      batchId: 'batch-1',
+      groupId: 'grp-1',
+      topicTitle: 'Đề tài fallback',
+      status: 'Submitted',
+      submissionVersion: 1,
+      currentVersionNo: 1,
+      submittedAt: '2026-11-15T08:00:00Z',
+      advisorConfirmedAt: null,
+      archivedConfirmedAt: null,
+    },
+  ];
+
+  const rows = mergeAdvisorArchivalRows(
+    summaries,
+    [
+      {
+        groupId: 'grp-1',
+        topicId: 'top-1',
+        titleVi: 'Đề tài Advising',
+        titleEn: 'Advising Thesis',
+        batchId: 'batch-1',
+        batchName: 'Đợt 1',
+        status: 'Defended',
+        createdAt: '2026-11-01T00:00:00Z',
+        confirmedStudentsCount: 2,
+        pendingConfirmationsCount: 0,
+        expiredInvitationsCount: 0,
+        students: [
+          {
+            studentId: 's1',
+            userCode: '24521603',
+            fullName: 'Nguyễn Minh Đức',
+            confirmationStatus: 'Confirmed',
+            joinedAt: '2026-11-01T00:00:00Z',
+            confirmedAtUtc: '2026-11-01T00:00:00Z',
+            confirmationExpiresAtUtc: null,
+          },
+          {
+            studentId: 's2',
+            userCode: '24521604',
+            fullName: 'Trần Mai Anh',
+            confirmationStatus: 'Pending',
+            joinedAt: '2026-11-01T00:00:00Z',
+            confirmedAtUtc: null,
+            confirmationExpiresAtUtc: null,
+          },
+        ],
+      },
+    ],
+    {
+      'grp-1': {
+        groupId: 'grp-1',
+        groupCode: 'N01',
+        topicId: 'top-1',
+        topicCode: 'KLTN-2026-084',
+        topicTitleVi: 'Đề tài Chi tiết',
+        batchName: 'Đợt 1',
+        members: [
+          {
+            studentId: 's1',
+            userCode: '24521603',
+            fullName: 'Nguyễn Minh Đức',
+            email: 'duc@uit.edu.vn',
+            confirmationStatus: 'Confirmed',
+          },
+          {
+            studentId: 's2',
+            userCode: '24521604',
+            fullName: 'Trần Mai Anh',
+            email: 'anh@uit.edu.vn',
+            confirmationStatus: 'Confirmed',
+          },
+        ],
+        advisor: {
+          advisorId: 'adv-1',
+          fullName: 'Trần Hoàng Long',
+          academicTitle: 'TS.',
+        },
+      },
+    },
+  );
+
+  assert.equal(rows[0].groupCode, 'N01');
+  assert.equal(rows[0].topicTitleVi, 'Đề tài Chi tiết');
+  assert.equal(rows[0].topicTitleEn, 'Advising Thesis');
+  assert.deepEqual(rows[0].studentNames, ['Nguyễn Minh Đức', 'Trần Mai Anh']);
+  assert.deepEqual(rows[0].studentCodes, ['24521603', '24521604']);
+  assert.equal(rows[0].advisorName, 'Trần Hoàng Long');
+  assert.equal(rows[0].statusLabel, 'Chờ GVHD xác nhận');
+});
+
+test('navigationConfig exposes Student, Lecturer and Faculty archival routes under progress section', () => {
   const { navigationSections } = loadTsModule('../src/shared/layout/navigationConfig.ts', {
     'lucide-react': new Proxy({}, { get: () => () => null }),
   });
@@ -199,9 +297,12 @@ test('navigationConfig exposes Student and Faculty archival routes under progres
 
   const studentItem = progress.items.find((item) => item.path === '/thesis/archival');
   const facultyItem = progress.items.find((item) => item.path === '/thesis/review/archival');
+  const advisorItem = progress.items.find((item) => item.path === '/advisor/archival');
 
   assert.deepEqual(studentItem?.roles, ['Student']);
   assert.equal(studentItem?.label, 'Hồ sơ lưu chiểu');
   assert.deepEqual(facultyItem?.roles, ['Faculty', 'Admin']);
   assert.equal(facultyItem?.label, 'Duyệt hồ sơ lưu chiểu');
+  assert.deepEqual(advisorItem?.roles, ['Lecturer', 'Admin']);
+  assert.equal(advisorItem?.label, 'Xác nhận lưu chiểu');
 });

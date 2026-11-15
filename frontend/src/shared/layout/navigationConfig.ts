@@ -122,6 +122,12 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Lecturer', 'Admin'],
       },
       {
+        label: 'Xác nhận lưu chiểu',
+        path: '/advisor/archival',
+        icon: Archive,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
         label: 'Báo cáo & tiến độ',
         path: '/thesis/milestones',
         activePaths: ['/thesis/proposal', '/thesis/midterm', '/thesis/final-report'],
