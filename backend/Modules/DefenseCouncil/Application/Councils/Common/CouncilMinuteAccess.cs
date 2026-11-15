@@ -9,5 +9,6 @@ internal static class CouncilMinuteAccess
         => user.IsAuthenticated && user.UserId.HasValue
            && (council.Members.Any(member => member.UserId == user.UserId.Value)
                || user.Roles.Any(role => string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)
-                                         || string.Equals(role, "AcademicAffairs", StringComparison.OrdinalIgnoreCase)));
+                                         || string.Equals(role, "AcademicAffairs", StringComparison.OrdinalIgnoreCase)
+                                         || string.Equals(role, "Faculty", StringComparison.OrdinalIgnoreCase)));
 }

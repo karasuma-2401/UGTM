@@ -29,7 +29,12 @@ import {
   ArchivalReviewPage,
   AdvisorArchivalPage,
 } from '../features/thesis';
-import { ReviewerAssignmentPage, CouncilApprovalPage, ResultsEntryPage } from '../features/councils';
+import {
+  ReviewerAssignmentPage,
+  CouncilApprovalPage,
+  CouncilMinutesPage,
+  ResultsEntryPage,
+} from '../features/councils';
 import { CouncilSimilarityReportsPage } from '../features/thesis/pages/CouncilSimilarityReportsPage';
 import { LecturerGradingPage } from '../features/thesis/pages/LecturerGradingPage';
 import { CouncilGradingPage } from '../features/councils/pages/CouncilGradingPage';
@@ -176,6 +181,14 @@ export const router = createBrowserRouter([
       {
         path: 'councils/grading',
         element: <ProtectedRoute allowedRoles={['CouncilMember', 'Admin']}><CouncilGradingPage /></ProtectedRoute>,
+      },
+      {
+        path: 'councils/minutes',
+        element: (
+          <ProtectedRoute allowedRoles={['CouncilMember', 'Lecturer', 'Faculty', 'AcademicAffairs', 'Admin']}>
+            <CouncilMinutesPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'councils/approval',
