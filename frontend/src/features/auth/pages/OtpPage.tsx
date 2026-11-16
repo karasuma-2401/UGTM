@@ -209,7 +209,7 @@ export function OtpPage() {
               </strong>
             </>
           ) : (
-            <span className="text-red-600 font-medium">Mã đã hết hạn. Vui lòng bấm gửi lại mã bên dưới.</span>
+            <span className="text-tone-danger-icon font-medium">Mã đã hết hạn. Vui lòng bấm gửi lại mã bên dưới.</span>
           )}
         </p>
         <p className="auth-resend">

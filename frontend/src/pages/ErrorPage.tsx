@@ -81,20 +81,20 @@ export function ErrorPage({
     <div
       className={cn(
         'w-full flex flex-col items-center justify-center p-6 select-none animate-in fade-in duration-200',
-        variant === 'full' ? 'min-h-screen bg-white' : 'min-h-[60vh]',
+        variant === 'full' ? 'min-h-screen bg-surface-canvas' : 'min-h-[60vh]',
         className,
       )}
     >
       <div className="max-w-lg w-full flex flex-col items-start text-left px-4">
-        <h1 className="text-7xl sm:text-8xl font-bold tracking-tight text-[#1d4ed8]">
+        <h1 className="text-7xl sm:text-8xl font-bold tracking-tight text-brand-ink">
           {code}
         </h1>
 
-        <h2 className="mt-5 text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+        <h2 className="mt-5 text-2xl sm:text-3xl font-bold text-ink-primary tracking-tight">
           {title}
         </h2>
 
-        <p className="mt-3 text-sm sm:text-base text-slate-500 font-normal leading-relaxed">
+        <p className="mt-3 text-sm sm:text-base text-ink-muted font-normal leading-relaxed">
           {description}
         </p>
 
@@ -102,7 +102,7 @@ export function ErrorPage({
           <Button
             type="button"
             onClick={handleRollback}
-            className="bg-[#1d4ed8] hover:bg-[#1e40af] text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-all"
+            className="bg-brand-solid hover:bg-brand-solid-hover text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-all"
           >
             {rollbackText}
           </Button>
@@ -111,7 +111,7 @@ export function ErrorPage({
             type="button"
             variant="outline"
             onClick={handleLogout}
-            className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 font-medium px-5 py-2.5 rounded-lg shadow-sm transition-all"
+            className="bg-surface-card hover:bg-surface-hover text-ink-secondary border-line-input font-medium px-5 py-2.5 rounded-lg shadow-sm transition-all"
           >
             {loginText}
           </Button>

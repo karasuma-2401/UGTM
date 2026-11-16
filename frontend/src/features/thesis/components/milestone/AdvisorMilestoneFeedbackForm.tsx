@@ -28,10 +28,10 @@ export function AdvisorMilestoneFeedbackForm({
   const isFormDisabled = disabled || isSubmitting;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs">
-      <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
+    <section className="overflow-hidden rounded-2xl border border-line/80 bg-surface-card shadow-2xs">
+      <div className="flex items-center gap-2 border-b border-line-subtle px-5 py-4">
         <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
-        <h2 className="text-base font-semibold text-slate-900">Đánh giá và Nhận xét</h2>
+        <h2 className="text-base font-semibold text-ink-primary">Đánh giá và Nhận xét</h2>
       </div>
 
       <div className="space-y-4 p-5">
@@ -42,9 +42,9 @@ export function AdvisorMilestoneFeedbackForm({
         )}
 
         <div className="space-y-2">
-          <label id={labelId} className="block text-sm font-semibold text-slate-800">
+          <label id={labelId} className="block text-sm font-semibold text-ink-heading">
             Nhận xét của giảng viên
-            <span className="ml-1.5 font-normal text-slate-500">
+            <span className="ml-1.5 font-normal text-ink-muted">
               (bắt buộc khi yêu cầu chỉnh sửa)
             </span>
           </label>
@@ -62,13 +62,13 @@ export function AdvisorMilestoneFeedbackForm({
           />
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2.5 border-t border-slate-100 pt-4">
+        <div className="flex flex-wrap items-center justify-end gap-2.5 border-t border-line-subtle pt-4">
           <Button
             type="button"
             variant="outline"
             disabled={isFormDisabled}
             onClick={onNeedRevision}
-            className="gap-1.5 border-amber-300 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
+            className="gap-1.5 border-tone-warning-border text-tone-warning-strong hover:bg-tone-warning-bg hover:text-tone-warning-strong"
           >
             <RotateCcw className="size-4" aria-hidden="true" />
             <span>Yêu cầu chỉnh sửa</span>

@@ -3,10 +3,26 @@ import { useId, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 const themes = {
-  error: { icon: AlertCircle, classes: 'border-rose-200 bg-rose-50 text-rose-900' },
-  warning: { icon: AlertTriangle, classes: 'border-amber-200 bg-amber-50 text-amber-900' },
-  info: { icon: Info, classes: 'border-blue-200 bg-blue-50 text-blue-900' },
-  success: { icon: CheckCircle2, classes: 'border-emerald-200 bg-emerald-50 text-emerald-900' },
+  error: {
+    icon: AlertCircle,
+    classes:
+      'border-tone-danger-border bg-tone-danger-bg text-tone-danger-strong',
+  },
+  warning: {
+    icon: AlertTriangle,
+    classes:
+      'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong',
+  },
+  info: {
+    icon: Info,
+    classes:
+      'border-tone-info-border bg-tone-info-bg text-tone-info-strong',
+  },
+  success: {
+    icon: CheckCircle2,
+    classes:
+      'border-tone-success-border bg-tone-success-bg text-tone-success-strong',
+  },
 };
 
 export function InlineAlert({
@@ -47,7 +63,7 @@ export function InlineAlert({
           type="button"
           aria-label="Đóng thông báo"
           onClick={onDismiss}
-          className="-m-1 flex size-9 shrink-0 items-center justify-center rounded-lg hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
+          className="-m-1 flex size-9 shrink-0 items-center justify-center rounded-lg hover:bg-surface-hover/60 dark:hover:bg-surface-card/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
         >
           <X aria-hidden="true" className="size-4" />
         </button>

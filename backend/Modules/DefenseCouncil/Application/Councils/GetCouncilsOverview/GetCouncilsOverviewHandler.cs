@@ -163,11 +163,60 @@ public sealed class GetCouncilsOverviewHandler(
             ? await userInfoReader.GetUsersByIdsAsync(userIdsToFetch, ct)
             : new Dictionary<Guid, CouncilUserInfoContractDto>();
 
+        // 2b. Tiền kiểm tra điều kiện phê duyệt cho các hội đồng dự thảo (Draft)
+        var draftCouncils = councils.Where(c => c.Status == CouncilStatus.Draft).ToList();
+        var draftGroupIds = draftCouncils
+            .SelectMany(c => c.Assignments)
+            .Select(a => a.GroupId)
+            .Distinct()
+            .ToList();
+
+        var rejectedDraftGroupIds = draftGroupIds.Count > 0
+            ? await councilRepository.GetRejectedDefenseGroupIdsAsync(draftGroupIds, ct)
+            : new HashSet<Guid>();
+
+        var eligibleDraftGroupIds = draftGroupIds.Count > 0
+            ? await councilRepository.GetDefenseEligibleGroupIdsAsync(draftGroupIds, ct)
+            : new HashSet<Guid>();
+
         // 3. Xây dựng danh sách phẳng (Council x Assignment)
         var resultList = new List<CouncilOverviewItemDto>();
 
         foreach (var council in councils)
         {
+            var isDraft = council.Status == CouncilStatus.Draft;
+            var hasRoomConflict = false;
+            IReadOnlyList<string> conflictingMemberNames = [];
+
+            if (isDraft)
+            {
+                hasRoomConflict = await councilRepository.HasRoomScheduleConflictAsync(
+                    council.DefenseDate,
+                    council.TimeSlot,
+                    council.Room,
+                    council.Id,
+                    ct);
+
+                var councilMemberIds = council.Members.Select(m => m.UserId).Distinct().ToList();
+                if (councilMemberIds.Count > 0)
+                {
+                    var conflictingIds = await councilRepository.GetConflictingMemberUserIdsAsync(
+                        council.DefenseDate,
+                        council.TimeSlot,
+                        councilMemberIds,
+                        council.Id,
+                        ct);
+
+                    if (conflictingIds.Count > 0)
+                    {
+                        conflictingMemberNames = conflictingIds
+                            .Select(id => userDict.TryGetValue(id, out var u) ? u.FullName : id.ToString())
+                            .Distinct()
+                            .ToList();
+                    }
+                }
+            }
+
             var statusLabel = council.Status switch
             {
                 CouncilStatus.Draft => "Chờ phê duyệt",
@@ -232,7 +281,18 @@ public sealed class GetCouncilsOverviewHandler(
                     AssignmentId: null,
                     chairmanDto,
                     secretaryDto,
-                    membersDto));
+                    membersDto,
+                    IsSubmittedToAcademicAffairs: council.IsSubmittedToAcademicAffairs,
+                    SubmittedAt: council.SubmittedAt,
+                    SubmissionNotes: council.SubmissionNotes,
+                    DecisionNumber: council.DecisionNumber,
+                    SignedDate: council.SignedDate,
+                    DecisionFileUrl: council.DecisionFileUrl,
+                    ApprovedAt: council.ApprovedAt,
+                    HasRoomConflict: hasRoomConflict,
+                    ConflictingMemberNames: conflictingMemberNames,
+                    HasIneligibleGroups: false,
+                    HasReviewerRoleConflict: false));
             }
             else
             {
@@ -336,6 +396,15 @@ public sealed class GetCouncilsOverviewHandler(
                             Note: note);
                     }).ToList();
 
+                    var hasIneligibleGroup = isDraft
+                        && (rejectedDraftGroupIds.Contains(assignment.GroupId)
+                            || !eligibleDraftGroupIds.Contains(assignment.GroupId));
+
+                    var hasReviewerRoleConflict = isDraft
+                        && reviewerId != Guid.Empty
+                        && ((chairmanMember != null && chairmanMember.UserId == reviewerId)
+                            || (secretaryMember != null && secretaryMember.UserId == reviewerId));
+
                     resultList.Add(new CouncilOverviewItemDto(
                         council.Id,
                         council.BatchId,
@@ -357,7 +426,18 @@ public sealed class GetCouncilsOverviewHandler(
                         assignment.Id,
                         chairmanDto,
                         secretaryDto,
-                        membersDto));
+                        membersDto,
+                        IsSubmittedToAcademicAffairs: council.IsSubmittedToAcademicAffairs,
+                        SubmittedAt: council.SubmittedAt,
+                        SubmissionNotes: council.SubmissionNotes,
+                        DecisionNumber: council.DecisionNumber,
+                        SignedDate: council.SignedDate,
+                        DecisionFileUrl: council.DecisionFileUrl,
+                        ApprovedAt: council.ApprovedAt,
+                        HasRoomConflict: hasRoomConflict,
+                        ConflictingMemberNames: conflictingMemberNames,
+                        HasIneligibleGroups: hasIneligibleGroup,
+                        HasReviewerRoleConflict: hasReviewerRoleConflict));
                 }
             }
         }

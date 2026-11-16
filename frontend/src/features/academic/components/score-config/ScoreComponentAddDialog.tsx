@@ -147,7 +147,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
       onClose={handleClose}
       title="Thêm đầu điểm vào cấu hình"
       className="max-w-lg"
-      headerClassName="border-b border-slate-200/80 bg-white px-5 py-4 sm:px-6"
+      headerClassName="border-b border-line/80 bg-surface-card px-5 py-4 sm:px-6"
     >
       <form
         onSubmit={handleSubmit}
@@ -160,14 +160,14 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
         }}
       >
         <div className="p-5 sm:p-6 space-y-4">
-          <p className="text-sm leading-relaxed text-slate-600">
+          <p className="text-sm leading-relaxed text-ink-body">
             Thiết lập thành phần điểm và điều kiện áp dụng cho đợt đã chọn.
           </p>
           <FormErrorSummary errors={errors} submissionKey={submissionKey} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label htmlFor="score-component-code" className="font-semibold text-slate-700">
+              <label htmlFor="score-component-code" className="font-semibold text-ink-secondary">
                 Mã đầu điểm *
               </label>
               <Input
@@ -182,7 +182,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="score-component-weight" className="font-semibold text-slate-700">
+              <label htmlFor="score-component-weight" className="font-semibold text-ink-secondary">
                 {calculationMethod === 'Percentage' ? 'Tỷ lệ (%) *' : 'Hệ số *'}
               </label>
               <Input
@@ -201,7 +201,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="score-component-name" className="font-semibold text-slate-700">
+            <label htmlFor="score-component-name" className="font-semibold text-ink-secondary">
               Tên hiển thị *
             </label>
             <Input
@@ -216,7 +216,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
           </div>
 
           <div className="space-y-1">
-            <p className="font-semibold text-slate-700">Nguồn chấm điểm</p>
+            <p className="font-semibold text-ink-secondary">Nguồn chấm điểm</p>
             <Select
               aria-label="Nguồn chấm điểm"
               options={sourceOptions}
@@ -227,7 +227,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
           </div>
 
           <div className="space-y-1">
-            <p className="font-semibold text-slate-700">Điều kiện áp dụng</p>
+            <p className="font-semibold text-ink-secondary">Điều kiện áp dụng</p>
             <Select
               aria-label="Điều kiện áp dụng"
               options={applicabilityOptions}
@@ -238,7 +238,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="score-component-minimum" className="font-semibold text-slate-700">
+            <label htmlFor="score-component-minimum" className="font-semibold text-ink-secondary">
               Điểm sàn (nếu có)
             </label>
             <Input
@@ -255,8 +255,8 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
             />
           </div>
 
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 space-y-3">
-            <p className="font-semibold text-slate-800">Quy tắc áp dụng</p>
+          <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-4 space-y-3">
+            <p className="font-semibold text-ink-heading">Quy tắc áp dụng</p>
             <Checkbox
               id="isRequired"
               checked={isRequired}
@@ -273,7 +273,7 @@ export const ScoreComponentAddDialog: React.FC<ScoreComponentAddDialogProps> = (
           </div>
         </div>
 
-        <div className="sticky bottom-0 z-10 border-t border-slate-200/80 bg-white/95 backdrop-blur-md px-5 py-3.5 flex flex-wrap items-center justify-end gap-2.5 sm:px-6">
+        <div className="sticky bottom-0 z-10 border-t border-line/80 bg-surface-card/95 backdrop-blur-md px-5 py-3.5 flex flex-wrap items-center justify-end gap-2.5 sm:px-6">
           <Button type="button" variant="outline" onClick={handleClose} className="h-9 rounded-xl px-4 text-xs font-semibold">
             Hủy
           </Button>

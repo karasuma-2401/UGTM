@@ -42,10 +42,10 @@ export function StatisticsBar({
       className={cn(
         'relative isolate',
         isCard
-          ? 'grid gap-2 rounded-2xl border border-slate-200/80 bg-slate-50/50 p-2'
-          : 'grid auto-cols-fr grid-flow-col gap-1.5 rounded-xl border border-slate-200/80 bg-slate-100/60 p-1.5',
+          ? 'grid gap-2 rounded-2xl border border-line/80 bg-surface-subtle/50 p-2'
+          : 'grid auto-cols-fr grid-flow-col gap-1.5 rounded-xl border border-line/80 bg-surface-subtle/80 p-1.5',
         className,
-        compact && 'flex flex-wrap border-0 bg-transparent p-0 gap-2',
+        compact && 'flex flex-wrap border-0 bg-transparent p-0 gap-2 dark:bg-transparent',
       )}
     >
       <SelectionIndicator
@@ -66,17 +66,17 @@ export function StatisticsBar({
             data-selection-item
             data-active={isActive ? 'true' : undefined}
             className={cn(
-              'group relative flex min-w-0 transition-colors duration-200 ease-out',
+              'group relative flex min-w-0 transition-colors duration-200 ease-out border',
               isCard
-                ? 'flex-col justify-between rounded-xl p-3 border border-slate-200/70'
-                : 'items-center gap-2.5 rounded-lg px-3 py-2',
+                ? 'flex-col justify-between rounded-xl p-3 border-line/70'
+                : 'items-center gap-2.5 rounded-lg px-3 py-2 border-transparent',
               compact && 'flex-none',
               loading
-                ? 'bg-white/70'
+                ? 'bg-surface-card/70'
                 : isActive
-                  ? cn('bg-transparent', isCard && 'border-transparent')
+                  ? 'bg-transparent border-transparent'
                   : isCard
-                    ? cn('bg-white shadow-2xs hover:shadow-xs', onClick && colors.hoverCardBorder)
+                    ? cn('bg-surface-card shadow-2xs hover:shadow-xs', onClick && colors.hoverCardBorder)
                     : cn(colors.background, onClick && colors.hover),
             )}
           >
@@ -122,7 +122,7 @@ export function StatisticsBar({
                 <dt
                   title={label}
                   className={cn(
-                    'relative z-10 pointer-events-none text-[11px] font-semibold leading-tight line-clamp-2 text-slate-600',
+                    'relative z-10 pointer-events-none text-[11px] font-semibold leading-tight line-clamp-2 text-ink-body',
                   )}
                 >
                   {loading ? (

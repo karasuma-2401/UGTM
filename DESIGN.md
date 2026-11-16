@@ -7,10 +7,15 @@ Tệp này ghi nhận nền tảng giao diện từ source hiện tại, không 
 - React 19, TypeScript, Vite 8 và Tailwind CSS 3.
 - Component dùng chung: `frontend/src/components/ui/`.
 - Layout/điều hướng: `frontend/src/shared/layout/`.
-- Token CSS: `frontend/src/styles/theme.css`; font chính đang khai báo là Inter với system fallback.
-- Token HSL của Tailwind/shadcn nằm ở `frontend/src/index.css`, ánh xạ tại `frontend/tailwind.config.js`.
-- Màu primary hiện tại là xanh `#2563eb`. Ant Design vẫn được sử dụng ở một số nơi; kiểm tra component đang dùng trước khi thay đổi.
-- Phong cách chủ đạo: **Modern Clean SaaS** — giữ bố cục tối giản, thoáng đãng kết hợp lớp nền phân tầng tinh tế (`#f8fafc` canvas + thẻ `bg-white` viền `border-slate-200/80` bóng đổ nhẹ), thanh tiêu đề kính mờ (`bg-white/80 backdrop-blur-md`), điều hướng nhanh `Ctrl+K` và bảng tổng quan dạng Bento Grid dùng dữ liệu thật từ API.
+- Token CSS: `frontend/src/styles/theme.css` (auth & biến nền chung); font chính đang khai báo là Inter với system fallback.
+- Token ngữ nghĩa & HSL của Tailwind/shadcn nằm tập trung ở `frontend/src/index.css` (`:root` cho Light và `.dark` cho Dark), ánh xạ tại `frontend/tailwind.config.js` thành các namespace `surface-*`, `ink-*`, `line-*`, `brand-*` và `tone-*` (để đổi bảng màu trung tâm không cần lặp lại hàng loạt lớp `dark:` trên từng trang/component).
+- **Bảng màu & Chế độ Sáng / Tối (`ugtm:theme`)**:
+  - Hỗ trợ 3 chế độ `'light' | 'dark' | 'system'` (mặc định `'system'`, lưu `localStorage['ugtm:theme']`, kích hoạt sớm trước React qua inline script trong `frontend/index.html` để tránh FOUC, đồng bộ `.dark` / `data-theme` / `colorScheme` trên `<html>` qua `ThemeProvider` tại `frontend/src/shared/theme/ThemeContext.tsx` và đồng bộ `ConfigProvider` của Ant Design trong `frontend/src/App.tsx`).
+  - **Light Mode**: Giữ nguyên bảng màu sáng chuẩn (`--surface-canvas` `#f8fafc`, `--surface-card` `#ffffff`, `--surface-subtle` `#f8fafc`, `--line-default` `#e2e8f0`, `--brand-ink` `#2054a5`, primary `#2563eb`).
+  - **Dark Mode (Cool Slate Layered + Fluent 2 elevation)**: Phân tầng độ sâu theo sắc độ tối lạnh (`--surface-canvas` `#090d16`, `--surface-sidebar` `#0c1220`, `--surface-card` `#0f172a`, `--surface-elevated` `#162033`, `--surface-subtle` `#0b1120`, `--surface-muted` `#1e293b`, `--line-subtle` `#1e293b`, `--line-input` `#334155`, `--ink-primary` `#f1f5f9`, `--ink-muted` `#94a3b8`, `--ink-subtle` `#8c9ab0`, `--brand-ink` `#60a5fa`, `--brand-solid` `#2563eb`).
+  - **Ngoại lệ tài liệu in & PDF**: `CouncilMinutePrintDocument.tsx`, khung xem trước giấy PDF và `@media print` luôn giữ giấy trắng / chữ đen bất kể chế độ giao diện.
+- Màu primary hiện tại là xanh `#2563eb` (tối: `#3b82f6` cho Ant Design / `#60a5fa` `--brand-ink`). Ant Design vẫn được sử dụng ở một số nơi; kiểm tra component đang dùng trước khi thay đổi.
+- Phong cách chủ đạo: **Modern Clean SaaS** — giữ bố cục tối giản, thoáng đãng kết hợp lớp nền phân tầng tinh tế (`bg-surface-canvas` + thẻ `bg-surface-card` viền `border-line/80` bóng đổ nhẹ), thanh tiêu đề kính mờ (`bg-surface-card/85 backdrop-blur-md`), nút chuyển giao diện `ThemeToggle` cạnh điều hướng nhanh `Ctrl+K` (đồng thời có lựa chọn giao diện bên trong `Ctrl+K` và trên `AuthLayout`), cùng bảng tổng quan dạng Bento Grid dùng dữ liệu thật từ API.
 - Không sử dụng chữ chuyển sắc (`gradient-text`) cho tiêu đề hoặc số liệu; nhấn mạnh bằng độ đậm (`font-semibold`/`font-bold`) và tỷ lệ kích thước chữ.
 
 ## Cách mở rộng giao diện
@@ -132,7 +137,7 @@ Cập nhật 13/11/2026 theo lựa chọn sản phẩm: giữ luồng đăng ký
 
 Khi thiết kế màn hình mới hoặc nâng cấp giao diện hiện có trong UGTM, áp dụng thống nhất các nguyên tắc sau:
 
-- **Ngôn ngữ thị giác & phân cấp**: Kết hợp **Modern Clean SaaS** và **Fluent Design** — nền canvas `#f8fafc`, thẻ trắng `rounded-2xl border border-slate-200/80 shadow-xs`, hạn chế thẻ lồng thẻ rườm rà và không lặp icon trang trí thừa.
+- **Ngôn ngữ thị giác & phân cấp**: Kết hợp **Modern Clean SaaS** và **Fluent Design** — dùng semantic color tokens (`bg-surface-canvas`, thẻ `bg-surface-card rounded-2xl border border-line/80 shadow-xs`, chữ `text-ink-*`, trạng thái `tone-*`), hạn chế thẻ lồng thẻ rườm rà và không lặp icon trang trí thừa.
 - **Dùng Gradient để nhấn đúng chỗ**: Giữ gradient làm điểm nhấn tinh tế (thanh accent trên `PageHeader`, vạch chọn tab, dải nhấn hoặc chip tóm tắt công thức ở khu vực xem trước/tổng hợp); không dùng `gradient-text` cho chữ tiêu đề/số liệu và không đổ nền gradient lên từng hàng dữ liệu.
 - **Bảng dữ liệu thống nhất (`DataTable`)**:
   - Sử dụng `DataTable` (`frontend/src/components/ui/data-table.tsx`), cột sắp xếp qua `TableHead sortable` (sort phía server khi có phân trang), hiệu ứng chọn dòng `SelectionIndicator`, `TableFloatingBar` nổi ở đáy giữa màn hình khi chọn bản ghi, và `TablePagination` chuẩn (`10 / 20 / 50`).

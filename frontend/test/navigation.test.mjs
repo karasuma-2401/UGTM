@@ -84,6 +84,10 @@ function renderStudentLayout(pathname) {
       }),
     },
     '@/shared/auth/identityAccess': { getIdentityAccess: () => ({ canAccess: false }) },
+    '@/shared/theme': {
+      ThemeToggle: () => null,
+      useTheme: () => ({ theme: 'system', resolvedTheme: 'light', setTheme: () => {}, toggleTheme: () => {} }),
+    },
     './navigationConfig': { navigationSections },
     './CurrentAcademicBatch': { CurrentAcademicBatch: () => null },
     './SidebarNavigation': { SidebarNavigation },

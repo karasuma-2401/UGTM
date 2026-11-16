@@ -18,12 +18,12 @@ export interface AvatarGroupProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const colorVariants: Record<string, string> = {
-  blue: 'bg-blue-100 text-blue-700 ring-white border-blue-200/50',
-  indigo: 'bg-indigo-100 text-indigo-700 ring-white border-indigo-200/50',
-  emerald: 'bg-emerald-100 text-emerald-700 ring-white border-emerald-200/50',
-  amber: 'bg-amber-100 text-amber-800 ring-white border-amber-200/50',
-  rose: 'bg-rose-100 text-rose-700 ring-white border-rose-200/50',
-  violet: 'bg-purple-100 text-purple-700 ring-white border-purple-200/50',
+  blue: 'bg-tone-info-bg text-tone-info-text ring-surface-card border-tone-info-border',
+  indigo: 'bg-indigo-100 text-indigo-700 ring-surface-card border-indigo-200/50 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-800/60',
+  emerald: 'bg-tone-success-bg text-tone-success-text ring-surface-card border-tone-success-border',
+  amber: 'bg-tone-warning-bg text-tone-warning-strong ring-surface-card border-tone-warning-border',
+  rose: 'bg-tone-danger-bg text-tone-danger-text ring-surface-card border-tone-danger-border',
+  violet: 'bg-tone-violet-bg text-tone-violet-text ring-surface-card border-tone-violet-border',
 };
 
 const tones: Array<keyof typeof colorVariants> = [
@@ -91,7 +91,7 @@ export function AvatarGroup({
             title={itemTitle}
             aria-label={itemTitle}
             className={cn(
-              'relative inline-flex shrink-0 items-center justify-center rounded-full font-bold shadow-2xs transition-transform hover:z-10 hover:scale-110 cursor-default select-none ring-white',
+              'relative inline-flex shrink-0 items-center justify-center rounded-full font-bold shadow-2xs transition-transform hover:z-10 hover:scale-110 cursor-default select-none ring-surface-card',
               sizeClasses[size],
               toneClass,
             )}
@@ -114,7 +114,7 @@ export function AvatarGroup({
           title={`Còn lại:\n${remainingTitle}`}
           aria-label={`Còn ${remainingCount} thành viên khác`}
           className={cn(
-            'relative inline-flex shrink-0 items-center justify-center rounded-full bg-slate-100 font-semibold text-slate-600 ring-white shadow-2xs transition-transform hover:z-10 hover:scale-110 cursor-default select-none border border-slate-200/60',
+            'relative inline-flex shrink-0 items-center justify-center rounded-full bg-surface-muted font-semibold text-ink-body ring-surface-card shadow-2xs transition-transform hover:z-10 hover:scale-110 cursor-default select-none border border-line-input/60',
             sizeClasses[size],
           )}
         >

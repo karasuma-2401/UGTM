@@ -229,7 +229,7 @@ export function TopicReviewPage() {
           disabled={topicsQuery.isFetching || busy}
           leftIcon={<RefreshCw className={topicsQuery.isFetching ? 'animate-spin' : undefined} />}
           onClick={() => void refreshTopics()}
-          className="h-9 rounded-xl border-slate-200 bg-white shadow-2xs hover:border-slate-300"
+          className="h-9 rounded-xl border-line-input bg-surface-card shadow-2xs hover:border-line-strong"
         >
           Làm mới
         </Button>
@@ -244,7 +244,7 @@ export function TopicReviewPage() {
       {batchesQuery.isError && (
         <div
           role="alert"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-tone-danger-border bg-tone-danger-bg px-4 py-3 text-sm text-tone-danger-text"
         >
           <p>Không thể tải danh sách đợt KLTN.</p>
           <Button
@@ -259,15 +259,14 @@ export function TopicReviewPage() {
       )}
 
       {advisorsQuery.isError && (
-        <p role="status" className="text-xs text-slate-500">
+        <p role="status" className="text-xs text-ink-muted">
           Chưa tải được tên giảng viên. Danh sách tạm hiển thị thông tin rút gọn.
         </p>
       )}
 
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]">
+      <Card className="min-w-0 overflow-hidden rounded-2xl border-line/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]">
         <ListCardHeader
           title="Danh sách đề tài"
-          icon={<CheckCheck />}
           description={scopeDescription}
           className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
         >
@@ -328,7 +327,7 @@ export function TopicReviewPage() {
                 </p>
               )}
               {statisticsQuery.isError && (
-                <div role="alert" className="mt-2 flex items-center gap-2 text-xs text-rose-700">
+                <div role="alert" className="mt-2 flex items-center gap-2 text-xs text-tone-danger-text">
                   <span>Không thể tải thống kê.</span>
                   <Button
                     variant="outline"
@@ -344,7 +343,7 @@ export function TopicReviewPage() {
           </section>
         </ListCardHeader>
 
-        <div className="space-y-3 border-b border-slate-100 bg-slate-50/45 px-5 py-3.5">
+        <div className="space-y-3 border-b border-line-subtle bg-surface-subtle/45 px-5 py-3.5">
           <form
             onSubmit={handleApply}
             className="flex flex-col gap-2.5 lg:flex-row lg:items-center"
@@ -354,7 +353,7 @@ export function TopicReviewPage() {
                 aria-label="Tìm đề tài theo tên tiếng Việt hoặc tiếng Anh"
                 leftIcon={<Search className="size-4" />}
                 placeholder="Tìm theo tên đề tài tiếng Việt hoặc tiếng Anh..."
-                className="h-9 rounded-lg border-slate-200 bg-white pr-8 shadow-2xs"
+                className="h-9 rounded-lg border-line-input bg-surface-card pr-8 shadow-2xs"
                 value={draftFilters.keyword}
                 onChange={(event) =>
                   setDraftFilters({ ...draftFilters, keyword: event.target.value })
@@ -365,7 +364,7 @@ export function TopicReviewPage() {
                   type="button"
                   aria-label="Xóa từ khóa tìm kiếm"
                   onClick={() => applyFilters({ ...filters, keyword: '' })}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-ink-subtle transition-colors hover:bg-surface-muted hover:text-ink-body"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -375,7 +374,7 @@ export function TopicReviewPage() {
             <div className="w-full sm:w-64">
               <Select<string>
                 aria-label="Lọc theo đợt KLTN"
-                triggerClassName="h-9 rounded-lg border-slate-200 bg-white shadow-2xs"
+                triggerClassName="h-9 rounded-lg border-line-input bg-surface-card shadow-2xs"
                 value={draftFilters.batchId}
                 disabled={!batches.length}
                 options={[
@@ -403,7 +402,7 @@ export function TopicReviewPage() {
                   size="sm"
                   leftIcon={<FunnelX className="size-3.5" />}
                   onClick={() => applyFilters({ ...EMPTY_FILTERS })}
-                  className="h-9 rounded-lg border-slate-200 bg-white px-3.5"
+                  className="h-9 rounded-lg border-line-input bg-surface-card px-3.5"
                 >
                   Bỏ lọc
                 </Button>
@@ -428,8 +427,8 @@ export function TopicReviewPage() {
                   className={cn(
                     'inline-flex h-7 items-center rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50',
                     active
-                      ? 'border-blue-200 bg-blue-50 text-primary shadow-2xs'
-                      : 'border-slate-200/90 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900',
+                      ? 'border-tone-info-border bg-tone-info-bg text-primary shadow-2xs'
+                      : 'border-line-input/90 bg-surface-card text-ink-body hover:border-line-strong hover:bg-surface-hover hover:text-ink-primary',
                   )}
                 >
                   {pill.label}
@@ -440,7 +439,7 @@ export function TopicReviewPage() {
         </div>
 
         {filters.batchId && (
-          <div className="border-b border-slate-100 bg-white px-5 py-3">
+          <div className="border-b border-line-subtle bg-surface-card px-5 py-3">
             <TopicProposalSchedule batchId={filters.batchId} />
           </div>
         )}
@@ -466,7 +465,7 @@ export function TopicReviewPage() {
               ]}
             />
           ) : topicsQuery.isError ? (
-            <div role="alert" className="space-y-3 p-10 text-center text-sm text-rose-700">
+            <div role="alert" className="space-y-3 p-10 text-center text-sm text-tone-danger-text">
               <p>{getTopicErrorMessage(topicsQuery.error)}</p>
               <Button type="button" variant="outline" onClick={() => void topicsQuery.refetch()}>
                 Thử lại
@@ -495,12 +494,12 @@ export function TopicReviewPage() {
             />
           ) : (
             <div className="flex flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-              <span className="flex size-12 items-center justify-center rounded-2xl border border-slate-200/80 bg-slate-50 text-slate-400">
+              <span className="flex size-12 items-center justify-center rounded-2xl border border-line/80 bg-surface-muted text-ink-subtle">
                 <FileText className="size-6" aria-hidden="true" />
               </span>
               <div className="space-y-1">
-                <p className="text-sm font-medium text-slate-700">Không có đề tài phù hợp.</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-sm font-medium text-ink-secondary">Không có đề tài phù hợp.</p>
+                <p className="text-xs text-ink-muted">
                   Thử chuyển sang trạng thái khác hoặc xóa bộ lọc đang áp dụng.
                 </p>
               </div>
@@ -510,7 +509,7 @@ export function TopicReviewPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => applyFilters({ ...EMPTY_FILTERS })}
-                  className="mt-1 rounded-xl border-slate-200 bg-white"
+                  className="mt-1 rounded-xl border-line-input bg-surface-card"
                 >
                   Bỏ lọc
                 </Button>
@@ -573,7 +572,7 @@ export function TopicReviewPage() {
           }}
         >
           {selectedScopeLabel && (
-            <span className="hidden rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 sm:inline-block">
+            <span className="hidden rounded-lg bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-ink-body sm:inline-block">
               {selectedScopeLabel}
             </span>
           )}
@@ -608,13 +607,13 @@ export function TopicReviewPage() {
           <div className="space-y-4 p-6">
             {selected.length > 0 ? (
               <>
-                <p className="text-sm text-slate-600">
-                  Công bố <strong className="text-slate-900">{selected.length}</strong> đề tài đã
+                <p className="text-sm text-ink-body">
+                  Công bố <strong className="text-ink-primary">{selected.length}</strong> đề tài đã
                   chọn{' '}
                   {selectedByBatch.length === 1 ? (
                     <>
                       thuộc đợt{' '}
-                      <strong className="text-slate-900">
+                      <strong className="text-ink-primary">
                         {selectedBatchName ||
                           (batchesLoading ? (
                             <Skeleton className="inline-block h-4 w-28 align-middle" />
@@ -625,16 +624,16 @@ export function TopicReviewPage() {
                     </>
                   ) : (
                     <>
-                      thuộc <strong className="text-slate-900">{selectedByBatch.length}</strong> đợt{' '}
+                      thuộc <strong className="text-ink-primary">{selectedByBatch.length}</strong> đợt{' '}
                     </>
                   )}
                   để sinh viên tra cứu.
                 </p>
-                <div className="max-h-60 space-y-3 overflow-auto rounded-xl border border-slate-200/70 bg-slate-50 p-4 text-sm text-slate-700">
+                <div className="max-h-60 space-y-3 overflow-auto rounded-xl border border-line/70 bg-surface-subtle p-4 text-sm text-ink-secondary">
                   {selectedByBatch.map((group) => (
                     <div key={group.batchId} className="space-y-1.5">
                       {selectedByBatch.length > 1 && (
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
                           {group.batchName || group.batchId} ({group.items.length})
                         </p>
                       )}
@@ -648,19 +647,19 @@ export function TopicReviewPage() {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-muted">
                   Chỉ công bố các đề tài trong danh sách này. Lựa chọn được xóa khi đổi bộ lọc hoặc
                   trang.
                 </p>
               </>
             ) : (
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-ink-body">
                 Danh sách lựa chọn đã được làm mới. Đóng cửa sổ và chọn lại đề tài trước khi công
                 bố.
               </p>
             )}
             {actionMutation.error && (
-              <p role="alert" className="text-sm text-rose-700">
+              <p role="alert" className="text-sm text-tone-danger-text">
                 {getTopicErrorMessage(actionMutation.error)}
               </p>
             )}

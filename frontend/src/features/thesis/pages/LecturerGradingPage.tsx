@@ -555,7 +555,7 @@ export function LecturerGradingPage() {
       widthClassName: 'w-[6%]',
       headerClassName: 'whitespace-nowrap',
       cell: (_item, index) => (
-        <span className="tabular-nums text-slate-500">
+        <span className="tabular-nums text-ink-muted">
           {(currentPage - 1) * pageSize + index + 1}
         </span>
       ),
@@ -567,8 +567,8 @@ export function LecturerGradingPage() {
       widthClassName: 'w-[31%]',
       cell: (item) => (
         <span className="block min-w-0">
-          <span className="block font-semibold leading-relaxed text-slate-900">{item.title}</span>
-          <span className="mt-1 block text-xs text-slate-500">{item.batchName}</span>
+          <span className="block font-semibold leading-relaxed text-ink-primary">{item.title}</span>
+          <span className="mt-1 block text-xs text-ink-muted">{item.batchName}</span>
         </span>
       ),
     },
@@ -611,7 +611,7 @@ export function LecturerGradingPage() {
           variant="outline"
           size="sm"
           onClick={() => openGradingSheet(item.id)}
-          className="gap-1.5 rounded-md border-slate-200 bg-white text-slate-700 shadow-2xs hover:border-blue-300 hover:bg-blue-50/70 hover:text-blue-700"
+          className="gap-1.5 rounded-md border-line bg-surface-card text-ink-secondary shadow-2xs hover:border-tone-info-border hover:bg-tone-info-bg hover:text-tone-info-text"
         >
           <SquarePen className="size-3.5" aria-hidden="true" />
           {item.isLocked ? 'Xem phiếu' : 'Chấm điểm'}
@@ -909,7 +909,7 @@ export function LecturerGradingPage() {
             isLoading={isLoadingPdf}
             loadingText="Đang mở..."
             onClick={() => void handlePreviewReportPdf()}
-            className="gap-2 rounded-lg border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+            className="gap-2 rounded-lg border-tone-info-border bg-surface-card text-tone-info-text hover:bg-tone-info-bg"
           >
             <Eye className="size-4" aria-hidden="true" />
             Xem báo cáo (PDF)
@@ -919,7 +919,7 @@ export function LecturerGradingPage() {
 
       {!activeGroupId && (
         <section
-          className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+          className="overflow-hidden rounded-2xl border border-line/80 bg-surface-card shadow-sm"
           aria-label="Chọn nhóm chấm điểm"
         >
           <ListCardHeader
@@ -968,7 +968,7 @@ export function LecturerGradingPage() {
               ]}
             />
           </ListCardHeader>
-          <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/45 px-5 py-3.5">
+          <div className="flex flex-wrap items-center gap-3 border-b border-line-subtle bg-surface-subtle/45 px-5 py-3.5">
             <div className="relative min-w-[220px] flex-1">
               <Input
                 id="grading-group-search"
@@ -990,7 +990,7 @@ export function LecturerGradingPage() {
                     setSearch('');
                     setPageNumber(1);
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 hover:bg-slate-100"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-ink-muted hover:bg-surface-muted"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -1073,7 +1073,7 @@ export function LecturerGradingPage() {
             renderMobileItem={(item) => (
               <div className="space-y-3">
                 <div>
-                  <p className="font-semibold text-slate-900">{item.title}</p>
+                  <p className="font-semibold text-ink-primary">{item.title}</p>
                   <div className="mt-2">
                     <GradingStudentsCell
                       students={item.students}
@@ -1117,11 +1117,11 @@ export function LecturerGradingPage() {
         confirmText="Rời khỏi phiếu"
         cancelText="Ở lại"
         description={
-          <div className="space-y-2 text-sm text-slate-600">
+          <div className="space-y-2 text-sm text-ink-body">
             <p>
               Bạn đang có điểm hoặc nhận xét mới chỉnh sửa chưa lưu nháp lên máy chủ.
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-muted">
               Bạn có muốn rời khỏi phiếu chấm này ngay bây giờ không?
             </p>
           </div>
@@ -1156,25 +1156,25 @@ export function LecturerGradingPage() {
                 {role === 'advisor' ? 'lưu điểm chính thức' : 'chốt phiếu phản biện'} cho đề tài{' '}
                 <strong>{group.title}</strong>:
               </p>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2">
+              <div className="rounded-xl border border-line bg-surface-subtle p-3.5 space-y-2">
                 {progress.map((student) => (
                   <div key={student.id} className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-slate-800">
-                      {student.name} <span className="text-slate-500">({student.code})</span>
+                    <span className="font-medium text-ink-heading">
+                      {student.name} <span className="text-ink-muted">({student.code})</span>
                     </span>
-                    <span className="font-bold tabular-nums text-blue-700">
+                    <span className="font-bold tabular-nums text-tone-info-text">
                       {student.total.toFixed(2)} / 10
                     </span>
                   </div>
                 ))}
                 {role === 'reviewer' && (
-                  <div className="border-t border-slate-200 pt-2 mt-2 flex items-center justify-between text-xs">
-                    <span className="text-slate-500">Đề nghị bảo vệ:</span>
+                  <div className="border-t border-line pt-2 mt-2 flex items-center justify-between text-xs">
+                    <span className="text-ink-muted">Đề nghị bảo vệ:</span>
                     <span
                       className={
                         reviewerDecision === 'Approved'
-                          ? 'font-semibold text-emerald-700'
-                          : 'font-semibold text-red-700'
+                          ? 'font-semibold text-tone-success-text'
+                          : 'font-semibold text-tone-danger-text'
                       }
                     >
                       {reviewerDecision === 'Approved'
@@ -1185,7 +1185,7 @@ export function LecturerGradingPage() {
                 )}
               </div>
               {role === 'reviewer' && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-muted">
                   Lưu ý: Sau khi chốt phiếu phản biện, phiếu chấm sẽ được khóa để chuyển sang xét điều
                   kiện ra Hội đồng.
                 </p>
@@ -1218,14 +1218,14 @@ export function LecturerGradingPage() {
                   ? 'Sau khi xác nhận đồng ý chuyển phản biện, phiếu chấm của GVHD sẽ được khóa và nhóm chuyển sang trạng thái chờ phân công Giảng viên phản biện.'
                   : 'Nhóm sinh viên sẽ nhận được lý do từ chối và cần nộp lại phiên bản báo cáo cuối kỳ mới.'}
               </p>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1.5 text-sm">
-                <p className="font-semibold text-slate-900">{group.title}</p>
+              <div className="rounded-xl border border-line bg-surface-subtle p-3.5 space-y-1.5 text-sm">
+                <p className="font-semibold text-ink-primary">{group.title}</p>
                 {progress.map((student) => (
                   <div key={student.id} className="flex items-center justify-between text-xs">
-                    <span className="text-slate-600">
+                    <span className="text-ink-body">
                       {student.name} ({student.code})
                     </span>
-                    <span className="font-semibold tabular-nums text-slate-900">
+                    <span className="font-semibold tabular-nums text-ink-primary">
                       {student.total.toFixed(2)} / 10
                     </span>
                   </div>
@@ -1238,20 +1238,20 @@ export function LecturerGradingPage() {
 
       {activeGroupId && group && (
         <>
-          <section className="rounded-2xl border border-blue-200 bg-blue-50/60 px-5 py-5 sm:px-6">
+          <section className="rounded-2xl border border-tone-info-border bg-tone-info-bg px-5 py-5 sm:px-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-medium text-slate-600">
+                <p className="text-xs font-medium text-ink-body">
                   {group.batchName} · Báo cáo cuối kỳ
                 </p>
-                <h2 className="mt-2 text-lg font-semibold text-slate-900">{group.title}</h2>
+                <h2 className="mt-2 text-lg font-semibold text-ink-primary">{group.title}</h2>
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
                   {students.map((student, idx) => (
-                    <span key={student.id} className="text-sm text-slate-700">
-                      <span className="mr-1.5 text-xs font-semibold text-slate-500">
+                    <span key={student.id} className="text-sm text-ink-secondary">
+                      <span className="mr-1.5 text-xs font-semibold text-ink-muted">
                         SV{idx + 1}:
                       </span>
-                      {student.name} <span className="text-slate-500">· {student.code}</span>
+                      {student.name} <span className="text-ink-muted">· {student.code}</span>
                     </span>
                   ))}
                 </div>
@@ -1259,12 +1259,12 @@ export function LecturerGradingPage() {
               <span
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${
                   isLocked
-                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                    ? 'bg-tone-success-bg text-tone-success-text ring-emerald-200'
                     : group.evaluationStatus === 'Submitted'
-                      ? 'bg-blue-50 text-blue-700 ring-blue-200'
+                      ? 'bg-tone-info-bg text-tone-info-text ring-blue-200'
                       : group.evaluationStatus === 'Draft'
-                        ? 'bg-amber-50 text-amber-700 ring-amber-200'
-                        : 'bg-white text-slate-600 ring-slate-200'
+                        ? 'bg-tone-warning-bg text-tone-warning-text ring-amber-200'
+                        : 'bg-surface-card text-ink-body ring-slate-200'
                 }`}
               >
                 {isLocked && <Lock className="size-3.5" aria-hidden="true" />}
@@ -1290,15 +1290,15 @@ export function LecturerGradingPage() {
               isLocked={isLocked}
               onUpdateScore={updateScore}
             >
-              <div className="border-t border-slate-100 p-5 sm:p-6">
+              <div className="border-t border-line-subtle p-5 sm:p-6">
                 <label
                   id="grading-comment-label"
                   htmlFor="grading-comment"
-                  className="text-sm font-semibold text-slate-900"
+                  className="text-sm font-semibold text-ink-primary"
                 >
                   Nhận xét chung
                 </label>
-                <p className="mt-1 mb-3 text-sm text-slate-500">
+                <p className="mt-1 mb-3 text-sm text-ink-muted">
                   Ghi lại nhận xét chuyên môn cho phiếu{' '}
                   {role === 'advisor' ? 'hướng dẫn' : 'phản biện'}.
                 </p>
@@ -1319,12 +1319,12 @@ export function LecturerGradingPage() {
               </div>
 
               {role === 'advisor' ? (
-                <div className="border-t border-slate-200 bg-slate-50/60 p-5 sm:p-6 space-y-3">
+                <div className="border-t border-line bg-surface-subtle/60 p-5 sm:p-6 space-y-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">
+                    <h3 className="text-sm font-semibold text-ink-primary">
                       Quyết định chuyển báo cáo sang giai đoạn Phản biện
                     </h3>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-ink-muted">
                       Sau khi chấm điểm hướng dẫn, GVHD xác nhận cho phép nhóm chuyển sang phân công
                       Giảng viên phản biện hoặc yêu cầu chỉnh sửa lại báo cáo.
                     </p>
@@ -1338,20 +1338,20 @@ export function LecturerGradingPage() {
                       }
                       className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition ${
                         advisorDecision === 'Approve'
-                          ? 'border-blue-600 bg-blue-50/70 ring-2 ring-blue-100'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-blue-600 bg-tone-info-bg ring-2 ring-blue-100'
+                          : 'border-line bg-surface-card hover:border-line-strong'
                       } disabled:opacity-60`}
                     >
                       <ShieldCheck
                         className={`mt-0.5 size-4 shrink-0 ${
-                          advisorDecision === 'Approve' ? 'text-blue-600' : 'text-slate-400'
+                          advisorDecision === 'Approve' ? 'text-tone-info-icon' : 'text-ink-subtle'
                         }`}
                       />
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-ink-primary">
                           Đồng ý chuyển phản biện
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        <p className="mt-0.5 text-xs text-ink-muted">
                           Khóa phiếu chấm GVHD và chuyển nhóm sang chờ phân công GVPB.
                         </p>
                       </div>
@@ -1365,20 +1365,20 @@ export function LecturerGradingPage() {
                       }
                       className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition ${
                         advisorDecision === 'Reject'
-                          ? 'border-amber-600 bg-amber-50/70 ring-2 ring-amber-100'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-amber-600 bg-tone-warning-bg ring-2 ring-amber-100'
+                          : 'border-line bg-surface-card hover:border-line-strong'
                       } disabled:opacity-60`}
                     >
                       <XCircle
                         className={`mt-0.5 size-4 shrink-0 ${
-                          advisorDecision === 'Reject' ? 'text-amber-600' : 'text-slate-400'
+                          advisorDecision === 'Reject' ? 'text-tone-warning-icon' : 'text-ink-subtle'
                         }`}
                       />
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-ink-primary">
                           Chưa đồng ý · Yêu cầu sửa
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        <p className="mt-0.5 text-xs text-ink-muted">
                           Yêu cầu sinh viên chỉnh sửa và nộp lại báo cáo cuối kỳ.
                         </p>
                       </div>
@@ -1389,9 +1389,9 @@ export function LecturerGradingPage() {
                     <div className="pt-1">
                       <label
                         htmlFor="advisor-rejection-reason"
-                        className="block text-xs font-semibold text-slate-700"
+                        className="block text-xs font-semibold text-ink-secondary"
                       >
-                        Lý do yêu cầu chỉnh sửa <span className="text-red-600">*</span>
+                        Lý do yêu cầu chỉnh sửa <span className="text-tone-danger-icon">*</span>
                       </label>
                       <textarea
                         id="advisor-rejection-reason"
@@ -1405,18 +1405,18 @@ export function LecturerGradingPage() {
                         }
                         rows={2}
                         placeholder="Nhập nội dung cần nhóm sinh viên bổ sung hoặc hoàn thiện..."
-                        className="mt-1.5 w-full rounded-lg border border-slate-300 bg-white p-2.5 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                        className="mt-1.5 w-full rounded-lg border border-line-strong bg-surface-card p-2.5 text-sm text-ink-primary outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="border-t border-slate-200 bg-slate-50/60 p-5 sm:p-6 space-y-3">
+                <div className="border-t border-line bg-surface-subtle/60 p-5 sm:p-6 space-y-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">
+                    <h3 className="text-sm font-semibold text-ink-primary">
                       Kết luận của Giảng viên phản biện
                     </h3>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-ink-muted">
                       Đề nghị cho phép hoặc không cho phép nhóm sinh viên bảo vệ trước Hội đồng
                       (theo quy chế ĐHQG-HCM / UIT, mỗi sinh viên cần đạt điểm phản biện từ 5.0 trở
                       lên để đủ điều kiện ra Hội đồng).
@@ -1434,20 +1434,20 @@ export function LecturerGradingPage() {
                       }
                       className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition ${
                         reviewerDecision === 'Approved'
-                          ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-100'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-emerald-600 bg-tone-success-bg ring-2 ring-emerald-100'
+                          : 'border-line bg-surface-card hover:border-line-strong'
                       } disabled:opacity-60`}
                     >
                       <CheckCircle2
                         className={`mt-0.5 size-4 shrink-0 ${
-                          reviewerDecision === 'Approved' ? 'text-emerald-600' : 'text-slate-400'
+                          reviewerDecision === 'Approved' ? 'text-tone-success-icon' : 'text-ink-subtle'
                         }`}
                       />
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-ink-primary">
                           Đề nghị cho bảo vệ (Approved)
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        <p className="mt-0.5 text-xs text-ink-muted">
                           Báo cáo đạt yêu cầu chuyên môn để đưa ra Hội đồng bảo vệ KLTN.
                         </p>
                       </div>
@@ -1464,20 +1464,20 @@ export function LecturerGradingPage() {
                       }
                       className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition ${
                         reviewerDecision === 'Rejected'
-                          ? 'border-red-600 bg-red-50/70 ring-2 ring-red-100'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-red-600 bg-tone-danger-bg ring-2 ring-red-100'
+                          : 'border-line bg-surface-card hover:border-line-strong'
                       } disabled:opacity-60`}
                     >
                       <XCircle
                         className={`mt-0.5 size-4 shrink-0 ${
-                          reviewerDecision === 'Rejected' ? 'text-red-600' : 'text-slate-400'
+                          reviewerDecision === 'Rejected' ? 'text-tone-danger-icon' : 'text-ink-subtle'
                         }`}
                       />
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-ink-primary">
                           Không đồng ý bảo vệ (Rejected)
                         </p>
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        <p className="mt-0.5 text-xs text-ink-muted">
                           Báo cáo chưa đạt yêu cầu để bảo vệ tại Hội đồng.
                         </p>
                       </div>
@@ -1485,7 +1485,7 @@ export function LecturerGradingPage() {
                   </div>
 
                   {reviewerDecision === 'Approved' && allStudentsComplete && anyStudentBelowFive && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800">
+                    <div className="rounded-xl border border-tone-warning-border bg-tone-warning-bg px-3.5 py-2.5 text-xs text-tone-warning-strong">
                       Lưu ý: Có sinh viên trong nhóm đang có tổng điểm phản biện dưới{' '}
                       <strong>5.0</strong>. Khi xét điều kiện xếp lịch Hội đồng, hệ thống sẽ chặn nếu
                       điểm phản biện của sinh viên thấp hơn ngưỡng quy định.
@@ -1502,7 +1502,7 @@ export function LecturerGradingPage() {
               noteText={`Điểm tổng của từng sinh viên được cộng từ các tiêu chí thành phần. Cần nhập đủ ${criteria.length} tiêu chí cho mọi sinh viên trong nhóm trước khi chốt điểm chính thức.`}
               actions={
                 isLocked ? (
-                  <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-800">
+                  <div className="flex items-center gap-2 rounded-xl border border-tone-success-border bg-tone-success-bg px-3.5 py-2.5 text-xs font-medium text-tone-success-strong">
                     <Lock className="size-4 shrink-0" />
                     <span>Phiếu chấm đã được chốt và khóa bảo vệ dữ liệu.</span>
                   </div>
@@ -1539,7 +1539,7 @@ export function LecturerGradingPage() {
                     </div>
 
                     {role === 'advisor' && (
-                      <div className="border-t border-slate-100 pt-2.5">
+                      <div className="border-t border-line-subtle pt-2.5">
                         <Button
                           type="button"
                           variant="default"

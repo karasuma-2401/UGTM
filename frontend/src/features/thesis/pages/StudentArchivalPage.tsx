@@ -135,19 +135,19 @@ export const StudentArchivalPage: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto py-10 px-4">
         <Card className="p-8 text-center space-y-4">
-          <div className="size-12 mx-auto rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+          <div className="size-12 mx-auto rounded-full bg-tone-danger-bg text-tone-danger-icon flex items-center justify-center">
             {errorKind === 'forbidden' ? (
-              <ShieldAlert className="size-6 text-amber-600" />
+              <ShieldAlert className="size-6 text-tone-warning-icon" />
             ) : (
               <AlertCircle className="size-6" />
             )}
           </div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-ink-primary">
             {errorKind === 'forbidden'
               ? 'Không có quyền truy cập hồ sơ lưu chiểu'
               : 'Không tải được thông tin đề tài KLTN'}
           </h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">{message}</p>
+          <p className="text-sm text-ink-muted max-w-md mx-auto">{message}</p>
           {errorKind !== 'forbidden' && (
             <Button
               type="button"
@@ -171,15 +171,15 @@ export const StudentArchivalPage: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto py-10 px-4">
         <Card className="p-8 text-center space-y-4">
-          <div className="size-12 mx-auto rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+          <div className="size-12 mx-auto rounded-full bg-tone-warning-bg text-tone-warning-icon flex items-center justify-center">
             <AlertCircle className="size-6" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-ink-primary">
             {isPendingConfirmation
               ? 'Bạn chưa xác nhận tham gia nhóm đề tài'
               : 'Chưa có thông tin nhóm đề tài KLTN'}
           </h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
+          <p className="text-sm text-ink-muted max-w-md mx-auto">
             {isPendingConfirmation
               ? 'Vui lòng hoàn tất xác nhận tham gia nhóm đề tài trước khi nộp hồ sơ lưu chiểu.'
               : 'Bạn chưa đăng ký đề tài nào trong đợt KLTN này. Vui lòng tra cứu và đăng ký đề tài trước khi thực hiện lưu chiểu.'}
@@ -282,7 +282,7 @@ export const StudentArchivalPage: React.FC = () => {
           title="Làm mới"
           disabled={isFetching}
           onClick={() => void refresh()}
-          className="size-9 rounded-xl border-slate-200 bg-white text-slate-600 hover:text-slate-900"
+          className="size-9 rounded-xl border-line bg-surface-card text-ink-body hover:text-ink-primary"
         >
           <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
         </Button>
@@ -295,19 +295,19 @@ export const StudentArchivalPage: React.FC = () => {
               key={step.num}
               className={`flex items-start gap-3 rounded-xl px-3.5 py-2.5 border transition-colors ${
                 step.done
-                  ? 'border-emerald-200/80 bg-emerald-50/60'
+                  ? 'border-tone-success-border bg-tone-success-bg'
                   : step.active
-                    ? 'border-blue-200/80 bg-blue-50/60'
-                    : 'border-slate-200/70 bg-slate-50/50'
+                    ? 'border-tone-info-border bg-tone-info-bg'
+                    : 'border-line/70 bg-surface-subtle/50'
               }`}
             >
               <span
                 className={`text-sm font-bold tabular-nums mt-0.5 ${
                   step.done
-                    ? 'text-emerald-700'
+                    ? 'text-tone-success-text'
                     : step.active
                       ? 'text-primary'
-                      : 'text-slate-400'
+                      : 'text-ink-subtle'
                 }`}
               >
                 {step.num}
@@ -315,12 +315,12 @@ export const StudentArchivalPage: React.FC = () => {
               <div className="min-w-0">
                 <p
                   className={`text-sm font-semibold ${
-                    step.done || step.active ? 'text-slate-900' : 'text-slate-500'
+                    step.done || step.active ? 'text-ink-primary' : 'text-ink-muted'
                   }`}
                 >
                   {step.title}
                 </p>
-                <p className="text-xs text-slate-500 mt-0.5">{step.subtitle}</p>
+                <p className="text-xs text-ink-muted mt-0.5">{step.subtitle}</p>
               </div>
             </div>
           ))}
@@ -368,10 +368,10 @@ export const StudentArchivalPage: React.FC = () => {
         <div className="lg:col-span-8 space-y-5">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-bold text-slate-900">
+              <CardTitle className="text-base font-bold text-ink-primary">
                 Tài liệu hoàn thiện
               </CardTitle>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-muted">
                 Nộp bản đã tiếp thu góp ý của hội đồng (gồm đủ cả PDF và DOCX, tối đa 20 MiB mỗi
                 tệp). Các phiên bản trước được giữ trong lịch sử.
               </p>
@@ -392,20 +392,20 @@ export const StudentArchivalPage: React.FC = () => {
                 onChange={(e) => handleFileInput(e, selectDocxFile)}
               />
 
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line/80 bg-surface-subtle/70 px-4 py-3">
                 <div className="min-w-0 flex items-center gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white border border-slate-200/80 text-slate-600">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-card border border-line/80 text-ink-body">
                     <FileText className="size-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
+                    <p className="text-sm font-semibold text-ink-primary truncate">
                       {pdfFile
                         ? pdfFile.name
                         : existingPdf
                           ? existingPdf.fileName
                           : 'Báo cáo hoàn thiện (.pdf)'}
                     </p>
-                    <p className="text-xs text-slate-500 tabular-nums">
+                    <p className="text-xs text-ink-muted tabular-nums">
                       {pdfFile
                         ? `PDF - ${formatArchivalFileSize(pdfFile.size)} - Tệp mới sẵn sàng nộp`
                         : existingPdf
@@ -454,20 +454,20 @@ export const StudentArchivalPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line/80 bg-surface-subtle/70 px-4 py-3">
                 <div className="min-w-0 flex items-center gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white border border-slate-200/80 text-slate-600">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-card border border-line/80 text-ink-body">
                     <FileText className="size-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-900 truncate">
+                    <p className="text-sm font-semibold text-ink-primary truncate">
                       {docxFile
                         ? docxFile.name
                         : existingDocx
                           ? existingDocx.fileName
                           : 'Bản có thể chỉnh sửa (.docx)'}
                     </p>
-                    <p className="text-xs text-slate-500 tabular-nums">
+                    <p className="text-xs text-ink-muted tabular-nums">
                       {docxFile
                         ? `DOCX - ${formatArchivalFileSize(docxFile.size)} - Tệp mới sẵn sàng nộp`
                         : existingDocx
@@ -520,7 +520,7 @@ export const StudentArchivalPage: React.FC = () => {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-bold text-slate-900">
+              <CardTitle className="text-base font-bold text-ink-primary">
                 Tóm tắt và từ khóa
               </CardTitle>
             </CardHeader>
@@ -528,10 +528,10 @@ export const StudentArchivalPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <label htmlFor="archival-abstract-vi" className="font-semibold text-slate-800">
-                      Tóm tắt tiếng Việt <span className="text-rose-600">*</span>
+                    <label htmlFor="archival-abstract-vi" className="font-semibold text-ink-heading">
+                      Tóm tắt tiếng Việt <span className="text-tone-danger-icon">*</span>
                     </label>
-                    <span className="text-slate-400 tabular-nums">
+                    <span className="text-ink-subtle tabular-nums">
                       {metadata.abstractVi.length}/{ARCHIVAL_ABSTRACT_MAX_LENGTH}
                     </span>
                   </div>
@@ -543,16 +543,16 @@ export const StudentArchivalPage: React.FC = () => {
                     value={metadata.abstractVi}
                     onChange={(e) => updateMetadataField('abstractVi', e.target.value)}
                     placeholder="Nhập tóm tắt khóa luận bằng tiếng Việt..."
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-slate-50 disabled:text-slate-600"
+                    className="w-full rounded-xl border border-line bg-surface-card px-3 py-2 text-sm text-ink-heading placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-surface-subtle disabled:text-ink-body"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <label htmlFor="archival-abstract-en" className="font-semibold text-slate-800">
-                      Abstract tiếng Anh <span className="text-rose-600">*</span>
+                    <label htmlFor="archival-abstract-en" className="font-semibold text-ink-heading">
+                      Abstract tiếng Anh <span className="text-tone-danger-icon">*</span>
                     </label>
-                    <span className="text-slate-400 tabular-nums">
+                    <span className="text-ink-subtle tabular-nums">
                       {metadata.abstractEn.length}/{ARCHIVAL_ABSTRACT_MAX_LENGTH}
                     </span>
                   </div>
@@ -564,7 +564,7 @@ export const StudentArchivalPage: React.FC = () => {
                     value={metadata.abstractEn}
                     onChange={(e) => updateMetadataField('abstractEn', e.target.value)}
                     placeholder="Enter thesis abstract in English..."
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-slate-50 disabled:text-slate-600"
+                    className="w-full rounded-xl border border-line bg-surface-card px-3 py-2 text-sm text-ink-heading placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-surface-subtle disabled:text-ink-body"
                   />
                 </div>
               </div>
@@ -572,10 +572,10 @@ export const StudentArchivalPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <label htmlFor="archival-keywords-vi" className="font-semibold text-slate-800">
-                      Từ khóa tiếng Việt <span className="text-rose-600">*</span>
+                    <label htmlFor="archival-keywords-vi" className="font-semibold text-ink-heading">
+                      Từ khóa tiếng Việt <span className="text-tone-danger-icon">*</span>
                     </label>
-                    <span className="text-slate-400 tabular-nums">
+                    <span className="text-ink-subtle tabular-nums">
                       {metadata.keywordsVi.length}/{ARCHIVAL_KEYWORDS_MAX_LENGTH}
                     </span>
                   </div>
@@ -591,10 +591,10 @@ export const StudentArchivalPage: React.FC = () => {
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <label htmlFor="archival-keywords-en" className="font-semibold text-slate-800">
-                      Keywords tiếng Anh <span className="text-rose-600">*</span>
+                    <label htmlFor="archival-keywords-en" className="font-semibold text-ink-heading">
+                      Keywords tiếng Anh <span className="text-tone-danger-icon">*</span>
                     </label>
-                    <span className="text-slate-400 tabular-nums">
+                    <span className="text-ink-subtle tabular-nums">
                       {metadata.keywordsEn.length}/{ARCHIVAL_KEYWORDS_MAX_LENGTH}
                     </span>
                   </div>
@@ -613,10 +613,10 @@ export const StudentArchivalPage: React.FC = () => {
 
           <Card>
             <CardContent className="p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs text-slate-600">
+              <div className="flex items-center gap-2 text-xs text-ink-body">
                 {isLockedStatus ? (
                   <>
-                    <Lock className="size-4 text-slate-500 shrink-0" />
+                    <Lock className="size-4 text-ink-muted shrink-0" />
                     <span>
                       Hồ sơ đã được {submissionStatus === 'ArchiveConfirmed' ? 'Khoa nghiệm thu' : 'GVHD xác nhận'} và đang khóa.
                     </span>
@@ -646,7 +646,7 @@ export const StudentArchivalPage: React.FC = () => {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-base font-bold text-slate-900">
+                <CardTitle className="text-base font-bold text-ink-primary">
                   Kiểm tra trước khi nộp
                 </CardTitle>
                 <StatusBadge tone={isAllChecklistReady ? 'success' : 'neutral'}>
@@ -655,47 +655,47 @@ export const StudentArchivalPage: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-3 text-xs">
-              <ul className="space-y-2.5 text-slate-700">
+              <ul className="space-y-2.5 text-ink-secondary">
                 <li className="flex items-center gap-2.5">
                   {isPdfReady ? (
-                    <Check className="size-4 text-emerald-600 shrink-0" />
+                    <Check className="size-4 text-tone-success-icon shrink-0" />
                   ) : (
-                    <Circle className="size-4 text-slate-300 shrink-0" />
+                    <Circle className="size-4 text-ink-faint shrink-0" />
                   )}
                   <span>Báo cáo hoàn thiện - PDF</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   {isDocxReady ? (
-                    <Check className="size-4 text-emerald-600 shrink-0" />
+                    <Check className="size-4 text-tone-success-icon shrink-0" />
                   ) : (
-                    <Circle className="size-4 text-slate-300 shrink-0" />
+                    <Circle className="size-4 text-ink-faint shrink-0" />
                   )}
                   <span>Bản có thể chỉnh sửa - DOCX</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   {metadataValidation.abstractsReady ? (
-                    <Check className="size-4 text-emerald-600 shrink-0" />
+                    <Check className="size-4 text-tone-success-icon shrink-0" />
                   ) : (
-                    <Circle className="size-4 text-slate-300 shrink-0" />
+                    <Circle className="size-4 text-ink-faint shrink-0" />
                   )}
                   <span>Tóm tắt - Tiếng Việt / Anh</span>
                 </li>
                 <li className="flex items-center gap-2.5">
                   {metadataValidation.keywordsReady ? (
-                    <Check className="size-4 text-emerald-600 shrink-0" />
+                    <Check className="size-4 text-tone-success-icon shrink-0" />
                   ) : (
-                    <Circle className="size-4 text-slate-300 shrink-0" />
+                    <Circle className="size-4 text-ink-faint shrink-0" />
                   )}
                   <span>Từ khóa - Tiếng Việt / Anh</span>
                 </li>
               </ul>
 
-              <div className="pt-2 border-t border-slate-100 text-slate-500 space-y-1">
+              <div className="pt-2 border-t border-line-subtle text-ink-muted space-y-1">
                 <p>GVHD xác nhận bản sửa trước khi Khoa nghiệm thu.</p>
                 {eligibility?.submissionDeadline && (
                   <p className="tabular-nums">
                     Hạn nộp lưu chiểu:{' '}
-                    <strong className="text-slate-700">
+                    <strong className="text-ink-secondary">
                       {formatDateTimeVi(eligibility.submissionDeadline)}
                     </strong>
                   </p>
@@ -706,17 +706,17 @@ export const StudentArchivalPage: React.FC = () => {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-bold text-slate-900">
+              <CardTitle className="text-base font-bold text-ink-primary">
                 Góp ý sau bảo vệ
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               {feedbackComment ? (
-                <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-line">
+                <p className="text-xs text-ink-secondary leading-relaxed whitespace-pre-line">
                   {feedbackComment}
                 </p>
               ) : (
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <p className="text-xs text-ink-muted leading-relaxed">
                   Theo dõi đầy đủ nhận xét và góp ý chỉnh sửa báo cáo cuối kỳ của nhóm.
                 </p>
               )}
@@ -728,15 +728,15 @@ export const StudentArchivalPage: React.FC = () => {
                 </Link>
               </Button>
 
-              <div className="space-y-1.5 pt-3 border-t border-slate-100">
-                <p className="text-xs font-semibold text-slate-800">Tra cứu điểm chính thức</p>
-                <p className="text-xs text-slate-500 leading-relaxed">
+              <div className="space-y-1.5 pt-3 border-t border-line-subtle">
+                <p className="text-xs font-semibold text-ink-heading">Tra cứu điểm chính thức</p>
+                <p className="text-xs text-ink-muted leading-relaxed">
                   Điểm được mở khi Khoa đã nghiệm thu lưu chiểu và công bố kết quả.
                 </p>
               </div>
 
-              <div className="space-y-1.5 pt-3 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-500">GVHD xác nhận</p>
+              <div className="space-y-1.5 pt-3 border-t border-line-subtle">
+                <p className="text-xs font-medium text-ink-muted">GVHD xác nhận</p>
                 {advisorItems.length > 0 ? (
                   <div className="flex items-center gap-2.5">
                     <AvatarGroup
@@ -746,10 +746,10 @@ export const StudentArchivalPage: React.FC = () => {
                       ariaLabel="Giảng viên hướng dẫn"
                     />
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-800 truncate">
+                      <p className="text-xs font-semibold text-ink-heading truncate">
                         {advisorName}
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-ink-muted">
                         {step2Done && submission?.advisorConfirmedAt
                           ? `Đã xác nhận (${formatDateTimeVi(submission.advisorConfirmedAt)})`
                           : submissionStatus === 'Submitted'
@@ -759,10 +759,10 @@ export const StudentArchivalPage: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500">{advisorName}</p>
+                  <p className="text-xs text-ink-muted">{advisorName}</p>
                 )}
                 {step3Done && (
-                  <div className="flex items-center gap-1.5 pt-1 text-xs text-emerald-700 font-medium">
+                  <div className="flex items-center gap-1.5 pt-1 text-xs text-tone-success-text font-medium">
                     <CheckCircle2 className="size-3.5 shrink-0" />
                     <span>Khoa đã nghiệm thu lưu chiểu</span>
                   </div>

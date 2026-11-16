@@ -169,13 +169,13 @@ export function StudentMilestoneSubmissionPage() {
           <Skeleton className="h-56 w-full rounded-2xl" />
         </div>
       ) : milestones.length === 0 ? (
-        <Card className="p-10 bg-white border-slate-200/80 shadow-xs rounded-2xl text-center">
+        <Card className="p-10 bg-surface-card border-line/80 shadow-xs rounded-2xl text-center">
           <div className="max-w-md mx-auto space-y-2.5">
-            <div className="size-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+            <div className="size-12 rounded-2xl bg-surface-muted text-ink-subtle flex items-center justify-center mx-auto">
               <Flag className="size-6" />
             </div>
-            <h2 className="text-base font-bold text-slate-900">Chưa có mốc báo cáo tiến độ</h2>
-            <p className="text-sm text-slate-500 leading-relaxed">
+            <h2 className="text-base font-bold text-ink-primary">Chưa có mốc báo cáo tiến độ</h2>
+            <p className="text-sm text-ink-muted leading-relaxed">
               Giảng viên hướng dẫn chưa thiết lập mốc báo cáo tiến độ nào cho nhóm. Bạn vẫn có thể theo dõi trạng thái Đề cương chi tiết ở Cổng 1.
             </p>
           </div>
@@ -191,23 +191,23 @@ export function StudentMilestoneSubmissionPage() {
             />
 
             {groupDetail && (
-              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs px-4 py-3.5 space-y-2 text-xs">
+              <div className="bg-surface-card rounded-2xl border border-line/80 shadow-xs px-4 py-3.5 space-y-2 text-xs">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold text-slate-800 truncate" title={groupDetail.topicTitleVi}>
+                  <span className="font-semibold text-ink-heading truncate" title={groupDetail.topicTitleVi}>
                     {groupDetail.topicCode || 'Đề tài nhóm'}
                   </span>
                   {groupDetail.groupCode && (
-                    <span className="font-mono font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md shrink-0">
+                    <span className="font-mono font-semibold text-ink-secondary bg-surface-muted px-2 py-0.5 rounded-md shrink-0">
                       {groupDetail.groupCode}
                     </span>
                   )}
                 </div>
-                <p className="text-slate-600 line-clamp-2 leading-relaxed">
+                <p className="text-ink-body line-clamp-2 leading-relaxed">
                   {groupDetail.topicTitleVi}
                 </p>
                 {groupDetail.advisor?.fullName && (
-                  <p className="text-slate-500 pt-1 border-t border-slate-100 truncate">
-                    GVHD: <span className="font-medium text-slate-700">{groupDetail.advisor.fullName}</span>
+                  <p className="text-ink-muted pt-1 border-t border-line-subtle truncate">
+                    GVHD: <span className="font-medium text-ink-secondary">{groupDetail.advisor.fullName}</span>
                   </p>
                 )}
               </div>

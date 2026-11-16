@@ -229,30 +229,30 @@ export function LoginPage() {
         <div
           role="alert"
           aria-live="assertive"
-          className="my-3 p-3.5 rounded-lg border border-red-200 bg-red-50 text-red-900 shadow-sm transition-all"
+          className="my-3 p-3.5 rounded-lg border border-tone-danger-border bg-tone-danger-bg text-tone-danger-strong shadow-sm transition-all"
         >
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-red-100 rounded-full text-red-600 shrink-0 mt-0.5">
+            <div className="p-2 bg-red-100 rounded-full text-tone-danger-icon shrink-0 mt-0.5">
               <Lock className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-semibold text-red-900 uppercase tracking-wide">
+              <h4 className="text-xs font-semibold text-tone-danger-strong uppercase tracking-wide">
                 Giao diện đăng nhập tạm thời bị khóa
               </h4>
-              <p className="text-xs text-red-700 mt-1 leading-relaxed">
+              <p className="text-xs text-tone-danger-text mt-1 leading-relaxed">
                 {lockReason || 'Hệ thống đã tạm dừng nhận yêu cầu đăng nhập để đảm bảo an toàn.'}
               </p>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-red-200/80">
-                <div className="flex items-center gap-1.5 text-xs text-red-800 font-medium">
-                  <Clock className="w-3.5 h-3.5 text-red-600" />
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-tone-danger-border">
+                <div className="flex items-center gap-1.5 text-xs text-tone-danger-strong font-medium">
+                  <Clock className="w-3.5 h-3.5 text-tone-danger-icon" />
                   <span>Tự động mở khóa sau:</span>
-                  <span className="font-mono font-bold text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded border border-red-200">
+                  <span className="font-mono font-bold text-xs bg-red-100 text-tone-danger-text px-2 py-0.5 rounded border border-tone-danger-border">
                     {formatCountdown(remainingSeconds)}
                   </span>
                 </div>
                 <Link
                   to="/forgot-password"
-                  className="text-xs font-semibold text-red-700 hover:text-red-900 underline underline-offset-2 hover:no-underline transition-colors ml-auto"
+                  className="text-xs font-semibold text-tone-danger-text hover:text-tone-danger-strong underline underline-offset-2 hover:no-underline transition-colors ml-auto"
                 >
                   Quên mật khẩu? Đặt lại ngay &rarr;
                 </Link>
@@ -295,7 +295,7 @@ export function LoginPage() {
             leftIcon={<IdCard size={16} />}
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
-            className="bg-[#f1f3f6] border-[#eef0f4] text-[13px] h-[34px]"
+            className="bg-[var(--color-bg-input-muted)] border-[var(--color-border-input-muted)] text-[13px] h-[34px]"
           />
         </div>
         <PasswordField
@@ -305,7 +305,7 @@ export function LoginPage() {
           onChange={setPassword}
           autoComplete="current-password"
           disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
-          className="bg-[#f1f3f6] border-[#eef0f4] text-[13px] h-[34px]"
+          className="bg-[var(--color-bg-input-muted)] border-[var(--color-border-input-muted)] text-[13px] h-[34px]"
         >
           <Link to="/forgot-password">Quên mật khẩu?</Link>
         </PasswordField>

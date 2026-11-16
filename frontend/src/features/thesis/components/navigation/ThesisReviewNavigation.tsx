@@ -19,7 +19,7 @@ export function ThesisReviewNavigation() {
   return (
     <nav
       aria-label="Thẩm định các cổng khóa luận"
-      className="flex gap-1 overflow-x-auto border-b border-slate-200"
+      className="flex gap-1 overflow-x-auto border-b border-line"
     >
       {tabs.map(({ path, label, icon: Icon }) => (
         <NavLink
@@ -30,7 +30,7 @@ export function ThesisReviewNavigation() {
               'inline-flex h-12 shrink-0 items-center justify-center gap-2 border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
               isActive
                 ? 'border-primary bg-primary/5 text-primary hover:bg-primary/5 hover:text-primary'
-                : 'border-transparent text-slate-500 hover:bg-slate-100/60 hover:text-slate-800'
+                : 'border-transparent text-ink-muted hover:bg-surface-muted/60 hover:text-ink-heading'
             )
           }
         >

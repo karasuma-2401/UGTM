@@ -48,15 +48,15 @@ export function PasswordStrength({
               key={rule.id}
               className={cn(
                 'flex items-center gap-1.5 transition-colors',
-                rule.passed ? 'text-emerald-600 font-medium' : 'text-slate-400',
+                rule.passed ? 'text-tone-success-icon font-medium' : 'text-ink-subtle',
               )}
             >
               <span
                 className={cn(
                   'flex items-center justify-center w-3.5 h-3.5 rounded-full text-[9px] shrink-0',
                   rule.passed
-                    ? 'bg-emerald-100 text-emerald-700 font-bold'
-                    : 'bg-slate-100 text-slate-400',
+                    ? 'bg-tone-success-bg text-tone-success-text font-bold'
+                    : 'bg-surface-muted text-ink-subtle',
                 )}
               >
                 {rule.passed ? '✓' : '•'}

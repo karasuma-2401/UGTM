@@ -217,12 +217,12 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
       onClose={onClose}
       busy={isConfirming}
       title={`Kiểm tra hồ sơ lưu chiểu · ${inspectedRow.groupCode}`}
-      className="flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200/90 p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]"
+      className="flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-6xl flex-col overflow-hidden rounded-2xl border border-line/90 p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]"
     >
-      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-line-subtle bg-surface-card px-5 py-4 sm:px-6">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-base font-semibold tracking-tight text-slate-900">
+            <h2 className="text-base font-semibold tracking-tight text-ink-primary">
               Kiểm tra hồ sơ lưu chiểu
             </h2>
             <Badge
@@ -232,35 +232,35 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
             >
               {inspectedRow.groupCode}
             </Badge>
-            <span className="rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700 tabular-nums">
+            <span className="rounded-md border border-line-input bg-surface-muted px-2 py-0.5 text-xs font-semibold text-ink-secondary tabular-nums">
               v{activeVersion}
             </span>
             <StatusBadge tone={inspectedRow.statusTone}>{inspectedRow.statusLabel}</StatusBadge>
           </div>
-          <p className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-            <CalendarClock className="size-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+          <p className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
+            <CalendarClock className="size-3.5 text-ink-subtle shrink-0" aria-hidden="true" />
             <span className="tabular-nums">
               {submittedAtText ? `Nộp lúc ${formatDateTimeVi(submittedAtText)}` : 'Đã nộp hồ sơ'}
             </span>
             <span aria-hidden="true">·</span>
-            <span className="truncate font-medium text-slate-600">{selectedBatchLabel}</span>
+            <span className="truncate font-medium text-ink-body">{selectedBatchLabel}</span>
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {filteredTotalCount > 1 && (
-            <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50/70 p-0.5">
+            <div className="flex items-center rounded-lg border border-line-input bg-surface-muted/70 p-0.5">
               <button
                 type="button"
                 aria-label="Hồ sơ trước"
                 title="Hồ sơ trước"
                 disabled={!hasPrev || isConfirming}
                 onClick={() => onNavigate(-1)}
-                className="flex size-7 items-center justify-center rounded-md text-slate-600 hover:bg-white hover:text-slate-900 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                className="flex size-7 items-center justify-center rounded-md text-ink-body hover:bg-surface-hover hover:text-ink-primary disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
               >
                 <ChevronLeft className="size-4" />
               </button>
-              <span className="px-2 text-xs font-medium text-slate-600 tabular-nums">
+              <span className="px-2 text-xs font-medium text-ink-body tabular-nums">
                 {inspectedIndex + 1}/{filteredTotalCount}
               </span>
               <button
@@ -269,7 +269,7 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                 title="Hồ sơ tiếp theo"
                 disabled={!hasNext || isConfirming}
                 onClick={() => onNavigate(1)}
-                className="flex size-7 items-center justify-center rounded-md text-slate-600 hover:bg-white hover:text-slate-900 disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                className="flex size-7 items-center justify-center rounded-md text-ink-body hover:bg-surface-hover hover:text-ink-primary disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
               >
                 <ChevronRight className="size-4" />
               </button>
@@ -280,7 +280,7 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 rounded-lg bg-white text-xs"
+            className="h-8 rounded-lg bg-surface-card text-xs"
             leftIcon={<History className="size-3.5" />}
             onClick={onOpenHistory}
           >
@@ -294,40 +294,40 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
             aria-label="Đóng hộp thoại"
             disabled={isConfirming}
             onClick={onClose}
-            className="size-8 shrink-0 rounded-lg p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="size-8 shrink-0 rounded-lg p-0 text-ink-subtle hover:bg-surface-muted hover:text-ink-secondary"
           >
             <X className="size-4" />
           </Button>
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.25fr)_minmax(380px,0.9fr)] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-slate-100 lg:overflow-hidden">
-        <div className="min-h-0 bg-white p-5 sm:p-6 space-y-5 lg:overflow-y-auto">
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.25fr)_minmax(380px,0.9fr)] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-line-subtle lg:overflow-hidden">
+        <div className="min-h-0 bg-surface-card p-5 sm:p-6 space-y-5 lg:overflow-y-auto">
           <div className="space-y-3">
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-primary">
                 <span>{topicCode}</span>
-                <span aria-hidden="true" className="text-slate-300">
+                <span aria-hidden="true" className="text-ink-faint">
                   ·
                 </span>
-                <span className="text-slate-600">{inspectedRow.groupCode}</span>
+                <span className="text-ink-body">{inspectedRow.groupCode}</span>
               </div>
-              <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 leading-snug">
+              <h3 className="text-base sm:text-lg font-bold tracking-tight text-ink-primary leading-snug">
                 {inspectedRow.topicTitleVi}
               </h3>
               {topicTitleEn && (
-                <p className="text-xs sm:text-sm italic text-slate-500 leading-relaxed">
+                <p className="text-xs sm:text-sm italic text-ink-muted leading-relaxed">
                   {topicTitleEn}
                 </p>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 rounded-xl border border-slate-200/75 bg-slate-50/60 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 rounded-xl border border-line/75 bg-surface-subtle/60 px-4 py-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <AvatarGroup items={detailStudents} max={3} size="sm" ariaLabel="Sinh viên" />
                 <div className="min-w-0 text-xs">
-                  <p className="text-[11px] font-medium text-slate-500">Sinh viên thực hiện</p>
-                  <p className="font-medium text-slate-800 truncate">
+                  <p className="text-[11px] font-medium text-ink-muted">Sinh viên thực hiện</p>
+                  <p className="font-medium text-ink-heading truncate">
                     {detailStudents.length > 0
                       ? detailStudents
                           .map((s) => (s.code ? `${s.name} (${s.code})` : s.name))
@@ -345,8 +345,8 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                   ariaLabel="Giảng viên hướng dẫn"
                 />
                 <div className="min-w-0 text-xs">
-                  <p className="text-[11px] font-medium text-slate-500">GVHD</p>
-                  <p className="font-medium text-slate-800 truncate">{advisorDisplayName}</p>
+                  <p className="text-[11px] font-medium text-ink-muted">GVHD</p>
+                  <p className="font-medium text-ink-heading truncate">{advisorDisplayName}</p>
                 </div>
               </div>
             </div>
@@ -378,10 +378,10 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
             <>
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <h4 className="text-xs font-semibold text-slate-700">
+                  <h4 className="text-xs font-semibold text-ink-secondary">
                     Tệp toàn văn đã nộp (v{activeVersion})
                   </h4>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-ink-muted">
                     {pdfFile && docxFile ? 'Đủ cặp PDF + DOCX' : 'Thiếu tệp bắt buộc'}
                   </span>
                 </div>
@@ -408,18 +408,18 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                     return (
                       <div
                         key={role}
-                        className="flex flex-col justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-3"
+                        className="flex flex-col justify-between gap-2.5 rounded-xl border border-line/80 bg-surface-subtle/70 px-3.5 py-3"
                       >
                         <div className="min-w-0 flex items-center gap-3">
                           <ThesisFileTypeIcon fileName={file?.fileName ?? fallbackName} />
                           <div className="min-w-0 flex-1">
                             <p
-                              className="text-xs font-semibold text-slate-900 truncate"
+                              className="text-xs font-semibold text-ink-primary truncate"
                               title={file?.fileName ?? 'Chưa có tệp'}
                             >
                               {file?.fileName ?? 'Chưa có tệp'}
                             </p>
-                            <p className="mt-0.5 text-[11px] text-slate-500 tabular-nums truncate">
+                            <p className="mt-0.5 text-[11px] text-ink-muted tabular-nums truncate">
                               {file
                                 ? `${formatArchivalFileSize(file.fileSize)} · ${formatDateTimeVi(file.uploadedAt)}`
                                 : 'Chưa được tải lên'}
@@ -427,17 +427,17 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-end gap-1.5 border-t border-slate-200/60 pt-2">
+                        <div className="flex items-center justify-end gap-1.5 border-t border-line/60 pt-2">
                           {role === 'ThesisPdf' && (
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               aria-label="Xem trước bản PDF"
-                              className="h-8 rounded-lg bg-white px-2.5 text-xs"
+                              className="h-8 rounded-lg bg-surface-card px-2.5 text-xs"
                               disabled={!file || isBusyFileAction}
                               isLoading={isPreviewing}
-                              leftIcon={!isPreviewing ? <Eye className="size-3.5 text-slate-600" /> : undefined}
+                              leftIcon={!isPreviewing ? <Eye className="size-3.5 text-ink-body" /> : undefined}
                               onClick={() =>
                                 file && onPreviewPdf(activeVersion, file.fileName, file.fileSize)
                               }
@@ -450,7 +450,7 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                             variant="outline"
                             size="sm"
                             aria-label={`Tải bản ${label}`}
-                            className="h-8 rounded-lg bg-white px-2.5 text-xs"
+                            className="h-8 rounded-lg bg-surface-card px-2.5 text-xs"
                             disabled={!file || isBusyFileAction}
                             isLoading={isDownloading}
                             leftIcon={!isDownloading ? <Download className="size-3.5" /> : undefined}
@@ -467,10 +467,10 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                 </div>
               </div>
 
-              <div className="space-y-3 pt-4 border-t border-slate-100">
+              <div className="space-y-3 pt-4 border-t border-line-subtle">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <h4 className="text-xs font-semibold text-slate-700">
+                    <h4 className="text-xs font-semibold text-ink-secondary">
                       Đối chiếu Metadata Việt / Anh
                     </h4>
                     <Badge variant={hasFullMetadata ? 'success' : 'warning'} className="text-[11px]">
@@ -502,64 +502,64 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-slate-200/75 bg-slate-50/60 p-4 space-y-3">
+                  <div className="rounded-xl border border-line/75 bg-surface-subtle/60 p-4 space-y-3">
                     <div className="space-y-1.5">
-                      <p className="text-xs font-semibold text-slate-600">Tóm tắt tiếng Việt</p>
+                      <p className="text-xs font-semibold text-ink-body">Tóm tắt tiếng Việt</p>
                       <p
                         className={cn(
-                          'text-sm text-slate-800 whitespace-pre-wrap leading-relaxed',
+                          'text-sm text-ink-heading whitespace-pre-wrap leading-relaxed',
                           !isMetadataExpanded && 'line-clamp-4',
                         )}
                       >
                         {submissionDetail?.abstractVi || 'Chưa cập nhật'}
                       </p>
                     </div>
-                    <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
-                      <p className="text-xs font-semibold text-slate-600">Từ khóa tiếng Việt</p>
+                    <div className="space-y-1.5 pt-2 border-t border-line/60">
+                      <p className="text-xs font-semibold text-ink-body">Từ khóa tiếng Việt</p>
                       {keywordsVi.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                           {keywordsVi.map((kw) => (
                             <span
                               key={kw}
-                              className="inline-flex items-center rounded-md border border-slate-200/80 bg-white px-2 py-0.5 text-xs font-medium text-slate-700"
+                              className="inline-flex items-center rounded-md border border-line-input/80 bg-surface-elevated px-2 py-0.5 text-xs font-medium text-ink-secondary"
                             >
                               {kw}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs text-slate-500">Chưa cập nhật</p>
+                        <p className="text-xs text-ink-muted">Chưa cập nhật</p>
                       )}
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200/75 bg-slate-50/60 p-4 space-y-3">
+                  <div className="rounded-xl border border-line/75 bg-surface-subtle/60 p-4 space-y-3">
                     <div className="space-y-1.5">
-                      <p className="text-xs font-semibold text-slate-600">Abstract tiếng Anh</p>
+                      <p className="text-xs font-semibold text-ink-body">Abstract tiếng Anh</p>
                       <p
                         className={cn(
-                          'text-sm text-slate-800 whitespace-pre-wrap leading-relaxed',
+                          'text-sm text-ink-heading whitespace-pre-wrap leading-relaxed',
                           !isMetadataExpanded && 'line-clamp-4',
                         )}
                       >
                         {submissionDetail?.abstractEn || 'Chưa cập nhật'}
                       </p>
                     </div>
-                    <div className="space-y-1.5 pt-2 border-t border-slate-200/60">
-                      <p className="text-xs font-semibold text-slate-600">Keywords tiếng Anh</p>
+                    <div className="space-y-1.5 pt-2 border-t border-line/60">
+                      <p className="text-xs font-semibold text-ink-body">Keywords tiếng Anh</p>
                       {keywordsEn.length > 0 ? (
                         <div className="flex flex-wrap gap-1.5">
                           {keywordsEn.map((kw) => (
                             <span
                               key={kw}
-                              className="inline-flex items-center rounded-md border border-blue-200/70 bg-blue-50/70 px-2 py-0.5 text-xs font-medium text-blue-800"
+                              className="inline-flex items-center rounded-md border border-tone-info-border bg-tone-info-bg px-2 py-0.5 text-xs font-medium text-tone-info-strong"
                             >
                               {kw}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs text-slate-500">Chưa cập nhật</p>
+                        <p className="text-xs text-ink-muted">Chưa cập nhật</p>
                       )}
                     </div>
                   </div>
@@ -569,10 +569,10 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
           )}
         </div>
 
-        <aside className="flex min-h-0 flex-col border-t border-slate-100 bg-slate-50/60 lg:border-t-0">
+        <aside className="flex min-h-0 flex-col border-t border-line-subtle bg-surface-subtle/60 lg:border-t-0">
           <div className="flex min-h-0 flex-1 flex-col gap-5 p-5 sm:p-6 lg:overflow-y-auto">
-            <div className="rounded-xl border border-slate-200/80 bg-white p-4 space-y-3">
-              <p className="text-xs font-semibold text-slate-700">Tiến trình lưu chiểu</p>
+            <div className="rounded-xl border border-line/80 bg-surface-card p-4 space-y-3">
+              <p className="text-xs font-semibold text-ink-secondary">Tiến trình lưu chiểu</p>
               <ol className="space-y-2.5">
                 {timelineSteps.map((step) => (
                   <li key={step.key} className="flex items-start gap-2.5">
@@ -580,12 +580,12 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                       className={cn(
                         'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold',
                         step.state === 'done'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          ? 'border-tone-success-border bg-tone-success-bg text-tone-success-text'
                           : step.state === 'current'
-                            ? 'border-blue-200 bg-blue-50 text-primary'
+                            ? 'border-tone-info-border bg-tone-info-bg text-primary'
                             : step.state === 'warning'
-                              ? 'border-rose-200 bg-rose-50 text-rose-700'
-                              : 'border-slate-200 bg-slate-50 text-slate-400',
+                              ? 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-text'
+                              : 'border-line-input bg-surface-muted text-ink-subtle',
                       )}
                     >
                       {step.state === 'done' ? (
@@ -597,8 +597,8 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                       )}
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-800">{step.label}</p>
-                      <p className="text-[11px] text-slate-500 tabular-nums">{step.meta}</p>
+                      <p className="text-xs font-semibold text-ink-heading">{step.label}</p>
+                      <p className="text-[11px] text-ink-muted tabular-nums">{step.meta}</p>
                     </div>
                   </li>
                 ))}
@@ -607,7 +607,7 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
 
             {canConfirmRow ? (
               <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
                   Quyết định của GVHD
                 </p>
 
@@ -625,25 +625,25 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                     className={cn(
                       'flex w-full items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-60',
                       decision === 'AdvisorConfirm'
-                        ? 'border-primary bg-blue-50/70 shadow-2xs ring-1 ring-blue-200'
-                        : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/70',
+                        ? 'border-primary bg-tone-info-bg shadow-2xs ring-1 ring-blue-200'
+                        : 'border-line/90 bg-surface-card hover:border-line-strong hover:bg-surface-hover/70',
                     )}
                   >
                     <span
                       className={cn(
                         'mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg',
                         decision === 'AdvisorConfirm'
-                          ? 'bg-primary text-white'
-                          : 'bg-slate-100 text-slate-500',
+                          ? 'bg-brand-solid text-white'
+                          : 'bg-surface-muted text-ink-muted',
                       )}
                     >
                       <CheckCircle2 className="size-4" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-semibold text-slate-900">
+                      <span className="block text-xs font-semibold text-ink-primary">
                         Đồng ý bản chỉnh sửa
                       </span>
-                      <span className="mt-0.5 block text-[11px] leading-snug text-slate-600">
+                      <span className="mt-0.5 block text-[11px] leading-snug text-ink-body">
                         Hồ sơ đạt yêu cầu, chuyển Văn phòng Khoa nghiệm thu lưu chiểu.
                       </span>
                     </span>
@@ -658,8 +658,8 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                     className={cn(
                       'flex w-full items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/30 disabled:opacity-60',
                       decision === 'RequestRevision'
-                        ? 'border-rose-400 bg-rose-50/70 shadow-2xs ring-1 ring-rose-200'
-                        : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/70',
+                        ? 'border-rose-400 bg-tone-danger-bg shadow-2xs ring-1 ring-rose-200'
+                        : 'border-line/90 bg-surface-card hover:border-line-strong hover:bg-surface-hover/70',
                     )}
                   >
                     <span
@@ -667,16 +667,16 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                         'mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg',
                         decision === 'RequestRevision'
                           ? 'bg-rose-600 text-white'
-                          : 'bg-slate-100 text-slate-500',
+                          : 'bg-surface-muted text-ink-muted',
                       )}
                     >
                       <RotateCcw className="size-4" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-semibold text-slate-900">
+                      <span className="block text-xs font-semibold text-ink-primary">
                         Yêu cầu chỉnh sửa
                       </span>
-                      <span className="mt-0.5 block text-[11px] leading-snug text-slate-600">
+                      <span className="mt-0.5 block text-[11px] leading-snug text-ink-body">
                         Trả hồ sơ về Cần bổ sung để sinh viên cập nhật và nộp lại.
                       </span>
                     </span>
@@ -684,7 +684,7 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                 </div>
 
                 {decision === 'AdvisorConfirm' ? (
-                  <div className="rounded-xl border border-blue-200/70 bg-blue-50/60 px-3.5 py-3 text-xs text-slate-700 leading-relaxed">
+                  <div className="rounded-xl border border-tone-info-border bg-tone-info-bg px-3.5 py-3 text-xs text-ink-secondary leading-relaxed">
                     Xác nhận cặp tệp PDF + DOCX và Metadata Việt/Anh phiên bản{' '}
                     <strong>v{activeVersion}</strong> hợp lệ để chuyển Khoa nghiệm thu.
                   </div>
@@ -693,11 +693,11 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                     <div className="flex items-center justify-between gap-2">
                       <label
                         htmlFor="advisor-archival-reason"
-                        className="text-xs font-semibold text-slate-700"
+                        className="text-xs font-semibold text-ink-secondary"
                       >
-                        Lý do yêu cầu chỉnh sửa <span className="text-rose-600">*</span>
+                        Lý do yêu cầu chỉnh sửa <span className="text-tone-danger-icon">*</span>
                       </label>
-                      <span className="text-xs text-slate-500 tabular-nums">
+                      <span className="text-xs text-ink-muted tabular-nums">
                         {revisionReason.length}/{ARCHIVAL_REASON_MAX_LENGTH}
                       </span>
                     </div>
@@ -709,14 +709,14 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                       disabled={isConfirming || isLoadingDetail}
                       placeholder="Nhập cụ thể nội dung sinh viên cần bổ sung hoặc chỉnh sửa trước khi chuyển Khoa..."
                       className={cn(
-                        'w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 bg-white focus:outline-none focus:ring-2 transition-colors',
+                        'w-full rounded-xl border px-3.5 py-2.5 text-sm text-ink-primary placeholder:text-ink-muted bg-surface-card focus:outline-none focus:ring-2 transition-colors',
                         reasonError
                           ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
-                          : 'border-slate-200 focus:border-primary focus:ring-primary/20',
+                          : 'border-line-input focus:border-primary focus:ring-primary/20',
                       )}
                     />
                     {reasonError && (
-                      <p role="alert" className="text-xs font-medium text-rose-600">
+                      <p role="alert" className="text-xs font-medium text-tone-danger-icon">
                         {reasonError}
                       </p>
                     )}
@@ -724,9 +724,9 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                 )}
               </div>
             ) : (
-              <div className="rounded-xl border border-slate-200/80 bg-white p-4 space-y-2.5">
-                <div className="flex items-start gap-2 text-xs font-semibold text-slate-900 leading-relaxed">
-                  <Lock className="size-4 text-slate-500 shrink-0 mt-0.5" />
+              <div className="rounded-xl border border-line/80 bg-surface-card p-4 space-y-2.5">
+                <div className="flex items-start gap-2 text-xs font-semibold text-ink-primary leading-relaxed">
+                  <Lock className="size-4 text-ink-muted shrink-0 mt-0.5" />
                   <span>
                     {inspectedRow.status === 'AdvisorConfirmed'
                       ? 'Bạn đã xác nhận bản chỉnh sửa này và chuyển sang Văn phòng Khoa.'
@@ -736,17 +736,17 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                   </span>
                 </div>
                 {advisorConfirmedAtText && (
-                  <p className="text-xs text-slate-600 tabular-nums">
+                  <p className="text-xs text-ink-body tabular-nums">
                     Thời điểm GVHD xác nhận: {formatDateTimeVi(advisorConfirmedAtText)}
                   </p>
                 )}
                 {archivedConfirmedAtText && (
-                  <p className="text-xs text-slate-600 tabular-nums">
+                  <p className="text-xs text-ink-body tabular-nums">
                     Thời điểm Khoa nghiệm thu: {formatDateTimeVi(archivedConfirmedAtText)}
                   </p>
                 )}
                 {submissionDetail?.facultyFeedback && (
-                  <div className="rounded-lg border border-rose-200/70 bg-rose-50/60 px-3 py-2 text-xs text-rose-900 whitespace-pre-wrap leading-relaxed">
+                  <div className="rounded-lg border border-tone-danger-border bg-tone-danger-bg px-3 py-2 text-xs text-tone-danger-strong whitespace-pre-wrap leading-relaxed">
                     <strong>Nội dung yêu cầu chỉnh sửa:</strong> {submissionDetail.facultyFeedback}
                   </div>
                 )}
@@ -754,7 +754,7 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
             )}
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-200/80 bg-white px-5 py-3.5 sm:px-6">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-line/80 bg-surface-card px-5 py-3.5 sm:px-6">
             <Button type="button" variant="outline" onClick={onClose} disabled={isConfirming}>
               Đóng
             </Button>

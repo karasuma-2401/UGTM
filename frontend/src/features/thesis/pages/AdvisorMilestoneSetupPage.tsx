@@ -165,7 +165,7 @@ export function AdvisorMilestoneSetupPage() {
             size="sm"
             disabled={isFetching}
             onClick={() => void refresh()}
-            className="h-9 gap-1.5 rounded-xl border-slate-200 bg-white shadow-2xs hover:border-slate-300"
+            className="h-9 gap-1.5 rounded-xl border-line bg-surface-card shadow-2xs hover:border-line-strong"
           >
             <RefreshCw className={cn('size-4', isFetching && 'animate-spin')} aria-hidden="true" />
             <span>Làm mới</span>
@@ -192,15 +192,15 @@ export function AdvisorMilestoneSetupPage() {
       {/* Fluent context toolbar: Batch + Advised group selector */}
       <section
         aria-label="Bộ lọc đợt và nhóm hướng dẫn"
-        className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-2xs"
+        className="rounded-2xl border border-line/80 bg-surface-card p-4 shadow-2xs"
       >
         <div className="grid gap-4 lg:grid-cols-[minmax(240px,1fr)_minmax(320px,1.5fr)]">
           <div className="space-y-1.5">
             <label
               htmlFor="advisor-milestone-batch-select"
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 select-none"
+              className="flex items-center gap-1.5 text-xs font-semibold text-ink-secondary select-none"
             >
-              <Layers className="size-3.5 text-slate-500" aria-hidden="true" />
+              <Layers className="size-3.5 text-ink-muted" aria-hidden="true" />
               <span>Đợt khóa luận</span>
             </label>
             <Select
@@ -221,9 +221,9 @@ export function AdvisorMilestoneSetupPage() {
           <div className="space-y-1.5">
             <label
               htmlFor="advisor-milestone-group-select"
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 select-none"
+              className="flex items-center gap-1.5 text-xs font-semibold text-ink-secondary select-none"
             >
-              <Users className="size-3.5 text-slate-500" aria-hidden="true" />
+              <Users className="size-3.5 text-ink-muted" aria-hidden="true" />
               <span>Nhóm hướng dẫn ({advisedGroups.length})</span>
             </label>
             <Select
@@ -286,12 +286,12 @@ export function AdvisorMilestoneSetupPage() {
           />
 
           <div className="grid items-start gap-6 lg:grid-cols-12">
-            <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)] lg:col-span-8">
-              <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-slate-100/90 bg-gradient-to-r from-slate-50/80 via-white to-white px-5 py-3.5">
-                <CardTitle className="text-base font-semibold tracking-tight text-slate-900">
+            <Card className="min-w-0 overflow-hidden rounded-2xl border-line/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)] lg:col-span-8">
+              <CardHeader className="flex-row items-center justify-between gap-3 space-y-0 border-b border-line-subtle/90 bg-gradient-to-r from-surface-subtle/80 via-surface-card to-surface-card px-5 py-3.5">
+                <CardTitle className="text-base font-semibold tracking-tight text-ink-primary">
                   Danh sách mốc tiến độ
                 </CardTitle>
-                <span className="text-xs font-medium tabular-nums text-slate-500">
+                <span className="text-xs font-medium tabular-nums text-ink-muted">
                   {statusFilter === 'All'
                     ? `${milestones.length} mốc`
                     : `${filteredMilestones.length}/${milestones.length} mốc`}

@@ -21,25 +21,15 @@ export function CurrentAcademicBatch() {
     <section
       aria-label="Đợt hiện hành"
       aria-busy={query.isFetching}
-      className="mx-5 border-b border-slate-200 pb-4 text-xs text-slate-600"
+      className="mx-5 border-y border-line py-4 text-xs text-ink-body"
     >
-      {canRead && !query.isPending && !query.isError && currentBatches.length > 0 && (
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-xs font-medium text-slate-500">Đợt hiện hành</h2>
-          {currentBatches.length > 1 && (
-            <span className="text-[11px] font-medium text-slate-500 tabular-nums">
-              {currentBatches.length} đợt
-            </span>
-          )}
-        </div>
-      )}
       {!canRead ? (
         <p className="leading-relaxed">Bạn chưa có quyền xem đợt KLTN.</p>
       ) : query.isPending ? (
         <p role="status">Đang tải thông tin đợt...</p>
       ) : query.isError ? (
         <div role="alert" className="space-y-2">
-          <p className="text-xs text-rose-700">Chưa tải được thông tin đợt KLTN.</p>
+          <p className="text-xs text-tone-danger-text">Chưa tải được thông tin đợt KLTN.</p>
           <Button
             type="button"
             variant="outline"
@@ -56,7 +46,7 @@ export function CurrentAcademicBatch() {
       ) : (
         <>
           {currentBatches.length > 1 && (
-            <p className="mb-2 text-[11px] text-slate-500">
+            <p className="mb-2 text-[11px] text-ink-muted">
               Có {currentBatches.length} đợt đang diễn ra
             </p>
           )}
@@ -66,17 +56,17 @@ export function CurrentAcademicBatch() {
               const endText = formatShortDateVi(batch.endDate);
               return (
                 <li key={batch.id} className="space-y-1">
-                  <p className="break-words text-[13px] font-semibold leading-snug text-slate-900">
+                  <p className="break-words text-[13px] font-semibold leading-snug text-ink-primary">
                     {batch.batchName}
                   </p>
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 tabular-nums">
-                    <CalendarRange className="size-3.5 text-slate-400 shrink-0" aria-hidden="true" />
-                    <span className="font-medium text-slate-600">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted tabular-nums">
+                    <CalendarRange className="size-3.5 text-ink-subtle shrink-0" aria-hidden="true" />
+                    <span className="font-medium text-ink-body">
                       HK{batch.semester} · {batch.academicYear}
                     </span>
                   </div>
                   {startText && endText && (
-                    <p className="text-[11px] text-slate-400 tabular-nums pl-5">
+                    <p className="text-[11px] text-ink-subtle tabular-nums pl-5">
                       {startText} – {endText}
                     </p>
                   )}

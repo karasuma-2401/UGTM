@@ -37,17 +37,17 @@ export function ThesisGroupDossierCard({
   rules = [],
 }: ThesisGroupDossierCardProps) {
   return (
-    <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+    <Card className="bg-surface-card border-line/80 shadow-xs rounded-2xl overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-line-subtle flex items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-ink-primary">{title}</h3>
         {groupDetail?.groupCode && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-xs font-medium bg-slate-100 text-slate-700">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md font-mono text-xs font-medium bg-surface-muted text-ink-secondary">
             {groupDetail.groupCode}
           </span>
         )}
       </div>
 
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-line-subtle">
         {topBanner && <div className="px-5 py-3.5">{topBanner}</div>}
 
         {isLoading ? (
@@ -57,11 +57,11 @@ export function ThesisGroupDossierCard({
               <Skeleton className="h-5 w-full" />
               <Skeleton className="h-4 w-3/4" />
             </div>
-            <div className="pt-3 border-t border-slate-100 space-y-2">
+            <div className="pt-3 border-t border-line-subtle space-y-2">
               <Skeleton className="h-3.5 w-28" />
               <Skeleton className="h-10 w-full rounded-xl" />
             </div>
-            <div className="pt-3 border-t border-slate-100 space-y-2">
+            <div className="pt-3 border-t border-line-subtle space-y-2">
               <Skeleton className="h-3.5 w-20" />
               <Skeleton className="h-4 w-40" />
             </div>
@@ -86,22 +86,22 @@ export function ThesisGroupDossierCard({
         ) : groupDetail ? (
           <>
             <div className="px-5 py-4 space-y-1">
-              <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-                <span className="font-mono font-semibold text-slate-700">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
+                <span className="font-mono font-semibold text-ink-secondary">
                   {groupDetail.topicCode || 'Đề tài KLTN'}
                 </span>
                 {groupDetail.batchName && (
                   <>
-                    <span className="text-slate-300">·</span>
+                    <span className="text-ink-faint">·</span>
                     <span>{groupDetail.batchName}</span>
                   </>
                 )}
               </div>
-              <p className="text-sm font-semibold text-slate-900 leading-snug">
+              <p className="text-sm font-semibold text-ink-primary leading-snug">
                 {groupDetail.topicTitleVi}
               </p>
               {groupDetail.topicTitleEn && (
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <p className="text-xs text-ink-muted leading-relaxed">
                   {groupDetail.topicTitleEn}
                 </p>
               )}
@@ -109,11 +109,11 @@ export function ThesisGroupDossierCard({
 
             <div className="px-5 py-3.5 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
-                <span className="inline-flex items-center gap-1.5 font-semibold text-slate-600">
-                  <Users className="size-3.5 text-slate-400" aria-hidden="true" />
+                <span className="inline-flex items-center gap-1.5 font-semibold text-ink-body">
+                  <Users className="size-3.5 text-ink-subtle" aria-hidden="true" />
                   Thành viên nhóm
                 </span>
-                <span className="tabular-nums text-slate-500">
+                <span className="tabular-nums text-ink-muted">
                   {groupDetail.members.length} sinh viên
                 </span>
               </div>
@@ -129,24 +129,24 @@ export function ThesisGroupDossierCard({
                           name={member.fullName || 'Sinh viên'}
                           className="size-6 shrink-0 text-[10px]"
                         />
-                        <span className="truncate font-medium text-slate-800">
+                        <span className="truncate font-medium text-ink-heading">
                           {member.fullName}
                         </span>
                       </div>
-                      <span className="shrink-0 font-mono text-xs text-slate-500 tabular-nums">
+                      <span className="shrink-0 font-mono text-xs text-ink-muted tabular-nums">
                         {member.userCode}
                       </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-slate-500">Chưa có danh sách thành viên.</p>
+                <p className="text-xs text-ink-muted">Chưa có danh sách thành viên.</p>
               )}
             </div>
 
             <div className="px-5 py-3.5 space-y-2">
-              <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                <GraduationCap className="size-3.5 text-slate-400" aria-hidden="true" />
+              <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-body">
+                <GraduationCap className="size-3.5 text-ink-subtle" aria-hidden="true" />
                 Giảng viên hướng dẫn
               </p>
               <div className="flex items-center gap-2.5">
@@ -157,30 +157,30 @@ export function ThesisGroupDossierCard({
                   />
                 )}
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-900 truncate">
+                  <p className="text-sm font-medium text-ink-primary truncate">
                     {groupDetail.advisor?.fullName || 'Chưa phân công GVHD'}
                   </p>
                   {groupDetail.advisor?.email && (
-                    <p className="text-xs text-slate-500 truncate">{groupDetail.advisor.email}</p>
+                    <p className="text-xs text-ink-muted truncate">{groupDetail.advisor.email}</p>
                   )}
                 </div>
               </div>
             </div>
           </>
         ) : (
-          <p className="px-5 py-4 text-xs text-slate-500">Đang đồng bộ thông tin hồ sơ nhóm…</p>
+          <p className="px-5 py-4 text-xs text-ink-muted">Đang đồng bộ thông tin hồ sơ nhóm…</p>
         )}
 
         {metaItems.length > 0 && (
           <div className="px-5 py-3.5 space-y-2.5">
             {metaItems.map((item) => (
               <div key={item.label} className="space-y-0.5">
-                <p className="text-xs text-slate-500">{item.label}</p>
+                <p className="text-xs text-ink-muted">{item.label}</p>
                 <div
                   className={
                     item.accent
-                      ? 'text-sm font-semibold text-[#2054a5]'
-                      : 'text-xs text-slate-700 leading-relaxed'
+                      ? 'text-sm font-semibold text-brand-ink'
+                      : 'text-xs text-ink-secondary leading-relaxed'
                   }
                 >
                   {item.value}
@@ -191,15 +191,15 @@ export function ThesisGroupDossierCard({
         )}
 
         {rules.length > 0 && (
-          <div className="px-5 py-3.5 space-y-2 bg-slate-50/40">
-            <p className="text-xs font-semibold text-slate-700">{rulesTitle}</p>
+          <div className="px-5 py-3.5 space-y-2 bg-surface-subtle/40">
+            <p className="text-xs font-semibold text-ink-secondary">{rulesTitle}</p>
             <ul className="space-y-1.5">
               {rules.map((rule) => (
                 <li
                   key={rule}
-                  className="flex items-start gap-2 text-xs text-slate-600 leading-relaxed"
+                  className="flex items-start gap-2 text-xs text-ink-body leading-relaxed"
                 >
-                  <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="size-3.5 text-tone-success-icon shrink-0 mt-0.5" />
                   <span>{rule}</span>
                 </li>
               ))}

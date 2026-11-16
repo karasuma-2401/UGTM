@@ -31,9 +31,9 @@ export function SelectableTableRow({
         'group transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary',
         interactive && 'cursor-pointer',
         selected && !hideSelectionMarker
-          ? "bg-blue-50/70 hover:bg-blue-50/70 [&>td:first-child]:relative [&>td:first-child]:before:pointer-events-none [&>td:first-child]:before:absolute [&>td:first-child]:before:inset-y-1.5 [&>td:first-child]:before:left-0 [&>td:first-child]:before:w-1 [&>td:first-child]:before:rounded-r [&>td:first-child]:before:bg-primary [&>td:first-child]:before:content-['']"
-          : 'hover:bg-blue-50/40',
-        selected && hideSelectionMarker && 'bg-blue-50/70 hover:bg-blue-50/70',
+          ? "bg-tone-info-bg hover:bg-tone-info-bg [&>td:first-child]:relative [&>td:first-child]:before:pointer-events-none [&>td:first-child]:before:absolute [&>td:first-child]:before:inset-y-1.5 [&>td:first-child]:before:left-0 [&>td:first-child]:before:w-1 [&>td:first-child]:before:rounded-r [&>td:first-child]:before:bg-primary [&>td:first-child]:before:content-['']"
+          : 'hover:bg-tone-info-bg',
+        selected && hideSelectionMarker && 'bg-tone-info-bg hover:bg-tone-info-bg',
         className,
       )}
       onClick={(event) => {

@@ -40,8 +40,8 @@ export function PermissionModuleCard({
   };
 
   return (
-    <div className="rounded-xl border border-[var(--color-border-card,#e0e7f1)] bg-[var(--color-bg-white,#ffffff)] overflow-hidden shadow-xs transition-all">
-      <div className="p-3.5 bg-[var(--color-bg-subtle,#f7f9fc)] border-b border-[var(--color-border-subtle,#edf1f7)] flex items-center justify-between gap-3 select-none">
+    <div className="rounded-xl border border-line/80 bg-surface-card overflow-hidden shadow-xs transition-all">
+      <div className="p-3.5 bg-surface-subtle border-b border-line-subtle flex items-center justify-between gap-3 select-none">
         <div className="flex items-center gap-3 min-w-0">
           <Checkbox
             aria-label={`Chọn quyền phân hệ ${moduleLabel}`}
@@ -50,7 +50,7 @@ export function PermissionModuleCard({
             onCheckedChange={handleModuleCheckboxChange}
           />
           <div className="flex items-center gap-2 min-w-0">
-            <h4 className="text-sm font-bold text-[var(--color-text-heading,#10182c)] truncate">
+            <h4 className="text-sm font-bold text-ink-heading truncate">
               {moduleLabel}
             </h4>
             <Badge
@@ -68,7 +68,7 @@ export function PermissionModuleCard({
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="h-7 w-7 p-0 text-[var(--color-text-muted,#697e9f)] hover:text-[var(--color-text-heading,#10182c)]"
+            className="h-7 w-7 p-0 text-ink-muted hover:text-ink-heading"
             title={isExpanded ? 'Thu gọn' : 'Mở rộng'}
             aria-label={`${isExpanded ? 'Thu gọn' : 'Mở rộng'} phân hệ ${moduleLabel}`}
             aria-expanded={isExpanded}
@@ -79,7 +79,7 @@ export function PermissionModuleCard({
       </div>
 
       {isExpanded && (
-        <div className="p-3.5 grid grid-cols-1 md:grid-cols-2 gap-2.5 bg-[var(--color-bg-white,#ffffff)]">
+        <div className="p-3.5 grid grid-cols-1 md:grid-cols-2 gap-2.5 bg-surface-card">
           {permissions.map((perm) => (
             <PermissionCheckboxItem
               key={perm.id}

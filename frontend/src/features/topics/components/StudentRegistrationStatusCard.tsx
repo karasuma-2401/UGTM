@@ -48,20 +48,20 @@ export function StudentRegistrationStatusCard({
         : 'bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]';
 
   const headerTintClass = blocked
-    ? 'bg-gradient-to-r from-white via-white to-rose-50/40'
+    ? 'bg-gradient-to-r from-surface-card via-surface-card to-tone-danger-bg/45'
     : confirmed
-      ? 'bg-gradient-to-r from-white via-white to-emerald-50/45'
+      ? 'bg-gradient-to-r from-surface-card via-surface-card to-tone-success-bg/45'
       : pending && !expired
-        ? 'bg-gradient-to-r from-white via-white to-amber-50/45'
-        : 'bg-gradient-to-r from-white via-white to-blue-50/40';
+        ? 'bg-gradient-to-r from-surface-card via-surface-card to-tone-warning-bg/45'
+        : 'bg-gradient-to-r from-surface-card via-surface-card to-tone-info-bg/45';
 
   const iconTileClass = blocked
-    ? 'bg-rose-50 text-rose-600 ring-rose-100/80'
+    ? 'bg-tone-danger-bg text-tone-danger-icon ring-tone-danger-border/60'
     : confirmed
-      ? 'bg-emerald-50 text-emerald-600 ring-emerald-100/80'
+      ? 'bg-tone-success-bg text-tone-success-icon ring-tone-success-border/60'
       : pending && !expired
-        ? 'bg-amber-50 text-amber-600 ring-amber-100/80'
-        : 'bg-blue-50 text-primary ring-blue-100/80';
+        ? 'bg-tone-warning-bg text-tone-warning-icon ring-tone-warning-border/60'
+        : 'bg-tone-info-bg text-primary ring-tone-info-border/60';
 
   const step1State: 'done' | 'active' | 'blocked' = blocked
     ? 'blocked'
@@ -79,7 +79,7 @@ export function StudentRegistrationStatusCard({
 
   return (
     <Card
-      className="overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]"
+      className="overflow-hidden rounded-2xl border-line/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]"
       aria-busy={busy}
     >
       <div aria-hidden="true" className={`h-1 w-full ${accentBarClass}`} />
@@ -93,11 +93,11 @@ export function StudentRegistrationStatusCard({
           </span>
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
                 Đăng ký của tôi
               </h2>
               {status?.groupId && (
-                <span className="inline-flex items-center rounded-md border border-slate-200/80 bg-white/90 px-2 py-0.5 font-mono text-[11px] font-medium text-slate-500">
+                <span className="inline-flex items-center rounded-md border border-line-input/80 bg-surface-elevated/90 px-2 py-0.5 font-mono text-[11px] font-medium text-ink-muted">
                   Mã nhóm: {status.groupId}
                 </span>
               )}
@@ -111,7 +111,7 @@ export function StudentRegistrationStatusCard({
               </div>
             ) : error ? (
               <div role="alert" className="space-y-2 pt-1">
-                <p className="text-sm text-rose-700">{error}</p>
+                <p className="text-sm text-tone-danger-text">{error}</p>
                 <Button type="button" variant="outline" size="sm" onClick={onRetry} disabled={busy}>
                   Thử lại trạng thái
                 </Button>
@@ -119,18 +119,18 @@ export function StudentRegistrationStatusCard({
             ) : (
               status && (
                 <>
-                  <p className="break-words text-base font-semibold leading-snug text-slate-900">
+                  <p className="break-words text-base font-semibold leading-snug text-ink-primary">
                     {status.hasRegistered
                       ? status.topicTitleVi || 'Đã có hồ sơ đăng ký đề tài'
                       : 'Bạn chưa có đăng ký đề tài'}
                   </p>
                   {confirmed ? (
-                    <p className="text-xs leading-5 text-slate-600">
+                    <p className="text-xs leading-5 text-ink-body">
                       Bạn đã được ghi nhận vào đề tài, không cần đăng ký lại.
                     </p>
                   ) : pending ? (
-                    <p className="flex items-center gap-1.5 text-xs leading-5 text-slate-600">
-                      <Clock className="size-3.5 shrink-0 text-amber-600" aria-hidden="true" />
+                    <p className="flex items-center gap-1.5 text-xs leading-5 text-ink-body">
+                      <Clock className="size-3.5 shrink-0 text-tone-warning-icon" aria-hidden="true" />
                       <span>
                         {expired
                           ? 'Mã tham gia đã hết hạn.'
@@ -139,7 +139,7 @@ export function StudentRegistrationStatusCard({
                     </p>
                   ) : (
                     !blocked && (
-                      <p className="text-xs leading-5 text-slate-500">
+                      <p className="text-xs leading-5 text-ink-muted">
                         Chọn đề tài còn chỗ trống bên dưới để đăng ký cá nhân hoặc mời bạn cùng nhóm.
                       </p>
                     )
@@ -183,7 +183,7 @@ export function StudentRegistrationStatusCard({
                 variant="outline"
                 rightIcon={<ArrowRight />}
                 onClick={onViewGroup}
-                className="h-9 rounded-xl border-slate-200 bg-white shadow-2xs hover:border-slate-300"
+                className="h-9 rounded-xl border-line-input bg-surface-elevated shadow-2xs hover:border-line-strong"
               >
                 Xem nhóm và tiến độ
               </Button>
@@ -195,7 +195,7 @@ export function StudentRegistrationStatusCard({
       {!loading && !error && status && (
         <ol
           aria-label="Hành trình đăng ký đề tài"
-          className="grid gap-2 border-t border-slate-100 bg-slate-50/60 px-5 py-3 sm:grid-cols-3 sm:gap-3 sm:px-6"
+          className="grid gap-2 border-t border-line-subtle bg-surface-subtle/60 px-5 py-3 sm:grid-cols-3 sm:gap-3 sm:px-6"
         >
           {[
             {
@@ -224,18 +224,18 @@ export function StudentRegistrationStatusCard({
             const badgeClass = isDone
               ? 'bg-emerald-600 text-white'
               : isActive
-                ? 'bg-primary text-white ring-4 ring-blue-100'
+                ? 'bg-brand-solid text-white'
                 : isAlert
                   ? 'bg-rose-600 text-white'
-                  : 'bg-slate-200 text-slate-600';
+                  : 'bg-surface-strong text-ink-body';
 
             const labelClass = isDone
-              ? 'font-medium text-emerald-800'
+              ? 'font-medium text-tone-success-strong'
               : isActive
-                ? 'font-semibold text-slate-900'
+                ? 'font-semibold text-ink-primary'
                 : isAlert
-                  ? 'font-medium text-rose-700'
-                  : 'font-medium text-slate-500';
+                  ? 'font-medium text-tone-danger-text'
+                  : 'font-medium text-ink-muted';
 
             return (
               <li key={item.key} className="flex items-center gap-2.5 text-xs">
@@ -255,29 +255,31 @@ export function StudentRegistrationStatusCard({
       {!error && status?.isRegistrationBlocked && (
         <div
           role="alert"
-          className="flex items-center gap-2 border-t border-rose-100 bg-rose-50 px-5 py-3 text-sm text-rose-700 sm:px-6"
+          className="flex items-center gap-2 border-t border-tone-danger-border bg-tone-danger-bg px-5 py-3 text-sm text-tone-danger-text sm:px-6"
         >
           <Lock className="size-4 shrink-0" aria-hidden="true" />
           <p>Quyền đăng ký đang bị khóa. Vui lòng liên hệ Khoa để được hỗ trợ.</p>
         </div>
       )}
       {!error && status && status.violationCount > 0 && (
-        <div className="flex items-center gap-2 border-t border-amber-100 bg-amber-50/70 px-5 py-2.5 text-xs text-amber-800 sm:px-6">
-          <ShieldAlert className="size-3.5 shrink-0 text-amber-600" aria-hidden="true" />
+        <div className="flex items-center gap-2 border-t border-tone-warning-border bg-tone-warning-bg px-5 py-2.5 text-xs text-tone-warning-strong sm:px-6">
+          <ShieldAlert className="size-3.5 shrink-0 text-tone-warning-icon" aria-hidden="true" />
           <p>Bạn có {status.violationCount} lần cảnh báo do quá hạn xác nhận.</p>
         </div>
       )}
       {receipt && (
         <div
           role="status"
-          className="flex gap-2.5 border-t border-emerald-100 bg-emerald-50/75 px-5 py-3.5 text-sm text-emerald-800 sm:px-6"
+          className="flex gap-2.5 border-t border-tone-success-border bg-tone-success-bg px-5 py-3.5 text-sm text-tone-success-strong sm:px-6"
         >
-          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-tone-success-icon" />
           <div>
-            <p className="font-semibold text-emerald-950">{receipt.topicTitle}</p>
+            <p className="font-semibold text-tone-success-strong">
+              {receipt.topicTitle}
+            </p>
             <p className="text-xs sm:text-sm">{receipt.message}</p>
             {receipt.isPendingConfirmation && (
-              <p className="mt-1 text-xs leading-5 text-emerald-800">
+              <p className="mt-1 text-xs leading-5 text-tone-success-strong">
                 Đã gửi lời mời tới MSSV <span className="font-mono font-semibold">{receipt.partnerUserCode}</span>. Hạn xác nhận:{' '}
                 {registrationDate(receipt.confirmationExpiresAtUtc)}. Đăng ký của bạn đã có hiệu
                 lực.

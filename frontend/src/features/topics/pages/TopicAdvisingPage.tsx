@@ -47,9 +47,9 @@ function GroupStudents({ group }: { group: AdvisingGroup }) {
       <div className="min-w-0 space-y-2 break-words">
         {group.students.map((student) => (
           <div key={student.studentId} className="text-sm">
-            <p className="font-medium text-slate-800">
+            <p className="font-medium text-ink-heading">
               {student.fullName ?? 'Chưa có tên sinh viên'}{' '}
-              <span className="text-xs font-normal text-slate-500">
+              <span className="text-xs font-normal text-ink-muted">
                 {student.userCode ?? 'Chưa có MSSV'}
               </span>
             </p>
@@ -57,8 +57,8 @@ function GroupStudents({ group }: { group: AdvisingGroup }) {
               <p
                 className={
                   student.confirmationStatus === 'Expired'
-                    ? 'text-xs text-rose-700'
-                    : 'text-xs text-amber-700'
+                    ? 'text-xs text-tone-danger-text'
+                    : 'text-xs text-tone-warning-text'
                 }
               >
                 {confirmationLabel(student.confirmationStatus, student.confirmationExpiresAtUtc)}
@@ -66,7 +66,7 @@ function GroupStudents({ group }: { group: AdvisingGroup }) {
             )}
           </div>
         ))}
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-muted">
           {group.confirmedStudentsCount} đã xác nhận
           {group.pendingConfirmationsCount > 0
             ? ` · ${group.pendingConfirmationsCount} chờ xác nhận`
@@ -174,7 +174,7 @@ export function TopicAdvisingPage({
   return (
     <div className="space-y-4">
       <section aria-label="Thống kê nhóm theo đợt" className="space-y-2">
-        <div className="flex flex-wrap justify-between gap-2 text-sm text-slate-600">
+        <div className="flex flex-wrap justify-between gap-2 text-sm text-ink-body">
           <p>
             {count(statistics?.total)} nhóm · {filters.batchId ? batchName : 'Tất cả đợt khóa luận'}
           </p>
@@ -245,14 +245,14 @@ export function TopicAdvisingPage({
         />
       </section>
 
-      <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-xs">
+      <Card className="overflow-hidden rounded-2xl border-line/80 shadow-xs">
         <form
           onSubmit={submit}
           className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4"
           aria-label="Bộ lọc nhóm"
         >
           <label className="block space-y-1.5 sm:col-span-2">
-            <span className="text-xs font-medium text-slate-700">Tìm nhóm hoặc sinh viên</span>
+            <span className="text-xs font-medium text-ink-secondary">Tìm nhóm hoặc sinh viên</span>
             <Input
               aria-label="Tìm đề tài hoặc sinh viên"
               maxLength={200}
@@ -263,7 +263,7 @@ export function TopicAdvisingPage({
             />
           </label>
           <div className="space-y-1.5">
-            <span className="text-xs font-medium text-slate-700">Đợt khóa luận</span>
+            <span className="text-xs font-medium text-ink-secondary">Đợt khóa luận</span>
             <Select<string>
               aria-label="Đợt khóa luận"
               placeholder="Tất cả đợt khóa luận"
@@ -278,7 +278,7 @@ export function TopicAdvisingPage({
             />
           </div>
           <div className="space-y-1.5">
-            <span className="text-xs font-medium text-slate-700">Phạm vi nhóm</span>
+            <span className="text-xs font-medium text-ink-secondary">Phạm vi nhóm</span>
             <Select<GroupScope>
               aria-label="Phạm vi nhóm"
               value={draft.scope}
@@ -290,7 +290,7 @@ export function TopicAdvisingPage({
             />
           </div>
           <div className="space-y-1.5">
-            <span className="text-xs font-medium text-slate-700">Tiến độ khóa luận</span>
+            <span className="text-xs font-medium text-ink-secondary">Tiến độ khóa luận</span>
             <Select<AdvisingFilters['status']>
               aria-label="Tiến độ khóa luận"
               placeholder="Tất cả tiến độ"
@@ -306,7 +306,7 @@ export function TopicAdvisingPage({
             />
           </div>
           <div className="space-y-1.5">
-            <span className="text-xs font-medium text-slate-700">Lời mời thành viên</span>
+            <span className="text-xs font-medium text-ink-secondary">Lời mời thành viên</span>
             <Select<AdvisingFilters['confirmation']>
               aria-label="Lời mời thành viên"
               placeholder="Tất cả lời mời"
@@ -433,11 +433,11 @@ export function TopicAdvisingPage({
               cellClassName: 'px-4 py-4',
               cell: (group) => (
                 <>
-                  <p className="text-sm font-semibold text-slate-900">{group.titleVi}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="text-sm font-semibold text-ink-primary">{group.titleVi}</p>
+                  <p className="mt-1 text-xs text-ink-muted">
                     {group.batchName ?? 'Chưa có tên đợt'}
                   </p>
-                  <p title={group.groupId} className="mt-1 text-xs text-slate-500">
+                  <p title={group.groupId} className="mt-1 text-xs text-ink-muted">
                     {groupLabel(group.groupId)} · {formatAdvisingDate(group.createdAt)}
                   </p>
                 </>
@@ -525,16 +525,16 @@ export function TopicAdvisingPage({
           renderMobileItem={(group) => (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span title={group.groupId} className="text-xs font-medium text-slate-600">
+                <span title={group.groupId} className="text-xs font-medium text-ink-body">
                   {groupLabel(group.groupId)}
                 </span>
                 <GroupStatusBadge status={group.status} />
               </div>
-              <p className="text-sm font-semibold leading-6 text-slate-900">{group.titleVi}</p>
-              <p className="text-xs text-slate-500">{group.batchName ?? 'Chưa có tên đợt'}</p>
+              <p className="text-sm font-semibold leading-6 text-ink-primary">{group.titleVi}</p>
+              <p className="text-xs text-ink-muted">{group.batchName ?? 'Chưa có tên đợt'}</p>
               <GroupStudents group={group} />
               <div className="flex items-center justify-between gap-3">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-ink-muted">
                   {formatAdvisingDate(group.createdAt)}
                 </span>
                 <Button

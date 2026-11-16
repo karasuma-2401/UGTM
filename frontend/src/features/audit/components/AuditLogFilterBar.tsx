@@ -111,7 +111,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
   return (
     <form
       onSubmit={handleSubmit}
-      className="p-4 sm:p-5 border-b border-slate-100 bg-slate-50/40 space-y-3.5"
+      className="p-4 sm:p-5 border-b border-line-subtle bg-surface-subtle/40 space-y-3.5"
     >
       {/* Hàng 1: Search, Dropdowns, Action buttons */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
@@ -122,20 +122,20 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             value={filter.searchTerm}
             onChange={(e) => onFilterChange({ ...filter, searchTerm: e.target.value })}
             placeholder="Tìm theo người thực hiện, mã hồ sơ hoặc nội dung..."
-            leftIcon={<Search className="size-4 text-slate-400" />}
+            leftIcon={<Search className="size-4 text-ink-subtle" />}
             rightIcon={
               filter.searchTerm ? (
                 <button
                   type="button"
                   onClick={() => onFilterChange({ ...filter, searchTerm: '' })}
-                  className="p-1 text-slate-400 hover:text-slate-600 rounded"
+                  className="p-1 text-ink-subtle hover:text-ink-body rounded"
                   aria-label="Xóa từ khóa tìm kiếm"
                 >
                   <X className="size-3.5" />
                 </button>
               ) : null
             }
-            className="h-10 rounded-xl border-slate-200/90 bg-white text-sm"
+            className="h-10 rounded-xl border-line-input/90 bg-surface-card text-sm"
           />
         </div>
 
@@ -148,7 +148,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             placeholder="Tất cả thao tác"
             searchable
             searchPlaceholder="Tìm thao tác..."
-            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-sm"
+            triggerClassName="h-10 rounded-xl border-line-input/90 bg-surface-card text-sm"
           />
         </div>
 
@@ -159,7 +159,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             value={filter.outcome}
             onChange={(val) => onFilterChange({ ...filter, outcome: String(val || '') })}
             placeholder="Tất cả kết quả"
-            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-sm"
+            triggerClassName="h-10 rounded-xl border-line-input/90 bg-surface-card text-sm"
           />
         </div>
 
@@ -181,7 +181,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               disabled={isLoading}
               onClick={onReset}
               leftIcon={<RotateCcw className="size-3.5" />}
-              className="h-10 rounded-xl px-3.5 text-slate-600 hover:text-slate-900"
+              className="h-10 rounded-xl px-3.5 text-ink-body hover:text-ink-primary"
               title="Đặt lại bộ lọc về mặc định"
             >
               Đặt lại
@@ -196,29 +196,29 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
           placeholder="Request ID chính xác"
           value={filter.requestId || ''}
           onChange={(event) => onFilterChange({ ...filter, requestId: event.target.value })}
-          className="h-9 rounded-xl border-slate-200/90 bg-white text-xs"
+          className="h-9 rounded-xl border-line-input/90 bg-surface-card text-xs"
         />
         <Input
           aria-label="Mã đối tượng chính xác"
           placeholder="Mã đối tượng chính xác"
           value={filter.targetId || ''}
           onChange={(event) => onFilterChange({ ...filter, targetId: event.target.value })}
-          className="h-9 rounded-xl border-slate-200/90 bg-white text-xs"
+          className="h-9 rounded-xl border-line-input/90 bg-surface-card text-xs"
         />
         <Input
           aria-label="Session ID chính xác"
           placeholder="Session ID chính xác"
           value={filter.actorSessionId || ''}
           onChange={(event) => onFilterChange({ ...filter, actorSessionId: event.target.value })}
-          className="h-9 rounded-xl border-slate-200/90 bg-white text-xs"
+          className="h-9 rounded-xl border-line-input/90 bg-surface-card text-xs"
         />
       </div>
 
       {/* Hàng 2: Mốc thời gian nhanh (Time Presets) và Bộ chọn ngày */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-0.5">
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <span className="text-xs font-medium text-slate-500 mr-1 flex items-center gap-1">
-            <CalendarIcon className="size-3.5 text-slate-400" />
+          <span className="text-xs font-medium text-ink-muted mr-1 flex items-center gap-1">
+            <CalendarIcon className="size-3.5 text-ink-subtle" />
             Thời gian:
           </span>
 
@@ -228,8 +228,8 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             className={cn(
               'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border',
               filter.timePreset === 'all'
-                ? 'bg-primary text-white border-primary shadow-2xs'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900',
+                ? 'bg-brand-solid text-white border-primary shadow-2xs'
+                : 'bg-surface-card text-ink-body border-line-input hover:bg-surface-muted hover:text-ink-primary',
             )}
           >
             Tất cả
@@ -241,8 +241,8 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             className={cn(
               'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border',
               filter.timePreset === 'today'
-                ? 'bg-primary text-white border-primary shadow-2xs'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900',
+                ? 'bg-brand-solid text-white border-primary shadow-2xs'
+                : 'bg-surface-card text-ink-body border-line-input hover:bg-surface-muted hover:text-ink-primary',
             )}
           >
             Hôm nay
@@ -254,8 +254,8 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             className={cn(
               'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border',
               filter.timePreset === '7d'
-                ? 'bg-primary text-white border-primary shadow-2xs'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900',
+                ? 'bg-brand-solid text-white border-primary shadow-2xs'
+                : 'bg-surface-card text-ink-body border-line-input hover:bg-surface-muted hover:text-ink-primary',
             )}
           >
             7 ngày qua
@@ -267,8 +267,8 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             className={cn(
               'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border',
               filter.timePreset === '30d'
-                ? 'bg-primary text-white border-primary shadow-2xs'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900',
+                ? 'bg-brand-solid text-white border-primary shadow-2xs'
+                : 'bg-surface-card text-ink-body border-line-input hover:bg-surface-muted hover:text-ink-primary',
             )}
           >
             30 ngày qua
@@ -280,8 +280,8 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             className={cn(
               'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border',
               filter.timePreset === 'custom'
-                ? 'bg-primary text-white border-primary shadow-2xs'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900',
+                ? 'bg-brand-solid text-white border-primary shadow-2xs'
+                : 'bg-surface-card text-ink-body border-line-input hover:bg-surface-muted hover:text-ink-primary',
             )}
           >
             Tùy chọn ngày...
@@ -292,21 +292,25 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
         {filter.timePreset === 'custom' && (
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto animate-in fade-in-50 duration-150">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-500 whitespace-nowrap">Từ:</span>
+              <span className="text-xs text-ink-muted whitespace-nowrap">
+                Từ:
+              </span>
               <DatePicker
                 aria-label="Từ ngày"
                 value={filter.fromUtc}
                 onValueChange={(val) => onFilterChange({ ...filter, fromUtc: val })}
-                className="w-48 h-8 px-2.5 text-xs rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary text-slate-700"
+                className="w-48 h-8 px-2.5 text-xs rounded-md border border-line-input bg-surface-card focus:outline-none focus:ring-1 focus:ring-primary text-ink-secondary"
               />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-slate-500 whitespace-nowrap">Đến:</span>
+              <span className="text-xs text-ink-muted whitespace-nowrap">
+                Đến:
+              </span>
               <DatePicker
                 aria-label="Đến ngày"
                 value={filter.toUtc}
                 onValueChange={(val) => onFilterChange({ ...filter, toUtc: val })}
-                className="w-48 h-8 px-2.5 text-xs rounded-md border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-primary text-slate-700"
+                className="w-48 h-8 px-2.5 text-xs rounded-md border border-line-input bg-surface-card focus:outline-none focus:ring-1 focus:ring-primary text-ink-secondary"
               />
             </div>
           </div>

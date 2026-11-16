@@ -133,14 +133,14 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
   return (
     <section
       aria-label="Thành phần điểm"
-      className="score-components bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden"
+      className="score-components bg-surface-card border border-line/80 rounded-2xl shadow-xs overflow-hidden"
     >
-      <div className="p-5 sm:px-6 border-b border-slate-100 flex flex-wrap gap-3 items-center justify-between">
+      <div className="p-5 sm:px-6 border-b border-line-subtle flex flex-wrap gap-3 items-center justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="text-base font-semibold tracking-tight text-slate-900">
+            <h2 className="text-base font-semibold tracking-tight text-ink-primary">
               Thành phần điểm{' '}
-              <span className="ml-0.5 text-sm font-normal text-slate-500">
+              <span className="ml-0.5 text-sm font-normal text-ink-muted">
                 ({components.length})
               </span>
             </h2>
@@ -148,8 +148,8 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
               role="status"
               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                 isDirty
-                  ? 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200/80'
-                  : 'bg-slate-100 text-slate-600'
+                  ? 'bg-tone-warning-bg text-tone-warning-strong ring-1 ring-inset ring-amber-200/80'
+                  : 'bg-surface-muted text-ink-body'
               }`}
             >
               {isReadOnly
@@ -161,7 +161,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                     : 'Chưa có cấu hình đã lưu'}
             </span>
           </div>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-ink-muted mt-1">
             Danh sách các thành phần điểm và điều kiện áp dụng cho từng nguồn chấm.
           </p>
         </div>
@@ -183,7 +183,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
       {!isReadOnly && !isValid && (
         <div
           role="status"
-          className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 sm:px-6"
+          className="border-b border-tone-warning-border bg-tone-warning-bg px-5 py-3 text-sm text-tone-warning-strong sm:px-6"
         >
           {components.length === 0
             ? 'Hãy thêm ít nhất một thành phần điểm.'
@@ -209,7 +209,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
           <TableBody>
             {components.length === 0 ? (
               <tr>
-                <TableCell colSpan={4} className="px-5 py-12 text-center text-slate-400 text-sm">
+                <TableCell colSpan={4} className="px-5 py-12 text-center text-ink-subtle text-sm">
                   Chưa có đầu điểm nào trong cấu hình. Bấm "Thêm đầu điểm" để bắt đầu.
                 </TableCell>
               </tr>
@@ -228,11 +228,11 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                   <TableRow
                     key={item.componentCode || index}
                     hideSelectionMarker
-                    className="hover:bg-slate-50/70 transition-colors"
+                    className="hover:bg-surface-hover/70 transition-colors"
                   >
                     {/* Cột 1: Nguồn / thành viên */}
                     <TableCell className="px-5 py-4">
-                      <div className="font-semibold text-slate-900 text-sm">
+                      <div className="font-semibold text-ink-primary text-sm">
                         {item.componentName}
                       </div>
                     </TableCell>
@@ -242,14 +242,14 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                       <div className="flex items-center gap-2 flex-wrap">
                         {isReadOnly ? (
                           <div className="flex items-baseline gap-1.5">
-                            <span className="font-semibold text-slate-800 text-sm">
+                            <span className="font-semibold text-ink-heading text-sm">
                               {item.weight}
                             </span>
-                            <span className="text-xs text-slate-500 font-medium">
+                            <span className="text-xs text-ink-muted font-medium">
                               {calculationMethod === 'Percentage' ? '%' : 'hệ số'}
                             </span>
                             {calculationMethod === 'IntegerCoefficient' && (
-                              <span className="text-xs text-slate-400 font-medium">
+                              <span className="text-xs text-ink-subtle font-medium">
                                 (≈ {percentEquiv}%)
                               </span>
                             )}
@@ -257,14 +257,14 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                         ) : (
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 md:flex-nowrap md:whitespace-nowrap">
                             <div className="flex items-center gap-2 whitespace-nowrap">
-                              <div className="inline-flex shrink-0 items-center rounded-xl border border-slate-200 bg-white focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+                              <div className="inline-flex shrink-0 items-center rounded-xl border border-line-input bg-surface-card focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
                                 <button
                                   type="button"
                                   aria-label={`Giảm trọng số ${item.componentName}`}
                                   title={`Giảm ${weightStep}`}
                                   disabled={item.weight <= 0}
                                   onClick={() => handleStepWeight(index, -1)}
-                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-l-xl bg-slate-50/80 text-slate-600 transition-colors hover:bg-blue-50 hover:text-primary active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-slate-50"
+                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-l-xl bg-surface-subtle/80 text-ink-body transition-colors hover:bg-tone-info-bg hover:text-primary active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-surface-hover"
                                 >
                                   <Minus className="size-4" aria-hidden="true" />
                                 </button>
@@ -280,7 +280,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                                   value={item.weight === 0 ? '' : item.weight}
                                   onChange={(e) => handleWeightChange(index, e.target.value)}
                                   placeholder="0"
-                                  className="score-weight-input w-14 h-11 md:w-12 md:h-9 min-w-0 border-x border-slate-200 px-1 text-base sm:text-sm font-semibold tabular-nums text-center text-slate-900 bg-white caret-blue-600 focus:outline-none"
+                                  className="score-weight-input w-14 h-11 md:w-12 md:h-9 min-w-0 border-x border-line-input px-1 text-base sm:text-sm font-semibold tabular-nums text-center text-ink-primary bg-surface-card caret-blue-600 focus:outline-none dark:caret-blue-400"
                                 />
                                 <button
                                   type="button"
@@ -288,17 +288,17 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                                   title={`Tăng ${weightStep}`}
                                   disabled={item.weight >= maximumWeight}
                                   onClick={() => handleStepWeight(index, 1)}
-                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-r-xl bg-slate-50/80 text-slate-600 transition-colors hover:bg-blue-50 hover:text-primary active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-slate-50"
+                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-r-xl bg-surface-subtle/80 text-ink-body transition-colors hover:bg-tone-info-bg hover:text-primary active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-surface-hover"
                                 >
                                   <Plus className="size-4" aria-hidden="true" />
                                 </button>
                               </div>
-                              <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
+                              <span className="text-xs text-ink-muted font-medium whitespace-nowrap">
                                 {calculationMethod === 'Percentage' ? '%' : 'hệ số'}
                               </span>
                             </div>
                             {calculationMethod === 'IntegerCoefficient' && (
-                              <span className="text-xs text-slate-500 whitespace-nowrap">
+                              <span className="text-xs text-ink-muted whitespace-nowrap">
                                 <span className="sr-only">Tỷ lệ tham khảo: </span>(≈ {percentEquiv}
                                 %)
                               </span>
@@ -309,13 +309,13 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                     </TableCell>
 
                     {/* Cột 3: Điều kiện */}
-                    <TableCell className="px-5 py-4 text-xs leading-relaxed text-slate-600">
+                    <TableCell className="px-5 py-4 text-xs leading-relaxed text-ink-body">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span>{getConditionText(item)}</span>
                         {item.minimumScore !== null && (
                           <span
                             title="Có áp dụng điểm sàn"
-                            className="text-amber-500 inline-flex items-center"
+                            className="text-amber-500 dark:text-amber-400 inline-flex items-center"
                           >
                             <ShieldAlert className="size-3.5" />
                           </span>
@@ -334,7 +334,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                             onClick={() => handleRemoveComponent(index)}
                             title="Xóa đầu điểm tùy biến"
                             aria-label={`Xóa ${item.componentName}`}
-                            className="p-2 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            className="p-2 rounded-lg text-ink-muted hover:text-tone-danger-icon hover:bg-tone-danger-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                           >
                             <Trash2 className="size-4" />
                           </button>
@@ -349,7 +349,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
         </Table>
       </div>
 
-      <div className="relative overflow-hidden border-t border-slate-200/80 bg-gradient-to-br from-slate-50 via-blue-50/40 to-amber-50/35 p-5 sm:px-6">
+      <div className="relative overflow-hidden border-t border-line/80 bg-gradient-to-br from-surface-subtle via-tone-info-bg/45 to-tone-warning-bg/35 p-5 sm:px-6">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-blue-500 via-indigo-500 to-amber-500 opacity-85" />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
@@ -357,13 +357,13 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
               <Calculator className="size-4" />
             </span>
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">Xem trước cách tính</h3>
-              <p className="text-xs text-slate-500">
+              <h3 className="text-sm font-semibold text-ink-primary">Xem trước cách tính</h3>
+              <p className="text-xs text-ink-muted">
                 Công thức tổng hợp điểm theo trọng số hiện hành
               </p>
             </div>
           </div>
-          <span className="rounded-full border border-blue-200/80 bg-white/90 px-3 py-1 text-xs font-semibold text-blue-700 shadow-xs tabular-nums">
+          <span className="rounded-full border border-tone-info-border bg-surface-card/90 px-3 py-1 text-xs font-semibold text-tone-info-text shadow-xs tabular-nums">
             Tổng trọng số: {totalWeight}
             {calculationMethod === 'Percentage' ? '%' : ''}
           </span>
@@ -371,12 +371,12 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
 
         {components.length > 0 && totalWeight > 0 ? (
           <div
-            className={`mt-3.5 rounded-xl border border-slate-200/90 bg-white/95 px-3 py-2.5 shadow-xs lg:px-2 ${
+            className={`mt-3.5 rounded-xl border border-line/90 bg-surface-card/95 px-3 py-2.5 shadow-xs lg:px-2 ${
               calculationMethod === 'Percentage' ? '' : 'min-[1440px]:px-2.5 2xl:px-3.5'
             }`}
           >
             <div
-              className={`flex flex-wrap items-center gap-x-1 gap-y-1.5 text-xs text-slate-700 lg:gap-x-0.5 lg:text-[10.5px] ${
+              className={`flex flex-wrap items-center gap-x-1 gap-y-1.5 text-xs text-ink-secondary lg:gap-x-0.5 lg:text-[10.5px] ${
                 calculationMethod === 'Percentage'
                   ? ''
                   : 'min-[1440px]:text-[11px] 2xl:gap-x-1 2xl:text-[11.5px]'
@@ -392,25 +392,25 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                     }`}
                   >
                     {index === 0 ? (
-                      <span className="font-semibold text-slate-400">(</span>
+                      <span className="font-semibold text-ink-subtle">(</span>
                     ) : (
-                      <span className="font-semibold text-slate-400">+</span>
+                      <span className="font-semibold text-ink-subtle">+</span>
                     )}
                     <span
-                      className={`inline-flex min-w-0 max-w-full items-center gap-0.5 whitespace-nowrap rounded-md border border-blue-100/90 bg-gradient-to-r from-blue-50/80 to-indigo-50/55 px-1.5 py-0.5 lg:px-1 ${
+                      className={`inline-flex min-w-0 max-w-full items-center gap-0.5 whitespace-nowrap rounded-md border border-tone-info-border bg-gradient-to-r from-tone-info-bg/90 to-tone-violet-bg/60 px-1.5 py-0.5 lg:px-1 ${
                         calculationMethod === 'Percentage' ? '' : 'min-[1440px]:px-1.5'
                       }`}
                     >
-                      <span className="truncate font-medium text-slate-900">
+                      <span className="truncate font-medium text-ink-primary">
                         {item.componentName}
                       </span>
-                      <span className="text-[10.5px] text-slate-400">×</span>
-                      <span className="font-semibold text-blue-700 tabular-nums">
+                      <span className="text-[10.5px] text-ink-subtle">×</span>
+                      <span className="font-semibold text-tone-info-text tabular-nums">
                         {item.weight}
                         {calculationMethod === 'Percentage' ? '%' : ''}
                       </span>
                     </span>
-                    {isLast && <span className="font-semibold text-slate-400">)</span>}
+                    {isLast && <span className="font-semibold text-ink-subtle">)</span>}
                   </span>
                 );
               })}
@@ -419,8 +419,8 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                   calculationMethod === 'Percentage' ? '' : '2xl:gap-1'
                 }`}
               >
-                <span className="font-semibold text-slate-400">÷</span>
-                <span className="inline-flex items-center rounded-md border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50/70 px-1.5 py-0.5 font-semibold text-amber-800 tabular-nums">
+                <span className="font-semibold text-ink-subtle">÷</span>
+                <span className="inline-flex items-center rounded-md border border-tone-warning-border bg-gradient-to-r from-tone-warning-bg to-tone-orange-bg/75 px-1.5 py-0.5 font-semibold text-tone-warning-strong tabular-nums">
                   {totalWeight}
                   {calculationMethod === 'Percentage' ? '%' : ''}
                 </span>
@@ -428,14 +428,14 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
             </div>
           </div>
         ) : (
-          <div className="mt-3.5 rounded-xl border border-dashed border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600">
+          <div className="mt-3.5 rounded-xl border border-dashed border-line-input bg-surface-card/80 px-4 py-3 text-sm text-ink-body">
             {components.length === 0
               ? 'Thêm thành phần điểm để xem cách tính.'
               : 'Tổng trọng số phải lớn hơn 0 để xem cách tính.'}
           </div>
         )}
 
-        <p className="mt-2.5 text-xs leading-relaxed text-slate-500">
+        <p className="mt-2.5 text-xs leading-relaxed text-ink-muted">
           Minh họa khi tất cả thành phần trên đều áp dụng. Khi một nguồn không áp dụng, điểm và
           trọng số của nguồn đó được loại khỏi phép tính.
         </p>

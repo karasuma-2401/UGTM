@@ -101,7 +101,7 @@ export function ThesisSubmissionWorkspace({
             />
           )}
           {batchName && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-100/80 text-slate-600 border border-slate-200/70">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-surface-muted/80 text-ink-body border border-line/70">
               {batchName}
             </span>
           )}
@@ -184,14 +184,14 @@ export function ThesisSubmissionWorkspace({
           description="Quản lý tiến độ thực hiện và nộp các cổng đánh giá khóa luận tốt nghiệp"
           navigation={<ThesisSubmissionNavigation activeId={activeTab} />}
         />
-        <Card className="p-10 bg-white border-slate-200/80 shadow-xs rounded-2xl text-center">
+        <Card className="p-10 bg-surface-card border-line/80 shadow-xs rounded-2xl text-center">
           <div className="max-w-md mx-auto space-y-4">
-            <div className="size-12 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
+            <div className="size-12 rounded-2xl bg-surface-muted text-ink-muted flex items-center justify-center mx-auto">
               <AlertCircle className="size-6" />
             </div>
             <div className="space-y-1.5">
-              <h2 className="text-base font-bold text-slate-900">Chưa tham gia nhóm đề tài</h2>
-              <p className="text-sm text-slate-500 leading-relaxed">
+              <h2 className="text-base font-bold text-ink-primary">Chưa tham gia nhóm đề tài</h2>
+              <p className="text-sm text-ink-muted leading-relaxed">
                 Bạn cần đăng ký đề tài và xác nhận nhóm thực hiện trước khi nộp báo cáo tiến độ hoặc các cổng thẩm định.
               </p>
             </div>

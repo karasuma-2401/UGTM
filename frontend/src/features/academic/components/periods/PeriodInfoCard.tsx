@@ -33,12 +33,12 @@ export const PeriodInfoCard: React.FC<PeriodInfoCardProps> = ({
   onStartDateChange,
 }) => {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs transition-all hover:border-slate-300">
+    <div className="rounded-2xl border border-line bg-surface-card p-6 shadow-xs transition-all hover:border-line-strong">
       <div className="mb-5">
-        <h2 className="text-base font-bold text-slate-900 tracking-tight">
+        <h2 className="text-base font-bold text-ink-primary tracking-tight">
           Thông tin đợt khóa luận
         </h2>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-ink-muted">
           Niên khóa, học kỳ và mốc xuất phát của đợt
         </p>
       </div>
@@ -47,7 +47,7 @@ export const PeriodInfoCard: React.FC<PeriodInfoCardProps> = ({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-12">
           {/* Năm học */}
           <div className="sm:col-span-4">
-            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+            <label className="mb-1.5 block text-xs font-semibold text-ink-secondary">
               Năm học <span className="text-rose-500">*</span>
             </label>
             <Input
@@ -56,13 +56,13 @@ export const PeriodInfoCard: React.FC<PeriodInfoCardProps> = ({
               placeholder="VD: 2026-2027"
               value={academicYear}
               onChange={(e) => onAcademicYearChange(e.target.value)}
-              className="h-10 text-sm rounded-lg border-slate-200 bg-white transition-all focus:ring-2 focus:ring-primary/15"
+              className="h-10 text-sm rounded-lg border-line-input bg-surface-card transition-all focus:ring-2 focus:ring-primary/15"
             />
           </div>
 
           {/* Học kỳ */}
           <div className="sm:col-span-3">
-            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+            <label className="mb-1.5 block text-xs font-semibold text-ink-secondary">
               Học kỳ <span className="text-rose-500">*</span>
             </label>
             <Select
@@ -70,13 +70,13 @@ export const PeriodInfoCard: React.FC<PeriodInfoCardProps> = ({
               disabled={!canEdit}
               value={semester}
               onChange={(val) => onSemesterChange(Number(val) || 1)}
-              triggerClassName="h-10 text-sm rounded-lg border-slate-200 bg-white"
+              triggerClassName="h-10 text-sm rounded-lg border-line-input bg-surface-card"
             />
           </div>
 
           {/* Tên đợt */}
           <div className="sm:col-span-5">
-            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+            <label className="mb-1.5 block text-xs font-semibold text-ink-secondary">
               Tên đợt khóa luận <span className="text-rose-500">*</span>
             </label>
             <Input
@@ -85,14 +85,14 @@ export const PeriodInfoCard: React.FC<PeriodInfoCardProps> = ({
               placeholder="VD: Đợt KLTN Học kỳ 1"
               value={batchName}
               onChange={(e) => onBatchNameChange(e.target.value)}
-              className="h-10 text-sm rounded-lg border-slate-200 bg-white transition-all focus:ring-2 focus:ring-primary/15"
+              className="h-10 text-sm rounded-lg border-line-input bg-surface-card transition-all focus:ring-2 focus:ring-primary/15"
             />
           </div>
         </div>
 
         {/* Ngày bắt đầu */}
         <div className="pt-1">
-          <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+          <label className="mb-1.5 block text-xs font-semibold text-ink-secondary">
             Ngày bắt đầu đợt (Mốc tuần 1) <span className="text-rose-500">*</span>
           </label>
           <div className="relative max-w-sm">
@@ -101,10 +101,10 @@ export const PeriodInfoCard: React.FC<PeriodInfoCardProps> = ({
               disabled={!canEdit}
               value={startDate}
               onValueChange={(value) => onStartDateChange(value)}
-              className="h-10 text-sm rounded-lg border-slate-200 bg-white shadow-2xs"
+              className="h-10 text-sm rounded-lg border-line-input bg-surface-card shadow-2xs"
             />
           </div>
-          <p className="mt-1.5 text-[11px] text-slate-400">
+          <p className="mt-1.5 text-[11px] text-ink-subtle">
             Các mốc giai đoạn tiếp theo sẽ tự động tịnh tiến dựa theo ngày khởi đầu này.
           </p>
         </div>

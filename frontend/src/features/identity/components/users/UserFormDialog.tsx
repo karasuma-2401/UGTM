@@ -61,7 +61,7 @@ export function UserFormDialog({
     <>
       <Dialog
         variant={user ? 'drawer' : 'modal'}
-        headerClassName="border-b border-slate-200/80 bg-white px-5 py-4 sm:px-6"
+        headerClassName="border-b border-line/80 bg-surface-card dark:bg-gradient-to-r dark:from-blue-950/50 dark:via-slate-900 dark:to-orange-950/30 px-5 py-4 sm:px-6"
         title={
           user ? (
             <UserAccountHeader user={user} />
@@ -69,13 +69,15 @@ export function UserFormDialog({
             <span className="flex items-center gap-3">
               <span
                 aria-hidden="true"
-                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary ring-1 ring-inset ring-blue-100"
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-info-bg text-primary ring-1 ring-inset ring-blue-100"
               >
                 <UserPlus className="size-5" />
               </span>
               <span className="min-w-0">
-                <span className="block text-base font-semibold text-slate-900">{title}</span>
-                <span className="mt-0.5 block text-xs font-normal text-slate-500">
+                <span className="block text-base font-semibold text-ink-primary">
+                  {title}
+                </span>
+                <span className="mt-0.5 block text-xs font-normal text-ink-muted">
                   Điền thông tin và gửi liên kết kích hoạt
                 </span>
               </span>
@@ -89,7 +91,7 @@ export function UserFormDialog({
           {user && !editing ? (
             <>
               <UserAccountDetails user={user} accountGroup={accountGroup} />
-              <div className="sticky bottom-0 z-10 mt-auto flex justify-end gap-2.5 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+              <div className="sticky bottom-0 z-10 mt-auto flex justify-end gap-2.5 border-t border-line/80 bg-surface-card/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
                 <Button
                   variant="outline"
                   onClick={() => requestClose('close')}

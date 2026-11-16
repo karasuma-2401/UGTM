@@ -46,22 +46,26 @@ export function TopicStudentAssignmentField({
     <section
       id="topic-student-codes"
       aria-labelledby="topic-student-codes-label"
-      className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4"
+      className="space-y-3 rounded-xl border border-line bg-surface-subtle/60 p-4"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3
           id="topic-student-codes-label"
-          className="flex items-center gap-2 text-sm font-semibold text-slate-800"
+          className="flex items-center gap-2 text-sm font-semibold text-ink-heading"
         >
           <UsersRound className="size-4 text-primary" aria-hidden="true" />
-          Chỉ định sinh viên <span className="text-xs font-normal text-slate-500">(tùy chọn)</span>
+          Chỉ định sinh viên{' '}
+          <span className="text-xs font-normal text-ink-muted">(tùy chọn)</span>
         </h3>
-        <span className="text-xs tabular-nums text-slate-500">
+        <span className="text-xs tabular-nums text-ink-muted">
           {count}/{capacity} sinh viên
         </span>
       </div>
       {currentStudents.length > 0 && (
-        <div className="space-y-1 text-xs text-slate-600" aria-label="Sinh viên đang được ghi nhận">
+        <div
+          className="space-y-1 text-xs text-ink-body"
+          aria-label="Sinh viên đang được ghi nhận"
+        >
           {currentStudents.map((student) => (
             <p key={student.studentId} className="break-words">
               {student.fullName} - {student.userCode || student.studentId}
@@ -84,7 +88,7 @@ export function TopicStudentAssignmentField({
             <div key={index} className="space-y-1.5">
               <label
                 htmlFor={`topic-student-code-${index + 1}`}
-                className="text-xs font-medium text-slate-600"
+                className="text-xs font-medium text-ink-body"
               >
                 MSSV {index + 1}
               </label>
@@ -97,7 +101,7 @@ export function TopicStudentAssignmentField({
                 spellCheck={false}
                 maxLength={20}
                 placeholder="Nhập mã số sinh viên"
-                className="h-10 rounded-lg bg-white shadow-none"
+                className="h-10 rounded-lg bg-surface-card shadow-none"
                 isInvalid={Boolean(error)}
                 aria-describedby={
                   error
@@ -120,38 +124,38 @@ export function TopicStudentAssignmentField({
                 }
               />
               {currentMatch ? (
-                <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                  <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <p className="flex items-center gap-1.5 text-xs font-medium text-tone-success-text">
+                  <CheckCircle2 className="size-3.5 shrink-0 text-tone-success-icon" aria-hidden="true" />
                   <span className="truncate" title={currentMatch.fullName}>
                     {currentMatch.fullName}
                   </span>
                 </p>
               ) : lookup?.status === 'found' ? (
-                <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                  <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                <p className="flex items-center gap-1.5 text-xs font-medium text-tone-success-text">
+                  <CheckCircle2 className="size-3.5 shrink-0 text-tone-success-icon" aria-hidden="true" />
                   <span className="truncate" title={lookup.fullName}>
                     {lookup.fullName}
                   </span>
                 </p>
               ) : lookup?.status === 'loading' ? (
-                <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                <p className="flex items-center gap-1.5 text-xs text-ink-muted">
                   <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden="true" />
                   <span>Đang kiểm tra MSSV...</span>
                 </p>
               ) : lookup?.status === 'not_found' ? (
-                <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
-                  <AlertCircle className="size-3.5 shrink-0 text-amber-600" aria-hidden="true" />
+                <p className="flex items-center gap-1.5 text-xs font-medium text-tone-warning-text">
+                  <AlertCircle className="size-3.5 shrink-0 text-tone-warning-icon" aria-hidden="true" />
                   <span>Không tìm thấy sinh viên với MSSV này</span>
                 </p>
               ) : lookup?.status === 'error' ? (
-                <p className="text-xs text-slate-400">Không tra cứu được tên sinh viên lúc này</p>
+                <p className="text-xs text-ink-subtle">Không tra cứu được tên sinh viên lúc này</p>
               ) : null}
             </div>
           );
         })}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p id="topic-student-codes-help" className="text-xs leading-5 text-slate-500">
+        <p id="topic-student-codes-help" className="text-xs leading-5 text-ink-muted">
           {missingCodes
             ? 'Chưa có đủ MSSV để chỉnh sửa danh sách hiện tại.'
             : 'Chỉ định khi lưu lên hệ thống, trong giai đoạn chuẩn bị đề tài.'}
@@ -169,10 +173,12 @@ export function TopicStudentAssignmentField({
         )}
       </div>
       {currentStudents.length > 0 && count === 0 && !locked && (
-        <p className="text-xs text-amber-700">Lưu đề tài để bỏ danh sách chỉ định hiện tại.</p>
+        <p className="text-xs text-tone-warning-text">
+          Lưu đề tài để bỏ danh sách chỉ định hiện tại.
+        </p>
       )}
       {error && (
-        <p id="topic-student-codes-error" role="alert" className="text-xs text-rose-600">
+        <p id="topic-student-codes-error" role="alert" className="text-xs text-tone-danger-icon">
           {error}
         </p>
       )}

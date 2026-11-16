@@ -30,10 +30,10 @@ export interface AdvisorMilestoneTableProps {
 }
 
 const DEADLINE_TONE_CLASS = {
-  completed: 'text-emerald-700',
-  overdue: 'font-semibold text-rose-700',
-  soon: 'font-medium text-amber-700',
-  normal: 'text-slate-500',
+  completed: 'text-tone-success-text',
+  overdue: 'font-semibold text-tone-danger-text',
+  soon: 'font-medium text-tone-warning-text',
+  normal: 'text-ink-muted',
 } as const;
 
 export function AdvisorMilestoneTable({
@@ -61,7 +61,7 @@ export function AdvisorMilestoneTable({
         cellClassName: 'px-3 py-3',
         skeleton: { variant: 'number' },
         cell: (_, index) => (
-          <span className="text-xs font-medium tabular-nums text-slate-400">
+          <span className="text-xs font-medium tabular-nums text-ink-subtle">
             {index + 1}
           </span>
         ),
@@ -77,7 +77,7 @@ export function AdvisorMilestoneTable({
           return (
             <div className="min-w-0 space-y-1">
               <p
-                className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900"
+                className="line-clamp-2 text-sm font-semibold leading-snug text-ink-primary"
                 title={item.milestone.title}
               >
                 {item.milestone.title}
@@ -85,7 +85,7 @@ export function AdvisorMilestoneTable({
               <p
                 className={cn(
                   'truncate text-xs font-normal',
-                  summary ? 'text-slate-500' : 'text-slate-400 italic',
+                  summary ? 'text-ink-muted' : 'text-ink-subtle italic',
                 )}
                 title={summary || undefined}
               >
@@ -107,7 +107,7 @@ export function AdvisorMilestoneTable({
           const deadlineInfo = getDeadlineInfo(item.milestone.deadlineUtc, status);
           return (
             <div className="min-w-0 space-y-0.5">
-              <p className="whitespace-nowrap text-xs font-medium tabular-nums text-slate-800">
+              <p className="whitespace-nowrap text-xs font-medium tabular-nums text-ink-heading">
                 {formatMilestoneDateShort(item.milestone.deadlineUtc)} ·{' '}
                 {formatMilestoneTimeShort(item.milestone.deadlineUtc)}
               </p>
@@ -131,7 +131,7 @@ export function AdvisorMilestoneTable({
           return (
             <div className="min-w-0 space-y-1">
               <MilestoneStatusBadge status={status} />
-              <p className="truncate text-xs text-slate-500">
+              <p className="truncate text-xs text-ink-muted">
                 {item.report && item.report.currentVersionNo > 0
                   ? `Phiên bản v${item.report.currentVersionNo}${latestVersion?.isLate ? ' (Trễ hạn)' : ''}`
                   : 'Chưa có bài nộp'}
@@ -174,7 +174,7 @@ export function AdvisorMilestoneTable({
                     event.stopPropagation();
                     onOpenReview(item.milestone.id);
                   }}
-                  className="h-8 rounded-md border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-2xs hover:bg-slate-50"
+                  className="h-8 rounded-md border-line-input bg-surface-card px-3 text-xs font-medium text-ink-secondary shadow-2xs hover:bg-surface-hover"
                 >
                   Xem
                 </Button>
@@ -228,21 +228,21 @@ export function AdvisorMilestoneTable({
           <div
             className={cn(
               'space-y-3 rounded-xl border p-4 transition-colors',
-              selected ? 'border-primary/40 bg-blue-50/35' : 'border-slate-200 bg-white',
+              selected ? 'border-primary/40 bg-tone-info-bg' : 'border-line bg-surface-card',
             )}
             onClick={() => onSelectMilestone(item)}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 space-y-1">
-                <p className="text-sm font-semibold text-slate-900">{item.milestone.title}</p>
-                {summary && <p className="line-clamp-2 text-xs text-slate-600">{summary}</p>}
+                <p className="text-sm font-semibold text-ink-primary">{item.milestone.title}</p>
+                {summary && <p className="line-clamp-2 text-xs text-ink-body">{summary}</p>}
               </div>
               <MilestoneStatusBadge status={status} />
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-subtle pt-2.5 text-xs">
               <div className="space-y-0.5">
-                <span className="inline-flex items-center gap-1 text-slate-600">
+                <span className="inline-flex items-center gap-1 text-ink-body">
                   <CalendarClock className="size-3.5" aria-hidden="true" />
                   <span>{formatMilestoneDateTime(item.milestone.deadlineUtc)}</span>
                 </span>

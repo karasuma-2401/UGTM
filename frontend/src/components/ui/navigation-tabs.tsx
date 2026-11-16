@@ -50,8 +50,8 @@ export function NavigationTabs({
         continuityKey={continuityKey}
         className={
           variant === 'underline'
-            ? "bg-primary/5 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:content-[''] after:[background-image:var(--gradient-brand)]"
-            : 'rounded-lg bg-white shadow-xs border border-slate-200/80'
+            ? "bg-primary/5 dark:bg-primary/10 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:content-[''] after:[background-image:var(--gradient-brand)]"
+            : 'rounded-lg bg-surface-elevated shadow-xs border border-line-input/80'
         }
       />
       {tabs.map((item) => {
@@ -68,7 +68,7 @@ export function NavigationTabs({
                   'ml-1.5 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[11px] font-bold tabular-nums transition-colors',
                   isActive
                     ? 'bg-primary/15 text-primary'
-                    : 'bg-slate-200/70 text-slate-600',
+                    : 'bg-surface-strong/70 text-ink-body',
                 )}
               >
                 {item.count}
@@ -82,7 +82,7 @@ export function NavigationTabs({
           'relative z-10 inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 border-b-2 border-transparent px-3 text-center text-xs font-semibold transition-colors duration-150 sm:flex-none sm:px-5 sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring select-none cursor-pointer',
           isActive
             ? 'text-primary'
-            : 'border-transparent text-slate-500 hover:bg-slate-100/60 hover:text-slate-800',
+            : 'border-transparent text-ink-muted hover:bg-surface-muted/60 hover:text-ink-heading',
         );
 
         if (item.href) {

@@ -59,7 +59,7 @@ export function StudentMilestoneUploadCard({
       uploadProgress={uploadProgress}
       onSubmit={onSubmit}
       extraFields={
-        <div className="divide-y divide-slate-200/75 [&>*]:py-5 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
+        <div className="divide-y divide-line/75 [&>*]:py-5 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
           <SubmissionBlockComposer
             productLinks={productLinks}
             onProductLinksChange={onProductLinksChange}
@@ -74,11 +74,11 @@ export function StudentMilestoneUploadCard({
               <label
                 id="student-note-label"
                 htmlFor="student-note"
-                className="text-xs font-semibold text-slate-800 block"
+                className="text-xs font-semibold text-ink-heading block"
               >
                 Ghi chú phiên bản (tuỳ chọn)
               </label>
-              <p className="text-[11px] text-slate-500 mt-0.5">
+              <p className="text-[11px] text-ink-muted mt-0.5">
                 Hiển thị trực tiếp để GVHD nắm bối cảnh khi đánh giá.
               </p>
             </div>

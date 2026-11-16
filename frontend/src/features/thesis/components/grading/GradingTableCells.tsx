@@ -13,7 +13,7 @@ export function GradingStudentsCell({
   ariaLabel = 'Thành viên nhóm',
 }: GradingStudentsCellProps) {
   if (students.length === 0) {
-    return <span className="text-sm text-slate-400">Chưa có sinh viên</span>;
+    return <span className="text-sm text-ink-subtle">Chưa có sinh viên</span>;
   }
 
   return (
@@ -31,9 +31,9 @@ export function GradingStudentsCell({
       />
       <div className="min-w-0 space-y-1 text-sm">
         {students.map((student) => (
-          <p key={student.id} className="truncate font-medium text-slate-800">
+          <p key={student.id} className="truncate font-medium text-ink-heading">
             {student.name}{' '}
-            <span className="font-normal text-slate-500">· {student.code}</span>
+            <span className="font-normal text-ink-muted">· {student.code}</span>
           </p>
         ))}
       </div>
@@ -59,7 +59,7 @@ export function GradingStatusCell({
 }: GradingStatusCellProps) {
   if (lockedLabel) {
     return (
-      <Badge dot rounded="full" variant="success" className="max-w-full whitespace-nowrap">
+      <Badge dot rounded="full" variant="success" className="w-fit whitespace-nowrap">
         {lockedLabel}
       </Badge>
     );
@@ -67,7 +67,7 @@ export function GradingStatusCell({
 
   if (submittedLabel) {
     return (
-      <Badge dot rounded="full" variant="success" className="max-w-full whitespace-nowrap">
+      <Badge dot rounded="full" variant="success" className="w-fit whitespace-nowrap">
         {submittedLabel}
       </Badge>
     );
@@ -81,7 +81,7 @@ export function GradingStatusCell({
         dot
         rounded="full"
         variant={status === 'empty' ? 'warning' : status === 'progress' ? 'info' : 'success'}
-        className="max-w-full whitespace-nowrap"
+        className="w-fit whitespace-nowrap"
       >
         {status === 'empty'
           ? 'Chưa nhập điểm'
@@ -92,7 +92,7 @@ export function GradingStatusCell({
       {status === 'progress' && totalCount > 0 && (
         <div
           aria-hidden="true"
-          className="h-1 w-24 overflow-hidden rounded-full bg-slate-100"
+          className="h-1 w-24 overflow-hidden rounded-full bg-surface-muted"
         >
           <div
             className="h-full rounded-full bg-blue-600 transition-[width] duration-300"

@@ -43,7 +43,7 @@ export function StatusTabs<T extends string = string>({
       role="tablist"
       aria-label={ariaLabel}
       className={cn(
-        'relative isolate inline-flex flex-wrap items-center gap-1.5 rounded-xl border border-slate-200/80 bg-slate-100/60 p-1.5',
+        'relative isolate inline-flex flex-wrap items-center gap-1.5 rounded-xl border border-line/80 bg-surface-subtle/80 p-1.5',
         className,
       )}
     >
@@ -72,12 +72,12 @@ export function StatusTabs<T extends string = string>({
             aria-selected={isActive}
             onClick={() => onSelect(tab.key)}
             className={cn(
-              'relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold select-none cursor-pointer',
+              'relative inline-flex items-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-xs font-semibold select-none cursor-pointer',
               'transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2',
               toneStyle.focusRing,
               isActive
-                ? 'bg-transparent text-slate-950'
-                : cn(toneStyle.background, toneStyle.hover, 'text-slate-600 hover:text-slate-900'),
+                ? 'bg-transparent text-ink-primary'
+                : cn(toneStyle.background, toneStyle.hover, 'text-ink-body hover:text-ink-primary'),
             )}
           >
             {tab.icon && <span className="relative z-10 shrink-0">{tab.icon}</span>}
