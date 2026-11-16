@@ -67,8 +67,8 @@ export const PasswordField = React.forwardRef<HTMLInputElement, PasswordFieldPro
       <button
         type="button"
         className={cn(
-          'auth-eye text-slate-400 hover:text-slate-600 focus:outline-none transition-colors cursor-pointer',
-          disabled && 'opacity-50 cursor-not-allowed hover:text-slate-400',
+          'auth-eye text-ink-subtle hover:text-ink-body focus:outline-none transition-colors cursor-pointer',
+          disabled && 'opacity-50 cursor-not-allowed hover:text-ink-subtle',
         )}
         onClick={() => setIsVisible((visible) => !visible)}
         aria-label={isVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
@@ -102,7 +102,7 @@ export const PasswordField = React.forwardRef<HTMLInputElement, PasswordFieldPro
           rightIcon={rightIcon !== undefined ? rightIcon : toggleButton}
           error={error}
           helperText={helperText}
-          className={cn('bg-white border-[#cbd7e8] h-[39px]', className)}
+          className={cn('bg-surface-card border-[#cbd7e8] h-[39px]', className)}
           {...props}
         />
       </div>

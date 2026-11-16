@@ -334,10 +334,9 @@ export const AuditLogPage: React.FC = () => {
           </button>
         </InlineAlert>
       )}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-xs">
+      <Card className="min-w-0 overflow-hidden rounded-2xl border-line/80 shadow-xs">
         <ListCardHeader
           title="Sự kiện hệ thống"
-          icon={<ScrollText />}
           description={
             listError
               ? 'Không tải được số lượng'

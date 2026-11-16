@@ -69,7 +69,7 @@ export function FinalReportVersionCard({
       headerAction={
         onOpenFeedback ? (
           <Button type="button" variant="outline" size="sm" onClick={onOpenFeedback}>
-            <MessageSquareQuote className="size-3.5 mr-1.5 text-[#2054a5]" />
+            <MessageSquareQuote className="size-3.5 mr-1.5 text-brand-ink" />
             Xem góp ý GVPB
           </Button>
         ) : undefined

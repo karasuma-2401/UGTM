@@ -64,7 +64,7 @@ export function CouncilMinuteGroupDrawer({
       <div className="p-5 space-y-4">
         <div className="relative">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-ink-subtle"
             aria-hidden="true"
           />
           <Input
@@ -78,7 +78,7 @@ export function CouncilMinuteGroupDrawer({
               type="button"
               aria-label="Xóa từ khóa tìm kiếm"
               onClick={() => onSearchChange('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-ink-subtle hover:bg-surface-muted hover:text-ink-body"
             >
               <X className="size-3.5" />
             </button>
@@ -107,8 +107,8 @@ export function CouncilMinuteGroupDrawer({
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                   active
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold'
-                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+                    ? 'border-blue-500 bg-tone-info-bg text-tone-info-text font-semibold'
+                    : 'border-line-input bg-surface-card text-ink-body hover:bg-surface-hover',
                 )}
               >
                 <span>{tab.label}</span>
@@ -119,7 +119,7 @@ export function CouncilMinuteGroupDrawer({
         </div>
 
         {items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-10 text-center text-xs text-slate-500">
+          <div className="rounded-xl border border-dashed border-line-input bg-surface-subtle/70 px-4 py-10 text-center text-xs text-ink-muted">
             Không có nhóm bảo vệ nào khớp với điều kiện lọc hiện tại.
           </div>
         ) : (
@@ -136,26 +136,26 @@ export function CouncilMinuteGroupDrawer({
                     className={cn(
                       'w-full rounded-xl border p-3.5 text-left transition-all',
                       isSelected
-                        ? 'border-blue-500 bg-blue-50/70 shadow-2xs'
-                        : 'border-slate-200/90 bg-white hover:border-slate-300 hover:bg-slate-50/70',
+                        ? 'border-blue-500 bg-tone-info-bg shadow-2xs'
+                        : 'border-line/90 bg-surface-card hover:border-line-strong hover:bg-surface-hover/70',
                     )}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-slate-900">
+                      <span className="text-xs font-bold text-ink-primary">
                         {row.councilCode} · Nhóm {row.groupCode || '—'}
                       </span>
                       <StatusBadge tone={lockMeta.tone}>{lockMeta.label}</StatusBadge>
                     </div>
-                    <p className="mt-1.5 text-sm font-semibold text-slate-900 line-clamp-2">
+                    <p className="mt-1.5 text-sm font-semibold text-ink-primary line-clamp-2">
                       {row.topicTitle || 'Chưa có tên đề tài'}
                     </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
                       <span>{formatDefenseDateVi(row.defenseDate)}</span>
                       <span>{row.timeSlot}</span>
                       <span>Phòng {row.room}</span>
                       <span>{row.profileStatusLabel}</span>
                     </div>
-                    <div className="mt-1.5 text-[11px] text-slate-500">
+                    <div className="mt-1.5 text-[11px] text-ink-muted">
                       CT: {row.chairman?.fullName ?? '—'} · TK: {row.secretary?.fullName ?? '—'}
                     </div>
                   </button>
@@ -215,8 +215,8 @@ export function LockMinuteDialog({
         }}
         className="p-5 space-y-4"
       >
-        <div className="rounded-xl border border-blue-200/70 bg-blue-50/60 p-3.5 text-xs text-slate-700 space-y-1">
-          <p className="font-semibold text-slate-900">
+        <div className="rounded-xl border border-tone-info-border bg-tone-info-bg p-3.5 text-xs text-ink-secondary space-y-1">
+          <p className="font-semibold text-ink-primary">
             {councilCode} · Nhóm {groupCode}
             {finalScore !== null ? ` — Điểm dự kiến: ${finalScore.toFixed(2)}` : ''}
           </p>
@@ -236,9 +236,9 @@ export function LockMinuteDialog({
         <div className="space-y-1.5">
           <label
             htmlFor="lock-minute-password"
-            className="text-xs font-semibold text-slate-800"
+            className="text-xs font-semibold text-ink-heading"
           >
-            Mật khẩu tài khoản hiện tại <span className="text-rose-600">*</span>
+            Mật khẩu tài khoản hiện tại <span className="text-tone-danger-icon">*</span>
           </label>
           <div className="relative">
             <Input
@@ -255,7 +255,7 @@ export function LockMinuteDialog({
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
               aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-ink-subtle hover:bg-surface-muted hover:text-ink-secondary"
             >
               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
@@ -333,7 +333,7 @@ export function UnlockMinuteDialog({
         }}
         className="p-5 space-y-4"
       >
-        <div className="rounded-xl border border-rose-200/80 bg-rose-50/50 p-3.5 text-xs text-rose-950 space-y-1">
+        <div className="rounded-xl border border-tone-danger-border bg-tone-danger-bg p-3.5 text-xs text-tone-danger-strong space-y-1">
           <p className="font-semibold">
             {councilCode} · Nhóm {groupCode}
           </p>
@@ -354,14 +354,14 @@ export function UnlockMinuteDialog({
           <div className="flex items-center justify-between gap-2">
             <label
               htmlFor="unlock-override-reason"
-              className="text-xs font-semibold text-slate-800"
+              className="text-xs font-semibold text-ink-heading"
             >
-              Lý do giải trình mở khóa <span className="text-rose-600">*</span>
+              Lý do giải trình mở khóa <span className="text-tone-danger-icon">*</span>
             </label>
             <span
               className={cn(
                 'text-[11px] tabular-nums font-medium',
-                isValid ? 'text-emerald-700' : 'text-amber-700',
+                isValid ? 'text-tone-success-text' : 'text-tone-warning-text',
               )}
             >
               {trimmedLen}/500 ký tự (tối thiểu 10)
@@ -375,7 +375,7 @@ export function UnlockMinuteDialog({
             disabled={isUnlocking}
             autoFocus
             placeholder="Ví dụ: Mở khóa theo đơn phúc khảo số 14/PK-KTPM để Hội đồng rà soát lại tiêu chí 2.2..."
-            className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+            className="w-full rounded-xl border border-line-input/90 bg-surface-card px-3.5 py-2.5 text-xs sm:text-sm text-ink-heading placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
           />
         </div>
 

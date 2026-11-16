@@ -18,7 +18,7 @@ export const ScoreConfigActionBar: React.FC<ScoreConfigActionBarProps> = ({
   isReadOnly = false,
 }) => {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
+    <div className="bg-surface-card border border-line rounded-xl shadow-xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
       <div className="flex items-center gap-2 flex-wrap">
         <Button
           type="button"
@@ -26,8 +26,8 @@ export const ScoreConfigActionBar: React.FC<ScoreConfigActionBarProps> = ({
           className={cn(
             'rounded-lg h-10 px-3.5 text-xs sm:text-sm font-medium transition-colors',
             calculationMethod === 'IntegerCoefficient'
-              ? 'border-primary bg-primary/10 text-primary font-semibold'
-              : 'text-slate-700 hover:bg-slate-50',
+              ? 'border-primary bg-primary/10 text-primary font-semibold dark:bg-primary/15'
+              : 'text-ink-secondary hover:bg-surface-hover',
           )}
           onClick={() => onSwitchCalculationMethod('IntegerCoefficient')}
           disabled={isReadOnly}
@@ -37,7 +37,7 @@ export const ScoreConfigActionBar: React.FC<ScoreConfigActionBarProps> = ({
                 'size-4',
                 calculationMethod === 'IntegerCoefficient'
                   ? 'text-primary'
-                  : 'text-slate-500',
+                  : 'text-ink-muted',
               )}
             />
           }
@@ -51,8 +51,8 @@ export const ScoreConfigActionBar: React.FC<ScoreConfigActionBarProps> = ({
           className={cn(
             'rounded-lg h-10 px-3.5 text-xs sm:text-sm font-medium transition-colors',
             calculationMethod === 'Percentage'
-              ? 'border-primary bg-primary/10 text-primary font-semibold'
-              : 'text-slate-700 hover:bg-slate-50',
+              ? 'border-primary bg-primary/10 text-primary font-semibold dark:bg-primary/15'
+              : 'text-ink-secondary hover:bg-surface-hover',
           )}
           onClick={() => onSwitchCalculationMethod('Percentage')}
           disabled={isReadOnly}
@@ -62,7 +62,7 @@ export const ScoreConfigActionBar: React.FC<ScoreConfigActionBarProps> = ({
                 'size-4',
                 calculationMethod === 'Percentage'
                   ? 'text-primary'
-                  : 'text-slate-500',
+                  : 'text-ink-muted',
               )}
             />
           }
@@ -74,10 +74,10 @@ export const ScoreConfigActionBar: React.FC<ScoreConfigActionBarProps> = ({
       <Button
         type="button"
         variant="outline"
-        className="rounded-lg h-10 px-3.5 text-xs sm:text-sm font-medium hover:bg-slate-50 text-slate-700"
+        className="rounded-lg h-10 px-3.5 text-xs sm:text-sm font-medium hover:bg-surface-hover text-ink-secondary"
         onClick={onOpenAddComponentModal}
         disabled={isReadOnly}
-        leftIcon={<Plus className="size-4 text-slate-500" />}
+        leftIcon={<Plus className="size-4 text-ink-muted" />}
       >
         Thêm đầu điểm
       </Button>

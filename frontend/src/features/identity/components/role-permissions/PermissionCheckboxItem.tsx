@@ -27,12 +27,14 @@ export function PermissionCheckboxItem({
       }}
       className={cn(
         'flex items-center justify-between p-3 rounded-lg border transition-all cursor-pointer',
-        'border-[var(--color-border-subtle,#edf1f7)] bg-[var(--color-bg-white,#ffffff)]',
-        'hover:border-[var(--color-primary-border,#d4e4ff)] hover:bg-[var(--color-bg-subtle,#f7f9fc)]',
-        checked &&
-          'border-[var(--color-primary-border,#d4e4ff)] bg-[var(--color-primary-light,#eff6ff)]/50',
+        'border-line-subtle bg-surface-card',
+        'hover:border-tone-info-border hover:bg-surface-subtle',
+        checked && 'border-tone-info-border bg-tone-info-bg/55 hover:bg-tone-info-bg/75',
         disabled &&
-          'cursor-default opacity-70 hover:bg-white hover:border-[var(--color-border-subtle,#edf1f7)]',
+          'cursor-default opacity-75 hover:bg-surface-card hover:border-line-subtle',
+        disabled &&
+          checked &&
+          'hover:bg-tone-info-bg/55 hover:border-tone-info-border',
       )}
     >
       <div className="flex items-center gap-3 min-w-0 pr-3">
@@ -48,14 +50,14 @@ export function PermissionCheckboxItem({
           <span
             className={cn(
               'text-sm font-medium leading-snug break-words',
-              checked
-                ? 'text-[var(--color-primary-hover,#1d4ed8)]'
-                : 'text-[var(--color-text-main,#10182c)]',
+              checked ? 'text-brand-ink' : 'text-ink-primary',
             )}
           >
             {permission.permissionName || permission.permissionCode}
           </span>
-          <span className="mt-1 break-all text-xs text-slate-500">{permission.permissionCode}</span>
+          <span className="mt-1 break-all text-xs text-ink-muted">
+            {permission.permissionCode}
+          </span>
         </div>
       </div>
 
@@ -63,9 +65,7 @@ export function PermissionCheckboxItem({
         <span
           className={cn(
             'text-[10px] font-medium px-2 py-0.5 rounded',
-            checked
-              ? 'bg-[var(--color-primary-muted,#dceaff)] text-[var(--color-primary-hover,#1d4ed8)]'
-              : 'bg-[var(--color-bg-muted,#f1f3f6)] text-[var(--color-text-desc,#667b9a)]',
+            checked ? 'bg-tone-info-bg text-tone-info-text' : 'bg-surface-muted text-ink-muted',
           )}
         >
           {checked ? 'Đã cấp' : 'Chưa cấp'}

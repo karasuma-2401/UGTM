@@ -57,13 +57,13 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
           <span
             className={cn(
               'h-[18px] w-[18px] shrink-0 rounded border flex items-center justify-center transition-all',
-              'border-[var(--color-border-input,#cbd7e8)] bg-[var(--color-bg-white,#ffffff)] shadow-sm',
-              'hover:border-[var(--color-primary,#2563eb)]',
-              'peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--color-primary-focus,#2663ff)] peer-focus-visible:ring-offset-1',
+              'border-line-input bg-surface-card shadow-sm',
+              'hover:border-primary',
+              'peer-focus-visible:ring-2 peer-focus-visible:ring-primary/35 peer-focus-visible:ring-offset-1',
               (isChecked || isIndeterminate) &&
-                'bg-[var(--color-primary,#2563eb)] border-[var(--color-primary,#2563eb)] text-white shadow-none',
+                'bg-brand-solid border-brand-solid text-white shadow-none',
               disabled &&
-                'cursor-not-allowed opacity-50 bg-[var(--color-bg-input-muted,#f1f4f8)] border-[var(--color-border-input-muted,#eef0f4)]',
+                'cursor-not-allowed opacity-50 bg-surface-muted border-line-subtle',
             )}
           >
             {isChecked && <Check className="size-3 stroke-[2.5]" />}
@@ -76,7 +76,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
             {label && (
               <span
                 className={cn(
-                  'text-sm font-medium leading-tight cursor-pointer text-[var(--color-text-main,#10182c)]',
+                  'text-sm font-medium leading-tight cursor-pointer text-ink-primary',
                   disabled && 'cursor-not-allowed opacity-60',
                 )}
               >
@@ -84,7 +84,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
               </span>
             )}
             {description && (
-              <span className="text-xs text-[var(--color-text-desc,#667b9a)] mt-0.5 leading-normal">
+              <span className="text-xs text-ink-muted mt-0.5 leading-normal">
                 {description}
               </span>
             )}

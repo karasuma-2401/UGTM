@@ -105,18 +105,18 @@ export function MidtermSubmissionPage() {
               <div
                 className={
                   syllabusApproved
-                    ? 'flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-xs font-medium text-emerald-800'
-                    : 'flex items-center gap-2 rounded-xl border border-amber-200/80 bg-amber-50/75 px-3 py-2 text-xs font-medium text-amber-800'
+                    ? 'flex items-center gap-2 rounded-xl border border-tone-success-border bg-tone-success-bg px-3 py-2 text-xs font-medium text-tone-success-strong'
+                    : 'flex items-center gap-2 rounded-xl border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-xs font-medium text-tone-warning-strong'
                 }
               >
                 {syllabusApproved ? (
                   <>
-                    <CheckCircle2 className="size-4 shrink-0 text-emerald-600" />
+                    <CheckCircle2 className="size-4 shrink-0 text-tone-success-icon" />
                     <span>Điều kiện Cổng 1: Đề cương đã đạt</span>
                   </>
                 ) : (
                   <>
-                    <Lock className="size-4 shrink-0 text-amber-600" />
+                    <Lock className="size-4 shrink-0 text-tone-warning-icon" />
                     <span>Điều kiện Cổng 1: Chưa hoàn thành Đề cương</span>
                   </>
                 )}

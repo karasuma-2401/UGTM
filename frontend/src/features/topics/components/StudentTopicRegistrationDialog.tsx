@@ -117,7 +117,7 @@ export function StudentTopicRegistrationDialog({
     mutation.mutate({ ...confirmation, topic });
   }
   const headerBarClass =
-    "sticky top-0 z-10 overflow-hidden border-b border-slate-200/80 bg-white/95 px-5 py-4 sm:px-6 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]";
+    "sticky top-0 z-10 overflow-hidden border-b border-line/80 bg-surface-card/95 px-5 py-4 sm:px-6 before:content-[''] before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]";
   const preview = (
     <TopicPreview
       values={{
@@ -146,11 +146,11 @@ export function StudentTopicRegistrationDialog({
           {preview}
           <aside
             aria-label="Thông tin chỉ tiêu"
-            className="flex flex-col justify-between gap-5 border-t border-slate-100 bg-slate-50/75 p-5 sm:p-6 lg:border-l lg:border-t-0"
+            className="flex flex-col justify-between gap-5 border-t border-line-subtle bg-surface-subtle/75 p-5 sm:p-6 lg:border-l lg:border-t-0"
           >
             <div className="space-y-4">
-              <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <div className="space-y-3 rounded-xl border border-line/80 bg-surface-card p-4 shadow-2xs">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
                   Tình trạng đăng ký
                 </h2>
                 <div aria-busy={availabilityLoading}>
@@ -161,22 +161,22 @@ export function StudentTopicRegistrationDialog({
                   )}
                 </div>
               </div>
-              <div className="rounded-xl border border-slate-200/80 bg-white/80 p-4 text-xs leading-5 text-slate-600">
+              <div className="rounded-xl border border-line/80 bg-surface-card/80 p-4 text-xs leading-5 text-ink-body">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-slate-500">Trạng thái đề tài</span>
+                  <span className="text-ink-muted">Trạng thái đề tài</span>
                   <StatusBadge tone="success">Đã công bố</StatusBadge>
                 </div>
-                <p className="mt-2.5 border-t border-slate-100 pt-2.5 text-slate-500">
+                <p className="mt-2.5 border-t border-line-subtle pt-2.5 text-ink-muted">
                   Sinh viên tra cứu và gửi đăng ký theo thời hạn mở đăng ký của đợt KLTN.
                 </p>
               </div>
             </div>
-            <div className="flex justify-end border-t border-slate-200/80 pt-4">
+            <div className="flex justify-end border-t border-line/80 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                className="h-9 w-full rounded-xl bg-white sm:w-auto"
+                className="h-9 w-full rounded-xl sm:w-auto"
               >
                 Đóng
               </Button>
@@ -187,10 +187,10 @@ export function StudentTopicRegistrationDialog({
     );
   const windowCardClass =
     window.state === 'open'
-      ? 'border-emerald-200/80 bg-emerald-50/60'
+      ? 'border-tone-success-border bg-tone-success-bg'
       : window.state === 'closed'
-        ? 'border-amber-200/80 bg-amber-50/60'
-        : 'border-slate-200/80 bg-white';
+        ? 'border-tone-warning-border bg-tone-warning-bg'
+        : 'border-line/80 bg-surface-card';
   return (
     <>
       <Dialog
@@ -205,13 +205,15 @@ export function StudentTopicRegistrationDialog({
         <div className="grid items-start lg:grid-cols-[minmax(0,1fr)_356px]">
           {preview}
           <section
-            className="space-y-4 border-t border-slate-100 bg-gradient-to-b from-slate-50/90 via-slate-50/50 to-white p-5 sm:p-6 lg:min-h-full lg:border-l lg:border-t-0"
+            className="space-y-4 border-t border-line-subtle bg-gradient-to-b from-surface-subtle/90 via-surface-subtle/50 to-surface-card p-5 sm:p-6 lg:min-h-full lg:border-l lg:border-t-0"
             aria-label="Đăng ký đề tài"
           >
-            <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
+            <div className="space-y-3 rounded-xl border border-line/80 bg-surface-card p-4 shadow-2xs">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-slate-900">Đăng ký đề tài</h2>
-                <span className="text-[11px] font-medium text-slate-400">Chỉ tiêu hiện tại</span>
+                <h2 className="text-sm font-semibold text-ink-primary">
+                  Đăng ký đề tài
+                </h2>
+                <span className="text-[11px] font-medium text-ink-subtle">Chỉ tiêu hiện tại</span>
               </div>
               <div aria-busy={availabilityLoading}>
                 {availabilityLoading ? (
@@ -255,8 +257,8 @@ export function StudentTopicRegistrationDialog({
                     )}
                   </div>
                   {window.state === 'open' && (
-                    <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-900">
-                      <CalendarClock className="size-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-tone-success-strong">
+                      <CalendarClock className="size-3.5 shrink-0 text-tone-success-icon" aria-hidden="true" />
                       <span>Hạn đăng ký: {registrationDate(window.deadline)}</span>
                     </p>
                   )}
@@ -264,8 +266,10 @@ export function StudentTopicRegistrationDialog({
               )}
             </div>
 
-            <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 shadow-2xs">
-              <p className="text-xs font-semibold text-slate-700">Hình thức đăng ký</p>
+            <div className="space-y-3 rounded-xl border border-line/80 bg-surface-card p-4 shadow-2xs">
+              <p className="text-xs font-semibold text-ink-secondary">
+                Hình thức đăng ký
+              </p>
               <div className="grid grid-cols-2 gap-2" aria-label="Hình thức đăng ký">
                 <Button
                   type="button"
@@ -310,7 +314,10 @@ export function StudentTopicRegistrationDialog({
               </div>
               {mode === 'pair' ? (
                 <div className="space-y-2 pt-1">
-                  <label htmlFor="registration-partner-code" className="text-xs font-medium text-slate-700">
+                  <label
+                    htmlFor="registration-partner-code"
+                    className="text-xs font-medium text-ink-secondary"
+                  >
                     MSSV bạn cùng nhóm
                   </label>
                   <Input
@@ -327,12 +334,12 @@ export function StudentTopicRegistrationDialog({
                       setError('');
                     }}
                   />
-                  <p className="text-xs leading-5 text-slate-500">
+                  <p className="text-xs leading-5 text-ink-muted">
                     Chỉ người được mời cần xác nhận tham gia trong 24 giờ.
                   </p>
                 </div>
               ) : (
-                <p className="text-xs leading-5 text-slate-500">
+                <p className="text-xs leading-5 text-ink-muted">
                   {topic.studentNumber === 2
                     ? 'Đề tài nhận tối đa 2 SV vẫn cho phép đăng ký cá nhân. Nếu còn chỗ, SV khác sẽ được thêm vào cùng nhóm.'
                     : 'Đăng ký cá nhân được ghi nhận ngay khi thành công.'}
@@ -343,14 +350,14 @@ export function StudentTopicRegistrationDialog({
             {(error || mutation.error || unavailable) && (
               <div
                 role="alert"
-                className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50/90 p-3 text-xs font-medium leading-5 text-rose-700"
+                className="flex items-start gap-2 rounded-xl border border-tone-danger-border bg-tone-danger-bg p-3 text-xs font-medium leading-5 text-tone-danger-text"
               >
-                <AlertCircle className="mt-0.5 size-4 shrink-0 text-rose-600" aria-hidden="true" />
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-tone-danger-icon" aria-hidden="true" />
                 <p>{error || (mutation.error ? getTopicErrorMessage(mutation.error) : unavailable)}</p>
               </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200/80 pt-4">
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line/80 pt-4">
               <Button
                 type="button"
                 variant="outline"
@@ -387,7 +394,7 @@ export function StudentTopicRegistrationDialog({
         title="Xác nhận đăng ký đề tài"
         description={
           <>
-            <p className="font-medium text-slate-700">{topic.titleVi}</p>
+            <p className="font-medium text-ink-secondary">{topic.titleVi}</p>
             <p className="mt-2">
               Người đăng ký: {user?.fullName} ({user?.userCode})
             </p>

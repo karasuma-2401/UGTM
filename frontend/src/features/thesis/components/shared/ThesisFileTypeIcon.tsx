@@ -22,24 +22,24 @@ export function ThesisFileTypeIcon({ fileName }: ThesisFileTypeIconProps) {
     return (
       <div
         data-file-type="pdf"
-        className="size-10 rounded-xl bg-white border border-rose-200/80 flex items-center justify-center shrink-0 shadow-2xs"
+        className="size-10 rounded-xl bg-surface-elevated border border-tone-danger-border flex items-center justify-center shrink-0 shadow-2xs"
         aria-hidden="true"
       >
         <svg viewBox="0 0 28 28" className="size-6" fill="none">
           <path
             d="M7 3.5h9.2L21 8.3V23a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 23V5A1.5 1.5 0 0 1 7 3.5Z"
-            className="fill-rose-50/70 stroke-rose-600/85"
+            className="fill-rose-50/70 stroke-rose-600/85 dark:fill-rose-950/60 dark:stroke-rose-400"
             strokeWidth="1.5"
             strokeLinejoin="round"
           />
           <path
             d="M16 3.7V8.5h4.8"
-            className="stroke-rose-600/75"
+            className="stroke-rose-600/75 dark:stroke-rose-400"
             strokeWidth="1.4"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          <rect x="7" y="14" width="14" height="7" rx="2" className="fill-rose-600" />
+          <rect x="7" y="14" width="14" height="7" rx="2" className="fill-rose-600 dark:fill-rose-500" />
           <text
             x="14"
             y="19.1"
@@ -62,24 +62,24 @@ export function ThesisFileTypeIcon({ fileName }: ThesisFileTypeIconProps) {
     return (
       <div
         data-file-type={fileType}
-        className="size-10 rounded-xl bg-white border border-blue-200/80 flex items-center justify-center shrink-0 shadow-2xs"
+        className="size-10 rounded-xl bg-surface-elevated border border-tone-info-border flex items-center justify-center shrink-0 shadow-2xs"
         aria-hidden="true"
       >
         <svg viewBox="0 0 28 28" className="size-6" fill="none">
           <path
             d="M7 3.5h9.2L21 8.3V23a1.5 1.5 0 0 1-1.5 1.5H7A1.5 1.5 0 0 1 5.5 23V5A1.5 1.5 0 0 1 7 3.5Z"
-            className="fill-blue-50/80 stroke-[#2054a5]"
+            className="fill-blue-50/80 stroke-[#2054a5] dark:fill-blue-950/60 dark:stroke-blue-400"
             strokeWidth="1.5"
             strokeLinejoin="round"
           />
           <path
             d="M16 3.7V8.5h4.8"
-            className="stroke-[#2054a5]/80"
+            className="stroke-[#2054a5]/80 dark:stroke-blue-400"
             strokeWidth="1.4"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          <rect x="5.8" y="14" width="16.4" height="7" rx="2" className="fill-[#2054a5]" />
+          <rect x="5.8" y="14" width="16.4" height="7" rx="2" className="fill-[#2054a5] dark:fill-blue-600" />
           <text
             x="14"
             y="19.1"
@@ -100,7 +100,7 @@ export function ThesisFileTypeIcon({ fileName }: ThesisFileTypeIconProps) {
   return (
     <div
       data-file-type="file"
-      className="size-10 rounded-xl bg-white border border-slate-200/90 text-slate-600 flex items-center justify-center shrink-0 shadow-2xs"
+      className="size-10 rounded-xl bg-surface-elevated border border-line-input/90 text-ink-body flex items-center justify-center shrink-0 shadow-2xs"
       aria-hidden="true"
     >
       <FileText className="size-4.5" />

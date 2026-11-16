@@ -245,7 +245,7 @@ export function SubmissionBlockComposer({
         return {
           value: cat,
           label: SUBMISSION_LINK_CATEGORY_LABELS[cat],
-          icon: <Icon className="size-3.5 text-slate-500" />,
+          icon: <Icon className="size-3.5 text-ink-muted" />,
         };
       }),
     [],
@@ -524,7 +524,7 @@ export function SubmissionBlockComposer({
           }
         }}
         headerMeta={
-          <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 tabular-nums">
+          <span className="inline-flex items-center rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-medium text-ink-body tabular-nums">
             {filledLinkCount}/{PRODUCT_LINK_MAX_COUNT} liên kết · {images.length}/{IMAGE_MAX_COUNT} ảnh
           </span>
         }
@@ -542,7 +542,7 @@ export function SubmissionBlockComposer({
                       value={link.category}
                       options={categoryOptions}
                       disabled={disabled}
-                      triggerClassName="rounded-lg font-medium text-slate-700"
+                      triggerClassName="rounded-lg font-medium text-ink-secondary"
                       onChange={(nextCategory: SubmissionLinkCategory) => {
                         onProductLinksChange(
                           productLinks.map((item) =>
@@ -584,8 +584,8 @@ export function SubmissionBlockComposer({
                         );
                       }}
                       className={cn(
-                        'h-9 text-xs sm:text-sm bg-white',
-                        inlineError && 'border-rose-300 focus-visible:ring-rose-500/20',
+                        'h-9 text-xs sm:text-sm bg-surface-card',
+                        inlineError && 'border-tone-danger-border focus-visible:ring-rose-500/20',
                       )}
                     />
                   </div>
@@ -606,13 +606,13 @@ export function SubmissionBlockComposer({
                           ),
                         );
                       }}
-                      className="h-9 text-xs bg-white"
+                      className="h-9 text-xs bg-surface-card"
                     />
                   </div>
                 </div>
 
                 {inlineError && (
-                  <p className="text-[11px] font-medium text-rose-600" role="alert">
+                  <p className="text-[11px] font-medium text-tone-danger-icon" role="alert">
                     {inlineError}
                   </p>
                 )}
@@ -650,17 +650,17 @@ export function SubmissionBlockComposer({
                   event.stopPropagation();
                   appendImageFiles(files, block.id);
                 }}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-slate-200/90 bg-slate-50/55 px-3 py-2 text-xs text-slate-600 hover:border-[#2054a5]/60 hover:bg-blue-50/25 cursor-pointer transition-colors"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-line-input/90 bg-surface-subtle/55 px-3 py-2 text-xs text-ink-body hover:border-[#2054a5]/60 hover:bg-tone-info-bg cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <ImagePlus className="size-4 text-[#2054a5] shrink-0" />
+                  <ImagePlus className="size-4 text-brand-ink shrink-0" />
                   <span className="truncate">
-                    <span className="font-medium text-slate-800">Chọn ảnh minh chứng</span>{' '}
-                    <span className="text-slate-500">· PNG, JPG, WEBP ≤ 5 MB</span>
+                    <span className="font-medium text-ink-heading">Chọn ảnh minh chứng</span>{' '}
+                    <span className="text-ink-muted">· PNG, JPG, WEBP ≤ 5 MB</span>
                   </span>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-600 shrink-0">
-                  <ClipboardPaste className="size-3 text-slate-400" />
+                <span className="inline-flex items-center gap-1 rounded border border-line-input bg-surface-elevated px-2 py-0.5 text-[11px] font-medium text-ink-body shrink-0">
+                  <ClipboardPaste className="size-3 text-ink-subtle" />
                   Ctrl+V / Kéo thả
                 </span>
               </div>
@@ -678,7 +678,7 @@ export function SubmissionBlockComposer({
                   type="button"
                   onClick={() => setLightboxIndex(imgIndex)}
                   title={`Phóng to ${file.name}`}
-                  className="group/thumb relative h-12 w-16 rounded-lg overflow-hidden border border-slate-200/90 bg-slate-100 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+                  className="group/thumb relative h-12 w-16 rounded-lg overflow-hidden border border-line-input/90 bg-surface-muted shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
                 >
                   {block.imageUrl ? (
                     <img
@@ -687,7 +687,7 @@ export function SubmissionBlockComposer({
                       className="h-full w-full object-cover transition-transform duration-200 group-hover/thumb:scale-105"
                     />
                   ) : (
-                    <div className="h-full w-full flex items-center justify-center text-slate-400">
+                    <div className="h-full w-full flex items-center justify-center text-ink-subtle">
                       <ImagePlus className="size-4" />
                     </div>
                   )}
@@ -695,16 +695,16 @@ export function SubmissionBlockComposer({
 
                 <div className="min-w-0">
                   <p
-                    className="text-xs sm:text-sm font-medium text-slate-800 truncate"
+                    className="text-xs sm:text-sm font-medium text-ink-heading truncate"
                     title={file.name}
                   >
                     {file.name}
                   </p>
-                  <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[11px] text-slate-500">
-                    <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-slate-600">
+                  <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[11px] text-ink-muted">
+                    <span className="inline-flex items-center rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-ink-body">
                       {ext}
                     </span>
-                    <span className="tabular-nums font-medium text-slate-600">
+                    <span className="tabular-nums font-medium text-ink-body">
                       {formatFileSize(file.size)}
                     </span>
                   </div>
@@ -717,7 +717,7 @@ export function SubmissionBlockComposer({
                 size="sm"
                 onClick={() => setLightboxIndex(imgIndex)}
                 aria-label={`Phóng to ${file.name}`}
-                className="inline-flex h-7 px-2 text-xs text-slate-500 hover:text-slate-800 shrink-0"
+                className="inline-flex h-7 px-2 text-xs text-ink-muted hover:text-ink-heading shrink-0"
               >
                 <Maximize2 className="size-3.5 sm:mr-1" />
                 <span className="hidden sm:inline">Phóng to</span>
@@ -730,7 +730,7 @@ export function SubmissionBlockComposer({
       {imageError && (
         <div
           role="alert"
-          className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50/75 px-3 py-2 text-xs text-rose-700"
+          className="flex items-center gap-2 rounded-lg border border-tone-danger-border bg-tone-danger-bg px-3 py-2 text-xs text-tone-danger-text"
         >
           <AlertCircle className="size-3.5 shrink-0" />
           <span>{imageError}</span>
@@ -742,7 +742,7 @@ export function SubmissionBlockComposer({
           open
           onClose={() => setLightboxIndex(null)}
           title={
-            <span className="text-sm font-semibold text-slate-900 truncate block">
+            <span className="text-sm font-semibold text-ink-primary truncate block">
               {activeLightbox.file.name} · {formatFileSize(activeLightbox.file.size)}
             </span>
           }
@@ -758,7 +758,7 @@ export function SubmissionBlockComposer({
             </div>
 
             {imagePreviewEntries.length > 1 && (
-              <div className="flex items-center gap-3 text-xs text-slate-300">
+              <div className="flex items-center gap-3 text-xs text-ink-faint">
                 <Button
                   type="button"
                   variant="outline"
@@ -769,7 +769,7 @@ export function SubmissionBlockComposer({
                         imagePreviewEntries.length,
                     )
                   }
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+                  className="bg-surface-card/10 border-white/20 text-white hover:bg-surface-hover/20 hover:text-white"
                 >
                   <ChevronLeft className="size-4 mr-1" />
                   Trước
@@ -784,7 +784,7 @@ export function SubmissionBlockComposer({
                   onClick={() =>
                     setLightboxIndex((lightboxIndex + 1) % imagePreviewEntries.length)
                   }
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+                  className="bg-surface-card/10 border-white/20 text-white hover:bg-surface-hover/20 hover:text-white"
                 >
                   Sau
                   <ChevronRight className="size-4 ml-1" />

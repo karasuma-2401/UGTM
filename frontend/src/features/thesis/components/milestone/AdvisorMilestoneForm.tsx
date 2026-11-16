@@ -65,10 +65,10 @@ export function AdvisorMilestoneForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs"
+      className="space-y-4 rounded-2xl border border-line/80 bg-surface-card p-5 shadow-2xs"
     >
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
-        <h3 className="text-base font-semibold text-slate-900">Thêm mốc tiến độ mới</h3>
+      <div className="flex items-center justify-between gap-2 border-b border-line-subtle pb-3">
+        <h3 className="text-base font-semibold text-ink-primary">Thêm mốc tiến độ mới</h3>
         {onResetForm && (
           <Button
             type="button"
@@ -101,8 +101,8 @@ export function AdvisorMilestoneForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label htmlFor={titleId} className="block text-sm font-semibold text-slate-800">
-            Tên mốc tiến độ <span className="text-rose-600">*</span>
+          <label htmlFor={titleId} className="block text-sm font-semibold text-ink-heading">
+            Tên mốc tiến độ <span className="text-tone-danger-icon">*</span>
           </label>
           <Input
             id={titleId}
@@ -118,8 +118,8 @@ export function AdvisorMilestoneForm({
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor={deadlineId} className="block text-sm font-semibold text-slate-800">
-            Hạn chót nộp báo cáo <span className="text-rose-600">*</span>
+          <label htmlFor={deadlineId} className="block text-sm font-semibold text-ink-heading">
+            Hạn chót nộp báo cáo <span className="text-tone-danger-icon">*</span>
           </label>
           <DateTimePicker
             id={deadlineId}
@@ -135,7 +135,7 @@ export function AdvisorMilestoneForm({
       </div>
 
       <div className="space-y-1.5">
-        <span id={descLabelId} className="block text-sm font-semibold text-slate-800">
+        <span id={descLabelId} className="block text-sm font-semibold text-ink-heading">
           Sản phẩm và yêu cầu cần nộp
         </span>
         <RichTextEditor
@@ -150,7 +150,7 @@ export function AdvisorMilestoneForm({
         />
       </div>
 
-      <div className="flex justify-end border-t border-slate-100 pt-3">
+      <div className="flex justify-end border-t border-line-subtle pt-3">
         <Button type="submit" disabled={formDisabled}>
           {isSubmitting ? 'Đang tạo mốc...' : 'Tạo mốc tiến độ'}
         </Button>

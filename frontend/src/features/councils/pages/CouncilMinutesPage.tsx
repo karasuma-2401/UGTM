@@ -39,10 +39,10 @@ function WorkspaceLoadingSkeleton() {
       aria-label="Đang tải biên bản hội đồng"
       className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px] items-start"
     >
-      <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden">
+      <div className="rounded-2xl border border-line/80 bg-surface-card overflow-hidden">
         <Skeleton className="h-1 w-full rounded-none" />
         <div className="p-5 sm:p-7 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-5">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-line-subtle pb-5">
             <div className="space-y-2 flex-1">
               <Skeleton className="h-3.5 w-64" />
               <Skeleton className="h-6 w-80 max-w-full" />
@@ -50,12 +50,12 @@ function WorkspaceLoadingSkeleton() {
             </div>
             <Skeleton className="h-7 w-28 rounded-full" />
           </div>
-          <div className="rounded-xl border border-slate-200/70 bg-slate-50/60 p-4 space-y-4">
+          <div className="rounded-xl border border-line/70 bg-surface-subtle/60 p-4 space-y-4">
             <div className="space-y-1.5">
               <Skeleton className="h-5 w-4/5" />
               <Skeleton className="h-3.5 w-3/5" />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-200/60 pt-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-line/60 pt-3.5">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-36" />
                 <Skeleton className="h-6 w-48" />
@@ -75,7 +75,7 @@ function WorkspaceLoadingSkeleton() {
       </div>
 
       <div className="space-y-4">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 space-y-4">
+        <div className="rounded-2xl border border-line/80 bg-surface-card p-5 space-y-4">
           <Skeleton className="h-5 w-40" />
           <div className="grid grid-cols-2 gap-3">
             <Skeleton className="h-20 w-full rounded-xl" />
@@ -83,7 +83,7 @@ function WorkspaceLoadingSkeleton() {
           </div>
           <Skeleton className="h-40 w-full rounded-xl" />
         </div>
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 space-y-3">
+        <div className="rounded-2xl border border-line/80 bg-surface-card p-5 space-y-3">
           <Skeleton className="h-5 w-36" />
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-5/6" />
@@ -261,25 +261,25 @@ export function CouncilMinutesPage() {
 
         {/* Quick Switcher Strip for Groups inside Active Council */}
         {!isPrintPreview && sameCouncilAssignments.length > 0 && activeOverviewRow && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white px-4 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line/80 bg-surface-card px-4 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
             <div className="flex flex-wrap items-center gap-2 min-w-0">
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-800">
-                <Calendar className="size-3.5 text-slate-400" aria-hidden="true" />
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-heading">
+                <Calendar className="size-3.5 text-ink-subtle" aria-hidden="true" />
                 {activeOverviewRow.councilCode}
               </span>
-              <span className="text-slate-300" aria-hidden="true">
+              <span className="text-ink-faint" aria-hidden="true">
                 ·
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-ink-muted">
                 {formatDefenseDateVi(activeOverviewRow.defenseDate)} · Phòng{' '}
                 {activeOverviewRow.room}
               </span>
 
-              <span className="hidden sm:inline text-slate-300" aria-hidden="true">
+              <span className="hidden sm:inline text-ink-faint" aria-hidden="true">
                 |
               </span>
 
-              <span className="text-[11px] font-medium text-slate-500">
+              <span className="text-[11px] font-medium text-ink-muted">
                 Nhóm trong HĐ:
               </span>
 
@@ -289,7 +289,7 @@ export function CouncilMinutesPage() {
                   const active = rowAssignmentId === selectedAssignmentId;
                   const statusMeta = getMinuteLockStatusMeta(row.minuteLockStatus);
                   const dotClass = active
-                    ? 'bg-white/90'
+                    ? 'bg-surface-card/90'
                     : statusMeta.tone === 'success'
                       ? 'bg-emerald-500'
                       : statusMeta.tone === 'warning'
@@ -315,8 +315,8 @@ export function CouncilMinutesPage() {
                       className={cn(
                         'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
                         active
-                          ? 'border-primary bg-primary text-white shadow-xs'
-                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100/80',
+                          ? 'border-primary bg-brand-solid text-white shadow-xs'
+                          : 'border-line-input bg-surface-muted text-ink-secondary hover:border-line-strong hover:bg-surface-muted/80',
                       )}
                     >
                       {row.minuteLockStatus === 'Locked' ? (
@@ -339,7 +339,7 @@ export function CouncilMinutesPage() {
 
             <div className="flex flex-wrap items-center gap-3 shrink-0">
               {isDirty ? (
-                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">
+                <span className="inline-flex items-center rounded-full border border-tone-warning-border bg-tone-warning-bg px-2.5 py-0.5 text-[11px] font-semibold text-tone-warning-strong">
                   Có thay đổi chưa lưu
                 </span>
               ) : (
@@ -348,7 +348,7 @@ export function CouncilMinutesPage() {
                   {getMinuteLockStatusMeta(activeOverviewRow.minuteLockStatus).label}
                 </StatusBadge>
               )}
-              <span className="hidden sm:inline-block h-4 w-px bg-slate-200" aria-hidden="true" />
+              <span className="hidden sm:inline-block h-4 w-px bg-surface-strong" aria-hidden="true" />
               <button
                 type="button"
                 onClick={() => setIsGroupDrawerOpen(true)}
@@ -384,14 +384,14 @@ export function CouncilMinutesPage() {
       ) : isLoadingList && accessibleAssignments.length === 0 ? (
         <WorkspaceLoadingSkeleton />
       ) : accessibleAssignments.length === 0 ? (
-        <section className="rounded-2xl border border-slate-200/80 bg-white px-6 py-14 text-center shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+        <section className="rounded-2xl border border-line/80 bg-surface-card px-6 py-14 text-center shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-surface-muted text-ink-muted">
             <FileCheck2 className="size-6" aria-hidden="true" />
           </div>
-          <h2 className="mt-4 text-base font-semibold text-slate-900">
+          <h2 className="mt-4 text-base font-semibold text-ink-primary">
             Chưa có biên bản hội đồng trong đợt này
           </h2>
-          <p className="mx-auto mt-1.5 max-w-md text-xs sm:text-sm leading-relaxed text-slate-500">
+          <p className="mx-auto mt-1.5 max-w-md text-xs sm:text-sm leading-relaxed text-ink-muted">
             Hệ thống chỉ hiển thị các nhóm bảo vệ thuộc hội đồng bạn tham gia hoặc thuộc phạm vi
             quản lý của bạn trong đợt khóa luận đang chọn.
           </p>
@@ -449,7 +449,7 @@ export function CouncilMinutesPage() {
           )}
         >
           {isPrintPreview && (
-            <div className="sticky top-20 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/90 bg-white/95 px-3.5 py-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.06)] backdrop-blur-md print:hidden">
+            <div className="sticky top-20 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line-input/90 bg-surface-card/95 px-3.5 py-2.5 shadow-[0_2px_10px_rgba(15,23,42,0.06)] backdrop-blur-md print:hidden">
               <div className="flex items-center gap-2.5 min-w-0">
                 <Button
                   type="button"
@@ -458,16 +458,16 @@ export function CouncilMinutesPage() {
                   onClick={() => setIsPrintPreview(false)}
                   leftIcon={<ArrowLeft className="size-3.5" />}
                   title="Thoát xem trước (Esc)"
-                  className="h-8 rounded-xl px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 shrink-0"
+                  className="h-8 rounded-xl px-2.5 text-xs font-semibold text-ink-secondary hover:bg-surface-muted hover:text-ink-primary shrink-0"
                 >
                   Thoát xem trước
                 </Button>
-                <span className="hidden sm:inline-block h-4 w-px bg-slate-200 shrink-0" aria-hidden="true" />
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-semibold text-blue-700 shrink-0">
+                <span className="hidden sm:inline-block h-4 w-px bg-surface-strong shrink-0" aria-hidden="true" />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-tone-info-bg px-2.5 py-0.5 text-[11px] font-semibold text-tone-info-text shrink-0">
                   <Printer className="size-3" aria-hidden="true" />
                   Xem trước A4
                 </span>
-                <span className="hidden md:inline truncate text-xs text-slate-500">
+                <span className="hidden md:inline truncate text-xs text-ink-muted">
                   Kiểm tra bố cục, điểm số và chữ ký trước khi xuất PDF
                 </span>
               </div>

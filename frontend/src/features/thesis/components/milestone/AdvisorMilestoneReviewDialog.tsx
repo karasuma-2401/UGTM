@@ -59,16 +59,16 @@ const DECISION_OPTIONS: readonly {
     label: 'Xác nhận Đạt',
     hint: 'Báo cáo đáp ứng yêu cầu mốc, nhóm tiếp tục giai đoạn tiếp theo.',
     icon: CheckCircle2,
-    activeClass: 'border-emerald-300 bg-emerald-50/75 text-emerald-950 ring-1 ring-emerald-200',
-    iconClass: 'text-emerald-600',
+    activeClass: 'border-tone-success-border bg-tone-success-bg text-tone-success-strong ring-1 ring-emerald-200',
+    iconClass: 'text-tone-success-icon',
   },
   {
     value: 'NeedRevision',
     label: 'Yêu cầu chỉnh sửa',
     hint: 'Nhóm cần bổ sung mã nguồn hoặc báo cáo và nộp lại phiên bản mới.',
     icon: RotateCcw,
-    activeClass: 'border-amber-300 bg-amber-50/80 text-amber-950 ring-1 ring-amber-200',
-    iconClass: 'text-amber-600',
+    activeClass: 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong ring-1 ring-amber-200',
+    iconClass: 'text-tone-warning-icon',
   },
 ];
 
@@ -90,7 +90,7 @@ export function AdvisorMilestoneReviewDialog({
       hideHeader
       onClose={onClose}
       busy={isSubmitting}
-      className="flex max-h-[92dvh] w-[calc(100%-2rem)] max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200/90 p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]"
+      className="flex max-h-[92dvh] w-[calc(100%-2rem)] max-w-6xl flex-col overflow-hidden rounded-2xl border border-line/90 p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]"
     >
       <ReviewDialogBody
         key={`${item.milestone.id}-${item.report?.currentVersionNo ?? 0}-${item.report?.currentStatus ?? 'NotSubmitted'}`}
@@ -176,24 +176,24 @@ function ReviewDialogBody({
         className="h-1 shrink-0 bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]"
       />
 
-      <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
+      <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line-subtle bg-surface-card px-5 py-4 sm:px-6">
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+            <h2 className="text-lg font-semibold tracking-tight text-ink-primary">
               {milestone.title}
             </h2>
             <MilestoneStatusBadge status={status} />
           </div>
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-ink-muted">
             <span className="inline-flex items-center gap-1 tabular-nums">
-              <CalendarClock className="size-3.5 text-slate-400" aria-hidden="true" />
+              <CalendarClock className="size-3.5 text-ink-subtle" aria-hidden="true" />
               <span>Hạn nộp: {formatMilestoneDateTime(milestone.deadlineUtc)}</span>
             </span>
             {selectedGroup && (
               <>
                 <span aria-hidden="true">·</span>
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="font-mono font-semibold text-slate-700">
+                  <span className="font-mono font-semibold text-ink-secondary">
                     {selectedGroup.groupCode}
                   </span>
                   <AvatarGroup
@@ -218,7 +218,7 @@ function ReviewDialogBody({
             type="button"
             variant="ghost"
             size="sm"
-            className="hidden h-8 gap-1 text-xs text-slate-600 hover:text-primary sm:inline-flex"
+            className="hidden h-8 gap-1 text-xs text-ink-body hover:text-primary sm:inline-flex"
           >
             <Link to={`/advisor/milestones/${milestone.id}/review`}>
               <span>Mở trang riêng</span>
@@ -232,19 +232,19 @@ function ReviewDialogBody({
             aria-label="Đóng hộp thoại"
             disabled={isSubmitting}
             onClick={handleCloseModal}
-            className="size-8 shrink-0 rounded-lg p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            className="size-8 shrink-0 rounded-lg p-0 text-ink-muted hover:bg-surface-muted hover:text-ink-secondary"
           >
             <X className="size-4" />
           </Button>
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.1fr)_minmax(400px,0.95fr)] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-slate-100 lg:overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.1fr)_minmax(400px,0.95fr)] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-line-subtle lg:overflow-hidden">
         {/* Left pane: Deliverable spec và submitted student artifact (flat surface hierarchy) */}
-        <div className="min-h-0 divide-y divide-slate-100 bg-white lg:overflow-y-auto">
+        <div className="min-h-0 divide-y divide-line-subtle bg-surface-card lg:overflow-y-auto">
           <section className="space-y-2.5 px-5 py-5 sm:px-6">
-            <h3 className="text-xs font-semibold text-slate-600">Sản phẩm và yêu cầu cần nộp</h3>
-            <div className="rounded-xl bg-slate-50/80 px-4 py-3.5 text-sm leading-relaxed text-slate-700">
+            <h3 className="text-xs font-semibold text-ink-body">Sản phẩm và yêu cầu cần nộp</h3>
+            <div className="rounded-xl bg-surface-subtle/80 px-4 py-3.5 text-sm leading-relaxed text-ink-secondary">
               <RichTextContent
                 content={milestone.description}
                 emptyFallback="Chưa có mô tả chi tiết yêu cầu sản phẩm."
@@ -254,8 +254,8 @@ function ReviewDialogBody({
 
           <section className="space-y-4 px-5 py-5 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-2.5">
-              <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                <History className="size-3.5 text-slate-400" aria-hidden="true" />
+              <h3 className="flex items-center gap-1.5 text-xs font-semibold text-ink-body">
+                <History className="size-3.5 text-ink-subtle" aria-hidden="true" />
                 <span>
                   {versions.length > 1
                     ? `Bài nộp của nhóm (${versions.length} lần nộp)`
@@ -264,9 +264,9 @@ function ReviewDialogBody({
               </h3>
 
               {versions.length === 1 ? (
-                <span className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/90 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-line-input/90 bg-surface-muted px-2.5 py-1 text-xs font-medium text-ink-secondary">
                   <span>Lần nộp {versions[0].versionNo}</span>
-                  {versions[0].isLate && <span className="text-amber-700">· Trễ hạn</span>}
+                  {versions[0].isLate && <span className="text-tone-warning-text">· Trễ hạn</span>}
                 </span>
               ) : versions.length > 1 ? (
                 <Select<string>
@@ -293,14 +293,14 @@ function ReviewDialogBody({
                         className={cn(
                           'text-[11px] font-medium',
                           version.review.decision === 'Accepted'
-                            ? 'text-emerald-700'
-                            : 'text-amber-700',
+                            ? 'text-tone-success-text'
+                            : 'text-tone-warning-text',
                         )}
                       >
                         {version.review.decision === 'Accepted' ? 'Đạt' : 'Cần sửa'}
                       </span>
                     ) : version.isLate ? (
-                      <span className="text-[11px] font-medium text-amber-700">Trễ hạn</span>
+                      <span className="text-[11px] font-medium text-tone-warning-text">Trễ hạn</span>
                     ) : undefined,
                   }))}
                 />
@@ -308,13 +308,13 @@ function ReviewDialogBody({
             </div>
 
             {!activeVersion ? (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center text-sm text-slate-500">
+              <div className="rounded-xl border border-dashed border-line-input bg-surface-subtle/50 p-6 text-center text-sm text-ink-muted">
                 Nhóm sinh viên chưa nộp báo cáo nào cho mốc tiến độ này.
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                  <span className="font-medium text-slate-700">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
+                  <span className="font-medium text-ink-secondary">
                     Gửi lúc{' '}
                     <span className="tabular-nums">
                       {formatMilestoneDateTime(activeVersion.submittedAtUtc)}
@@ -324,7 +324,7 @@ function ReviewDialogBody({
                     <span
                       className={cn(
                         'font-medium',
-                        submissionDelta.isLate ? 'text-amber-700' : 'text-emerald-700',
+                        submissionDelta.isLate ? 'text-tone-warning-text' : 'text-tone-success-text',
                       )}
                     >
                       {submissionDelta.label}
@@ -334,18 +334,18 @@ function ReviewDialogBody({
 
                 {/* Artifacts pair: File + Git */}
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="flex flex-col justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3.5">
+                  <div className="flex flex-col justify-between gap-2.5 rounded-xl border border-line/80 bg-surface-card p-3.5">
                     <div className="flex items-start gap-2.5">
-                      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-ink-body">
                         <FileText className="size-4" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-slate-500">Tệp báo cáo</p>
-                        <p className="truncate text-sm font-semibold text-slate-900">
+                        <p className="text-xs font-medium text-ink-muted">Tệp báo cáo</p>
+                        <p className="truncate text-sm font-semibold text-ink-primary">
                           {activeVersion.file ? activeVersion.file.fileName : 'Không có tệp đính kèm'}
                         </p>
                         {activeVersion.file && (
-                          <p className="text-xs tabular-nums text-slate-500">
+                          <p className="text-xs tabular-nums text-ink-muted">
                             {formatFileSize(activeVersion.file.fileSize)}
                           </p>
                         )}
@@ -376,15 +376,15 @@ function ReviewDialogBody({
                     )}
                   </div>
 
-                  <div className="flex flex-col justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-white p-3.5">
+                  <div className="flex flex-col justify-between gap-2.5 rounded-xl border border-line/80 bg-surface-card p-3.5">
                     <div className="flex items-start gap-2.5">
-                      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-ink-body">
                         <GitBranch className="size-4" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-slate-500">Kho mã nguồn (Git)</p>
+                        <p className="text-xs font-medium text-ink-muted">Kho mã nguồn (Git)</p>
                         <p
-                          className="truncate text-sm font-medium text-slate-800"
+                          className="truncate text-sm font-medium text-ink-heading"
                           title={activeVersion.gitUrl ?? undefined}
                         >
                           {activeVersion.gitUrl || 'Không đính kèm liên kết Git'}
@@ -411,8 +411,8 @@ function ReviewDialogBody({
 
                 {activeVersion.studentNote && (
                   <div className="space-y-1.5 pt-1">
-                    <p className="text-xs font-semibold text-slate-600">Ghi chú của sinh viên</p>
-                    <div className="rounded-xl bg-slate-50/80 px-4 py-3 text-sm leading-relaxed text-slate-700">
+                    <p className="text-xs font-semibold text-ink-body">Ghi chú của sinh viên</p>
+                    <div className="rounded-xl bg-surface-subtle/80 px-4 py-3 text-sm leading-relaxed text-ink-secondary">
                       <RichTextContent content={activeVersion.studentNote} />
                     </div>
                   </div>
@@ -423,7 +423,7 @@ function ReviewDialogBody({
         </div>
 
         {/* Right pane: Timing comparison + Evaluation form OR Review history timeline */}
-        <div className="flex min-h-0 flex-col bg-slate-50/55">
+        <div className="flex min-h-0 flex-col bg-surface-subtle/55">
           <div className="min-h-0 flex-1 space-y-5 p-5 sm:p-6 lg:overflow-y-auto">
             {serverError && (
               <InlineAlert tone="error" title="Gửi đánh giá thất bại">
@@ -432,16 +432,16 @@ function ReviewDialogBody({
             )}
 
             {/* Schedule và submission contrast bar */}
-            <div className="grid grid-cols-2 gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 text-xs">
+            <div className="grid grid-cols-2 gap-3 rounded-xl border border-line/80 bg-surface-card p-3.5 text-xs">
               <div>
-                <p className="text-slate-500">Hạn nộp quy định</p>
-                <p className="mt-0.5 font-semibold tabular-nums text-slate-900">
+                <p className="text-ink-muted">Hạn nộp quy định</p>
+                <p className="mt-0.5 font-semibold tabular-nums text-ink-primary">
                   {formatMilestoneDateShort(milestone.deadlineUtc)} ·{' '}
                   {formatMilestoneTimeShort(milestone.deadlineUtc)}
                 </p>
               </div>
-              <div className="border-l border-slate-100 pl-3">
-                <p className="text-slate-500">
+              <div className="border-l border-line-subtle pl-3">
+                <p className="text-ink-muted">
                   {activeVersion ? `Thực nộp (lần ${activeVersion.versionNo})` : 'Tình trạng nộp'}
                 </p>
                 <p
@@ -449,9 +449,9 @@ function ReviewDialogBody({
                     'mt-0.5 font-semibold tabular-nums',
                     submissionDelta
                       ? submissionDelta.isLate
-                        ? 'text-amber-700'
-                        : 'text-emerald-700'
-                      : 'text-slate-600',
+                        ? 'text-tone-warning-text'
+                        : 'text-tone-success-text'
+                      : 'text-ink-body',
                   )}
                 >
                   {activeVersion
@@ -464,7 +464,7 @@ function ReviewDialogBody({
             {canEvaluate ? (
               <>
                 <div className="space-y-2.5">
-                  <p className="text-xs font-semibold text-slate-600">Kết luận đánh giá</p>
+                  <p className="text-xs font-semibold text-ink-body">Kết luận đánh giá</p>
                   <div className="grid gap-2.5">
                     {DECISION_OPTIONS.map((option) => {
                       const Icon = option.icon;
@@ -483,13 +483,13 @@ function ReviewDialogBody({
                             'flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                             active
                               ? option.activeClass
-                              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+                              : 'border-line bg-surface-card text-ink-secondary hover:border-line-strong',
                           )}
                         >
                           <Icon
                             className={cn(
                               'mt-0.5 size-4 shrink-0',
-                              active ? option.iconClass : 'text-slate-500',
+                              active ? option.iconClass : 'text-ink-muted',
                             )}
                             aria-hidden="true"
                           />
@@ -505,12 +505,12 @@ function ReviewDialogBody({
 
                 <div className="flex min-h-[220px] flex-1 flex-col gap-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span id={feedbackLabelId} className="text-xs font-semibold text-slate-600">
+                    <span id={feedbackLabelId} className="text-xs font-semibold text-ink-body">
                       Nhận xét của giảng viên
                       {feedbackRequired ? (
-                        <span className="ml-1 text-rose-600">*</span>
+                        <span className="ml-1 text-tone-danger-icon">*</span>
                       ) : (
-                        <span className="ml-1.5 font-normal text-slate-500">
+                        <span className="ml-1.5 font-normal text-ink-muted">
                           (không bắt buộc)
                         </span>
                       )}
@@ -540,7 +540,7 @@ function ReviewDialogBody({
                   />
 
                   {feedbackError && (
-                    <p id={feedbackErrorId} className="text-xs font-medium text-rose-600">
+                    <p id={feedbackErrorId} className="text-xs font-medium text-tone-danger-icon">
                       {feedbackError}
                     </p>
                   )}
@@ -573,18 +573,18 @@ function ReviewDialogBody({
 
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                      <MessageSquareText className="size-3.5 text-slate-400" aria-hidden="true" />
+                    <h3 className="flex items-center gap-1.5 text-xs font-semibold text-ink-body">
+                      <MessageSquareText className="size-3.5 text-ink-subtle" aria-hidden="true" />
                       <span>Lịch sử thẩm định và nhận xét</span>
                     </h3>
-                    <span className="text-xs tabular-nums text-slate-500">
+                    <span className="text-xs tabular-nums text-ink-muted">
                       {reviewedVersions.length} lượt chấm
                     </span>
                   </div>
 
                   {reviewedVersions.length === 0 ? (
-                    <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-slate-200 bg-white/80 p-4 text-xs text-slate-500">
-                      <Clock3 className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+                    <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-line-input bg-surface-card/80 p-4 text-xs text-ink-muted">
+                      <Clock3 className="size-4 shrink-0 text-ink-subtle" aria-hidden="true" />
                       <span>Chưa có phản hồi nào từ giảng viên cho mốc tiến độ này.</span>
                     </div>
                   ) : (
@@ -595,28 +595,28 @@ function ReviewDialogBody({
                         return (
                           <li
                             key={version.versionNo}
-                            className="rounded-xl border border-slate-200/80 bg-white p-3.5"
+                            className="rounded-xl border border-line/80 bg-surface-card p-3.5"
                           >
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
-                                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-700">
+                                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-ink-secondary">
                                   Lần nộp {version.versionNo}
                                 </span>
                                 <span
                                   className={cn(
                                     'text-xs font-semibold',
-                                    accepted ? 'text-emerald-700' : 'text-amber-700',
+                                    accepted ? 'text-tone-success-text' : 'text-tone-warning-text',
                                   )}
                                 >
                                   {accepted ? 'Đạt yêu cầu' : 'Cần chỉnh sửa'}
                                 </span>
                               </div>
-                              <span className="text-[11px] tabular-nums text-slate-500">
+                              <span className="text-[11px] tabular-nums text-ink-muted">
                                 {formatMilestoneDateTime(review.reviewedAtUtc)}
                               </span>
                             </div>
 
-                            <div className="mt-2.5 border-t border-slate-100 pt-2.5 text-xs leading-relaxed text-slate-700">
+                            <div className="mt-2.5 border-t border-line-subtle pt-2.5 text-xs leading-relaxed text-ink-secondary">
                               <RichTextContent
                                 content={review.feedback}
                                 emptyFallback="Giảng viên không để lại ghi chú bổ sung."
@@ -632,7 +632,7 @@ function ReviewDialogBody({
             )}
           </div>
 
-          <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-slate-200/80 bg-white px-5 py-3.5 sm:px-6">
+          <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-line/80 bg-surface-card px-5 py-3.5 sm:px-6">
             <Button type="button" variant="outline" disabled={isSubmitting} onClick={handleCloseModal}>
               {canEvaluate ? 'Hủy' : 'Đóng'}
             </Button>

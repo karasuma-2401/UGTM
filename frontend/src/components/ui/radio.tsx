@@ -193,20 +193,20 @@ export const RadioButton = React.forwardRef<HTMLLabelElement, RadioButtonProps>(
 
     const getVariantStyles = () => {
       if (!isChecked) {
-        return 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900';
+        return 'border-line bg-surface-card hover:border-line-strong';
       }
 
       switch (effectiveVariant) {
         case 'success':
-          return 'border-[#91edc5] bg-[#eefbf5] text-[#087c5a] dark:border-emerald-700/60 dark:bg-emerald-950/30 dark:text-emerald-300';
+          return 'border-[#91edc5] bg-[#eefbf5] text-[#087c5a] dark:border-emerald-700/60 dark:bg-emerald-950/35 dark:text-emerald-300';
         case 'primary':
-          return 'border-primary/40 bg-blue-50/60 text-primary dark:border-blue-700/60 dark:bg-blue-950/30';
+          return 'border-primary/40 bg-tone-info-bg text-primary';
         case 'warning':
-          return 'border-amber-300 bg-amber-50/70 text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30';
+          return 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong';
         case 'destructive':
-          return 'border-destructive/40 bg-red-50/70 text-destructive dark:border-red-700/60 dark:bg-red-950/30';
+          return 'border-destructive/40 bg-tone-danger-bg text-destructive';
         default:
-          return 'border-slate-400 bg-slate-50 text-slate-900 dark:border-slate-600 dark:bg-slate-800';
+          return 'border-slate-400 bg-surface-muted text-ink-primary';
       }
     };
 
@@ -225,7 +225,7 @@ export const RadioButton = React.forwardRef<HTMLLabelElement, RadioButtonProps>(
           'relative flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border transition-all duration-200 select-none cursor-pointer',
           getVariantStyles(),
           isDisabled &&
-            'opacity-50 cursor-not-allowed pointer-events-none bg-slate-50 border-slate-200',
+            'opacity-50 cursor-not-allowed pointer-events-none bg-surface-subtle border-line',
           className,
         )}
         {...props}
@@ -247,11 +247,11 @@ export const RadioButton = React.forwardRef<HTMLLabelElement, RadioButtonProps>(
               'size-4 rounded-full flex items-center justify-center shrink-0 transition-colors',
               isChecked
                 ? 'bg-primary'
-                : 'border-2 border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800',
+                : 'border-2 border-line-strong bg-surface-elevated',
             )}
             style={isChecked && radioColor ? { backgroundColor: radioColor } : undefined}
           >
-            {isChecked && <span className="size-1.5 rounded-full bg-white shrink-0" />}
+            {isChecked && <span className="size-1.5 rounded-full bg-surface-card shrink-0" />}
           </span>
 
           {icon && (
@@ -262,7 +262,7 @@ export const RadioButton = React.forwardRef<HTMLLabelElement, RadioButtonProps>(
             {label && (
               <span
                 className={cn(
-                  'text-sm font-medium text-slate-800 dark:text-slate-100 block truncate',
+                  'text-sm font-medium text-ink-heading block truncate',
                   isChecked &&
                     effectiveVariant === 'success' &&
                     'text-[#087c5a] dark:text-emerald-300',
@@ -272,7 +272,7 @@ export const RadioButton = React.forwardRef<HTMLLabelElement, RadioButtonProps>(
               </span>
             )}
             {description && (
-              <span className="text-xs text-slate-500 dark:text-slate-400 block truncate mt-0.5">
+              <span className="text-xs text-ink-muted block truncate mt-0.5">
                 {description}
               </span>
             )}
@@ -282,7 +282,7 @@ export const RadioButton = React.forwardRef<HTMLLabelElement, RadioButtonProps>(
         {rightText && (
           <span
             className={cn(
-              'text-sm text-slate-600 dark:text-slate-400 shrink-0 ml-2 font-normal',
+              'text-sm text-ink-body shrink-0 ml-2 font-normal',
               isChecked &&
                 effectiveVariant === 'success' &&
                 'text-[#087c5a] dark:text-emerald-400 font-medium',

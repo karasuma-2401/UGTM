@@ -23,7 +23,7 @@ export function PageHeader({
   accent = !compact,
 }: PageHeaderProps) {
   return (
-    <header className="relative z-20 rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]">
+    <header className="relative z-20 rounded-2xl border border-line/80 bg-surface-card shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.03)]">
       {accent && (
         <div
           aria-hidden="true"
@@ -37,15 +37,15 @@ export function PageHeader({
           {icon && !compact && (
             <span
               aria-hidden="true"
-              className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#2054a5] to-[#2563eb] text-white shadow-xs ring-4 ring-blue-50/80 [&_svg]:size-5"
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#2054a5] to-[#2563eb] text-white shadow-xs ring-4 ring-blue-50/80 dark:ring-blue-950/60 [&_svg]:size-5"
             >
               {icon}
             </span>
           )}
           <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-ink-primary">{title}</h1>
             {description && (
-              <div className="text-xs sm:text-sm text-slate-500 mt-0.5 leading-relaxed">
+              <div className="text-xs sm:text-sm text-ink-muted mt-0.5 leading-relaxed">
                 {description}
               </div>
             )}
@@ -59,7 +59,7 @@ export function PageHeader({
       </div>
       {navigation && (
         <div
-          className={`overflow-hidden rounded-b-2xl border-t border-slate-100/90 bg-slate-50/40 ${compact ? '' : 'px-3 sm:px-4'}`}
+          className={`overflow-hidden rounded-b-2xl border-t border-line-subtle/90 bg-surface-subtle/40 ${compact ? '' : 'px-3 sm:px-4'}`}
         >
           {navigation}
         </div>

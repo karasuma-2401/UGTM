@@ -56,12 +56,12 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
       title={
         <div className="flex items-center gap-2.5">
           <History className="size-4 text-primary" />
-          <span className="text-base font-bold text-slate-900">{title}</span>
+          <span className="text-base font-bold text-ink-primary">{title}</span>
         </div>
       }
       closeLabel="Đóng lịch sử hồ sơ lưu chiểu"
-      className="w-full max-w-[100vw] sm:max-w-[640px] bg-white"
-      headerClassName="border-b border-slate-200/80 bg-white/95 px-5 py-4 sm:px-6"
+      className="w-full max-w-[100vw] sm:max-w-[640px] bg-surface-card"
+      headerClassName="border-b border-line/80 bg-surface-card/95 px-5 py-4 sm:px-6"
     >
       <div className="p-5 sm:p-6 space-y-4">
         {isLoading ? (
@@ -87,7 +87,7 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
             {error}
           </InlineAlert>
         ) : packages.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-6 text-center text-sm text-slate-500">
+          <div className="rounded-2xl border border-line/80 bg-surface-subtle/70 p-6 text-center text-sm text-ink-muted">
             Chưa có phiên bản hồ sơ lưu chiểu nào được ghi nhận.
           </div>
         ) : (
@@ -95,11 +95,11 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
             {packages.map((pkg, index) => (
               <section
                 key={pkg.packageId}
-                className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs space-y-4"
+                className="rounded-2xl border border-line/80 bg-surface-card p-4 sm:p-5 shadow-2xs space-y-4"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-subtle pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-slate-900 tabular-nums">
+                    <span className="text-sm font-bold text-ink-primary tabular-nums">
                       Phiên bản v{pkg.versionNo}
                     </span>
                     {index === 0 && (
@@ -108,13 +108,13 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
                       </Badge>
                     )}
                   </div>
-                  <span className="text-xs text-slate-500 tabular-nums">
+                  <span className="text-xs text-ink-muted tabular-nums">
                     Nộp lúc {formatDateTimeVi(pkg.submittedAt)}
                   </span>
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-slate-700">Tệp đính kèm</p>
+                  <p className="text-xs font-semibold text-ink-secondary">Tệp đính kèm</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {pkg.files.map((file) => {
                       const dlKey = `${pkg.versionNo}-${file.fileRole}`;
@@ -124,18 +124,18 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
                       return (
                         <div
                           key={file.fileId}
-                          className="flex items-center justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2.5"
+                          className="flex items-center justify-between gap-2.5 rounded-xl border border-line/80 bg-surface-subtle/70 px-3 py-2.5"
                         >
                           <div className="min-w-0 flex items-center gap-2.5">
                             <ThesisFileTypeIcon fileName={file.fileName} />
                             <div className="min-w-0">
                               <p
-                                className="text-xs font-medium text-slate-800 truncate"
+                                className="text-xs font-medium text-ink-heading truncate"
                                 title={file.fileName}
                               >
                                 {file.fileName}
                               </p>
-                              <p className="text-[11px] text-slate-500 tabular-nums">
+                              <p className="text-[11px] text-ink-muted tabular-nums">
                                 {file.fileRole === 'ThesisPdf' ? 'PDF' : 'DOCX'} -{' '}
                                 {formatArchivalFileSize(file.fileSize)}
                               </p>
@@ -147,7 +147,7 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="size-8 shrink-0 rounded-lg bg-white"
+                                className="size-8 shrink-0 rounded-lg bg-surface-card"
                                 aria-label={`Xem trước ${file.fileName}`}
                                 title="Xem trước PDF"
                                 disabled={isBusyAction}
@@ -162,7 +162,7 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
                               type="button"
                               variant="outline"
                               size="icon"
-                              className="size-8 shrink-0 rounded-lg bg-white"
+                              className="size-8 shrink-0 rounded-lg bg-surface-card"
                               aria-label={`Tải ${file.fileName}`}
                               title={`Tải ${file.fileName}`}
                               disabled={isBusyAction}
@@ -182,25 +182,25 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="rounded-xl border border-slate-200/70 bg-slate-50/50 p-3 space-y-1">
-                    <p className="font-semibold text-slate-600">Tóm tắt tiếng Việt</p>
-                    <p className="text-slate-700 line-clamp-4 leading-relaxed">
+                  <div className="rounded-xl border border-line/70 bg-surface-subtle/50 p-3 space-y-1">
+                    <p className="font-semibold text-ink-body">Tóm tắt tiếng Việt</p>
+                    <p className="text-ink-secondary line-clamp-4 leading-relaxed">
                       {pkg.abstractVi}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-slate-200/70 bg-slate-50/50 p-3 space-y-1">
-                    <p className="font-semibold text-slate-600">Abstract tiếng Anh</p>
-                    <p className="text-slate-700 line-clamp-4 leading-relaxed">
+                  <div className="rounded-xl border border-line/70 bg-surface-subtle/50 p-3 space-y-1">
+                    <p className="font-semibold text-ink-body">Abstract tiếng Anh</p>
+                    <p className="text-ink-secondary line-clamp-4 leading-relaxed">
                       {pkg.abstractEn}
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <p className="font-semibold text-slate-600">Từ khóa tiếng Việt</p>
+                    <p className="font-semibold text-ink-body">Từ khóa tiếng Việt</p>
                     <div className="flex flex-wrap gap-1.5">
                       {parseArchivalKeywords(pkg.keywordsVi).map((kw) => (
                         <span
                           key={kw}
-                          className="inline-flex items-center rounded-md border border-slate-200/80 bg-slate-100/80 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                          className="inline-flex items-center rounded-md border border-line-input/80 bg-surface-muted/80 px-2 py-0.5 text-[11px] font-medium text-ink-secondary"
                         >
                           {kw}
                         </span>
@@ -208,12 +208,12 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <p className="font-semibold text-slate-600">Keywords tiếng Anh</p>
+                    <p className="font-semibold text-ink-body">Keywords tiếng Anh</p>
                     <div className="flex flex-wrap gap-1.5">
                       {parseArchivalKeywords(pkg.keywordsEn).map((kw) => (
                         <span
                           key={kw}
-                          className="inline-flex items-center rounded-md border border-blue-200/70 bg-blue-50/60 px-2 py-0.5 text-[11px] font-medium text-blue-800"
+                          className="inline-flex items-center rounded-md border border-tone-info-border bg-tone-info-bg px-2 py-0.5 text-[11px] font-medium text-tone-info-strong"
                         >
                           {kw}
                         </span>
@@ -223,31 +223,31 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
                 </div>
 
                 {pkg.reviews.length > 0 && (
-                  <div className="space-y-2 border-t border-slate-100 pt-3">
-                    <p className="text-xs font-semibold text-slate-700">Lịch sử xét duyệt</p>
+                  <div className="space-y-2 border-t border-line-subtle pt-3">
+                    <p className="text-xs font-semibold text-ink-secondary">Lịch sử xét duyệt</p>
                     <div className="space-y-2">
                       {pkg.reviews.map((review) => {
                         const resultDisplay = getArchivalStatusDisplay(review.resultStatus);
                         return (
                           <div
                             key={review.reviewId}
-                            className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2 text-xs space-y-1"
+                            className="rounded-xl border border-line/80 bg-surface-subtle/70 px-3 py-2 text-xs space-y-1"
                           >
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="font-semibold text-slate-800">
+                              <span className="font-semibold text-ink-heading">
                                 {formatReviewActionLabel(review.action, review.stage)}
                               </span>
                               <div className="flex items-center gap-2">
                                 <StatusBadge tone={resultDisplay.tone}>
                                   {resultDisplay.label}
                                 </StatusBadge>
-                                <span className="text-slate-500 tabular-nums">
+                                <span className="text-ink-muted tabular-nums">
                                   {formatDateTimeVi(review.decidedAtUtc)}
                                 </span>
                               </div>
                             </div>
                             {review.reason && (
-                              <p className="text-slate-600 leading-relaxed">
+                              <p className="text-ink-body leading-relaxed">
                                 Lý do: {review.reason}
                               </p>
                             )}

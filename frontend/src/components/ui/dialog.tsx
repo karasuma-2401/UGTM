@@ -96,9 +96,9 @@ export function Dialog({
         backdropMouseDownRef.current = false;
       }}
       className={cn(
-        'fluent-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-slate-200/80 bg-white p-0 text-slate-800 shadow-[0_24px_64px_-12px_rgba(15,23,42,0.2)] backdrop:bg-slate-950/45 backdrop:backdrop-blur-xs',
+        'fluent-dialog fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-2xl border border-line-input/80 bg-surface-card p-0 text-ink-heading shadow-[0_24px_64px_-12px_rgba(15,23,42,0.2)] backdrop:bg-slate-950/45 backdrop:backdrop-blur-xs dark:shadow-[0_24px_64px_-12px_rgba(0,0,0,0.65)]',
         variant === 'drawer' &&
-          'fluent-drawer inset-y-0 left-auto right-0 m-0 h-dvh max-h-dvh w-full max-w-none rounded-none border-y-0 border-r-0 backdrop:bg-slate-950/20 sm:max-w-[560px]',
+          'fluent-drawer inset-y-0 left-auto right-0 m-0 h-dvh max-h-dvh w-full max-w-none rounded-none border-y-0 border-r-0 backdrop:bg-slate-950/20 dark:backdrop:bg-black/50 sm:max-w-[560px]',
         className,
       )}
     >
@@ -110,14 +110,14 @@ export function Dialog({
       {!hideHeader && (
         <div
           className={cn(
-            'sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white/95 px-5 py-3.5 backdrop-blur-md',
+            'sticky top-0 z-10 flex items-center justify-between border-b border-line-subtle bg-surface-card/95 px-5 py-3.5 backdrop-blur-md',
             variant === 'drawer' && 'min-h-20',
             headerClassName,
           )}
         >
           <div
             id={titleId}
-            className="min-w-0 flex-1 text-sm font-semibold tracking-tight text-slate-900"
+            className="min-w-0 flex-1 text-sm font-semibold tracking-tight text-ink-primary"
           >
             {title}
           </div>
@@ -128,7 +128,7 @@ export function Dialog({
             aria-label={closeLabel}
             disabled={busy}
             onClick={onClose}
-            className="ml-3 h-8 w-8 shrink-0 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="ml-3 h-8 w-8 shrink-0 rounded-lg text-ink-subtle hover:bg-surface-muted hover:text-ink-secondary"
           >
             <X />
           </Button>

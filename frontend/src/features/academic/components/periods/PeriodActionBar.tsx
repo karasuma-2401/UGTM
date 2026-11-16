@@ -16,9 +16,9 @@ export const PeriodActionBar: React.FC<PeriodActionBarProps> = ({
   onSave,
 }) => {
   return (
-    <div className="sticky bottom-6 z-30 rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_12px_40px_-8px_rgba(15,23,42,0.12)] backdrop-blur-md transition-all">
+    <div className="sticky bottom-6 z-30 rounded-2xl border border-line-input/90 bg-surface-card/95 p-4 shadow-[0_12px_40px_-8px_rgba(15,23,42,0.12)] backdrop-blur-md transition-all dark:shadow-[0_16px_40px_-8px_rgba(0,0,0,0.6)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-ink-muted">
           Các thay đổi về thời gian và deadline sẽ được áp dụng cho đợt này.
         </div>
 
@@ -27,7 +27,7 @@ export const PeriodActionBar: React.FC<PeriodActionBarProps> = ({
             type="button"
             disabled={!canEdit || isSaving || isDisabled}
             onClick={onSave}
-            className="h-10 px-6 gap-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-xs transition-all active:scale-[0.98] shadow-sm disabled:opacity-50"
+            className="h-10 px-6 gap-2 rounded-xl bg-brand-solid text-white font-semibold text-xs transition-all active:scale-[0.98] shadow-sm disabled:opacity-50 hover:bg-brand-solid-hover"
           >
             {isSaving ? (
               <Loader2 className="size-4 animate-spin" />

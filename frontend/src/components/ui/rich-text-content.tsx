@@ -67,7 +67,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
       nodes.push(<code key={key}>{codeText}</code>);
     } else if (boldText !== undefined) {
       nodes.push(
-        <strong key={key} className="font-semibold text-slate-900">
+        <strong key={key} className="font-semibold text-ink-primary">
           {renderInline(boldText, key)}
         </strong>,
       );
@@ -79,7 +79,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
       );
     } else if (strikeText !== undefined) {
       nodes.push(
-        <s key={key} className="text-slate-400">
+        <s key={key} className="text-ink-subtle">
           {renderInline(strikeText, key)}
         </s>,
       );
@@ -204,7 +204,7 @@ export function RichTextContent({ content, className, emptyFallback = null }: Ri
         const key = `block-${index}`;
         if (block.kind === 'heading') {
           return (
-            <p key={key} className="font-semibold text-slate-900">
+            <p key={key} className="font-semibold text-ink-primary">
               {renderInline(block.text, key)}
             </p>
           );

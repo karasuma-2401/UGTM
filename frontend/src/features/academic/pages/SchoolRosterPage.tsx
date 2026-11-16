@@ -72,7 +72,7 @@ export const SchoolRosterPage: React.FC = () => {
                 size="sm"
                 onClick={handleRetryLoad}
                 disabled={data.isLoadingBatches}
-                className="h-8 text-xs border-rose-300 bg-white text-rose-700 hover:bg-rose-100 cursor-pointer"
+                className="h-8 text-xs border-tone-danger-border bg-surface-card text-tone-danger-text hover:bg-tone-danger-bg cursor-pointer"
               >
                 <RotateCcw className="size-3.5 mr-1.5" />
                 Thử lại

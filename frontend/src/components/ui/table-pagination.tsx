@@ -48,32 +48,32 @@ export function TablePagination({
 
   const isFirstDisabled = currentPage <= 1 || !hasPreviousPage || isLoading;
   const isLastDisabled = currentPage >= totalPages || !hasNextPage || isLoading;
-  const arrowClass = 'size-9 shrink-0 rounded-lg p-0 text-slate-500 disabled:opacity-35';
+  const arrowClass = 'size-9 shrink-0 rounded-lg p-0 text-ink-muted disabled:opacity-35';
 
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-b-2xl border-t border-slate-100 bg-slate-50/50 px-4 py-4 sm:px-5',
+        'flex flex-wrap items-center justify-between gap-x-6 gap-y-4 rounded-b-2xl border-t border-line-subtle bg-surface-subtle/50 px-4 py-4 sm:px-5',
         className,
       )}
     >
-      <p className="w-full text-center text-xs leading-5 text-slate-600 sm:w-auto sm:text-left">
-        <span className="text-slate-700 font-semibold tabular-nums">
+      <p className="w-full text-center text-xs leading-5 text-ink-body sm:w-auto sm:text-left">
+        <span className="text-ink-secondary font-semibold tabular-nums">
           {first}–{last}
         </span>{' '}
         trên{' '}
-        <span className="text-slate-700 font-semibold tabular-nums">
+        <span className="text-ink-secondary font-semibold tabular-nums">
           {totalCount.toLocaleString('vi-VN')}
         </span>{' '}
         {itemLabel}
       </p>
       {onPageSizeChange && (
         <div className="flex w-full items-center justify-center gap-3 sm:ml-auto sm:w-auto">
-          <span className="text-xs text-slate-600">Số hàng / trang</span>
+          <span className="text-xs text-ink-body">Số hàng / trang</span>
           <div
             role="group"
             aria-label="Số hàng mỗi trang"
-            className="inline-flex items-center gap-1 rounded-xl border border-slate-200/80 bg-slate-100/70 p-1"
+            className="inline-flex items-center gap-1 rounded-xl border border-line/80 bg-surface-muted/70 p-1"
           >
             {sizes.map((size) => (
               <Button
@@ -90,8 +90,8 @@ export function TablePagination({
                 className={cn(
                   'h-7 min-w-9 px-2 tabular-nums',
                   safePageSize === size
-                    ? 'bg-white text-primary shadow-sm hover:bg-white hover:text-primary'
-                    : 'text-slate-600 hover:bg-white/70',
+                    ? 'bg-surface-elevated text-primary shadow-sm hover:bg-surface-hover hover:text-primary'
+                    : 'text-ink-body hover:bg-surface-hover/70',
                 )}
               >
                 {size}
@@ -128,7 +128,7 @@ export function TablePagination({
         >
           <ChevronLeft />
         </Button>
-        <span className="min-w-24 px-2 text-center text-xs tabular-nums text-slate-600 sm:hidden">
+        <span className="min-w-24 px-2 text-center text-xs tabular-nums text-ink-body sm:hidden">
           <span className="font-semibold text-primary">{currentPage}</span> / {totalPages}
         </span>
         <div className="hidden items-center gap-1 sm:flex">
@@ -153,7 +153,7 @@ export function TablePagination({
               <span
                 key={page}
                 aria-hidden="true"
-                className="w-7 text-center text-xs text-slate-400"
+                className="w-7 text-center text-xs text-ink-subtle"
               >
                 …
               </span>

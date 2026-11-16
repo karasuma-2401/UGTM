@@ -19,7 +19,7 @@ export const ScoreConfigPage: React.FC = () => {
   const { data, form, modals, actions } = useScoreConfig();
 
   return (
-    <div className="space-y-6 pb-10 selection:bg-blue-100 selection:text-blue-950">
+    <div className="space-y-6 pb-10 selection:bg-tone-info-bg selection:text-tone-info-strong">
       <PageHeader
         accent
         title="Cấu hình đợt điểm"
@@ -41,7 +41,7 @@ export const ScoreConfigPage: React.FC = () => {
             variant="outline"
             onClick={() => modals.setIsHistoryModalOpen(true)}
             className="h-10 rounded-xl px-4 shadow-2xs"
-            leftIcon={<History className="size-4 text-slate-500" />}
+            leftIcon={<History className="size-4 text-ink-muted" />}
           >
             Lịch sử phiên bản ({data.historyConfigs.length})
           </Button>
@@ -88,7 +88,7 @@ export const ScoreConfigPage: React.FC = () => {
 
         <aside
           aria-label="Tóm tắt và lưu cấu hình"
-          className="min-w-0 lg:col-span-4 lg:sticky lg:top-6 rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-xs"
+          className="min-w-0 lg:col-span-4 lg:sticky lg:top-6 rounded-2xl border border-line/80 bg-surface-card overflow-hidden shadow-xs"
         >
           <ScoreConfigSummaryCard
             batch={data.currentBatch}
@@ -100,10 +100,10 @@ export const ScoreConfigPage: React.FC = () => {
             isValid={form.isValid}
             isLoading={data.isLoadingConfig || data.isLoadingBatches}
           />
-          <div className="border-t border-slate-200/80 bg-slate-50/70 p-5 space-y-3">
-            <p role="status" className="flex items-center gap-2 text-xs font-medium text-slate-600">
+          <div className="border-t border-line/80 bg-surface-subtle/70 p-5 space-y-3">
+            <p role="status" className="flex items-center gap-2 text-xs font-medium text-ink-body">
               <span
-                className={`size-2 shrink-0 rounded-full ${form.isDirty ? 'bg-amber-500' : 'bg-slate-400'}`}
+                className={`size-2 shrink-0 rounded-full ${form.isDirty ? 'bg-amber-500' : 'bg-slate-400 dark:bg-slate-500'}`}
                 aria-hidden="true"
               />
               {form.isDirty ? 'Có thay đổi chưa lưu' : 'Không có thay đổi chưa lưu'}
@@ -144,13 +144,13 @@ export const ScoreConfigPage: React.FC = () => {
             )}
 
             {data.currentConfig?.status === 'Draft' && form.isDirty && form.isValid && (
-              <p className="text-[11px] text-slate-500 text-center font-medium">
+              <p className="text-[11px] text-ink-muted text-center font-medium">
                 Thay đổi chưa lưu sẽ được tự động cập nhật vào bản nháp trước khi công bố.
               </p>
             )}
 
             {data.currentConfig?.status === 'Draft' && !form.isValid && (
-              <p className="text-[11px] text-amber-600 text-center font-medium">
+              <p className="text-[11px] text-tone-warning-icon text-center font-medium">
                 Cần đạt tổng {form.calculationMethod === 'Percentage' ? '100%' : 'hệ số > 0'} để
                 công bố
               </p>

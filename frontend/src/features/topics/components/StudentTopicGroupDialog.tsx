@@ -107,7 +107,7 @@ export function StudentTopicGroupDialog({
             <Skeleton className="h-20 w-full" />
           </div>
         ) : group.isError ? (
-          <div role="alert" className="space-y-2 text-sm text-rose-700">
+          <div role="alert" className="space-y-2 text-sm text-tone-danger-text">
             <p>{getTopicErrorMessage(group.error)}</p>
             <Button type="button" variant="outline" size="sm" onClick={() => void group.refetch()}>
               Thử lại thông tin nhóm
@@ -115,14 +115,16 @@ export function StudentTopicGroupDialog({
           </div>
         ) : group.data ? (
           <>
-            <div className="rounded-xl border border-slate-200/80 bg-gradient-to-r from-slate-50/80 via-white to-blue-50/40 p-4">
+            <div className="rounded-xl border border-line/80 bg-gradient-to-r from-surface-subtle/80 via-surface-card to-tone-info-bg/50 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1 space-y-1">
-                  <h2 className="text-lg font-semibold leading-snug text-slate-900">
+                  <h2 className="text-lg font-semibold leading-snug text-ink-primary">
                     {group.data.topicTitleVi}
                   </h2>
                   {group.data.topicTitleEn && (
-                    <p className="text-sm text-slate-500">{group.data.topicTitleEn}</p>
+                    <p className="text-sm text-ink-muted">
+                      {group.data.topicTitleEn}
+                    </p>
                   )}
                 </div>
                 <StatusBadge tone="info">
@@ -130,19 +132,21 @@ export function StudentTopicGroupDialog({
                     group.data.groupStatus}
                 </StatusBadge>
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-600">
+              <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-ink-body">
                 <span>{group.data.batchName || `Mã đợt: ${group.data.batchId}`}</span>
                 <span className="inline-flex items-center gap-1.5">
-                  <GraduationCap className="size-3.5 text-slate-400" aria-hidden="true" />
+                  <GraduationCap className="size-3.5 text-ink-subtle" aria-hidden="true" />
                   Giảng viên hướng dẫn:{' '}
-                  <strong className="font-medium text-slate-800">
+                  <strong className="font-medium text-ink-heading">
                     {group.data.advisor.fullName || 'Chưa cập nhật'}
                   </strong>
                 </span>
               </div>
             </div>
             <section className="space-y-2.5" aria-label="Thành viên nhóm">
-              <h3 className="text-sm font-semibold text-slate-800">Thành viên nhóm</h3>
+              <h3 className="text-sm font-semibold text-ink-heading">
+                Thành viên nhóm
+              </h3>
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {group.data.members.map((member) => {
                   const displayName = member.fullName || member.userCode || 'Chưa cập nhật tên';
@@ -155,16 +159,18 @@ export function StudentTopicGroupDialog({
                   return (
                     <div
                       key={member.studentId}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-3 text-sm"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-line/80 bg-surface-subtle/60 p-3 text-sm"
                     >
                       <InfoCell
                         leading={<Avatar name={displayName} className="size-8 text-[11px]" />}
                         title={
-                          <span className="text-sm font-medium text-slate-800">{displayName}</span>
+                          <span className="text-sm font-medium text-ink-heading">
+                            {displayName}
+                          </span>
                         }
                         description={
                           member.userCode ? (
-                            <span className="font-mono text-xs text-slate-500">
+                            <span className="font-mono text-xs text-ink-muted">
                               {member.userCode}
                             </span>
                           ) : undefined
@@ -181,24 +187,26 @@ export function StudentTopicGroupDialog({
           </>
         ) : null}
         {group.data && (
-          <section className="space-y-3 border-t border-slate-100 pt-4" aria-label="Tiến độ hồ sơ">
-            <h3 className="text-sm font-semibold text-slate-800">Tiến độ hồ sơ</h3>
+          <section className="space-y-3 border-t border-line-subtle pt-4" aria-label="Tiến độ hồ sơ">
+            <h3 className="text-sm font-semibold text-ink-heading">
+              Tiến độ hồ sơ
+            </h3>
             <div className="grid gap-3 sm:grid-cols-3">
               {progress.map(({ label, status, query, path }) => (
                 <div
                   key={label}
-                  className="flex flex-col justify-between gap-3 rounded-xl border border-slate-200 p-3 text-sm"
+                  className="flex flex-col justify-between gap-3 rounded-xl border border-line p-3 text-sm"
                 >
                   <div>
-                    <p className="font-medium text-slate-800">{label}</p>
+                    <p className="font-medium text-ink-heading">{label}</p>
                     {query.isPending ? (
                       <Skeleton className="mt-2 h-4 w-24" />
                     ) : query.isError ? (
-                      <p role="alert" className="mt-2 text-xs text-rose-700">
+                      <p role="alert" className="mt-2 text-xs text-tone-danger-text">
                         {getTopicErrorMessage(query.error)}
                       </p>
                     ) : (
-                      <p className="mt-2 text-xs text-slate-600">{status}</p>
+                      <p className="mt-2 text-xs text-ink-body">{status}</p>
                     )}
                   </div>
                   {query.isError ? (
@@ -225,7 +233,7 @@ export function StudentTopicGroupDialog({
             {milestones.isPending ? (
               <Skeleton className="h-14 w-full" />
             ) : milestones.isError ? (
-              <div role="alert" className="flex flex-wrap items-center gap-2 text-xs text-rose-700">
+              <div role="alert" className="flex flex-wrap items-center gap-2 text-xs text-tone-danger-text">
                 <span>{getTopicErrorMessage(milestones.error)}</span>
                 <Button
                   type="button"
@@ -238,14 +246,16 @@ export function StudentTopicGroupDialog({
               </div>
             ) : milestones.data.length > 0 ? (
               <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-slate-700">Mốc tiến độ</h4>
+                <h4 className="text-xs font-semibold text-ink-secondary">
+                  Mốc tiến độ
+                </h4>
                 {milestones.data.map(({ milestone, report }) => (
                   <div
                     key={milestone.id}
-                    className="flex flex-wrap justify-between gap-2 rounded-lg bg-slate-50 p-3 text-sm"
+                    className="flex flex-wrap justify-between gap-2 rounded-lg bg-surface-subtle p-3 text-sm text-ink-heading"
                   >
                     <span>{milestone.title}</span>
-                    <span className="text-slate-600">
+                    <span className="text-ink-body">
                       {report
                         ? (PROGRESS_REPORT_STATUS_LABELS[
                             report.currentStatus as keyof typeof PROGRESS_REPORT_STATUS_LABELS
@@ -263,11 +273,11 @@ export function StudentTopicGroupDialog({
                 </Link>
               </div>
             ) : (
-              <p className="text-xs text-slate-500">Chưa có mốc tiến độ.</p>
+              <p className="text-xs text-ink-muted">Chưa có mốc tiến độ.</p>
             )}
           </section>
         )}
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4">
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-line-subtle pt-4">
           <Link
             to="/topics/rename"
             onClick={onClose}

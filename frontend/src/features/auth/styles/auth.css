@@ -77,6 +77,11 @@
   white-space: nowrap;
   font-size: var(--font-size-sm);
 }
+.auth-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
 .auth-main {
   flex: 1;
   display: flex;
@@ -96,6 +101,7 @@
   max-width: var(--auth-card-width);
   min-height: var(--auth-card-min-height);
   background: var(--color-bg-white);
+  border: 1px solid var(--color-border-card);
   border-radius: var(--radius-3xl);
   padding: 40px 36px;
   box-shadow: var(--shadow-card);
@@ -550,6 +556,8 @@
   width: 46px;
   height: 54px;
   border: 1px solid var(--color-border-otp);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-heading);
   border-radius: var(--radius-lg);
   text-align: center;
   font-size: var(--font-size-4xl);

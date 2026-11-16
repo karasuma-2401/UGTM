@@ -34,7 +34,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-surface-subtle dark:bg-[#090d16]">
         <div role="status" className="flex items-center gap-3 px-6">
           <svg
             aria-hidden="true"
@@ -60,7 +60,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
               opacity="0.45"
             />
           </svg>
-          <p className="text-xs font-medium text-slate-500">Đang kiểm tra quyền truy cập...</p>
+          <p className="text-xs font-medium text-ink-muted">Đang kiểm tra quyền truy cập...</p>
         </div>
       </div>
     );
@@ -68,13 +68,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (sessionError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-        <div className="max-w-md text-center space-y-4" role="alert">
+      <div className="min-h-screen flex items-center justify-center bg-surface-subtle dark:bg-[#090d16] p-6">
+        <div className="max-w-md text-center space-y-4 text-ink-primary" role="alert">
           <p>{sessionError}</p>
           <button
             type="button"
             onClick={retrySession}
-            className="rounded-md bg-primary px-4 py-2 text-white"
+            className="rounded-md bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white"
           >
             Thử lại
           </button>

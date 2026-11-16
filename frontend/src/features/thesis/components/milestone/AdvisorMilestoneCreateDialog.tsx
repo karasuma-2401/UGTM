@@ -55,7 +55,7 @@ export function AdvisorMilestoneCreateDialog({
       hideHeader
       onClose={onClose}
       busy={isSubmitting}
-      className="flex max-h-[92dvh] w-[calc(100%-2rem)] max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-200/90 p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]"
+      className="flex max-h-[92dvh] w-[calc(100%-2rem)] max-w-5xl flex-col overflow-hidden rounded-2xl border border-line/90 p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]"
     >
       <CreateMilestoneFormBody
         key={`${selectedGroup.groupId}-${String(open)}`}
@@ -163,13 +163,13 @@ function CreateMilestoneFormBody({
         className="h-1 shrink-0 bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]"
       />
 
-      <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
+      <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line-subtle bg-surface-card px-5 py-4 sm:px-6">
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="text-lg font-semibold tracking-tight text-slate-900">
+            <h2 className="text-lg font-semibold tracking-tight text-ink-primary">
               Thêm mốc tiến độ
             </h2>
-            <span className="inline-flex items-center rounded-md border border-slate-200/90 bg-slate-50 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700">
+            <span className="inline-flex items-center rounded-md border border-line-input/90 bg-surface-muted px-2 py-0.5 font-mono text-xs font-semibold text-ink-secondary">
               {selectedGroup.groupCode}
             </span>
             <AvatarGroup
@@ -181,7 +181,7 @@ function CreateMilestoneFormBody({
               }))}
             />
           </div>
-          <p className="line-clamp-1 text-xs text-slate-500" title={selectedGroup.topicTitleVi}>
+          <p className="line-clamp-1 text-xs text-ink-muted" title={selectedGroup.topicTitleVi}>
             {selectedGroup.topicTitleVi}
           </p>
         </div>
@@ -193,15 +193,15 @@ function CreateMilestoneFormBody({
           aria-label="Đóng hộp thoại"
           disabled={isSubmitting}
           onClick={handleCloseModal}
-          className="size-8 shrink-0 rounded-lg p-0 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+          className="size-8 shrink-0 rounded-lg p-0 text-ink-muted hover:bg-surface-muted hover:text-ink-secondary"
         >
           <X className="size-4" />
         </Button>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.9fr)] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-slate-100 lg:overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.9fr)] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-line-subtle lg:overflow-hidden">
         {/* Left pane: Editor studio */}
-        <div className="min-h-0 space-y-5 bg-white p-5 sm:p-6 lg:overflow-y-auto">
+        <div className="min-h-0 space-y-5 bg-surface-card p-5 sm:p-6 lg:overflow-y-auto">
           {serverError && (
             <InlineAlert tone="error" title="Không thể tạo mốc tiến độ">
               {serverError}
@@ -210,10 +210,10 @@ function CreateMilestoneFormBody({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <label htmlFor={titleId} className="text-sm font-semibold text-slate-800">
-                Tên mốc tiến độ <span className="text-rose-600">*</span>
+              <label htmlFor={titleId} className="text-sm font-semibold text-ink-heading">
+                Tên mốc tiến độ <span className="text-tone-danger-icon">*</span>
               </label>
-              <span className="text-xs tabular-nums text-slate-500">{title.length}/250</span>
+              <span className="text-xs tabular-nums text-ink-muted">{title.length}/250</span>
             </div>
             <Input
               id={titleId}
@@ -228,13 +228,13 @@ function CreateMilestoneFormBody({
               }}
             />
 
-            {titleError && <p className="text-xs font-medium text-rose-600">{titleError}</p>}
+            {titleError && <p className="text-xs font-medium text-tone-danger-icon">{titleError}</p>}
           </div>
 
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <label htmlFor={deadlineId} className="text-sm font-semibold text-slate-800">
-                Hạn chót nộp báo cáo <span className="text-rose-600">*</span>
+              <label htmlFor={deadlineId} className="text-sm font-semibold text-ink-heading">
+                Hạn chót nộp báo cáo <span className="text-tone-danger-icon">*</span>
               </label>
               <div className="flex flex-wrap items-center gap-1.5">
                 {QUICK_DEADLINE_OFFSETS.map((preset) => (
@@ -246,7 +246,7 @@ function CreateMilestoneFormBody({
                       setDeadlineInput(getDefaultFutureDeadlineInput(preset.days));
                       if (deadlineError) setDeadlineError('');
                     }}
-                    className="inline-flex h-6 items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 text-xs font-medium text-slate-600 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-primary disabled:opacity-50"
+                    className="inline-flex h-6 items-center gap-1 rounded-md border border-line-input bg-surface-muted px-2 text-xs font-medium text-ink-body transition-colors hover:border-tone-info-border hover:bg-tone-info-bg hover:text-primary disabled:opacity-50"
                   >
                     <CalendarClock className="size-3" aria-hidden="true" />
                     <span>{preset.label}</span>
@@ -272,7 +272,7 @@ function CreateMilestoneFormBody({
               <p
                 className={cn(
                   'text-xs capitalize',
-                  deadlineSummary.validFuture ? 'text-slate-500' : 'font-medium text-amber-700',
+                  deadlineSummary.validFuture ? 'text-ink-muted' : 'font-medium text-tone-warning-text',
                 )}
               >
                 {deadlineSummary.summary}
@@ -282,9 +282,9 @@ function CreateMilestoneFormBody({
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-              <span id={descLabelId} className="text-sm font-semibold text-slate-800">
+              <span id={descLabelId} className="text-sm font-semibold text-ink-heading">
                 Sản phẩm và yêu cầu cần nộp
-                <span className="ml-1.5 font-normal text-slate-500">(không bắt buộc)</span>
+                <span className="ml-1.5 font-normal text-ink-muted">(không bắt buộc)</span>
               </span>
             </div>
 
@@ -304,36 +304,36 @@ function CreateMilestoneFormBody({
         </div>
 
         {/* Right pane: Live student preview + existing group timeline */}
-        <aside className="min-h-0 space-y-5 bg-slate-50/55 p-5 sm:p-6 lg:overflow-y-auto">
+        <aside className="min-h-0 space-y-5 bg-surface-subtle/55 p-5 sm:p-6 lg:overflow-y-auto">
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-semibold text-slate-600">
+              <h3 className="text-xs font-semibold text-ink-body">
                 Xem trước hiển thị của sinh viên
               </h3>
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-ink-muted">
                 <Flag className="size-3 text-primary" aria-hidden="true" />
                 <span>Mốc thứ {nextMilestoneIndex}</span>
               </span>
             </div>
 
-            <div className="rounded-xl border border-slate-200/90 bg-white p-4 shadow-2xs">
+            <div className="rounded-xl border border-line/90 bg-surface-card p-4 shadow-2xs">
               <div className="flex items-start justify-between gap-2">
                 <p
                   className={cn(
                     'text-sm font-semibold leading-snug',
-                    title.trim() ? 'text-slate-900' : 'italic text-slate-400',
+                    title.trim() ? 'text-ink-primary' : 'italic text-ink-subtle',
                   )}
                 >
                   {title.trim() || `Mốc ${nextMilestoneIndex} — Tên mốc tiến độ sẽ hiển thị tại đây`}
                 </p>
-                <span className="shrink-0 rounded-full border border-slate-200/90 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                <span className="shrink-0 rounded-full border border-line-input/90 bg-surface-muted px-2 py-0.5 text-[11px] font-medium text-ink-body">
                   Chưa nộp
                 </span>
               </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+              <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">
                 <span className="inline-flex items-center gap-1 tabular-nums">
-                  <CalendarClock className="size-3.5 text-slate-400" aria-hidden="true" />
+                  <CalendarClock className="size-3.5 text-ink-subtle" aria-hidden="true" />
                   <span>
                     {previewDeadlineIso
                       ? `${formatMilestoneDateShort(previewDeadlineIso)} · ${formatMilestoneTimeShort(previewDeadlineIso)}`
@@ -342,7 +342,7 @@ function CreateMilestoneFormBody({
                 </span>
               </div>
 
-              <div className="mt-3 border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600">
+              <div className="mt-3 border-t border-line-subtle pt-3 text-xs leading-relaxed text-ink-body">
                 <RichTextContent
                   content={description}
                   emptyFallback="Mô tả chi tiết tài liệu, mã nguồn Git hoặc tiêu chí đánh giá sẽ hiển thị tại đây."
@@ -351,16 +351,16 @@ function CreateMilestoneFormBody({
             </div>
           </div>
 
-          <div className="space-y-2.5 border-t border-slate-200/80 pt-4">
+          <div className="space-y-2.5 border-t border-line/80 pt-4">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-semibold text-slate-600">Lộ trình mốc hiện có</h3>
-              <span className="text-xs tabular-nums text-slate-500">
+              <h3 className="text-xs font-semibold text-ink-body">Lộ trình mốc hiện có</h3>
+              <span className="text-xs tabular-nums text-ink-muted">
                 {sortedExisting.length} mốc
               </span>
             </div>
 
             {sortedExisting.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3.5 py-3 text-xs text-slate-500">
+              <p className="rounded-xl border border-dashed border-line-input bg-surface-card/70 px-3.5 py-3 text-xs text-ink-muted">
                 Nhóm chưa có mốc tiến độ nào. Mốc này sẽ là cột mốc mở đầu lộ trình.
               </p>
             ) : (
@@ -370,24 +370,24 @@ function CreateMilestoneFormBody({
                   return (
                     <li
                       key={item.milestone.id}
-                      className="flex items-start justify-between gap-2.5 rounded-lg bg-white px-3 py-2 text-xs ring-1 ring-slate-200/70"
+                      className="flex items-start justify-between gap-2.5 rounded-lg bg-surface-card px-3 py-2 text-xs ring-1 ring-slate-200/70"
                     >
                       <div className="flex min-w-0 items-start gap-2">
                         {accepted ? (
                           <CheckCircle2
-                            className="mt-0.5 size-3.5 shrink-0 text-emerald-600"
+                            className="mt-0.5 size-3.5 shrink-0 text-tone-success-icon"
                             aria-hidden="true"
                           />
                         ) : (
-                          <span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold tabular-nums text-slate-600">
+                          <span className="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-surface-muted text-[10px] font-semibold tabular-nums text-ink-body">
                             {idx + 1}
                           </span>
                         )}
-                        <span className="line-clamp-1 font-medium text-slate-800">
+                        <span className="line-clamp-1 font-medium text-ink-heading">
                           {item.milestone.title}
                         </span>
                       </div>
-                      <span className="shrink-0 whitespace-nowrap tabular-nums text-slate-500">
+                      <span className="shrink-0 whitespace-nowrap tabular-nums text-ink-muted">
                         {formatMilestoneDateTime(item.milestone.deadlineUtc)}
                       </span>
                     </li>
@@ -399,7 +399,7 @@ function CreateMilestoneFormBody({
         </aside>
       </div>
 
-      <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-slate-100 bg-slate-50/70 px-5 py-3.5 sm:px-6">
+      <div className="flex shrink-0 items-center justify-end gap-2.5 border-t border-line-subtle bg-surface-subtle/70 px-5 py-3.5 sm:px-6">
         <Button type="button" variant="outline" disabled={isSubmitting} onClick={handleCloseModal}>
           Hủy
         </Button>

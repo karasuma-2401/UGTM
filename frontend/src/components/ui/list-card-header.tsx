@@ -20,7 +20,7 @@ export function ListCardHeader({
   return (
     <CardHeader
       className={cn(
-        'grid min-h-[96px] grid-cols-1 items-center gap-4 space-y-0 border-b border-slate-100/90 bg-gradient-to-r from-slate-50/80 via-white to-white px-5 py-4 xl:grid-cols-[minmax(0,1fr)_560px]',
+        'grid min-h-[96px] grid-cols-1 items-center gap-4 space-y-0 border-b border-line-subtle/90 bg-gradient-to-r from-surface-subtle/80 via-surface-card to-surface-card px-5 py-4 xl:grid-cols-[minmax(0,1fr)_560px]',
         className,
       )}
     >
@@ -28,14 +28,14 @@ export function ListCardHeader({
         {icon && (
           <span
             aria-hidden="true"
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-100/90 bg-blue-50/50 text-primary shadow-2xs [&_svg]:size-5"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-tone-info-border bg-tone-info-bg text-primary shadow-2xs [&_svg]:size-5"
           >
             {icon}
           </span>
         )}
         <div className="min-w-0 space-y-0.5">
-          <CardTitle className="text-base font-semibold tracking-tight text-slate-900">{title}</CardTitle>
-          {description != null && <p className="text-xs text-slate-500">{description}</p>}
+          <CardTitle className="text-base font-semibold tracking-tight text-ink-primary">{title}</CardTitle>
+          {description != null && <p className="text-xs text-ink-muted">{description}</p>}
         </div>
       </div>
       {children}

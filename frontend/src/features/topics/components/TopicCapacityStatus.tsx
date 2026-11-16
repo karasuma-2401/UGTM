@@ -13,7 +13,7 @@ export function TopicCapacityStatus({ topic }: { topic: PublishedTopic }) {
 
   return (
     <div className="space-y-1.5">
-      <p className="text-xs font-semibold tabular-nums text-slate-800">
+      <p className="text-xs font-semibold tabular-nums text-ink-heading">
         {hasMetrics
           ? `${confirmed}/${topic.studentNumber} SV đã đăng ký`
           : `Chỉ tiêu: ${topic.studentNumber ? `${topic.studentNumber} SV` : 'Chưa rõ'}`}
@@ -32,7 +32,7 @@ export function TopicCapacityStatus({ topic }: { topic: PublishedTopic }) {
               ? 'bg-primary'
               : isReserved
                 ? 'bg-amber-400'
-                : 'bg-slate-200';
+                : 'bg-surface-strong';
 
             return <span key={index} className={`h-1.5 rounded-full transition-colors ${segmentClass}`} />;
           })}
@@ -52,7 +52,7 @@ export function TopicCapacityStatus({ topic }: { topic: PublishedTopic }) {
                 : 'Đã đủ chỉ tiêu'}
         </StatusBadge>
         {hasMetrics && reserved > 0 && (
-          <span className="text-[11px] font-medium tabular-nums text-amber-700">
+          <span className="text-[11px] font-medium tabular-nums text-tone-warning-text">
             {reserved} chỗ chờ xác nhận
           </span>
         )}

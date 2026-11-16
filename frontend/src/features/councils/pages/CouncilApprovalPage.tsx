@@ -46,7 +46,7 @@ export function CouncilApprovalPage() {
         title="Phê duyệt quyết định Hội đồng"
         description="PĐT thẩm định dự thảo do Khoa gửi."
       >
-        <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-muted text-ink-secondary border border-line-input/80">
           {pendingCount} dự thảo chờ duyệt
         </span>
       </PageHeader>

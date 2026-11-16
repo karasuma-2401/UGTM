@@ -42,24 +42,24 @@ export function ReviewSyllabusTable({
   const resolvedTotalCount = totalCount ?? items.length;
 
   return (
-    <Card className="bg-white border-slate-200 shadow-xs rounded-xl overflow-hidden">
+    <Card className="bg-surface-card border-line shadow-xs rounded-xl overflow-hidden">
       <div className="p-6 space-y-4">
-        <h2 className="text-base font-bold text-slate-900">Hồ sơ</h2>
+        <h2 className="text-base font-bold text-ink-primary">Hồ sơ</h2>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-slate-100 text-slate-400 font-medium">
+              <tr className="border-b border-line-subtle text-ink-subtle font-medium">
                 <th className="pb-3 font-medium">Nhóm sinh viên</th>
                 <th className="pb-3 font-medium">Đề cương mới nhất</th>
                 <th className="pb-3 font-medium">Trạng thái</th>
                 <th className="pb-3 font-medium text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-line-subtle">
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="py-10 text-center text-slate-400">
+                  <td colSpan={4} className="py-10 text-center text-ink-subtle">
                     Đang tải danh sách hồ sơ...
                   </td>
                 </tr>
@@ -67,11 +67,11 @@ export function ReviewSyllabusTable({
                 <tr>
                   <td colSpan={4} className="py-10 text-center">
                     <div className="max-w-md mx-auto space-y-2">
-                      <ShieldAlert className="size-6 text-amber-600 mx-auto" />
-                      <p className="text-sm font-semibold text-slate-800">
+                      <ShieldAlert className="size-6 text-tone-warning-icon mx-auto" />
+                      <p className="text-sm font-semibold text-ink-heading">
                         Không có quyền truy cập danh sách hồ sơ
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-ink-muted">
                         {errorMessage ||
                           'Tài khoản của bạn không có quyền xem hoặc thẩm định danh sách đề cương.'}
                       </p>
@@ -82,12 +82,12 @@ export function ReviewSyllabusTable({
                 <tr>
                   <td colSpan={4} className="py-10 text-center">
                     <div className="max-w-md mx-auto space-y-3">
-                      <AlertCircle className="size-6 text-rose-600 mx-auto" />
+                      <AlertCircle className="size-6 text-tone-danger-icon mx-auto" />
                       <div>
-                        <p className="text-sm font-semibold text-slate-800">
+                        <p className="text-sm font-semibold text-ink-heading">
                           Không tải được danh sách hồ sơ
                         </p>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-ink-muted mt-0.5">
                           {errorMessage || 'Đã xảy ra lỗi khi tải dữ liệu từ máy chủ.'}
                         </p>
                       </div>
@@ -97,7 +97,7 @@ export function ReviewSyllabusTable({
                           variant="outline"
                           size="sm"
                           onClick={onRetry}
-                          className="h-8 text-xs border-slate-200"
+                          className="h-8 text-xs border-line-input"
                         >
                           <RotateCcw className="size-3.5 mr-1.5" />
                           Thử lại
@@ -109,9 +109,9 @@ export function ReviewSyllabusTable({
               ) : items.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-10 text-center">
-                    <div className="max-w-sm mx-auto space-y-1.5 text-slate-400">
-                      <Inbox className="size-6 mx-auto text-slate-300" />
-                      <p className="text-xs font-medium text-slate-500">
+                    <div className="max-w-sm mx-auto space-y-1.5 text-ink-subtle">
+                      <Inbox className="size-6 mx-auto text-ink-faint" />
+                      <p className="text-xs font-medium text-ink-muted">
                         Không có dữ liệu hồ sơ phù hợp với bộ lọc.
                       </p>
                     </div>
@@ -124,14 +124,14 @@ export function ReviewSyllabusTable({
                     <tr
                       key={item.groupId}
                       className={`transition-colors ${
-                        isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/50'
+                        isSelected ? 'bg-tone-info-bg' : 'hover:bg-surface-hover/50'
                       }`}
                     >
                       <td className="py-3.5 pr-4">
-                        <div className="font-semibold text-slate-800">
+                        <div className="font-semibold text-ink-heading">
                           {item.groupCode} - {item.studentNames}
                         </div>
-                        <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                        <div className="text-[11px] text-ink-muted line-clamp-1 mt-0.5">
                           {item.topicTitleVi}
                         </div>
                       </td>
@@ -149,7 +149,7 @@ export function ReviewSyllabusTable({
                             <span className="max-w-[130px] truncate">{item.latestFileName}</span>
                           </Button>
                         ) : (
-                          <span className="text-slate-400 italic">Chưa có tệp</span>
+                          <span className="text-ink-subtle italic">Chưa có tệp</span>
                         )}
                       </td>
 
@@ -162,7 +162,7 @@ export function ReviewSyllabusTable({
                           <Button
                             type="button"
                             size="sm"
-                            className="h-8 px-3 text-xs font-medium bg-[#2054A5] text-white hover:bg-[#1a4485]"
+                            className="h-8 px-3 text-xs font-medium bg-brand-solid text-white hover:bg-brand-solid-hover"
                           >
                             Đang chọn
                           </Button>
@@ -172,7 +172,7 @@ export function ReviewSyllabusTable({
                             variant="outline"
                             size="sm"
                             onClick={() => onSelectGroup(item)}
-                            className="h-8 px-3 text-xs font-medium border-slate-200 text-slate-700 hover:bg-slate-50"
+                            className="h-8 px-3 text-xs font-medium border-line-input text-ink-secondary hover:bg-surface-hover"
                           >
                             Xem hồ sơ
                           </Button>
@@ -199,7 +199,7 @@ export function ReviewSyllabusTable({
           onPageChange={onPageChange}
         />
       ) : (
-        <div className="px-6 py-3 text-xs text-slate-400 border-t border-slate-100">
+        <div className="px-6 py-3 text-xs text-ink-subtle border-t border-line-subtle">
           {items.length} hồ sơ hiển thị
         </div>
       )}

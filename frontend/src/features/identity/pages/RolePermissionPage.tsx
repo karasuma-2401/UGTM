@@ -96,7 +96,7 @@ export function RolePermissionPage() {
       <PageHeader compact accent title="Tài khoản và phân quyền" navigation={<IdentityNavigation />} />
       <OperationToast message={notice} onConsumed={() => setNotice('')} />
       {save.isError && (
-        <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
+        <p role="alert" className="rounded-lg bg-tone-danger-bg p-3 text-sm text-tone-danger-text">
           {save.error.message} Thay đổi của bạn vẫn được giữ lại.
         </p>
       )}
@@ -127,8 +127,8 @@ export function RolePermissionPage() {
         />
         <div className="min-w-0">
           {loadError ? (
-            <div role="alert" className="rounded-xl border border-rose-200 bg-white p-6 text-sm">
-              <p className="mb-3 text-rose-700">
+            <div role="alert" className="rounded-xl border border-tone-danger-border bg-surface-card p-6 text-sm">
+              <p className="mb-3 text-tone-danger-text">
                 {catalog.error?.message || roleQuery.error?.message} Chưa thể chỉnh sửa phân quyền.
               </p>
               <Button

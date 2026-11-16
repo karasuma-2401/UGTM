@@ -65,26 +65,26 @@ export function ReviewActionCard({
   };
 
   return (
-    <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-5">
-      <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
+    <Card className="p-6 bg-surface-card border-line shadow-xs rounded-xl space-y-5">
+      <h3 className="text-base font-bold text-ink-primary border-b border-line-subtle pb-3">
         Nhận xét và thẩm định
       </h3>
 
       {validationError && (
-        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-          <AlertCircle className="size-4 shrink-0 text-rose-600" />
+        <div className="p-3 rounded-lg bg-tone-danger-bg border border-tone-danger-border text-tone-danger-strong text-xs flex items-center gap-2">
+          <AlertCircle className="size-4 shrink-0 text-tone-danger-icon" />
           <span>{validationError}</span>
         </div>
       )}
 
       {selectedGroup && isAlreadyReviewed && (
-        <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 text-xs flex items-start gap-2.5">
-          <CheckCircle2 className="size-4 shrink-0 text-slate-500 mt-0.5" />
+        <div className="p-3.5 rounded-lg bg-surface-subtle border border-line text-ink-secondary text-xs flex items-start gap-2.5">
+          <CheckCircle2 className="size-4 shrink-0 text-ink-muted mt-0.5" />
           <div>
-            <p className="font-semibold text-slate-800">
+            <p className="font-semibold text-ink-heading">
               Hồ sơ đã được thẩm định
             </p>
-            <p className="mt-0.5 text-slate-600">
+            <p className="mt-0.5 text-ink-body">
               {selectedGroup.currentStatus === 'Approved' && 'Hồ sơ đã được phê duyệt Đạt. Giai đoạn thực hiện đã mở.'}
               {selectedGroup.currentStatus === 'NeedRevision' && 'Hồ sơ đã được yêu cầu chỉnh sửa và đang chờ sinh viên nộp phiên bản tiếp theo.'}
               {selectedGroup.currentStatus === 'Rejected' && 'Hồ sơ đã bị đánh giá Không đạt.'}
@@ -98,20 +98,20 @@ export function ReviewActionCard({
       )}
 
       {selectedGroup && !isAlreadyReviewed && !hasDownloadedFile && (
-        <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
-          <AlertCircle className="size-4 shrink-0 text-amber-600 mt-0.5" />
+        <div className="p-3.5 rounded-lg bg-tone-warning-bg border border-tone-warning-border text-tone-warning-strong text-xs flex items-start gap-2.5">
+          <AlertCircle className="size-4 shrink-0 text-tone-warning-icon mt-0.5" />
           <div className="flex-1">
-            <p className="font-semibold text-amber-800">
+            <p className="font-semibold text-tone-warning-strong">
               Yêu cầu tải tệp {gateName} trước khi thẩm định
             </p>
-            <p className="mt-0.5 text-amber-700">
+            <p className="mt-0.5 text-tone-warning-text">
               Vui lòng tải tệp {gateName} về đối chiếu nội dung trước khi nhập nhận xét và ra quyết định thẩm định.
             </p>
             {onDownloadFile && selectedGroup.fileId && (
               <button
                 type="button"
                 onClick={onDownloadFile}
-                className="mt-2 inline-flex items-center gap-1.5 font-semibold text-[#2054A5] underline decoration-[#2054A5]/40 hover:decoration-[#2054A5]"
+                className="mt-2 inline-flex items-center gap-1.5 font-semibold text-brand-ink underline decoration-brand-ink/40 hover:decoration-brand-ink dark:decoration-blue-400/40 dark:hover:decoration-blue-400"
               >
                 <Download className="size-3.5" />
                 Tải tệp {gateName} ngay
@@ -122,14 +122,14 @@ export function ReviewActionCard({
       )}
 
       {selectedGroup && !isAlreadyReviewed && hasDownloadedFile && (
-        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
-          <Check className="size-4 shrink-0 text-emerald-600" />
+        <div className="p-3 rounded-lg bg-tone-success-bg border border-tone-success-border text-tone-success-strong text-xs flex items-center gap-2">
+          <Check className="size-4 shrink-0 text-tone-success-icon" />
           <span>Đã tải tệp đối chiếu. Bạn có thể nhập nhận xét và thẩm định hồ sơ bên dưới.</span>
         </div>
       )}
 
       <div className="space-y-1.5">
-        <label className="text-xs font-semibold text-slate-700">Nhận xét</label>
+        <label className="text-xs font-semibold text-ink-secondary">Nhận xét</label>
         <textarea
           value={feedback}
           onChange={(e) => {
@@ -145,7 +145,7 @@ export function ReviewActionCard({
                 : `Vui lòng tải tệp ${gateName} trước để mở khóa ô nhận xét...`
               : 'Bổ sung nhận xét đánh giá và lưu ý cho nhóm sinh viên...'
           }
-          className="w-full text-xs p-3 rounded-lg border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#2054A5] placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400"
+          className="w-full text-xs p-3 rounded-lg border border-line-input focus:outline-hidden focus:ring-2 focus:ring-primary placeholder:text-ink-subtle disabled:bg-surface-subtle disabled:text-ink-subtle"
         />
       </div>
 
@@ -154,7 +154,7 @@ export function ReviewActionCard({
           type="button"
           onClick={() => handleAction('Approved')}
           disabled={cannotReview}
-          className="h-10 px-5 text-xs font-semibold bg-[#2054A5] text-white hover:bg-[#1a4485] disabled:bg-slate-200 disabled:text-slate-400"
+          className="h-10 px-5 text-xs font-semibold bg-brand-solid text-white hover:bg-brand-solid-hover disabled:bg-surface-strong disabled:text-ink-subtle"
         >
           <Check className="size-4 mr-1.5" />
           Đạt
@@ -165,7 +165,7 @@ export function ReviewActionCard({
           variant="outline"
           onClick={() => handleAction('NeedRevision')}
           disabled={cannotReview}
-          className="h-10 px-5 text-xs font-semibold border-amber-300 text-amber-700 hover:bg-amber-50 disabled:border-slate-200 disabled:text-slate-400"
+          className="h-10 px-5 text-xs font-semibold border-tone-warning-border text-tone-warning-text hover:bg-tone-warning-bg disabled:border-line disabled:text-ink-subtle dark:disabled:text-ink-muted"
         >
           <Edit3 className="size-4 mr-1.5" />
           Yêu cầu chỉnh sửa
@@ -176,7 +176,7 @@ export function ReviewActionCard({
           variant="outline"
           onClick={() => handleAction('Rejected')}
           disabled={cannotReview}
-          className="h-10 px-5 text-xs font-semibold border-rose-300 text-rose-700 hover:bg-rose-50 disabled:border-slate-200 disabled:text-slate-400"
+          className="h-10 px-5 text-xs font-semibold border-tone-danger-border text-tone-danger-text hover:bg-tone-danger-bg disabled:border-line disabled:text-ink-subtle dark:disabled:text-ink-muted"
         >
           <X className="size-4 mr-1.5" />
           Không đạt

@@ -13,7 +13,7 @@ interface AuditLogDetailCardProps {
 export const AuditLogDetailCard: React.FC<AuditLogDetailCardProps> = ({ log }) => {
   if (!log) {
     return (
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col items-center justify-center min-h-[220px] text-slate-400 text-sm">
+      <div className="bg-surface-card border border-line rounded-xl p-5 shadow-xs flex flex-col items-center justify-center min-h-[220px] text-ink-subtle text-sm">
         Chọn một sự kiện trong bảng để xem chi tiết
       </div>
     );
@@ -25,79 +25,79 @@ export const AuditLogDetailCard: React.FC<AuditLogDetailCardProps> = ({ log }) =
   const actorSubtitle = log.actorEmail ? ` - ${log.actorEmail}` : '';
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+    <div className="bg-surface-card border border-line rounded-xl p-5 shadow-xs space-y-4">
       {/* Tiêu đề Card */}
       <div>
-        <h4 className="text-base font-bold text-slate-900 tracking-tight">
+        <h4 className="text-base font-bold text-ink-primary tracking-tight">
           Chi tiết sự kiện
         </h4>
       </div>
 
-      <div className="space-y-3 text-xs divide-y divide-slate-100">
+      <div className="space-y-3 text-xs divide-y divide-line-subtle">
         <div className="pt-2 first:pt-0 space-y-0.5">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <div className="text-[11px] font-semibold text-ink-subtle uppercase tracking-wider">
             Sự kiện đang chọn
           </div>
-          <div className="text-sm font-semibold text-slate-900">
+          <div className="text-sm font-semibold text-ink-primary">
             {actionTitle}
           </div>
         </div>
 
         <div className="pt-2 space-y-0.5">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <div className="text-[11px] font-semibold text-ink-subtle uppercase tracking-wider">
             Tác nhân
           </div>
-          <div className="text-slate-800 font-medium">
+          <div className="text-ink-heading font-medium">
             <span>{actorName}</span>
-            <span className="text-slate-500 font-normal">{actorSubtitle}</span>
+            <span className="text-ink-muted font-normal">{actorSubtitle}</span>
           </div>
         </div>
 
         <div className="pt-2 space-y-0.5">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <div className="text-[11px] font-semibold text-ink-subtle uppercase tracking-wider">
             Thời điểm
           </div>
-          <div className="text-slate-800 font-medium">
+          <div className="text-ink-heading font-medium">
             {formatAuditFullTime(log.timestamp)}
           </div>
         </div>
 
         <div className="pt-2 space-y-0.5">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <div className="text-[11px] font-semibold text-ink-subtle uppercase tracking-wider">
             Hồ sơ / Đối tượng
           </div>
-          <div className="text-slate-800 font-medium font-mono text-[11px]">
+          <div className="text-ink-heading font-medium font-mono text-[11px]">
             {log.targetType}: {log.targetId}
           </div>
         </div>
 
         <div className="pt-2 space-y-0.5">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <div className="text-[11px] font-semibold text-ink-subtle uppercase tracking-wider">
             Trước → Sau
           </div>
-          <div className="text-slate-700 font-medium break-words">
-            <span className="text-slate-500">{diff.beforeValue}</span>
+          <div className="text-ink-secondary font-medium break-words">
+            <span className="text-ink-muted">{diff.beforeValue}</span>
             <span className="mx-1.5 text-primary font-bold">→</span>
-            <span className="text-slate-900 font-semibold">{diff.afterValue}</span>
+            <span className="text-ink-primary font-semibold">{diff.afterValue}</span>
           </div>
         </div>
 
         {diff.reason && (
           <div className="pt-2 space-y-0.5">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="text-[11px] font-semibold text-ink-subtle uppercase tracking-wider">
               Lý do
             </div>
-            <div className="text-slate-700 leading-relaxed">
+            <div className="text-ink-secondary leading-relaxed">
               {diff.reason}
             </div>
           </div>
         )}
 
         <div className="pt-2 space-y-0.5">
-          <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          <div className="text-[11px] font-semibold text-ink-subtle uppercase tracking-wider">
             Mã truy vết (Request ID)
           </div>
-          <div className="text-slate-500 font-mono text-[11px] truncate" title={log.requestId}>
+          <div className="text-ink-muted font-mono text-[11px] truncate" title={log.requestId}>
             {log.requestId}
           </div>
         </div>

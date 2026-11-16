@@ -46,9 +46,9 @@ export function ReviewFilterBar({
   ];
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+    <div className="bg-surface-card p-4 rounded-xl border border-line/90 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
       <div className="relative flex-1 w-full">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-ink-subtle pointer-events-none" />
         <Input
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -59,7 +59,7 @@ export function ReviewFilterBar({
             }
           }}
           placeholder="Tìm mã hồ sơ, tên đề tài hoặc sinh viên..."
-          className="pl-9 h-10 text-xs bg-slate-50/50 border-slate-200 focus-visible:bg-white w-full"
+          className="pl-9 h-10 text-xs bg-surface-subtle/50 border-line-input focus-visible:bg-surface-card w-full"
         />
       </div>
 
@@ -72,7 +72,7 @@ export function ReviewFilterBar({
               onChange={(val) => onBatchChange(String(val ?? ''))}
               placeholder="Tất cả đợt KLTN"
               size="lg"
-              triggerClassName="h-10 text-xs font-medium text-slate-700 bg-white border-slate-200 rounded-lg shadow-2xs"
+              triggerClassName="h-10 text-xs font-medium text-ink-secondary bg-surface-card border-line-input rounded-lg shadow-2xs"
             />
           </div>
         )}
@@ -84,14 +84,14 @@ export function ReviewFilterBar({
             onChange={(val) => onStatusFilterChange(String(val ?? 'ALL'))}
             placeholder="Tất cả trạng thái"
             size="lg"
-            triggerClassName="h-10 text-xs font-medium text-slate-700 bg-white border-slate-200 rounded-lg shadow-2xs"
+            triggerClassName="h-10 text-xs font-medium text-ink-secondary bg-surface-card border-line-input rounded-lg shadow-2xs"
           />
         </div>
 
         <Button
           type="button"
           onClick={onApply}
-          className="h-10 px-4 text-xs font-medium bg-[#2054A5] text-white hover:bg-[#1a4485]"
+          className="h-10 px-4 text-xs font-medium bg-brand-solid text-white hover:bg-brand-solid-hover"
         >
           Áp dụng
         </Button>
@@ -100,7 +100,7 @@ export function ReviewFilterBar({
           type="button"
           variant="outline"
           onClick={onReset}
-          className="h-10 px-3 text-xs border-slate-200 text-slate-600 hover:text-slate-900"
+          className="h-10 px-3 text-xs border-line-input text-ink-body hover:text-ink-primary"
         >
           <RotateCcw className="size-3.5 mr-1.5" />
           Đặt lại

@@ -35,11 +35,11 @@ export function UserFilterBar({
         onSubmit={onApply}
         className={`grid items-end gap-3 md:grid-cols-2 ${isStudent ? 'xl:grid-cols-[2fr_1fr_auto]' : 'xl:grid-cols-[2fr_1fr_1fr_auto]'}`}
       >
-        <label className="block space-y-1.5 text-sm font-medium text-slate-700">
+        <label className="block space-y-1.5 text-sm font-medium text-ink-secondary">
           <span>Tìm tài khoản</span>
           <Input
             leftIcon={<Search className="size-4" />}
-            className="h-10 rounded-xl border-slate-200/90 bg-white shadow-none"
+            className="h-10 rounded-xl border-line-input/90 bg-surface-card shadow-none"
             placeholder={isStudent ? 'MSSV, họ tên hoặc email' : 'Mã cán bộ, họ tên hoặc email'}
             value={draftFilters.keyword}
             onChange={(event) =>
@@ -52,10 +52,10 @@ export function UserFilterBar({
         </label>
 
         {!isStudent && (
-          <div className="space-y-1.5 text-sm font-medium text-slate-700">
+          <div className="space-y-1.5 text-sm font-medium text-ink-secondary">
             <span>Vai trò</span>
             <Select<SystemRole | ''>
-              triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white shadow-none"
+              triggerClassName="h-10 rounded-xl border-line-input/90 bg-surface-card shadow-none"
               aria-label="Lọc theo vai trò"
               placeholder="Tất cả vai trò"
               value={draftFilters.role}
@@ -71,10 +71,10 @@ export function UserFilterBar({
           </div>
         )}
 
-        <div className="space-y-1.5 text-sm font-medium text-slate-700">
+        <div className="space-y-1.5 text-sm font-medium text-ink-secondary">
           <span>Trạng thái</span>
           <Select<AccountStatus | ''>
-            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white shadow-none"
+            triggerClassName="h-10 rounded-xl border-line-input/90 bg-surface-card shadow-none"
             aria-label="Lọc theo trạng thái"
             placeholder="Tất cả trạng thái"
             value={draftFilters.status}
@@ -115,7 +115,7 @@ export function UserFilterBar({
 
       {Boolean(filters.keyword || filters.role || filters.status) && (
         <div className="flex flex-wrap items-center gap-2" aria-label="Bộ lọc đang áp dụng">
-          <span className="text-xs text-slate-500">Đang lọc:</span>
+          <span className="text-xs text-ink-muted">Đang lọc:</span>
           {filters.keyword && (
             <Button
               type="button"

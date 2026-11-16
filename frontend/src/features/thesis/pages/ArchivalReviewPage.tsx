@@ -147,8 +147,8 @@ export const ArchivalReviewPage: React.FC = () => {
         header: 'Đề tài và Sinh viên',
         cell: (row) => (
           <div className="min-w-0 space-y-0.5">
-            <p className="font-semibold text-slate-900 line-clamp-1">{row.topicTitleVi}</p>
-            <p className="text-xs text-slate-500 line-clamp-1">
+            <p className="font-semibold text-ink-primary line-clamp-1">{row.topicTitleVi}</p>
+            <p className="text-xs text-ink-muted line-clamp-1">
               {row.studentNames.length > 0
                 ? row.studentNames
                     .map((name, index) =>
@@ -167,7 +167,7 @@ export const ArchivalReviewPage: React.FC = () => {
         widthClassName: 'w-48',
         headerClassName: 'whitespace-nowrap',
         cell: (row) => (
-          <span className="text-xs font-medium text-slate-700 line-clamp-1">
+          <span className="text-xs font-medium text-ink-secondary line-clamp-1">
             {row.advisorName || '—'}
           </span>
         ),
@@ -180,10 +180,10 @@ export const ArchivalReviewPage: React.FC = () => {
         headerClassName: 'whitespace-nowrap',
         cell: (row) => (
           <div className="text-xs space-y-0.5">
-            <span className="font-semibold text-slate-800 tabular-nums">
+            <span className="font-semibold text-ink-heading tabular-nums">
               v{row.currentVersionNo}
             </span>
-            <p className="text-slate-500">
+            <p className="text-ink-muted">
               {getArchivalStatusDisplay(row.status).shortStepNote}
             </p>
           </div>
@@ -209,7 +209,7 @@ export const ArchivalReviewPage: React.FC = () => {
           return (
             <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
               {isSelected ? (
-                <span className="inline-flex items-center rounded-md bg-blue-50 px-2.5 py-1 text-xs font-semibold text-primary">
+                <span className="inline-flex items-center rounded-md bg-tone-info-bg px-2.5 py-1 text-xs font-semibold text-primary">
                   Đang chọn
                 </span>
               ) : (
@@ -217,7 +217,7 @@ export const ArchivalReviewPage: React.FC = () => {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 rounded-md px-3 text-xs font-medium bg-white"
+                  className="h-8 rounded-md px-3 text-xs font-medium bg-surface-card"
                   onClick={() => actions.selectRow(row.submissionId)}
                 >
                   Xem hồ sơ
@@ -287,9 +287,9 @@ export const ArchivalReviewPage: React.FC = () => {
             placeholder={isLoadingBatches ? 'Đang tải đợt KLTN...' : 'Chọn đợt KLTN'}
             options={batchOptions}
             onChange={(value) => actions.selectBatch(value)}
-            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300"
-            contentClassName="w-max min-w-full sm:min-w-[400px] max-w-[90vw] left-0 right-auto p-1.5 rounded-xl border-slate-200/90 shadow-lg"
-            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
+            triggerClassName="h-10 rounded-xl border-line/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong"
+            contentClassName="w-max min-w-full sm:min-w-[400px] max-w-[90vw] left-0 right-auto p-1.5 rounded-xl border-line/90 shadow-lg"
+            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover"
           />
         </div>
 
@@ -303,7 +303,7 @@ export const ArchivalReviewPage: React.FC = () => {
             title="Làm mới"
             disabled={!selectedBatchId || isFetchingList}
             onClick={() => actions.refresh()}
-            className="size-10 rounded-xl border-slate-200 bg-white text-slate-600 hover:text-slate-900 shadow-2xs"
+            className="size-10 rounded-xl border-line bg-surface-card text-ink-body hover:text-ink-primary shadow-2xs"
           >
             <RefreshCw className={`size-4 ${isFetchingList ? 'animate-spin' : ''}`} />
           </Button>
@@ -337,12 +337,12 @@ export const ArchivalReviewPage: React.FC = () => {
 
       <section
         aria-label="Danh sách hồ sơ lưu chiểu"
-        className="w-full min-w-0 rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden"
+        className="w-full min-w-0 rounded-2xl border border-line/80 bg-surface-card shadow-xs overflow-hidden"
       >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-subtle px-5 py-4">
           <div>
-            <h2 className="text-base font-semibold text-slate-900">Checklist</h2>
-            <p className="text-xs text-slate-500 mt-0.5 tabular-nums">
+            <h2 className="text-base font-semibold text-ink-primary">Checklist</h2>
+            <p className="text-xs text-ink-muted mt-0.5 tabular-nums">
               {stats.all} hồ sơ - {stats.advisorConfirmed} chờ nghiệm thu - {stats.archiveConfirmed}{' '}
               đã nghiệm thu
             </p>
@@ -356,14 +356,14 @@ export const ArchivalReviewPage: React.FC = () => {
                 onChange={(e) => actions.changeKeyword(e.target.value)}
                 placeholder="Tìm mã nhóm, tên đề tài, sinh viên, GVHD..."
                 aria-label="Tìm kiếm hồ sơ lưu chiểu"
-                leftIcon={<Search className="size-4 text-slate-400" />}
+                leftIcon={<Search className="size-4 text-ink-subtle" />}
                 rightIcon={
                   keyword ? (
                     <button
                       type="button"
                       aria-label="Xóa từ khóa tìm kiếm"
                       onClick={() => actions.changeKeyword('')}
-                      className="text-slate-400 hover:text-slate-700"
+                      className="text-ink-subtle hover:text-ink-secondary"
                     >
                       <X className="size-3.5" />
                     </button>
@@ -378,7 +378,7 @@ export const ArchivalReviewPage: React.FC = () => {
                 value={filterKey}
                 options={FILTER_OPTIONS}
                 onChange={(value) => actions.changeFilter(value as ArchivalFilterKey)}
-                triggerClassName="h-9 rounded-lg border-slate-200 bg-white text-xs font-medium text-slate-700"
+                triggerClassName="h-9 rounded-lg border-line bg-surface-card text-xs font-medium text-ink-secondary"
                 contentClassName="w-max min-w-full right-0 left-auto p-1 rounded-xl shadow-lg"
                 optionClassName="text-xs py-1.5 px-2.5 rounded-lg"
               />
@@ -450,7 +450,7 @@ export const ArchivalReviewPage: React.FC = () => {
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="text-base font-bold text-slate-900">
+                  <CardTitle className="text-base font-bold text-ink-primary">
                     Kết quả nghiệm thu - {selectedRow.groupCode}
                   </CardTitle>
                   <StatusBadge tone={selectedRow.statusTone}>{selectedRow.statusLabel}</StatusBadge>
@@ -483,25 +483,25 @@ export const ArchivalReviewPage: React.FC = () => {
                   submissionDetail && (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 space-y-1">
-                          <p className="font-semibold text-slate-600">Tóm tắt tiếng Việt</p>
-                          <p className="text-slate-800 leading-relaxed whitespace-pre-line line-clamp-4">
+                        <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3 space-y-1">
+                          <p className="font-semibold text-ink-body">Tóm tắt tiếng Việt</p>
+                          <p className="text-ink-heading leading-relaxed whitespace-pre-line line-clamp-4">
                             {submissionDetail.abstractVi || '—'}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 space-y-1">
-                          <p className="font-semibold text-slate-600">Abstract tiếng Anh</p>
-                          <p className="text-slate-800 leading-relaxed whitespace-pre-line line-clamp-4">
+                        <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3 space-y-1">
+                          <p className="font-semibold text-ink-body">Abstract tiếng Anh</p>
+                          <p className="text-ink-heading leading-relaxed whitespace-pre-line line-clamp-4">
                             {submissionDetail.abstractEn || '—'}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 space-y-1">
-                          <p className="font-semibold text-slate-600">Từ khóa tiếng Việt</p>
-                          <p className="text-slate-800">{submissionDetail.keywordsVi || '—'}</p>
+                        <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3 space-y-1">
+                          <p className="font-semibold text-ink-body">Từ khóa tiếng Việt</p>
+                          <p className="text-ink-heading">{submissionDetail.keywordsVi || '—'}</p>
                         </div>
-                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3 space-y-1">
-                          <p className="font-semibold text-slate-600">Keywords tiếng Anh</p>
-                          <p className="text-slate-800">{submissionDetail.keywordsEn || '—'}</p>
+                        <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3 space-y-1">
+                          <p className="font-semibold text-ink-body">Keywords tiếng Anh</p>
+                          <p className="text-ink-heading">{submissionDetail.keywordsEn || '—'}</p>
                         </div>
                       </div>
 
@@ -534,14 +534,14 @@ export const ArchivalReviewPage: React.FC = () => {
                         <div className="flex items-center justify-between text-xs">
                           <label
                             htmlFor="faculty-archival-comment"
-                            className="font-semibold text-slate-800"
+                            className="font-semibold text-ink-heading"
                           >
                             Nhận xét Khoa{' '}
-                            <span className="font-normal text-slate-500">
+                            <span className="font-normal text-ink-muted">
                               (bắt buộc khi yêu cầu sửa)
                             </span>
                           </label>
-                          <span className="text-slate-400 tabular-nums">
+                          <span className="text-ink-subtle tabular-nums">
                             {facultyComment.length}/{ARCHIVAL_REASON_MAX_LENGTH}
                           </span>
                         </div>
@@ -553,14 +553,14 @@ export const ArchivalReviewPage: React.FC = () => {
                           value={facultyComment}
                           onChange={(e) => actions.setFacultyComment(e.target.value)}
                           placeholder="Hồ sơ đầy đủ tệp và metadata Việt / Anh, hoặc ghi rõ nội dung cần chỉnh sửa..."
-                          className={`w-full rounded-xl border bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:bg-slate-50 disabled:text-slate-500 ${
+                          className={`w-full rounded-xl border bg-surface-card px-3 py-2 text-sm text-ink-heading placeholder:text-ink-subtle focus:outline-none focus:ring-2 disabled:bg-surface-subtle disabled:text-ink-muted ${
                             commentError
                               ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200'
-                              : 'border-slate-200 focus:border-primary focus:ring-primary/20'
+                              : 'border-line focus:border-primary focus:ring-primary/20'
                           }`}
                         />
                         {commentError && (
-                          <p className="text-xs font-medium text-rose-600">{commentError}</p>
+                          <p className="text-xs font-medium text-tone-danger-icon">{commentError}</p>
                         )}
                       </div>
 
@@ -592,50 +592,50 @@ export const ArchivalReviewPage: React.FC = () => {
           <div className="lg:col-span-5 xl:col-span-4">
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold text-slate-900">
+                <CardTitle className="text-base font-bold text-ink-primary">
                   Nghiệm thu {selectedRow.groupCode}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-slate-500">Hồ sơ</p>
+                  <p className="text-xs font-medium text-ink-muted">Hồ sơ</p>
                   <p className="text-xs font-semibold text-primary tabular-nums">
                     {academicDetail?.topicCode || 'KLTN'} - {selectedRow.groupCode} - v
                     {selectedRow.currentVersionNo}
                   </p>
-                  <p className="text-sm font-semibold text-slate-900 leading-snug">
+                  <p className="text-sm font-semibold text-ink-primary leading-snug">
                     {selectedRow.topicTitleVi}
                   </p>
                   {selectedRow.topicTitleEn && (
-                    <p className="text-xs text-slate-500 leading-snug">
+                    <p className="text-xs text-ink-muted leading-snug">
                       {selectedRow.topicTitleEn}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                  <p className="text-xs font-medium text-slate-500">Sinh viên</p>
+                <div className="space-y-1.5 pt-2 border-t border-line-subtle">
+                  <p className="text-xs font-medium text-ink-muted">Sinh viên</p>
                   {detailStudents.length > 0 ? (
                     <div className="flex items-start gap-2.5">
                       <AvatarGroup items={detailStudents} max={3} size="sm" ariaLabel="Sinh viên" />
-                      <div className="min-w-0 space-y-1 text-xs text-slate-700 leading-relaxed">
+                      <div className="min-w-0 space-y-1 text-xs text-ink-secondary leading-relaxed">
                         {detailStudents.map((student) => (
                           <div key={student.id} className="truncate">
-                            <span className="font-medium text-slate-800">{student.name}</span>
+                            <span className="font-medium text-ink-heading">{student.name}</span>
                             {student.code ? (
-                              <span className="text-slate-500 tabular-nums"> - {student.code}</span>
+                              <span className="text-ink-muted tabular-nums"> - {student.code}</span>
                             ) : null}
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500">Đang cập nhật sinh viên</p>
+                    <p className="text-xs text-ink-muted">Đang cập nhật sinh viên</p>
                   )}
                 </div>
 
-                <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                  <p className="text-xs font-medium text-slate-500">GVHD</p>
+                <div className="space-y-1.5 pt-2 border-t border-line-subtle">
+                  <p className="text-xs font-medium text-ink-muted">GVHD</p>
                   {detailAdvisorItems.length > 0 ? (
                     <div className="flex items-center gap-2.5">
                       <AvatarGroup
@@ -644,23 +644,23 @@ export const ArchivalReviewPage: React.FC = () => {
                         size="sm"
                         ariaLabel="Giảng viên hướng dẫn"
                       />
-                      <span className="min-w-0 truncate text-xs font-medium text-slate-800">
+                      <span className="min-w-0 truncate text-xs font-medium text-ink-heading">
                         {detailAdvisorName}
                       </span>
                     </div>
                   ) : (
-                    <p className="text-xs text-slate-500">{detailAdvisorName}</p>
+                    <p className="text-xs text-ink-muted">{detailAdvisorName}</p>
                   )}
                 </div>
 
-                <div className="space-y-1 pt-2 border-t border-slate-100">
-                  <p className="text-xs font-medium text-slate-500">Đợt</p>
-                  <p className="text-xs font-medium text-slate-800">{selectedBatchLabel}</p>
+                <div className="space-y-1 pt-2 border-t border-line-subtle">
+                  <p className="text-xs font-medium text-ink-muted">Đợt</p>
+                  <p className="text-xs font-medium text-ink-heading">{selectedBatchLabel}</p>
                 </div>
 
-                <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                  <p className="text-xs font-semibold text-slate-800">Lưu ý xử lý</p>
-                  <ul className="space-y-1 text-xs text-slate-600 list-disc pl-4">
+                <div className="space-y-1.5 pt-2 border-t border-line-subtle">
+                  <p className="text-xs font-semibold text-ink-heading">Lưu ý xử lý</p>
+                  <ul className="space-y-1 text-xs text-ink-body list-disc pl-4">
                     <li>
                       {selectedRow.advisorConfirmedAt
                         ? `GVHD đã xác nhận bản sửa (${formatDateTimeVi(selectedRow.advisorConfirmedAt)})`
@@ -682,7 +682,7 @@ export const ArchivalReviewPage: React.FC = () => {
                   </ul>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line-subtle">
                   <Button
                     type="button"
                     variant="outline"
@@ -750,24 +750,24 @@ export const ArchivalReviewPage: React.FC = () => {
         cancelText="Hủy"
         description={
           pendingAction === 'RequestRevision' ? (
-            <div className="space-y-2 text-sm text-slate-600">
+            <div className="space-y-2 text-sm text-ink-body">
               <p>
                 Hồ sơ nhóm <strong>{selectedRow?.groupCode}</strong> sẽ chuyển về trạng thái{' '}
                 <strong>Cần bổ sung</strong> để sinh viên chỉnh sửa và nộp lại.
               </p>
-              <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">
+              <div className="rounded-xl border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-xs text-tone-warning-strong">
                 Lý do: {facultyComment.trim()}
               </div>
             </div>
           ) : (
-            <div className="space-y-2 text-sm text-slate-600">
+            <div className="space-y-2 text-sm text-ink-body">
               <p>
                 Xác nhận nghiệm thu hồ sơ lưu chiểu phiên bản{' '}
                 <strong>v{selectedRow?.currentVersionNo}</strong> của nhóm{' '}
                 <strong>{selectedRow?.groupCode}</strong>.
               </p>
-              <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                <Lock className="size-3.5 shrink-0 mt-0.5 text-slate-500" />
+              <div className="flex items-start gap-2 rounded-xl border border-line bg-surface-subtle px-3 py-2 text-xs text-ink-body">
+                <Lock className="size-3.5 shrink-0 mt-0.5 text-ink-muted" />
                 <span>
                   Sau khi xác nhận hoàn thành, hồ sơ lưu chiểu sẽ được khóa để phục vụ tổng hợp và
                   công bố điểm.

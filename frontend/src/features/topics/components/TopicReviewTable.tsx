@@ -104,7 +104,10 @@ export function TopicReviewTable({
       return (
         <div className="flex min-w-0 items-center gap-2.5">
           <Avatar name={name} className="size-7 text-[10px] ring-0" />
-          <span className="truncate text-xs font-medium text-slate-700" title={name}>
+          <span
+            className="truncate text-xs font-medium text-ink-secondary"
+            title={name}
+          >
             {name}
           </span>
         </div>
@@ -119,7 +122,7 @@ export function TopicReviewTable({
       );
     }
     return (
-      <span className="text-xs text-slate-400" title={advisorId}>
+      <span className="text-xs text-ink-subtle" title={advisorId}>
         Chưa rõ GVHD
       </span>
     );
@@ -129,7 +132,10 @@ export function TopicReviewTable({
     const name = batchById.get(batchId);
     if (name) {
       return (
-        <span className="line-clamp-1 text-xs font-medium text-slate-600" title={name}>
+        <span
+          className="line-clamp-1 text-xs font-medium text-ink-body"
+          title={name}
+        >
           {name}
         </span>
       );
@@ -138,7 +144,7 @@ export function TopicReviewTable({
       return <Skeleton className="h-4 w-28 max-w-full" />;
     }
     return (
-      <span className="text-xs text-slate-400" title={batchId}>
+      <span className="text-xs text-ink-subtle" title={batchId}>
         Chưa rõ đợt
       </span>
     );
@@ -154,7 +160,7 @@ export function TopicReviewTable({
           aria-label={`Thẩm định ${topic.titleVi}`}
           leftIcon={<ClipboardCheck className="size-3.5" />}
           onClick={() => onOpen(topic)}
-          className="h-8 rounded-lg border-blue-200 bg-blue-50/70 px-3 text-xs font-medium text-primary shadow-2xs hover:border-blue-300 hover:bg-blue-100/70 hover:text-blue-700"
+          className="h-8 rounded-lg border-tone-info-border bg-tone-info-bg px-3 text-xs font-medium text-primary shadow-2xs hover:border-tone-info-border hover:bg-tone-info-bg hover:text-tone-info-text"
         >
           Thẩm định
         </Button>
@@ -167,7 +173,7 @@ export function TopicReviewTable({
         size="sm"
         aria-label={`Xem ${topic.titleVi}`}
         onClick={() => onOpen(topic)}
-        className="h-8 rounded-lg border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-2xs hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+        className="h-8 rounded-lg border-line-input bg-surface-card px-3 text-xs font-medium text-ink-secondary shadow-2xs hover:border-line-strong hover:bg-surface-hover hover:text-ink-primary"
       >
         Xem
       </Button>
@@ -222,7 +228,7 @@ export function TopicReviewTable({
       cellClassName: 'px-2 py-3.5 text-center',
       skeleton: { variant: 'number' },
       cell: (_, index) => (
-        <span className="text-xs font-medium tabular-nums text-slate-400">
+        <span className="text-xs font-medium tabular-nums text-ink-subtle">
           {(pageNumber - 1) * pageSize + index + 1}
         </span>
       ),
@@ -236,7 +242,7 @@ export function TopicReviewTable({
       cell: (topic) => (
         <div className="min-w-0 space-y-1">
           <p
-            className="line-clamp-2 text-[13px] font-semibold leading-snug text-slate-900"
+            className="line-clamp-2 text-[13px] font-semibold leading-snug text-ink-primary"
             title={topic.titleVi}
           >
             {topic.titleVi}
@@ -244,14 +250,17 @@ export function TopicReviewTable({
           {(topic.titleEn || topic.reviewNote?.trim()) && (
             <div className="flex flex-wrap items-center gap-2">
               {topic.titleEn && (
-                <p className="line-clamp-1 min-w-0 flex-1 text-xs text-slate-500" title={topic.titleEn}>
+                <p
+                  className="line-clamp-1 min-w-0 flex-1 text-xs text-ink-muted"
+                  title={topic.titleEn}
+                >
                   {topic.titleEn}
                 </p>
               )}
               {topic.reviewNote?.trim() && (
                 <span
                   title={stripRichText(topic.reviewNote)}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200/80"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md bg-tone-warning-bg px-1.5 py-0.5 text-[10px] font-medium text-tone-warning-text ring-1 ring-inset ring-amber-200/80"
                 >
                   <MessageSquareText className="size-3" aria-hidden="true" />
                   Có góp ý
@@ -294,9 +303,9 @@ export function TopicReviewTable({
               ? `Tối đa ${topic.studentNumber} sinh viên`
               : undefined
           }
-          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-0.5 text-xs font-medium tabular-nums text-slate-700"
+          className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line-input/80 bg-surface-muted px-2.5 py-0.5 text-xs font-medium tabular-nums text-ink-secondary"
         >
-          <Users className="size-3.5 text-slate-400" aria-hidden="true" />
+          <Users className="size-3.5 text-ink-subtle" aria-hidden="true" />
           {topic.studentNumber ?? '—'}
         </span>
       ),
@@ -315,7 +324,7 @@ export function TopicReviewTable({
       header: 'Ngày tạo',
       widthClassName: 'w-28',
       headerClassName: 'px-3 py-3.5 whitespace-nowrap',
-      cellClassName: 'px-3 py-3.5 whitespace-nowrap text-xs font-medium tabular-nums text-slate-500',
+      cellClassName: 'px-3 py-3.5 whitespace-nowrap text-xs font-medium tabular-nums text-ink-muted',
       skeleton: { variant: 'text' },
       cell: (topic) => formatDate(topic.createdAt),
     },
@@ -359,26 +368,30 @@ export function TopicReviewTable({
                     onCheckedChange={(value) => toggleOne(topic, value === true)}
                   />
                 ) : (
-                  <span className="text-xs font-semibold tabular-nums text-slate-400">
+                  <span className="text-xs font-semibold tabular-nums text-ink-subtle">
                     #{(pageNumber - 1) * pageSize + index + 1}
                   </span>
                 )}
                 <TopicStatusBadge status={topic.status} />
               </div>
-              <span className="text-xs font-medium tabular-nums text-slate-500">
+              <span className="text-xs font-medium tabular-nums text-ink-muted">
                 {formatDate(topic.createdAt)}
               </span>
             </div>
 
             <div className="space-y-1">
-              <p className="text-sm font-semibold leading-snug text-slate-900">{topic.titleVi}</p>
-              {topic.titleEn && <p className="text-xs text-slate-500">{topic.titleEn}</p>}
+              <p className="text-sm font-semibold leading-snug text-ink-primary">
+                {topic.titleVi}
+              </p>
+              {topic.titleEn && (
+                <p className="text-xs text-ink-muted">{topic.titleEn}</p>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
               <div className="min-w-0 space-y-1">
                 {renderAdvisor(topic.advisorId)}
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                   {renderBatch(topic.batchId)}
                   <span aria-hidden="true">·</span>
                   <span className="tabular-nums">

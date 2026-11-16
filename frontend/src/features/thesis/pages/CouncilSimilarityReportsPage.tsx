@@ -133,7 +133,7 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
           return (
             <div className="min-w-0 space-y-1.5">
               <p
-                className="font-semibold text-slate-900 line-clamp-2 leading-snug"
+                className="font-semibold text-ink-primary line-clamp-2 leading-snug"
                 title={row.topicTitle}
               >
                 {row.topicTitle}
@@ -146,12 +146,12 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
                     size="sm"
                     ariaLabel="Sinh viên trong nhóm"
                   />
-                  <span className="text-xs text-slate-500 truncate" title={row.studentsText}>
+                  <span className="text-xs text-ink-muted truncate" title={row.studentsText}>
                     {row.studentsText}
                   </span>
                 </div>
               ) : row.topicTitleEn ? (
-                <p className="text-xs italic text-slate-500 truncate">{row.topicTitleEn}</p>
+                <p className="text-xs italic text-ink-muted truncate">{row.topicTitleEn}</p>
               ) : null}
             </div>
           );
@@ -164,7 +164,7 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
         headerClassName: 'w-[108px] whitespace-nowrap',
         cell: (row) => (
           <div className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <span className="text-xs font-semibold text-slate-700 tabular-nums">
+            <span className="text-xs font-semibold text-ink-secondary tabular-nums">
               v{row.versionNo}
             </span>
             {row.versionNo > 1 && (
@@ -182,7 +182,7 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
         headerClassName: 'w-[176px] whitespace-nowrap',
         cell: (row) => {
           if (row.normalizedCoverage == null) {
-            return <span className="text-xs text-slate-400 tabular-nums">—</span>;
+            return <span className="text-xs text-ink-subtle tabular-nums">—</span>;
           }
           const barColor =
             row.normalizedCoverage >= 30
@@ -192,10 +192,10 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
                 : 'bg-emerald-500';
           const textColor =
             row.normalizedCoverage >= 30
-              ? 'text-rose-700'
+              ? 'text-tone-danger-text'
               : row.normalizedCoverage >= 15
-                ? 'text-amber-700'
-                : 'text-emerald-700';
+                ? 'text-tone-warning-text'
+                : 'text-tone-success-text';
           const noteText =
             row.suspectedCount > 0
               ? `${row.suspectedCount} nghi sai nguồn`
@@ -210,9 +210,9 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
                 <span className={cn('text-xs font-bold tabular-nums', textColor)}>
                   {formatSimilarityPercent(row.normalizedCoverage)}
                 </span>
-                <span className="text-[11px] text-slate-500 truncate">{noteText}</span>
+                <span className="text-[11px] text-ink-muted truncate">{noteText}</span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div className="h-1.5 w-full rounded-full bg-surface-muted overflow-hidden">
                 <div
                   className={cn('h-full rounded-full', barColor)}
                   style={{ width: `${Math.min(100, Math.max(4, row.normalizedCoverage))}%` }}
@@ -239,7 +239,7 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 rounded-md px-3 text-xs font-medium bg-white shadow-2xs"
+            className="h-8 rounded-md px-3 text-xs font-medium bg-surface-card shadow-2xs"
             onClick={(event) => {
               event.stopPropagation();
               actions.openInspection(row.finalReportId);
@@ -271,16 +271,16 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
             options={batchOptions}
             disabled={isLoadingBatches}
             placeholder="Chọn đợt khóa luận..."
-            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300"
-            contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-slate-200/90 shadow-lg"
-            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
+            triggerClassName="h-10 rounded-xl border-line/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong"
+            contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-line/90 shadow-lg"
+            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover"
           />
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="h-10 rounded-xl border-slate-200/90 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 shrink-0"
+          className="h-10 rounded-xl border-line/90 bg-surface-card px-3.5 text-xs font-semibold text-ink-secondary shadow-2xs hover:bg-surface-hover shrink-0"
           leftIcon={<RefreshCw className={cn('size-3.5', isFetchingList && 'animate-spin')} />}
           onClick={actions.refresh}
           disabled={isFetchingList}
@@ -296,32 +296,32 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
       />
 
       <Card className="rounded-2xl border-slate-200/80 shadow-xs overflow-hidden bg-white">
-        <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-b border-line-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-ink-subtle" />
             <Input
               type="search"
               value={keyword}
               onChange={(event) => actions.changeKeyword(event.target.value)}
               placeholder="Tìm mã nhóm, tên đề tài, tên hoặc MSSV sinh viên..."
               aria-label="Tìm báo cáo tương đồng"
-              className="h-9 pl-9 pr-8 text-xs sm:text-sm bg-white"
+              className="h-9 pl-9 pr-8 text-xs sm:text-sm bg-surface-card"
             />
             {keyword && (
               <button
                 type="button"
                 aria-label="Xóa từ khóa tìm kiếm"
                 onClick={() => actions.changeKeyword('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink-body cursor-pointer"
               >
                 <X className="size-3.5" />
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+          <div className="flex items-center gap-2 text-xs text-ink-muted">
             <span className="tabular-nums">
-              Hiển thị <strong className="text-slate-700">{filteredTotalCount}</strong> /{' '}
+              Hiển thị <strong className="text-ink-secondary">{filteredTotalCount}</strong> /{' '}
               {allRowsCount} báo cáo
             </span>
             {hasCustomFilter && (
@@ -329,7 +329,7 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-lg bg-white text-xs shadow-2xs"
+                className="h-8 rounded-lg bg-surface-card text-xs shadow-2xs"
                 onClick={actions.resetFilters}
               >
                 Đặt lại mặc định
@@ -339,7 +339,7 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
         </div>
 
         {listError && (
-          <div className="p-4 border-b border-slate-100">
+          <div className="p-4 border-b border-line-subtle">
             <InlineAlert
               tone="error"
               title="Không tải được danh sách báo cáo được phân công"
@@ -376,7 +376,7 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
                 onClick={() => actions.openInspection(row.finalReportId)}
                 className={cn(
                   'rounded-xl p-1 transition-colors cursor-pointer space-y-2.5',
-                  isSelected ? 'bg-blue-50/50' : 'bg-white',
+                  isSelected ? 'bg-tone-info-bg' : 'bg-surface-card',
                 )}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -384,7 +384,7 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
                     <span className="text-sm font-bold text-primary tabular-nums">
                       {row.groupCode}
                     </span>
-                    <span className="text-xs font-semibold text-slate-600 tabular-nums">
+                    <span className="text-xs font-semibold text-ink-body tabular-nums">
                       v{row.versionNo}
                     </span>
                     {row.versionNo > 1 && (
@@ -396,36 +396,36 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
                   <StatusBadge tone={row.scanTone}>{row.scanLabel}</StatusBadge>
                 </div>
 
-                <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">
+                <p className="text-sm font-semibold text-ink-primary leading-snug line-clamp-2">
                   {row.topicTitle}
                 </p>
 
                 {row.studentsText && (
-                  <p className="text-xs text-slate-500 leading-relaxed">{row.studentsText}</p>
+                  <p className="text-xs text-ink-muted leading-relaxed">{row.studentsText}</p>
                 )}
 
                 <div className="flex items-center justify-between gap-3 pt-1">
                   <div className="flex items-center gap-2 text-xs">
                     {row.normalizedCoverage != null ? (
                       <>
-                        <span className="font-bold text-slate-800 tabular-nums">
+                        <span className="font-bold text-ink-heading tabular-nums">
                           {formatSimilarityPercent(row.normalizedCoverage)}
                         </span>
                         {row.attentionCount > 0 && (
-                          <span className="text-[11px] text-rose-700 font-medium">
+                          <span className="text-[11px] text-tone-danger-text font-medium">
                             · {row.attentionCount} cần rà soát
                           </span>
                         )}
                       </>
                     ) : (
-                      <span className="text-slate-400">Chưa có tỷ lệ</span>
+                      <span className="text-ink-subtle">Chưa có tỷ lệ</span>
                     )}
                   </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-md px-3 text-xs font-medium bg-white"
+                    className="h-8 rounded-md px-3 text-xs font-medium bg-surface-card"
                     onClick={(event) => {
                       event.stopPropagation();
                       actions.openInspection(row.finalReportId);

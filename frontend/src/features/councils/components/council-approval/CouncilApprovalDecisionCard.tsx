@@ -65,23 +65,23 @@ export function CouncilApprovalDecisionCard({
     !isApproving;
 
   return (
-    <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-6">
-      <h2 className="text-base font-bold text-slate-900">
+    <Card className="p-6 bg-surface-card border-line shadow-xs rounded-xl space-y-6">
+      <h2 className="text-base font-bold text-ink-primary">
         Quyết định và nhận xét
       </h2>
 
       {!selectedCouncil ? (
-        <div className="py-8 text-center text-xs text-slate-400">
+        <div className="py-8 text-center text-xs text-ink-subtle">
           Vui lòng chọn một dự thảo Hội đồng từ danh sách để thẩm định.
         </div>
       ) : (
         <div className="space-y-5">
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-semibold text-slate-700">
+              <span className="text-xs font-semibold text-ink-secondary">
                 Tệp quyết định
               </span>
-              <span className="text-[11px] text-slate-400">PDF ≤20 MB</span>
+              <span className="text-[11px] text-ink-subtle">PDF ≤20 MB</span>
             </div>
 
             <input
@@ -93,16 +93,16 @@ export function CouncilApprovalDecisionCard({
             />
 
             {displayFileName ? (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
+              <div className="p-4 bg-surface-subtle border border-line rounded-xl flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="size-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                  <div className="size-10 rounded-lg bg-tone-info-bg text-tone-info-icon flex items-center justify-center shrink-0">
                     <FileText className="size-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 truncate">
+                    <p className="text-xs font-semibold text-ink-heading truncate">
                       {displayFileName}
                     </p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-ink-subtle">
                       {isAlreadyApproved
                         ? 'Đã ban hành quyết định'
                         : selectedFile
@@ -117,14 +117,14 @@ export function CouncilApprovalDecisionCard({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-md hover:bg-slate-50 cursor-pointer"
+                      className="px-2.5 py-1 text-xs font-medium text-ink-secondary bg-surface-elevated border border-line-input rounded-md hover:bg-surface-hover cursor-pointer"
                     >
                       Thay tệp
                     </button>
                     <button
                       type="button"
                       onClick={handleClearFile}
-                      className="px-2.5 py-1 text-xs font-medium text-rose-600 bg-white border border-rose-200 rounded-md hover:bg-rose-50 cursor-pointer"
+                      className="px-2.5 py-1 text-xs font-medium text-tone-danger-icon bg-surface-elevated border border-tone-danger-border rounded-md hover:bg-tone-danger-bg cursor-pointer"
                     >
                       Xóa tệp
                     </button>
@@ -136,9 +136,9 @@ export function CouncilApprovalDecisionCard({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isAlreadyApproved}
-                className="w-full p-6 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 text-slate-500 hover:border-blue-400 hover:text-blue-600 transition-colors cursor-pointer bg-slate-50/50"
+                className="w-full p-6 border-2 border-dashed border-line-input rounded-xl flex flex-col items-center justify-center gap-2 text-ink-muted hover:border-blue-400 hover:text-tone-info-icon transition-colors cursor-pointer bg-surface-subtle/50"
               >
-                <UploadCloud className="size-6 text-slate-400" />
+                <UploadCloud className="size-6 text-ink-subtle" />
                 <span className="text-xs font-medium">
                   Nhấp để tải lên tệp quyết định PDF (tối đa 20MB)
                 </span>
@@ -149,7 +149,7 @@ export function CouncilApprovalDecisionCard({
           <div>
             <label
               htmlFor="decision-number-input"
-              className="block text-xs font-semibold text-slate-700 mb-1.5"
+              className="block text-xs font-semibold text-ink-secondary mb-1.5"
             >
               Số quyết định
             </label>
@@ -160,14 +160,14 @@ export function CouncilApprovalDecisionCard({
               onChange={(e) => onDecisionNumberChange(e.target.value)}
               disabled={isAlreadyApproved}
               placeholder="VD: QD-HD01 hoặc 123/QĐ-ĐHCNTT"
-              className="w-full h-10 px-3 py-2 bg-slate-50/50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-white disabled:bg-slate-100 disabled:cursor-not-allowed"
+              className="w-full h-10 px-3 py-2 bg-surface-subtle/50 border border-line-input rounded-lg text-xs text-ink-heading placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-surface-card disabled:bg-surface-muted disabled:cursor-not-allowed"
             />
           </div>
 
           <div>
             <label
               htmlFor="feedback-textarea"
-              className="block text-xs font-semibold text-slate-700 mb-1.5"
+              className="block text-xs font-semibold text-ink-secondary mb-1.5"
             >
               Nhận xét
             </label>
@@ -178,13 +178,13 @@ export function CouncilApprovalDecisionCard({
               onChange={(e) => onFeedbackChange(e.target.value)}
               disabled={isAlreadyApproved}
               placeholder="Nhập nhận xét hoặc lưu ý cho Khoa..."
-              className="w-full p-3 bg-slate-50/50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-white resize-none disabled:bg-slate-100 disabled:cursor-not-allowed"
+              className="w-full p-3 bg-surface-subtle/50 border border-line-input rounded-lg text-xs text-ink-heading placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-surface-card resize-none disabled:bg-surface-muted disabled:cursor-not-allowed"
             />
           </div>
 
           {isAlreadyApproved ? (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-xs text-emerald-800 font-medium">
-              <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />
+            <div className="p-3 bg-tone-success-bg border border-tone-success-border rounded-lg flex items-center gap-2 text-xs text-tone-success-strong font-medium">
+              <CheckCircle2 className="size-4 text-tone-success-icon shrink-0" />
               <span>
                 {selectedCouncil?.status === 'Completed'
                   ? 'Hội đồng này đã phê duyệt và hoàn thành bảo vệ.'

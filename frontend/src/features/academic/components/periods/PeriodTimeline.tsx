@@ -64,16 +64,16 @@ export const PeriodTimeline: React.FC<PeriodTimelineProps> = ({
   const activeStage = hoveredStageIndex !== null ? computedStages[hoveredStageIndex] : null;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-all">
+    <div className="rounded-2xl border border-line bg-surface-card p-5 shadow-xs transition-all">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Clock className="size-4 text-slate-500" />
-          <span className="text-sm font-bold text-slate-900">
+          <Clock className="size-4 text-ink-muted" />
+          <span className="text-sm font-bold text-ink-primary">
             Dòng thời gian kế hoạch ({totalWeeks} tuần)
           </span>
         </div>
 
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-ink-subtle">
           Rê chuột để xem chi tiết từng giai đoạn
         </span>
       </div>
@@ -83,7 +83,7 @@ export const PeriodTimeline: React.FC<PeriodTimelineProps> = ({
         className="relative mb-2 overflow-x-auto pb-1"
         onMouseLeave={() => setHoveredStageIndex(null)}
       >
-        <div className="flex h-11 min-w-[680px] w-full rounded-xl border border-slate-200 bg-slate-100/70 p-1 gap-1">
+        <div className="flex h-11 min-w-[680px] w-full rounded-xl border border-line bg-surface-muted/70 p-1 gap-1">
           {computedStages.map((stage, idx) => {
             const isHovered = hoveredStageIndex === idx;
             // Weighted flex: ensure 1-week stages have at least flex-2.2 and min-width 78px so their name is NEVER truncated with "..."
@@ -96,14 +96,14 @@ export const PeriodTimeline: React.FC<PeriodTimelineProps> = ({
                 style={{ flex: `${flexWeight} 1 0%`, minWidth: '78px' }}
                 className={`group relative flex h-full cursor-pointer items-center justify-center rounded-lg border transition-all duration-200 px-2 select-none ${
                   isHovered
-                    ? 'border-primary/50 bg-blue-50/90 text-primary shadow-xs z-10 scale-[1.01]'
-                    : 'border-slate-200/80 bg-white/95 text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                    ? 'border-primary/50 bg-tone-info-bg text-primary shadow-xs z-10 scale-[1.01]'
+                    : 'border-line/80 bg-surface-card/95 text-ink-secondary hover:border-line-strong hover:bg-surface-hover'
                 }`}
               >
                 <div className="flex items-center justify-center text-center">
                   <span
                     className={`whitespace-nowrap text-xs font-semibold tracking-tight ${
-                      isHovered ? 'text-primary' : 'text-slate-800'
+                      isHovered ? 'text-primary' : 'text-ink-heading'
                     }`}
                     title={`${stage.stageName} (${stage.weeks} tuần)`}
                   >
@@ -122,22 +122,22 @@ export const PeriodTimeline: React.FC<PeriodTimelineProps> = ({
           return (
             <div
               key={ms.name}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs shadow-2xs transition-all hover:bg-white hover:border-slate-300"
+              className="flex items-center justify-between rounded-xl border border-line bg-surface-subtle px-3 py-2 text-xs shadow-2xs transition-all hover:bg-surface-hover hover:border-line-strong"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-slate-200/70 text-slate-700">
+                <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-surface-strong/70 text-ink-secondary">
                   <Flag className="size-2.5" />
                 </div>
                 <div className="truncate">
-                  <span className="font-semibold text-slate-800 block truncate">
+                  <span className="font-semibold text-ink-heading block truncate">
                     {ms.name}
                   </span>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-ink-subtle">
                     Tuần {ms.endWeek}
                   </span>
                 </div>
               </div>
-              <span className="font-bold text-slate-800 shrink-0 ml-1.5 text-xs">
+              <span className="font-bold text-ink-heading shrink-0 ml-1.5 text-xs">
                 {formatDateDisplay(ms.date)}
               </span>
             </div>
@@ -147,39 +147,39 @@ export const PeriodTimeline: React.FC<PeriodTimelineProps> = ({
 
       {/* Detail Info Bar - Only slides down when hovering a stage */}
       {activeStage && (
-        <div className="mt-3 overflow-hidden rounded-xl border border-blue-200/90 bg-blue-50/60 shadow-2xs transition-all duration-300">
+        <div className="mt-3 overflow-hidden rounded-xl border border-tone-info-border bg-tone-info-bg shadow-2xs transition-all duration-300">
           <div
             aria-hidden="true"
             className="h-0.5 w-full bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]"
           />
           <div
             key={`stage-${activeStage.orderIndex}`}
-            className="flex min-h-[42px] w-full flex-wrap items-center justify-between gap-3 px-4 py-2 text-xs text-slate-700 animate-in fade-in slide-in-from-top-3 duration-300 ease-out"
+            className="flex min-h-[42px] w-full flex-wrap items-center justify-between gap-3 px-4 py-2 text-xs text-ink-secondary animate-in fade-in slide-in-from-top-3 duration-300 ease-out"
           >
             <div className="flex items-center gap-2">
-              <span className="inline-flex size-5 items-center justify-center rounded-md bg-primary text-white font-bold text-[10px]">
+              <span className="inline-flex size-5 items-center justify-center rounded-md bg-brand-solid text-white font-bold text-[10px]">
                 0{activeStage.orderIndex}
               </span>
-              <span className="font-bold text-slate-900">
+              <span className="font-bold text-ink-primary">
                 {activeStage.stageName}
               </span>
-              <span className="text-slate-300">•</span>
+              <span className="text-ink-faint">•</span>
               <span className="font-semibold text-primary">
                 {activeStage.weekLabel} ({activeStage.weeks} tuần)
               </span>
             </div>
 
-            <div className="flex items-center gap-4 text-slate-600">
+            <div className="flex items-center gap-4 text-ink-body">
               <div className="flex items-center gap-1.5">
-                <Calendar className="size-3.5 text-slate-400" />
+                <Calendar className="size-3.5 text-ink-subtle" />
                 <span>
                   {formatDateDisplay(activeStage.startDate)} –{' '}
                   {formatDateDisplay(activeStage.endDate)}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-3.5 text-emerald-600" />
-                <span className="font-medium text-slate-700">
+                <CheckCircle2 className="size-3.5 text-tone-success-icon" />
+                <span className="font-medium text-ink-secondary">
                   Phụ trách: {activeStage.actor}
                 </span>
               </div>

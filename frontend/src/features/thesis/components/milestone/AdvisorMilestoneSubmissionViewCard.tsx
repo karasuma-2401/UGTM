@@ -44,16 +44,16 @@ export function AdvisorMilestoneSubmissionViewCard({
   const hasAttachments = Boolean(attachments && attachments.length > 0);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-4">
+    <section className="overflow-hidden rounded-2xl border border-line/80 bg-surface-card shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-subtle px-5 py-4">
         <div className="space-y-0.5">
-          <h2 className="text-base font-semibold text-slate-900">
+          <h2 className="text-base font-semibold text-ink-primary">
             Nội dung bài nộp · Phiên bản v{versionNo}
           </h2>
-          <p className="text-xs text-slate-600">{groupCode}</p>
+          <p className="text-xs text-ink-body">{groupCode}</p>
         </div>
         {file?.uploadedAtUtc && (
-          <span className="text-xs text-slate-600">
+          <span className="text-xs text-ink-body">
             Tải lên lúc {formatMilestoneDateTime(file.uploadedAtUtc)}
           </span>
         )}
@@ -61,15 +61,15 @@ export function AdvisorMilestoneSubmissionViewCard({
 
       <div className="space-y-4 p-5">
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
-            <p className="text-xs font-semibold text-slate-600">Tệp báo cáo đính kèm</p>
+          <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3.5">
+            <p className="text-xs font-semibold text-ink-body">Tệp báo cáo đính kèm</p>
             {file ? (
               <div className="mt-2 flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <FileText className="size-4 shrink-0 text-primary" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-900">{file.fileName}</p>
-                    <p className="text-xs text-slate-600">{formatFileSize(file.fileSize)}</p>
+                    <p className="truncate text-sm font-medium text-ink-primary">{file.fileName}</p>
+                    <p className="text-xs text-ink-body">{formatFileSize(file.fileSize)}</p>
                   </div>
                 </div>
                 <Button
@@ -85,25 +85,25 @@ export function AdvisorMilestoneSubmissionViewCard({
                 </Button>
               </div>
             ) : (
-              <p className="mt-2 text-sm text-slate-500">Không có tệp đính kèm</p>
+              <p className="mt-2 text-sm text-ink-muted">Không có tệp đính kèm</p>
             )}
           </div>
 
-          <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
-            <p className="text-xs font-semibold text-slate-600">Liên kết sản phẩm / mã nguồn</p>
+          <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3.5">
+            <p className="text-xs font-semibold text-ink-body">Liên kết sản phẩm / mã nguồn</p>
             {hasLinks ? (
               <div className="mt-2">
                 <SubmissionProductLinksList links={productLinks} legacyGitUrl={gitUrl} />
               </div>
             ) : (
-              <p className="mt-2 text-sm text-slate-500">Không có liên kết đính kèm</p>
+              <p className="mt-2 text-sm text-ink-muted">Không có liên kết đính kèm</p>
             )}
           </div>
         </div>
 
         {hasAttachments && (
           <div className="space-y-1.5">
-            <p className="text-xs font-semibold text-slate-600">Ảnh minh chứng sản phẩm</p>
+            <p className="text-xs font-semibold text-ink-body">Ảnh minh chứng sản phẩm</p>
             <SubmissionAttachmentGallery
               attachments={attachments}
               resolveAttachmentUrl={resolveAttachmentUrl}
@@ -112,8 +112,8 @@ export function AdvisorMilestoneSubmissionViewCard({
         )}
 
         <div className="space-y-1.5">
-          <p className="text-xs font-semibold text-slate-600">Ghi chú của sinh viên</p>
-          <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 text-sm text-slate-700">
+          <p className="text-xs font-semibold text-ink-body">Ghi chú của sinh viên</p>
+          <div className="rounded-xl border border-line-subtle bg-surface-subtle/60 p-4 text-sm text-ink-secondary">
             <RichTextContent
               content={studentNote}
               emptyFallback="Sinh viên không để lại ghi chú cho phiên bản này."

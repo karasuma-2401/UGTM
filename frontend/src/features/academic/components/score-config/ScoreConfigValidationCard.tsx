@@ -39,35 +39,35 @@ export const ScoreConfigValidationCard: React.FC<ScoreConfigValidationCardProps>
     <div
       className={`rounded-xl border p-5 sm:p-6 transition-colors shadow-xs ${
         isValid
-          ? 'bg-white border-slate-200'
-          : 'bg-amber-50/40 border-amber-200'
+          ? 'bg-surface-card border-line'
+          : 'bg-tone-warning-bg border-tone-warning-border'
       }`}
     >
       <div className="flex items-start gap-3">
         <div className="mt-0.5 shrink-0">
           {isValid ? (
-            <CheckCircle2 className="size-5 text-emerald-600" />
+            <CheckCircle2 className="size-5 text-tone-success-icon" />
           ) : (
-            <AlertCircle className="size-5 text-amber-600" />
+            <AlertCircle className="size-5 text-tone-warning-icon" />
           )}
         </div>
 
         <div className="space-y-1">
           <h4
             className={`text-base font-bold tracking-tight ${
-              isValid ? 'text-slate-900' : 'text-amber-900'
+              isValid ? 'text-ink-primary' : 'text-tone-warning-strong'
             }`}
           >
             {isValid ? 'Hợp lệ' : 'Chưa hợp lệ'}
           </h4>
 
-          <p className="text-xs text-slate-600 leading-relaxed">
+          <p className="text-xs text-ink-body leading-relaxed">
             Phần trăm tổng 100%; hệ số nguyên hợp lệ và tổng dương. Đầu điểm bắt
             buộc/tùy chọn gắn với điều kiện áp dụng.
           </p>
 
           {!isValid && (
-            <ul className="mt-2 space-y-1 list-disc pl-4 text-xs font-medium text-amber-800">
+            <ul className="mt-2 space-y-1 list-disc pl-4 text-xs font-medium text-tone-warning-strong">
               {errors.map((err, idx) => (
                 <li key={idx}>{err}</li>
               ))}
