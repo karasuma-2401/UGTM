@@ -1,42 +1,21 @@
 import React, { useMemo } from 'react';
-import {
-  CheckCircle2,
-  ClipboardCheck,
-  Download,
-  FileText,
-  History,
-  Lock,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  X,
-} from 'lucide-react';
-import { AvatarGroup } from '@/components/ui/avatar-group';
+import { Lock, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { InlineAlert } from '@/components/ui/inline-alert';
-import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/ui/page-header';
 import { Select } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
 import { StatisticsBar, type StatisticItem } from '@/components/ui/statistics-bar';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { formatDateTimeVi } from '@/features/councils/utils/scoreSummaryFormatting';
-import { ArchivalHistoryDialog } from '../components/archival';
+import {
+  ArchivalHistoryDialog,
+  ArchivalReviewInspector,
+  ArchivalReviewTable,
+} from '../components/archival';
+import { PdfPreviewDialog } from '../components/shared/PdfPreviewDialog';
 import { useArchivalReview } from '../hooks/useArchivalReview';
-import type { ArchivalFilterKey, ArchivalReviewRow } from '../types/archival.types';
-import { ARCHIVAL_REASON_MAX_LENGTH, getArchivalStatusDisplay } from '../utils/archival';
 import { getThesisErrorMessage } from '../utils/thesisErrors';
-
-const FILTER_OPTIONS: { value: ArchivalFilterKey; label: string }[] = [
-  { value: 'AdvisorConfirmed', label: 'Chờ nghiệm thu' },
-  { value: 'ALL', label: 'Tất cả trạng thái' },
-  { value: 'Submitted', label: 'Chờ GVHD xác nhận' },
-  { value: 'NeedRevision', label: 'Cần bổ sung' },
-  { value: 'ArchiveConfirmed', label: 'Đã nghiệm thu' },
-];
 
 export const ArchivalReviewPage: React.FC = () => {
   const {
@@ -46,6 +25,7 @@ export const ArchivalReviewPage: React.FC = () => {
     isLoadingBatches,
     filterKey,
     keyword,
+    sort,
     pageNumber,
     pageSize,
     totalCount,
@@ -67,6 +47,8 @@ export const ArchivalReviewPage: React.FC = () => {
     isConfirming,
     isHistoryOpen,
     downloadingKey,
+    previewingKey,
+    pdfPreviewState,
     actions,
   } = useArchivalReview();
 
@@ -130,108 +112,6 @@ export const ArchivalReviewPage: React.FC = () => {
     [stats, filterKey, actions],
   );
 
-  const columns: DataTableColumn<ArchivalReviewRow>[] = useMemo(
-    () => [
-      {
-        id: 'groupCode',
-        header: 'Nhóm',
-        widthClassName: 'w-24',
-        headerClassName: 'whitespace-nowrap',
-        cell: (row) => (
-          <span className="font-semibold text-primary tabular-nums">{row.groupCode}</span>
-        ),
-        skeleton: { variant: 'text' },
-      },
-      {
-        id: 'topicAndStudents',
-        header: 'Đề tài và Sinh viên',
-        cell: (row) => (
-          <div className="min-w-0 space-y-0.5">
-            <p className="font-semibold text-ink-primary line-clamp-1">{row.topicTitleVi}</p>
-            <p className="text-xs text-ink-muted line-clamp-1">
-              {row.studentNames.length > 0
-                ? row.studentNames
-                    .map((name, index) =>
-                      row.studentCodes[index] ? `${name} (${row.studentCodes[index]})` : name,
-                    )
-                    .join(' - ')
-                : 'Chưa có thông tin sinh viên'}
-            </p>
-          </div>
-        ),
-        skeleton: { variant: 'topic' },
-      },
-      {
-        id: 'advisorName',
-        header: 'GVHD',
-        widthClassName: 'w-48',
-        headerClassName: 'whitespace-nowrap',
-        cell: (row) => (
-          <span className="text-xs font-medium text-ink-secondary line-clamp-1">
-            {row.advisorName || '—'}
-          </span>
-        ),
-        skeleton: { variant: 'person' },
-      },
-      {
-        id: 'version',
-        header: 'Phiên bản',
-        widthClassName: 'w-44',
-        headerClassName: 'whitespace-nowrap',
-        cell: (row) => (
-          <div className="text-xs space-y-0.5">
-            <span className="font-semibold text-ink-heading tabular-nums">
-              v{row.currentVersionNo}
-            </span>
-            <p className="text-ink-muted">
-              {getArchivalStatusDisplay(row.status).shortStepNote}
-            </p>
-          </div>
-        ),
-        skeleton: { variant: 'text' },
-      },
-      {
-        id: 'status',
-        header: 'Trạng thái',
-        widthClassName: 'w-40',
-        headerClassName: 'whitespace-nowrap',
-        cell: (row) => <StatusBadge tone={row.statusTone}>{row.statusLabel}</StatusBadge>,
-        skeleton: { variant: 'badge' },
-      },
-      {
-        id: 'actions',
-        header: 'Thao tác',
-        align: 'right',
-        widthClassName: 'w-32',
-        headerClassName: 'whitespace-nowrap',
-        cell: (row) => {
-          const isSelected = selectedRow?.submissionId === row.submissionId;
-          return (
-            <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-              {isSelected ? (
-                <span className="inline-flex items-center rounded-md bg-tone-info-bg px-2.5 py-1 text-xs font-semibold text-primary">
-                  Đang chọn
-                </span>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 rounded-md px-3 text-xs font-medium bg-surface-card"
-                  onClick={() => actions.selectRow(row.submissionId)}
-                >
-                  Xem hồ sơ
-                </Button>
-              )}
-            </div>
-          );
-        },
-        skeleton: { variant: 'actions', actionCount: 1 },
-      },
-    ],
-    [selectedRow?.submissionId, actions],
-  );
-
   if (!permissions.canRead) {
     return (
       <div className="max-w-4xl mx-auto py-10 px-4">
@@ -242,44 +122,14 @@ export const ArchivalReviewPage: React.FC = () => {
     );
   }
 
-  const canDecideSelected =
-    permissions.canManage &&
-    selectedRow?.status === 'AdvisorConfirmed' &&
-    Boolean(submissionDetail) &&
-    !isLoadingDetail;
-
-  const pdfFile = submissionDetail?.files.find((f) => f.fileRole === 'ThesisPdf') ?? null;
-  const docxFile = submissionDetail?.files.find((f) => f.fileRole === 'ThesisDocx') ?? null;
-
-  const detailStudents =
-    academicDetail?.students.map((student) => ({
-      id: student.studentId,
-      name: student.fullName,
-      code: student.studentCode,
-      userCode: student.studentCode,
-    })) ??
-    (selectedRow?.studentNames ?? []).map((name, index) => ({
-      id: `${selectedRow?.groupId ?? 'row'}-${index}`,
-      name,
-      code: selectedRow?.studentCodes[index] ?? '',
-      userCode: selectedRow?.studentCodes[index] ?? '',
-    }));
-
-  const detailAdvisorName = academicDetail?.advisorName || selectedRow?.advisorName || '—';
-  const detailAdvisorItems =
-    detailAdvisorName !== '—'
-      ? [{ id: academicDetail?.advisorId || detailAdvisorName, name: detailAdvisorName }]
-      : [];
-
   return (
     <div className="max-w-[1440px] mx-auto py-6 px-4 sm:px-6 space-y-5">
       <PageHeader
         title="Nghiệm thu lưu chiểu"
-        description="Chỉ hồ sơ GVHD đã xác nhận bản sửa mới đủ điều kiện nghiệm thu."
-        icon={<ClipboardCheck />}
+        description="Kiểm tra tệp báo cáo PDF/DOCX, metadata song ngữ và hoàn thành nghiệm thu hồ sơ GVHD đã xác nhận."
         actionsClassName="w-full sm:w-auto flex-1 justify-between items-center"
       >
-        <div className="w-full sm:w-80 md:w-[400px]">
+        <div className="w-full sm:w-80 md:w-[380px]">
           <Select
             aria-label="Chọn đợt khóa luận tốt nghiệp"
             value={selectedBatchId}
@@ -288,13 +138,15 @@ export const ArchivalReviewPage: React.FC = () => {
             options={batchOptions}
             onChange={(value) => actions.selectBatch(value)}
             triggerClassName="h-10 rounded-xl border-line/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong"
-            contentClassName="w-max min-w-full sm:min-w-[400px] max-w-[90vw] left-0 right-auto p-1.5 rounded-xl border-line/90 shadow-lg"
+            contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] left-0 right-auto p-1.5 rounded-xl border-line/90 shadow-lg"
             optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover"
           />
         </div>
 
         <div className="flex items-center gap-2.5 ml-auto">
-          <StatusBadge tone="info">{stats.all} hồ sơ lưu chiểu</StatusBadge>
+          <StatusBadge tone="info" className="tabular-nums whitespace-nowrap">
+            {stats.advisorConfirmed} chờ nghiệm thu
+          </StatusBadge>
           <Button
             type="button"
             variant="outline"
@@ -335,403 +187,64 @@ export const ArchivalReviewPage: React.FC = () => {
         </InlineAlert>
       )}
 
-      <section
-        aria-label="Danh sách hồ sơ lưu chiểu"
-        className="w-full min-w-0 rounded-2xl border border-line/80 bg-surface-card shadow-xs overflow-hidden"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-subtle px-5 py-4">
-          <div>
-            <h2 className="text-base font-semibold text-ink-primary">Checklist</h2>
-            <p className="text-xs text-ink-muted mt-0.5 tabular-nums">
-              {stats.all} hồ sơ - {stats.advisorConfirmed} chờ nghiệm thu - {stats.archiveConfirmed}{' '}
-              đã nghiệm thu
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <div className="w-full sm:w-72">
-              <Input
-                type="search"
-                value={keyword}
-                onChange={(e) => actions.changeKeyword(e.target.value)}
-                placeholder="Tìm mã nhóm, tên đề tài, sinh viên, GVHD..."
-                aria-label="Tìm kiếm hồ sơ lưu chiểu"
-                leftIcon={<Search className="size-4 text-ink-subtle" />}
-                rightIcon={
-                  keyword ? (
-                    <button
-                      type="button"
-                      aria-label="Xóa từ khóa tìm kiếm"
-                      onClick={() => actions.changeKeyword('')}
-                      className="text-ink-subtle hover:text-ink-secondary"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  ) : undefined
-                }
-              />
-            </div>
-
-            <div className="w-full sm:w-48">
-              <Select
-                aria-label="Lọc trạng thái hồ sơ lưu chiểu"
-                value={filterKey}
-                options={FILTER_OPTIONS}
-                onChange={(value) => actions.changeFilter(value as ArchivalFilterKey)}
-                triggerClassName="h-9 rounded-lg border-line bg-surface-card text-xs font-medium text-ink-secondary"
-                contentClassName="w-max min-w-full right-0 left-auto p-1 rounded-xl shadow-lg"
-                optionClassName="text-xs py-1.5 px-2.5 rounded-lg"
-              />
-            </div>
-
-            {(filterKey !== 'AdvisorConfirmed' || keyword.trim().length > 0) && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 rounded-lg text-xs"
-                leftIcon={<RotateCcw className="size-3.5" />}
-                onClick={actions.resetFilters}
-              >
-                Đặt lại
-              </Button>
-            )}
-          </div>
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+        <div className="xl:col-span-7 min-w-0">
+          <ArchivalReviewTable
+            items={rows}
+            totalCount={totalCount}
+            allRowsCount={allRowsCount}
+            selectedSubmissionId={selectedRow?.submissionId ?? null}
+            onSelectRow={actions.selectRow}
+            sort={sort}
+            onSortChange={actions.changeSort}
+            pageNumber={pageNumber}
+            pageSize={pageSize}
+            onPageChange={actions.changePage}
+            onPageSizeChange={actions.changePageSize}
+            filterKey={filterKey}
+            keyword={keyword}
+            onKeywordChange={actions.changeKeyword}
+            onResetFilters={actions.resetFilters}
+            onShowAll={() => actions.changeFilter('ALL')}
+            isLoading={isLoadingList}
+            isFetching={isFetchingList}
+            listError={listError}
+            onRetry={actions.refresh}
+          />
         </div>
 
-        <DataTable
-          ariaLabel="Danh sách hồ sơ lưu chiểu cần nghiệm thu"
-          data={rows}
-          columns={columns}
-          getRowId={(row) => row.submissionId}
-          selectedRowId={selectedRow?.submissionId ?? null}
-          onRowSelect={(id) => actions.selectRow(id)}
-          onRowOpen={(row) => actions.selectRow(row.submissionId)}
-          loading={isLoadingList && allRowsCount === 0}
-          busy={isFetchingList && allRowsCount > 0}
-          pagination={{
-            pageNumber,
-            pageSize,
-            totalCount,
-            onPageChange: actions.changePage,
-            onPageSizeChange: actions.changePageSize,
-            itemLabel: 'hồ sơ',
-          }}
-          empty={{
-            title:
-              allRowsCount === 0
-                ? 'Chưa có hồ sơ lưu chiểu nào trong đợt'
-                : 'Không có hồ sơ phù hợp bộ lọc',
-            description:
-              allRowsCount === 0
-                ? 'Sinh viên cần nộp hồ sơ lưu chiểu sau khi có biên bản bảo vệ đã khóa.'
-                : 'Thử chuyển sang "Tất cả trạng thái" hoặc xóa từ khóa tìm kiếm.',
-            action:
-              filterKey !== 'ALL' || keyword ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    actions.changeFilter('ALL');
-                    actions.changeKeyword('');
-                  }}
-                >
-                  Xóa bộ lọc
-                </Button>
-              ) : undefined,
-          }}
-        />
-      </section>
-
-      {selectedRow && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          <div className="lg:col-span-7 xl:col-span-8 space-y-5">
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CardTitle className="text-base font-bold text-ink-primary">
-                    Kết quả nghiệm thu - {selectedRow.groupCode}
-                  </CardTitle>
-                  <StatusBadge tone={selectedRow.statusTone}>{selectedRow.statusLabel}</StatusBadge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isLoadingDetail ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                  </div>
-                ) : detailError ? (
-                  <InlineAlert
-                    title="Không tải được chi tiết hồ sơ"
-                    action={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        leftIcon={<RefreshCw className="size-3.5" />}
-                        onClick={actions.refetchDetail}
-                      >
-                        Thử lại
-                      </Button>
-                    }
-                  >
-                    {detailError}
-                  </InlineAlert>
-                ) : (
-                  submissionDetail && (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3 space-y-1">
-                          <p className="font-semibold text-ink-body">Tóm tắt tiếng Việt</p>
-                          <p className="text-ink-heading leading-relaxed whitespace-pre-line line-clamp-4">
-                            {submissionDetail.abstractVi || '—'}
-                          </p>
-                        </div>
-                        <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3 space-y-1">
-                          <p className="font-semibold text-ink-body">Abstract tiếng Anh</p>
-                          <p className="text-ink-heading leading-relaxed whitespace-pre-line line-clamp-4">
-                            {submissionDetail.abstractEn || '—'}
-                          </p>
-                        </div>
-                        <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3 space-y-1">
-                          <p className="font-semibold text-ink-body">Từ khóa tiếng Việt</p>
-                          <p className="text-ink-heading">{submissionDetail.keywordsVi || '—'}</p>
-                        </div>
-                        <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3 space-y-1">
-                          <p className="font-semibold text-ink-body">Keywords tiếng Anh</p>
-                          <p className="text-ink-heading">{submissionDetail.keywordsEn || '—'}</p>
-                        </div>
-                      </div>
-
-                      {submissionDetail.facultyFeedback && (
-                        <InlineAlert tone="warning" title="Phản hồi chỉnh sửa gần nhất">
-                          {submissionDetail.facultyFeedback}
-                        </InlineAlert>
-                      )}
-
-                      {selectedRow.status !== 'AdvisorConfirmed' && (
-                        <InlineAlert
-                          tone={selectedRow.status === 'ArchiveConfirmed' ? 'success' : 'info'}
-                          title={
-                            selectedRow.status === 'ArchiveConfirmed'
-                              ? 'Hồ sơ đã hoàn thành lưu chiểu'
-                              : selectedRow.status === 'Submitted'
-                                ? 'Đang chờ GVHD xác nhận bản chỉnh sửa'
-                                : 'Đang chờ sinh viên nộp lại bản sửa'
-                          }
-                        >
-                          {selectedRow.status === 'ArchiveConfirmed'
-                            ? 'Hồ sơ đã được nghiệm thu và khóa vĩnh viễn.'
-                            : selectedRow.status === 'Submitted'
-                              ? 'Khoa chỉ có thể nghiệm thu hoặc yêu cầu sửa sau khi GVHD hoàn tất bước xác nhận.'
-                              : 'Sinh viên cần cập nhật và nộp lại phiên bản mới trước khi xét duyệt tiếp.'}
-                        </InlineAlert>
-                      )}
-
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <label
-                            htmlFor="faculty-archival-comment"
-                            className="font-semibold text-ink-heading"
-                          >
-                            Nhận xét Khoa{' '}
-                            <span className="font-normal text-ink-muted">
-                              (bắt buộc khi yêu cầu sửa)
-                            </span>
-                          </label>
-                          <span className="text-ink-subtle tabular-nums">
-                            {facultyComment.length}/{ARCHIVAL_REASON_MAX_LENGTH}
-                          </span>
-                        </div>
-                        <textarea
-                          id="faculty-archival-comment"
-                          rows={3}
-                          maxLength={ARCHIVAL_REASON_MAX_LENGTH}
-                          disabled={!canDecideSelected || isConfirming}
-                          value={facultyComment}
-                          onChange={(e) => actions.setFacultyComment(e.target.value)}
-                          placeholder="Hồ sơ đầy đủ tệp và metadata Việt / Anh, hoặc ghi rõ nội dung cần chỉnh sửa..."
-                          className={`w-full rounded-xl border bg-surface-card px-3 py-2 text-sm text-ink-heading placeholder:text-ink-subtle focus:outline-none focus:ring-2 disabled:bg-surface-subtle disabled:text-ink-muted ${
-                            commentError
-                              ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200'
-                              : 'border-line focus:border-primary focus:ring-primary/20'
-                          }`}
-                        />
-                        {commentError && (
-                          <p className="text-xs font-medium text-tone-danger-icon">{commentError}</p>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-3 pt-1">
-                        <Button
-                          type="button"
-                          disabled={!canDecideSelected || isConfirming}
-                          leftIcon={<CheckCircle2 className="size-4" />}
-                          onClick={() => actions.openDecisionConfirm('FacultyConfirm')}
-                        >
-                          Hoàn thành lưu chiểu
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={!canDecideSelected || isConfirming}
-                          onClick={() => actions.openDecisionConfirm('RequestRevision')}
-                        >
-                          Yêu cầu sửa
-                        </Button>
-                      </div>
-                    </>
-                  )
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-5 xl:col-span-4">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold text-ink-primary">
-                  Nghiệm thu {selectedRow.groupCode}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-ink-muted">Hồ sơ</p>
-                  <p className="text-xs font-semibold text-primary tabular-nums">
-                    {academicDetail?.topicCode || 'KLTN'} - {selectedRow.groupCode} - v
-                    {selectedRow.currentVersionNo}
-                  </p>
-                  <p className="text-sm font-semibold text-ink-primary leading-snug">
-                    {selectedRow.topicTitleVi}
-                  </p>
-                  {selectedRow.topicTitleEn && (
-                    <p className="text-xs text-ink-muted leading-snug">
-                      {selectedRow.topicTitleEn}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5 pt-2 border-t border-line-subtle">
-                  <p className="text-xs font-medium text-ink-muted">Sinh viên</p>
-                  {detailStudents.length > 0 ? (
-                    <div className="flex items-start gap-2.5">
-                      <AvatarGroup items={detailStudents} max={3} size="sm" ariaLabel="Sinh viên" />
-                      <div className="min-w-0 space-y-1 text-xs text-ink-secondary leading-relaxed">
-                        {detailStudents.map((student) => (
-                          <div key={student.id} className="truncate">
-                            <span className="font-medium text-ink-heading">{student.name}</span>
-                            {student.code ? (
-                              <span className="text-ink-muted tabular-nums"> - {student.code}</span>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-ink-muted">Đang cập nhật sinh viên</p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5 pt-2 border-t border-line-subtle">
-                  <p className="text-xs font-medium text-ink-muted">GVHD</p>
-                  {detailAdvisorItems.length > 0 ? (
-                    <div className="flex items-center gap-2.5">
-                      <AvatarGroup
-                        items={detailAdvisorItems}
-                        max={1}
-                        size="sm"
-                        ariaLabel="Giảng viên hướng dẫn"
-                      />
-                      <span className="min-w-0 truncate text-xs font-medium text-ink-heading">
-                        {detailAdvisorName}
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-ink-muted">{detailAdvisorName}</p>
-                  )}
-                </div>
-
-                <div className="space-y-1 pt-2 border-t border-line-subtle">
-                  <p className="text-xs font-medium text-ink-muted">Đợt</p>
-                  <p className="text-xs font-medium text-ink-heading">{selectedBatchLabel}</p>
-                </div>
-
-                <div className="space-y-1.5 pt-2 border-t border-line-subtle">
-                  <p className="text-xs font-semibold text-ink-heading">Lưu ý xử lý</p>
-                  <ul className="space-y-1 text-xs text-ink-body list-disc pl-4">
-                    <li>
-                      {selectedRow.advisorConfirmedAt
-                        ? `GVHD đã xác nhận bản sửa (${formatDateTimeVi(selectedRow.advisorConfirmedAt)})`
-                        : 'Chờ GVHD xác nhận bản sửa trước khi Khoa duyệt'}
-                    </li>
-                    <li>
-                      {pdfFile && docxFile
-                        ? 'Có đủ PDF và DOCX hợp lệ'
-                        : 'Kiểm tra tệp PDF và DOCX đính kèm'}
-                    </li>
-                    <li>
-                      {submissionDetail?.abstractVi &&
-                      submissionDetail?.abstractEn &&
-                      submissionDetail?.keywordsVi &&
-                      submissionDetail?.keywordsEn
-                        ? 'Đủ tóm tắt và từ khóa Việt / Anh'
-                        : 'Đang kiểm tra metadata Việt / Anh'}
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-line-subtle">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={!pdfFile || downloadingKey === `${selectedRow.currentVersionNo}-ThesisPdf`}
-                    leftIcon={<Download className="size-3.5" />}
-                    onClick={() =>
-                      pdfFile &&
-                      void actions.downloadFile(
-                        selectedRow.currentVersionNo,
-                        'ThesisPdf',
-                        pdfFile.fileName,
-                      )
-                    }
-                  >
-                    Tải PDF
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={!docxFile || downloadingKey === `${selectedRow.currentVersionNo}-ThesisDocx`}
-                    leftIcon={<FileText className="size-3.5" />}
-                    onClick={() =>
-                      docxFile &&
-                      void actions.downloadFile(
-                        selectedRow.currentVersionNo,
-                        'ThesisDocx',
-                        docxFile.fileName,
-                      )
-                    }
-                  >
-                    Tải DOCX
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<History className="size-3.5" />}
-                    onClick={actions.openHistory}
-                  >
-                    Lịch sử
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
+        <aside
+          aria-label="Chi tiết kiểm tra và quyết định nghiệm thu"
+          className="xl:col-span-5 min-w-0 xl:sticky xl:top-20"
+        >
+          <Card className="rounded-2xl border-line/80 bg-surface-card shadow-xs overflow-hidden">
+            <ArchivalReviewInspector
+              selectedRow={selectedRow}
+              submissionDetail={submissionDetail}
+              isLoadingDetail={isLoadingDetail}
+              detailError={detailError}
+              academicDetail={academicDetail}
+              selectedBatchLabel={selectedBatchLabel}
+              canManage={permissions.canManage}
+              facultyComment={facultyComment}
+              commentError={commentError}
+              isConfirming={isConfirming}
+              downloadingKey={downloadingKey}
+              previewingKey={previewingKey}
+              onChangeComment={actions.setFacultyComment}
+              onOpenDecisionConfirm={actions.openDecisionConfirm}
+              onOpenHistory={actions.openHistory}
+              onRefetchDetail={actions.refetchDetail}
+              onDownloadFile={(version, role, fileName) =>
+                void actions.downloadFile(version, role, fileName)
+              }
+              onPreviewPdf={(version, fileName, fileSize) =>
+                void actions.previewPdf(version, fileName, fileSize)
+              }
+            />
+          </Card>
+        </aside>
+      </div>
 
       <ConfirmDialog
         open={pendingAction !== null}
@@ -794,6 +307,18 @@ export const ArchivalReviewPage: React.FC = () => {
           void actions.downloadFile(version, role, fileName)
         }
         downloadingKey={downloadingKey}
+        onPreviewPdf={(version, fileName, fileSize) =>
+          void actions.previewPdf(version, fileName, fileSize)
+        }
+        previewingKey={previewingKey}
+      />
+
+      <PdfPreviewDialog
+        open={pdfPreviewState.open}
+        onClose={actions.closePdfPreview}
+        previewUrl={pdfPreviewState.url}
+        fileName={pdfPreviewState.fileName}
+        fileSize={pdfPreviewState.fileSize}
       />
     </div>
   );
