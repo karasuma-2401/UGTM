@@ -1,4 +1,6 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
@@ -18,7 +20,8 @@ public sealed class GetCouncilScheduleHandler(
     ITopicDefenseContract topicDefenseContract,
     ICouncilUserInfoReader userInfoReader,
     IStudentInfoReader studentInfoReader,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ICacheService? cache = null)
 {
     public async Task<Result<CouncilScheduleResponseDto>> HandleAsync(
         GetCouncilScheduleQuery query,
@@ -60,6 +63,21 @@ public sealed class GetCouncilScheduleHandler(
         if (isStudentOnly && council.Status == CouncilStatus.Draft)
         {
             return Result.Failure<CouncilScheduleResponseDto>(CouncilErrors.ScheduleNotPublished);
+        }
+
+        string? cacheKey = null;
+        if (cache is not null)
+        {
+            var councilVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.CouncilScope(council.Id), cancellationToken);
+            var batchVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(council.BatchId), cancellationToken);
+            var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, cancellationToken);
+            cacheKey = DefenseCouncilCacheKeys.CouncilSchedule(council.Id, councilVer, batchVer, globalVer);
+
+            var cached = await cache.GetAsync<CouncilScheduleResponseDto>(cacheKey, cancellationToken);
+            if (cached is not null)
+            {
+                return Result.Success(cached);
+            }
         }
 
         // 3. Fetch Council Members detail
@@ -161,7 +179,7 @@ public sealed class GetCouncilScheduleHandler(
                 a.Id);
         }).ToList();
 
-        return Result.Success(new CouncilScheduleResponseDto(
+        var response = new CouncilScheduleResponseDto(
             council.Id,
             council.BatchId,
             council.CouncilCode,
@@ -172,6 +190,13 @@ public sealed class GetCouncilScheduleHandler(
             council.DecisionNumber,
             council.SignedDate,
             memberDtos,
-            groupDtos));
+            groupDtos);
+
+        if (cache is not null && cacheKey is not null)
+        {
+            await cache.SetAsync(cacheKey, response, DefenseCouncilCacheKeys.ScheduleTtl, cancellationToken);
+        }
+
+        return Result.Success(response);
     }
 }

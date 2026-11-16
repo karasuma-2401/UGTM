@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
+using UGTM.BuildingBlocks.Infrastructure.Caching;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Modules.DefenseCouncil.Application.AcademicResults.Common;
 using UGTM.Modules.DefenseCouncil.Application.AcademicResults.ExportAcademicResults;
@@ -50,6 +51,7 @@ public sealed class DefenseCouncilModule : IModule
 
     public void RegisterModule(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddUgtmCaching(configuration);
         services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.FinalSubmissions.ILockedDefenseProofReader,
             Persistence.Repositories.LockedDefenseProofReader>();
         services.AddModuleDbContext<DefenseCouncilDbContext>(configuration);

@@ -1,4 +1,6 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
@@ -12,7 +14,8 @@ public sealed class UpdateCouncilScheduleHandler(
     ICouncilRepository councilRepository,
     IDefenseCouncilUnitOfWork unitOfWork,
     ICouncilUserInfoReader userInfoReader,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ICacheService? cache = null)
 {
     public async Task<Result<CouncilResponseDto>> HandleAsync(
         UpdateCouncilScheduleCommand command,
@@ -85,6 +88,7 @@ public sealed class UpdateCouncilScheduleHandler(
         council.UpdateSchedule(command.DefenseDate, command.TimeSlot, command.Room);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await DefenseCouncilCacheKeys.InvalidateCouncilAsync(cache, council.Id, council.BatchId, cancellationToken);
 
         return Result.Success(new CouncilResponseDto(
             council.Id,

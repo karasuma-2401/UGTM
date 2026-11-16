@@ -1,4 +1,6 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
@@ -21,7 +23,8 @@ public sealed class AddCouncilMembersHandler(
     ICouncilUserInfoReader userInfoReader,
     IDefenseGroupContract defenseGroupContract,
     ITopicDefenseContract topicDefenseContract,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ICacheService? cache = null)
 {
     public async Task<Result<IReadOnlyList<CouncilMemberResponseDto>>> HandleAsync(
         AddCouncilMembersCommand command,
@@ -179,6 +182,8 @@ public sealed class AddCouncilMembersHandler(
         {
             return Result.Failure<IReadOnlyList<CouncilMemberResponseDto>>(CouncilErrors.ConcurrentModification);
         }
+
+        await DefenseCouncilCacheKeys.InvalidateCouncilAsync(cache, council.Id, council.BatchId, cancellationToken);
 
         var resultDtos = newMembers.Select(m =>
         {

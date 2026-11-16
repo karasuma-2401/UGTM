@@ -1,5 +1,7 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
@@ -19,7 +21,8 @@ public sealed class CreateCouncilHandler(
     ICouncilRepository councilRepository,
     IDefenseCouncilUnitOfWork unitOfWork,
     IKltnBatchReader batchReader,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ICacheService? cache = null)
 {
     public async Task<Result<CouncilResponseDto>> HandleAsync(
         CreateCouncilCommand command,
@@ -87,6 +90,7 @@ public sealed class CreateCouncilHandler(
 
         await councilRepository.AddAsync(council, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await DefenseCouncilCacheKeys.InvalidateBatchAsync(cache, command.BatchId, cancellationToken);
 
         return Result.Success(new CouncilResponseDto(
             council.Id,

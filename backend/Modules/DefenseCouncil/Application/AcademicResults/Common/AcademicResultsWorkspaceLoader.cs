@@ -1,4 +1,6 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.Modules.DefenseCouncil.Application.AcademicResults.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.ScoreSummaries;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
@@ -22,7 +24,8 @@ public sealed class AcademicResultsWorkspaceLoader(
     IStudentSearchReader studentSearchReader,
     ICouncilRepository councilRepository,
     IScoreSummaryStore scoreSummaryStore,
-    IFinalSubmissionArchiveProofContract archiveProofContract)
+    IFinalSubmissionArchiveProofContract archiveProofContract,
+    ICacheService? cache = null)
 {
     private const string DefaultFacultyName = "Khoa CNTT";
 
@@ -34,9 +37,90 @@ public sealed class AcademicResultsWorkspaceLoader(
         CancellationToken ct = default)
     {
         var normalizedPhase = NormalizePhase(phase);
+        var baseRows = await LoadBaseRowsAsync(batchId, normalizedPhase, ct);
+        if (baseRows.Count == 0)
+        {
+            return baseRows;
+        }
+
+        var hasKeyword = !string.IsNullOrWhiteSpace(keyword);
+        var hasStatus = !string.IsNullOrWhiteSpace(status) && !status.Equals("ALL", StringComparison.OrdinalIgnoreCase);
+        if (!hasKeyword && !hasStatus)
+        {
+            return baseRows;
+        }
+
+        HashSet<Guid>? studentIdsMatchingKeyword = null;
+        if (hasKeyword)
+        {
+            var matchedIds = await studentSearchReader.FindIdsByNameOrCodeAsync(keyword!.Trim(), ct);
+            if (matchedIds.Count > 0)
+            {
+                studentIdsMatchingKeyword = matchedIds.ToHashSet();
+            }
+        }
+
+        var resultRows = new List<AcademicResultComputedRow>(baseRows.Count);
+        var kw = hasKeyword ? keyword!.Trim() : string.Empty;
+        var targetStatus = hasStatus ? status!.Trim() : string.Empty;
+
+        foreach (var row in baseRows)
+        {
+            if (hasKeyword)
+            {
+                var matchesCode = row.ListItem.GroupCode.Contains(kw, StringComparison.OrdinalIgnoreCase);
+                var matchesTitleVi = row.ListItem.TopicTitleVi.Contains(kw, StringComparison.OrdinalIgnoreCase);
+                var matchesTitleEn = row.ListItem.TopicTitleEn != null
+                    && row.ListItem.TopicTitleEn.Contains(kw, StringComparison.OrdinalIgnoreCase);
+                var matchesStuName = row.ListItem.StudentNames.Any(n => n.Contains(kw, StringComparison.OrdinalIgnoreCase));
+                var matchesStuCode = row.ListItem.StudentCodes.Any(c => c.Contains(kw, StringComparison.OrdinalIgnoreCase));
+                var matchesStudentSearch = studentIdsMatchingKeyword != null
+                    && row.Detail.Students.Any(s => studentIdsMatchingKeyword.Contains(s.StudentId));
+
+                if (!matchesCode && !matchesTitleVi && !matchesTitleEn && !matchesStuName && !matchesStuCode && !matchesStudentSearch)
+                {
+                    continue;
+                }
+            }
+
+            if (hasStatus && !row.ListItem.StatusCode.Equals(targetStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            resultRows.Add(row);
+        }
+
+        return resultRows;
+    }
+
+    private async Task<IReadOnlyList<AcademicResultComputedRow>> LoadBaseRowsAsync(
+        Guid batchId,
+        string normalizedPhase,
+        CancellationToken ct)
+    {
+        string? cacheKey = null;
+        if (cache is not null && batchId != Guid.Empty)
+        {
+            var batchVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(batchId), ct);
+            var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct);
+            cacheKey = DefenseCouncilCacheKeys.AcademicResults(batchId, normalizedPhase, batchVer, globalVer);
+
+            var cached = await cache.GetAsync<List<AcademicResultComputedRow>>(cacheKey, ct);
+            if (cached is not null)
+            {
+                return cached;
+            }
+        }
+
         var groups = await thesisReader.GetGroupsByBatchIdAsync(batchId, ct);
         if (groups.Count == 0)
         {
+            if (cache is not null && cacheKey is not null)
+            {
+                await cache.SetAsync(cacheKey, new List<AcademicResultComputedRow>(), DefenseCouncilCacheKeys.ResultsTtl, ct);
+            }
+
             return [];
         }
 
@@ -98,14 +182,6 @@ public sealed class AcademicResultsWorkspaceLoader(
         var usersDict = userIdsToFetch.Count > 0
             ? await userInfoReader.GetUsersByIdsAsync(userIdsToFetch, ct)
             : new Dictionary<Guid, CouncilUserInfoContractDto>();
-
-        // Tìm kiếm theo từ khóa nếu có
-        HashSet<Guid>? studentIdsMatchingKeyword = null;
-        if (!string.IsNullOrWhiteSpace(keyword))
-        {
-            var matchedIds = await studentSearchReader.FindIdsByNameOrCodeAsync(keyword.Trim(), ct);
-            studentIdsMatchingKeyword = matchedIds.ToHashSet();
-        }
 
         var resultRows = new List<AcademicResultComputedRow>();
         var sortedGroups = groups.OrderBy(g => g.CreatedAtUtc).ThenBy(g => g.GroupId).ToList();
@@ -190,33 +266,12 @@ public sealed class AcademicResultsWorkspaceLoader(
                     usersDict);
             }
 
-            // Lọc theo keyword
-            if (!string.IsNullOrWhiteSpace(keyword))
-            {
-                var kw = keyword.Trim();
-                var matchesCode = row.ListItem.GroupCode.Contains(kw, StringComparison.OrdinalIgnoreCase);
-                var matchesTitleVi = row.ListItem.TopicTitleVi.Contains(kw, StringComparison.OrdinalIgnoreCase);
-                var matchesTitleEn = row.ListItem.TopicTitleEn != null && row.ListItem.TopicTitleEn.Contains(kw, StringComparison.OrdinalIgnoreCase);
-                var matchesStuName = row.ListItem.StudentNames.Any(n => n.Contains(kw, StringComparison.OrdinalIgnoreCase));
-                var matchesStuCode = row.ListItem.StudentCodes.Any(c => c.Contains(kw, StringComparison.OrdinalIgnoreCase));
-                var matchesStudentSearch = studentIdsMatchingKeyword != null && group.Members.Any(m => studentIdsMatchingKeyword.Contains(m.StudentId));
-
-                if (!matchesCode && !matchesTitleVi && !matchesTitleEn && !matchesStuName && !matchesStuCode && !matchesStudentSearch)
-                {
-                    continue;
-                }
-            }
-
-            // Lọc theo status
-            if (!string.IsNullOrWhiteSpace(status) && !status.Equals("ALL", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!row.ListItem.StatusCode.Equals(status.Trim(), StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-            }
-
             resultRows.Add(row);
+        }
+
+        if (cache is not null && cacheKey is not null)
+        {
+            await cache.SetAsync(cacheKey, resultRows, DefenseCouncilCacheKeys.ResultsTtl, ct);
         }
 
         return resultRows;
@@ -228,13 +283,33 @@ public sealed class AcademicResultsWorkspaceLoader(
         CancellationToken ct = default)
     {
         var normalizedPhase = NormalizePhase(phase);
-        var group = await thesisReader.GetGroupByIdAsync(groupId, ct);
-        if (group == null)
+        Guid? batchId = null;
+
+        if (cache is not null && groupId != Guid.Empty)
         {
-            return null;
+            batchId = await cache.GetAsync<Guid?>(DefenseCouncilCacheKeys.GroupBatchMap(groupId), ct);
         }
 
-        var rows = await LoadAllAsync(group.BatchId, normalizedPhase, null, null, ct);
+        if (!batchId.HasValue || batchId.Value == Guid.Empty)
+        {
+            var group = await thesisReader.GetGroupByIdAsync(groupId, ct);
+            if (group == null)
+            {
+                return null;
+            }
+
+            batchId = group.BatchId;
+            if (cache is not null && groupId != Guid.Empty && batchId.Value != Guid.Empty)
+            {
+                await cache.SetAsync<Guid?>(
+                    DefenseCouncilCacheKeys.GroupBatchMap(groupId),
+                    batchId.Value,
+                    DefenseCouncilCacheKeys.GroupBatchMapTtl,
+                    ct);
+            }
+        }
+
+        var rows = await LoadBaseRowsAsync(batchId.Value, normalizedPhase, ct);
         return rows.FirstOrDefault(r => r.ListItem.GroupId == groupId)?.Detail;
     }
 

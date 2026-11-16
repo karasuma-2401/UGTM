@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.Identity.Contracts.Authorization;
 
@@ -26,7 +28,11 @@ public sealed record GradingCriterionDto(
     string? Elo = null);
 public sealed record GradingRubricDto(Guid BatchId, bool Locked, IReadOnlyList<GradingCriterionDto> Criteria);
 
-public sealed class GradingRubricManager(DefenseCouncilDbContext db, IKltnBatchReader batches, ICurrentUser user)
+public sealed class GradingRubricManager(
+    DefenseCouncilDbContext db,
+    IKltnBatchReader batches,
+    ICurrentUser user,
+    ICacheService? cache = null)
 {
     private static readonly Error Forbidden = Error.Forbidden("GradingRubric.Forbidden", "Không có quyền quản lý barem của đợt.");
     private static readonly Error Invalid = Error.Validation("GradingRubric.Invalid", "Barem cần 1–100 tiêu chí, mã duy nhất, điểm dương tối đa hai chữ số thập phân và tổng bằng 10.");
@@ -37,11 +43,30 @@ public sealed class GradingRubricManager(DefenseCouncilDbContext db, IKltnBatchR
     {
         if (!CanRead()) return Result.Failure<GradingRubricDto>(Forbidden);
         if (batchId == Guid.Empty || !await batches.ExistsAsync(batchId, token)) return Result.Failure<GradingRubricDto>(NotFound);
+
+        string? cacheKey = null;
+        if (cache is not null)
+        {
+            var batchVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(batchId), token);
+            cacheKey = DefenseCouncilCacheKeys.GradingRubric(batchId, batchVer);
+            var cached = await cache.GetAsync<GradingRubricDto>(cacheKey, token);
+            if (cached is not null)
+            {
+                return Result.Success(cached);
+            }
+        }
+
         // Read both the lock flag and criteria under the same lock as writers.
         await using var transaction = await db.Database.BeginTransactionAsync(token);
         await GradingRubricLock.AcquireAsync(db, batchId, token);
         var result = await ReadAsync(batchId, token);
         await transaction.CommitAsync(token);
+
+        if (cache is not null && cacheKey is not null)
+        {
+            await cache.SetAsync(cacheKey, result, DefenseCouncilCacheKeys.GradingRubricTtl, token);
+        }
+
         return Result.Success(result);
     }
 
@@ -84,6 +109,7 @@ public sealed class GradingRubricManager(DefenseCouncilDbContext db, IKltnBatchR
         db.GradingCriterias.AddRange(criteria);
         await db.SaveChangesAsync(token);
         await transaction.CommitAsync(token);
+        await DefenseCouncilCacheKeys.InvalidateBatchAsync(cache, batchId, token);
         return Result.Success(ToDto(batchId, false, criteria));
     }
 

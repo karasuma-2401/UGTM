@@ -1,6 +1,8 @@
 using System.Text.Json;
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.ScoreSummaries;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
@@ -16,7 +18,8 @@ public sealed record ScorePublicationFailure(Guid GroupId, string Code);
 public sealed record ScorePublicationResult(ScorePublicationDto? Data, Error? Error, IReadOnlyList<ScorePublicationFailure>? Failures = null);
 
 public sealed class PublishScoreSummaryHandler(IScoreSummaryStore store, ScoreSummaryAccess access, ScoreSummaryInputLoader inputs,
-    ScoreSummaryResolver resolver, IScoreSummaryWorkflowTransactionCoordinator coordinator, IDefenseCouncilAuditOutbox audit, TimeProvider clock)
+    ScoreSummaryResolver resolver, IScoreSummaryWorkflowTransactionCoordinator coordinator, IDefenseCouncilAuditOutbox audit, TimeProvider clock,
+    ICacheService? cache = null)
 {
     public Task<Error?> AuthorizeAsync(CancellationToken token) => access.AuthorizeAsync(ScoreSummaryAccess.Publish, false, token);
 
@@ -34,7 +37,7 @@ public sealed class PublishScoreSummaryHandler(IScoreSummaryStore store, ScoreSu
             => ScoreSummaryTransactionResult<ScorePublicationResult>.Abort(new(null, error, failures));
         try
         {
-            return await coordinator.ExecuteWithPostSaveAsync(async ct =>
+            var outcome = await coordinator.ExecuteWithPostSaveAsync(async ct =>
             {
                 await store.KeyLockAsync(access.ActorId, operation, command.Key, ct);
                 if (await AuthorizeAsync(ct) is { } lost) return Abort(lost);
@@ -75,6 +78,13 @@ public sealed class PublishScoreSummaryHandler(IScoreSummaryStore store, ScoreSu
                     new { command.BatchId, ActorId = access.ActorId, Selections = selections.Select(s => new { s.GroupId, s.ExpectedSummaryVersion }).ToArray() }), now);
                 return Task.FromResult(result);
             }, token);
+
+            if (outcome.Error is null && outcome.Data is not null)
+            {
+                await DefenseCouncilCacheKeys.InvalidateBatchAsync(cache, command.BatchId, token);
+            }
+
+            return outcome;
         }
         catch (DefenseCouncilPersistenceException) { return new(null, ScoreSummaryErrors.Conflict("ConcurrencyConflict")); }
     }
