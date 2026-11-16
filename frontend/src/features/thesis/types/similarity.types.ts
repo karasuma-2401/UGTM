@@ -54,9 +54,27 @@ export interface SimilarityReport extends SimilarityBase {
 
 export type SimilarityResult = SimilarityReceipt | SimilarityReport;
 
+export interface AssignedCouncilStudent {
+  id: string;
+  fullName: string;
+  userCode: string | null;
+}
+
 export interface AssignedCouncilReport {
   groupId: string;
   finalReportId: string;
   versionNo: number;
   topicTitle: string;
+  topicTitleEn?: string | null;
+  batchId?: string | null;
+  students?: AssignedCouncilStudent[] | null;
+  submittedAt?: string | null;
+  scanStatus?: string | null;
+  similarityCoverage?: number | null;
+  maxRerankerScore?: number | null;
+  citedFindings?: number;
+  uncitedFindings?: number;
+  suspectedFindings?: number;
+  totalFindings?: number;
+  scanCompletedAt?: string | null;
 }
