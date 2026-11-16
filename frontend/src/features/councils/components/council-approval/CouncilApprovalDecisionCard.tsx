@@ -1,54 +1,155 @@
 import { useRef } from 'react';
-import { Card } from '@/components/ui/card';
+import {
+  CheckCircle2,
+  ExternalLink,
+  FileText,
+  ShieldAlert,
+  UploadCloud,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FileText, UploadCloud, CheckCircle2 } from 'lucide-react';
-import type { CouncilDraftItemDto } from '../../types/councilApproval.types';
+import { DatePicker } from '@/components/ui/calendar';
+import { Input } from '@/components/ui/input';
+import type {
+  CouncilDraftItemDto,
+  CouncilScheduleResponseDto,
+} from '../../types/councilApproval.types';
+import {
+  formatViDate,
+  formatViDateTime,
+  type CouncilReadinessResult,
+} from '../../utils/councilApprovalReadiness';
 
 interface CouncilApprovalDecisionCardProps {
   selectedCouncil: CouncilDraftItemDto | null;
+  readiness: CouncilReadinessResult | null;
+  schedule?: CouncilScheduleResponseDto;
   selectedFile: File | null;
   onFileSelect: (file: File | null) => void;
-  feedback: string;
-  onFeedbackChange: (val: string) => void;
+  decisionFileUrl: string;
+  onDecisionFileUrlChange: (val: string) => void;
+  fileError?: string | null;
   decisionNumber: string;
   onDecisionNumberChange: (val: string) => void;
-  onApprove: () => void;
+  signedDate: string;
+  onSignedDateChange: (val: string) => void;
+  onRequestApprove: () => void;
   isApproving: boolean;
   canApprove: boolean;
 }
 
+function isSafeHttpUrl(value?: string | null): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function CouncilApprovalDecisionCard({
   selectedCouncil,
+  readiness,
+  schedule,
   selectedFile,
   onFileSelect,
-  feedback,
-  onFeedbackChange,
+  decisionFileUrl,
+  onDecisionFileUrlChange,
+  fileError,
   decisionNumber,
   onDecisionNumberChange,
-  onApprove,
+  signedDate,
+  onSignedDateChange,
+  onRequestApprove,
   isApproving,
   canApprove,
 }: CouncilApprovalDecisionCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  if (!selectedCouncil) {
+    return null;
+  }
+
   const isAlreadyApproved =
-    selectedCouncil?.status === 'Active' || selectedCouncil?.status === 'Completed';
-  const displayFileName =
-    selectedFile?.name || selectedCouncil?.decisionFileUrl || null;
+    selectedCouncil.status === 'Active' || selectedCouncil.status === 'Completed';
+
+  if (isAlreadyApproved) {
+    const fileValue = selectedCouncil.decisionFileUrl;
+    const displayDecisionNumber =
+      selectedCouncil.decisionNumber || schedule?.decisionNumber || 'Chưa cập nhật';
+    const displaySignedDate = selectedCouncil.signedDate || schedule?.signedDate;
+    const hasLink = isSafeHttpUrl(fileValue);
+
+    return (
+      <div className="p-5 bg-surface-subtle/30 space-y-3">
+        <div className="flex items-center gap-2 text-xs font-semibold text-tone-success-text">
+          <CheckCircle2 className="size-4 text-tone-success-icon shrink-0" />
+          <span>
+            {selectedCouncil.status === 'Completed'
+              ? 'Quyết định đã ban hành · Đã hoàn thành bảo vệ'
+              : 'Quyết định thành lập Hội đồng đã được ban hành'}
+          </span>
+        </div>
+
+        <dl className="grid grid-cols-2 gap-3 rounded-xl border border-tone-success-border bg-tone-success-bg/40 p-3.5 text-xs">
+          <div>
+            <dt className="text-[11px] text-ink-muted">Số quyết định</dt>
+            <dd className="font-semibold text-ink-heading tabular-nums mt-0.5">
+              {displayDecisionNumber}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[11px] text-ink-muted">Ngày ký</dt>
+            <dd className="font-semibold text-ink-heading tabular-nums mt-0.5">
+              {formatViDate(displaySignedDate)}
+            </dd>
+          </div>
+          {selectedCouncil.approvedAt && (
+            <div className="col-span-2">
+              <dt className="text-[11px] text-ink-muted">Thời điểm phê duyệt</dt>
+              <dd className="font-medium text-ink-body tabular-nums mt-0.5">
+                {formatViDateTime(selectedCouncil.approvedAt)}
+              </dd>
+            </div>
+          )}
+          <div className="col-span-2">
+            <dt className="text-[11px] text-ink-muted">Tệp quyết định</dt>
+            <dd className="mt-0.5">
+              {fileValue ? (
+                hasLink ? (
+                  <a
+                    href={fileValue}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 font-medium text-primary hover:underline break-all"
+                  >
+                    <FileText className="size-3.5 shrink-0" />
+                    <span>{fileValue}</span>
+                    <ExternalLink className="size-3 shrink-0" />
+                  </a>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 font-medium text-ink-heading break-all">
+                    <FileText className="size-3.5 text-tone-info-icon shrink-0" />
+                    {fileValue}
+                  </span>
+                )
+              ) : (
+                <span className="text-ink-subtle">Chưa đính kèm tệp quyết định</span>
+              )}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    );
+  }
+
+  const isReady = Boolean(readiness?.isReady);
+  const canSubmit = canApprove && isReady && Boolean(decisionNumber.trim()) && !fileError && !isApproving;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        alert('Vui lòng chỉ tải lên tệp định dạng PDF.');
-        return;
-      }
-      if (file.size > 20 * 1024 * 1024) {
-        alert('Kích thước tệp vượt quá 20MB.');
-        return;
-      }
-      onFileSelect(file);
-    }
+    const file = e.target.files?.[0] ?? null;
+    onFileSelect(file);
   };
 
   const handleClearFile = () => {
@@ -58,154 +159,164 @@ export function CouncilApprovalDecisionCard({
     }
   };
 
-  const canSubmit =
-    Boolean(selectedCouncil) &&
-    !isAlreadyApproved &&
-    canApprove &&
-    !isApproving;
-
   return (
-    <Card className="p-6 bg-surface-card border-line shadow-xs rounded-xl space-y-6">
-      <h2 className="text-base font-bold text-ink-primary">
-        Quyết định và nhận xét
-      </h2>
+    <div className="p-5 space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-ink-heading">
+          Ban hành quyết định thành lập
+        </h3>
+        <span className="text-[11px] text-ink-subtle">Bắt buộc có *</span>
+      </div>
 
-      {!selectedCouncil ? (
-        <div className="py-8 text-center text-xs text-ink-subtle">
-          Vui lòng chọn một dự thảo Hội đồng từ danh sách để thẩm định.
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label
+            htmlFor="decision-number-input"
+            className="block text-xs font-medium text-ink-secondary"
+          >
+            Số quyết định <span className="text-tone-danger-icon">*</span>
+          </label>
+          <Input
+            id="decision-number-input"
+            type="text"
+            value={decisionNumber}
+            onChange={(e) => onDecisionNumberChange(e.target.value)}
+            maxLength={100}
+            placeholder="VD: 123/QĐ-ĐHCNTT"
+            className="h-9 text-xs rounded-xl bg-surface-subtle/50 border-line-input tabular-nums focus-visible:bg-surface-card"
+          />
         </div>
-      ) : (
-        <div className="space-y-5">
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-semibold text-ink-secondary">
-                Tệp quyết định
-              </span>
-              <span className="text-[11px] text-ink-subtle">PDF ≤20 MB</span>
-            </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/pdf"
-              onChange={handleFileChange}
-              className="hidden"
-            />
+        <div className="space-y-1.5">
+          <label
+            htmlFor="decision-signed-date"
+            className="block text-xs font-medium text-ink-secondary"
+          >
+            Ngày ký quyết định
+          </label>
+          <DatePicker
+            id="decision-signed-date"
+            value={signedDate}
+            onValueChange={onSignedDateChange}
+            aria-label="Ngày ký quyết định"
+            className="h-9 text-xs rounded-xl"
+          />
+        </div>
+      </div>
 
-            {displayFileName ? (
-              <div className="p-4 bg-surface-subtle border border-line rounded-xl flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="size-10 rounded-lg bg-tone-info-bg text-tone-info-icon flex items-center justify-center shrink-0">
-                    <FileText className="size-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-ink-heading truncate">
-                      {displayFileName}
-                    </p>
-                    <p className="text-[11px] text-ink-subtle">
-                      {isAlreadyApproved
-                        ? 'Đã ban hành quyết định'
-                        : selectedFile
-                          ? 'Tệp đã chọn · Chưa gửi'
-                          : 'Tệp mẫu dự thảo'}
-                    </p>
-                  </div>
-                </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <label
+            htmlFor="decision-file-url-input"
+            className="text-xs font-medium text-ink-secondary"
+          >
+            Tệp / Đường dẫn quyết định (PDF)
+          </label>
+          <span className="text-[11px] text-ink-subtle">PDF ≤ 20 MB hoặc URL</span>
+        </div>
 
-                {!isAlreadyApproved && (
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-2.5 py-1 text-xs font-medium text-ink-secondary bg-surface-elevated border border-line-input rounded-md hover:bg-surface-hover cursor-pointer"
-                    >
-                      Thay tệp
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleClearFile}
-                      className="px-2.5 py-1 text-xs font-medium text-tone-danger-icon bg-surface-elevated border border-tone-danger-border rounded-md hover:bg-tone-danger-bg cursor-pointer"
-                    >
-                      Xóa tệp
-                    </button>
-                  </div>
-                )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf"
+          onChange={handleFileChange}
+          className="hidden"
+        />
+
+        {selectedFile ? (
+          <div className="flex items-center justify-between gap-2.5 rounded-xl border border-line bg-surface-subtle/60 px-3 py-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="size-8 rounded-lg bg-tone-info-bg text-tone-info-icon flex items-center justify-center shrink-0">
+                <FileText className="size-4" />
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isAlreadyApproved}
-                className="w-full p-6 border-2 border-dashed border-line-input rounded-xl flex flex-col items-center justify-center gap-2 text-ink-muted hover:border-blue-400 hover:text-tone-info-icon transition-colors cursor-pointer bg-surface-subtle/50"
-              >
-                <UploadCloud className="size-6 text-ink-subtle" />
-                <span className="text-xs font-medium">
-                  Nhấp để tải lên tệp quyết định PDF (tối đa 20MB)
-                </span>
-              </button>
-            )}
-          </div>
-
-          <div>
-            <label
-              htmlFor="decision-number-input"
-              className="block text-xs font-semibold text-ink-secondary mb-1.5"
-            >
-              Số quyết định
-            </label>
-            <input
-              id="decision-number-input"
-              type="text"
-              value={decisionNumber}
-              onChange={(e) => onDecisionNumberChange(e.target.value)}
-              disabled={isAlreadyApproved}
-              placeholder="VD: QD-HD01 hoặc 123/QĐ-ĐHCNTT"
-              className="w-full h-10 px-3 py-2 bg-surface-subtle/50 border border-line-input rounded-lg text-xs text-ink-heading placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-surface-card disabled:bg-surface-muted disabled:cursor-not-allowed"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="feedback-textarea"
-              className="block text-xs font-semibold text-ink-secondary mb-1.5"
-            >
-              Nhận xét
-            </label>
-            <textarea
-              id="feedback-textarea"
-              rows={3}
-              value={feedback}
-              onChange={(e) => onFeedbackChange(e.target.value)}
-              disabled={isAlreadyApproved}
-              placeholder="Nhập nhận xét hoặc lưu ý cho Khoa..."
-              className="w-full p-3 bg-surface-subtle/50 border border-line-input rounded-lg text-xs text-ink-heading placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-surface-card resize-none disabled:bg-surface-muted disabled:cursor-not-allowed"
-            />
-          </div>
-
-          {isAlreadyApproved ? (
-            <div className="p-3 bg-tone-success-bg border border-tone-success-border rounded-lg flex items-center gap-2 text-xs text-tone-success-strong font-medium">
-              <CheckCircle2 className="size-4 text-tone-success-icon shrink-0" />
-              <span>
-                {selectedCouncil?.status === 'Completed'
-                  ? 'Hội đồng này đã phê duyệt và hoàn thành bảo vệ.'
-                  : 'Hội đồng này đã được phê duyệt quyết định thành lập.'}
-              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-ink-heading truncate">
+                  {selectedFile.name}
+                </p>
+                <p className="text-[11px] text-ink-muted tabular-nums">
+                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB · Lưu tên tệp tham chiếu
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-1.5 shrink-0">
               <Button
                 type="button"
-                onClick={onApprove}
-                disabled={!canSubmit}
-                isLoading={isApproving}
-                className="px-6 h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-xs transition-colors shadow-xs"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="h-7 px-2.5 text-[11px]"
               >
-                Phê duyệt
+                Đổi tệp
               </Button>
+              <button
+                type="button"
+                onClick={handleClearFile}
+                aria-label="Xóa tệp đã chọn"
+                className="p-1 rounded-md text-ink-subtle hover:bg-surface-muted hover:text-tone-danger-icon cursor-pointer"
+              >
+                <X className="size-3.5" />
+              </button>
             </div>
-          )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Input
+              id="decision-file-url-input"
+              type="text"
+              value={decisionFileUrl}
+              onChange={(e) => onDecisionFileUrlChange(e.target.value)}
+              maxLength={500}
+              placeholder="Nhập URL tệp PDF hoặc chọn tệp từ máy..."
+              className="h-9 text-xs rounded-xl bg-surface-subtle/50 border-line-input flex-1 min-w-0 focus-visible:bg-surface-card"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-9 px-3 text-xs rounded-xl shrink-0"
+            >
+              <UploadCloud className="size-3.5 mr-1.5" />
+              Chọn PDF
+            </Button>
+          </div>
+        )}
+
+        {fileError && (
+          <p role="alert" className="text-xs text-tone-danger-text">
+            {fileError}
+          </p>
+        )}
+      </div>
+
+      {!canApprove && (
+        <div className="rounded-xl border border-tone-warning-border bg-tone-warning-bg/70 px-3 py-2.5 flex items-start gap-2 text-xs text-tone-warning-strong">
+          <ShieldAlert className="size-4 text-tone-warning-icon shrink-0 mt-0.5" />
+          <span>
+            Chỉ tài khoản Phòng Đào tạo hoặc Quản trị viên mới có quyền phê duyệt quyết định thành lập Hội đồng.
+          </span>
         </div>
       )}
-    </Card>
+
+      {canApprove && !isReady && readiness && readiness.blockingReasons.length > 0 && (
+        <div className="rounded-xl border border-tone-warning-border bg-tone-warning-bg/60 px-3 py-2.5 text-xs text-tone-warning-strong">
+          <span className="font-medium">Chưa đủ điều kiện phê duyệt:</span>{' '}
+          {readiness.blockingReasons[0]}
+        </div>
+      )}
+
+      <div className="pt-1 flex items-center justify-end">
+        <Button
+          type="button"
+          onClick={onRequestApprove}
+          disabled={!canSubmit}
+          isLoading={isApproving}
+          loadingText="Đang phê duyệt..."
+          className="w-full sm:w-auto h-10 px-5 rounded-xl bg-brand-solid hover:bg-brand-solid-hover text-white font-semibold text-xs shadow-xs"
+        >
+          Phê duyệt hội đồng
+        </Button>
+      </div>
+    </div>
   );
 }
