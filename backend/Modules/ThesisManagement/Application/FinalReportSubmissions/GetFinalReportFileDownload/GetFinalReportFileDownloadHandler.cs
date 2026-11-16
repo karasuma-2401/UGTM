@@ -44,7 +44,7 @@ public sealed class GetFinalReportFileDownloadHandler(
         {
             return Result.Failure<SubmissionFileDownloadDto>(FinalReportSubmissionErrors.FileNotFound);
         }
-        if (!await accessChecker.CanReadAsync(group, cancellationToken))
+        if (!await accessChecker.CanReadAsync(group, cancellationToken, report.VersionType))
         {
             var access = reviewerWorkflow is null ? null : await reviewerWorkflow.GetActiveReportAccessAsync(currentUser.UserId.Value, file.Id, cancellationToken);
             if (access is null || access.Binding.GroupId != group.Id || access.Binding.FinalReportId != report.Id

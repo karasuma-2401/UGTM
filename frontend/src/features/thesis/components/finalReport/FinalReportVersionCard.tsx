@@ -1,5 +1,3 @@
-import { MessageSquareQuote } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
 import type { FinalReportHistoryItemDto } from '../../types/finalReport.types';
 import { finalReportApi } from '../../services/finalReportApi';
@@ -10,7 +8,7 @@ interface FinalReportVersionCardProps {
   currentStatus: string;
   currentVersionNo?: number;
   onDownload: (fileId: string) => void;
-  onOpenFeedback?: () => void;
+  hasReviewerFeedback?: boolean;
   isLoading?: boolean;
 }
 
@@ -26,11 +24,13 @@ export function FinalReportVersionCard({
   currentStatus,
   currentVersionNo,
   onDownload,
-  onOpenFeedback,
+  hasReviewerFeedback = false,
   isLoading = false,
 }: FinalReportVersionCardProps) {
   const highestNo = currentVersionNo || versions[versions.length - 1]?.versionNo;
-  const latestStatusMeta = statusToneMap[currentStatus] || {
+  const latestStatusMeta = hasReviewerFeedback && currentStatus === 'UnderEvaluation'
+    ? { tone: 'neutral' as StatusTone, label: 'Bản gốc đã khóa' }
+    : statusToneMap[currentStatus] || {
     tone: 'neutral' as StatusTone,
     label: 'Đã nộp',
   };
@@ -66,14 +66,6 @@ export function FinalReportVersionCard({
       isLoading={isLoading}
       emptyTitle="Chưa có phiên bản báo cáo cuối kỳ"
       emptyDescription="Sau khi hoàn thành Cổng 2 (Báo cáo giữa kỳ), tải lên báo cáo toàn văn để GVHD chấm và hệ thống đối chiếu tương đồng."
-      headerAction={
-        onOpenFeedback ? (
-          <Button type="button" variant="outline" size="sm" onClick={onOpenFeedback}>
-            <MessageSquareQuote className="size-3.5 mr-1.5 text-[#2054a5]" />
-            Xem góp ý GVPB
-          </Button>
-        ) : undefined
-      }
     />
   );
 }

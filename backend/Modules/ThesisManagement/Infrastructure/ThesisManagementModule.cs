@@ -132,6 +132,7 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<IThesisUploadCleanup>(provider => provider.GetRequiredService<ThesisUploadLifecycle>());
         services.AddHostedService<ThesisUploadCleanupWorker>();
         services.AddScoped<SubmitFinalReportHandler>();
+        services.AddScoped<GetRevisedFinalReportEligibilityHandler>();
         services.AddScoped<FinalReportReadAccessChecker>();
         services.AddScoped<GetFinalReportHistoryHandler>();
         services.AddScoped<GetFinalReportFileDownloadHandler>();

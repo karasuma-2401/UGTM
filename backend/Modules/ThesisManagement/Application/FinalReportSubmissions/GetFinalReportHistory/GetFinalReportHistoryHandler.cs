@@ -37,13 +37,13 @@ public sealed class GetFinalReportHistoryHandler(
         {
             return Result.Failure<FinalReportHistoryDto>(FinalReportSubmissionErrors.GroupNotFound);
         }
-        if (!await accessChecker.CanReadAsync(group, cancellationToken))
+        if (!await accessChecker.CanReadAsync(group, cancellationToken, query.VersionType))
         {
             return Result.Failure<FinalReportHistoryDto>(FinalReportSubmissionErrors.ReadAccessDenied);
         }
 
         var report = await finalReportRepository.GetByGroupAndVersionTypeAsync(
-            group.Id, FinalReportVersionType.InitialFinal, cancellationToken);
+            group.Id, query.VersionType, cancellationToken);
         if (report is null)
         {
             return Result.Failure<FinalReportHistoryDto>(FinalReportSubmissionErrors.ReportNotFound);
