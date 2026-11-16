@@ -97,7 +97,7 @@ export function AdvisorGroupPlanCard({
 
   return (
     <aside className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs">
-      {/* Group header & progress */}
+      {/* Group header và progress */}
       <div className="space-y-4 border-b border-slate-100 p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="inline-flex items-center rounded-md border border-slate-200/90 bg-slate-50 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700">
@@ -284,7 +284,7 @@ export function AdvisorGroupPlanCard({
               >
                 {selectedMilestone.report?.currentStatus === 'Submitted'
                   ? 'Đánh giá báo cáo'
-                  : 'Xem chi tiết & lịch sử nộp'}
+                  : 'Xem chi tiết và lịch sử nộp'}
               </Button>
             )}
           </div>

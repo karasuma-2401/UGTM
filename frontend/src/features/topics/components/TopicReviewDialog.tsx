@@ -245,7 +245,7 @@ export function TopicReviewDialog({
   return (
     <>
       <Dialog
-        title="Chi tiết & thẩm định đề tài"
+        title="Chi tiết và thẩm định đề tài"
         hideHeader
         onClose={handleClose}
         busy={busy}
@@ -255,7 +255,7 @@ export function TopicReviewDialog({
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2.5">
               <h2 className="text-base font-semibold tracking-tight text-slate-900">
-                Chi tiết & thẩm định đề tài
+                Chi tiết và thẩm định đề tài
               </h2>
               {topic && topic.status !== 'Draft' && <TopicStatusBadge status={topic.status} />}
             </div>

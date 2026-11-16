@@ -139,7 +139,7 @@ export const ScoreConfigPage: React.FC = () => {
                 isLoading={actions.isPublishing}
                 leftIcon={<Send className="size-4" />}
               >
-                {form.isDirty ? 'Lưu & Công bố' : 'Công bố'}
+                {form.isDirty ? 'Lưu và Công bố' : 'Công bố'}
               </Button>
             )}
 

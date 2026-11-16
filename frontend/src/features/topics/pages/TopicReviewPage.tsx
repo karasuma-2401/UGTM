@@ -219,7 +219,7 @@ export function TopicReviewPage() {
     <div className="min-w-0 space-y-5 pb-24">
       <PageHeader
         accent
-        title="Thẩm định & công bố đề tài"
+        title="Thẩm định và công bố đề tài"
         description="Rà soát đề cương do giảng viên đề xuất, gửi góp ý chỉnh sửa hoặc công bố chính thức theo đợt."
       >
         <Button

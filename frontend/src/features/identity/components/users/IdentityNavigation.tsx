@@ -12,7 +12,7 @@ export function IdentityNavigation() {
   const { canReadUsers, canManageRoles } = getIdentityAccess(hasPermission);
   const tabs = [
     { path: 'students', label: 'Sinh viên', icon: GraduationCap, visible: canReadUsers },
-    { path: 'staff', label: 'Giảng viên & cán bộ', icon: UsersRound, visible: canReadUsers },
+    { path: 'staff', label: 'Giảng viên và cán bộ', icon: UsersRound, visible: canReadUsers },
     { path: 'permissions', label: 'Phân quyền', icon: ShieldCheck, visible: canManageRoles },
   ];
 

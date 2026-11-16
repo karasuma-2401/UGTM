@@ -6,7 +6,6 @@ import {
   Clock3,
   FileCheck2,
   FilePenLine,
-  Gavel,
   Layers,
   ListFilter,
   Lock,
@@ -545,7 +544,6 @@ export function CouncilGradingPage() {
         >
           <ListCardHeader
             title="Nhóm được phân công"
-            icon={<Gavel />}
             description={
               groups.length > 0
                 ? `${groups[0].councilCode} · Thành viên: ${groups[0].memberLabel}`

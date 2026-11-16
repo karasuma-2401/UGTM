@@ -55,7 +55,7 @@ export const navigationSections: NavSectionConfig[] = [
   },
   {
     id: 'planning',
-    title: 'Tổ chức & kế hoạch',
+    title: 'Tổ chức và kế hoạch',
     items: [
       {
         label: 'Kế hoạch đợt',
@@ -71,7 +71,7 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Admin'],
       },
       {
-        label: 'Danh sách Sinh viên & Giảng viên',
+        label: 'Danh sách Sinh viên và Giảng viên',
         path: '/academic/roster',
         icon: UsersRound,
         roles: ['Admin'],
@@ -80,7 +80,7 @@ export const navigationSections: NavSectionConfig[] = [
   },
   {
     id: 'topics',
-    title: 'Đề tài & hướng dẫn',
+    title: 'Đề tài và hướng dẫn',
     items: [
       {
         label: 'Đề tài hướng dẫn',
@@ -89,7 +89,7 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Lecturer', 'Admin'],
       },
       {
-        label: 'Đề tài & đăng ký',
+        label: 'Đề tài và đăng ký',
         path: '/topics/catalog',
         icon: BookOpen,
         roles: ['Student', 'Admin'],
@@ -116,7 +116,7 @@ export const navigationSections: NavSectionConfig[] = [
   },
   {
     id: 'progress',
-    title: 'Tiến độ & đánh giá',
+    title: 'Tiến độ và đánh giá',
     items: [
       {
         label: 'Chấm điểm khóa luận',
@@ -137,7 +137,7 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Lecturer', 'Admin'],
       },
       {
-        label: 'Báo cáo & tiến độ',
+        label: 'Báo cáo và tiến độ',
         path: '/thesis/milestones',
         activePaths: ['/thesis/proposal', '/thesis/midterm', '/thesis/final-report'],
         icon: FileText,
@@ -156,7 +156,7 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Faculty', 'Admin', 'AcademicAffairs'],
       },
       {
-        label: 'Báo cáo được phân công',
+        label: 'Báo cáo tương đồng',
         path: '/councils/similarity-reports',
         icon: FileText,
         roles: ['CouncilMember'],
@@ -211,7 +211,7 @@ export const navigationSections: NavSectionConfig[] = [
     roles: ['Admin'],
     items: [
       {
-        label: 'Tài khoản & Phân quyền',
+        label: 'Tài khoản và Phân quyền',
         path: '/modules/identity',
         icon: ShieldCheck,
       },

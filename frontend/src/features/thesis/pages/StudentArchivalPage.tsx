@@ -222,7 +222,7 @@ export const StudentArchivalPage: React.FC = () => {
       subtitle: step1Done
         ? `Đã nộp v${submission?.currentVersionNo ?? 1}`
         : submissionStatus === 'NeedRevision'
-          ? 'Cần chỉnh sửa & nộp lại'
+          ? 'Cần chỉnh sửa và nộp lại'
           : 'Bạn đang thực hiện',
       active: !step1Done,
       done: step1Done,

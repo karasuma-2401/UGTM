@@ -95,7 +95,7 @@ function renderStudentLayout(pathname) {
   };
 }
 
-test('Báo cáo & tiến độ defaults to /thesis/milestones and highlights sidebar on all 4 student sub-tabs', () => {
+test('Báo cáo và tiến độ defaults to /thesis/milestones and highlights sidebar on all 4 student sub-tabs', () => {
   for (const route of [
     '/thesis/milestones',
     '/thesis/proposal',
@@ -105,7 +105,7 @@ test('Báo cáo & tiến độ defaults to /thesis/milestones and highlights sid
     const { markup } = renderStudentLayout(route);
     const sidebarMarkup = markup.match(/<aside[\s\S]*?<\/aside>/)?.[0] ?? '';
     const progressAnchor =
-      sidebarMarkup.match(/<a[^>]*aria-label="Báo cáo &amp; tiến độ"[^>]*>/)?.[0] ?? '';
+      sidebarMarkup.match(/<a[^>]*aria-label="Báo cáo và tiến độ"[^>]*>/)?.[0] ?? '';
 
     assert.match(progressAnchor, /href="\/thesis\/milestones"/);
     assert.match(progressAnchor, /aria-current="page"/);

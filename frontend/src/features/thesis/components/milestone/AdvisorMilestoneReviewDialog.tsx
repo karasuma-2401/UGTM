@@ -240,10 +240,10 @@ function ReviewDialogBody({
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.1fr)_minmax(400px,0.95fr)] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-slate-100 lg:overflow-hidden">
-        {/* Left pane: Deliverable spec & submitted student artifact (flat surface hierarchy) */}
+        {/* Left pane: Deliverable spec và submitted student artifact (flat surface hierarchy) */}
         <div className="min-h-0 divide-y divide-slate-100 bg-white lg:overflow-y-auto">
           <section className="space-y-2.5 px-5 py-5 sm:px-6">
-            <h3 className="text-xs font-semibold text-slate-600">Sản phẩm & yêu cầu cần nộp</h3>
+            <h3 className="text-xs font-semibold text-slate-600">Sản phẩm và yêu cầu cần nộp</h3>
             <div className="rounded-xl bg-slate-50/80 px-4 py-3.5 text-sm leading-relaxed text-slate-700">
               <RichTextContent
                 content={milestone.description}
@@ -431,7 +431,7 @@ function ReviewDialogBody({
               </InlineAlert>
             )}
 
-            {/* Schedule & submission contrast bar */}
+            {/* Schedule và submission contrast bar */}
             <div className="grid grid-cols-2 gap-3 rounded-xl border border-slate-200/80 bg-white p-3.5 text-xs">
               <div>
                 <p className="text-slate-500">Hạn nộp quy định</p>
@@ -575,7 +575,7 @@ function ReviewDialogBody({
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
                       <MessageSquareText className="size-3.5 text-slate-400" aria-hidden="true" />
-                      <span>Lịch sử thẩm định & nhận xét</span>
+                      <span>Lịch sử thẩm định và nhận xét</span>
                     </h3>
                     <span className="text-xs tabular-nums text-slate-500">
                       {reviewedVersions.length} lượt chấm

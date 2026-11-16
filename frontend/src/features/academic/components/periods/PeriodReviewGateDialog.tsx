@@ -66,7 +66,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fluent animation & feedback states
+  // Fluent animation và feedback states
   const [justApplied, setJustApplied] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
 
@@ -337,7 +337,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
 
             <div>
               <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
-                <span>2. Hạn Khoa / GV phản hồi & thẩm định</span>
+                <span>2. Hạn Khoa / GV phản hồi và thẩm định</span>
                 <span className="text-[11px] font-normal text-slate-400">Trước hạn chót 2 ngày</span>
               </label>
               <DatePicker
@@ -356,7 +356,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
 
             <div>
               <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
-                <span>3. Hạn chót đóng cổng & nộp hoàn thiện</span>
+                <span>3. Hạn chót đóng cổng và nộp hoàn thiện</span>
                 <span className="text-[11px] font-normal text-primary">Mốc deadline đợt</span>
               </label>
               <DatePicker

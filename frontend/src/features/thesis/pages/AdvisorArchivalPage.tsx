@@ -144,7 +144,7 @@ export const AdvisorArchivalPage: React.FC = () => {
       },
       {
         id: 'topicAndStudents',
-        header: 'Đề tài & Sinh viên',
+        header: 'Đề tài và Sinh viên',
         sortKey: 'topicTitle',
         cell: (row) => (
           <div className="min-w-0 space-y-0.5">
@@ -469,7 +469,7 @@ export const AdvisorArchivalPage: React.FC = () => {
               className="h-8 rounded-xl text-xs font-semibold shadow-xs"
               onClick={() => actions.openInspection(selectedRow.submissionId)}
             >
-              {selectedRow.status === 'Submitted' ? 'Kiểm tra & Xác nhận' : 'Xem hồ sơ'}
+              {selectedRow.status === 'Submitted' ? 'Kiểm tra và Xác nhận' : 'Xem hồ sơ'}
             </Button>
             <Button
               type="button"

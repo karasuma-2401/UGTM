@@ -152,7 +152,7 @@ export function ForgotPasswordPage() {
           loadingText="Đang gửi mã OTP…"
           rightIcon={<ArrowRight size={16} />}
         >
-          Gửi mã xác thực & Tiếp tục
+          Gửi mã xác thực và Tiếp tục
         </Button>
       </form>
       <p className="auth-bottom">

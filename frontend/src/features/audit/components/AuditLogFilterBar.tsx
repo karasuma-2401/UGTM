@@ -163,7 +163,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
           />
         </div>
 
-        {/* Nút bấm Áp dụng & Đặt lại */}
+        {/* Nút bấm Áp dụng và Đặt lại */}
         <div className="flex items-center gap-2 shrink-0">
           <Button
             type="submit"
@@ -214,7 +214,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
         />
       </div>
 
-      {/* Hàng 2: Mốc thời gian nhanh (Time Presets) & Bộ chọn ngày */}
+      {/* Hàng 2: Mốc thời gian nhanh (Time Presets) và Bộ chọn ngày */}
       <div className="flex flex-wrap items-center justify-between gap-3 pt-0.5">
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <span className="text-xs font-medium text-slate-500 mr-1 flex items-center gap-1">

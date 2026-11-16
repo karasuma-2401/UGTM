@@ -77,12 +77,12 @@ function fixture({ saved = '{}', storageBlocked = false, ...options } = {}) {
     sections: [
       {
         id: 'planning',
-        title: 'Tổ chức & kế hoạch',
+        title: 'Tổ chức và kế hoạch',
         items: [{ path: '/academic/periods', label: 'Kế hoạch đợt', icon: icons.CalendarRange }],
       },
       {
         id: 'topics',
-        title: 'Đề tài & hướng dẫn',
+        title: 'Đề tài và hướng dẫn',
         items: [
           { path: '/topics/rename', label: 'Xin đổi tên đề tài', icon: icons.FilePenLine },
           { path: '/topics/rename/review', label: 'Duyệt đổi tên đề tài', icon: icons.FilePenLine },

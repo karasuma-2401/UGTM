@@ -184,7 +184,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
     },
     {
       id: 'actionTarget',
-      header: 'Thao tác & Đối tượng',
+      header: 'Thao tác và Đối tượng',
       sortKey: 'action',
       widthClassName: 'w-72',
       headerClassName: 'px-4 py-3.5',

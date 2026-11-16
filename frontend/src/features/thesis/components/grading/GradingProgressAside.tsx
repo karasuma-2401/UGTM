@@ -96,7 +96,7 @@ export interface GradingMobileDockProps {
   actions: ReactNode;
 }
 
-/** Fixed bottom bar on mobile & tablet viewports so live scores and Save/Submit stay in reach. */
+/** Fixed bottom bar on mobile và tablet viewports so live scores and Save/Submit stay in reach. */
 export function GradingMobileDock({ students, visible, actions }: GradingMobileDockProps) {
   if (!visible || students.length === 0) return null;
 

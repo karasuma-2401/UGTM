@@ -29,7 +29,7 @@ export function UserFormDialog({
   const [dirty, setDirty] = useState(false);
   const [discardAction, setDiscardAction] = useState<'close' | 'cancel' | null>(null);
   const blocker = useBlocker(dirty || isSaving);
-  const groupLabel = accountGroup === 'Student' ? 'sinh viên' : 'giảng viên & cán bộ';
+  const groupLabel = accountGroup === 'Student' ? 'sinh viên' : 'giảng viên và cán bộ';
   const title = `Tạo tài khoản ${groupLabel}`;
 
   useEffect(() => {

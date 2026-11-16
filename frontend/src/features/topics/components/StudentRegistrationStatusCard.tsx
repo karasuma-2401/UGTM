@@ -201,7 +201,7 @@ export function StudentRegistrationStatusCard({
             {
               key: 'select',
               step: 1,
-              label: 'Chọn & gửi đăng ký',
+              label: 'Chọn và gửi đăng ký',
               state: step1State,
             },
             {
@@ -213,7 +213,7 @@ export function StudentRegistrationStatusCard({
             {
               key: 'track',
               step: 3,
-              label: 'Theo dõi đề cương & tiến độ',
+              label: 'Theo dõi đề cương và tiến độ',
               state: step3State,
             },
           ].map((item) => {

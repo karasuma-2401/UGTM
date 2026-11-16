@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 interface ListCardHeaderProps {
   title: ReactNode;
-  icon: ReactNode;
+  icon?: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
   className?: string;
@@ -25,12 +25,14 @@ export function ListCardHeader({
       )}
     >
       <div className="flex min-w-0 items-center gap-3.5">
-        <span
-          aria-hidden="true"
-          className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-100/90 bg-blue-50/50 text-primary shadow-2xs [&_svg]:size-5"
-        >
-          {icon}
-        </span>
+        {icon && (
+          <span
+            aria-hidden="true"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-100/90 bg-blue-50/50 text-primary shadow-2xs [&_svg]:size-5"
+          >
+            {icon}
+          </span>
+        )}
         <div className="min-w-0 space-y-0.5">
           <CardTitle className="text-base font-semibold tracking-tight text-slate-900">{title}</CardTitle>
           {description != null && <p className="text-xs text-slate-500">{description}</p>}

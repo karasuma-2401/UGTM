@@ -176,7 +176,7 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
     },
     {
       key: 'advisor',
-      label: 'GVHD kiểm tra & xác nhận',
+      label: 'GVHD kiểm tra và xác nhận',
       state:
         inspectedRow.status === 'AdvisorConfirmed' || inspectedRow.status === 'ArchiveConfirmed'
           ? ('done' as const)

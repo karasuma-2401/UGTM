@@ -100,7 +100,7 @@ export const PeriodStagesCard: React.FC<PeriodStagesCardProps> = ({
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/70 text-xs text-slate-500">
               <th className="py-3 px-4 font-semibold text-center w-16">Thứ tự</th>
-              <th className="py-3 px-4 font-semibold">Giai đoạn & Quy trình</th>
+              <th className="py-3 px-4 font-semibold">Giai đoạn và Quy trình</th>
               <th className="py-3 px-4 font-semibold w-44 text-center">Số tuần</th>
               <th className="py-3 px-4 font-semibold">Thời gian áp dụng</th>
               <th className="py-3 px-4 font-semibold">Phụ trách</th>

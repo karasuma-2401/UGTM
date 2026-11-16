@@ -1,7 +1,15 @@
+import { CalendarRange } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/shared/auth';
 import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
+import { useAuth } from '@/shared/auth';
+
+function formatShortDateVi(dateStr?: string | null): string | null {
+  if (!dateStr) return null;
+  const parts = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr.trim());
+  if (!parts) return null;
+  return `${parts[3]}/${parts[2]}/${parts[1]}`;
+}
 
 export function CurrentAcademicBatch() {
   const { hasPermission } = useAuth();
@@ -17,11 +25,12 @@ export function CurrentAcademicBatch() {
     >
       {canRead && !query.isPending && !query.isError && currentBatches.length > 0 && (
         <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-xs font-medium text-slate-600">Đợt hiện hành</h2>
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-            <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
-            Đang mở
-          </span>
+          <h2 className="text-xs font-medium text-slate-500">Đợt hiện hành</h2>
+          {currentBatches.length > 1 && (
+            <span className="text-[11px] font-medium text-slate-500 tabular-nums">
+              {currentBatches.length} đợt
+            </span>
+          )}
         </div>
       )}
       {!canRead ? (
@@ -47,19 +56,33 @@ export function CurrentAcademicBatch() {
       ) : (
         <>
           {currentBatches.length > 1 && (
-            <p className="mb-2">Có {currentBatches.length} đợt đang diễn ra</p>
+            <p className="mb-2 text-[11px] text-slate-500">
+              Có {currentBatches.length} đợt đang diễn ra
+            </p>
           )}
-          <ul className="max-h-32 space-y-3 overflow-y-auto">
-            {currentBatches.map((batch) => (
-              <li key={batch.id} className="space-y-1">
-                <p className="break-words font-medium leading-snug text-slate-800">
-                  {batch.batchName}
-                </p>
-                <p>
-                  HK{batch.semester} - {batch.academicYear}
-                </p>
-              </li>
-            ))}
+          <ul className="max-h-32 space-y-2.5 overflow-y-auto">
+            {currentBatches.map((batch) => {
+              const startText = formatShortDateVi(batch.startDate);
+              const endText = formatShortDateVi(batch.endDate);
+              return (
+                <li key={batch.id} className="space-y-1">
+                  <p className="break-words text-[13px] font-semibold leading-snug text-slate-900">
+                    {batch.batchName}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500 tabular-nums">
+                    <CalendarRange className="size-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                    <span className="font-medium text-slate-600">
+                      HK{batch.semester} · {batch.academicYear}
+                    </span>
+                  </div>
+                  {startText && endText && (
+                    <p className="text-[11px] text-slate-400 tabular-nums pl-5">
+                      {startText} – {endText}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </>
       )}

@@ -42,7 +42,7 @@ const STATUS_DISPLAY: Record<string, { label: string; tone: StatusTone; shortSte
   NeedRevision: {
     label: 'Cần bổ sung',
     tone: 'error',
-    shortStepNote: 'Cần chỉnh sửa & nộp lại',
+    shortStepNote: 'Cần chỉnh sửa và nộp lại',
   },
   AdvisorConfirmed: {
     label: 'Chờ nghiệm thu',

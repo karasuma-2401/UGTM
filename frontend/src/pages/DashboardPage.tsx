@@ -346,7 +346,7 @@ export function DashboardPage() {
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500 truncate">
-                      Kiểm tra kết nối API & trạng thái phân hệ
+                      Kiểm tra kết nối API và trạng thái phân hệ
                     </p>
                   </div>
                   <ArrowRight className="size-4 text-slate-400 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />

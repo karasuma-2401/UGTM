@@ -85,7 +85,7 @@ export function UiTestPage() {
               <span>Giai đoạn 1</span>
             </div>
             <h1 className="text-2xl font-bold text-slate-900 mt-1">
-              UI Playground & Component Testing
+              UI Playground và Component Testing
             </h1>
             <p className="text-sm text-slate-500 mt-1">
               Trang kiểm thử trực quan các tính năng động của Button, Input và Badge.
@@ -114,7 +114,7 @@ export function UiTestPage() {
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <span>1. Button Component</span>
-              <Badge variant="info">Đầy đủ Variants & Icons</Badge>
+              <Badge variant="info">Đầy đủ Variants và Icons</Badge>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Kiểm tra icon linh hoạt (leftIcon, rightIcon, hoặc không icon), kích thước và trạng
@@ -212,7 +212,7 @@ export function UiTestPage() {
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
               <span>2. Input Component</span>
-              <Badge variant="info">Icon Prefix/Suffix & Validation</Badge>
+              <Badge variant="info">Icon Prefix/Suffix và Validation</Badge>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Hỗ trợ leftIcon, rightIcon tùy chọn, text hướng dẫn helperText và trạng thái báo lỗi
@@ -222,7 +222,7 @@ export function UiTestPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* 2.1 Basic & No Icon */}
+          {/* 2.1 Basic và No Icon */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-700">A. Input cơ bản (Không Icon)</label>
             <Input placeholder="Nhập tên đề tài khóa luận..." />
@@ -472,10 +472,10 @@ export function UiTestPage() {
               />
             </div>
 
-            {/* Custom Icon & Right Action */}
+            {/* Custom Icon và Right Action */}
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
               <span className="text-xs font-semibold text-slate-700 block">
-                2. Custom Icon & Right Action
+                2. Custom Icon và Right Action
               </span>
               <PasswordField
                 id="test-pwd-2"
@@ -497,10 +497,10 @@ export function UiTestPage() {
               />
             </div>
 
-            {/* Error & No Left Icon */}
+            {/* Error và No Left Icon */}
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
               <span className="text-xs font-semibold text-slate-700 block">
-                3. Không có Left Icon & Báo Lỗi
+                3. Không có Left Icon và Báo Lỗi
               </span>
               <PasswordField
                 id="test-pwd-3"
@@ -536,7 +536,7 @@ export function UiTestPage() {
         {/* 4.3 PasswordFields Synchronized Pair */}
         <div className="space-y-3 pt-2">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            C. Bộ đôi thiết lập & xác nhận mật khẩu (PasswordFields)
+            C. Bộ đôi thiết lập và xác nhận mật khẩu (PasswordFields)
           </h3>
           <div className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4 max-w-xl">
             <p className="text-xs text-slate-500">
@@ -559,13 +559,13 @@ export function UiTestPage() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 5. DROPDOWN BOX & COMBOBOX (Select, Combobox) */}
+      {/* 5. DROPDOWN BOX và COMBOBOX (Select, Combobox) */}
       {/* ========================================================================= */}
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>5. Dropdown Box & Combo Box</span>
+              <span>5. Dropdown Box và Combo Box</span>
               <Badge variant="info">Mới hoàn thành</Badge>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -593,7 +593,7 @@ export function UiTestPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* 5.1 Basic Select with Icon & Description */}
+          {/* 5.1 Basic Select with Icon và Description */}
           <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
             <div>
               <span className="text-xs font-semibold text-slate-700 block">
@@ -619,7 +619,7 @@ export function UiTestPage() {
                 { value: 'is', label: 'Hệ thống Thông tin', description: 'Mã ngành: 7480104' },
                 {
                   value: 'cn',
-                  label: 'Mạng máy tính & An toàn TT',
+                  label: 'Mạng máy tính và An toàn TT',
                   description: 'Mã ngành: 7480102',
                 },
                 { value: 'ce', label: 'Kỹ thuật Máy tính', description: 'Mã ngành: 7480106' },
@@ -632,7 +632,7 @@ export function UiTestPage() {
             </div>
           </div>
 
-          {/* 5.2 Searchable Combobox with Badges & Slots */}
+          {/* 5.2 Searchable Combobox with Badges và Slots */}
           <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
             <div>
               <span className="text-xs font-semibold text-slate-700 block">
@@ -667,20 +667,20 @@ export function UiTestPage() {
                 {
                   value: 'gv03',
                   label: 'TS. Lê Hoàng Khang',
-                  description: 'Khoa học Dữ liệu & AI',
+                  description: 'Khoa học Dữ liệu và AI',
                   badge: <Badge variant="success">Còn slot</Badge>,
                 },
                 {
                   value: 'gv04',
                   label: 'ThS. Đỗ Thanh Bình',
-                  description: 'Bộ môn Mạng & Bảo mật',
+                  description: 'Bộ môn Mạng và Bảo mật',
                   badge: <Badge variant="warning">Đầy slot</Badge>,
                   disabled: true,
                 },
                 {
                   value: 'gv05',
                   label: 'TS. Phạm Quốc Hùng',
-                  description: 'Hệ thống Nhúng & IoT',
+                  description: 'Hệ thống Nhúng và IoT',
                   badge: <Badge variant="success">Còn slot</Badge>,
                 },
               ]}
@@ -727,7 +727,7 @@ export function UiTestPage() {
           </div>
         </div>
 
-        {/* 5.4 Size Variations & Custom Styling */}
+        {/* 5.4 Size Variations và Custom Styling */}
         <div className="space-y-3 pt-2">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
             B. Các kích thước (Size: sm / default / lg)
@@ -893,10 +893,10 @@ export function UiTestPage() {
           </div>
         </div>
 
-        {/* 6.4 Custom Text Formats & Subtitle */}
+        {/* 6.4 Custom Text Formats và Subtitle */}
         <div className="space-y-3 pt-2">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            D. Tùy biến định dạng text & mô tả phụ đề
+            D. Tùy biến định dạng text và mô tả phụ đề
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
@@ -922,13 +922,13 @@ export function UiTestPage() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 7. RADIO BUTTON & RADIO GROUP */}
+      {/* 7. RADIO BUTTON và RADIO GROUP */}
       {/* ========================================================================= */}
       <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>7. Radio Button & Radio Group</span>
+              <span>7. Radio Button và Radio Group</span>
               <Badge variant="success">Khớp 100% Mockup</Badge>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -994,10 +994,10 @@ export function UiTestPage() {
           </div>
         </div>
 
-        {/* 7.2 Minimal / No Subtitle & Horizontal Layout */}
+        {/* 7.2 Minimal / No Subtitle và Horizontal Layout */}
         <div className="space-y-3 pt-2">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            B. Không có subtitle phải (Chỉ nút tròn + title) & Hàng ngang
+            B. Không có subtitle phải (Chỉ nút tròn + title) và Hàng ngang
           </h3>
           <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 max-w-2xl space-y-3">
             <span className="text-xs font-medium text-slate-600 block">Chọn vai trò tham gia:</span>
@@ -1018,10 +1018,10 @@ export function UiTestPage() {
           </div>
         </div>
 
-        {/* 7.3 Shorthand Options Array & Custom Colors */}
+        {/* 7.3 Shorthand Options Array và Custom Colors */}
         <div className="space-y-3 pt-2">
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            C. Khởi tạo qua mảng `options=[...]` & Tùy biến màu viền
+            C. Khởi tạo qua mảng `options=[...]` và Tùy biến màu viền
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
             {/* Blue primary border variant */}
