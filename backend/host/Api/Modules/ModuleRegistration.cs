@@ -9,6 +9,7 @@ using UGTM.Modules.Notifications.Infrastructure;
 using UGTM.Modules.ThesisManagement.Infrastructure;
 using UGTM.Modules.TopicCatalog.Infrastructure;
 using UGTM.Api.AdvisorEvaluations;
+using UGTM.BuildingBlocks.Infrastructure.Caching;
 using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
 
 namespace UGTM.Api.Modules;
@@ -17,6 +18,8 @@ public static class ModuleRegistration
 {
     public static IServiceCollection AddUgtmModules(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddUgtmCaching(configuration);
+
         IModule[] modules =
         [
             new IdentityModule(),
