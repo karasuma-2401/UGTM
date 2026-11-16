@@ -1,4 +1,6 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
@@ -11,7 +13,8 @@ namespace UGTM.Modules.DefenseCouncil.Application.Councils.CheckCouncilDiscrepan
 
 public sealed class CheckCouncilDiscrepancyHandler(
     ICouncilRepository councilRepository,
-    ICouncilUserInfoReader councilUserInfoReader, ICurrentUser currentUser, IFinalSubmissionAuthorityReader authority)
+    ICouncilUserInfoReader councilUserInfoReader, ICurrentUser currentUser, IFinalSubmissionAuthorityReader authority,
+    ICacheService? cache = null)
 {
     private const decimal WarningThreshold = 2.0m;
 
@@ -33,6 +36,21 @@ public sealed class CheckCouncilDiscrepancyHandler(
 
         if (!management && !assignment.Council.Members.Any(m => m.UserId == actorId && Enum.IsDefined(m.RoleInCouncil)))
             return Result.Failure<CouncilDiscrepancyResponseDto>(CouncilErrors.Forbidden);
+
+        string? cacheKey = null;
+        if (cache is not null)
+        {
+            var assignVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.AssignmentScope(assignment.Id), ct);
+            var councilVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.CouncilScope(assignment.CouncilId), ct);
+            var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct);
+            cacheKey = DefenseCouncilCacheKeys.CouncilDiscrepancy(assignment.Id, assignVer, councilVer, globalVer);
+
+            var cached = await cache.GetAsync<CouncilDiscrepancyResponseDto>(cacheKey, ct);
+            if (cached is not null)
+            {
+                return Result.Success(cached);
+            }
+        }
 
         var councilScores = await councilRepository.GetCouncilScoresWithDetailsByAssignmentIdAsync(query.AssignmentId, ct);
         var scoreMap = councilScores.ToDictionary(s => s.CouncilMemberId);
@@ -129,7 +147,7 @@ public sealed class CheckCouncilDiscrepancyHandler(
         var summary = await councilRepository.GetScoreSummaryByGroupIdAsync(assignment.GroupId, ct);
         decimal? finalScore = summary is { IsLegacy: false, Status: ScoreSummaryStatus.Calculated or ScoreSummaryStatus.PublishedToStudent } ? summary.FinalScore : null;
 
-        return Result.Success(new CouncilDiscrepancyResponseDto(
+        var response = new CouncilDiscrepancyResponseDto(
             query.AssignmentId,
             assignment.CouncilId,
             assignment.GroupId,
@@ -142,6 +160,13 @@ public sealed class CheckCouncilDiscrepancyHandler(
             allScoresSubmitted,
             averageCouncilScore,
             finalScore,
-            memberScores));
+            memberScores);
+
+        if (cache is not null && cacheKey is not null)
+        {
+            await cache.SetAsync(cacheKey, response, DefenseCouncilCacheKeys.DiscrepancyTtl, ct);
+        }
+
+        return Result.Success(response);
     }
 }
