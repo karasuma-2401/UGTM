@@ -1,4 +1,5 @@
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.DefenseCouncil.Contracts.Councils;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
@@ -8,9 +9,11 @@ namespace UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
 
 public sealed class FinalReportReadAccessChecker(
     ICurrentUser currentUser,
-    ITopicAdvisorAssignmentContract advisorAssignmentContract)
+    ITopicAdvisorAssignmentContract advisorAssignmentContract,
+    ICouncilReportAccess? councilAccess = null)
 {
-    public async Task<bool> CanReadAsync(StudentGroup group, CancellationToken cancellationToken = default)
+    public async Task<bool> CanReadAsync(StudentGroup group, CancellationToken cancellationToken = default,
+        FinalReportVersionType versionType = FinalReportVersionType.InitialFinal)
     {
         if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue || currentUser.UserId == Guid.Empty)
         {
@@ -26,6 +29,11 @@ public sealed class FinalReportReadAccessChecker(
         {
             return true;
         }
+
+        if (versionType == FinalReportVersionType.RevisedAfterReviewer && HasRole("CouncilMember")
+            && councilAccess is not null
+            && await councilAccess.IsAssignedAsync(group.Id, currentUser.UserId.Value, cancellationToken))
+            return true;
 
         var assignment = await advisorAssignmentContract.GetByTopicIdAsync(group.TopicId, cancellationToken);
         return assignment?.AdvisorId == currentUser.UserId.Value;

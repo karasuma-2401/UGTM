@@ -265,7 +265,6 @@ test('FinalReportVersionCard renders full multi-version history timeline without
       currentStatus: 'Submitted',
       currentVersionNo: 2,
       onDownload() {},
-      onOpenFeedback() {},
       versions: [
         {
           versionNo: 1,
@@ -300,7 +299,7 @@ test('FinalReportVersionCard renders full multi-version history timeline without
   assert.match(html, /2 phiên bản/);
   assert.match(html, /Bao-cao-cuoi-ky-v1\.docx/);
   assert.match(html, /Bao-cao-cuoi-ky-v2-final\.pdf/);
-  assert.match(html, /Xem góp ý GVPB/);
+  assert.doesNotMatch(html, /Xem góp ý GVPB/);
 });
 
 test('MidtermSubmissionPage renders Hồ sơ giữa kỳ instead of Hồ sơ đề cương copy-paste bug', () => {

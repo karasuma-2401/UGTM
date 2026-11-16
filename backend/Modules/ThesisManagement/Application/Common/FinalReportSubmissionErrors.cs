@@ -16,6 +16,10 @@ public static class FinalReportSubmissionErrors
         "FinalReport.EvaluationStarted",
         "Báo cáo cuối kỳ đã bắt đầu chấm; không thể nộp lại.");
 
+    public static readonly Error ReviewerRevisionNotEligible = Error.Conflict(
+        "FinalReport.ReviewerRevisionNotEligible",
+        "Nhóm chưa đủ điều kiện nộp bản chỉnh sửa sau phản biện để ra Hội đồng.");
+
     public static readonly Error ConcurrencyConflict = Error.Conflict(
         "FinalReport.ConcurrencyConflict",
         "Dữ liệu nhóm hoặc báo cáo cuối kỳ vừa được thay đổi. Vui lòng tải lại và thử lại.");

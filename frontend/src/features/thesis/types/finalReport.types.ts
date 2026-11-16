@@ -13,7 +13,7 @@ export type FinalReportStatus =
 
 export const FINAL_REPORT_STATUS_LABELS: Record<FinalReportStatus, string> = {
   Submitted: 'Đã nộp · Chờ GVHD chấm',
-  UnderEvaluation: 'GVHD đang chấm',
+  UnderEvaluation: 'Đang đánh giá',
   Approved: 'GVHD đã đồng ý chuyển phản biện',
   Rejected: 'Cần chỉnh sửa lại',
 };
@@ -51,6 +51,11 @@ export interface FinalReportHistoryDto {
 
 export interface ReviewerFeedbackDto {
   comment: string | null;
+}
+
+export interface RevisedFinalReportEligibilityDto {
+  canSubmit: boolean;
+  reasonCode: string | null;
 }
 
 export type { SubmissionFileDownloadDto };

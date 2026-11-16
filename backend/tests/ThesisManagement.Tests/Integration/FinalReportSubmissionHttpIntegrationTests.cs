@@ -35,6 +35,7 @@ using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Infrastructure;
 using UGTM.Modules.ThesisManagement.Infrastructure.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Contracts.ReviewerEvaluations;
 using UGTM.Modules.DefenseCouncil.Infrastructure;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
@@ -78,6 +79,8 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         // This SCRUM-102/103 component fixture has only two modules and stubbed advisor contracts.
         // Reviewer authorization is exercised separately with production AddUgtmModules in SCRUM-104.
         builder.Services.RemoveAll<UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments.IReviewerAssignmentWorkflowContract>();
+        builder.Services.RemoveAll<IReviewerDefenseEligibilityContract>();
+        builder.Services.AddSingleton<IReviewerDefenseEligibilityContract, UnavailableReviewerDefenseEligibility>();
         builder.Services.RemoveAll<IHostedService>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -107,6 +110,15 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
     {
         _client?.Dispose();
         if (_app is not null) await _app.DisposeAsync();
+    }
+
+    private sealed class UnavailableReviewerDefenseEligibility : IReviewerDefenseEligibilityContract
+    {
+        public Task<ReviewerDefenseEligibilityContractDto?> GetAsync(Guid groupId, CancellationToken cancellationToken = default)
+            => Task.FromResult<ReviewerDefenseEligibilityContractDto?>(null);
+
+        public Task<ReviewerDefenseEligibilityContractDto?> LockForSchedulingAsync(Guid groupId, CancellationToken cancellationToken = default)
+            => Task.FromResult<ReviewerDefenseEligibilityContractDto?>(null);
     }
 
     [Theory]

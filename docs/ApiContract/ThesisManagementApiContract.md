@@ -1,7 +1,7 @@
 # ThesisManagement API contract
 
 Trạng thái: SCRUM-88 (báo cáo tiến độ) và SCRUM-89 (thẩm định đề cương chi tiết, báo cáo giữa kỳ) đã triển khai.
-SCRUM-102 đã triển khai đến CP6: nộp/nộp lại báo cáo cuối kỳ, xem lịch sử/tải từng phiên bản theo quyền và bắt đầu chấm để khóa phiên bản. Chấm điểm/duyệt phản biện thuộc SCRUM-103.
+SCRUM-102 đã triển khai đến CP6: nộp/nộp lại báo cáo cuối kỳ, xem lịch sử/tải từng phiên bản theo quyền và bắt đầu chấm để khóa phiên bản. Chấm điểm/duyệt phản biện thuộc SCRUM-103. Luồng bản chỉnh sửa sau phản biện của FR-FIN-08 dùng API riêng mô tả bên dưới.
 
 SCRUM-103 đã triển khai phiếu chấm GVHD, duyệt chuyển phản biện, quyền riêng với phiếu và điều kiện bàn giao SCRUM-104 ở [AdvisorEvaluationApprovalApiContract.md](AdvisorEvaluationApprovalApiContract.md). Phiếu chỉ gắn với bản báo cáo `UnderEvaluation` đã khóa của SCRUM-102; xem [nghiệm thu SCRUM-103](AdvisorEvaluationApprovalVerification.md).
 
@@ -253,6 +253,7 @@ Route có constraint `:guid`: chuỗi không phải GUID không khớp route và
 
 ## Nộp và nộp lại báo cáo cuối kỳ (SCRUM-102 CP4)
 
+
 `POST /api/thesis/final-reports`, Bearer token, body `multipart/form-data`:
 
 | Trường | Kiểu | Yêu cầu |
@@ -267,7 +268,7 @@ Thành công trả `200 OK` với `ApiResponse<FinalReportSubmissionDto>`; `data
 - `finalReportId`, `groupId`, `versionType: "InitialFinal"`, `versionNo` (1 ở lần đầu, tăng dần khi nộp lại), `status: "Submitted"`, `submittedAtUtc` (thời điểm nộp phiên bản hiện tại).
 - `file`: `id`, `fileName`, `contentType`, `fileSize`, `fileExtension`, `checksumSha256`, `uploadedBy`, `uploadedAtUtc`. MIME type và checksum do server xác định; không trả object key hay URL public.
 
-File được lưu trong bucket private, metadata dùng `entity_type = 'FinalReport'`. Báo cáo, metadata, trạng thái nhóm `FinalReportSubmitted` và audit action `ThesisManagement.FinalReport.Submitted` được lưu cùng transaction database. Nộp lại giữ nguyên mã báo cáo và loại `InitialFinal`, tăng `CurrentVersionNo`, cập nhật thời điểm nộp và thêm file/audit mới với `IsResubmission = true`; không đổi thành `RevisedAfterReviewer`, không ghi đè hay xóa file/audit cũ. `SubmissionFile.UploadedBy` và `UploadedAt` ghi nhận người nộp và thời điểm của từng phiên bản.
+File được lưu trong bucket private, metadata dùng `entity_type = 'FinalReport'`. Báo cáo, metadata, trạng thái nhóm `FinalReportSubmitted` và audit action `ThesisManagement.FinalReport.Submitted` được lưu cùng transaction database. Nộp lại **trước khi chấm** giữ nguyên mã báo cáo và loại `InitialFinal`, tăng `CurrentVersionNo`, cập nhật thời điểm nộp và thêm file/audit mới với `IsResubmission = true`; không đổi thành `RevisedAfterReviewer`, không ghi đè hay xóa file/audit cũ. `SubmissionFile.UploadedBy` và `UploadedAt` ghi nhận người nộp và thời điểm của từng phiên bản.
 
 Upload lỗi không tạo phiên bản. Lỗi database đã rollback sẽ xóa bù object vừa upload và giữ nguyên phiên bản trước; số phiên bản không bị bỏ trống. Nếu save có kết quả chưa rõ, server kiểm tra bản ghi file trước khi xóa; lỗi kiểm tra/xóa được ghi log để xử lý lại. Không xóa các object của phiên bản trước.
 
@@ -283,6 +284,16 @@ Upload lỗi không tạo phiên bản. Lỗi database đã rollback sẽ xóa b
 | `500` | Lỗi hạ tầng storage/database; response không chứa chi tiết nội bộ |
 
 Khi báo cáo đã chuyển sang `UnderEvaluation`, nộp lại trả `409 FinalReport.EvaluationStarted` trước khi upload. Khi hai lần nộp cùng đọc một phiên bản, chỉ một lần được lưu; request còn lại trả `409 FinalReport.ConcurrencyConflict`, rollback file metadata/audit mới và xóa object của chính request đó. Nếu nhóm bị dừng hoặc báo cáo bắt đầu chấm trong lúc upload, request dùng dữ liệu cũ cũng nhận `409`. Việc kiểm tra concurrency dùng `xmin` của cả nhóm và báo cáo trong cùng transaction; client cần tải lại dữ liệu trước khi thử lại.
+
+### Bản chỉnh sửa sau phản biện phục vụ Hội đồng (FR-FIN-08)
+
+Đây là hồ sơ `RevisedAfterReviewer` riêng với báo cáo gốc `InitialFinal`; không mở khóa hay thay thế bản đã được GVHD/GVPB chấm. Sinh viên `Confirmed` trong nhóm `ReadyForReviewerAssignment` chỉ được nộp khi GVPB đã chốt phiếu và điều kiện ra Hội đồng của nhóm là `CanProceed = true` (kết luận `Approved` và từng sinh viên đạt điểm sàn). `Rejected`, điểm dưới sàn hoặc chưa có phiếu chốt đều **không** tự mở quyền nộp; chờ Khoa xử lý không đồng thuận. Phải nằm trong cửa sổ `FINAL_EVALUATION` hiện có của đợt.
+
+- `GET /api/thesis/groups/{groupId}/revised-final-report/eligibility`: trả `canSubmit` và `reasonCode` (`NotAvailable` hoặc `OutsideAllowedWindow`) cho sinh viên trong nhóm. Không trả kết luận, điểm hoặc lý do nội bộ của GVPB.
+- `POST /api/thesis/revised-final-reports`: multipart `groupId`, `file` (PDF/DOC/DOCX tối đa 20 MiB); dùng cùng kiểm tra file, audit, lưu trữ private và quét tương đồng như báo cáo gốc. Bản đầu tạo hồ sơ `RevisedAfterReviewer` v1; nộp thêm trong hạn tăng v2, v3… và giữ mọi bản cũ. Không đổi trạng thái nhóm và không sửa phiếu đánh giá gốc. Sai trạng thái/điều kiện/hạn trả 409.
+- `GET /api/thesis/groups/{groupId}/revised-final-report`: lịch sử phiên bản riêng; chưa có hồ sơ trả 404. Sinh viên cùng nhóm, GVHD, Khoa/Admin và thành viên Hội đồng được phân công cho nhóm có thể xem; tải file qua `GET /api/thesis/final-report-files/{fileId}/download` với cùng kiểm tra quyền theo đúng loại hồ sơ. Hội đồng dùng bản mới nhất đã nộp để chuẩn bị bảo vệ.
+
+Góp ý GVPB phát hành cho sinh viên qua endpoint feedback hiện có. Quyền xem góp ý không đồng nghĩa quyền nộp bản sửa; giao diện phân biệt rõ hai trạng thái.
 
 ## Lịch sử và tải báo cáo cuối kỳ (SCRUM-102 CP5)
 

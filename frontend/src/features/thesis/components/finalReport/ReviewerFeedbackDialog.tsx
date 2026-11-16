@@ -21,14 +21,14 @@ export function ReviewerFeedbackDialog({
       open={open}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2 text-ink-primary">
-          <MessageSquareQuote className="size-5 text-brand-ink" />
-          <span>Góp ý từ Giảng viên phản biện</span>
+        <div className="flex items-center gap-2.5 text-ink-primary">
+          <MessageSquareQuote className="size-5 shrink-0 text-brand-ink" aria-hidden="true" />
+          <span className="text-base">Góp ý từ Giảng viên phản biện</span>
         </div>
       }
       className="max-w-lg"
     >
-      <div className="space-y-4 pt-2">
+      <div className="space-y-4 px-5 py-5 sm:px-6 sm:py-6">
         {isLoading ? (
           <div className="py-8 text-center text-ink-muted text-sm flex flex-col items-center gap-2">
             <Clock className="size-6 animate-spin text-brand-ink" />
@@ -36,11 +36,11 @@ export function ReviewerFeedbackDialog({
           </div>
         ) : comment ? (
           <div className="space-y-3">
-            <div className="p-4 rounded-xl bg-surface-subtle border border-line/80 space-y-1.5">
+            <div className="space-y-2 rounded-xl border border-line/80 bg-surface-subtle p-4 sm:p-5">
               <p className="text-xs font-semibold text-ink-body">Nội dung góp ý chuyên môn</p>
-              <RichTextContent content={comment} className="text-sm text-ink-heading" />
+              <RichTextContent content={comment} className="break-words text-sm leading-relaxed text-ink-heading" />
             </div>
-            <div className="flex items-center gap-2 text-xs text-tone-success-text bg-tone-success-bg p-3 rounded-xl border border-tone-success-border">
+            <div className="flex items-start gap-2 rounded-xl border border-tone-success-border bg-tone-success-bg p-3 text-xs leading-relaxed text-tone-success-text">
               <CheckCircle2 className="size-4 shrink-0 text-tone-success-icon" />
               <span>Góp ý đã được Giảng viên phản biện chốt và phát hành chính thức.</span>
             </div>
@@ -57,11 +57,11 @@ export function ReviewerFeedbackDialog({
           </div>
         )}
 
-        <div className="flex justify-end pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Đóng
-          </Button>
-        </div>
+      </div>
+      <div className="flex justify-end border-t border-line/80 bg-surface-subtle px-5 py-4 sm:px-6">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Đóng
+        </Button>
       </div>
     </Dialog>
   );

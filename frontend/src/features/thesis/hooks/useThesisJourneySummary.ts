@@ -78,6 +78,13 @@ export function useThesisJourneySummary(groupId?: string | null) {
     retry: false,
   });
 
+  const reviewerFeedbackQuery = useQuery({
+    queryKey: ['final-report-feedback', user?.id, groupId],
+    queryFn: ({ signal }) => finalReportApi.getReviewerFeedback(groupId!, signal),
+    enabled: enabled && finalReportHistoryQuery.data?.currentStatus === 'UnderEvaluation',
+    retry: false,
+  });
+
   const milestoneItems = useMemo<MilestoneWithStatus[]>(() => {
     return milestones.map((milestone, index) => {
       const rq = reportQueries[index];
@@ -162,7 +169,7 @@ export function useThesisJourneySummary(groupId?: string | null) {
       finalLabel = 'Chuyển phản biện';
     } else if (finalStatus === 'UnderEvaluation') {
       finalState = 'pending';
-      finalLabel = 'GVHD đang chấm';
+      finalLabel = reviewerFeedbackQuery.data?.comment ? 'Đã có góp ý phản biện' : 'Đang đánh giá';
     } else if (finalStatus === 'Submitted') {
       finalState = 'pending';
       finalLabel = finalVersionNo ? `Đã nộp v${finalVersionNo}` : 'Chờ GVHD chấm';
@@ -232,7 +239,7 @@ export function useThesisJourneySummary(groupId?: string | null) {
           finalStatus === 'Approved'
             ? 'Phản biện'
             : finalStatus === 'UnderEvaluation'
-              ? 'Đang chấm'
+              ? reviewerFeedbackQuery.data?.comment ? 'Có góp ý' : 'Đang chấm'
               : finalStatus === 'Submitted'
                 ? finalVersionNo
                   ? `v${finalVersionNo}`
@@ -255,6 +262,7 @@ export function useThesisJourneySummary(groupId?: string | null) {
     midtermHistoryQuery.isLoading,
     finalReportHistoryQuery.data,
     finalReportHistoryQuery.isLoading,
+    reviewerFeedbackQuery.data?.comment,
   ]);
 
   return {
