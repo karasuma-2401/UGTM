@@ -1,5 +1,7 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Application.ScoreSummaries;
@@ -18,7 +20,8 @@ public sealed class UnlockCouncilMinuteHandler(
     IDefenseCouncilAuditOutbox auditOutbox,
     ICurrentUser currentUser,
     ICouncilMinuteWriteGuard writeGuard,
-    TimeProvider? clock = null)
+    TimeProvider? clock = null,
+    ICacheService? cache = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
 
@@ -103,6 +106,12 @@ public sealed class UnlockCouncilMinuteHandler(
             }), nowUtc);
 
         await unitOfWork.SaveChangesAsync(ct);
+        await DefenseCouncilCacheKeys.InvalidateAssignmentAsync(
+            cache,
+            assignment.Id,
+            assignment.CouncilId,
+            assignment.Council.BatchId,
+            ct);
 
         return Result.Success(new CouncilMinuteLockResponseDto(
             minute.Id,

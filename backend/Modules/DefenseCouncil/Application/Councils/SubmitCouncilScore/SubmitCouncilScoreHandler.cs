@@ -1,5 +1,7 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
@@ -14,7 +16,8 @@ public sealed class SubmitCouncilScoreHandler(
     ICouncilRepository councilRepository,
     IDefenseCouncilUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    ICouncilScoreWriteGuard writeGuard, TimeProvider clock)
+    ICouncilScoreWriteGuard writeGuard, TimeProvider clock,
+    ICacheService? cache = null)
 {
     public Task<Result<CouncilScoreResponseDto>> HandleAsync(SubmitCouncilScoreCommand command, CancellationToken ct = default)
         => !currentUser.IsAuthenticated || !currentUser.UserId.HasValue
@@ -173,6 +176,12 @@ public sealed class SubmitCouncilScoreHandler(
         }
 
         await unitOfWork.SaveChangesAsync(ct);
+        await DefenseCouncilCacheKeys.InvalidateAssignmentAsync(
+            cache,
+            assignment.Id,
+            assignment.CouncilId,
+            assignment.Council.BatchId,
+            ct);
 
         var detailDtos = detailsList.Select(d =>
         {

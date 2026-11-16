@@ -1,4 +1,6 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
@@ -23,7 +25,8 @@ public sealed class AssignCouncilGroupsHandler(
     ITopicDefenseContract topicDefenseContract,
     ICouncilUserInfoReader userInfoReader,
     ICurrentUser currentUser,
-    ICouncilSchedulingGuard schedulingGuard)
+    ICouncilSchedulingGuard schedulingGuard,
+    ICacheService? cache = null)
 {
     public async Task<Result<IReadOnlyList<CouncilAssignmentResponseDto>>> HandleAsync(
         AssignCouncilGroupsCommand command,
@@ -192,6 +195,8 @@ public sealed class AssignCouncilGroupsHandler(
         {
             return Result.Failure<IReadOnlyList<CouncilAssignmentResponseDto>>(CouncilErrors.ConcurrentModification);
         }
+
+        await DefenseCouncilCacheKeys.InvalidateCouncilAsync(cache, council.Id, council.BatchId, cancellationToken);
 
         var resultDtos = newAssignments.Select(a =>
         {

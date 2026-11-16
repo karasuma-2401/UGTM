@@ -1,6 +1,8 @@
 using System.Text.Json;
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.ReviewerAssignments;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments;
@@ -14,7 +16,8 @@ public sealed class SaveReviewerEvaluationHandler(
     IReviewerAssignmentWorkflowContract workflow, IReviewerAssignmentTransactionCoordinator coordinator,
     IReviewerAssignmentRepository assignments, IReviewerEvaluationRepository evaluations,
     IReviewerEvaluationIdempotencyRepository receipts, IReviewerAssignmentBatchReader batches,
-    ReviewerEvaluationAuthorization authorization, ReviewerEvaluationAudit audit, ICurrentUser currentUser, TimeProvider timeProvider)
+    ReviewerEvaluationAuthorization authorization, ReviewerEvaluationAudit audit, ICurrentUser currentUser, TimeProvider timeProvider,
+    ICacheService? cache = null)
 {
     private const string Operation = "ReviewerEvaluation.Save";
 
@@ -37,8 +40,13 @@ public sealed class SaveReviewerEvaluationHandler(
             var result = await coordinator.ExecuteWithPostSaveAsync(
                 token => SaveAsync(command, actor, snapshot, ReviewerEvaluationInput.Fingerprint(command), token),
                 CompleteReceiptAsync, cancellationToken);
-            return result.Error is { } error ? Result.Failure<SaveReviewerEvaluationResponse>(error)
-                : Result.Success(new SaveReviewerEvaluationResponse(result.Response!, result.StatusCode));
+            if (result.Error is { } error)
+            {
+                return Result.Failure<SaveReviewerEvaluationResponse>(error);
+            }
+
+            await DefenseCouncilCacheKeys.InvalidateGlobalAsync(cache, cancellationToken);
+            return Result.Success(new SaveReviewerEvaluationResponse(result.Response!, result.StatusCode));
         }
         catch (DefenseCouncilConcurrencyException) { return Result.Failure<SaveReviewerEvaluationResponse>(ReviewerEvaluationErrors.ConcurrencyConflict); }
         catch (DefenseCouncilUniqueConstraintException) { return Result.Failure<SaveReviewerEvaluationResponse>(ReviewerEvaluationErrors.ConcurrencyConflict); }
