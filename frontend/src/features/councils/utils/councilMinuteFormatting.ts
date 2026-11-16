@@ -53,7 +53,7 @@ export function getMinuteLockStatusMeta(lockStatus: string | null | undefined): 
         label: 'Mở khóa đặc biệt',
         tone: 'error',
         description:
-          'Lãnh đạo Khoa đã cấp quyền mở khóa để điều chỉnh sai sót hoặc giải quyết khiếu nại; cần lưu & khóa lại sau khi xong.',
+          'Lãnh đạo Khoa đã cấp quyền mở khóa để điều chỉnh sai sót hoặc giải quyết khiếu nại; cần lưu và khóa lại sau khi xong.',
       };
     case 'AllScoresEntered':
       return {

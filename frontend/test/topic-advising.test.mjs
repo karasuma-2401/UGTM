@@ -361,7 +361,7 @@ test('sort requests reset to page one and leave sorting of the full dataset to t
   let tree = ui.render();
   component(tree, 'TablePagination').props.onPageChange(3);
   tree = ui.render();
-  find(tree, (node) => node.type === 'TableHead' && text(node) === 'Đề tài & nhóm').props.onSort();
+  find(tree, (node) => node.type === 'TableHead' && text(node) === 'Đề tài và nhóm').props.onSort();
   tree = ui.render();
   const query = ui.queries()[0];
   assert.equal(query.queryKey[3], 1);

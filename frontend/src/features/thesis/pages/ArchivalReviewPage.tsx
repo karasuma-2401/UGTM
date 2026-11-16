@@ -144,7 +144,7 @@ export const ArchivalReviewPage: React.FC = () => {
       },
       {
         id: 'topicAndStudents',
-        header: 'Đề tài & Sinh viên',
+        header: 'Đề tài và Sinh viên',
         cell: (row) => (
           <div className="min-w-0 space-y-0.5">
             <p className="font-semibold text-slate-900 line-clamp-1">{row.topicTitleVi}</p>

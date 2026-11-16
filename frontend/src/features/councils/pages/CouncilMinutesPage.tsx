@@ -537,7 +537,7 @@ export function CouncilMinutesPage() {
         </div>
       ) : null}
 
-      {/* Drawers & Modals (hidden when printing) */}
+      {/* Drawers và Modals (hidden when printing) */}
       <div className="print:hidden">
         <CouncilMinuteGroupDrawer
           open={isGroupDrawerOpen}
@@ -584,7 +584,7 @@ export function CouncilMinutesPage() {
               ? `Bạn đang có chỉnh sửa chưa lưu ở nhóm hiện tại. Nếu chuyển sang nhóm ${pendingRow.groupCode} (${pendingRow.councilCode}), các thay đổi nháp sẽ bị hủy.`
               : 'Bạn đang có chỉnh sửa chưa lưu. Nếu chuyển sang nhóm bảo vệ khác, các thay đổi nháp sẽ bị hủy.'
           }
-          confirmText="Hủy thay đổi & chuyển nhóm"
+          confirmText="Hủy thay đổi và chuyển nhóm"
           cancelText="Ở lại tiếp tục sửa"
         />
       </div>

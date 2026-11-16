@@ -236,7 +236,7 @@ export function OtpPage() {
           loadingText="Đang xác thực OTP…"
           rightIcon={<ArrowRight size={16} />}
         >
-          Xác nhận mã OTP & Tiếp tục
+          Xác nhận mã OTP và Tiếp tục
         </Button>
       </form>
       <p className="auth-hint">

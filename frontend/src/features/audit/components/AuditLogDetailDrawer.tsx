@@ -127,7 +127,7 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
     >
       <div className="flex min-h-[calc(100dvh-5.5rem)] flex-col">
         <div className="flex-1 space-y-5 p-5 sm:p-6">
-          {/* Khối 1: Tác nhân & Ngữ cảnh */}
+          {/* Khối 1: Tác nhân và Ngữ cảnh */}
           <section className="space-y-2.5">
             <h4 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
               <User className="size-4 text-primary" />
@@ -171,7 +171,7 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
             </div>
           </section>
 
-          {/* Khối 2: Thời điểm & Đối tượng tác động */}
+          {/* Khối 2: Thời điểm và Đối tượng tác động */}
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
               <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">

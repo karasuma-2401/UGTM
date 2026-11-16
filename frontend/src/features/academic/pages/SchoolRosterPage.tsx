@@ -55,7 +55,7 @@ export const SchoolRosterPage: React.FC = () => {
   return (
     <div className="space-y-6 pb-12 animate-in fade-in-50 duration-300">
       <PageHeader
-        title="Danh sách Sinh viên & Giảng viên"
+        title="Danh sách Sinh viên và Giảng viên"
         description="Nhập và đối chiếu danh sách sinh viên đủ điều kiện khóa luận và giảng viên hướng dẫn theo từng đợt đào tạo"
       />
 
@@ -84,7 +84,7 @@ export const SchoolRosterPage: React.FC = () => {
         </InlineAlert>
       )}
 
-      {/* Row 1: Config & Upload Card (8 cols) + Bento Guidelines Card (4 cols) */}
+      {/* Row 1: Config và Upload Card (8 cols) + Bento Guidelines Card (4 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         <div className="lg:col-span-8">
           <RosterConfigCard
@@ -110,7 +110,7 @@ export const SchoolRosterPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Row 2: Preview & Validation Table */}
+      {/* Row 2: Preview và Validation Table */}
       <RosterPreviewTable
         rows={roster.validatedRows}
         summary={roster.summary}

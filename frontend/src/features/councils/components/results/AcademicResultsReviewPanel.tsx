@@ -218,7 +218,7 @@ export const AcademicResultsReviewPanel: React.FC<AcademicResultsReviewPanelProp
             ) : (
               <div className="px-5 sm:px-6 py-4 space-y-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Điều kiện & lưu chiểu
+                  Điều kiện và lưu chiểu
                 </h3>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">

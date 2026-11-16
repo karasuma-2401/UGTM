@@ -159,7 +159,7 @@ export function SubmissionProductLinksEditor({
   onChange,
   required = false,
   disabled = false,
-  title = 'Liên kết sản phẩm & tài nguyên',
+  title = 'Liên kết sản phẩm và tài nguyên',
   helperText = 'Phân loại mã nguồn, video demo hoặc tài liệu thiết kế để GVHD truy cập nhanh (tối đa 5 liên kết).',
 }: SubmissionProductLinksEditorProps) {
   const canAddMore = links.length < PRODUCT_LINK_MAX_COUNT && !disabled;

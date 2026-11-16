@@ -32,7 +32,7 @@ export const PeriodPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in-50 duration-300">
-      <PageHeader title="Khởi tạo đợt & deadline">
+      <PageHeader title="Khởi tạo đợt và deadline">
         <div className="w-full sm:w-80 md:w-96">
           <Select
             options={batchOptions}
@@ -144,7 +144,7 @@ export const PeriodPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Row 2: 7 Stages Table & Interactive Timeline */}
+      {/* Row 2: 7 Stages Table và Interactive Timeline */}
       <PeriodStagesCard
         computedStages={form.computedStages}
         canEdit={permissions.canEdit}

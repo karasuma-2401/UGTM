@@ -4,7 +4,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   CheckCircle2,
   Clock3,
-  FileEdit,
   FilterX,
   Layers,
   RefreshCw,
@@ -357,7 +356,7 @@ function RenameReviewView({
     },
     {
       id: 'groupAndAdvisor',
-      header: 'Nhóm & GVHD',
+      header: 'Nhóm và GVHD',
       widthClassName: 'w-72',
       headerClassName: 'px-4 py-3.5 whitespace-nowrap',
       cellClassName: 'px-4 py-4',
@@ -487,7 +486,6 @@ function RenameReviewView({
       <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]">
         <ListCardHeader
           title="Danh sách yêu cầu đổi tên"
-          icon={<FileEdit />}
           description={scopeDescription}
           className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
         >
@@ -695,7 +693,7 @@ function RenameReviewView({
             className="h-8 rounded-lg px-3 text-xs font-semibold"
           >
             {selectedRow.status === config.status
-              ? `Mở đối chiếu & duyệt cấp ${config.number}`
+              ? `Mở đối chiếu và duyệt cấp ${config.number}`
               : 'Xem chi tiết'}
           </Button>
         )}

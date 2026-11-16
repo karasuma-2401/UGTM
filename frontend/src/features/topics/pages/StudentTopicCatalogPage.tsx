@@ -373,7 +373,7 @@ export function StudentTopicCatalogContent() {
   return (
     <div className="min-w-0 space-y-5 pb-24">
       <PageHeader
-        title="Theo dõi & đăng ký đề tài"
+        title="Theo dõi và đăng ký đề tài"
         description={
           student
             ? 'Tra cứu đề tài đã công bố, theo dõi chỗ trống và gửi đăng ký thực hiện khóa luận'

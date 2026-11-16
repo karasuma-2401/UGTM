@@ -67,7 +67,7 @@ export function ReviewActionCard({
   return (
     <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-5">
       <h3 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-3">
-        Nhận xét & thẩm định
+        Nhận xét và thẩm định
       </h3>
 
       {validationError && (

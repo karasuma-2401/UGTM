@@ -159,7 +159,7 @@ export function CouncilMinutePrintDocument({
           </div>
         </header>
 
-        {/* Section I: Topic & Participants */}
+        {/* Section I: Topic và Participants */}
         <section className="space-y-2.5">
           <h3 className="text-xs font-bold uppercase tracking-wide">
             I. Thông tin đề tài và thành phần tham dự
@@ -335,7 +335,7 @@ export function CouncilMinutePrintDocument({
           </table>
         </section>
 
-        {/* Section III: Calculation & Discrepancy Resolution */}
+        {/* Section III: Calculation và Discrepancy Resolution */}
         <section className="space-y-2.5 break-inside-avoid">
           <h3 className="text-xs font-bold uppercase tracking-wide">
             III. Kết quả tổng hợp điểm và xử lý sai biệt

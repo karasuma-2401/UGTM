@@ -159,7 +159,7 @@ export function SubmissionBlockComposer({
   onImagesChange,
   linksRequired = false,
   disabled = false,
-  title = 'Liên kết & ảnh minh chứng sản phẩm',
+  title = 'Liên kết và ảnh minh chứng sản phẩm',
   subtitle = 'Tối đa 5 liên kết và 5 ảnh minh chứng · Hỗ trợ kéo thả hoặc dán ảnh trực tiếp bằng Ctrl+V.',
 }: SubmissionBlockComposerProps) {
   const imageInputRef = useRef<HTMLInputElement | null>(null);

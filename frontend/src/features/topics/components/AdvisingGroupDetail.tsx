@@ -140,7 +140,7 @@ export function AdvisingGroupDetail({
   return (
     <>
       <Dialog
-        title="Chi tiết nhóm & tiến độ"
+        title="Chi tiết nhóm và tiến độ"
         onClose={onClose}
         className="max-w-5xl"
         headerClassName="border-b border-slate-200/80 px-5 py-3.5 sm:px-6"
@@ -203,7 +203,7 @@ export function AdvisingGroupDetail({
                 </details>
 
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold text-slate-900">Tiến độ hồ sơ & báo cáo</h3>
+                  <h3 className="text-sm font-semibold text-slate-900">Tiến độ hồ sơ và báo cáo</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <ProgressSection title="Đề cương" query={syllabus}>
                       <StatusBadge tone={syllabus.data ? 'info' : 'neutral'}>
@@ -313,7 +313,7 @@ export function AdvisingGroupDetail({
 
                 <section className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-slate-900">Thành viên & lời mời</h3>
+                    <h3 className="text-sm font-semibold text-slate-900">Thành viên và lời mời</h3>
                     <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-medium tabular-nums text-slate-600">
                       {group.members.length}
                     </span>

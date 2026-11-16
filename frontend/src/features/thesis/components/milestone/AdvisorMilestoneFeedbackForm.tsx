@@ -31,7 +31,7 @@ export function AdvisorMilestoneFeedbackForm({
     <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs">
       <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
         <MessageSquareText className="size-4 text-primary" aria-hidden="true" />
-        <h2 className="text-base font-semibold text-slate-900">Đánh giá & Nhận xét</h2>
+        <h2 className="text-base font-semibold text-slate-900">Đánh giá và Nhận xét</h2>
       </div>
 
       <div className="space-y-4 p-5">

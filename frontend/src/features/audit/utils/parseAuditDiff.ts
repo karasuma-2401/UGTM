@@ -35,7 +35,7 @@ export interface ActionGroupOption {
 
 export const ACTION_GROUPS: ActionGroupOption[] = [
   {
-    group: 'Xác thực & Phiên làm việc',
+    group: 'Xác thực và Phiên làm việc',
     items: [
       { value: 'Identity.Authentication.Login', label: 'Đăng nhập hệ thống' },
       { value: 'Identity.Session.Refreshed', label: 'Làm mới phiên làm việc' },
@@ -60,14 +60,14 @@ export const ACTION_GROUPS: ActionGroupOption[] = [
     ],
   },
   {
-    group: 'Phân quyền & Vai trò',
+    group: 'Phân quyền và Vai trò',
     items: [
       { value: 'Identity.Role.Created', label: 'Tạo vai trò mới' },
       { value: 'Identity.Role.PermissionsChanged', label: 'Cập nhật quyền vai trò' },
     ],
   },
   {
-    group: 'Đợt khóa luận & Hội đồng',
+    group: 'Đợt khóa luận và Hội đồng',
     items: [
       { value: 'AcademicPeriods.Batch.ConfigurationUpdated', label: 'Cấu hình đợt khóa luận' },
       { value: 'AcademicPeriods.Score.ConfigurationUpdated', label: 'Cấu hình thang điểm' },

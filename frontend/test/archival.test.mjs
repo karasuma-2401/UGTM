@@ -306,3 +306,91 @@ test('navigationConfig exposes Student, Lecturer and Faculty archival routes und
   assert.deepEqual(advisorItem?.roles, ['Lecturer', 'Admin']);
   assert.equal(advisorItem?.label, 'Xác nhận lưu chiểu');
 });
+
+test('resolveArchivalGroupCode, formatAdvisorDisplayName, and parseArchivalKeywords avoid prefix collisions and duplicate titles', () => {
+  const {
+    resolveArchivalGroupCode,
+    formatAdvisorDisplayName,
+    parseArchivalKeywords,
+  } = loadTsModule('../src/features/thesis/utils/archival.ts');
+
+  const uuid1 = 'c3333333-3333-3333-3333-000000000201';
+  const uuid2 = 'c3333333-3333-3333-3333-000000000202';
+
+  assert.equal(resolveArchivalGroupCode(uuid1, 'Nhóm C333'), 'NH-0201');
+  assert.equal(resolveArchivalGroupCode(uuid2, null), 'NH-0202');
+  assert.equal(resolveArchivalGroupCode(uuid1, 'KLTN-01'), 'KLTN-01');
+
+  assert.equal(formatAdvisorDisplayName('TS. Phạm Minh Khang', 'GV.'), 'TS. Phạm Minh Khang');
+  assert.equal(formatAdvisorDisplayName('Phạm Minh Khang', 'TS.'), 'TS. Phạm Minh Khang');
+  assert.equal(formatAdvisorDisplayName('Chưa phân công', 'GV.'), 'Giảng viên hướng dẫn');
+
+  assert.deepEqual(
+    parseArchivalKeywords('Federated Learning, IoT; 1D-CNN, '),
+    ['Federated Learning', 'IoT', '1D-CNN'],
+  );
+});
+
+test('sortArchivalRows sorts by groupCode, topicTitle, version, submittedAt, and status', () => {
+  const { sortArchivalRows } = loadTsModule('../src/features/thesis/utils/archival.ts');
+
+  const rows = [
+    {
+      submissionId: 's-2',
+      groupId: 'g-2',
+      batchId: 'b-1',
+      topicTitle: 'Đề tài B',
+      topicTitleVi: 'Đề tài B',
+      topicTitleEn: null,
+      groupCode: 'NH-0202',
+      studentNames: [],
+      studentCodes: [],
+      advisorName: null,
+      status: 'Submitted',
+      statusLabel: 'Chờ GVHD xác nhận',
+      statusTone: 'warning',
+      currentVersionNo: 1,
+      submissionVersion: 1,
+      submittedAt: '2026-11-15T14:00:00Z',
+      advisorConfirmedAt: null,
+      archivedConfirmedAt: null,
+    },
+    {
+      submissionId: 's-1',
+      groupId: 'g-1',
+      batchId: 'b-1',
+      topicTitle: 'Đề tài A',
+      topicTitleVi: 'Đề tài A',
+      topicTitleEn: null,
+      groupCode: 'NH-0201',
+      studentNames: [],
+      studentCodes: [],
+      advisorName: null,
+      status: 'ArchiveConfirmed',
+      statusLabel: 'Đã nghiệm thu',
+      statusTone: 'success',
+      currentVersionNo: 2,
+      submissionVersion: 2,
+      submittedAt: '2026-11-14T10:00:00Z',
+      advisorConfirmedAt: null,
+      archivedConfirmedAt: null,
+    },
+  ];
+
+  assert.deepEqual(
+    sortArchivalRows(rows, { field: 'groupCode', direction: 'asc' }).map((r) => r.groupCode),
+    ['NH-0201', 'NH-0202'],
+  );
+  assert.deepEqual(
+    sortArchivalRows(rows, { field: 'version', direction: 'desc' }).map((r) => r.currentVersionNo),
+    [2, 1],
+  );
+  assert.deepEqual(
+    sortArchivalRows(rows, { field: 'submittedAt', direction: 'desc' }).map((r) => r.submissionId),
+    ['s-2', 's-1'],
+  );
+  assert.deepEqual(
+    sortArchivalRows(rows, { field: 'status', direction: 'asc' }).map((r) => r.status),
+    ['Submitted', 'ArchiveConfirmed'],
+  );
+});

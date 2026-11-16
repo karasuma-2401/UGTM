@@ -42,7 +42,7 @@ const STATUS_DISPLAY: Record<string, { label: string; tone: StatusTone; shortSte
   NeedRevision: {
     label: 'Cần bổ sung',
     tone: 'error',
-    shortStepNote: 'Cần chỉnh sửa & nộp lại',
+    shortStepNote: 'Cần chỉnh sửa và nộp lại',
   },
   AdvisorConfirmed: {
     label: 'Chờ nghiệm thu',
@@ -159,18 +159,58 @@ interface ResolvedGroupMeta {
   advisorName?: string | null;
 }
 
+const ACADEMIC_PREFIX_PATTERN = /^(?:PGS\.?\s*TS\.?|GS\.?\s*TS\.?|TS\.?|ThS\.?|KS\.?|CN\.?|GV\.?)\s+/i;
+
+export function resolveArchivalGroupCode(
+  groupId: string,
+  rawGroupCode?: string | null,
+): string {
+  const trimmed = rawGroupCode?.trim() ?? '';
+  const genericPrefixFallback = `Nhóm ${groupId.slice(0, 4).toUpperCase()}`;
+  if (trimmed && trimmed.toUpperCase() !== genericPrefixFallback.toUpperCase()) {
+    return trimmed;
+  }
+  const suffix = groupId.replace(/-/g, '').slice(-4).toUpperCase();
+  return suffix ? `NH-${suffix}` : 'NH';
+}
+
+export function formatAdvisorDisplayName(
+  fullName?: string | null,
+  academicTitle?: string | null,
+): string {
+  const cleanName = fullName?.trim() ?? '';
+  if (!cleanName || cleanName === 'Chưa phân công') {
+    return 'Giảng viên hướng dẫn';
+  }
+  const cleanTitle = academicTitle?.trim() ?? '';
+  if (!cleanTitle) {
+    return cleanName;
+  }
+  if (ACADEMIC_PREFIX_PATTERN.test(cleanName)) {
+    return cleanName;
+  }
+  return `${cleanTitle} ${cleanName}`.trim();
+}
+
+export function parseArchivalKeywords(raw?: string | null): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/[;,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function buildArchivalRows(
   summaries: readonly FinalSubmissionSummaryDto[],
   resolveMeta: (groupId: string) => ResolvedGroupMeta,
 ): ArchivalReviewRow[] {
-  return summaries.map((summary, index) => {
+  return summaries.map((summary) => {
     const meta = resolveMeta(summary.groupId);
     const display = getArchivalStatusDisplay(summary.status);
-    const fallbackCode = `N${String(index + 1).padStart(2, '0')}`;
 
     return {
       ...summary,
-      groupCode: meta.groupCode || fallbackCode,
+      groupCode: resolveArchivalGroupCode(summary.groupId, meta.groupCode),
       topicTitleVi: meta.topicTitleVi || summary.topicTitle,
       topicTitleEn: meta.topicTitleEn ?? null,
       studentNames: meta.studentNames,
@@ -278,6 +318,61 @@ export function filterArchivalRows(
       .toLowerCase();
 
     return haystack.includes(normalizedKeyword);
+  });
+}
+
+export type ArchivalSortField =
+  | 'groupCode'
+  | 'topicTitle'
+  | 'version'
+  | 'submittedAt'
+  | 'status';
+
+export interface ArchivalSortState {
+  field: ArchivalSortField;
+  direction: 'asc' | 'desc';
+}
+
+const ARCHIVAL_STATUS_ORDER: Record<string, number> = {
+  Submitted: 1,
+  NeedRevision: 2,
+  AdvisorConfirmed: 3,
+  ArchiveConfirmed: 4,
+  NotSubmitted: 5,
+};
+
+export function sortArchivalRows(
+  rows: readonly ArchivalReviewRow[],
+  sort: ArchivalSortState,
+): ArchivalReviewRow[] {
+  const factor = sort.direction === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    let cmp = 0;
+    switch (sort.field) {
+      case 'groupCode':
+        cmp = a.groupCode.localeCompare(b.groupCode, 'vi', { numeric: true, sensitivity: 'base' });
+        break;
+      case 'topicTitle':
+        cmp = a.topicTitleVi.localeCompare(b.topicTitleVi, 'vi', { sensitivity: 'base' });
+        break;
+      case 'version':
+        cmp = a.currentVersionNo - b.currentVersionNo;
+        break;
+      case 'submittedAt': {
+        const ta = a.submittedAt ? Date.parse(a.submittedAt) : 0;
+        const tb = b.submittedAt ? Date.parse(b.submittedAt) : 0;
+        cmp = (Number.isNaN(ta) ? 0 : ta) - (Number.isNaN(tb) ? 0 : tb);
+        break;
+      }
+      case 'status': {
+        const oa = ARCHIVAL_STATUS_ORDER[a.status] ?? 99;
+        const ob = ARCHIVAL_STATUS_ORDER[b.status] ?? 99;
+        cmp = oa !== ob ? oa - ob : a.statusLabel.localeCompare(b.statusLabel, 'vi');
+        break;
+      }
+    }
+    if (cmp !== 0) return cmp * factor;
+    return a.submissionId.localeCompare(b.submissionId);
   });
 }
 

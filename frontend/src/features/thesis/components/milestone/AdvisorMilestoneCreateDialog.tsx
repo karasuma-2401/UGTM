@@ -283,7 +283,7 @@ function CreateMilestoneFormBody({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <span id={descLabelId} className="text-sm font-semibold text-slate-800">
-                Sản phẩm & yêu cầu cần nộp
+                Sản phẩm và yêu cầu cần nộp
                 <span className="ml-1.5 font-normal text-slate-500">(không bắt buộc)</span>
               </span>
             </div>

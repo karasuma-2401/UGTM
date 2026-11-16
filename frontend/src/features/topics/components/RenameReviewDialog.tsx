@@ -382,7 +382,7 @@ export function RenameReviewDialog({
             </section>
           </div>
 
-          {/* Cột phải: Tiến trình 3 cấp & Thao tác phê duyệt */}
+          {/* Cột phải: Tiến trình 3 cấp và Thao tác phê duyệt */}
           <div className="flex flex-col justify-between gap-5 bg-slate-50/60 p-5 sm:p-6 lg:col-span-5">
             <section className="space-y-3.5" aria-label="Tiến trình phê duyệt 3 cấp">
               <div className="space-y-2">

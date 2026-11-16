@@ -117,7 +117,7 @@ export function ThesisSubmissionWorkspace({
         <PageHeader
           compact
           accent
-          title="Báo cáo & tiến độ"
+          title="Báo cáo và tiến độ"
           description={<Skeleton className="h-4 w-72 mt-0.5" />}
           navigation={<ThesisSubmissionNavigation activeId={activeTab} />}
         />
@@ -141,7 +141,7 @@ export function ThesisSubmissionWorkspace({
         <PageHeader
           compact
           accent
-          title="Báo cáo & tiến độ"
+          title="Báo cáo và tiến độ"
           description="Quản lý tiến độ thực hiện và nộp các cổng đánh giá khóa luận tốt nghiệp"
           navigation={<ThesisSubmissionNavigation activeId={activeTab} />}
         />
@@ -180,7 +180,7 @@ export function ThesisSubmissionWorkspace({
         <PageHeader
           compact
           accent
-          title="Báo cáo & tiến độ"
+          title="Báo cáo và tiến độ"
           description="Quản lý tiến độ thực hiện và nộp các cổng đánh giá khóa luận tốt nghiệp"
           navigation={<ThesisSubmissionNavigation activeId={activeTab} />}
         />
@@ -198,7 +198,7 @@ export function ThesisSubmissionWorkspace({
             <Button asChild size="sm">
               <Link to="/topics/student">
                 <BookOpen className="size-4 mr-1.5" />
-                Đi tới Đề tài & đăng ký
+                Đi tới Đề tài và đăng ký
               </Link>
             </Button>
           </div>
@@ -212,7 +212,7 @@ export function ThesisSubmissionWorkspace({
       <PageHeader
         compact
         accent
-        title="Báo cáo & tiến độ"
+        title="Báo cáo và tiến độ"
         description={headerDescription}
         navigation={<ThesisSubmissionNavigation activeId={activeTab} gates={journey.gates} />}
       />

@@ -26,8 +26,36 @@ const dependencies = {
   '@/components/ui/button': {
     Button: ({ children }) => React.createElement('button', null, children),
   },
+  '@/components/ui/confirm-dialog': {
+    ConfirmDialog: ({ open, children }) =>
+      open ? React.createElement('dialog', { open: true }, children) : null,
+  },
+  '@/components/ui/input': {
+    Input: (props) => React.createElement('input', props),
+  },
+  '@/components/ui/skeleton': {
+    Skeleton: ({ className }) => React.createElement('span', { className }),
+  },
+  '@/components/ui/status-badge': {
+    StatusBadge: ({ tone, children }) =>
+      React.createElement('span', { 'data-tone': tone }, children),
+  },
+  '@/lib/utils': {
+    cn: (...classes) => classes.filter(Boolean).join(' '),
+  },
   '@/shared/auth': { useAuth: () => ({ user: { id: 'current-user' } }) },
   '../services/similarityApi': { similarityApi: {} },
+  '../utils/similarity': {
+    normalizeSimilarityPercent: (v) => (v <= 1 ? v * 100 : v),
+    formatSimilarityPercent: (v) =>
+      `${(v <= 1 ? v * 100 : v).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%`,
+    formatRerankerScore: (v) =>
+      v.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    getSimilarityScanDisplay: (status) => ({
+      label: status === 'Completed' ? 'Đã hoàn tất' : status || 'Chưa có lượt quét',
+      tone: status === 'Completed' ? 'success' : 'info',
+    }),
+  },
 };
 const source = readFileSync(
   new URL('../src/features/thesis/components/SimilarityReportPanel.tsx', import.meta.url),

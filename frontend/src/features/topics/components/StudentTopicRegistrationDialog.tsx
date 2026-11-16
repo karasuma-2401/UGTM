@@ -194,7 +194,7 @@ export function StudentTopicRegistrationDialog({
   return (
     <>
       <Dialog
-        title="Chi tiết & đăng ký đề tài"
+        title="Chi tiết và đăng ký đề tài"
         busy={mutation.isPending}
         onClose={() => {
           if (!mutation.isPending) onClose();

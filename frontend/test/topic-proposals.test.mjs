@@ -426,7 +426,7 @@ test('actual sidebar renders one catalog link for Student/Admin and hides it fro
   for (const roles of [['Student'], ['student'], ['Admin'], ['admin'], ['Admin', 'Student']]) {
     const markup = renderSidebar(roles);
     assert.equal((markup.match(/href="\/topics\/catalog"/g) ?? []).length, 1);
-    assert.match(markup, /Đề tài &amp; đăng ký/);
+    assert.match(markup, /Đề tài và đăng ký/);
   }
   for (const roles of [['Lecturer'], ['Faculty'], ['AcademicAffairs'], []]) {
     assert.doesNotMatch(renderSidebar(roles), /href="\/topics\/catalog"/);
@@ -472,7 +472,7 @@ test('guidance has two tabs, preserves batch scope and resolves legacy group boo
     page.props.navigation.props.tabs.map((tab) => [tab.label, tab.href]),
     [
       ['Đề tài của tôi', '/topics/advising?batchId=batch-real'],
-      ['Nhóm & tiến độ', '/topics/advising?tab=groups&batchId=batch-real'],
+      ['Nhóm và tiến độ', '/topics/advising?tab=groups&batchId=batch-real'],
     ],
   );
   for (const tab of ['registrations', 'advising', 'groups']) {

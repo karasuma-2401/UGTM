@@ -5,6 +5,7 @@ import ts from 'typescript';
 import * as React from 'react';
 import * as jsxRuntime from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
+import * as icons from 'lucide-react';
 
 function loadModule(path, dependencies = {}) {
   const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
@@ -224,6 +225,7 @@ function renderCurrentBatch(query = {}, canRead = true) {
   let retry;
   const { CurrentAcademicBatch } = loadModule('shared/layout/CurrentAcademicBatch.tsx', {
     'react/jsx-runtime': jsxRuntime,
+    'lucide-react': icons,
     '@/components/ui/button': {
       Button: ({ children, onClick, ...props }) => {
         retry = onClick;

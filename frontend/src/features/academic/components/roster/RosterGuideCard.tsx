@@ -90,7 +90,7 @@ export const RosterGuideCard: React.FC = () => {
               className="font-semibold text-slate-800 text-right whitespace-nowrap"
               title="Tài khoản đã tồn tại được bảo lưu mật khẩu và vai trò cũ. Phân công Hội đồng khóa luận được quản lý độc lập."
             >
-              Bảo lưu vai trò & mật khẩu cũ
+              Bảo lưu vai trò và mật khẩu cũ
             </span>
           </div>
         </div>

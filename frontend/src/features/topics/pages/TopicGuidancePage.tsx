@@ -25,7 +25,7 @@ export function TopicGuidancePage() {
   };
   const tabs: TabItem[] = [
     { id: 'topics', label: 'Đề tài của tôi', icon: FileText, href: href('topics') },
-    { id: 'groups', label: 'Nhóm & tiến độ', icon: Users, href: href('groups') },
+    { id: 'groups', label: 'Nhóm và tiến độ', icon: Users, href: href('groups') },
   ];
   const navigation = (
     <NavigationTabs

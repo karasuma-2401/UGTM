@@ -136,7 +136,7 @@ export function AdvisorMilestoneForm({
 
       <div className="space-y-1.5">
         <span id={descLabelId} className="block text-sm font-semibold text-slate-800">
-          Sản phẩm & yêu cầu cần nộp
+          Sản phẩm và yêu cầu cần nộp
         </span>
         <RichTextEditor
           id="inline-milestone-description"

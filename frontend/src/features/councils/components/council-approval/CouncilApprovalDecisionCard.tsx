@@ -67,7 +67,7 @@ export function CouncilApprovalDecisionCard({
   return (
     <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-6">
       <h2 className="text-base font-bold text-slate-900">
-        Quyết định & nhận xét
+        Quyết định và nhận xét
       </h2>
 
       {!selectedCouncil ? (

@@ -102,7 +102,7 @@ export function FinalReportUploadCard({
           onImagesChange={onImagesChange}
           linksRequired={false}
           disabled={disabled}
-          title="Liên kết sản phẩm & ảnh minh chứng (tuỳ chọn)"
+          title="Liên kết sản phẩm và ảnh minh chứng (tuỳ chọn)"
           subtitle="Tối đa 5 liên kết và 5 ảnh minh chứng · Hỗ trợ kéo thả hoặc dán ảnh trực tiếp bằng Ctrl+V."
         />
       }

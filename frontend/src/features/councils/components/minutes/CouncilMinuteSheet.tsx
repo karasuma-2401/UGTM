@@ -255,7 +255,7 @@ export function CouncilMinuteSheet({
           </div>
         </header>
 
-        {/* Topic, Students & Council Composition Metadata */}
+        {/* Topic, Students và Council Composition Metadata */}
         <section
           aria-label="Thông tin đề tài và thành phần hội đồng"
           className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 sm:p-5 space-y-4"
@@ -588,7 +588,7 @@ export function CouncilMinuteSheet({
           </div>
         </section>
 
-        {/* Discrepancy Analysis & Secretary Decision */}
+        {/* Discrepancy Analysis và Secretary Decision */}
         <section
           aria-label="Phân tích sai biệt điểm và kết luận hội đồng"
           className="border-t border-slate-200/80 pt-5 space-y-3.5"
@@ -747,7 +747,7 @@ export function CouncilMinuteSheet({
           )}
         </section>
 
-        {/* Student Feedback & Required Revisions */}
+        {/* Student Feedback và Required Revisions */}
         <section
           aria-label="Góp ý chỉnh sửa gửi sinh viên"
           className="border-t border-slate-200/80 pt-5 space-y-2.5"

@@ -427,7 +427,7 @@ export function TopicAdvisingPage({
           columns={[
             {
               id: 'title',
-              header: 'Đề tài & nhóm',
+              header: 'Đề tài và nhóm',
               sortKey: 'title',
               skeleton: { variant: 'topic' },
               cellClassName: 'px-4 py-4',

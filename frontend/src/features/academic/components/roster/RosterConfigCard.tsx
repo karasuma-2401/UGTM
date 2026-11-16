@@ -46,7 +46,7 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
     const label =
       activeRole === 'Student'
         ? 'Sinh viên đủ điều kiện làm khóa luận'
-        : 'Giảng viên hướng dẫn & phản biện';
+        : 'Giảng viên hướng dẫn và phản biện';
     return [{ value: activeRole, label }];
   }, [activeRole]);
 
@@ -158,7 +158,7 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
         onChange={handleFileChange}
       />
 
-      {/* Drag & Drop Upload Zone */}
+      {/* Drag và Drop Upload Zone */}
       {fileInfo ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 sm:p-5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">

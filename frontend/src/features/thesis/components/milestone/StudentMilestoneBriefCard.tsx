@@ -110,7 +110,7 @@ export function StudentMilestoneBriefCard({
 
       <div className="divide-y divide-slate-100">
         <div className="px-5 sm:px-6 py-4 space-y-1.5">
-          <p className="text-xs font-semibold text-slate-500">Yêu cầu & đầu mục cần nộp</p>
+          <p className="text-xs font-semibold text-slate-500">Yêu cầu và đầu mục cần nộp</p>
           <RichTextContent
             content={milestone.description}
             className="text-sm text-slate-700"
@@ -123,7 +123,7 @@ export function StudentMilestoneBriefCard({
         </div>
 
         <div className="px-5 sm:px-6 py-4 space-y-2">
-          <p className="text-xs font-semibold text-slate-500">Đánh giá & nhận xét từ GVHD</p>
+          <p className="text-xs font-semibold text-slate-500">Đánh giá và nhận xét từ GVHD</p>
           <div className={cn('rounded-xl border px-4 py-3 space-y-1.5', reviewAccentClass)}>
             {latestReviewed?.review ? (
               <>

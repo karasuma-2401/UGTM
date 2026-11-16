@@ -924,7 +924,6 @@ export function LecturerGradingPage() {
         >
           <ListCardHeader
             title="Nhóm được phân công"
-            icon={<SquarePen />}
             description={`${role === 'advisor' ? 'Hướng dẫn' : 'Phản biện'} · ${activeBatch?.batchName ?? 'Đợt KLTN hiện hành'}`}
             className="lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
           >
@@ -1207,7 +1206,7 @@ export function LecturerGradingPage() {
             : 'Xác nhận yêu cầu chỉnh sửa báo cáo cuối kỳ'
         }
         confirmText={
-          advisorDecision === 'Approve' ? 'Duyệt & Khóa phiếu' : 'Gửi yêu cầu chỉnh sửa'
+          advisorDecision === 'Approve' ? 'Duyệt và Khóa phiếu' : 'Gửi yêu cầu chỉnh sửa'
         }
         cancelText="Hủy"
         type={advisorDecision === 'Approve' ? 'info' : 'warning'}
@@ -1270,7 +1269,7 @@ export function LecturerGradingPage() {
               >
                 {isLocked && <Lock className="size-3.5" aria-hidden="true" />}
                 {isLocked
-                  ? 'Đã chốt & khóa phiếu'
+                  ? 'Đã chốt và khóa phiếu'
                   : group.evaluationStatus === 'Submitted'
                     ? 'Đã lưu điểm chính thức'
                     : group.evaluationStatus === 'Draft'

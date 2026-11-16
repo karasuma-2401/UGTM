@@ -323,7 +323,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                       </div>
                     </TableCell>
 
-                    {/* Cột 4: Phân loại & thao tác */}
+                    {/* Cột 4: Phân loại và thao tác */}
                     <TableCell align="right" className="px-5 py-4 whitespace-nowrap">
                       <div className="inline-flex items-center justify-end gap-2 shrink-0">
                         {getCategoryBadge(item)}

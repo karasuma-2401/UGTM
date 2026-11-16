@@ -558,6 +558,10 @@ test('reusable BlockComposer and SubmissionBlockComposer render link and image b
       '../../utils/milestoneFormatters': formatters,
       '../../services/submissionUploadHelper': uploadHelper,
       './PdfPreviewDialog': pdfPreviewModule,
+      './ThesisFileTypeIcon': loadModule(
+        'features/thesis/components/shared/ThesisFileTypeIcon.tsx',
+        commonUiDeps,
+      ),
     },
   );
 

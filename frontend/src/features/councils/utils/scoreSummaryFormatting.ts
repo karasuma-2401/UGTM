@@ -111,7 +111,7 @@ function resolveDisplayState(
       filterKey: 'needsCalculation',
       displayStatusLabel: 'Sẵn sàng tính',
       displayStatusTone: 'orange',
-      conditionSummary: 'Đủ điểm & lưu chiểu đạt - Chưa tính dự thảo',
+      conditionSummary: 'Đủ điểm và lưu chiểu đạt - Chưa tính dự thảo',
     };
   }
 

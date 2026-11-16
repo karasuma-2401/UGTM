@@ -175,7 +175,7 @@ export const AcademicResultsPage: React.FC = () => {
       },
       {
         id: 'topicTitleVi',
-        header: 'Đề tài & Sinh viên',
+        header: 'Đề tài và Sinh viên',
         sortKey: 'topicTitleVi',
         cell: (row) => (
           <div className="min-w-0 space-y-0.5">
