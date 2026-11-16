@@ -1,6 +1,7 @@
 using System.Text.Json;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Identity.Contracts.Users;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
 using UGTM.Modules.DefenseCouncil.Contracts.Councils;
@@ -104,6 +105,38 @@ public sealed class PlagiarismReportApplicationTests
         Assert.False(result.IsSuccess);
         Assert.Equal(PlagiarismScanErrors.AccessDenied.Code, result.Error.Code);
         Assert.Null(assigned.LastUserId);
+    }
+
+    [Fact]
+    public async Task CouncilReportList_EnrichesScanMetricsAndConfirmedStudents()
+    {
+        var (report, scan) = CreateCompletedReportWithScan();
+        Assert.True(report.TryBeginEvaluation());
+
+        var group = new StudentGroup(GroupId, TopicId, Now);
+        group.AddConfirmedMember(StudentId, Guid.NewGuid(), Now);
+
+        var handler = new GetMyCouncilSimilarityReportsHandler(
+            CouncilMemberUser(CouncilMemberId),
+            new FakeCouncilAssignedGroups(),
+            new FakeStudentGroupRepository(group),
+            new FakeFinalReportRepository(report),
+            new FakeTopicSummaries(),
+            new FakeScanRepository(scan),
+            new FakeStudentInfoReader(StudentId, "Nguyễn Văn Demo", "22520999"));
+
+        var result = await handler.HandleAsync();
+        Assert.True(result.IsSuccess);
+        var item = Assert.Single(result.Value);
+        Assert.Equal("Completed", item.ScanStatus);
+        Assert.Equal(0.185, item.SimilarityCoverage);
+        Assert.Equal(0.82, item.MaxRerankerScore);
+        Assert.Equal(1, item.CitedFindings);
+        Assert.Equal(0, item.UncitedFindings);
+        Assert.Equal(1, item.TotalFindings);
+        var student = Assert.Single(item.Students!);
+        Assert.Equal("Nguyễn Văn Demo", student.FullName);
+        Assert.Equal("22520999", student.UserCode);
     }
 
     [Fact]
@@ -718,5 +751,27 @@ public sealed class PlagiarismReportApplicationTests
         public Task<bool> RetryJobAsync(Guid jobId, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<ScanJobSubmissionResult> IndexCorpusDocumentAsync(string corpusId, string sourceId, int version, Stream fileStream, string fileName, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<bool> CheckHealthAsync(CancellationToken ct = default) => Task.FromResult(true);
+    }
+
+    private sealed class FakeStudentInfoReader(Guid studentId, string fullName, string userCode) : IStudentInfoReader
+    {
+        public Task<IReadOnlyDictionary<Guid, StudentInfoContractDto>> GetStudentsByIdsAsync(
+            IEnumerable<Guid> studentIds,
+            CancellationToken cancellationToken = default)
+        {
+            var dict = studentIds.Contains(studentId)
+                ? new Dictionary<Guid, StudentInfoContractDto>
+                {
+                    [studentId] = new(studentId, "student@gm.uit.edu.vn", fullName, userCode, null)
+                }
+                : new Dictionary<Guid, StudentInfoContractDto>();
+            return Task.FromResult<IReadOnlyDictionary<Guid, StudentInfoContractDto>>(dict);
+        }
+
+        public Task<StudentInfoContractDto?> GetStudentByIdOrCodeAsync(
+            Guid? id,
+            string? code,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<StudentInfoContractDto?>(null);
     }
 }
