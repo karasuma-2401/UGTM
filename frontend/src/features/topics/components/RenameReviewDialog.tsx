@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowDown,
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Dialog } from '@/components/ui/dialog';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { RichTextContent } from '@/components/ui/rich-text-content';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { cn } from '@/lib/utils';
 import { studentTopicApi } from '../services/studentTopicApi';
@@ -24,16 +25,16 @@ import {
   computeTitleWordDiff,
   formatRenameDateTime,
   getPendingLevelForStatus,
-  getRenameApprovalSteps,
   type RenameLevelConfig,
   type RenameReviewLevel,
-  type TitleDiffSegment,
 } from '../renameReview';
 import {
   renameStatusLabels,
   renameStatusTones,
   type RenameRequest,
 } from '../types/renameRequest.types';
+import { RenameApprovalTimeline } from './RenameApprovalTimeline';
+import { TitleDiffText } from './TitleDiffText';
 
 export interface RenameDecisionPayload {
   request: RenameRequest;
@@ -49,64 +50,6 @@ interface RenameReviewDialogProps {
   onClose: () => void;
   onSubmitDecision: (payload: RenameDecisionPayload) => void;
   onSwitchLevel?: (level: RenameReviewLevel) => void;
-}
-
-function DiffTitleText({
-  segments,
-  variant,
-  subtle = false,
-}: {
-  segments: TitleDiffSegment[];
-  variant: 'old' | 'new';
-  subtle?: boolean;
-}) {
-  return (
-    <>
-      {segments.map((segment, index) => {
-        const prefix = index > 0 ? ' ' : '';
-        if (segment.kind === 'removed' && variant === 'old') {
-          return (
-            <Fragment key={`${segment.kind}-${index}`}>
-              {prefix}
-              <mark
-                className={cn(
-                  'rounded px-1 py-0.5 line-through decoration-rose-400/75',
-                  subtle
-                    ? 'bg-tone-danger-bg text-tone-danger-text/85'
-                    : 'bg-tone-danger-bg/95 text-tone-danger-text',
-                )}
-              >
-                {segment.text}
-              </mark>
-            </Fragment>
-          );
-        }
-        if (segment.kind === 'added' && variant === 'new') {
-          return (
-            <Fragment key={`${segment.kind}-${index}`}>
-              {prefix}
-              <mark
-                className={cn(
-                  'rounded px-1 py-0.5 font-semibold',
-                  subtle
-                    ? 'bg-tone-info-bg text-tone-info-text'
-                    : 'bg-tone-info-bg/95 text-tone-info-strong',
-                )}
-              >
-                {segment.text}
-              </mark>
-            </Fragment>
-          );
-        }
-        return (
-          <Fragment key={`${segment.kind}-${index}`}>
-            {prefix}
-            {segment.text}
-          </Fragment>
-        );
-      })}
-    </>
-  );
 }
 
 export function RenameReviewDialog({
@@ -133,10 +76,6 @@ export function RenameReviewDialog({
 
   const canReview = request.status === levelConfig.status;
   const pendingLevel = getPendingLevelForStatus(request.status);
-  const steps = getRenameApprovalSteps(request);
-  const approvedCount = steps.filter((step) => step.state === 'approved').length;
-  const isAllApproved = approvedCount === steps.length;
-  const hasRejected = steps.some((step) => step.state === 'rejected');
   const viTitleDiff = computeTitleWordDiff(request.oldTitleVi, request.newTitleVi);
   const enTitleDiff = computeTitleWordDiff(request.oldTitleEn, request.newTitleEn);
 
@@ -243,7 +182,7 @@ export function RenameReviewDialog({
                     )}
                   </div>
                   <p className="mt-1.5 text-[13.5px] font-medium leading-relaxed text-ink-body">
-                    <DiffTitleText segments={viTitleDiff.oldSegments} variant="old" />
+                    <TitleDiffText segments={viTitleDiff.oldSegments} variant="old" />
                   </p>
                   {request.oldTitleEn && (
                     <p className="mt-1.5 flex items-baseline gap-1.5 text-xs leading-relaxed text-ink-muted">
@@ -251,7 +190,7 @@ export function RenameReviewDialog({
                         EN
                       </span>
                       <span>
-                        <DiffTitleText segments={enTitleDiff.oldSegments} variant="old" subtle />
+                        <TitleDiffText segments={enTitleDiff.oldSegments} variant="old" subtle />
                       </span>
                     </p>
                   )}
@@ -276,7 +215,7 @@ export function RenameReviewDialog({
                     )}
                   </div>
                   <p className="mt-1.5 text-[15px] font-semibold leading-snug text-ink-primary">
-                    <DiffTitleText segments={viTitleDiff.newSegments} variant="new" />
+                    <TitleDiffText segments={viTitleDiff.newSegments} variant="new" />
                   </p>
                   {request.newTitleEn && (
                     <p className="mt-1.5 flex items-baseline gap-1.5 text-xs leading-relaxed text-ink-body">
@@ -284,7 +223,7 @@ export function RenameReviewDialog({
                         EN
                       </span>
                       <span>
-                        <DiffTitleText segments={enTitleDiff.newSegments} variant="new" subtle />
+                        <TitleDiffText segments={enTitleDiff.newSegments} variant="new" subtle />
                       </span>
                     </p>
                   )}
@@ -299,9 +238,10 @@ export function RenameReviewDialog({
                     <MessageSquareQuote className="size-3.5 text-ink-subtle" aria-hidden="true" />
                     Lý do đổi tên
                   </p>
-                  <p className="mt-1 text-[13px] leading-relaxed text-ink-secondary whitespace-pre-wrap">
-                    {request.reason}
-                  </p>
+                  <RichTextContent
+                    content={request.reason}
+                    className="mt-1 text-[13px] leading-relaxed text-ink-secondary"
+                  />
                 </section>
               </div>
             </section>
@@ -388,185 +328,11 @@ export function RenameReviewDialog({
 
           {/* Cột phải: Tiến trình 3 cấp và Thao tác phê duyệt */}
           <div className="flex flex-col justify-between gap-5 bg-surface-subtle/60 p-5 sm:p-6 lg:col-span-5">
-            <section className="space-y-3.5" aria-label="Tiến trình phê duyệt 3 cấp">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                    Tiến trình phê duyệt 3 cấp
-                  </h3>
-                  <span
-                    className={cn(
-                      'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums',
-                      isAllApproved
-                        ? 'bg-tone-success-bg text-tone-success-text ring-1 ring-tone-success-border/70'
-                        : hasRejected
-                          ? 'bg-tone-danger-bg text-tone-danger-text ring-1 ring-tone-danger-border/70'
-                          : 'bg-tone-info-bg text-primary ring-1 ring-tone-info-border/70',
-                    )}
-                  >
-                    {isAllApproved
-                      ? '3/3 bước hoàn tất'
-                      : hasRejected
-                        ? `Dừng tại ${approvedCount}/3 bước`
-                        : `${approvedCount}/3 hoàn tất · Cấp ${levelConfig.number}`}
-                  </span>
-                </div>
-
-                <div
-                  className="flex items-center gap-1.5"
-                  role="progressbar"
-                  aria-label="Tiến độ phê duyệt 3 cấp"
-                  aria-valuenow={approvedCount}
-                  aria-valuemin={0}
-                  aria-valuemax={3}
-                >
-                  {steps.map((step) => (
-                    <span
-                      key={step.level}
-                      className={cn(
-                        'h-1.5 flex-1 rounded-full transition-colors duration-300',
-                        step.state === 'approved' && 'bg-emerald-500',
-                        step.state === 'current' && 'bg-primary',
-                        step.state === 'rejected' && 'bg-rose-500',
-                        step.state === 'pending' && 'bg-surface-strong/90',
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <ol className="space-y-0">
-                {steps.map((step, index) => {
-                  const isActiveTarget = step.level === levelConfig.level;
-                  const isLast = index === steps.length - 1;
-
-                  return (
-                    <li key={step.level} className="flex items-stretch gap-3">
-                      <div className="flex w-7 shrink-0 flex-col items-center">
-                        <span
-                          aria-hidden="true"
-                          className={cn(
-                            'mt-2.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums transition-[background-color,border-color,box-shadow] duration-200',
-                            step.state === 'approved' && 'bg-emerald-500 text-white',
-                            step.state === 'current' && 'bg-brand-solid text-white',
-                            step.state === 'rejected' && 'bg-rose-500 text-white',
-                            step.state === 'pending' &&
-                              'border border-line-input bg-surface-elevated text-ink-subtle',
-                          )}
-                        >
-                          {step.state === 'approved' ? (
-                            <Check className="size-3.5 stroke-[2.5]" />
-                          ) : step.state === 'rejected' ? (
-                            <X className="size-3.5 stroke-[2.5]" />
-                          ) : (
-                            step.number
-                          )}
-                        </span>
-                        {!isLast && (
-                          <span
-                            aria-hidden="true"
-                            className={cn(
-                              'my-1 w-0.5 flex-1 rounded-full',
-                              step.state === 'approved'
-                                ? 'bg-emerald-300/90 dark:bg-emerald-700/70'
-                                : step.state === 'rejected'
-                                  ? 'bg-rose-200 dark:bg-rose-800/70'
-                                  : 'bg-surface-strong',
-                            )}
-                          />
-                        )}
-                      </div>
-
-                      <div className={cn('min-w-0 flex-1', !isLast && 'pb-2.5')}>
-                        <div
-                          className={cn(
-                            'rounded-xl border px-3.5 py-2.5 transition-[background-color,border-color,box-shadow] duration-200',
-                            step.state === 'approved' && 'border-line/80 bg-surface-card',
-                            step.state === 'current' && 'border-tone-info-border bg-surface-card py-3',
-                            step.state === 'rejected' &&
-                              'border-tone-danger-border bg-tone-danger-bg',
-                            step.state === 'pending' &&
-                              'border-line/55 bg-surface-card/60',
-                            isActiveTarget &&
-                              step.state === 'pending' &&
-                              'border-line-strong bg-surface-card/85',
-                          )}
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-1.5">
-                            <span
-                              className={cn(
-                                'text-[13px] font-semibold',
-                                step.state === 'pending'
-                                  ? 'text-ink-muted'
-                                  : 'text-ink-primary',
-                              )}
-                            >
-                              Cấp {step.number} · {step.actorLabel}
-                            </span>
-                            <span
-                              className={cn(
-                                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
-                                step.state === 'approved' &&
-                                  'bg-tone-success-bg text-tone-success-text',
-                                step.state === 'current' &&
-                                  'bg-tone-info-bg text-primary',
-                                step.state === 'rejected' &&
-                                  'bg-tone-danger-bg/90 text-tone-danger-text',
-                                step.state === 'pending' &&
-                                  'bg-surface-muted text-ink-muted',
-                              )}
-                            >
-                              {step.state === 'current' && (
-                                <span
-                                  className="size-1.5 rounded-full bg-primary motion-safe:animate-pulse"
-                                  aria-hidden="true"
-                                />
-                              )}
-                              {step.stateLabel}
-                            </span>
-                          </div>
-
-                          <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                            {step.timestamp ? (
-                              <span className="inline-flex items-center gap-1 text-ink-muted tabular-nums">
-                                <CalendarClock className="size-3 text-ink-subtle" aria-hidden="true" />
-                                {formatRenameDateTime(step.timestamp)}
-                              </span>
-                            ) : step.state === 'current' ? (
-                              <span className="font-medium text-tone-info-text/85">
-                                {isActiveTarget
-                                  ? 'Bước hiện tại cần bạn xử lý'
-                                  : 'Đang chờ cấp này xử lý'}
-                              </span>
-                            ) : (
-                              <span className="text-ink-subtle">Chờ hoàn tất bước trước</span>
-                            )}
-
-                            {!isActiveTarget && step.state === 'current' && onSwitchLevel ? (
-                              <button
-                                type="button"
-                                onClick={() => onSwitchLevel(step.level)}
-                                className="inline-flex items-center gap-1 font-medium text-primary transition-colors hover:text-tone-info-text focus-visible:outline-none focus-visible:underline"
-                              >
-                                Xem cấp này
-                                <ArrowRight className="size-3" aria-hidden="true" />
-                              </button>
-                            ) : (
-                              isActiveTarget &&
-                              step.state !== 'current' && (
-                                <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-medium text-ink-body">
-                                  Đang xem
-                                </span>
-                              )
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ol>
-            </section>
+            <RenameApprovalTimeline
+              request={request}
+              activeLevel={levelConfig.level}
+              onSwitchLevel={onSwitchLevel}
+            />
 
             <section className="space-y-3 border-t border-line/80 pt-4" aria-label="Xử lý đơn">
               {error && (

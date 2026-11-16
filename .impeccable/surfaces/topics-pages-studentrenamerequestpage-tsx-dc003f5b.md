@@ -1,0 +1,30 @@
+---
+version: 1
+slug: "topics-pages-studentrenamerequestpage-tsx-dc003f5b"
+primary_target: "frontend/src/features/topics/pages/StudentRenameRequestPage.tsx"
+related_targets: ["frontend/src/features/topics/components/StudentRenameDetailDialog.tsx","frontend/src/features/topics/components/StudentRenamePipelineDock.tsx","frontend/src/features/topics/renameReview.ts"]
+---
+
+## Scope
+Route `/topics/rename`, Operate mode. Serves confirmed `Student` members of a thesis group (`InProgress` or `MidtermSubmitted`) during the batch rename window (Stage 3 `PROGRESS_EXECUTION` startDate through Stage 4 `MIDTERM_GATE` deadlineAtUtc when batch `status === 'Open'`). Connects to `GET /api/thesis/topic-registrations/my-status`, `GET /api/thesis/groups/{groupId}/detail`, `GET /api/thesis/groups/{groupId}/rename-requests`, `GET /api/academic-periods/batches/{batchId}/timeline`, and `POST /api/thesis/groups/{groupId}/rename-requests`.
+
+## Direction contract
+THESIS: A unified live-diff rename petition sheet paired with a sticky 3-tier approval pipeline dock, refusing generic flat 2x2 form grids, loose floating paragraphs, and orphaned submit-button cards where current vs proposed titles, eligibility constraints, and approval progress feel disconnected.
+OWN-WORLD: Inherit UGTM Modern Clean SaaS + Fluent Design — `#f8fafc` (`bg-surface-canvas`) canvas, `#ffffff` (`bg-surface-card`) `rounded-2xl` cards with `border-line/80` and subtle elevation, Inter typography with `tabular-nums` for dates/counts/progress, `#2563eb` primary actions, `#2054a5` to `#fa7921` accent stripe on `PageHeader` and key summary/dialog headers, semantic `tone-*` badges and `InlineAlert` banners, and word-level diff highlights (`computeTitleWordDiff`) matching `RenameReviewDialog`.
+STORY: The student sees immediate eligibility & Week 3–10 window progress, compares the current topic title (VI + EN) directly against their proposed title with real-time word-level diff highlights (or copies from a previously rejected request to revise), fills the justification with clear validation/counts, confirms via `ConfirmDialog`, tracks the 3-level approval pipeline (`GVHD -> Khoa -> Phòng đào tạo`) live in the right dock (and sees an unlock shortcut to `/thesis/proposal` if a `Completed` request unlocked syllabus resubmission), and inspects past group requests via `DataTable` + read-only detail `Dialog`.
+FIRST VIEWPORT: `PageHeader` (`accent`, minimal title without decorative icon box per user preference, concise description, window status `StatusBadge` + `Làm mới` button); below it, a responsive 2-column grid (`lg:grid-cols-[minmax(0,1fr)_360px]`): left main column holds an actionable eligibility/completed-unlock `InlineAlert` (when applicable) and the unified **Phiếu đề nghị đổi tên đề tài** `Card` (current VI/EN snapshot, live word-diff preview + editable VI/EN inputs with an explicit "Khôi phục tên EN gốc" action, reason textarea with char counter, `FormErrorSummary`, and integrated card footer submit bar), followed by the **Lịch sử đơn của nhóm** `Card` (`ListCardHeader` + `DataTable` + `"Xem"` button opening a read-only `StudentRenameDetailDialog` synced with `RenameReviewDialog`'s 3-step timeline and word diff); right sticky `360px` dock holds the **Thời hạn & Tiến trình 3 cấp** card (`ProgressBar` across Stage 3 -> Stage 4, live 3-step stepper reflecting active/completed/rejected/ready state) and **Nhóm & Giảng viên** card (`Avatar`, `StatusBadge` for `groupStatus`).
+FORM: Selected candidate `live-diff-sheet-and-pipeline-dock` (index 4 on our grounded list; `seed:aa771e0578ed773b`), code-led. Signature interaction: typing in `Tên mới tiếng Việt` or `Tên mới tiếng Anh` updates an inline `Hiện tại → Đề xuất mới` word-level diff (`computeTitleWordDiff`) live inside the petition sheet, and clicking "Dùng lại nội dung" on any rejected history row populates the form smoothly with focus on the title field for revision.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+## Finish review
+- **Verdict:** Shipped cleanly. Refined `/topics/rename` (`StudentRenameRequestPage.tsx`) to **Phương án 1 (Fluent Clean Sheet)** + 5 UX upgrades: removed nested card soup, chip soup, and uppercase kickers; unified the right sticky dock (`340px`) into one hairline-divided `Card` with borderless `RenameApprovalTimeline` (`flat`) and concise key-value group info; implemented state-driven primary sheet (read-only active request tracker when pending, compact condition card when ineligible/closed, interactive composer when eligible); added `"Lấy từ tên hiện tại"` quick copy, contextual rejection recovery `InlineAlert` (`"Điền lại để sửa"`), progressive live word-diff preview (only shown on change), `RichTextEditor` / `RichTextContent` for `reason`, 4-column compact history `DataTable`, and `useBlocker` + `beforeunload` unsaved draft guard.
+- **Issues found & fixed during visual inspection:**
+  1. Removed decorative icons from `PageHeader` and both `ListCardHeader`s per user feedback.
+  2. Fixed `table-fixed` column overflow in the history `DataTable` and balanced symmetrical spacing of steps 1–2–3 in `RenameApprovalTimeline`.
+  3. Eliminated redundant badges/pills (`Sẵn sàng soạn đơn`, `Sparkles`, step micro-pills, member `Đã xác nhận` pills) and nested bordered boxes.
+
+## Verification and documentation
+- `.agents\skills\impeccable\scripts\impeccable.cmd detect --json ...` on all 6 touched UI files -> `[]` (0 violations).
+- `npm --prefix frontend run lint` (`0 errors`, 0 warnings in touched files) & `npm --prefix frontend run build` (`tsc -b && vite build` succeeded).
+- Playwright visual + interaction check (`1440x900` & `390x844`) verified D1 (`22520307`: rejection recovery banner, `"Điền lại để sửa"`, Live Word-Diff, `RichTextEditor`, 4-column history table, mobile cards) and D2 (`22520309`: state-driven active request tracking view without dead disabled form).
+- Documented surface conventions under `## Xin đổi tên đề tài (/topics/rename)` in `DESIGN.md`.
