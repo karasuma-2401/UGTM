@@ -122,11 +122,11 @@ function StudentRenameRequestContent() {
   return (
     <div className="space-y-5">
       <PageHeader title="Đơn xin đổi tên đề tài" icon={<FilePenLine />} />
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-ink-muted">
         Sinh viên đã xác nhận trong nhóm có thể gửi đơn trong thời hạn quy định của đợt.
       </p>
       {stage4 && (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-ink-body">
           Hạn gửi đơn: {date(stage4.deadlineAtUtc)}.{' '}
           {windowClosed
             ? 'Hiện ngoài thời hạn gửi đơn.'
@@ -136,18 +136,18 @@ function StudentRenameRequestContent() {
       <OperationToast message={notice} onConsumed={() => setNotice('')} />
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">
         <div className="space-y-5">
-          <Card className="space-y-5 border-slate-200 p-5 shadow-sm">
-            <h2 className="font-semibold text-slate-900">Thông tin đơn</h2>
+          <Card className="space-y-5 border-line p-5 shadow-sm">
+            <h2 className="font-semibold text-ink-primary">Thông tin đơn</h2>
             {status.isPending || (group.isPending && groupId) || (history.isPending && groupId) ? (
-              <p role="status" className="text-sm text-slate-500">
+              <p role="status" className="text-sm text-ink-muted">
                 Đang tải thông tin đề tài...
               </p>
             ) : status.isError || group.isError || history.isError ? (
-              <p role="alert" className="text-sm text-rose-700">
+              <p role="alert" className="text-sm text-tone-danger-text">
                 {getTopicErrorMessage(status.error || group.error || history.error)}
               </p>
             ) : !groupId ? (
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-ink-body">
                 Bạn cần có nhóm đề tài đã xác nhận trước khi gửi đơn.{' '}
                 <Link className="text-primary underline" to="/topics/catalog">
                   Xem đăng ký đề tài
@@ -156,12 +156,16 @@ function StudentRenameRequestContent() {
             ) : group.data ? (
               <form id="rename-request-form" onSubmit={submit} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="space-y-1 text-sm font-medium">
+                  <label className="space-y-1 text-sm font-medium text-ink-secondary">
                     Tên hiện tại
-                    <Input value={group.data.topicTitleVi} readOnly className="bg-slate-50" />
+                    <Input
+                      value={group.data.topicTitleVi}
+                      readOnly
+                      className="bg-surface-muted"
+                    />
                   </label>
-                  <label className="space-y-1 text-sm font-medium">
-                    Tên mới tiếng Việt <span className="text-rose-600">*</span>
+                  <label className="space-y-1 text-sm font-medium text-ink-secondary">
+                    Tên mới tiếng Việt <span className="text-tone-danger-icon">*</span>
                     <Input
                       value={newTitleVi}
                       onChange={(event) => setNewTitleVi(event.target.value)}
@@ -171,7 +175,7 @@ function StudentRenameRequestContent() {
                       placeholder="Nhập tên đề tài mới"
                     />
                   </label>
-                  <label className="space-y-1 text-sm font-medium">
+                  <label className="space-y-1 text-sm font-medium text-ink-secondary">
                     Tên mới tiếng Anh
                     <Input
                       value={newTitleEn}
@@ -181,31 +185,31 @@ function StudentRenameRequestContent() {
                       placeholder="Không bắt buộc"
                     />
                   </label>
-                  <label className="space-y-1 text-sm font-medium">
-                    Lý do <span className="text-rose-600">*</span>
+                  <label className="space-y-1 text-sm font-medium text-ink-secondary">
+                    Lý do <span className="text-tone-danger-icon">*</span>
                     <textarea
                       value={reason}
                       onChange={(event) => setReason(event.target.value)}
                       required
                       disabled={Boolean(activeRequest)}
                       rows={4}
-                      className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="w-full rounded-md border border-input bg-surface-card px-3 py-2 text-sm text-ink-heading placeholder:text-ink-subtle dark:placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       placeholder="Nêu lý do điều chỉnh tên đề tài"
                     />
                   </label>
                 </div>
                 {activeRequest && (
-                  <p className="text-sm text-amber-700">
+                  <p className="text-sm text-tone-warning-text">
                     Nhóm đã có đơn đang chờ duyệt. Bạn có thể gửi đơn mới sau khi đơn này kết thúc.
                   </p>
                 )}
                 {!validGroupStatus && (
-                  <p className="text-sm text-amber-700">
+                  <p className="text-sm text-tone-warning-text">
                     Nhóm cần ở giai đoạn thực hiện hoặc đã nộp báo cáo giữa kỳ để gửi đơn.
                   </p>
                 )}
                 {windowClosed && (
-                  <p className="text-sm text-amber-700">
+                  <p className="text-sm text-tone-warning-text">
                     Hiện ngoài thời hạn gửi đơn đổi tên của đợt này.
                   </p>
                 )}
@@ -213,13 +217,15 @@ function StudentRenameRequestContent() {
                   group.data.topicTitleVi.trim().toLocaleLowerCase() &&
                   newTitleEn.trim().toLocaleLowerCase() ===
                     (group.data.topicTitleEn || '').trim().toLocaleLowerCase() && (
-                    <p className="text-sm text-rose-700">Tên mới cần khác tên hiện tại.</p>
+                    <p className="text-sm text-tone-danger-text">
+                      Tên mới cần khác tên hiện tại.
+                    </p>
                   )}
               </form>
             ) : null}
           </Card>
           {group.data && (
-            <Card className="border-slate-200 p-4 shadow-sm">
+            <Card className="border-line p-4 shadow-sm">
               <Button
                 type="submit"
                 form="rename-request-form"
@@ -229,21 +235,24 @@ function StudentRenameRequestContent() {
               </Button>
             </Card>
           )}
-          <Card className="space-y-3 border-slate-200 p-5 shadow-sm">
-            <h2 className="font-semibold text-slate-900">Lịch sử đơn của nhóm</h2>
+          <Card className="space-y-3 border-line p-5 shadow-sm">
+            <h2 className="font-semibold text-ink-primary">Lịch sử đơn của nhóm</h2>
             {history.isPending && groupId ? (
-              <p role="status" className="text-sm text-slate-500">
+              <p role="status" className="text-sm text-ink-muted">
                 Đang tải lịch sử đơn...
               </p>
             ) : history.isError ? (
-              <p role="alert" className="text-sm text-rose-700">
+              <p role="alert" className="text-sm text-tone-danger-text">
                 {getTopicErrorMessage(history.error)}
               </p>
             ) : history.data?.length ? (
               history.data.map((item) => (
-                <div key={item.id} className="rounded-lg border border-slate-200 p-3 text-sm">
+                <div
+                  key={item.id}
+                  className="rounded-lg border border-line p-3 text-sm"
+                >
                   <div className="flex flex-wrap justify-between gap-2">
-                    <strong>{item.newTitleVi}</strong>
+                    <strong className="text-ink-primary">{item.newTitleVi}</strong>
                     <StatusBadge
                       tone={
                         item.status.startsWith('Rejected')
@@ -256,41 +265,45 @@ function StudentRenameRequestContent() {
                       {renameStatusLabels[item.status] ?? item.status}
                     </StatusBadge>
                   </div>
-                  <p className="mt-1 text-slate-500">Gửi lúc {date(item.createdAt)}</p>
-                  <p className="mt-1 text-slate-500">
+                  <p className="mt-1 text-ink-muted">
+                    Gửi lúc {date(item.createdAt)}
+                  </p>
+                  <p className="mt-1 text-ink-muted">
                     GVHD: {item.advisorConfirmedAt ? date(item.advisorConfirmedAt) : 'chưa duyệt'} ·
                     Khoa: {item.facultyApprovedAt ? date(item.facultyApprovedAt) : 'chưa duyệt'} ·
                     PĐT: {item.aaApprovedAt ? date(item.aaApprovedAt) : 'chưa duyệt'}
                   </p>
                   {item.rejectionReason && (
-                    <p className="mt-2 text-rose-700">Lý do từ chối: {item.rejectionReason}</p>
+                    <p className="mt-2 text-tone-danger-text">
+                      Lý do từ chối: {item.rejectionReason}
+                    </p>
                   )}
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500">Chưa có đơn nào.</p>
+              <p className="text-sm text-ink-muted">Chưa có đơn nào.</p>
             )}
           </Card>
         </div>
-        <Card className="space-y-4 border-slate-200 p-5 shadow-sm">
-          <h2 className="font-semibold text-slate-900">Theo dõi phê duyệt</h2>
-          <p className="text-sm">
-            <span className="text-slate-500">Đề tài</span>
+        <Card className="space-y-4 border-line p-5 shadow-sm">
+          <h2 className="font-semibold text-ink-primary">Theo dõi phê duyệt</h2>
+          <p className="text-sm text-ink-heading">
+            <span className="text-ink-muted">Đề tài</span>
             <br />
             {group.data?.topicTitleVi ?? 'Chưa có đề tài'}
           </p>
-          <p className="text-sm">
-            <span className="text-slate-500">Nhóm</span>
+          <p className="text-sm text-ink-heading">
+            <span className="text-ink-muted">Nhóm</span>
             <br />
             {group.data?.members.map((member) => member.fullName || member.userCode).join(', ') ||
               '—'}
           </p>
-          <p className="text-sm">
-            <span className="text-slate-500">Giảng viên hướng dẫn</span>
+          <p className="text-sm text-ink-heading">
+            <span className="text-ink-muted">Giảng viên hướng dẫn</span>
             <br />
             {group.data?.advisor.fullName || '—'}
           </p>
-          <ol className="list-inside list-decimal space-y-1 text-sm text-slate-600">
+          <ol className="list-inside list-decimal space-y-1 text-sm text-ink-body">
             <li>Giảng viên hướng dẫn xem xét</li>
             <li>Khoa phê duyệt</li>
             <li>Phòng đào tạo phê duyệt và cập nhật tên</li>
@@ -307,7 +320,9 @@ function StudentRenameRequestContent() {
           <>
             Đơn sẽ được chuyển đến giảng viên hướng dẫn.{' '}
             {create.isError && (
-              <span className="block text-rose-600">{getTopicErrorMessage(create.error)}</span>
+              <span className="block text-tone-danger-icon">
+                {getTopicErrorMessage(create.error)}
+              </span>
             )}
           </>
         }

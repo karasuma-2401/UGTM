@@ -23,7 +23,7 @@ export function ReviewTopicDetailCard({
 }: ReviewTopicDetailCardProps) {
   if (!selectedGroup) {
     return (
-      <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl text-center text-slate-400 text-xs py-12">
+      <Card className="p-6 bg-surface-card border-line shadow-xs rounded-xl text-center text-ink-subtle text-xs py-12">
         Chọn một nhóm trong danh sách để xem chi tiết hồ sơ.
       </Card>
     );
@@ -44,59 +44,59 @@ export function ReviewTopicDetailCard({
   } = selectedGroup;
 
   return (
-    <Card className="p-6 bg-white border-slate-200 shadow-xs rounded-xl space-y-4">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-        <h3 className="text-base font-bold text-slate-900">
+    <Card className="p-6 bg-surface-card border-line shadow-xs rounded-xl space-y-4">
+      <div className="flex items-center justify-between border-b border-line-subtle pb-3">
+        <h3 className="text-base font-bold text-ink-primary">
           {gateTitle} {groupCode}
         </h3>
         <SyllabusStatusBadge status={currentStatus as any} className="text-[11px]" />
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Hồ sơ</p>
-        <p className="text-sm font-semibold text-slate-800">
+        <p className="text-xs font-medium text-ink-subtle uppercase tracking-wider">Hồ sơ</p>
+        <p className="text-sm font-semibold text-ink-heading">
           {topicCode} - {groupCode}
         </p>
         {topicTitleVi && topicTitleVi !== 'Chưa có dữ liệu' && (
-          <p className="text-xs text-slate-600 line-clamp-2 mt-0.5">{topicTitleVi}</p>
+          <p className="text-xs text-ink-body line-clamp-2 mt-0.5">{topicTitleVi}</p>
         )}
       </div>
 
-      <Separator className="bg-slate-100" />
+      <Separator className="bg-surface-muted" />
 
       <div className="space-y-1">
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Sinh viên</p>
-        <p className="text-xs text-slate-700">{studentNames}</p>
+        <p className="text-xs font-medium text-ink-subtle uppercase tracking-wider">Sinh viên</p>
+        <p className="text-xs text-ink-secondary">{studentNames}</p>
       </div>
 
-      <Separator className="bg-slate-100" />
+      <Separator className="bg-surface-muted" />
 
       <div className="space-y-1">
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">GVHD</p>
-        <p className="text-xs text-slate-700">{advisorName}</p>
+        <p className="text-xs font-medium text-ink-subtle uppercase tracking-wider">GVHD</p>
+        <p className="text-xs text-ink-secondary">{advisorName}</p>
       </div>
 
-      <Separator className="bg-slate-100" />
+      <Separator className="bg-surface-muted" />
 
       <div className="space-y-1">
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Đợt</p>
-        <p className="text-xs text-slate-700">{batchName}</p>
+        <p className="text-xs font-medium text-ink-subtle uppercase tracking-wider">Đợt</p>
+        <p className="text-xs text-ink-secondary">{batchName}</p>
       </div>
 
-      <Separator className="bg-slate-100" />
+      <Separator className="bg-surface-muted" />
 
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+          <p className="text-xs font-medium text-ink-subtle uppercase tracking-wider">
             Tài liệu đối chiếu
           </p>
           {hasDownloadedFile ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-tone-success-icon bg-tone-success-bg px-2 py-0.5 rounded-full border border-tone-success-border">
               <CheckCircle2 className="size-3" />
               Đã tải
             </span>
           ) : (
-            <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+            <span className="text-[11px] font-medium text-tone-warning-icon bg-tone-warning-bg px-2 py-0.5 rounded-full border border-tone-warning-border">
               Chưa tải
             </span>
           )}
@@ -112,38 +112,38 @@ export function ReviewTopicDetailCard({
             <span className="truncate">Tải {gateTitle.toLowerCase()} ({latestFileName})</span>
           </Button>
         ) : (
-          <div className="text-xs text-slate-400 italic bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-center">
+          <div className="text-xs text-ink-subtle italic bg-surface-subtle p-2.5 rounded-lg border border-line-subtle text-center">
             Chưa có tệp nộp
           </div>
         )}
 
-        <div className="flex items-center justify-between text-xs text-slate-500 pt-0.5">
+        <div className="flex items-center justify-between text-xs text-ink-muted pt-0.5">
           <span>Phiên bản:</span>
-          <span className="text-slate-700 font-medium">
+          <span className="text-ink-secondary font-medium">
             v{latestVersionNo} {submittedAtUtc ? `- ${new Date(submittedAtUtc).toLocaleDateString('vi-VN')}` : ''}
           </span>
         </div>
       </div>
 
-      <Separator className="bg-slate-100" />
+      <Separator className="bg-surface-muted" />
 
       {disabled && (
-        <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-500 text-[11px] text-center">
+        <div className="p-2.5 rounded-lg bg-surface-subtle border border-line text-ink-muted text-[11px] text-center">
           Hồ sơ đã hoàn tất thẩm định và được khóa chỉnh sửa.
         </div>
       )}
 
       <div className="space-y-1.5">
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Kết luận</p>
-        <div className="text-xs text-slate-600 leading-relaxed space-y-1 bg-slate-50 p-3 rounded-lg">
+        <p className="text-xs font-medium text-ink-subtle uppercase tracking-wider">Kết luận</p>
+        <div className="text-xs text-ink-body leading-relaxed space-y-1 bg-surface-subtle p-3 rounded-lg">
           <p>
-            <strong className="text-emerald-700">Đạt:</strong> Mở giai đoạn tiếp theo.
+            <strong className="text-tone-success-text">Đạt:</strong> Mở giai đoạn tiếp theo.
           </p>
           <p>
-            <strong className="text-amber-700">Cần sửa:</strong> Cho nộp lại trước hạn chốt đóng cổng.
+            <strong className="text-tone-warning-text">Cần sửa:</strong> Cho nộp lại trước hạn chốt đóng cổng.
           </p>
           <p>
-            <strong className="text-rose-700">Không đạt:</strong> Dừng KLTN và khóa bước sau.
+            <strong className="text-tone-danger-text">Không đạt:</strong> Dừng KLTN và khóa bước sau.
           </p>
         </div>
       </div>

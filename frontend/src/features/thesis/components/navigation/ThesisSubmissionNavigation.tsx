@@ -38,12 +38,12 @@ const BASE_TABS: Array<{
 ];
 
 const pillToneClasses: Record<JourneyGateState, string> = {
-  completed: 'bg-slate-100/90 text-emerald-700 border-slate-200/80',
-  pending: 'bg-blue-50/70 text-[#2054a5] border-blue-200/70',
-  revision: 'bg-amber-50/80 text-amber-800 border-amber-200/80',
-  rejected: 'bg-rose-50/80 text-rose-700 border-rose-200/80',
-  locked: 'bg-slate-100/80 text-slate-500 border-slate-200/80',
-  active: 'bg-slate-100/80 text-slate-600 border-slate-200/80',
+  completed: 'bg-surface-muted/90 text-tone-success-text border-line/80',
+  pending: 'bg-tone-info-bg text-brand-ink border-tone-info-border',
+  revision: 'bg-tone-warning-bg text-tone-warning-strong border-tone-warning-border',
+  rejected: 'bg-tone-danger-bg text-tone-danger-text border-tone-danger-border',
+  locked: 'bg-surface-muted/80 text-ink-muted border-line-input/80',
+  active: 'bg-surface-muted/80 text-ink-body border-line-input/80',
 };
 
 export function ThesisSubmissionNavigation({
@@ -81,7 +81,7 @@ export function ThesisSubmissionNavigation({
               )}
             >
               {gate.state === 'completed' && (
-                <CheckCircle2 className="size-3 text-emerald-600 shrink-0" aria-hidden="true" />
+                <CheckCircle2 className="size-3 text-tone-success-icon shrink-0" aria-hidden="true" />
               )}
               <span>{gate.shortLabel}</span>
             </span>

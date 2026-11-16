@@ -49,19 +49,25 @@ function ProgressSection({
 }) {
   const containerClass = compact
     ? `space-y-1.5 ${className}`.trim()
-    : `space-y-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 ${className}`.trim();
+    : `space-y-2.5 rounded-xl border border-line/80 bg-surface-subtle/70 p-4 ${className}`.trim();
 
   return (
     <section className={containerClass}>
-      <h3 className={compact ? 'text-xs font-medium text-slate-500' : 'text-sm font-semibold text-slate-900'}>
+      <h3
+        className={
+          compact
+            ? 'text-xs font-medium text-ink-muted'
+            : 'text-sm font-semibold text-ink-primary'
+        }
+      >
         {title}
       </h3>
       {query.isPending ? (
-        <p role="status" className="text-sm text-slate-500">
+        <p role="status" className="text-sm text-ink-muted">
           Đang tải…
         </p>
       ) : query.isError ? (
-        <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-rose-700">
+        <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-tone-danger-text">
           <span>{getTopicErrorMessage(query.error)}</span>
           <Button size="sm" variant="outline" onClick={() => void query.refetch()}>
             Thử lại {title.toLowerCase()}
@@ -143,16 +149,16 @@ export function AdvisingGroupDetail({
         title="Chi tiết nhóm và tiến độ"
         onClose={onClose}
         className="max-w-5xl"
-        headerClassName="border-b border-slate-200/80 px-5 py-3.5 sm:px-6"
+        headerClassName="border-b border-line/80 px-5 py-3.5 sm:px-6"
       >
         {detail.isPending ? (
           <div className="p-6">
-            <p role="status" className="text-sm text-slate-500">
+            <p role="status" className="text-sm text-ink-muted">
               Đang tải thông tin nhóm…
             </p>
           </div>
         ) : detail.isError ? (
-          <div role="alert" className="space-y-3 p-6 text-sm text-rose-700">
+          <div role="alert" className="space-y-3 p-6 text-sm text-tone-danger-text">
             <p>{getTopicErrorMessage(detail.error)}</p>
             <Button variant="outline" onClick={() => void detail.refetch()}>
               Thử lại
@@ -161,41 +167,45 @@ export function AdvisingGroupDetail({
         ) : (
           group && (
             <div className="grid grid-cols-1 lg:grid-cols-12">
-              <div className="space-y-5 bg-white p-5 sm:p-6 lg:col-span-8">
+              <div className="space-y-5 bg-surface-card p-5 sm:p-6 lg:col-span-8">
                 <header className="space-y-2.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <GroupStatusBadge status={group.groupStatus ?? ''} />
-                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                    <span className="inline-flex items-center rounded-full border border-line-input bg-surface-muted px-2.5 py-0.5 text-xs font-medium text-ink-body">
                       {groupLabel(group.groupId)}
                     </span>
                   </div>
-                  <h2 className="break-words text-xl font-bold leading-snug tracking-tight text-slate-900">
+                  <h2 className="break-words text-xl font-bold leading-snug tracking-tight text-ink-primary">
                     {group.topicTitleVi}
                   </h2>
                   {group.topicTitleEn && (
-                    <p className="break-words text-sm leading-6 text-slate-500">
+                    <p className="break-words text-sm leading-6 text-ink-muted">
                       {group.topicTitleEn}
                     </p>
                   )}
-                  <p className="break-all font-mono text-xs text-slate-400">
+                  <p className="break-all font-mono text-xs text-ink-subtle">
                     Mã đầy đủ: {group.groupId}
                   </p>
                 </header>
 
-                <details className="rounded-xl border border-slate-200/80 bg-slate-50/50">
-                  <summary className="cursor-pointer select-none rounded-xl px-4 py-3 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100/70">
+                <details className="rounded-xl border border-line/80 bg-surface-subtle/50">
+                  <summary className="cursor-pointer select-none rounded-xl px-4 py-3 text-sm font-semibold text-ink-primary transition-colors hover:bg-surface-muted/70">
                     Nội dung đề tài
                   </summary>
-                  <div className="space-y-3.5 rounded-b-xl border-t border-slate-200/80 bg-white px-4 py-4">
+                  <div className="space-y-3.5 rounded-b-xl border-t border-line/80 bg-surface-card px-4 py-4">
                     <div className="space-y-1">
-                      <h3 className="text-xs font-semibold text-slate-500">Mục tiêu và mô tả</h3>
-                      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                      <h3 className="text-xs font-semibold text-ink-muted">
+                        Mục tiêu và mô tả
+                      </h3>
+                      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-ink-secondary">
                         {group.description || 'Chưa có nội dung.'}
                       </p>
                     </div>
-                    <div className="space-y-1 border-t border-slate-100 pt-3">
-                      <h3 className="text-xs font-semibold text-slate-500">Yêu cầu</h3>
-                      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+                    <div className="space-y-1 border-t border-line-subtle pt-3">
+                      <h3 className="text-xs font-semibold text-ink-muted">
+                        Yêu cầu
+                      </h3>
+                      <p className="whitespace-pre-wrap break-words text-sm leading-6 text-ink-secondary">
                         {group.requirements || 'Chưa có nội dung.'}
                       </p>
                     </div>
@@ -203,7 +213,9 @@ export function AdvisingGroupDetail({
                 </details>
 
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold text-slate-900">Tiến độ hồ sơ và báo cáo</h3>
+                  <h3 className="text-sm font-semibold text-ink-primary">
+                    Tiến độ hồ sơ và báo cáo
+                  </h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <ProgressSection title="Đề cương" query={syllabus}>
                       <StatusBadge tone={syllabus.data ? 'info' : 'neutral'}>
@@ -251,16 +263,18 @@ export function AdvisingGroupDetail({
                       className="sm:col-span-2"
                     >
                       {!milestones.data?.length && (
-                        <p className="text-sm text-slate-500">Chưa thiết lập mốc tiến độ.</p>
+                        <p className="text-sm text-ink-muted">
+                          Chưa thiết lập mốc tiến độ.
+                        </p>
                       )}
                       {milestoneRows.length > 0 && (
                         <div className="space-y-2.5">
                           {milestoneRows.map((milestone, index) => (
                             <div
                               key={milestone.id}
-                              className="space-y-1.5 rounded-lg border border-slate-200/80 bg-white p-3.5"
+                              className="space-y-1.5 rounded-lg border border-line/80 bg-surface-card p-3.5"
                             >
-                              <p className="text-sm font-semibold text-slate-900">
+                              <p className="text-sm font-semibold text-ink-primary">
                                 {milestone.title}
                               </p>
                               <ProgressSection
@@ -286,26 +300,34 @@ export function AdvisingGroupDetail({
                 </section>
               </div>
 
-              <aside className="space-y-4 border-t border-slate-200/80 bg-slate-50/70 p-5 sm:p-6 lg:col-span-4 lg:border-l lg:border-t-0">
-                <dl className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4 text-sm">
+              <aside className="space-y-4 border-t border-line/80 bg-surface-subtle/70 p-5 sm:p-6 lg:col-span-4 lg:border-l lg:border-t-0">
+                <dl className="space-y-3 rounded-xl border border-line/80 bg-surface-card p-4 text-sm">
                   <div>
-                    <dt className="text-xs font-medium text-slate-500">Đã xác nhận / chỉ tiêu</dt>
+                    <dt className="text-xs font-medium text-ink-muted">
+                      Đã xác nhận / chỉ tiêu
+                    </dt>
                     <dd className="mt-1 flex items-baseline justify-between gap-2">
-                      <span className="text-lg font-bold tabular-nums text-slate-900">
+                      <span className="text-lg font-bold tabular-nums text-ink-primary">
                         {confirmedCount}/{group.studentNumber ?? '—'}
-                        <span className="ml-1.5 text-xs font-medium text-slate-500">sinh viên</span>
+                        <span className="ml-1.5 text-xs font-medium text-ink-muted">
+                          sinh viên
+                        </span>
                       </span>
                     </dd>
                   </div>
-                  <div className="border-t border-slate-100 pt-2.5">
-                    <dt className="text-xs font-medium text-slate-500">Đợt khóa luận</dt>
-                    <dd className="mt-1 break-words font-medium text-slate-800">
+                  <div className="border-t border-line-subtle pt-2.5">
+                    <dt className="text-xs font-medium text-ink-muted">
+                      Đợt khóa luận
+                    </dt>
+                    <dd className="mt-1 break-words font-medium text-ink-heading">
                       {group.batchName ?? 'Chưa có tên đợt'}
                     </dd>
                   </div>
-                  <div className="border-t border-slate-100 pt-2.5">
-                    <dt className="text-xs font-medium text-slate-500">Giảng viên</dt>
-                    <dd className="mt-1 font-medium text-slate-800">
+                  <div className="border-t border-line-subtle pt-2.5">
+                    <dt className="text-xs font-medium text-ink-muted">
+                      Giảng viên
+                    </dt>
+                    <dd className="mt-1 font-medium text-ink-heading">
                       {group.advisor?.fullName ?? 'Chưa có tên giảng viên'}
                     </dd>
                   </div>
@@ -313,13 +335,15 @@ export function AdvisingGroupDetail({
 
                 <section className="space-y-3">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-slate-900">Thành viên và lời mời</h3>
-                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-xs font-medium tabular-nums text-slate-600">
+                    <h3 className="text-sm font-semibold text-ink-primary">
+                      Thành viên và lời mời
+                    </h3>
+                    <span className="rounded-full border border-line-input bg-surface-card px-2.5 py-0.5 text-xs font-medium tabular-nums text-ink-body">
                       {group.members.length}
                     </span>
                   </div>
                   {group.members.length === 0 && (
-                    <p className="rounded-xl border border-slate-200/80 bg-white p-3.5 text-sm text-slate-500">
+                    <p className="rounded-xl border border-line/80 bg-surface-card p-3.5 text-sm text-ink-muted">
                       Nhóm chưa có thành viên.
                     </p>
                   )}
@@ -327,23 +351,23 @@ export function AdvisingGroupDetail({
                     {group.members.map((student) => (
                       <div
                         key={student.studentId}
-                        className="space-y-1.5 rounded-xl border border-slate-200/80 bg-white p-3.5 text-sm"
+                        className="space-y-1.5 rounded-xl border border-line/80 bg-surface-card p-3.5 text-sm"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-1.5">
-                          <p className="font-semibold text-slate-900">
+                          <p className="font-semibold text-ink-primary">
                             {student.fullName ?? 'Chưa có tên sinh viên'}
                           </p>
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-600">
+                          <span className="rounded-md bg-surface-muted px-2 py-0.5 font-mono text-xs text-ink-body">
                             {student.userCode ?? 'Chưa có MSSV'}
                           </span>
                         </div>
                         <p
                           className={
                             student.invitationExpired
-                              ? 'text-xs font-medium text-rose-700'
+                              ? 'text-xs font-medium text-tone-danger-text'
                               : student.confirmationStatus === 'Confirmed'
-                                ? 'text-xs font-medium text-emerald-700'
-                                : 'text-xs font-medium text-amber-700'
+                                ? 'text-xs font-medium text-tone-success-text'
+                                : 'text-xs font-medium text-tone-warning-text'
                           }
                         >
                           {confirmationLabel(
@@ -353,23 +377,25 @@ export function AdvisingGroupDetail({
                           )}
                         </p>
                         {student.email && (
-                          <p className="break-all text-xs text-slate-600">{student.email}</p>
+                          <p className="break-all text-xs text-ink-body">
+                            {student.email}
+                          </p>
                         )}
                         {student.confirmedAtUtc && (
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-ink-muted">
                             Xác nhận lúc {formatAdvisingDate(student.confirmedAtUtc)}
                           </p>
                         )}
                         {student.confirmationStatus !== 'Confirmed' &&
                           student.confirmationExpiresAtUtc && (
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-ink-muted">
                               Hạn xác nhận: {formatAdvisingDate(student.confirmationExpiresAtUtc)}
                             </p>
                           )}
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs leading-5 text-slate-500">
+                  <p className="text-xs leading-5 text-ink-muted">
                     Sinh viên được mời có 24 giờ để xác nhận theo hạn hệ thống. Sinh viên đăng ký
                     trực tiếp hoặc được giảng viên chỉ định có hiệu lực ngay.
                   </p>
@@ -378,7 +404,7 @@ export function AdvisingGroupDetail({
             </div>
           )
         )}
-        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2.5 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-2.5 border-t border-line/80 bg-surface-card/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
           <div>
             {group && (
               <Button
@@ -388,7 +414,7 @@ export function AdvisingGroupDetail({
                   setFacultyOpen(true);
                   setCopyNotice('');
                 }}
-                className="h-9 rounded-xl border-slate-200 px-3.5 text-xs font-semibold"
+                className="h-9 rounded-xl border-line-input px-3.5 text-xs font-semibold"
               >
                 Soạn nội dung liên hệ Khoa
               </Button>
@@ -397,7 +423,7 @@ export function AdvisingGroupDetail({
           <Button
             variant="outline"
             onClick={onClose}
-            className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold"
+            className="h-9 rounded-xl border-line-input px-4 text-xs font-semibold"
           >
             Đóng
           </Button>
@@ -408,30 +434,32 @@ export function AdvisingGroupDetail({
           title="Soạn nội dung liên hệ Khoa"
           onClose={() => setFacultyOpen(false)}
           className="max-w-xl"
-          headerClassName="border-b border-slate-200/80 px-5 py-3.5 sm:px-6"
+          headerClassName="border-b border-line/80 px-5 py-3.5 sm:px-6"
         >
           <div className="space-y-4 p-5 sm:p-6">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-ink-body">
               Sao chép nội dung để gửi qua kênh liên hệ của Khoa. Thao tác này chưa gửi yêu cầu.
             </p>
             <label className="block space-y-2 text-sm">
-              <span className="font-medium text-slate-800">Nội dung tham khảo</span>
+              <span className="font-medium text-ink-heading">
+                Nội dung tham khảo
+              </span>
               <textarea
                 readOnly
                 value={facultyText}
                 rows={8}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm leading-relaxed text-slate-800 focus:border-primary focus:bg-white focus:outline-none"
+                className="w-full rounded-xl border border-line-input bg-surface-subtle/70 p-3 text-sm leading-relaxed text-ink-heading focus:border-primary focus:bg-surface-card focus:outline-none"
               />
             </label>
-            <p role="status" className="text-sm text-emerald-700">
+            <p role="status" className="text-sm text-tone-success-text">
               {copyNotice}
             </p>
           </div>
-          <div className="flex justify-end gap-2.5 border-t border-slate-200/80 bg-slate-50/70 px-5 py-3.5 sm:px-6">
+          <div className="flex justify-end gap-2.5 border-t border-line/80 bg-surface-subtle/70 px-5 py-3.5 sm:px-6">
             <Button
               variant="outline"
               onClick={() => setFacultyOpen(false)}
-              className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold"
+              className="h-9 rounded-xl border-line-input px-4 text-xs font-semibold"
             >
               Đóng
             </Button>

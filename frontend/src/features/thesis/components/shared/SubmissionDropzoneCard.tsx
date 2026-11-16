@@ -124,23 +124,23 @@ export function SubmissionDropzoneCard({
 
   if (disabled && compactWhenLocked) {
     return (
-      <Card className="bg-slate-50/70 border-slate-200/80 shadow-xs rounded-2xl p-4 sm:p-5">
+      <Card className="bg-surface-subtle/70 border-line/80 shadow-xs rounded-2xl p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0">
-            <div className="p-2 rounded-xl bg-white border border-slate-200/80 text-slate-500 shrink-0">
+            <div className="p-2 rounded-xl bg-surface-elevated border border-line-input/80 text-ink-muted shrink-0">
               <Lock className="size-4" />
             </div>
             <div className="min-w-0 space-y-0.5">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-semibold text-slate-900">{lockedTitle}</h3>
+                <h3 className="text-sm font-semibold text-ink-primary">{lockedTitle}</h3>
                 {headerBadge}
               </div>
               {lockedDescription && (
-                <p className="text-xs text-slate-600 leading-relaxed">{lockedDescription}</p>
+                <p className="text-xs text-ink-body leading-relaxed">{lockedDescription}</p>
               )}
               {existingFileName && (
-                <p className="text-xs text-slate-500 pt-0.5 truncate">
-                  Tệp hiện hành: <span className="font-medium text-slate-700">{existingFileName}</span>
+                <p className="text-xs text-ink-muted pt-0.5 truncate">
+                  Tệp hiện hành: <span className="font-medium text-ink-secondary">{existingFileName}</span>
                 </p>
               )}
             </div>
@@ -157,11 +157,11 @@ export function SubmissionDropzoneCard({
   }
 
   return (
-    <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl overflow-hidden">
-      <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+    <Card className="bg-surface-card border-line/80 shadow-xs rounded-2xl overflow-hidden">
+      <div className="px-5 sm:px-6 py-4 border-b border-line-subtle flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-          <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+          <h3 className="text-base font-semibold text-ink-primary">{title}</h3>
+          <p className="text-xs text-ink-muted mt-0.5">{subtitle}</p>
         </div>
         {headerBadge}
       </div>
@@ -180,7 +180,7 @@ export function SubmissionDropzoneCard({
         {fileError && (
           <div
             role="alert"
-            className="flex items-start gap-2 rounded-xl border border-rose-200/90 bg-rose-50/80 px-3.5 py-2.5 text-xs text-rose-700"
+            className="flex items-start gap-2 rounded-xl border border-tone-danger-border bg-tone-danger-bg px-3.5 py-2.5 text-xs text-tone-danger-text"
           >
             <AlertCircle className="size-4 shrink-0 mt-0.5" aria-hidden="true" />
             <span>{fileError}</span>
@@ -195,8 +195,8 @@ export function SubmissionDropzoneCard({
             className={cn(
               'rounded-xl border px-4 py-3.5 transition-colors space-y-3',
               isDragging
-                ? 'border-[#2054a5] bg-blue-50/40'
-                : 'border-slate-200/90 bg-slate-50/55 hover:border-slate-300/90',
+                ? 'border-[#2054a5] bg-tone-info-bg'
+                : 'border-line/90 bg-surface-subtle/55 hover:border-line-strong/90',
             )}
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -204,21 +204,21 @@ export function SubmissionDropzoneCard({
                 <ThesisFileTypeIcon fileName={selectedFile.name} />
                 <div className="min-w-0 flex-1">
                   <p
-                    className="text-sm font-semibold text-slate-900 truncate"
+                    className="text-sm font-semibold text-ink-primary truncate"
                     title={selectedFile.name}
                   >
                     {selectedFile.name}
                   </p>
-                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-slate-500">
-                    <span className="inline-flex items-center rounded-md bg-slate-200/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700">
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-ink-muted">
+                    <span className="inline-flex items-center rounded-md bg-surface-strong/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-secondary">
                       {selectedFile.name.split('.').pop()?.toUpperCase() || 'FILE'}
                     </span>
-                    <span className="tabular-nums font-medium text-slate-600">
+                    <span className="tabular-nums font-medium text-ink-body">
                       {formatFileSize(selectedFile.size)}
                     </span>
-                    <span className="text-slate-300">·</span>
-                    <span className="inline-flex items-center gap-1 text-slate-600 font-medium">
-                      <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0" />
+                    <span className="text-ink-faint">·</span>
+                    <span className="inline-flex items-center gap-1 text-ink-body font-medium">
+                      <CheckCircle2 className="size-3.5 text-tone-success-icon shrink-0" />
                       <span>Sẵn sàng gửi</span>
                     </span>
                   </div>
@@ -233,9 +233,9 @@ export function SubmissionDropzoneCard({
                     size="sm"
                     onClick={() => setIsPreviewOpen(true)}
                     disabled={disabled || isSubmitting}
-                    className="h-8 bg-white text-xs px-2.5"
+                    className="h-8 bg-surface-card text-xs px-2.5"
                   >
-                    <Eye className="size-3.5 mr-1.5 text-slate-500" />
+                    <Eye className="size-3.5 mr-1.5 text-ink-muted" />
                     Xem trước
                   </Button>
                 )}
@@ -245,9 +245,9 @@ export function SubmissionDropzoneCard({
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={disabled || isSubmitting}
-                  className="h-8 bg-white text-xs px-2.5"
+                  className="h-8 bg-surface-card text-xs px-2.5"
                 >
-                  <RefreshCw className="size-3.5 mr-1.5 text-slate-500" />
+                  <RefreshCw className="size-3.5 mr-1.5 text-ink-muted" />
                   Đổi tệp
                 </Button>
                 <Button
@@ -256,7 +256,7 @@ export function SubmissionDropzoneCard({
                   size="icon"
                   aria-label="Gỡ tệp"
                   title="Gỡ tệp đã chọn"
-                  className="size-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                  className="size-8 text-ink-subtle hover:text-tone-danger-icon hover:bg-tone-danger-bg"
                   onClick={() => {
                     setFileError(null);
                     onFileSelect(null);
@@ -270,16 +270,16 @@ export function SubmissionDropzoneCard({
             </div>
 
             {isSubmitting && uploadProgress != null && (
-              <div className="space-y-1.5 pt-1 border-t border-slate-200/70">
+              <div className="space-y-1.5 pt-1 border-t border-line/70">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-[#2054a5]">Đang tải hồ sơ lên hệ thống…</span>
-                  <span className="tabular-nums font-semibold text-slate-700">
+                  <span className="font-medium text-brand-ink">Đang tải hồ sơ lên hệ thống…</span>
+                  <span className="tabular-nums font-semibold text-ink-secondary">
                     {uploadProgress}%
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/80">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-strong/80">
                   <div
-                    className="h-full rounded-full bg-[#2054a5] transition-all duration-200"
+                    className="h-full rounded-full bg-brand-solid transition-all duration-200"
                     style={{ width: `${Math.min(100, Math.max(4, uploadProgress))}%` }}
                   />
                 </div>
@@ -304,10 +304,10 @@ export function SubmissionDropzoneCard({
             className={cn(
               'group rounded-xl border-2 border-dashed p-6 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               disabled
-                ? 'border-slate-200 bg-slate-50/70 opacity-75 cursor-not-allowed'
+                ? 'border-line bg-surface-subtle/70 opacity-75 cursor-not-allowed'
                 : isDragging
-                  ? 'border-[#2054a5] bg-blue-50/60 scale-[1.005] cursor-copy'
-                  : 'border-slate-200/90 bg-slate-50/35 hover:border-[#2054a5]/60 hover:bg-blue-50/25 cursor-pointer',
+                  ? 'border-[#2054a5] bg-tone-info-bg scale-[1.005] cursor-copy'
+                  : 'border-line-input/90 bg-surface-subtle/35 hover:border-[#2054a5]/60 hover:bg-tone-info-bg cursor-pointer',
             )}
           >
             <div className="flex flex-col items-center justify-center gap-2">
@@ -315,26 +315,26 @@ export function SubmissionDropzoneCard({
                 className={cn(
                   'size-10 rounded-full flex items-center justify-center transition-transform duration-200',
                   disabled
-                    ? 'bg-slate-100 text-slate-400'
+                    ? 'bg-surface-muted text-ink-subtle'
                     : isDragging
-                      ? 'bg-blue-100 text-[#2054a5] scale-110'
-                      : 'bg-white border border-slate-200/80 text-slate-600 shadow-2xs group-hover:scale-105 group-hover:text-[#2054a5]',
+                      ? 'bg-tone-info-bg text-brand-ink scale-110'
+                      : 'bg-surface-elevated border border-line-input/80 text-ink-body shadow-2xs group-hover:scale-105 group-hover:text-brand-ink',
                 )}
               >
                 {disabled ? <Lock className="size-4" /> : <UploadCloud className="size-5" />}
               </div>
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-slate-800">
+                <p className="text-sm font-medium text-ink-heading">
                   {disabled ? (
                     lockedTitle
                   ) : (
                     <>
                       Kéo thả tệp vào đây, hoặc{' '}
-                      <span className="text-[#2054a5] font-semibold">chọn từ máy tính</span>
+                      <span className="text-brand-ink font-semibold">chọn từ máy tính</span>
                     </>
                   )}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-muted">
                   {disabled && lockedDescription
                     ? lockedDescription
                     : existingFileName
@@ -347,15 +347,15 @@ export function SubmissionDropzoneCard({
         )}
 
         {extraFields && (
-          <div className="pt-5 border-t border-slate-200/75">{extraFields}</div>
+          <div className="pt-5 border-t border-line/75">{extraFields}</div>
         )}
       </div>
 
-      <div className="px-5 sm:px-6 py-3.5 border-t border-slate-100 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3">
+      <div className="px-5 sm:px-6 py-3.5 border-t border-line-subtle bg-surface-subtle/60 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
           {secondaryActions}
           {!secondaryActions && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-ink-muted">
               Hệ thống tự động lưu lịch sử từng phiên bản sau khi nộp.
             </span>
           )}

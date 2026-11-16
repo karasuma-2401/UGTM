@@ -1,5 +1,7 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
@@ -21,7 +23,8 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
     ICouncilUserInfoReader userInfoReader,
     IDefenseCouncilAuditOutbox auditOutbox,
     ICurrentUser currentUser,
-    ICouncilSchedulingGuard schedulingGuard)
+    ICouncilSchedulingGuard schedulingGuard,
+    ICacheService? cache = null)
 {
     public async Task<Result<CouncilSubmissionResponseDto>> HandleAsync(
         SubmitCouncilToAcademicAffairsCommand command,
@@ -183,6 +186,7 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
             nowUtc);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await DefenseCouncilCacheKeys.InvalidateCouncilAsync(cache, council.Id, council.BatchId, cancellationToken);
 
         return Result.Success(new CouncilSubmissionResponseDto(
             council.Id,

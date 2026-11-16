@@ -196,3 +196,79 @@ test('approveCouncil sends payload and surfaces backend business errors', async 
       err.message === 'Hội đồng chưa được Văn phòng Khoa nộp hồ sơ thẩm định lên Phòng Đào tạo.',
   );
 });
+
+test('evaluateCouncilReadiness validates submission, structure, groups, eligibility, and conflicts', () => {
+  const { evaluateCouncilReadiness } = loadModule(
+    'features/councils/utils/councilApprovalReadiness.ts',
+  );
+
+  const baseCouncil = {
+    id: 'c-ready',
+    batchId: 'b1',
+    councilCode: 'HĐ-UIT-10',
+    facultyName: 'Khoa CNTT',
+    groupCode: 'N01',
+    groupCodes: ['N01'],
+    topicTitles: ['Đề tài mẫu'],
+    assignments: [{ assignmentId: 'a1', groupCode: 'N01', topicTitle: 'Đề tài mẫu' }],
+    room: 'E3.1',
+    timeSlot: '08:00 - 11:30',
+    defenseDate: '2026-12-20',
+    status: 'Draft',
+    statusLabel: 'Chờ phê duyệt',
+    rosterModel: 'ReviewerInCouncil',
+    rosterModelLabel: 'CT · TK · GVPB kiêm UV',
+    groupConditionLabel: 'Đủ điều kiện bảo vệ',
+    membersSummary: 'Chủ tịch · Thư ký · Ủy viên',
+    chairman: { userId: 'u1', fullName: 'TS. Phạm Minh Khang', role: 'Chairman', isReviewer: false, isAdvisorConflict: false },
+    secretary: { userId: 'u2', fullName: 'GV Nguyễn Văn A', role: 'Secretary', isReviewer: false, isAdvisorConflict: false },
+    members: [{ userId: 'u3', fullName: 'GV Lê Quang C', role: 'Member', isReviewer: true, isAdvisorConflict: false }],
+    isSubmittedToAcademicAffairs: true,
+    submittedAt: '2026-11-15T10:00:00Z',
+    submissionNotes: 'Khoa đã kiểm tra đủ điều kiện.',
+    decisionNumber: null,
+    signedDate: null,
+    decisionFileUrl: null,
+    approvedAt: null,
+    hasRoomConflict: false,
+    conflictingMemberNames: [],
+    hasIneligibleGroups: false,
+    hasReviewerRoleConflict: false,
+    hasAdvisorConflict: false,
+  };
+
+  const ready = evaluateCouncilReadiness(baseCouncil);
+  assert.equal(ready.category, 'ready');
+  assert.equal(ready.isReady, true);
+  assert.equal(ready.blockingReasons.length, 0);
+
+  const unsubmitted = evaluateCouncilReadiness({
+    ...baseCouncil,
+    isSubmittedToAcademicAffairs: false,
+  });
+  assert.equal(unsubmitted.category, 'needs_action');
+  assert.equal(unsubmitted.isReady, false);
+  assert.equal(unsubmitted.summaryLabel, 'Chờ Khoa nộp');
+
+  const blocked = evaluateCouncilReadiness({
+    ...baseCouncil,
+    secretary: null,
+    groupCodes: [],
+    hasRoomConflict: true,
+    conflictingMemberNames: ['TS. Phạm Minh Khang'],
+    hasAdvisorConflict: true,
+    hasReviewerRoleConflict: true,
+  });
+  assert.equal(blocked.category, 'needs_action');
+  assert.equal(blocked.isReady, false);
+  assert.ok(blocked.blockingReasons.some((r) => r.includes('Thư ký')));
+  assert.ok(blocked.blockingReasons.some((r) => r.includes('Trùng phòng')));
+
+  const approved = evaluateCouncilReadiness({
+    ...baseCouncil,
+    status: 'Active',
+    decisionNumber: '128/QĐ-ĐHCNTT',
+  });
+  assert.equal(approved.category, 'approved');
+  assert.equal(approved.isReady, true);
+});

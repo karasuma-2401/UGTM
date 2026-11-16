@@ -1,7 +1,9 @@
 using System.Text.Json;
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.ScoreSummaries;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.ScoreSummaries;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
@@ -14,7 +16,7 @@ namespace UGTM.Modules.DefenseCouncil.Application.ScoreSummaries;
 public sealed record CalculateScoreSummaryCommand(Guid GroupId, uint? ExpectedSummaryVersion, int? ExpectedActiveConfigVersion, Guid Key);
 public sealed class CalculateScoreSummaryHandler(IScoreSummaryStore store, ScoreSummaryAccess access, ScoreSummaryInputLoader inputs,
     ScoreSummaryResolver resolver, IScoreSummaryWorkflowTransactionCoordinator coordinator,
-    IDefenseCouncilAuditOutbox audit, TimeProvider clock)
+    IDefenseCouncilAuditOutbox audit, TimeProvider clock, ICacheService? cache = null)
 {
     public Task<Error?> AuthorizeAsync(CancellationToken token) => access.AuthorizeAsync(ScoreSummaryAccess.Manage, false, token);
     public async Task<Result<ScoreSummaryDto>> HandleAsync(CalculateScoreSummaryCommand command, CancellationToken token = default)
@@ -28,7 +30,7 @@ public sealed class CalculateScoreSummaryHandler(IScoreSummaryStore store, Score
         const string operation = "ScoreSummary.Calculate";
         try
         {
-            return await coordinator.ExecuteWithPostSaveAsync(async ct =>
+            var outcome = await coordinator.ExecuteWithPostSaveAsync(async ct =>
             {
                 await store.KeyLockAsync(access.ActorId, operation, command.Key, ct);
                 if (await access.AuthorizeAsync(ScoreSummaryAccess.Manage, false, ct) is { } lost) return Abort(lost);
@@ -116,6 +118,13 @@ public sealed class CalculateScoreSummaryHandler(IScoreSummaryStore store, Score
                     new { saved.Summary.GroupId, saved.Summary.Version, saved.Summary.ActiveRevisionId, saved.Summary.ConfigId, saved.Summary.InputFingerprint, ActorId = access.ActorId }), now);
                 return Task.FromResult(Result.Success(dto));
             }, token);
+
+            if (outcome.IsSuccess)
+            {
+                await DefenseCouncilCacheKeys.InvalidateBatchAsync(cache, batchId, token);
+            }
+
+            return outcome;
         }
         catch (DefenseCouncilPersistenceException) { return Result.Failure<ScoreSummaryDto>(ScoreSummaryErrors.Conflict("ConcurrencyConflict")); }
         catch (OverflowException) { return Result.Failure<ScoreSummaryDto>(ScoreSummaryErrors.Conflict("ConfigurationInvalid")); }

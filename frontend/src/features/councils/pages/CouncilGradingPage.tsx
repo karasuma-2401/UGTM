@@ -345,7 +345,7 @@ export function CouncilGradingPage() {
       header: 'STT',
       widthClassName: 'w-[6%]',
       cell: (_group, index) => (
-        <span className="tabular-nums text-slate-500">
+        <span className="tabular-nums text-ink-muted">
           {(currentPage - 1) * pageSize + index + 1}
         </span>
       ),
@@ -354,11 +354,13 @@ export function CouncilGradingPage() {
       id: 'topic',
       header: 'Đề tài',
       sortKey: 'topic',
-      widthClassName: 'w-[27%]',
+      widthClassName: 'w-[26%]',
       cell: (group) => (
         <span className="block">
-          <span className="block font-semibold leading-relaxed text-slate-900">{group.title}</span>
-          <span className="mt-1 block text-xs text-slate-500">
+          <span className="block font-semibold leading-relaxed text-ink-primary">
+            {group.title}
+          </span>
+          <span className="mt-1 block text-xs text-ink-muted">
             {group.councilCode} · {activeBatch?.batchName ?? 'Đợt KLTN hiện hành'}
           </span>
         </span>
@@ -367,7 +369,7 @@ export function CouncilGradingPage() {
     {
       id: 'students',
       header: 'Sinh viên',
-      widthClassName: 'w-[26%]',
+      widthClassName: 'w-[25%]',
       cell: (group) => (
         <GradingStudentsCell
           students={group.students}
@@ -379,13 +381,13 @@ export function CouncilGradingPage() {
       id: 'session',
       header: 'Lịch bảo vệ',
       sortKey: 'session',
-      widthClassName: 'w-[16%]',
+      widthClassName: 'w-[15%]',
       cell: (group) => {
         const [timeSlot, defenseDate] = group.schedule.split(' · ');
         return (
-          <span className="block text-sm text-slate-700">
-            <span className="block font-medium text-slate-800">{timeSlot}</span>
-            <span className="mt-1 block whitespace-nowrap text-xs text-slate-500">
+          <span className="block text-sm text-ink-secondary">
+            <span className="block font-medium text-ink-heading">{timeSlot}</span>
+            <span className="mt-1 block whitespace-nowrap text-xs text-ink-muted">
               {defenseDate ? `${defenseDate} · ${group.room}` : group.room}
             </span>
           </span>
@@ -396,7 +398,7 @@ export function CouncilGradingPage() {
       id: 'status',
       header: 'Trạng thái',
       sortKey: 'status',
-      widthClassName: 'w-[13%]',
+      widthClassName: 'w-[16%] whitespace-nowrap',
       headerClassName: 'whitespace-nowrap',
       cell: (group) => (
         <GradingStatusCell
@@ -412,7 +414,7 @@ export function CouncilGradingPage() {
     {
       id: 'action',
       header: 'Thao tác',
-      widthClassName: 'w-[13%]',
+      widthClassName: 'w-[12%] whitespace-nowrap',
       headerClassName: 'whitespace-nowrap',
       align: 'right',
       cell: (group) => (
@@ -421,7 +423,7 @@ export function CouncilGradingPage() {
           variant="outline"
           size="sm"
           onClick={() => openGradingSheet(group.id)}
-          className="gap-1.5 rounded-md border-slate-200 bg-white text-slate-700 shadow-2xs hover:border-blue-300 hover:bg-blue-50/70 hover:text-blue-700"
+          className="gap-1.5 rounded-md border-line-input bg-surface-card text-ink-secondary shadow-2xs hover:border-tone-info-border hover:bg-tone-info-bg hover:text-tone-info-text"
         >
           <SquarePen className="size-3.5" aria-hidden="true" />
           {group.isLocked ? 'Xem phiếu' : 'Chấm điểm'}
@@ -560,7 +562,7 @@ export function CouncilGradingPage() {
 
       {!activeGroup && (
         <section
-          className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+          className="overflow-hidden rounded-2xl border border-line/80 bg-surface-card shadow-sm"
           aria-label="Danh sách nhóm được phân công"
         >
           <ListCardHeader
@@ -612,7 +614,7 @@ export function CouncilGradingPage() {
               ]}
             />
           </ListCardHeader>
-          <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/45 px-5 py-3.5">
+          <div className="flex flex-wrap items-center gap-3 border-b border-line-subtle bg-surface-subtle/45 px-5 py-3.5">
             <div className="relative min-w-[230px] flex-1">
               <Input
                 id="council-grading-search"
@@ -634,7 +636,7 @@ export function CouncilGradingPage() {
                     setSearch('');
                     setPageNumber(1);
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 hover:bg-slate-100"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-ink-muted hover:bg-surface-muted"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -727,14 +729,14 @@ export function CouncilGradingPage() {
             renderMobileItem={(group) => (
               <div className="space-y-3">
                 <div>
-                  <p className="font-semibold text-slate-900">{group.title}</p>
+                  <p className="font-semibold text-ink-primary">{group.title}</p>
                   <div className="mt-2">
                     <GradingStudentsCell
                       students={group.students}
                       ariaLabel={`Thành viên nhóm ${group.title}`}
                     />
                   </div>
-                  <p className="mt-2 text-xs text-slate-500">
+                  <p className="mt-2 text-xs text-ink-muted">
                     {group.schedule} · {group.room}
                   </p>
                 </div>
@@ -774,11 +776,11 @@ export function CouncilGradingPage() {
         confirmText="Rời khỏi phiếu"
         cancelText="Ở lại"
         description={
-          <div className="space-y-2 text-sm text-slate-600">
+          <div className="space-y-2 text-sm text-ink-body">
             <p>
               Bạn đang có điểm hoặc nhận xét mới chỉnh sửa chưa được lưu tạm hoặc gửi vào Biên bản Hội đồng.
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-muted">
               Bạn có chắc chắn muốn rời khỏi phiếu chấm điểm này không?
             </p>
           </div>
@@ -799,19 +801,20 @@ export function CouncilGradingPage() {
               <p>
                 Xác nhận gửi điểm chấm Hội đồng cho đề tài <strong>{activeGroup.title}</strong>:
               </p>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-2">
+              <div className="rounded-xl border border-line bg-surface-subtle p-3.5 space-y-2">
                 {progress.map((student) => (
                   <div key={student.id} className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-slate-800">
-                      {student.name} <span className="text-slate-500">({student.code})</span>
+                    <span className="font-medium text-ink-heading">
+                      {student.name}{' '}
+                      <span className="text-ink-muted">({student.code})</span>
                     </span>
-                    <span className="font-bold tabular-nums text-blue-700">
+                    <span className="font-bold tabular-nums text-tone-info-text">
                       {student.total.toFixed(2)} / 10
                     </span>
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-ink-muted">
                 Điểm của từng sinh viên sẽ được cập nhật vào Biên bản Hội đồng bảo vệ KLTN.
               </p>
             </div>
@@ -821,31 +824,36 @@ export function CouncilGradingPage() {
 
       {activeGroup && (
         <>
-          <section className="rounded-2xl border border-blue-200 bg-blue-50/60 px-5 py-5 sm:px-6">
+          <section className="rounded-2xl border border-tone-info-border bg-tone-info-bg px-5 py-5 sm:px-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-medium text-slate-600">
-                  <span className="font-semibold text-blue-700">{activeGroup.councilCode}</span> ·{' '}
-                  {activeGroup.memberLabel}
+                <p className="text-xs font-medium text-ink-body">
+                  <span className="font-semibold text-tone-info-text">
+                    {activeGroup.councilCode}
+                  </span>{' '}
+                  · {activeGroup.memberLabel}
                 </p>
-                <h2 className="mt-2 text-lg font-semibold text-slate-900">{activeGroup.title}</h2>
-                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-700">
+                <h2 className="mt-2 text-lg font-semibold text-ink-primary">
+                  {activeGroup.title}
+                </h2>
+                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-secondary">
                   <span className="inline-flex items-center gap-1.5">
-                    <CalendarClock className="size-4 text-slate-500" />
+                    <CalendarClock className="size-4 text-ink-muted" />
                     {activeGroup.schedule}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="size-4 text-slate-500" />
+                    <MapPin className="size-4 text-ink-muted" />
                     {activeGroup.room}
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1">
                   {activeGroup.students.map((student, idx) => (
-                    <span key={student.id} className="text-sm text-slate-700">
-                      <span className="mr-1.5 text-xs font-semibold text-slate-500">
+                    <span key={student.id} className="text-sm text-ink-secondary">
+                      <span className="mr-1.5 text-xs font-semibold text-ink-muted">
                         SV{idx + 1}:
                       </span>
-                      {student.name} <span className="text-slate-500">· {student.code}</span>
+                      {student.name}{' '}
+                      <span className="text-ink-muted">· {student.code}</span>
                     </span>
                   ))}
                 </div>
@@ -854,10 +862,10 @@ export function CouncilGradingPage() {
                 <span
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${
                     isLocked
-                      ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                      ? 'bg-tone-success-bg text-tone-success-text ring-tone-success-border'
                       : activeGroup.isSubmitted
-                        ? 'bg-blue-50 text-blue-700 ring-blue-200'
-                        : 'bg-white text-slate-600 ring-slate-200'
+                        ? 'bg-tone-info-bg text-tone-info-text ring-tone-info-border'
+                        : 'bg-surface-elevated text-ink-body ring-line-input'
                   }`}
                 >
                   {isLocked && <Lock className="size-3.5" aria-hidden="true" />}
@@ -870,7 +878,7 @@ export function CouncilGradingPage() {
                 {activeGroup.assignmentId && (
                   <Link
                     to={`/councils/minutes?assignmentId=${activeGroup.assignmentId}`}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-primary shadow-xs transition-colors hover:border-primary/40 hover:bg-blue-50/60"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-line-input bg-surface-card px-3 py-1.5 text-xs font-semibold text-primary shadow-xs transition-colors hover:border-primary/40 hover:bg-tone-info-bg"
                   >
                     <FileCheck2 className="size-3.5" aria-hidden="true" />
                     Biên bản hội đồng
@@ -913,15 +921,15 @@ export function CouncilGradingPage() {
               isLocked={isLocked}
               onUpdateScore={updateScore}
             >
-              <div className="border-t border-slate-100 p-5 sm:p-6">
+              <div className="border-t border-line-subtle p-5 sm:p-6">
                 <label
                   id="council-comment-label"
                   htmlFor="council-comment"
-                  className="text-sm font-semibold text-slate-900"
+                  className="text-sm font-semibold text-ink-primary"
                 >
                   Nhận xét của Hội đồng
                 </label>
-                <p className="mt-1 mb-3 text-sm text-slate-500">
+                <p className="mt-1 mb-3 text-sm text-ink-muted">
                   Ghi nhận nội dung cần lưu ý trong phiên bảo vệ này.
                 </p>
                 <RichTextEditor
@@ -951,7 +959,7 @@ export function CouncilGradingPage() {
               noteText={`Điểm tổng được cộng từ các tiêu chí đã nhập cho từng sinh viên. Thành viên Hội đồng cần nhập đủ ${criteria.length} tiêu chí trước khi gửi điểm vào Biên bản Hội đồng.`}
               actions={
                 isLocked ? (
-                  <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-800">
+                  <div className="flex items-center gap-2 rounded-xl border border-tone-success-border bg-tone-success-bg px-3.5 py-2.5 text-xs font-medium text-tone-success-strong">
                     <Lock className="size-4 shrink-0" />
                     <span>Biên bản Hội đồng đã khóa, không thể chỉnh sửa điểm.</span>
                   </div>

@@ -1,4 +1,6 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
@@ -20,7 +22,8 @@ public sealed class SaveCouncilMinuteHandler(
     ICouncilMinuteWriteGuard writeGuard,
     IFinalSubmissionAuthorityReader authorityReader,
     IDefenseCouncilAuditOutbox audit,
-    TimeProvider? clock = null)
+    TimeProvider? clock = null,
+    ICacheService? cache = null)
 {
     private static readonly HashSet<string> ValidComponentCodes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -174,6 +177,12 @@ public sealed class SaveCouncilMinuteHandler(
                 (clock ?? TimeProvider.System).GetUtcNow().UtcDateTime);
 
             await unitOfWork.SaveChangesAsync(ct);
+            await DefenseCouncilCacheKeys.InvalidateAssignmentAsync(
+                cache,
+                assignment.Id,
+                assignment.CouncilId,
+                assignment.Council.BatchId,
+                ct);
         }
 
         var currentLockStatus = ctx.Minute?.LockStatus.ToString() ?? "Open";

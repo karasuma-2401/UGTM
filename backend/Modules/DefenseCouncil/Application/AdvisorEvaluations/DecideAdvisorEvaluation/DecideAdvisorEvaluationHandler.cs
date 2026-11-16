@@ -2,9 +2,11 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.SaveAdvisorEvaluation;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
@@ -29,7 +31,8 @@ public sealed class DecideAdvisorEvaluationHandler(
     IAdvisorWorkflowTransactionCoordinator transactionCoordinator,
     IDefenseCouncilAuditOutbox auditOutbox,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ICacheService? cache = null)
 {
     private const string Operation = "AdvisorEvaluation.Decide";
 
@@ -72,6 +75,7 @@ public sealed class DecideAdvisorEvaluationHandler(
                 return Result.Failure<AdvisorEvaluationDto>(workflowResult.Error);
             }
 
+            await DefenseCouncilCacheKeys.InvalidateGlobalAsync(cache, cancellationToken);
             return Result.Success(workflowResult.Response ?? AdvisorEvaluationDtoMapper.ToDto(workflowResult.Evaluation!));
         }
         catch (DefenseCouncilConcurrencyException)

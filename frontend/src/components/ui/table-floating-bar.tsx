@@ -41,18 +41,18 @@ export function TableFloatingBar({
       role="region"
       aria-label="Thao tác hàng loạt trên các mục đã chọn"
       className={cn(
-        'fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-wrap items-center gap-2 sm:gap-3 rounded-2xl bg-white/95 px-4 py-2.5 shadow-xl border border-slate-200/90 backdrop-blur-md ring-1 ring-slate-900/5 animate-in fade-in-0 slide-in-from-bottom-4 duration-200',
+        'fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-wrap items-center gap-2 sm:gap-3 rounded-2xl bg-surface-card/95 px-4 py-2.5 shadow-xl border border-line-input/90 backdrop-blur-md ring-1 ring-slate-900/5 animate-in fade-in-0 slide-in-from-bottom-4 duration-200 dark:ring-white/10 dark:shadow-[0_20px_50px_rgba(0,0,0,0.65)]',
         className,
       )}
       {...props}
     >
-      <div className="flex items-center gap-2 pr-2 border-r border-slate-200/80">
+      <div className="flex items-center gap-2 pr-2 border-r border-line-input/80">
         <span className="flex size-2 rounded-full bg-primary animate-pulse" />
-        <span className="text-xs font-semibold text-slate-700">
+        <span className="text-xs font-semibold text-ink-secondary">
           Đã chọn{' '}
           <strong className="font-bold text-primary tabular-nums">{selectedCount}</strong>
           {totalCount !== undefined && (
-            <span className="text-slate-400 font-normal"> / {totalCount}</span>
+            <span className="text-ink-subtle font-normal"> / {totalCount}</span>
           )}
         </span>
       </div>
@@ -60,13 +60,13 @@ export function TableFloatingBar({
       <div className="flex items-center gap-1.5">{children}</div>
 
       {onClearSelection && (
-        <div className="pl-1 border-l border-slate-200/80">
+        <div className="pl-1 border-l border-line-input/80">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={onClearSelection}
-            className="h-8 px-2 text-xs text-slate-500 hover:text-slate-800 rounded-lg cursor-pointer"
+            className="h-8 px-2 text-xs text-ink-muted hover:text-ink-heading rounded-lg cursor-pointer"
             aria-label="Bỏ chọn tất cả các dòng"
           >
             <X className="size-3.5 mr-1" />

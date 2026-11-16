@@ -159,23 +159,23 @@ export function GradingRubricBoard({
 
   return (
     <section
-      className="min-w-0 overflow-x-clip rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+      className="min-w-0 overflow-x-clip rounded-2xl border border-line/80 bg-surface-card shadow-sm"
       aria-labelledby={`${idPrefix}-rubric-title`}
     >
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 px-5 py-5 sm:px-6">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-line px-5 py-5 sm:px-6">
         <div className="min-w-0">
-          <h2 id={`${idPrefix}-rubric-title`} className="text-base font-semibold text-slate-900">
+          <h2 id={`${idPrefix}-rubric-title`} className="text-base font-semibold text-ink-primary">
             Bảng điểm chi tiết
           </h2>
-          <p className="mt-1 text-sm text-slate-600">{groupTitle}</p>
+          <p className="mt-1 text-sm text-ink-body">{groupTitle}</p>
         </div>
-        <span className="text-xs font-medium text-slate-500">
+        <span className="text-xs font-medium text-ink-muted">
           {criteriaCount} tiêu chí · Thang điểm 10
         </span>
       </div>
 
       {!isLocked && (
-        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-100 bg-slate-50/45 px-5 py-3 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-line-subtle bg-surface-subtle/45 px-5 py-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -184,8 +184,8 @@ export function GradingRubricBoard({
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition',
                 onlyMissing
-                  ? 'border-blue-300 bg-blue-50 text-blue-700 shadow-2xs'
-                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                  ? 'border-tone-info-border bg-tone-info-bg text-tone-info-text shadow-2xs'
+                  : 'border-line-input bg-surface-card text-ink-secondary hover:bg-surface-hover',
               )}
             >
               <Filter className="size-3.5" aria-hidden="true" />
@@ -193,7 +193,7 @@ export function GradingRubricBoard({
               <span
                 className={cn(
                   'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
-                  onlyMissing ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600',
+                  onlyMissing ? 'bg-tone-info-bg text-tone-info-strong' : 'bg-surface-muted text-ink-body',
                 )}
               >
                 {missingCellCount}
@@ -205,10 +205,10 @@ export function GradingRubricBoard({
 
       {students.length > 0 && (
         <div
-          className="sticky top-0 z-10 hidden border-b border-slate-200 bg-white/95 px-5 py-2.5 backdrop-blur-xs md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-x-5 sm:px-6"
+          className="sticky top-0 z-10 hidden border-b border-line bg-surface-card/95 px-5 py-2.5 backdrop-blur-xs md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-x-5 sm:px-6"
           aria-label="Cột sinh viên đang chấm"
         >
-          <span className="text-xs font-semibold tracking-wide text-slate-500">
+          <span className="text-xs font-semibold tracking-wide text-ink-muted">
             Tiêu chí đánh giá
           </span>
           <div className="flex shrink-0 justify-end gap-3">
@@ -228,11 +228,11 @@ export function GradingRubricBoard({
                       className={cn('size-2 shrink-0 rounded-full', accent.dotClass)}
                       aria-hidden="true"
                     />
-                    <span className="truncate font-semibold text-slate-800" title={student.name}>
+                    <span className="truncate font-semibold text-ink-heading" title={student.name}>
                       SV{studentIdx + 1}: {student.name}
                     </span>
                   </div>
-                  <span className="shrink-0 font-bold tabular-nums text-slate-900">
+                  <span className="shrink-0 font-bold tabular-nums text-ink-primary">
                     {student.total.toFixed(1)}
                   </span>
                 </div>
@@ -244,7 +244,7 @@ export function GradingRubricBoard({
 
       {onlyMissing && visibleSections.length === 0 ? (
         <div className="px-6 py-10 text-center">
-          <p className="text-sm font-medium text-emerald-700">
+          <p className="text-sm font-medium text-tone-success-text">
             Tất cả tiêu chí cho mọi sinh viên đã được nhập hợp lệ.
           </p>
           <Button
@@ -260,8 +260,8 @@ export function GradingRubricBoard({
       ) : (
         visibleSections.map((section, index) => (
           <div key={section.code || section.name}>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/70 px-5 py-3 sm:px-6">
-              <h3 className="text-sm font-semibold text-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-subtle bg-surface-subtle/70 px-5 py-3 sm:px-6">
+              <h3 className="text-sm font-semibold text-ink-heading">
                 {section.order || index + 1}. {section.name}
               </h3>
               <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -271,18 +271,18 @@ export function GradingRubricBoard({
                   return (
                     <span
                       key={student.id}
-                      className="inline-flex items-center gap-1 rounded-md border border-slate-200/80 bg-white px-2 py-0.5 font-medium tabular-nums text-slate-700"
+                      className="inline-flex items-center gap-1 rounded-md border border-line-input/80 bg-surface-card px-2 py-0.5 font-medium tabular-nums text-ink-secondary"
                     >
                       <span
                         className={cn('size-1.5 rounded-full', accent.dotClass)}
                         aria-hidden="true"
                       />
                       <span>SV{studentIdx + 1}:</span>
-                      <span className="font-semibold text-slate-900">{subtotal.toFixed(2)}</span>
+                      <span className="font-semibold text-ink-primary">{subtotal.toFixed(2)}</span>
                     </span>
                   );
                 })}
-                <span className="shrink-0 font-medium tabular-nums text-slate-500">
+                <span className="shrink-0 font-medium tabular-nums text-ink-muted">
                   / {section.max.toFixed(1)} điểm
                 </span>
               </div>
@@ -294,14 +294,14 @@ export function GradingRubricBoard({
               return (
                 <div
                   key={item.id}
-                  className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 sm:px-6 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-x-5"
+                  className="flex flex-col gap-3 border-b border-line-subtle px-5 py-4 last:border-b-0 sm:px-6 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-x-5"
                 >
                   <div className="min-w-0">
-                    <p className="text-sm leading-relaxed text-slate-800">
-                      <span className="mr-2 font-medium text-slate-500">{item.code}</span>
+                    <p className="text-sm leading-relaxed text-ink-heading">
+                      <span className="mr-2 font-medium text-ink-muted">{item.code}</span>
                       {item.name}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-ink-muted">
                       {item.elo} <span aria-hidden="true">·</span> Tối đa {item.max.toFixed(1)} điểm
                     </p>
                   </div>
@@ -323,7 +323,7 @@ export function GradingRubricBoard({
                         >
                           <label
                             htmlFor={id}
-                            className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-600 md:sr-only"
+                            className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-ink-body md:sr-only"
                           >
                             <span
                               className={cn(
@@ -357,18 +357,18 @@ export function GradingRubricBoard({
                               aria-invalid={invalid}
                               aria-describedby={invalid ? `${id}-error` : undefined}
                               className={cn(
-                                'h-11 w-full rounded-lg border bg-white pl-3 pr-11 text-sm font-medium tabular-nums text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2 disabled:bg-slate-50 disabled:text-slate-500 sm:h-10',
+                                'h-11 w-full rounded-lg border bg-surface-card pl-3 pr-11 text-sm font-medium tabular-nums text-ink-primary outline-none placeholder:text-ink-muted focus:ring-2 disabled:bg-surface-subtle disabled:text-ink-muted sm:h-10',
                                 invalid
-                                  ? 'border-red-500 focus:ring-red-100'
-                                  : cn('border-slate-300', accent.ringFocusClass),
+                                  ? 'border-red-500 focus:ring-red-100 dark:focus:ring-red-900/40'
+                                  : cn('border-line-strong', accent.ringFocusClass),
                               )}
                             />
-                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">
+                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">
                               / {item.max}
                             </span>
                           </div>
                           {invalid && (
-                            <p id={`${id}-error`} className="mt-1 text-xs text-red-700">
+                            <p id={`${id}-error`} className="mt-1 text-xs text-tone-danger-text">
                               Nhập từ 0 đến {item.max}.
                             </p>
                           )}

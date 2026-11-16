@@ -139,7 +139,7 @@ test('loading rows cannot be selected by mouse or keyboard', () => {
 test('a shared sliding marker can replace the per-row marker without losing selected state', () => {
   const row = SelectableTableRow({ selected: true, hideSelectionMarker: true, onSelect() {} });
   assert.equal(row.props['aria-selected'], true);
-  assert.match(row.props.className, /bg-blue-50/);
+  assert.match(row.props.className, /bg-tone-info-bg/);
   assert.doesNotMatch(row.props.className, /before:left-0/);
   assert.equal(row.props.tabIndex, 0);
 });

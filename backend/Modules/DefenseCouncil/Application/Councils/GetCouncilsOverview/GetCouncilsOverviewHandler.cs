@@ -1,4 +1,6 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
@@ -15,7 +17,8 @@ public sealed class GetCouncilsOverviewHandler(
     IDefenseGroupContract defenseGroupContract,
     ITopicDefenseContract topicDefenseContract,
     ICouncilUserInfoReader userInfoReader,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ICacheService? cache = null)
 {
     private const string DefaultFacultyName = "Khoa CNTT";
 
@@ -48,11 +51,78 @@ public sealed class GetCouncilsOverviewHandler(
             }
         }
 
-        // 1. Nạp danh sách hội đồng
-        var councils = await councilRepository.GetCouncilsForOverviewAsync(query.BatchId, parsedStatus, ct);
-        if (councils.Count == 0)
+        var resultList = await LoadBaseOverviewAsync(query.BatchId, parsedStatus, ct);
+        if (resultList.Count == 0)
         {
             return Result.Success<IReadOnlyList<CouncilOverviewItemDto>>([]);
+        }
+
+        // 4. Lọc theo LockStatus (nếu có)
+        IEnumerable<CouncilOverviewItemDto> filtered = resultList;
+        if (!string.IsNullOrWhiteSpace(query.LockStatus))
+        {
+            var targetLock = query.LockStatus.Trim();
+            filtered = filtered.Where(x => string.Equals(x.MinuteLockStatus, targetLock, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // 5. Lọc theo Keyword (nếu có)
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            var kw = query.Keyword.Trim();
+            filtered = filtered.Where(x =>
+                (x.CouncilCode != null && x.CouncilCode.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                || (x.Room != null && x.Room.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                || (x.TopicTitle != null && x.TopicTitle.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                || (x.GroupCode != null && x.GroupCode.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                || (x.Chairman != null && x.Chairman.FullName.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                || (x.Secretary != null && x.Secretary.FullName.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                || x.Members.Any(m => m.FullName.Contains(kw, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        // 6. Phân trang
+        var pageNumber = Math.Max(1, query.PageNumber);
+        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+
+        var pagedItems = filtered
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return Result.Success<IReadOnlyList<CouncilOverviewItemDto>>(pagedItems);
+    }
+
+    private async Task<List<CouncilOverviewItemDto>> LoadBaseOverviewAsync(
+        Guid? batchId,
+        CouncilStatus? parsedStatus,
+        CancellationToken ct)
+    {
+        string? cacheKey = null;
+        if (cache is not null)
+        {
+            var batchVer = batchId.HasValue && batchId.Value != Guid.Empty
+                ? await cache.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(batchId.Value), ct)
+                : "all";
+            var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct);
+            var statusKey = parsedStatus?.ToString() ?? "all";
+            cacheKey = DefenseCouncilCacheKeys.CouncilsOverview(batchId, statusKey, batchVer, globalVer);
+
+            var cached = await cache.GetAsync<List<CouncilOverviewItemDto>>(cacheKey, ct);
+            if (cached is not null)
+            {
+                return cached;
+            }
+        }
+
+        // 1. Nạp danh sách hội đồng
+        var councils = await councilRepository.GetCouncilsForOverviewAsync(batchId, parsedStatus, ct);
+        if (councils.Count == 0)
+        {
+            if (cache is not null && cacheKey is not null)
+            {
+                await cache.SetAsync(cacheKey, new List<CouncilOverviewItemDto>(), DefenseCouncilCacheKeys.OverviewTtl, ct);
+            }
+
+            return [];
         }
 
         // 2. Thu thập IDs để nạp thông tin đợt / nhóm / đề tài / giảng viên
@@ -93,11 +163,60 @@ public sealed class GetCouncilsOverviewHandler(
             ? await userInfoReader.GetUsersByIdsAsync(userIdsToFetch, ct)
             : new Dictionary<Guid, CouncilUserInfoContractDto>();
 
+        // 2b. Tiền kiểm tra điều kiện phê duyệt cho các hội đồng dự thảo (Draft)
+        var draftCouncils = councils.Where(c => c.Status == CouncilStatus.Draft).ToList();
+        var draftGroupIds = draftCouncils
+            .SelectMany(c => c.Assignments)
+            .Select(a => a.GroupId)
+            .Distinct()
+            .ToList();
+
+        var rejectedDraftGroupIds = draftGroupIds.Count > 0
+            ? await councilRepository.GetRejectedDefenseGroupIdsAsync(draftGroupIds, ct)
+            : new HashSet<Guid>();
+
+        var eligibleDraftGroupIds = draftGroupIds.Count > 0
+            ? await councilRepository.GetDefenseEligibleGroupIdsAsync(draftGroupIds, ct)
+            : new HashSet<Guid>();
+
         // 3. Xây dựng danh sách phẳng (Council x Assignment)
         var resultList = new List<CouncilOverviewItemDto>();
 
         foreach (var council in councils)
         {
+            var isDraft = council.Status == CouncilStatus.Draft;
+            var hasRoomConflict = false;
+            IReadOnlyList<string> conflictingMemberNames = [];
+
+            if (isDraft)
+            {
+                hasRoomConflict = await councilRepository.HasRoomScheduleConflictAsync(
+                    council.DefenseDate,
+                    council.TimeSlot,
+                    council.Room,
+                    council.Id,
+                    ct);
+
+                var councilMemberIds = council.Members.Select(m => m.UserId).Distinct().ToList();
+                if (councilMemberIds.Count > 0)
+                {
+                    var conflictingIds = await councilRepository.GetConflictingMemberUserIdsAsync(
+                        council.DefenseDate,
+                        council.TimeSlot,
+                        councilMemberIds,
+                        council.Id,
+                        ct);
+
+                    if (conflictingIds.Count > 0)
+                    {
+                        conflictingMemberNames = conflictingIds
+                            .Select(id => userDict.TryGetValue(id, out var u) ? u.FullName : id.ToString())
+                            .Distinct()
+                            .ToList();
+                    }
+                }
+            }
+
             var statusLabel = council.Status switch
             {
                 CouncilStatus.Draft => "Chờ phê duyệt",
@@ -162,7 +281,18 @@ public sealed class GetCouncilsOverviewHandler(
                     AssignmentId: null,
                     chairmanDto,
                     secretaryDto,
-                    membersDto));
+                    membersDto,
+                    IsSubmittedToAcademicAffairs: council.IsSubmittedToAcademicAffairs,
+                    SubmittedAt: council.SubmittedAt,
+                    SubmissionNotes: council.SubmissionNotes,
+                    DecisionNumber: council.DecisionNumber,
+                    SignedDate: council.SignedDate,
+                    DecisionFileUrl: council.DecisionFileUrl,
+                    ApprovedAt: council.ApprovedAt,
+                    HasRoomConflict: hasRoomConflict,
+                    ConflictingMemberNames: conflictingMemberNames,
+                    HasIneligibleGroups: false,
+                    HasReviewerRoleConflict: false));
             }
             else
             {
@@ -266,6 +396,15 @@ public sealed class GetCouncilsOverviewHandler(
                             Note: note);
                     }).ToList();
 
+                    var hasIneligibleGroup = isDraft
+                        && (rejectedDraftGroupIds.Contains(assignment.GroupId)
+                            || !eligibleDraftGroupIds.Contains(assignment.GroupId));
+
+                    var hasReviewerRoleConflict = isDraft
+                        && reviewerId != Guid.Empty
+                        && ((chairmanMember != null && chairmanMember.UserId == reviewerId)
+                            || (secretaryMember != null && secretaryMember.UserId == reviewerId));
+
                     resultList.Add(new CouncilOverviewItemDto(
                         council.Id,
                         council.BatchId,
@@ -287,42 +426,27 @@ public sealed class GetCouncilsOverviewHandler(
                         assignment.Id,
                         chairmanDto,
                         secretaryDto,
-                        membersDto));
+                        membersDto,
+                        IsSubmittedToAcademicAffairs: council.IsSubmittedToAcademicAffairs,
+                        SubmittedAt: council.SubmittedAt,
+                        SubmissionNotes: council.SubmissionNotes,
+                        DecisionNumber: council.DecisionNumber,
+                        SignedDate: council.SignedDate,
+                        DecisionFileUrl: council.DecisionFileUrl,
+                        ApprovedAt: council.ApprovedAt,
+                        HasRoomConflict: hasRoomConflict,
+                        ConflictingMemberNames: conflictingMemberNames,
+                        HasIneligibleGroups: hasIneligibleGroup,
+                        HasReviewerRoleConflict: hasReviewerRoleConflict));
                 }
             }
         }
 
-        // 4. Lọc theo LockStatus (nếu có)
-        IEnumerable<CouncilOverviewItemDto> filtered = resultList;
-        if (!string.IsNullOrWhiteSpace(query.LockStatus))
+        if (cache is not null && cacheKey is not null)
         {
-            var targetLock = query.LockStatus.Trim();
-            filtered = filtered.Where(x => string.Equals(x.MinuteLockStatus, targetLock, StringComparison.OrdinalIgnoreCase));
+            await cache.SetAsync(cacheKey, resultList, DefenseCouncilCacheKeys.OverviewTtl, ct);
         }
 
-        // 5. Lọc theo Keyword (nếu có)
-        if (!string.IsNullOrWhiteSpace(query.Keyword))
-        {
-            var kw = query.Keyword.Trim();
-            filtered = filtered.Where(x =>
-                (x.CouncilCode != null && x.CouncilCode.Contains(kw, StringComparison.OrdinalIgnoreCase))
-                || (x.Room != null && x.Room.Contains(kw, StringComparison.OrdinalIgnoreCase))
-                || (x.TopicTitle != null && x.TopicTitle.Contains(kw, StringComparison.OrdinalIgnoreCase))
-                || (x.GroupCode != null && x.GroupCode.Contains(kw, StringComparison.OrdinalIgnoreCase))
-                || (x.Chairman != null && x.Chairman.FullName.Contains(kw, StringComparison.OrdinalIgnoreCase))
-                || (x.Secretary != null && x.Secretary.FullName.Contains(kw, StringComparison.OrdinalIgnoreCase))
-                || x.Members.Any(m => m.FullName.Contains(kw, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        // 6. Phân trang
-        var pageNumber = Math.Max(1, query.PageNumber);
-        var pageSize = Math.Clamp(query.PageSize, 1, 100);
-
-        var pagedItems = filtered
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToList();
-
-        return Result.Success<IReadOnlyList<CouncilOverviewItemDto>>(pagedItems);
+        return resultList;
     }
 }

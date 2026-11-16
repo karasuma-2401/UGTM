@@ -7,12 +7,12 @@ export interface AvatarProps {
 }
 
 const TONE_CLASSES = [
-  'bg-blue-100 text-blue-700 border-blue-200/60',
-  'bg-indigo-100 text-indigo-700 border-indigo-200/60',
-  'bg-emerald-100 text-emerald-700 border-emerald-200/60',
-  'bg-amber-100 text-amber-800 border-amber-200/60',
-  'bg-rose-100 text-rose-700 border-rose-200/60',
-  'bg-purple-100 text-purple-700 border-purple-200/60',
+  'bg-tone-info-bg text-tone-info-text border-tone-info-border',
+  'bg-indigo-100 text-indigo-700 border-indigo-200/60 dark:bg-indigo-950/70 dark:text-indigo-300 dark:border-indigo-800/60',
+  'bg-tone-success-bg text-tone-success-text border-tone-success-border',
+  'bg-tone-warning-bg text-tone-warning-strong border-tone-warning-border',
+  'bg-tone-danger-bg text-tone-danger-text border-tone-danger-border',
+  'bg-tone-violet-bg text-tone-violet-text border-tone-violet-border',
 ] as const;
 
 function getToneClass(name: string) {
@@ -35,8 +35,8 @@ export function Avatar({ name, muted = false, className }: AvatarProps) {
     <span
       aria-hidden="true"
       className={cn(
-        'flex size-10 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ring-2 ring-white',
-        muted ? 'border-slate-200 bg-slate-100 text-slate-400' : getToneClass(normalized),
+        'flex size-10 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ring-2 ring-surface-card',
+        muted ? 'border-line-input bg-surface-muted text-ink-subtle' : getToneClass(normalized),
         className,
       )}
     >

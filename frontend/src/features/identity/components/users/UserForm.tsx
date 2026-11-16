@@ -98,20 +98,22 @@ export function UserForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-1 flex-col bg-white">
+    <form onSubmit={handleSubmit} className="flex flex-1 flex-col bg-surface-card">
       <div className="flex-1 space-y-6 p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-slate-900">Thông tin cá nhân</h3>
-          <p className="text-xs text-slate-500">
-            <span className="text-rose-600">*</span> Bắt buộc
+          <h3 className="text-sm font-semibold text-ink-primary">
+            Thông tin cá nhân
+          </h3>
+          <p className="text-xs text-ink-muted">
+            <span className="text-tone-danger-icon">*</span> Bắt buộc
           </p>
         </div>
         <fieldset disabled={isSaving} className="space-y-5">
           <div className={`grid gap-x-4 gap-y-5 ${user ? '' : 'sm:grid-cols-2'}`}>
-            <label className="space-y-1 text-sm">
+            <label className="space-y-1 text-sm text-ink-secondary">
               <span>
                 Họ và tên{' '}
-                <span aria-hidden="true" className="text-rose-600">
+                <span aria-hidden="true" className="text-tone-danger-icon">
                   *
                 </span>
               </span>
@@ -127,10 +129,10 @@ export function UserForm({
               />
             </label>
 
-            <label className="space-y-1 text-sm">
+            <label className="space-y-1 text-sm text-ink-secondary">
               <span>
                 Email{' '}
-                <span aria-hidden="true" className="text-rose-600">
+                <span aria-hidden="true" className="text-tone-danger-icon">
                   *
                 </span>
               </span>
@@ -145,18 +147,18 @@ export function UserForm({
                 value={values.email}
                 onChange={(event) => updateValues({ ...values, email: event.target.value })}
               />
-              <span className="block text-xs leading-5 text-slate-500">
+              <span className="block text-xs leading-5 text-ink-muted">
                 {user
                   ? 'Email đăng nhập không thể thay đổi.'
                   : 'Email nhận liên kết kích hoạt tài khoản.'}
               </span>
             </label>
 
-            <label className="space-y-1 text-sm">
+            <label className="space-y-1 text-sm text-ink-secondary">
               <span>
                 {isStudent ? 'Mã số sinh viên (MSSV)' : 'Mã cán bộ'}{' '}
                 {isStudent && (
-                  <span aria-hidden="true" className="text-rose-600">
+                  <span aria-hidden="true" className="text-tone-danger-icon">
                     *
                   </span>
                 )}
@@ -171,9 +173,9 @@ export function UserForm({
               />
             </label>
 
-            <label className="space-y-1 text-sm">
+            <label className="space-y-1 text-sm text-ink-secondary">
               <span>
-                Số điện thoại <span className="text-xs text-slate-400">(không bắt buộc)</span>
+                Số điện thoại <span className="text-xs text-ink-subtle">(không bắt buộc)</span>
               </span>
               <Input
                 type="tel"
@@ -187,14 +189,16 @@ export function UserForm({
           </div>
 
           {isStudent ? (
-            <p className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm leading-6 text-blue-800">
+            <p className="rounded-xl border border-tone-info-border bg-tone-info-bg px-4 py-3 text-sm leading-6 text-tone-info-strong">
               {user
                 ? 'Tài khoản thuộc nhóm sinh viên. Vai trò này không thể thay đổi.'
                 : 'Tài khoản được khởi tạo với vai trò sinh viên.'}
             </p>
           ) : (
             <fieldset aria-describedby="account-role-help">
-              <legend className="mb-2 text-sm font-medium">Vai trò hệ thống</legend>
+              <legend className="mb-2 text-sm font-medium text-ink-heading">
+                Vai trò hệ thống
+              </legend>
 
               <div className={`grid gap-2.5 ${user ? '' : 'sm:grid-cols-2'}`}>
                 {SYSTEM_ROLES.filter((role) => role.roleName !== 'Student').map((role) => {
@@ -204,7 +208,7 @@ export function UserForm({
                   return (
                     <Checkbox
                       key={role.id}
-                      className={`w-full rounded-xl border p-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${checked ? 'border-primary/40 bg-primary/5' : 'border-slate-200 bg-white'}`}
+                      className={`w-full rounded-xl border p-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${checked ? 'border-primary/40 bg-primary/5 ' : 'border-line-input bg-surface-card '}`}
                       label={role.title}
                       checked={checked}
                       disabled={isSaving}
@@ -226,13 +230,13 @@ export function UserForm({
         {(validationError || error) && (
           <p
             role="alert"
-            className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
+            className="rounded-xl border border-tone-danger-border bg-tone-danger-bg p-3 text-sm text-tone-danger-text"
           >
             {validationError || error}
           </p>
         )}
       </div>
-      <div className="sticky bottom-0 z-10 flex flex-col-reverse justify-end gap-2.5 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:flex-row sm:px-6">
+      <div className="sticky bottom-0 z-10 flex flex-col-reverse justify-end gap-2.5 border-t border-line/80 bg-surface-card/95 px-5 py-3.5 backdrop-blur-md sm:flex-row sm:px-6">
         <Button
           type="button"
           variant="outline"

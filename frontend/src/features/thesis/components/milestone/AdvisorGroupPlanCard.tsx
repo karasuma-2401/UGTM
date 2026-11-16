@@ -62,13 +62,13 @@ export function AdvisorGroupPlanCard({
 }: AdvisorGroupPlanCardProps) {
   if (!selectedGroup) {
     return (
-      <aside className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs">
+      <aside className="rounded-2xl border border-line/80 bg-surface-card p-5 shadow-2xs">
         <div className="space-y-2 text-center py-6">
-          <span className="mx-auto inline-flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+          <span className="mx-auto inline-flex size-10 items-center justify-center rounded-xl bg-surface-muted text-ink-body">
             <Users className="size-5" aria-hidden="true" />
           </span>
-          <h3 className="text-sm font-semibold text-slate-900">Thông tin nhóm thực hiện</h3>
-          <p className="text-xs leading-relaxed text-slate-600">
+          <h3 className="text-sm font-semibold text-ink-primary">Thông tin nhóm thực hiện</h3>
+          <p className="text-xs leading-relaxed text-ink-body">
             Chọn một nhóm hướng dẫn ở thanh công cụ phía trên để theo dõi tiến độ và chi tiết thành viên.
           </p>
         </div>
@@ -96,27 +96,27 @@ export function AdvisorGroupPlanCard({
   const selectedMilestoneMeta = MILESTONE_STATUS_META[selectedMilestoneStatus];
 
   return (
-    <aside className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xs">
+    <aside className="overflow-hidden rounded-2xl border border-line/80 bg-surface-card shadow-2xs">
       {/* Group header và progress */}
-      <div className="space-y-4 border-b border-slate-100 p-5">
+      <div className="space-y-4 border-b border-line-subtle p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="inline-flex items-center rounded-md border border-slate-200/90 bg-slate-50 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700">
+          <span className="inline-flex items-center rounded-md border border-line-input/90 bg-surface-muted px-2 py-0.5 font-mono text-xs font-semibold text-ink-secondary">
             {selectedGroup.groupCode}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 bg-white px-2.5 py-0.5 text-xs font-medium text-slate-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-line-input/90 bg-surface-elevated px-2.5 py-0.5 text-xs font-medium text-ink-secondary">
             <span className={cn('size-1.5 rounded-full', groupStatusDotClass)} aria-hidden="true" />
             <span>{groupStatusLabel}</span>
           </span>
         </div>
 
-        <h3 className="text-sm font-semibold leading-snug text-slate-900">
+        <h3 className="text-sm font-semibold leading-snug text-ink-primary">
           {selectedGroup.topicTitleVi}
         </h3>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-slate-600">Tiến độ hoàn thành mốc</span>
-            <span className="font-semibold tabular-nums text-slate-900">
+            <span className="font-medium text-ink-body">Tiến độ hoàn thành mốc</span>
+            <span className="font-semibold tabular-nums text-ink-primary">
               {stats.accepted}/{stats.total} mốc đạt ({progressPct}%)
             </span>
           </div>
@@ -126,7 +126,7 @@ export function AdvisorGroupPlanCard({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-label="Tỷ lệ hoàn thành mốc tiến độ"
-            className="h-2 w-full overflow-hidden rounded-full bg-slate-100"
+            className="h-2 w-full overflow-hidden rounded-full bg-surface-muted"
           >
             <div
               className={cn(
@@ -137,18 +137,18 @@ export function AdvisorGroupPlanCard({
             />
           </div>
           {stats.submitted > 0 && (
-            <p className="text-xs text-slate-600">
-              Có <span className="font-semibold text-slate-800">{stats.submitted}</span> báo cáo đang chờ GVHD đánh giá.
+            <p className="text-xs text-ink-body">
+              Có <span className="font-semibold text-ink-heading">{stats.submitted}</span> báo cáo đang chờ GVHD đánh giá.
             </p>
           )}
         </div>
       </div>
 
       {/* Team members */}
-      <div className="space-y-2.5 border-b border-slate-100 p-5">
+      <div className="space-y-2.5 border-b border-line-subtle p-5">
         <div className="flex items-center justify-between">
-          <h4 className="text-xs font-semibold text-slate-600">Thành viên nhóm</h4>
-          <span className="text-xs tabular-nums text-slate-600">
+          <h4 className="text-xs font-semibold text-ink-body">Thành viên nhóm</h4>
+          <span className="text-xs tabular-nums text-ink-body">
             {selectedGroup.students.length} sinh viên
           </span>
         </div>
@@ -157,16 +157,16 @@ export function AdvisorGroupPlanCard({
           {selectedGroup.students.map((student) => (
             <li
               key={student.studentId}
-              className="flex items-center justify-between gap-2.5 rounded-lg border border-slate-100 bg-slate-50/70 px-2.5 py-2"
+              className="flex items-center justify-between gap-2.5 rounded-lg border border-line-subtle bg-surface-subtle/70 px-2.5 py-2"
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 <Avatar name={student.fullName} className="size-7 shrink-0 text-[11px]" />
-                <span className="truncate text-sm font-medium text-slate-800">
+                <span className="truncate text-sm font-medium text-ink-heading">
                   {student.fullName}
                 </span>
               </div>
               {student.userCode && (
-                <span className="shrink-0 font-mono text-xs text-slate-600">
+                <span className="shrink-0 font-mono text-xs text-ink-body">
                   {student.userCode}
                 </span>
               )}
@@ -178,9 +178,9 @@ export function AdvisorGroupPlanCard({
       {/* Selected milestone preview */}
       <div className="space-y-3 p-5">
         <div className="flex items-center justify-between gap-2">
-          <h4 className="text-xs font-semibold text-slate-600">Mốc đang chọn</h4>
+          <h4 className="text-xs font-semibold text-ink-body">Mốc đang chọn</h4>
           {selectedMilestone && (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 bg-white px-2.5 py-0.5 text-xs font-medium text-slate-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-line-input/90 bg-surface-elevated px-2.5 py-0.5 text-xs font-medium text-ink-secondary">
               <span
                 className={cn('size-1.5 rounded-full', selectedMilestoneMeta.dotClass)}
                 aria-hidden="true"
@@ -191,22 +191,22 @@ export function AdvisorGroupPlanCard({
         </div>
 
         {!selectedMilestone ? (
-          <p className="text-xs leading-relaxed text-slate-600">
+          <p className="text-xs leading-relaxed text-ink-body">
             Chọn một mốc trong bảng bên cạnh để xem chi tiết yêu cầu sản phẩm và tệp báo cáo mới nhất.
           </p>
         ) : (
           <div className="space-y-3">
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-slate-900">
+              <p className="text-sm font-semibold text-ink-primary">
                 {selectedMilestone.milestone.title}
               </p>
-              <p className="flex items-center gap-1.5 text-xs text-slate-600">
-                <CalendarClock className="size-3.5 text-slate-500" aria-hidden="true" />
+              <p className="flex items-center gap-1.5 text-xs text-ink-body">
+                <CalendarClock className="size-3.5 text-ink-muted" aria-hidden="true" />
                 <span>Hạn nộp: {formatMilestoneDateTime(selectedMilestone.milestone.deadlineUtc)}</span>
               </p>
             </div>
 
-            <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 text-xs leading-relaxed text-slate-700">
+            <div className="rounded-xl border border-line-subtle bg-surface-subtle/70 p-3 text-xs leading-relaxed text-ink-secondary">
               <RichTextContent
                 content={selectedMilestone.milestone.description}
                 emptyFallback="Chưa có mô tả chi tiết yêu cầu sản phẩm."
@@ -214,25 +214,25 @@ export function AdvisorGroupPlanCard({
             </div>
 
             {latestVersion && (
-              <div className="space-y-2 border-t border-slate-100 pt-3">
+              <div className="space-y-2 border-t border-line-subtle pt-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-700">
+                  <span className="font-semibold text-ink-secondary">
                     Bài nộp mới nhất (v{latestVersion.versionNo})
                   </span>
-                  <span className={cn('text-slate-600', latestVersion.isLate && 'font-medium text-amber-700')}>
+                  <span className={cn('text-ink-body', latestVersion.isLate && 'font-medium text-tone-warning-text')}>
                     {latestVersion.isLate ? 'Nộp trễ hạn' : 'Đúng hạn'}
                   </span>
                 </div>
 
                 {latestVersion.file && (
-                  <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200/80 bg-white px-2.5 py-2">
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-line/80 bg-surface-card px-2.5 py-2">
                     <div className="flex min-w-0 items-center gap-2">
-                      <FileText className="size-4 shrink-0 text-slate-500" aria-hidden="true" />
+                      <FileText className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-medium text-slate-800">
+                        <p className="truncate text-xs font-medium text-ink-heading">
                           {latestVersion.file.fileName}
                         </p>
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-[11px] text-ink-muted">
                           {formatFileSize(latestVersion.file.fileSize)}
                         </p>
                       </div>
@@ -247,7 +247,7 @@ export function AdvisorGroupPlanCard({
                           onDownloadFile(latestVersion.file!.id, latestVersion.file!.fileName)
                         }
                         aria-label="Tải tệp báo cáo"
-                        className="size-7 shrink-0 p-0 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                        className="size-7 shrink-0 p-0 text-ink-body hover:bg-surface-muted hover:text-ink-primary"
                       >
                         <Download className="size-3.5" aria-hidden="true" />
                       </Button>
@@ -260,9 +260,9 @@ export function AdvisorGroupPlanCard({
                     href={safeGitUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-slate-700 hover:text-primary hover:underline"
+                    className="inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-ink-secondary hover:text-primary hover:underline"
                   >
-                    <GitBranch className="size-3.5 shrink-0 text-slate-400" aria-hidden="true" />
+                    <GitBranch className="size-3.5 shrink-0 text-ink-subtle" aria-hidden="true" />
                     <span className="truncate">{latestVersion.gitUrl}</span>
                     <ArrowUpRight className="size-3 shrink-0" aria-hidden="true" />
                   </a>

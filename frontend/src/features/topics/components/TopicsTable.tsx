@@ -33,7 +33,7 @@ function TopicActionMenu({ topic, busy, onOpen, onCopy, onSubmit }: TopicActionM
         type="button"
         variant="outline"
         size="sm"
-        className="h-8 rounded-md border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+        className="h-8 rounded-md border-line-input bg-surface-card px-3 text-xs font-medium text-ink-secondary shadow-sm hover:border-line-strong hover:bg-surface-hover hover:text-ink-primary"
         disabled={busy}
         onClick={() => onOpen(topic)}
         aria-label={`Xem chi tiết đề tài ${topic.titleVi}`}
@@ -46,7 +46,7 @@ function TopicActionMenu({ topic, busy, onOpen, onCopy, onSubmit }: TopicActionM
         disabled={busy}
         popoverTarget={id}
         aria-label={`Thao tác với ${topic.titleVi}`}
-        className="flex size-8 items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 focus-visible:outline-primary disabled:opacity-40 transition-colors cursor-pointer"
+        className="flex size-8 items-center justify-center rounded-lg text-ink-subtle hover:text-ink-secondary hover:bg-surface-muted focus-visible:outline-primary disabled:opacity-40 transition-colors cursor-pointer"
       >
         <MoreHorizontal className="size-4" />
       </button>
@@ -55,7 +55,7 @@ function TopicActionMenu({ topic, busy, onOpen, onCopy, onSubmit }: TopicActionM
         id={id}
         popover="auto"
         aria-label={`Thao tác với ${topic.titleVi}`}
-        className="fixed inset-auto m-0 w-44 rounded-xl border border-slate-200/90 bg-white p-1.5 text-left shadow-lg z-50 animate-in fade-in-50 zoom-in-95 duration-150"
+        className="fixed inset-auto m-0 w-44 rounded-xl border border-line-input/90 bg-surface-elevated p-1.5 text-left shadow-lg z-50 animate-in fade-in-50 zoom-in-95 duration-150"
         onToggle={(event) => {
           if ((event as unknown as { newState?: string }).newState !== 'open') return;
           const rect = trigger.current?.getBoundingClientRect();
@@ -76,10 +76,10 @@ function TopicActionMenu({ topic, busy, onOpen, onCopy, onSubmit }: TopicActionM
           type="button"
           disabled={busy}
           onClick={() => closeAndRun(onCopy)}
-          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-primary transition-colors cursor-pointer"
+          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-ink-secondary hover:bg-surface-hover hover:text-ink-primary focus-visible:outline-primary transition-colors cursor-pointer"
           aria-label={`Nhân bản đề tài ${topic.titleVi}`}
         >
-          <Copy className="size-3.5 text-slate-500" />
+          <Copy className="size-3.5 text-ink-muted" />
           <span>Nhân bản</span>
         </button>
         {canEdit && (
@@ -87,10 +87,10 @@ function TopicActionMenu({ topic, busy, onOpen, onCopy, onSubmit }: TopicActionM
             type="button"
             disabled={busy}
             onClick={() => closeAndRun(onSubmit)}
-            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-50 focus-visible:outline-primary transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-tone-success-text hover:bg-tone-success-bg focus-visible:outline-primary transition-colors cursor-pointer"
             aria-label={`Gửi duyệt đề tài ${topic.titleVi}`}
           >
-            <Send className="size-3.5 text-emerald-600" />
+            <Send className="size-3.5 text-tone-success-icon" />
             <span>Gửi duyệt</span>
           </button>
         )}
@@ -169,7 +169,7 @@ export function TopicsTable({
       cellClassName: 'px-3 py-3',
       skeleton: { variant: 'number' },
       cell: (_, index) => (
-        <span className="text-xs tabular-nums text-slate-400 font-medium">
+        <span className="text-xs tabular-nums text-ink-subtle font-medium">
           {(pageNumber - 1) * pageSize + index + 1}
         </span>
       ),
@@ -210,20 +210,20 @@ export function TopicsTable({
       cell: (topic) => (
         <div className="space-y-1 min-w-0">
           <span
-            className="line-clamp-2 block text-sm font-semibold text-slate-900 leading-snug"
+            className="line-clamp-2 block text-sm font-semibold text-ink-primary leading-snug"
             title={topic.titleVi}
           >
             {topic.titleVi}
           </span>
           {topic.titleEn ? (
             <span
-              className="truncate block text-xs text-slate-500 font-normal"
+              className="truncate block text-xs text-ink-muted font-normal"
               title={topic.titleEn}
             >
               {topic.titleEn}
             </span>
           ) : (
-            <span className="block text-xs text-slate-400 italic">Chưa có tên tiếng Anh</span>
+            <span className="block text-xs text-ink-subtle italic">Chưa có tên tiếng Anh</span>
           )}
         </div>
       ),
@@ -232,7 +232,7 @@ export function TopicsTable({
       id: 'batch',
       header: 'Đợt khóa luận',
       widthClassName: 'w-36',
-      cellClassName: 'px-4 py-3 text-xs text-slate-600',
+      cellClassName: 'px-4 py-3 text-xs text-ink-body',
       cell: (topic) =>
         batchNames.get(topic.batchId) ||
         (batchesLoading ? <Skeleton className="h-4 w-28 max-w-full" /> : '—'),
@@ -242,7 +242,7 @@ export function TopicsTable({
       header: 'Chỉ tiêu',
       widthClassName: 'w-28',
       sortKey: 'studentNumber',
-      cellClassName: 'px-4 py-3 text-xs font-medium text-slate-700 tabular-nums',
+      cellClassName: 'px-4 py-3 text-xs font-medium text-ink-secondary tabular-nums',
       cell: (topic) => (topic.studentNumber ? `${topic.studentNumber} sinh viên` : '—'),
     },
     {
@@ -250,7 +250,7 @@ export function TopicsTable({
       header: 'Ngày tạo',
       widthClassName: 'w-32',
       sortKey: 'createdAt',
-      cellClassName: 'px-4 py-3 text-xs text-slate-500 tabular-nums',
+      cellClassName: 'px-4 py-3 text-xs text-ink-muted tabular-nums',
       cell: (topic) => new Date(topic.createdAt).toLocaleDateString('vi-VN'),
     },
     {
@@ -303,14 +303,18 @@ export function TopicsTable({
       renderMobileItem={(topic) => (
         <>
           <TopicStatusBadge status={topic.status} />
-          <p className="text-sm font-semibold leading-6 text-slate-900">{topic.titleVi}</p>
-          {topic.titleEn && <p className="text-sm text-slate-500">{topic.titleEn}</p>}
-          <p className="text-xs text-slate-500">
+          <p className="text-sm font-semibold leading-6 text-ink-primary">
+            {topic.titleVi}
+          </p>
+          {topic.titleEn && (
+            <p className="text-sm text-ink-muted">{topic.titleEn}</p>
+          )}
+          <p className="text-xs text-ink-muted">
             {batchNames.get(topic.batchId) ||
               (batchesLoading ? 'Đang tải tên đợt…' : 'Chưa có tên đợt')}
           </p>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-ink-body">
               Chỉ tiêu: {topic.studentNumber ?? '—'} sinh viên ·{' '}
               {new Date(topic.createdAt).toLocaleDateString('vi-VN')}
             </p>

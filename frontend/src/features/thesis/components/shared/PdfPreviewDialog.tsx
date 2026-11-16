@@ -98,7 +98,7 @@ const RESIZE_HANDLES: Array<{
     direction: 'se',
     label: 'Kéo góc dưới-phải để thay đổi kích thước khung xem trước',
     className:
-      'right-0 bottom-0 z-30 flex size-5 cursor-nwse-resize items-end justify-end rounded-br-2xl p-1 text-slate-400 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      'right-0 bottom-0 z-30 flex size-5 cursor-nwse-resize items-end justify-end rounded-br-2xl p-1 text-ink-subtle hover:text-ink-body focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
   },
 ];
 
@@ -348,7 +348,7 @@ export function PdfPreviewDialog({
           }}
           title={!isFullscreen ? 'Giữ chuột để kéo di chuyển cửa sổ · Nhấp đúp để toàn màn hình' : undefined}
           className={cn(
-            'flex shrink-0 items-center justify-between gap-3 border-b border-slate-100 bg-white/95 px-4 py-3 sm:px-5 backdrop-blur-md',
+            'flex shrink-0 items-center justify-between gap-3 border-b border-line-subtle bg-surface-card/95 px-4 py-3 sm:px-5 backdrop-blur-md',
             !isFullscreen && 'sm:cursor-grab',
             activeInteraction === 'move' && 'sm:cursor-grabbing',
           )}
@@ -356,23 +356,23 @@ export function PdfPreviewDialog({
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
             {!isFullscreen && (
               <GripHorizontal
-                className="hidden sm:block size-4 shrink-0 text-slate-300"
+                className="hidden sm:block size-4 shrink-0 text-ink-faint"
                 aria-hidden="true"
               />
             )}
-            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg border border-rose-200/80 bg-rose-50 text-rose-600">
+            <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-lg border border-tone-danger-border bg-tone-danger-bg text-tone-danger-icon">
               <FileText className="size-4" />
             </span>
             <div className="min-w-0">
               <h3
-                className="truncate text-sm font-semibold tracking-tight text-slate-900"
+                className="truncate text-sm font-semibold tracking-tight text-ink-primary"
                 title={resolvedTitle}
               >
                 {resolvedTitle}
               </h3>
             </div>
             {typeof fileSize === 'number' && fileSize > 0 && (
-              <span className="hidden md:inline-flex shrink-0 items-center rounded-md border border-slate-200/80 bg-slate-50 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-slate-600">
+              <span className="hidden md:inline-flex shrink-0 items-center rounded-md border border-line-input/80 bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-ink-body">
                 {formatFileSize(fileSize)}
               </span>
             )}
@@ -381,7 +381,7 @@ export function PdfPreviewDialog({
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2" data-no-drag="true">
             {customRect && !isFullscreen && (
               <span
-                className="hidden lg:inline-flex items-center rounded-md border border-slate-200/80 bg-slate-50 px-2 py-1 text-[11px] font-medium tabular-nums text-slate-600"
+                className="hidden lg:inline-flex items-center rounded-md border border-line-input/80 bg-surface-muted px-2 py-1 text-[11px] font-medium tabular-nums text-ink-body"
                 title="Kích thước cửa sổ tùy chỉnh"
               >
                 {customRect.width} × {customRect.height}
@@ -391,7 +391,7 @@ export function PdfPreviewDialog({
             <div
               role="group"
               aria-label="Chọn kích thước cửa sổ xem trước"
-              className="hidden sm:inline-flex items-center rounded-lg border border-slate-200/80 bg-slate-100/90 p-0.5 select-none"
+              className="hidden sm:inline-flex items-center rounded-lg border border-line-input/80 bg-surface-muted/90 p-0.5 select-none"
             >
               {PRESET_ORDER.map((presetKey) => {
                 const isActive = !isFullscreen && !customRect && sizePreset === presetKey;
@@ -404,8 +404,8 @@ export function PdfPreviewDialog({
                     className={cn(
                       'rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       isActive
-                        ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/80'
-                        : 'border border-transparent text-slate-600 hover:text-slate-900',
+                        ? 'bg-surface-card text-ink-primary shadow-2xs border border-line/80'
+                        : 'border border-transparent text-ink-body hover:text-ink-primary',
                     )}
                   >
                     {PREVIEW_WINDOW_PRESETS[presetKey].label}
@@ -421,7 +421,7 @@ export function PdfPreviewDialog({
               aria-pressed={isFullscreen}
               aria-label={isFullscreen ? 'Thu nhỏ cửa sổ xem trước' : 'Mở toàn màn hình'}
               onClick={handleToggleFullscreen}
-              className="h-8 rounded-lg border-slate-200 bg-white px-2.5 text-xs text-slate-700 hover:bg-slate-50"
+              className="h-8 rounded-lg border-line-input bg-surface-elevated px-2.5 text-xs text-ink-secondary hover:bg-surface-hover"
             >
               {isFullscreen ? (
                 <>
@@ -436,7 +436,7 @@ export function PdfPreviewDialog({
               )}
             </Button>
 
-            <span className="hidden sm:block h-5 w-px bg-slate-200/80" aria-hidden="true" />
+            <span className="hidden sm:block h-5 w-px bg-surface-strong/80" aria-hidden="true" />
 
             <Button
               type="button"
@@ -444,7 +444,7 @@ export function PdfPreviewDialog({
               size="icon"
               aria-label="Đóng cửa sổ"
               onClick={onClose}
-              className="h-8 w-8 shrink-0 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              className="h-8 w-8 shrink-0 rounded-lg text-ink-subtle hover:bg-surface-muted hover:text-ink-secondary"
             >
               <X className="size-4" />
             </Button>
@@ -454,7 +454,7 @@ export function PdfPreviewDialog({
         <div
           className={cn(
             'relative flex-1 min-h-0 flex flex-col',
-            isFullscreen ? 'bg-slate-100 p-0' : 'bg-slate-100/70 p-2.5 sm:p-3.5',
+            isFullscreen ? 'bg-surface-muted p-0' : 'bg-surface-muted/70 p-2.5 sm:p-3.5',
           )}
         >
           <div
@@ -462,7 +462,7 @@ export function PdfPreviewDialog({
               'h-full w-full flex-1 min-h-0 overflow-hidden bg-white',
               isFullscreen
                 ? 'rounded-none border-0'
-                : 'rounded-xl border border-slate-200/90 shadow-2xs',
+                : 'rounded-xl border border-line/90 shadow-2xs',
             )}
           >
             <iframe

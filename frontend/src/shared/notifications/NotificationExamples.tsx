@@ -12,11 +12,11 @@ export function NotificationExamples() {
   return (
     <section
       aria-label="Mẫu thông báo"
-      className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
+      className="space-y-5 rounded-2xl border border-line bg-surface-card p-5 sm:p-6"
     >
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Thông báo và phản hồi</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <h2 className="text-lg font-semibold text-ink-primary">Thông báo và phản hồi</h2>
+        <p className="mt-1 text-sm text-ink-body">
           Dữ liệu minh họa. Các nút bên dưới không lưu hoặc thay đổi dữ liệu hệ thống. Nhấn F8 để
           đến toast; Escape để đóng toast đang focus.
         </p>
@@ -100,7 +100,7 @@ export function NotificationExamples() {
         title="Kiểm tra toast trong hộp thoại"
       >
         <div className="space-y-4 p-5">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-ink-body">
             Toast cần hiển thị phía trên hộp thoại, nhận được bàn phím và không đóng hộp thoại khi
             bạn đóng toast.
           </p>

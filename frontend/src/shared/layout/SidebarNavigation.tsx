@@ -70,7 +70,7 @@ export function SidebarNavigation({
       )}
     >
       {sections.length === 0 && (
-        <p className="px-2 py-4 text-sm text-slate-600">
+        <p className="px-2 py-4 text-sm text-ink-body">
           Không có phân hệ nào khả dụng cho tài khoản này
         </p>
       )}
@@ -91,8 +91,8 @@ export function SidebarNavigation({
                     setGroupState({ pathname, values: { ...openGroups, [section.id]: !isOpen } })
                   }
                   className={cn(
-                    'mb-1 flex min-h-11 w-full items-center justify-between gap-2 rounded-md px-2 text-left text-xs font-medium transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:min-h-8',
-                    sectionActive ? 'text-primary' : 'text-slate-600',
+                    'mb-1 flex min-h-11 w-full items-center justify-between gap-2 rounded-md px-2 text-left text-xs font-medium transition-colors hover:bg-surface-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:min-h-8',
+                    sectionActive ? 'text-primary' : 'text-ink-body',
                     collapsed && 'lg:hidden',
                   )}
                 >
@@ -108,7 +108,7 @@ export function SidebarNavigation({
               ) : (
                 <h2
                   className={cn(
-                    'mb-1 px-2 py-1 text-xs font-medium text-slate-600',
+                    'mb-1 px-2 py-1 text-xs font-medium text-ink-body',
                     collapsed && 'lg:hidden',
                   )}
                 >
@@ -135,14 +135,14 @@ export function SidebarNavigation({
                       'group flex min-h-11 items-center gap-2.5 rounded-md px-2.5 py-2 text-[length:var(--font-size-md)] leading-5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:min-h-9',
                       collapsed && 'lg:justify-center lg:px-0',
                       isActive
-                        ? 'bg-primary/10 font-semibold text-primary'
-                        : 'font-normal text-slate-700 hover:bg-slate-100 hover:text-slate-950',
+                        ? 'bg-primary/10 font-semibold text-primary dark:bg-primary/15'
+                        : 'font-normal text-ink-secondary hover:bg-surface-muted hover:text-ink-primary',
                     )}
                   >
                     <Icon
                       className={cn(
                         'size-4 shrink-0 stroke-[1.75]',
-                        isActive ? 'text-primary' : 'text-slate-500 group-hover:text-slate-700',
+                        isActive ? 'text-primary' : 'text-ink-muted group-hover:text-ink-secondary',
                       )}
                     />
                     <span className={cn('min-w-0 flex-1', collapsed && 'lg:hidden')}>

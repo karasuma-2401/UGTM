@@ -31,12 +31,30 @@ import {
 } from '../../types/user.types';
 
 const roleAppearance: Record<SystemRole, { icon: LucideIcon; tone: string }> = {
-  Admin: { icon: ShieldCheck, tone: 'bg-violet-50 text-violet-600 ring-violet-100' },
-  Student: { icon: GraduationCap, tone: 'bg-blue-50 text-blue-600 ring-blue-100' },
-  Lecturer: { icon: BookOpen, tone: 'bg-teal-50 text-teal-600 ring-teal-100' },
-  Faculty: { icon: Building2, tone: 'bg-amber-50 text-amber-600 ring-amber-100' },
-  AcademicAffairs: { icon: Landmark, tone: 'bg-indigo-50 text-indigo-600 ring-indigo-100' },
-  CouncilMember: { icon: UsersRound, tone: 'bg-rose-50 text-rose-600 ring-rose-100' },
+  Admin: {
+    icon: ShieldCheck,
+    tone: 'bg-tone-violet-bg text-tone-violet-icon ring-violet-100',
+  },
+  Student: {
+    icon: GraduationCap,
+    tone: 'bg-tone-info-bg text-tone-info-icon ring-blue-100',
+  },
+  Lecturer: {
+    icon: BookOpen,
+    tone: 'bg-teal-50 text-teal-600 ring-teal-100 dark:bg-teal-950/60 dark:text-teal-300 dark:ring-teal-800/70',
+  },
+  Faculty: {
+    icon: Building2,
+    tone: 'bg-tone-warning-bg text-tone-warning-icon ring-amber-100',
+  },
+  AcademicAffairs: {
+    icon: Landmark,
+    tone: 'bg-indigo-50 text-indigo-600 ring-indigo-100 dark:bg-indigo-950/60 dark:text-indigo-300 dark:ring-indigo-800/70',
+  },
+  CouncilMember: {
+    icon: UsersRound,
+    tone: 'bg-tone-danger-bg text-tone-danger-icon ring-rose-100',
+  },
 };
 
 interface UsersTableProps {
@@ -94,7 +112,7 @@ function UserRowActions({
         disabled={disabled}
         onClick={() => onEdit(user)}
         aria-label={`Xem chi tiết tài khoản ${user.fullName}`}
-        className="h-8 rounded-md border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+        className="h-8 rounded-md border-line-input bg-surface-card px-3 text-xs font-medium text-ink-secondary shadow-sm hover:border-line-strong hover:bg-surface-hover hover:text-ink-primary"
       >
         Xem
       </Button>
@@ -104,7 +122,7 @@ function UserRowActions({
         disabled={disabled}
         popoverTarget={id}
         aria-label={`Thao tác với ${user.fullName}`}
-        className="flex size-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 focus-visible:outline-primary disabled:opacity-40"
+        className="flex size-8 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-muted focus-visible:outline-primary disabled:opacity-40"
       >
         <MoreHorizontal className="size-4" />
       </button>
@@ -113,7 +131,7 @@ function UserRowActions({
         id={id}
         popover="auto"
         aria-label={`Thao tác với ${user.fullName}`}
-        className="fixed inset-auto m-0 w-max max-w-[calc(100vw-16px)] rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-lg"
+        className="fixed inset-auto m-0 w-max max-w-[calc(100vw-16px)] rounded-xl border border-line-input bg-surface-elevated p-1.5 text-left shadow-lg"
         onToggle={(event) => {
           if (event.newState !== 'open') return;
           const rect = trigger.current?.getBoundingClientRect();
@@ -136,7 +154,7 @@ function UserRowActions({
             type="button"
             disabled={disabled}
             onClick={() => closeAndRun(onResendActivation)}
-            className="flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-primary"
+            className="flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm text-ink-secondary hover:bg-surface-hover focus-visible:outline-primary"
           >
             <Mail className="size-4" />
             Gửi email kích hoạt
@@ -151,7 +169,7 @@ function UserRowActions({
                 : undefined
             }
             onClick={() => closeAndRun(onChangeStatus)}
-            className={`flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm hover:bg-slate-50 focus-visible:outline-primary disabled:opacity-40 ${user.status === 'Active' ? 'text-rose-600' : 'text-emerald-700'}`}
+            className={`flex w-full items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm hover:bg-surface-hover focus-visible:outline-primary disabled:opacity-40 ${user.status === 'Active' ? 'text-tone-danger-icon ' : 'text-tone-success-text '}`}
           >
             {user.status === 'Active' ? (
               <ShieldOff className="size-4" />
@@ -193,14 +211,14 @@ export function UsersTable({
 }: UsersTableProps) {
   const renderRoleOrCode = (user: UserSummary) =>
     accountGroup === 'Student' ? (
-      <span className="font-mono text-xs font-medium tabular-nums text-slate-700">
+      <span className="font-mono text-xs font-medium tabular-nums text-ink-secondary">
         {user.userCode || 'Chưa cập nhật'}
       </span>
     ) : (
       <InfoCell
         className="gap-2.5"
-        titleClassName="block truncate text-xs font-semibold leading-5 text-slate-700"
-        descriptionClassName="mt-0.5 truncate text-xs font-normal leading-4 text-slate-500"
+        titleClassName="block truncate text-xs font-semibold leading-5 text-ink-secondary"
+        descriptionClassName="mt-0.5 truncate text-xs font-normal leading-4 text-ink-muted"
         leading={(() => {
           const { icon: Icon, tone } =
             roleAppearance[user.roles[0]] ?? roleAppearance.CouncilMember;
@@ -243,7 +261,7 @@ export function UsersTable({
       widthClassName: 'w-14',
       align: 'center',
       headerClassName: 'whitespace-nowrap px-3 py-3.5',
-      cellClassName: 'px-3 py-3 text-xs tabular-nums text-slate-400',
+      cellClassName: 'px-3 py-3 text-xs tabular-nums text-ink-subtle',
       cell: (_user, index) => (pageNumber - 1) * pageSize + index + 1,
     },
     {
@@ -288,7 +306,7 @@ export function UsersTable({
       sortKey: 'lastloginat',
       widthClassName: 'w-36',
       headerClassName: 'whitespace-nowrap px-4 py-3.5',
-      cellClassName: 'px-4 py-3 whitespace-nowrap text-xs text-slate-500',
+      cellClassName: 'px-4 py-3 whitespace-nowrap text-xs text-ink-muted',
       cell: (user) => formatLastLogin(user.lastLoginAt),
     },
     {
@@ -320,7 +338,7 @@ export function UsersTable({
             onResendActivation={onResendActivation}
           />
         ) : (
-          <span className="text-xs text-slate-400">Chỉ xem</span>
+          <span className="text-xs text-ink-subtle">Chỉ xem</span>
         ),
     },
   ];
@@ -363,8 +381,8 @@ export function UsersTable({
             />
             <StatusBadge tone={statusTones[user.status]}>{STATUS_LABELS[user.status]}</StatusBadge>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
-            <div className="min-w-0 text-xs text-slate-600">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-subtle pt-2.5">
+            <div className="min-w-0 text-xs text-ink-body">
               {renderRoleOrCode(user)}
             </div>
             {canManage ? (
@@ -377,7 +395,7 @@ export function UsersTable({
                 onResendActivation={onResendActivation}
               />
             ) : (
-              <span className="text-xs text-slate-400">Chỉ xem</span>
+              <span className="text-xs text-ink-subtle">Chỉ xem</span>
             )}
           </div>
         </div>

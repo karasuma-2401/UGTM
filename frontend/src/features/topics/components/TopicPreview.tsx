@@ -52,17 +52,17 @@ export function TopicPreview({
   return (
     <article aria-label={previewLabel || 'Nội dung đề tài'} className="space-y-5 p-5 sm:p-6">
       <header className="space-y-1.5">
-        <h2 className="break-words text-lg font-bold leading-snug tracking-tight text-slate-900 sm:text-[19px]">
+        <h2 className="break-words text-lg font-bold leading-snug tracking-tight text-ink-primary sm:text-[19px]">
           {values.titleVi.trim() || 'Chưa nhập tên đề tài'}
         </h2>
         {values.titleEn.trim() && (
-          <p className="break-words text-[13px] italic leading-relaxed text-slate-500">
+          <p className="break-words text-[13px] italic leading-relaxed text-ink-muted">
             {values.titleEn.trim()}
           </p>
         )}
       </header>
 
-      <dl className="flex flex-wrap items-center gap-x-4 gap-y-2.5 border-y border-slate-100 py-3">
+      <dl className="flex flex-wrap items-center gap-x-4 gap-y-2.5 border-y border-line-subtle py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <dt className="sr-only">Giảng viên hướng dẫn</dt>
           <dd aria-busy={advisorLoading} className="flex min-w-0 items-center gap-2.5">
@@ -75,8 +75,8 @@ export function TopicPreview({
                   className="size-7 text-[11px] ring-1 ring-slate-200/80"
                 />
                 <div className="min-w-0 leading-tight">
-                  <span className="block text-[11px] text-slate-500">Giảng viên hướng dẫn</span>
-                  <span className="block truncate text-[13px] font-semibold text-slate-900">
+                  <span className="block text-[11px] text-ink-muted">Giảng viên hướng dẫn</span>
+                  <span className="block truncate text-[13px] font-semibold text-ink-primary">
                     {advisorName}
                   </span>
                 </div>
@@ -85,7 +85,7 @@ export function TopicPreview({
           </dd>
         </div>
 
-        <span className="hidden h-6 w-px bg-slate-200/80 sm:block" aria-hidden="true" />
+        <span className="hidden h-6 w-px bg-surface-strong/80 sm:block" aria-hidden="true" />
 
         <div className="flex min-w-0 items-center gap-2">
           <dt className="sr-only">Đợt khóa luận</dt>
@@ -93,8 +93,8 @@ export function TopicPreview({
             {batchLoading ? (
               <Skeleton className="h-6 w-32 max-w-full rounded-full" />
             ) : (
-              <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200/80 bg-slate-50/80 px-2.5 py-1 text-xs font-medium text-slate-700">
-                <BookOpenCheck className="size-3.5 shrink-0 text-slate-500" aria-hidden="true" />
+              <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-line/80 bg-surface-subtle/80 px-2.5 py-1 text-xs font-medium text-ink-secondary">
+                <BookOpenCheck className="size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
                 <span className="truncate">{batchName || 'Chưa chọn đợt'}</span>
               </span>
             )}
@@ -102,7 +102,7 @@ export function TopicPreview({
         </div>
 
         {showQuota && (
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200/70 bg-blue-50/70 px-2.5 py-1 text-xs font-medium tabular-nums text-primary">
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-tone-info-border bg-tone-info-bg px-2.5 py-1 text-xs font-medium tabular-nums text-primary">
             <UsersRound className="size-3.5 shrink-0" aria-hidden="true" />
             {values.studentNumber === null
               ? 'Chưa có chỉ tiêu'
@@ -116,8 +116,8 @@ export function TopicPreview({
       {assignedStudents.length > 0 && (
         <section className="space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-[13px] font-semibold text-slate-900">Sinh viên chỉ định (MSSV)</h3>
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium tabular-nums text-slate-600">
+            <h3 className="text-[13px] font-semibold text-ink-primary">Sinh viên chỉ định (MSSV)</h3>
+            <span className="rounded-full bg-surface-muted px-2.5 py-0.5 text-[11px] font-medium tabular-nums text-ink-body">
               {assignedStudents.length} sinh viên
             </span>
           </div>
@@ -125,7 +125,7 @@ export function TopicPreview({
             {assignedStudents.map((code, index) => (
               <span
                 key={`${code}-${index}`}
-                className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs font-medium tabular-nums text-slate-700"
+                className="inline-flex items-center rounded-lg border border-line bg-surface-subtle px-2.5 py-1 font-mono text-xs font-medium tabular-nums text-ink-secondary"
               >
                 {code}
               </span>
@@ -135,35 +135,37 @@ export function TopicPreview({
       )}
 
       <section className="space-y-2 pt-1">
-        <h3 className="flex items-center gap-2 text-[13px] font-semibold text-slate-900">
+        <h3 className="flex items-center gap-2 text-[13px] font-semibold text-ink-primary">
           <Target className="size-4 text-primary" aria-hidden="true" />
           <span>Mục tiêu và mô tả</span>
         </h3>
         {trimmedDescription ? (
           <RichTextContent
             content={trimmedDescription}
-            className="text-sm leading-6 text-slate-700"
+            className="text-sm leading-6 text-ink-secondary"
           />
         ) : (
-          <p className="text-sm italic leading-6 text-slate-500">Chưa bổ sung nội dung.</p>
+          <p className="text-sm italic leading-6 text-ink-muted">Chưa bổ sung nội dung.</p>
         )}
       </section>
 
-      <section className="space-y-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
+      <section className="space-y-2.5 rounded-xl border border-line/80 bg-surface-subtle/70 p-4">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="flex items-center gap-2 text-[13px] font-semibold text-slate-900">
-            <ListChecks className="size-4 text-slate-600" aria-hidden="true" />
+          <h3 className="flex items-center gap-2 text-[13px] font-semibold text-ink-primary">
+            <ListChecks className="size-4 text-ink-body" aria-hidden="true" />
             <span>Yêu cầu công nghệ và kiến thức</span>
           </h3>
           {requirementItems && (
-            <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium tabular-nums text-slate-600 ring-1 ring-inset ring-slate-200/80">
+            <span className="rounded-full bg-surface-card px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink-body ring-1 ring-inset ring-slate-200/80">
               {`${requirementItems.length} tiêu chí`}
             </span>
           )}
         </div>
 
         {!trimmedRequirements ? (
-          <p className="text-sm italic leading-6 text-slate-500">Chưa bổ sung nội dung.</p>
+          <p className="text-sm italic leading-6 text-ink-muted">
+            Chưa bổ sung nội dung.
+          </p>
         ) : requirementItems ? (
           <ul className="space-y-2">
             {requirementItems.map((item, index) => (
@@ -174,7 +176,7 @@ export function TopicPreview({
                 />
                 <RichTextContent
                   content={item}
-                  className="min-w-0 flex-1 text-sm leading-6 text-slate-700"
+                  className="min-w-0 flex-1 text-sm leading-6 text-ink-secondary"
                 />
               </li>
             ))}
@@ -182,7 +184,7 @@ export function TopicPreview({
         ) : (
           <RichTextContent
             content={trimmedRequirements}
-            className="text-sm leading-6 text-slate-700"
+            className="text-sm leading-6 text-ink-secondary"
           />
         )}
       </section>

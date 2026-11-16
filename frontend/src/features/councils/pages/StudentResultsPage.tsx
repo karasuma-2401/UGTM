@@ -95,19 +95,19 @@ export const StudentResultsPage: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto py-10 px-4">
         <Card className="p-8 text-center space-y-4">
-          <div className="size-12 mx-auto rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+          <div className="size-12 mx-auto rounded-full bg-tone-danger-bg text-tone-danger-icon flex items-center justify-center">
             {errorKind === 'forbidden' ? (
-              <ShieldAlert className="size-6 text-amber-600" />
+              <ShieldAlert className="size-6 text-tone-warning-icon" />
             ) : (
               <AlertCircle className="size-6" />
             )}
           </div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-ink-primary">
             {errorKind === 'forbidden'
               ? 'Không có quyền tra cứu kết quả'
               : 'Không tải được thông tin đề tài KLTN'}
           </h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">{message}</p>
+          <p className="text-sm text-ink-muted max-w-md mx-auto">{message}</p>
           {errorKind !== 'forbidden' && (
             <Button
               type="button"
@@ -131,15 +131,15 @@ export const StudentResultsPage: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto py-10 px-4">
         <Card className="p-8 text-center space-y-4">
-          <div className="size-12 mx-auto rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+          <div className="size-12 mx-auto rounded-full bg-tone-warning-bg text-tone-warning-icon flex items-center justify-center">
             <AlertCircle className="size-6" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-ink-primary">
             {isPendingConfirmation
               ? 'Bạn chưa xác nhận tham gia nhóm đề tài'
               : 'Chưa có thông tin nhóm đề tài KLTN'}
           </h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
+          <p className="text-sm text-ink-muted max-w-md mx-auto">
             {isPendingConfirmation
               ? 'Vui lòng hoàn tất xác nhận tham gia nhóm đề tài trước khi tra cứu điều kiện và kết quả khóa luận.'
               : 'Bạn chưa đăng ký đề tài nào trong đợt KLTN này. Vui lòng tra cứu và đăng ký đề tài để theo dõi tiến độ và kết quả.'}
@@ -242,7 +242,7 @@ export const StudentResultsPage: React.FC = () => {
           title="Làm mới"
           disabled={isFetching}
           onClick={() => void refresh()}
-          className="size-9 rounded-xl border-slate-200 bg-white text-slate-600 hover:text-slate-900"
+          className="size-9 rounded-xl border-line-input bg-surface-card text-ink-body hover:text-ink-primary"
         >
           <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
         </Button>
@@ -252,13 +252,15 @@ export const StudentResultsPage: React.FC = () => {
         <div className="lg:col-span-8 space-y-5">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-bold text-slate-900">Điều kiện</CardTitle>
+              <CardTitle className="text-base font-bold text-ink-primary">
+                Điều kiện
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="overflow-x-auto rounded-xl border border-slate-200/80">
+              <div className="overflow-x-auto rounded-xl border border-line/80">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-slate-50/90">
+                    <TableRow className="bg-surface-subtle/90">
                       <TableHead>Bước / yêu cầu</TableHead>
                       <TableHead>Thông tin hồ sơ</TableHead>
                       <TableHead className="whitespace-nowrap">Trạng thái</TableHead>
@@ -268,33 +270,39 @@ export const StudentResultsPage: React.FC = () => {
                   <TableBody>
                     {conditionRows.map((row) => (
                       <TableRow key={row.key}>
-                        <TableCell className="font-semibold text-slate-900">
+                        <TableCell className="font-semibold text-ink-primary">
                           {row.stepLabel}
                         </TableCell>
-                        <TableCell className="text-slate-600">{row.detailLabel}</TableCell>
+                        <TableCell className="text-ink-body">
+                          {row.detailLabel}
+                        </TableCell>
                         <TableCell>
                           <StatusBadge tone={row.statusTone}>{row.statusLabel}</StatusBadge>
                         </TableCell>
-                        <TableCell className="text-slate-500">{row.nextLabel}</TableCell>
+                        <TableCell className="text-ink-muted">
+                          {row.nextLabel}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
-              <p className="text-xs text-slate-500">{conditionRows.length} mục trong danh sách</p>
+              <p className="text-xs text-ink-muted">
+                {conditionRows.length} mục trong danh sách
+              </p>
             </CardContent>
           </Card>
 
           {!isPublished && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold text-slate-900">
+                <CardTitle className="text-base font-bold text-ink-primary">
                   Điểm đang khóa
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3.5 text-sm text-slate-700">
-                  <Lock className="size-4 shrink-0 text-slate-500 mt-0.5" />
+                <div className="flex items-start gap-3 rounded-xl border border-line/80 bg-surface-subtle/80 px-4 py-3.5 text-sm text-ink-secondary">
+                  <Lock className="size-4 shrink-0 text-ink-muted mt-0.5" />
                   <span className="leading-relaxed">
                     {scoreResult?.kind === 'locked'
                       ? scoreResult.message
@@ -308,21 +316,23 @@ export const StudentResultsPage: React.FC = () => {
           {isPublished && summary && (
             <Card>
               <CardHeader className="pb-3 flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
-                <CardTitle className="text-base font-bold text-slate-900">Nguồn điểm</CardTitle>
+                <CardTitle className="text-base font-bold text-ink-primary">
+                  Nguồn điểm
+                </CardTitle>
                 {summary.calculationFormula && (
-                  <span className="text-xs text-slate-500 tabular-nums">
+                  <span className="text-xs text-ink-muted tabular-nums">
                     Công thức:{' '}
-                    <strong className="font-semibold text-slate-700">
+                    <strong className="font-semibold text-ink-secondary">
                       {summary.calculationFormula}
                     </strong>
                   </span>
                 )}
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="overflow-x-auto rounded-xl border border-slate-200/80">
+                <div className="overflow-x-auto rounded-xl border border-line/80">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-slate-50/90">
+                      <TableRow className="bg-surface-subtle/90">
                         <TableHead>Nguồn / thành viên</TableHead>
                         <TableHead className="text-right whitespace-nowrap">Điểm</TableHead>
                         <TableHead className="text-right whitespace-nowrap">Hệ số</TableHead>
@@ -332,13 +342,13 @@ export const StudentResultsPage: React.FC = () => {
                     <TableBody>
                       {summary.components.map((component, index) => (
                         <TableRow key={`${component.componentName}-${index}`}>
-                          <TableCell className="font-semibold text-slate-900">
+                          <TableCell className="font-semibold text-ink-primary">
                             {component.componentName}
                           </TableCell>
-                          <TableCell className="text-right font-semibold text-slate-900 tabular-nums">
+                          <TableCell className="text-right font-semibold text-ink-primary tabular-nums">
                             {formatScoreDecimal(component.score, 2)}
                           </TableCell>
-                          <TableCell className="text-right text-slate-600 tabular-nums">
+                          <TableCell className="text-right text-ink-body tabular-nums">
                             Hệ số {component.weight}
                           </TableCell>
                           <TableCell>
@@ -349,7 +359,7 @@ export const StudentResultsPage: React.FC = () => {
                     </TableBody>
                   </Table>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-muted">
                   {summary.components.length} mục trong danh sách
                 </p>
               </CardContent>
@@ -359,13 +369,13 @@ export const StudentResultsPage: React.FC = () => {
           {feedbackComment && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold text-slate-900">
+                <CardTitle className="text-base font-bold text-ink-primary">
                   Góp ý sau bảo vệ
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3.5 text-sm text-slate-700">
-                  <FileText className="size-4 shrink-0 text-slate-500 mt-0.5" />
+                <div className="flex items-start gap-3 rounded-xl border border-line/80 bg-surface-subtle/70 px-4 py-3.5 text-sm text-ink-secondary">
+                  <FileText className="size-4 shrink-0 text-ink-muted mt-0.5" />
                   <p className="leading-relaxed whitespace-pre-line">{feedbackComment}</p>
                 </div>
               </CardContent>
@@ -391,26 +401,28 @@ export const StudentResultsPage: React.FC = () => {
           {isPublished && summary && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold text-slate-900">
+                <CardTitle className="text-base font-bold text-ink-primary">
                   Kết quả công bố
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-3 space-y-1">
-                    <p className="text-xs text-slate-500">Điểm tổng kết - Thang 10</p>
-                    <p className="text-3xl font-bold tracking-tight text-slate-900 tabular-nums">
+                  <div className="rounded-xl border border-line/80 bg-surface-subtle/70 px-3.5 py-3 space-y-1">
+                    <p className="text-xs text-ink-muted">
+                      Điểm tổng kết - Thang 10
+                    </p>
+                    <p className="text-3xl font-bold tracking-tight text-ink-primary tabular-nums">
                       {formatScoreDecimal(summary.finalScore, 2)}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-blue-200/70 bg-blue-50/60 px-3.5 py-3 space-y-1">
-                    <p className="text-xs text-slate-600">Quy đổi - Thang 4</p>
+                  <div className="rounded-xl border border-tone-info-border bg-tone-info-bg px-3.5 py-3 space-y-1">
+                    <p className="text-xs text-ink-body">Quy đổi - Thang 4</p>
                     <p className="text-3xl font-bold tracking-tight text-primary tabular-nums">
                       {formatScale4Score(summary.finalScore)}
                     </p>
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 pt-1 border-t border-slate-100">
+                <p className="text-xs text-ink-muted pt-1 border-t border-line-subtle">
                   Bảng điểm do Khoa công bố
                 </p>
               </CardContent>
@@ -419,45 +431,56 @@ export const StudentResultsPage: React.FC = () => {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-bold text-slate-900">
+              <CardTitle className="text-base font-bold text-ink-primary">
                 {isPublished ? 'Thông tin công bố' : 'Điều kiện xem điểm'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div className="space-y-1">
-                <p className="text-xs font-medium text-slate-500">Hồ sơ</p>
+                <p className="text-xs font-medium text-ink-muted">Hồ sơ</p>
                 <p className="text-xs font-semibold text-primary tabular-nums">
                   {topicCode} - {groupCode}
                 </p>
-                <p className="text-sm font-semibold text-slate-900 leading-snug">{topicTitle}</p>
+                <p className="text-sm font-semibold text-ink-primary leading-snug">
+                  {topicTitle}
+                </p>
                 {topicTitleEn && (
-                  <p className="text-xs text-slate-500 leading-snug">{topicTitleEn}</p>
+                  <p className="text-xs text-ink-muted leading-snug">
+                    {topicTitleEn}
+                  </p>
                 )}
               </div>
 
-              <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-500">Sinh viên</p>
+              <div className="space-y-1.5 pt-2 border-t border-line-subtle">
+                <p className="text-xs font-medium text-ink-muted">Sinh viên</p>
                 {studentItems.length > 0 ? (
                   <div className="flex items-start gap-2.5">
                     <AvatarGroup items={studentItems} max={3} size="sm" ariaLabel="Sinh viên" />
-                    <div className="min-w-0 space-y-1 text-xs text-slate-700 leading-relaxed">
+                    <div className="min-w-0 space-y-1 text-xs text-ink-secondary leading-relaxed">
                       {studentItems.map((student) => (
                         <div key={student.id} className="truncate">
-                          <span className="font-medium text-slate-800">{student.name}</span>
+                          <span className="font-medium text-ink-heading">
+                            {student.name}
+                          </span>
                           {student.code ? (
-                            <span className="text-slate-500 tabular-nums"> - {student.code}</span>
+                            <span className="text-ink-muted tabular-nums">
+                              {' '}
+                              - {student.code}
+                            </span>
                           ) : null}
                         </div>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500">Đang cập nhật thành viên</p>
+                  <p className="text-xs text-ink-muted">
+                    Đang cập nhật thành viên
+                  </p>
                 )}
               </div>
 
-              <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-500">GVHD</p>
+              <div className="space-y-1.5 pt-2 border-t border-line-subtle">
+                <p className="text-xs font-medium text-ink-muted">GVHD</p>
                 {advisorItems.length > 0 ? (
                   <div className="flex items-center gap-2.5">
                     <AvatarGroup
@@ -466,23 +489,25 @@ export const StudentResultsPage: React.FC = () => {
                       size="sm"
                       ariaLabel="Giảng viên hướng dẫn"
                     />
-                    <span className="min-w-0 truncate text-xs font-medium text-slate-800">
+                    <span className="min-w-0 truncate text-xs font-medium text-ink-heading">
                       {advisorName}
                     </span>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500">{advisorName}</p>
+                  <p className="text-xs text-ink-muted">{advisorName}</p>
                 )}
               </div>
 
-              <div className="space-y-1 pt-2 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-500">Đợt</p>
-                <p className="text-xs font-medium text-slate-800">{batchName}</p>
+              <div className="space-y-1 pt-2 border-t border-line-subtle">
+                <p className="text-xs font-medium text-ink-muted">Đợt</p>
+                <p className="text-xs font-medium text-ink-heading">{batchName}</p>
               </div>
 
-              <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                <p className="text-xs font-semibold text-slate-800">Lưu ý xử lý</p>
-                <ul className="space-y-1 text-xs text-slate-600 list-disc pl-4">
+              <div className="space-y-1.5 pt-2 border-t border-line-subtle">
+                <p className="text-xs font-semibold text-ink-heading">
+                  Lưu ý xử lý
+                </p>
+                <ul className="space-y-1 text-xs text-ink-body list-disc pl-4">
                   {isPublished ? (
                     <>
                       <li>Kết quả thuộc hồ sơ của bạn</li>

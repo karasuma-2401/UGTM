@@ -40,9 +40,9 @@ export const PeriodPage: React.FC = () => {
             onChange={(val) => data.setSelectedBatchId(String(val ?? 'new'))}
             disabled={data.isLoadingBatches}
             size="lg"
-            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300 transition-all select-none"
-            contentClassName="w-max min-w-full sm:min-w-[440px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-slate-200/90 shadow-lg"
-            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            triggerClassName="h-10 rounded-xl border-line-input/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong transition-all select-none"
+            contentClassName="w-max min-w-full sm:min-w-[440px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-line/90 shadow-lg"
+            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover transition-colors"
           />
         </div>
 
@@ -52,7 +52,7 @@ export const PeriodPage: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => data.setSelectedBatchId('new')}
-            className="h-10 gap-1.5 rounded-xl border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 hover:text-slate-900 active:scale-[0.98] transition-all"
+            className="h-10 gap-1.5 rounded-xl border-line-input bg-surface-elevated px-3.5 text-xs font-semibold text-ink-secondary shadow-2xs hover:bg-surface-hover hover:text-ink-primary active:scale-[0.98] transition-all"
           >
             <Plus className="size-3.5" />
             Đợt mới
@@ -65,7 +65,7 @@ export const PeriodPage: React.FC = () => {
           size="icon"
           onClick={actions.reloadCurrentBatch}
           disabled={data.isLoadingDetail}
-          className="size-10 rounded-xl border-slate-200 bg-white text-slate-500 hover:text-slate-900 shadow-2xs active:scale-[0.98] transition-all"
+          className="size-10 rounded-xl border-line-input bg-surface-elevated text-ink-muted hover:text-ink-primary shadow-2xs active:scale-[0.98] transition-all"
           title="Tải lại dữ liệu"
         >
           <RefreshCw className={`size-4 ${data.isLoadingDetail ? 'animate-spin' : ''}`} />
@@ -85,7 +85,7 @@ export const PeriodPage: React.FC = () => {
                 size="sm"
                 disabled={actions.isSaving || data.isLoadingDetail}
                 onClick={actions.handleRetryFailedGates}
-                className="h-8 text-xs border-rose-300 bg-white text-rose-700 hover:bg-rose-100 shrink-0"
+                className="h-8 text-xs border-tone-danger-border bg-surface-card text-tone-danger-text hover:bg-tone-danger-bg shrink-0"
               >
                 <RotateCcw className="size-3.5 mr-1.5" />
                 Thử lại cập nhật cổng ({actions.failedGateUpdates.length})

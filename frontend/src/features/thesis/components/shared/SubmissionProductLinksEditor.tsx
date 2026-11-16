@@ -204,7 +204,7 @@ export function SubmissionProductLinksEditor({
         return {
           value: cat,
           label: SUBMISSION_LINK_CATEGORY_LABELS[cat],
-          icon: <Icon className="size-3.5 text-slate-500" />,
+          icon: <Icon className="size-3.5 text-ink-muted" />,
         };
       }),
     [],
@@ -215,15 +215,15 @@ export function SubmissionProductLinksEditor({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-800">
+            <span className="text-xs font-semibold text-ink-heading">
               {title}
               {required && <span className="text-rose-500 ml-0.5">*</span>}
             </span>
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 tabular-nums">
+            <span className="inline-flex items-center rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-medium text-ink-body tabular-nums">
               {links.filter((l) => l.url.trim()).length}/{PRODUCT_LINK_MAX_COUNT}
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-0.5">{helperText}</p>
+          <p className="text-[11px] text-ink-muted mt-0.5">{helperText}</p>
         </div>
 
         {canAddMore && (
@@ -232,7 +232,7 @@ export function SubmissionProductLinksEditor({
             variant="outline"
             size="sm"
             onClick={handleAdd}
-            className="h-8 gap-1.5 text-xs bg-white"
+            className="h-8 gap-1.5 text-xs bg-surface-card"
           >
             <Plus className="size-3.5" />
             Thêm liên kết
@@ -245,13 +245,13 @@ export function SubmissionProductLinksEditor({
           type="button"
           disabled={disabled}
           onClick={handleAdd}
-          className="w-full rounded-xl border border-dashed border-slate-200/90 bg-slate-50/50 px-4 py-3 text-left text-xs text-slate-500 transition-colors hover:border-[#2054a5]/50 hover:bg-blue-50/20 hover:text-slate-700 flex items-center justify-between gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+          className="w-full rounded-xl border border-dashed border-line-input/90 bg-surface-subtle/50 px-4 py-3 text-left text-xs text-ink-muted transition-colors hover:border-[#2054a5]/50 hover:bg-tone-info-bg hover:text-ink-secondary flex items-center justify-between gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           <span className="inline-flex items-center gap-2">
-            <Link2 className="size-4 text-slate-400" />
+            <Link2 className="size-4 text-ink-subtle" />
             <span>Chưa có liên kết nào. Nhấn để gắn link GitHub, bản Demo hoặc Figma/Docs…</span>
           </span>
-          <span className="font-medium text-[#2054a5] shrink-0">+ Thêm</span>
+          <span className="font-medium text-brand-ink shrink-0">+ Thêm</span>
         </button>
       ) : (
         <div className="space-y-2">
@@ -263,10 +263,10 @@ export function SubmissionProductLinksEditor({
               <div
                 key={link.id}
                 className={cn(
-                  'rounded-xl border bg-slate-50/55 p-2.5 transition-colors',
+                  'rounded-xl border bg-surface-subtle/55 p-2.5 transition-colors',
                   inlineError
-                    ? 'border-rose-300 bg-rose-50/35'
-                    : 'border-slate-200/80 focus-within:border-[#2054a5]/60 focus-within:bg-white',
+                    ? 'border-tone-danger-border bg-tone-danger-bg'
+                    : 'border-line/80 focus-within:border-[#2054a5]/60 focus-within:bg-surface-card',
                 )}
               >
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-12 sm:items-center">
@@ -276,7 +276,7 @@ export function SubmissionProductLinksEditor({
                       value={link.category}
                       options={categoryOptions}
                       disabled={disabled}
-                      triggerClassName="rounded-lg font-medium text-slate-700"
+                      triggerClassName="rounded-lg font-medium text-ink-secondary"
                       onChange={(nextCategory: SubmissionLinkCategory) => {
                         onChange(
                           links.map((item) =>
@@ -302,8 +302,8 @@ export function SubmissionProductLinksEditor({
                       }
                       onChange={(e) => handleUrlChange(link.id, e.target.value)}
                       className={cn(
-                        'h-9 text-xs sm:text-sm bg-white',
-                        inlineError && 'border-rose-300 focus-visible:ring-rose-500/20',
+                        'h-9 text-xs sm:text-sm bg-surface-card',
+                        inlineError && 'border-tone-danger-border focus-visible:ring-rose-500/20',
                       )}
                     />
                   </div>
@@ -324,7 +324,7 @@ export function SubmissionProductLinksEditor({
                           ),
                         );
                       }}
-                      className="h-9 text-xs bg-white"
+                      className="h-9 text-xs bg-surface-card"
                     />
                     {canRemove && (
                       <Button
@@ -333,7 +333,7 @@ export function SubmissionProductLinksEditor({
                         size="icon"
                         aria-label={`Xóa liên kết thứ ${index + 1}`}
                         onClick={() => handleRemove(link.id)}
-                        className="size-9 shrink-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        className="size-9 shrink-0 text-ink-subtle hover:text-tone-danger-icon hover:bg-tone-danger-bg"
                       >
                         <Trash2 className="size-3.5" />
                       </Button>
@@ -342,7 +342,7 @@ export function SubmissionProductLinksEditor({
                 </div>
 
                 {inlineError && (
-                  <p className="mt-1.5 text-[11px] font-medium text-rose-600" role="alert">
+                  <p className="mt-1.5 text-[11px] font-medium text-tone-danger-icon" role="alert">
                     {inlineError}
                   </p>
                 )}

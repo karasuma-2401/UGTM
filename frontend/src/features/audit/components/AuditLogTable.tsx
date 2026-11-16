@@ -64,7 +64,7 @@ function AuditLogRowActions({
         disabled={disabled}
         onClick={() => onViewDetails?.(log)}
         aria-label={`Xem chi tiết sự kiện ${formatAuditAction(log.action)}`}
-        className="h-8 rounded-md border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+        className="h-8 rounded-md border-line-input bg-surface-card px-3 text-xs font-medium text-ink-secondary shadow-sm hover:border-line-strong hover:bg-surface-hover hover:text-ink-primary"
       >
         Xem
       </Button>
@@ -75,7 +75,7 @@ function AuditLogRowActions({
         onClick={() => void handleCopyRequestId()}
         aria-label={`Sao chép Request ID của sự kiện #${log.id}`}
         title="Sao chép Request ID"
-        className="flex size-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-primary disabled:opacity-40"
+        className="flex size-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink-heading focus-visible:outline-primary disabled:opacity-40"
       >
         <Copy className="size-4" aria-hidden="true" />
       </button>
@@ -113,7 +113,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
       widthClassName: 'w-14',
       align: 'center',
       headerClassName: 'whitespace-nowrap px-3 py-3.5',
-      cellClassName: 'px-3 py-3 text-xs tabular-nums text-slate-400',
+      cellClassName: 'px-3 py-3 text-xs tabular-nums text-ink-subtle',
       skeleton: { variant: 'number' },
       cell: (_log, index) => (pageNumber - 1) * pageSize + index + 1,
     },
@@ -129,12 +129,12 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
         const relativeTime = formatAuditRelativeTime(log.timestamp);
         return (
           <div>
-            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-800 sm:text-sm">
-              <Clock className="size-3.5 shrink-0 text-slate-400" />
+            <div className="flex items-center gap-1.5 text-xs font-medium text-ink-heading sm:text-sm">
+              <Clock className="size-3.5 shrink-0 text-ink-subtle" />
               <span className="tabular-nums">{formatAuditShortTime(log.timestamp)}</span>
             </div>
             {relativeTime && (
-              <div className="mt-0.5 ml-5 text-xs text-slate-400">{relativeTime}</div>
+              <div className="mt-0.5 ml-5 text-xs text-ink-subtle">{relativeTime}</div>
             )}
           </div>
         );
@@ -155,7 +155,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
               isSystemActor ? (
                 <span
                   aria-hidden="true"
-                  className="flex size-9 shrink-0 items-center justify-center rounded-full border border-slate-200/80 bg-slate-100 text-slate-500 ring-2 ring-white"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line-input/80 bg-surface-muted text-ink-muted ring-2 ring-surface-card"
                 >
                   <Server className="size-4" />
                 </span>
@@ -164,14 +164,17 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
               )
             }
             title={
-              <span className="min-w-0 truncate font-semibold text-slate-900" title={actorName}>
+              <span
+                className="min-w-0 truncate font-semibold text-ink-primary"
+                title={actorName}
+              >
                 {actorName}
               </span>
             }
             titleClassName="flex-nowrap"
             description={
               <span
-                className="truncate text-xs text-slate-500"
+                className="truncate text-xs text-ink-muted"
                 title={log.actorEmail || undefined}
               >
                 {log.actorEmail || (log.actorUserId ? log.actorUserId : 'Không có thông tin tác nhân')}
@@ -195,20 +198,23 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
         const targetLabel = formatTargetType(log.targetType);
         return (
           <div className="space-y-1">
-            <div className="truncate text-xs font-semibold text-slate-800 sm:text-sm" title={actionTitle}>
+            <div
+              className="truncate text-xs font-semibold text-ink-heading sm:text-sm"
+              title={actionTitle}
+            >
               {actionTitle}
             </div>
             {log.targetType && (
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge
                   variant="secondary"
-                  className="border border-slate-200/80 bg-slate-100 px-1.5 py-0 text-xs font-normal text-slate-600"
+                  className="border border-line-input/80 bg-surface-muted px-1.5 py-0 text-xs font-normal text-ink-body"
                 >
                   {targetLabel}
                 </Badge>
                 {log.targetId && (
                   <span
-                    className="max-w-[130px] truncate font-mono text-xs text-slate-400"
+                    className="max-w-[130px] truncate font-mono text-xs text-ink-subtle"
                     title={log.targetId}
                   >
                     #{log.targetId}
@@ -281,22 +287,26 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({
           <div className="space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 space-y-1">
-                <p className="text-sm font-semibold text-slate-900">{actionTitle}</p>
-                <p className="flex items-center gap-1.5 text-xs text-slate-500">
-                  <Clock className="size-3.5 shrink-0 text-slate-400" />
+                <p className="text-sm font-semibold text-ink-primary">
+                  {actionTitle}
+                </p>
+                <p className="flex items-center gap-1.5 text-xs text-ink-muted">
+                  <Clock className="size-3.5 shrink-0 text-ink-subtle" />
                   <span className="tabular-nums">{formatAuditShortTime(log.timestamp)}</span>
                 </p>
               </div>
               <AuditOutcomeBadge outcome={log.outcome} />
             </div>
-            <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
+            <div className="flex items-center justify-between gap-2 border-t border-line-subtle pt-2.5">
               <div className="flex min-w-0 items-center gap-2">
                 {isSystemActor ? (
-                  <Server className="size-4 shrink-0 text-slate-400" />
+                  <Server className="size-4 shrink-0 text-ink-subtle" />
                 ) : (
                   <Avatar name={actorName} className="size-6 text-xs" />
                 )}
-                <span className="truncate text-xs font-medium text-slate-700">{actorName}</span>
+                <span className="truncate text-xs font-medium text-ink-secondary">
+                  {actorName}
+                </span>
                 {log.targetType && (
                   <Badge variant="secondary" className="shrink-0 text-xs font-normal">
                     {targetLabel}

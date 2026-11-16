@@ -58,7 +58,7 @@ export function SyllabusReviewPage() {
         icon={<ClipboardCheck />}
         navigation={<ThesisReviewNavigation />}
       >
-        <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-muted text-ink-secondary border border-line/80">
           {batchLabel}
         </span>
       </PageHeader>

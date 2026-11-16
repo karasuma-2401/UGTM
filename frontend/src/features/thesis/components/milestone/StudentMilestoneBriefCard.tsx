@@ -48,34 +48,34 @@ export function StudentMilestoneBriefCard({
           : 'neutral';
 
   const reviewAccentClass = {
-    emerald: 'border-slate-200/80 bg-slate-50/70 text-slate-800',
-    amber: 'border-amber-200/80 bg-amber-50/55 text-amber-950',
-    blue: 'border-slate-200/80 bg-slate-50/70 text-slate-800',
-    neutral: 'border-slate-200/80 bg-slate-50/60 text-slate-700',
+    emerald: 'border-line/80 bg-surface-subtle/70 text-ink-heading',
+    amber: 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong',
+    blue: 'border-line/80 bg-surface-subtle/70 text-ink-heading',
+    neutral: 'border-line/80 bg-surface-subtle/60 text-ink-secondary',
   }[reviewTone];
 
   const deadlinePillClass = {
-    completed: 'bg-slate-100/80 text-slate-600 border-slate-200/70',
-    overdue: 'bg-rose-50 text-rose-700 border-rose-200/70',
-    soon: 'bg-amber-50 text-amber-800 border-amber-200/70',
-    normal: 'bg-slate-100/80 text-slate-600 border-slate-200/70',
+    completed: 'bg-surface-muted/80 text-ink-body border-line-input/70',
+    overdue: 'bg-tone-danger-bg text-tone-danger-text border-tone-danger-border',
+    soon: 'bg-tone-warning-bg text-tone-warning-strong border-tone-warning-border',
+    normal: 'bg-surface-muted/80 text-ink-body border-line-input/70',
   }[deadline.urgency];
 
   return (
-    <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl overflow-hidden">
-      <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <Card className="bg-surface-card border-line/80 shadow-xs rounded-2xl overflow-hidden">
+      <div className="px-5 sm:px-6 py-4 border-b border-line-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 tabular-nums">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle tabular-nums">
               Mốc {String(milestoneIndex + 1).padStart(2, '0')}
             </span>
-            <span aria-hidden="true" className="text-slate-300">·</span>
+            <span aria-hidden="true" className="text-ink-faint">·</span>
             <MilestoneStatusBadge
               status={currentStatus}
               versionNo={currentVersionNo && currentVersionNo > 0 ? currentVersionNo : null}
             />
           </div>
-          <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+          <h2 className="text-base sm:text-lg font-bold text-ink-primary leading-snug">
             {milestone.title}
           </h2>
         </div>
@@ -99,7 +99,7 @@ export function StudentMilestoneBriefCard({
             <button
               type="button"
               onClick={onJumpToNextMilestone}
-              className="inline-flex items-center gap-1 text-xs font-medium text-[#2054a5] hover:underline cursor-pointer self-start sm:self-end"
+              className="inline-flex items-center gap-1 text-xs font-medium text-brand-ink hover:underline cursor-pointer self-start sm:self-end"
             >
               <span>{nextActionLabel}</span>
               <ArrowRight className="size-3" />
@@ -108,14 +108,14 @@ export function StudentMilestoneBriefCard({
         </div>
       </div>
 
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-line-subtle">
         <div className="px-5 sm:px-6 py-4 space-y-1.5">
-          <p className="text-xs font-semibold text-slate-500">Yêu cầu và đầu mục cần nộp</p>
+          <p className="text-xs font-semibold text-ink-muted">Yêu cầu và đầu mục cần nộp</p>
           <RichTextContent
             content={milestone.description}
-            className="text-sm text-slate-700"
+            className="text-sm text-ink-secondary"
             emptyFallback={
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-ink-muted">
                 GVHD chưa ghi chú mô tả chi tiết cho mốc này. Sinh viên nộp báo cáo tiến độ và liên kết mã nguồn theo kế hoạch nhóm.
               </span>
             }
@@ -123,16 +123,16 @@ export function StudentMilestoneBriefCard({
         </div>
 
         <div className="px-5 sm:px-6 py-4 space-y-2">
-          <p className="text-xs font-semibold text-slate-500">Đánh giá và nhận xét từ GVHD</p>
+          <p className="text-xs font-semibold text-ink-muted">Đánh giá và nhận xét từ GVHD</p>
           <div className={cn('rounded-xl border px-4 py-3 space-y-1.5', reviewAccentClass)}>
             {latestReviewed?.review ? (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                   <span className="inline-flex items-center gap-1.5 font-semibold">
                     {latestReviewed.review.decision === 'Accepted' ? (
-                      <CheckCircle2 className="size-4 text-emerald-600" />
+                      <CheckCircle2 className="size-4 text-tone-success-icon" />
                     ) : (
-                      <RotateCcw className="size-4 text-amber-600" />
+                      <RotateCcw className="size-4 text-tone-warning-icon" />
                     )}
                     {latestReviewed.review.decision === 'Accepted'
                       ? `GVHD đã xác nhận Đạt (v${latestReviewed.versionNo})`
@@ -154,7 +154,7 @@ export function StudentMilestoneBriefCard({
               </>
             ) : currentStatus === 'Accepted' ? (
               <div className="flex items-start gap-2.5 text-sm">
-                <CheckCircle2 className="size-4 text-emerald-600 shrink-0 mt-0.5" />
+                <CheckCircle2 className="size-4 text-tone-success-icon shrink-0 mt-0.5" />
                 <p>
                   GVHD đã xác nhận <strong>Đạt</strong> cho mốc báo cáo này
                   {latestVersion ? ` (phiên bản v${latestVersion.versionNo})` : ''}. Nhóm có thể chuyển sang mốc tiếp theo.
@@ -162,21 +162,21 @@ export function StudentMilestoneBriefCard({
               </div>
             ) : currentStatus === 'Submitted' ? (
               <div className="flex items-start gap-2.5 text-sm">
-                <Clock3 className="size-4 text-[#2054a5] shrink-0 mt-0.5" />
+                <Clock3 className="size-4 text-brand-ink shrink-0 mt-0.5" />
                 <p>
                   Bài nộp phiên bản <strong>v{latestVersion?.versionNo ?? currentVersionNo ?? 1}</strong> đang chờ GVHD xem xét và phản hồi.
                 </p>
               </div>
             ) : currentStatus === 'NeedRevision' ? (
               <div className="flex items-start gap-2.5 text-sm">
-                <RotateCcw className="size-4 text-amber-600 shrink-0 mt-0.5" />
+                <RotateCcw className="size-4 text-tone-warning-icon shrink-0 mt-0.5" />
                 <p>
                   GVHD yêu cầu chỉnh sửa lại bài nộp. Hãy cập nhật tệp báo cáo hoặc liên kết mã nguồn và gửi phiên bản tiếp theo.
                 </p>
               </div>
             ) : (
-              <div className="flex items-start gap-2.5 text-xs text-slate-600">
-                <MessageSquareText className="size-4 text-slate-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2.5 text-xs text-ink-body">
+                <MessageSquareText className="size-4 text-ink-subtle shrink-0 mt-0.5" />
                 <p>Chưa có bài nộp cho mốc này. Hãy tải lên báo cáo và liên kết mã nguồn để GVHD đánh giá.</p>
               </div>
             )}

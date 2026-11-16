@@ -25,7 +25,7 @@ export function IdentityNavigation() {
         activeKey={location.pathname}
         selector='a[aria-current="page"]'
         continuityKey="identity-tabs"
-        className="bg-primary/5 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:content-[''] after:[background-image:var(--gradient-brand)]"
+        className="bg-primary/5 dark:bg-primary/10 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:content-[''] after:[background-image:var(--gradient-brand)]"
       />
       {tabs
         .filter((tab) => tab.visible)
@@ -48,7 +48,7 @@ export function IdentityNavigation() {
                 'relative z-10 inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 border-b-2 border-transparent px-2 text-center text-xs font-medium transition-colors duration-150 sm:flex-none sm:px-4 sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
                 isActive
                   ? 'text-primary hover:text-primary'
-                  : 'border-transparent text-slate-500 hover:bg-slate-100/60 hover:text-slate-800',
+                  : 'border-transparent text-ink-muted hover:bg-surface-muted/60 hover:text-ink-heading',
               )
             }
           >

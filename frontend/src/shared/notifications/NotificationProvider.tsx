@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode
 import { createPortal } from 'react-dom';
 import { CircleAlert, CircleCheck, CircleX, Info, Loader2 } from 'lucide-react';
 import { Toaster, toast, useSonner, type ToastT } from 'sonner';
+import { useTheme } from '@/shared/theme';
 import { getNotificationDialog, subscribeNotificationDialog } from './dialog-host';
 import { notify } from './notify';
 import { useToastCountdown } from './useToastCountdown';
@@ -12,7 +13,7 @@ function NotificationIcon({ children }: { children: ReactNode }) {
       {children}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-[3px] bg-slate-100 group-data-[countdown=true]/toast:block"
+        className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-[3px] bg-surface-muted group-data-[countdown=true]/toast:block"
       >
         <span
           data-toast-countdown=""
@@ -47,6 +48,7 @@ function setDuration(item: ToastT, duration: number) {
 }
 
 function NotificationViewport() {
+  const { resolvedTheme } = useTheme();
   const dialog = useSyncExternalStore(subscribeNotificationDialog, getNotificationDialog);
   const { toasts } = useSonner();
   const [host] = useState(() => {
@@ -120,7 +122,7 @@ function NotificationViewport() {
     >
       <Toaster
         position="top-right"
-        theme="light"
+        theme={resolvedTheme}
         hotkey={['F8']}
         visibleToasts={3}
         duration={5000}
@@ -136,7 +138,7 @@ function NotificationViewport() {
             <NotificationIcon>
               <CircleCheck
                 aria-hidden="true"
-                className="size-[22px] fill-emerald-700 text-white"
+                className="size-[22px] fill-emerald-700 text-white dark:fill-emerald-500 dark:text-slate-950"
                 strokeWidth={2.5}
               />
             </NotificationIcon>
@@ -145,7 +147,7 @@ function NotificationViewport() {
             <NotificationIcon>
               <Info
                 aria-hidden="true"
-                className="size-[22px] fill-blue-600 text-white"
+                className="size-[22px] fill-blue-600 text-white dark:fill-blue-500 dark:text-slate-950"
                 strokeWidth={2.5}
               />
             </NotificationIcon>
@@ -154,7 +156,7 @@ function NotificationViewport() {
             <NotificationIcon>
               <CircleAlert
                 aria-hidden="true"
-                className="size-[22px] fill-amber-700 text-white"
+                className="size-[22px] fill-amber-700 text-white dark:fill-amber-500 dark:text-slate-950"
                 strokeWidth={2.5}
               />
             </NotificationIcon>
@@ -163,7 +165,7 @@ function NotificationViewport() {
             <NotificationIcon>
               <CircleX
                 aria-hidden="true"
-                className="size-[22px] fill-rose-700 text-white"
+                className="size-[22px] fill-rose-700 text-white dark:fill-rose-500 dark:text-slate-950"
                 strokeWidth={2.5}
               />
             </NotificationIcon>
@@ -180,21 +182,21 @@ function NotificationViewport() {
           closeButtonAriaLabel: 'Đóng thông báo',
           classNames: {
             toast:
-              'group/toast relative flex w-full flex-wrap items-center gap-x-3 gap-y-2 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-4 pr-11 text-slate-900 shadow-[0_4px_16px_rgba(15,23,42,0.08)] pointer-events-auto',
+              'group/toast relative flex w-full flex-wrap items-center gap-x-3 gap-y-2 overflow-hidden rounded-xl border border-line-input/80 bg-surface-card p-4 pr-11 text-ink-primary shadow-[0_4px_16px_rgba(15,23,42,0.08)] pointer-events-auto dark:shadow-[0_12px_32px_rgba(0,0,0,0.55)]',
             content: 'min-w-0 flex-1',
-            title: 'text-sm font-semibold leading-5 text-slate-900',
-            description: 'mt-1 text-sm leading-6 text-slate-600 [overflow-wrap:anywhere]',
+            title: 'text-sm font-semibold leading-5 text-ink-primary',
+            description: 'mt-1 text-sm leading-6 text-ink-body [overflow-wrap:anywhere]',
             icon: 'flex shrink-0 items-center justify-center text-[var(--toast-accent)]',
             closeButton:
-              'absolute right-0 top-0 flex size-11 items-center justify-center rounded-lg border-0 bg-transparent text-slate-500 cursor-pointer hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:right-1 sm:top-1 sm:size-7',
+              'absolute right-0 top-0 flex size-11 items-center justify-center rounded-lg border-0 bg-transparent text-ink-muted cursor-pointer hover:bg-surface-muted hover:text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:right-1 sm:top-1 sm:size-7',
             actionButton:
               'ml-8 min-h-11 rounded-md bg-transparent px-2 py-1 text-sm font-semibold text-[var(--toast-accent)] underline underline-offset-4 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:min-h-9',
-            success: '[--toast-accent:theme(colors.emerald.700)]',
-            info: '[--toast-accent:theme(colors.blue.600)]',
-            warning: '[--toast-accent:theme(colors.amber.700)]',
-            error: '[--toast-accent:theme(colors.rose.700)]',
-            loading: '[--toast-accent:theme(colors.blue.600)]',
-            default: '[--toast-accent:theme(colors.blue.600)]',
+            success: '[--toast-accent:theme(colors.emerald.700)] dark:[--toast-accent:theme(colors.emerald.400)]',
+            info: '[--toast-accent:theme(colors.blue.600)] dark:[--toast-accent:theme(colors.blue.400)]',
+            warning: '[--toast-accent:theme(colors.amber.700)] dark:[--toast-accent:theme(colors.amber.400)]',
+            error: '[--toast-accent:theme(colors.rose.700)] dark:[--toast-accent:theme(colors.rose.400)]',
+            loading: '[--toast-accent:theme(colors.blue.600)] dark:[--toast-accent:theme(colors.blue.400)]',
+            default: '[--toast-accent:theme(colors.blue.600)] dark:[--toast-accent:theme(colors.blue.400)]',
           },
         }}
       />

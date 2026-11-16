@@ -102,7 +102,7 @@ export function RenameReviewEntryPage() {
   if (hasRole('AcademicAffairs')) return <RenameReviewPage level="academic-affairs" />;
 
   return (
-    <p role="alert" className="p-6 text-sm text-rose-700">
+    <p role="alert" className="p-6 text-sm text-tone-danger-text">
       Tài khoản của bạn không có quyền duyệt yêu cầu đổi tên đề tài.
     </p>
   );
@@ -312,7 +312,7 @@ function RenameReviewView({
       cellClassName: 'px-3 py-4',
       skeleton: { variant: 'number' },
       cell: (_, index) => (
-        <span className="text-xs font-medium tabular-nums text-slate-400">
+        <span className="text-xs font-medium tabular-nums text-ink-subtle">
           {(safePage - 1) * pageSize + index + 1}
         </span>
       ),
@@ -329,22 +329,22 @@ function RenameReviewView({
         <div className="min-w-[260px] space-y-1.5">
           <div className="space-y-0.5">
             <span
-              className="line-clamp-2 block text-sm font-semibold leading-snug text-slate-900"
+              className="line-clamp-2 block text-sm font-semibold leading-snug text-ink-primary"
               title={item.newTitleVi}
             >
               {item.newTitleVi}
             </span>
             {item.newTitleEn && (
               <span
-                className="block truncate text-[11px] font-normal text-slate-500"
+                className="block truncate text-[11px] font-normal text-ink-muted"
                 title={item.newTitleEn}
               >
                 {item.newTitleEn}
               </span>
             )}
           </div>
-          <div className="flex items-start gap-1.5 text-xs text-slate-600">
-            <span className="mt-0.5 shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+          <div className="flex items-start gap-1.5 text-xs text-ink-body">
+            <span className="mt-0.5 shrink-0 rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-semibold text-ink-body">
               Cũ
             </span>
             <span className="line-clamp-1 leading-relaxed" title={item.oldTitleVi}>
@@ -379,20 +379,20 @@ function RenameReviewView({
               <div className="flex min-w-0 items-center gap-2.5">
                 <AvatarGroup items={avatarItems} max={2} size="sm" className="shrink-0" />
                 <span
-                  className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800"
+                  className="min-w-0 flex-1 truncate text-xs font-semibold text-ink-heading"
                   title={memberSummary}
                 >
                   {memberSummary}
                 </span>
               </div>
             ) : (
-              <span className="block text-xs font-medium text-slate-700">
+              <span className="block text-xs font-medium text-ink-secondary">
                 Nhóm thực hiện KLTN
               </span>
             )}
-            <div className="truncate text-[11px] text-slate-500">
+            <div className="truncate text-[11px] text-ink-muted">
               <span>GVHD: {item.advisorName || 'Theo phân công đề tài'}</span>
-              {item.batchName && <span className="text-slate-400"> · {item.batchName}</span>}
+              {item.batchName && <span className="text-ink-subtle"> · {item.batchName}</span>}
             </div>
           </div>
         );
@@ -412,7 +412,7 @@ function RenameReviewView({
           <StatusBadge tone={renameStatusTones[item.status]}>
             {renameStatusLabels[item.status] ?? item.status}
           </StatusBadge>
-          <p className="text-[11px] text-slate-500">{getStepSummary(item)}</p>
+          <p className="text-[11px] text-ink-muted">{getStepSummary(item)}</p>
         </div>
       ),
     },
@@ -426,7 +426,7 @@ function RenameReviewView({
       cellClassName: 'px-4 py-4',
       skeleton: { variant: 'text' },
       cell: (item) => (
-        <span className="text-xs font-medium tabular-nums text-slate-700">
+        <span className="text-xs font-medium tabular-nums text-ink-secondary">
           {formatRenameDate(item.createdAt)}
         </span>
       ),
@@ -449,7 +449,7 @@ function RenameReviewView({
             event.stopPropagation();
             openDialog(item);
           }}
-          className="h-8 rounded-md border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+          className="h-8 rounded-md border-line-input bg-surface-card px-3 text-xs font-medium text-ink-secondary shadow-sm hover:border-line-strong hover:bg-surface-hover hover:text-ink-primary"
         >
           Xem
         </Button>
@@ -475,7 +475,7 @@ function RenameReviewView({
             <RefreshCw className={query.isFetching ? 'animate-spin' : undefined} />
           }
           onClick={() => void query.refetch()}
-          className="h-9 rounded-xl border-slate-200 bg-white shadow-2xs hover:border-slate-300"
+          className="h-9 rounded-xl border-line-input bg-surface-card shadow-2xs hover:border-line-strong"
         >
           Làm mới
         </Button>
@@ -483,7 +483,7 @@ function RenameReviewView({
 
       <OperationToast message={notice} onConsumed={() => setNotice('')} />
 
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]">
+      <Card className="min-w-0 overflow-hidden rounded-2xl border-line/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]">
         <ListCardHeader
           title="Danh sách yêu cầu đổi tên"
           description={scopeDescription}
@@ -538,7 +538,7 @@ function RenameReviewView({
           </div>
         </ListCardHeader>
 
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/40 px-4 py-3.5 sm:px-6">
+        <div className="flex flex-wrap items-center gap-3 border-b border-line-subtle bg-surface-subtle/40 px-4 py-3.5 sm:px-6">
           <div className="min-w-60 flex-1">
             <Input
               value={keyword}
@@ -584,7 +584,7 @@ function RenameReviewView({
               variant="outline"
               leftIcon={<FilterX />}
               onClick={handleResetFilters}
-              className="h-10 rounded-xl border-slate-200 bg-white text-slate-600 hover:text-slate-900"
+              className="h-10 rounded-xl border-line-input bg-surface-card text-ink-body hover:text-ink-primary"
             >
               Bỏ lọc
             </Button>
@@ -645,25 +645,25 @@ function RenameReviewView({
             itemLabel: 'yêu cầu',
           }}
           renderMobileItem={(item) => (
-            <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-4">
+            <div className="space-y-3 rounded-xl border border-line/80 bg-surface-card p-4">
               <div className="flex items-start justify-between gap-2">
                 <StatusBadge tone={renameStatusTones[item.status]}>
                   {renameStatusLabels[item.status] ?? item.status}
                 </StatusBadge>
-                <span className="text-xs font-medium tabular-nums text-slate-500">
+                <span className="text-xs font-medium tabular-nums text-ink-muted">
                   {formatRenameDate(item.createdAt)}
                 </span>
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-semibold leading-snug text-slate-900">
+                <p className="text-sm font-semibold leading-snug text-ink-primary">
                   {item.newTitleVi}
                 </p>
-                <p className="text-xs text-slate-600 line-clamp-2">
+                <p className="text-xs text-ink-body line-clamp-2">
                   Cũ: {item.oldTitleVi}
                 </p>
               </div>
-              <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-2.5">
-                <span className="truncate text-xs text-slate-500">
+              <div className="flex items-center justify-between gap-2 border-t border-line-subtle pt-2.5">
+                <span className="truncate text-xs text-ink-muted">
                   GVHD: {item.advisorName || 'Theo phân công'}
                 </span>
                 <Button
@@ -671,7 +671,7 @@ function RenameReviewView({
                   variant="outline"
                   size="sm"
                   onClick={() => openDialog(item)}
-                  className="h-8 rounded-md border-slate-200 px-3 text-xs font-medium"
+                  className="h-8 rounded-md border-line-input px-3 text-xs font-medium"
                 >
                   Xem
                 </Button>

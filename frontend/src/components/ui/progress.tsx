@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const progressTrackVariants = cva(
-  'w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative',
+  'w-full bg-surface-muted rounded-full overflow-hidden relative',
   {
     variants: {
       size: {
@@ -130,7 +130,7 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
             {label && (
               <span
                 className={cn(
-                  'text-sm font-medium text-slate-700 dark:text-slate-200 truncate',
+                  'text-sm font-medium text-ink-secondary truncate',
                   labelClassName,
                 )}
               >
@@ -140,7 +140,7 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
             {(showValue || valueText !== undefined) && (
               <span
                 className={cn(
-                  'text-sm font-semibold text-slate-900 dark:text-slate-100 ml-auto shrink-0',
+                  'text-sm font-semibold text-ink-primary ml-auto shrink-0',
                   valueClassName,
                 )}
               >

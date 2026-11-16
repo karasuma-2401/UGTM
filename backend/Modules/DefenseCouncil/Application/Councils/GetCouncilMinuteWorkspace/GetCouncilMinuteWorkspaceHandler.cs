@@ -1,4 +1,6 @@
+using UGTM.BuildingBlocks.Application.Caching;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
@@ -11,7 +13,8 @@ public sealed record GetCouncilMinuteWorkspaceQuery(Guid AssignmentId);
 public sealed class GetCouncilMinuteWorkspaceHandler(
     ICouncilRepository councilRepository,
     CouncilMinuteWorkspaceLoader workspaceLoader,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ICacheService? cache = null)
 {
     public async Task<Result<CouncilMinuteWorkspaceResponseDto>> HandleAsync(
         GetCouncilMinuteWorkspaceQuery query,
@@ -31,6 +34,21 @@ public sealed class GetCouncilMinuteWorkspaceHandler(
         if (!CouncilMinuteAccess.CanView(assignment.Council, currentUser))
         {
             return Result.Failure<CouncilMinuteWorkspaceResponseDto>(CouncilErrors.Forbidden);
+        }
+
+        string? cacheKey = null;
+        if (cache is not null)
+        {
+            var assignVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.AssignmentScope(assignment.Id), ct);
+            var councilVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.CouncilScope(assignment.CouncilId), ct);
+            var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct);
+            cacheKey = DefenseCouncilCacheKeys.CouncilMinuteWorkspace(assignment.Id, assignVer, councilVer, globalVer);
+
+            var cached = await cache.GetAsync<CouncilMinuteWorkspaceResponseDto>(cacheKey, ct);
+            if (cached is not null)
+            {
+                return Result.Success(cached);
+            }
         }
 
         var ctx = await workspaceLoader.LoadAsync(assignment, ct);
@@ -58,10 +76,17 @@ public sealed class GetCouncilMinuteWorkspaceHandler(
             overrideReason: ctx.Minute?.OverrideReason,
             configuration: ctx.Configuration);
 
-        return Result.Success(new CouncilMinuteWorkspaceResponseDto(
+        var response = new CouncilMinuteWorkspaceResponseDto(
             assignmentInfo,
             scoreItems,
             discrepancySummary,
-            calculationPreview));
+            calculationPreview);
+
+        if (cache is not null && cacheKey is not null)
+        {
+            await cache.SetAsync(cacheKey, response, DefenseCouncilCacheKeys.MinuteWorkspaceTtl, ct);
+        }
+
+        return Result.Success(response);
     }
 }

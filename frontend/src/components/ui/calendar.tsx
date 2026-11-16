@@ -27,7 +27,7 @@ const QUICK_TIME_PRESETS = ['08:00', '12:00', '17:00', '23:59'] as const;
 
 const weekdays = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 const control =
-  'inline-flex size-8 shrink-0 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40';
+  'inline-flex size-8 shrink-0 items-center justify-center rounded-md text-ink-body hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-40';
 
 function CalendarField({
   id,
@@ -295,8 +295,8 @@ function CalendarField({
       <div
         ref={field}
         className={cn(
-          'flex h-10 w-full items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 transition-colors hover:border-slate-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15',
-          disabled && 'cursor-not-allowed bg-slate-50 opacity-60',
+          'flex h-10 w-full items-center gap-1 rounded-lg border border-line-input bg-surface-card px-3 text-sm text-ink-primary transition-colors hover:border-line-strong focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15',
+          disabled && 'cursor-not-allowed bg-surface-subtle opacity-60',
           error && 'border-destructive',
           className,
         )}
@@ -317,7 +317,7 @@ function CalendarField({
           aria-expanded={open && !disabled}
           aria-controls={popupId}
           aria-describedby={error ? `${inputId}-error` : aria['aria-describedby']}
-          className="min-w-0 flex-1 bg-transparent py-2 outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
+          className="min-w-0 flex-1 bg-transparent py-2 outline-none placeholder:text-ink-muted disabled:cursor-not-allowed"
           onChange={(event) => {
             const next = calendarInputValue(event.target.value, withTime);
             const valid = next && (!min || next >= min) && (!max || next <= max);
@@ -366,7 +366,7 @@ function CalendarField({
         popover="manual"
         role="dialog"
         aria-label={withTime ? 'Chọn ngày và giờ' : 'Chọn ngày'}
-        className="fixed inset-auto m-0 max-h-[calc(100dvh-1rem)] overflow-auto rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-lg"
+        className="fixed inset-auto m-0 max-h-[calc(100dvh-1rem)] overflow-auto rounded-xl border border-line-input bg-surface-card p-3 text-ink-primary shadow-lg dark:shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
         onBlur={(event) => {
           if (
             event.relatedTarget &&
@@ -389,7 +389,7 @@ function CalendarField({
                     : 'Khoảng năm'
             }
             disabled={view === 'years'}
-            className="min-w-0 flex-1 rounded-md px-2 py-2 text-left text-sm font-semibold hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:text-slate-600 disabled:hover:bg-transparent"
+            className="min-w-0 flex-1 rounded-md px-2 py-2 text-left text-sm font-semibold hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:text-ink-muted disabled:hover:bg-transparent"
             onClick={() =>
               changeView(view === 'time' ? 'days' : view === 'days' ? 'months' : 'years')
             }
@@ -454,8 +454,8 @@ function CalendarField({
                       className={cn(
                         'rounded-lg border py-1.5 text-xs font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                         active
-                          ? 'border-primary bg-primary font-semibold text-white'
-                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100',
+                          ? 'border-primary bg-brand-solid font-semibold text-white'
+                          : 'border-line-input bg-surface-muted text-ink-secondary hover:border-line-strong hover:bg-surface-muted',
                       )}
                     >
                       {preset}
@@ -465,8 +465,8 @@ function CalendarField({
               </div>
 
               <div className="grid min-h-0 flex-1 grid-cols-2 gap-2.5">
-                <div className="flex min-h-0 flex-col rounded-xl border border-slate-200/80 bg-slate-50/50 p-1.5">
-                  <span className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="flex min-h-0 flex-col rounded-xl border border-line/80 bg-surface-subtle/50 p-1.5">
+                  <span className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
                     Giờ
                   </span>
                   <div
@@ -486,8 +486,8 @@ function CalendarField({
                           className={cn(
                             'rounded-lg py-1.5 text-center text-xs font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                             active
-                              ? 'bg-primary font-semibold text-white'
-                              : 'text-slate-700 hover:bg-white',
+                              ? 'bg-brand-solid font-semibold text-white'
+                              : 'text-ink-secondary hover:bg-surface-hover',
                           )}
                         >
                           {hour}
@@ -497,8 +497,8 @@ function CalendarField({
                   </div>
                 </div>
 
-                <div className="flex min-h-0 flex-col rounded-xl border border-slate-200/80 bg-slate-50/50 p-1.5">
-                  <span className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="flex min-h-0 flex-col rounded-xl border border-line/80 bg-surface-subtle/50 p-1.5">
+                  <span className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
                     Phút
                   </span>
                   <div
@@ -518,8 +518,8 @@ function CalendarField({
                           className={cn(
                             'rounded-lg py-1.5 text-center text-xs font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                             active
-                              ? 'bg-primary font-semibold text-white'
-                              : 'text-slate-700 hover:bg-white',
+                              ? 'bg-brand-solid font-semibold text-white'
+                              : 'text-ink-secondary hover:bg-surface-hover',
                           )}
                         >
                           {minute}
@@ -553,9 +553,9 @@ function CalendarField({
                     disabled={periodUnavailable(year, view === 'months' ? index : undefined)}
                     onKeyDown={periodKey}
                     className={cn(
-                      'rounded-lg text-sm tabular-nums hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-30',
-                      view === 'years' && (year < decade || year > decade + 9) && 'text-slate-500',
-                      selected && 'bg-primary font-semibold text-white hover:bg-primary/90',
+                      'rounded-lg text-sm tabular-nums hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-30',
+                      view === 'years' && (year < decade || year > decade + 9) && 'text-ink-muted',
+                      selected && 'bg-brand-solid font-semibold text-white hover:bg-brand-solid-hover',
                     )}
                     onClick={() => {
                       changeMonth(
@@ -580,7 +580,7 @@ function CalendarField({
               <thead>
                 <tr>
                   {weekdays.map((day) => (
-                    <th key={day} scope="col" className="h-8 text-xs font-medium text-slate-500">
+                    <th key={day} scope="col" className="h-8 text-xs font-medium text-ink-muted">
                       {day}
                     </th>
                   ))}
@@ -610,10 +610,10 @@ function CalendarField({
                             onKeyDown={(event) => gridKey(event, day)}
                             onClick={() => choose(day)}
                             className={cn(
-                              'flex aspect-square w-full items-center justify-center rounded-lg tabular-nums hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-30',
-                              date.getMonth() !== month.getMonth() && 'text-slate-400',
+                              'flex aspect-square w-full items-center justify-center rounded-lg tabular-nums hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-30',
+                              date.getMonth() !== month.getMonth() && 'text-ink-subtle',
                               day === today && 'ring-1 ring-inset ring-primary text-primary',
-                              selected && 'bg-primary font-semibold text-white hover:bg-primary/90',
+                              selected && 'bg-brand-solid font-semibold text-white hover:bg-brand-solid-hover',
                             )}
                           >
                             {date.getDate()}
@@ -628,12 +628,12 @@ function CalendarField({
           )}
         </div>
         {withTime && (
-          <div className="mt-2 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-            <label htmlFor={`${inputId}-hour`} className="text-xs font-medium text-slate-600">
+          <div className="mt-2 flex items-center justify-between gap-3 border-t border-line-subtle pt-3">
+            <label htmlFor={`${inputId}-hour`} className="text-xs font-medium text-ink-body">
               Giờ nộp
             </label>
             <div className="flex items-center gap-1.5">
-              <div className="inline-flex h-8 items-center rounded-lg border border-slate-200 bg-white px-1 transition-colors hover:border-slate-300 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
+              <div className="inline-flex h-8 items-center rounded-lg border border-line-input bg-surface-card px-1 transition-colors hover:border-line-strong focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/15">
                 <input
                   id={`${inputId}-hour`}
                   type="text"
@@ -652,9 +652,9 @@ function CalendarField({
                       stepTime('hour', -1);
                     }
                   }}
-                  className="h-6 w-7 rounded bg-transparent text-center text-sm font-semibold tabular-nums text-slate-900 outline-none hover:bg-slate-50 focus:bg-blue-50/70 focus:text-primary"
+                  className="h-6 w-7 rounded bg-transparent text-center text-sm font-semibold tabular-nums text-ink-primary outline-none hover:bg-surface-hover focus:bg-tone-info-bg focus:text-primary"
                 />
-                <span aria-hidden="true" className="px-0.5 text-sm font-semibold text-slate-400">
+                <span aria-hidden="true" className="px-0.5 text-sm font-semibold text-ink-subtle">
                   :
                 </span>
                 <input
@@ -674,7 +674,7 @@ function CalendarField({
                       stepTime('minute', -1);
                     }
                   }}
-                  className="h-6 w-7 rounded bg-transparent text-center text-sm font-semibold tabular-nums text-slate-900 outline-none hover:bg-slate-50 focus:bg-blue-50/70 focus:text-primary"
+                  className="h-6 w-7 rounded bg-transparent text-center text-sm font-semibold tabular-nums text-ink-primary outline-none hover:bg-surface-hover focus:bg-tone-info-bg focus:text-primary"
                 />
               </div>
 
@@ -693,7 +693,7 @@ function CalendarField({
             </div>
           </div>
         )}
-        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
+        <div className="mt-3 flex items-center justify-between border-t border-line-subtle pt-2">
           <button
             type="button"
             disabled={unavailable(today)}
@@ -709,7 +709,7 @@ function CalendarField({
                 setOpen(false);
                 input.current?.focus();
               }}
-              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white focus-visible:outline-primary"
+              className="rounded-md bg-brand-solid px-3 py-1.5 text-sm font-medium text-white focus-visible:outline-primary hover:bg-brand-solid-hover"
             >
               Xong
             </button>
@@ -717,7 +717,7 @@ function CalendarField({
             <button
               type="button"
               disabled={required || !value}
-              className="rounded-md px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 focus-visible:outline-primary disabled:opacity-40"
+              className="rounded-md px-2 py-1.5 text-sm text-ink-body hover:bg-surface-muted focus-visible:outline-primary disabled:opacity-40"
               onClick={() => commit('', true)}
             >
               Xóa

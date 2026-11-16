@@ -6,7 +6,7 @@ export function Skeleton({ className, ...props }: HTMLAttributes<HTMLSpanElement
     <span
       {...props}
       aria-hidden="true"
-      className={cn('block rounded-md bg-slate-200/80 motion-safe:animate-pulse', className)}
+      className={cn('block rounded-md bg-surface-strong/80 motion-safe:animate-pulse', className)}
     />
   );
 }

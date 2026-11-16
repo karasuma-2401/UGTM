@@ -135,3 +135,85 @@
   --auth-card-width: 560px;
   --auth-card-min-height: 680px;
 }
+
+.dark {
+  --color-primary: #3b82f6;
+  --color-primary-hover: #60a5fa;
+  --color-primary-active: #2563eb;
+  --color-primary-deep: #1d4ed8;
+  --color-primary-dark: #93c5fd;
+  --color-primary-light: rgba(37, 99, 235, 0.16);
+  --color-primary-muted: rgba(59, 130, 246, 0.22);
+  --color-primary-border: rgba(59, 130, 246, 0.35);
+  --color-primary-focus: #60a5fa;
+  --color-primary-focus-outline: #60a5fa;
+  --color-primary-accent: #3b82f6;
+  --color-primary-link: #60a5fa;
+  --color-primary-icon: #60a5fa;
+  --color-primary-submit: #2563eb;
+  --color-primary-icon-selected: #60a5fa;
+
+  --color-bg-white: #0f172a;
+  --color-bg-subtle: #162033;
+  --color-bg-muted: #1e293b;
+  --color-bg-input-muted: #162033;
+  --color-bg-icon: #1e293b;
+  --color-bg-avatar: #334155;
+  --color-bg-method-selected: rgba(37, 99, 235, 0.14);
+
+  --color-text-main: #f1f5f9;
+  --color-text-heading: #f8fafc;
+  --color-text-body: #e2e8f0;
+  --color-text-title: #f1f5f9;
+  --color-text-terms: #cbd5e1;
+  --color-text-muted: #94a3b8;
+  --color-text-label: #cbd5e1;
+  --color-text-desc: #94a3b8;
+  --color-text-sub: #94a3b8;
+  --color-text-footnote: #94a3b8;
+  --color-text-demo: #94a3b8;
+  --color-text-timer: #94a3b8;
+  --color-text-placeholder: #64748b;
+  --color-text-footer: #94a3b8;
+  --color-text-subbrand: #cbd5e1;
+  --color-text-white: #ffffff;
+  --color-text-icon: #94a3b8;
+
+  --color-border-subtle: #1e293b;
+  --color-border-card: #1e293b;
+  --color-border-input-muted: #334155;
+  --color-border-input: #334155;
+  --color-border-otp: #334155;
+  --color-border-method: #1e293b;
+  --color-border-focus-alt: #60a5fa;
+  --color-border-method-selected: #3b82f6;
+
+  --color-success: #34d399;
+  --color-success-text: #6ee7b7;
+  --color-success-bright: #34d399;
+  --color-success-dark: #6ee7b7;
+  --color-success-bg: rgba(16, 185, 129, 0.14);
+  --color-success-border: rgba(16, 185, 129, 0.35);
+
+  --color-warning: #fbbf24;
+  --color-warning-text: #fcd34d;
+  --color-warning-bg: rgba(245, 158, 11, 0.14);
+  --color-warning-border: rgba(245, 158, 11, 0.35);
+
+  --color-error: #fda4af;
+  --color-error-bg: rgba(244, 63, 94, 0.16);
+  --color-error-border: rgba(244, 63, 94, 0.35);
+
+  --color-strength-bar: #334155;
+
+  --auth-overlay-gradient-top: rgba(6, 11, 22, 0.84);
+  --auth-overlay-gradient-bottom: rgba(4, 8, 16, 0.97);
+  --auth-header-bg: rgba(9, 13, 22, 0.65);
+
+  --shadow-card: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-otp: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-btn-submit: 0 3px 10px rgba(37, 99, 235, 0.35);
+  --shadow-focus-ring: 0 0 0 2px rgba(96, 165, 250, 0.25);
+  --shadow-focus-otp: 0 0 0 4px rgba(96, 165, 250, 0.18);
+}
