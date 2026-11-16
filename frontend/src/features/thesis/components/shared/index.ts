@@ -7,3 +7,4 @@ export * from './SubmissionImageAttachmentsPicker';
 export * from './SubmissionAttachmentGallery';
 export * from './SubmissionBlockComposer';
 export * from './PdfPreviewDialog';
+export * from './ThesisFileTypeIcon';

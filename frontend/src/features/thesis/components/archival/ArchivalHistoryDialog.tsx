@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, FileText, History, RefreshCw } from 'lucide-react';
+import { Download, Eye, History, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -8,10 +8,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { formatDateTimeVi } from '@/features/councils/utils/scoreSummaryFormatting';
 import type { FinalSubmissionPackageDto } from '../../types/archival.types';
+import { ThesisFileTypeIcon } from '../shared/ThesisFileTypeIcon';
 import {
   formatArchivalFileSize,
   formatReviewActionLabel,
   getArchivalStatusDisplay,
+  parseArchivalKeywords,
 } from '../../utils/archival';
 
 interface ArchivalHistoryDialogProps {
@@ -24,6 +26,8 @@ interface ArchivalHistoryDialogProps {
   onRetry: () => void;
   onDownloadFile: (packageVersion: number, fileRole: string, fileName: string) => void;
   downloadingKey: string | null;
+  onPreviewPdf?: (packageVersion: number, fileName: string, fileSize?: number) => void;
+  previewingKey?: string | null;
 }
 
 export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
@@ -36,6 +40,8 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
   onRetry,
   onDownloadFile,
   downloadingKey,
+  onPreviewPdf,
+  previewingKey = null,
 }) => {
   if (!open) {
     return null;
@@ -113,15 +119,20 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
                     {pkg.files.map((file) => {
                       const dlKey = `${pkg.versionNo}-${file.fileRole}`;
                       const isDownloading = downloadingKey === dlKey;
+                      const isPreviewing = file.fileRole === 'ThesisPdf' && previewingKey === dlKey;
+                      const isBusyAction = downloadingKey !== null || previewingKey !== null;
                       return (
                         <div
                           key={file.fileId}
-                          className="flex items-center justify-between gap-2 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2"
+                          className="flex items-center justify-between gap-2.5 rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 py-2.5"
                         >
-                          <div className="min-w-0 flex items-center gap-2">
-                            <FileText className="size-4 shrink-0 text-slate-500" />
+                          <div className="min-w-0 flex items-center gap-2.5">
+                            <ThesisFileTypeIcon fileName={file.fileName} />
                             <div className="min-w-0">
-                              <p className="text-xs font-medium text-slate-800 truncate">
+                              <p
+                                className="text-xs font-medium text-slate-800 truncate"
+                                title={file.fileName}
+                              >
                                 {file.fileName}
                               </p>
                               <p className="text-[11px] text-slate-500 tabular-nums">
@@ -130,21 +141,40 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
                               </p>
                             </div>
                           </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="size-8 shrink-0 rounded-lg"
-                            aria-label={`Tải ${file.fileName}`}
-                            disabled={isDownloading}
-                            onClick={() =>
-                              onDownloadFile(pkg.versionNo, file.fileRole, file.fileName)
-                            }
-                          >
-                            <Download
-                              className={`size-3.5 ${isDownloading ? 'animate-pulse' : ''}`}
-                            />
-                          </Button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {file.fileRole === 'ThesisPdf' && onPreviewPdf && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="size-8 shrink-0 rounded-lg bg-white"
+                                aria-label={`Xem trước ${file.fileName}`}
+                                title="Xem trước PDF"
+                                disabled={isBusyAction}
+                                onClick={() =>
+                                  onPreviewPdf(pkg.versionNo, file.fileName, file.fileSize)
+                                }
+                              >
+                                <Eye className={`size-3.5 ${isPreviewing ? 'animate-pulse' : ''}`} />
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="size-8 shrink-0 rounded-lg bg-white"
+                              aria-label={`Tải ${file.fileName}`}
+                              title={`Tải ${file.fileName}`}
+                              disabled={isBusyAction}
+                              onClick={() =>
+                                onDownloadFile(pkg.versionNo, file.fileRole, file.fileName)
+                              }
+                            >
+                              <Download
+                                className={`size-3.5 ${isDownloading ? 'animate-pulse' : ''}`}
+                              />
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -152,25 +182,43 @@ export const ArchivalHistoryDialog: React.FC<ArchivalHistoryDialogProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="space-y-1">
-                    <p className="font-medium text-slate-500">Tóm tắt tiếng Việt</p>
-                    <p className="text-slate-700 line-clamp-3 leading-relaxed">
+                  <div className="rounded-xl border border-slate-200/70 bg-slate-50/50 p-3 space-y-1">
+                    <p className="font-semibold text-slate-600">Tóm tắt tiếng Việt</p>
+                    <p className="text-slate-700 line-clamp-4 leading-relaxed">
                       {pkg.abstractVi}
                     </p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="font-medium text-slate-500">Abstract tiếng Anh</p>
-                    <p className="text-slate-700 line-clamp-3 leading-relaxed">
+                  <div className="rounded-xl border border-slate-200/70 bg-slate-50/50 p-3 space-y-1">
+                    <p className="font-semibold text-slate-600">Abstract tiếng Anh</p>
+                    <p className="text-slate-700 line-clamp-4 leading-relaxed">
                       {pkg.abstractEn}
                     </p>
                   </div>
-                  <div className="space-y-1">
-                    <p className="font-medium text-slate-500">Từ khóa tiếng Việt</p>
-                    <p className="text-slate-700">{pkg.keywordsVi}</p>
+                  <div className="space-y-1.5">
+                    <p className="font-semibold text-slate-600">Từ khóa tiếng Việt</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {parseArchivalKeywords(pkg.keywordsVi).map((kw) => (
+                        <span
+                          key={kw}
+                          className="inline-flex items-center rounded-md border border-slate-200/80 bg-slate-100/80 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                        >
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <p className="font-medium text-slate-500">Keywords tiếng Anh</p>
-                    <p className="text-slate-700">{pkg.keywordsEn}</p>
+                  <div className="space-y-1.5">
+                    <p className="font-semibold text-slate-600">Keywords tiếng Anh</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {parseArchivalKeywords(pkg.keywordsEn).map((kw) => (
+                        <span
+                          key={kw}
+                          className="inline-flex items-center rounded-md border border-blue-200/70 bg-blue-50/60 px-2 py-0.5 text-[11px] font-medium text-blue-800"
+                        >
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

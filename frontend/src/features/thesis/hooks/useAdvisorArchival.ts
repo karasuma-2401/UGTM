@@ -11,9 +11,12 @@ import type { ArchivalFilterKey } from '../types/archival.types';
 import type { StudentGroupDetailDto } from '../types/syllabus.types';
 import {
   ARCHIVAL_REASON_MAX_LENGTH,
+  type ArchivalSortField,
+  type ArchivalSortState,
   computeArchivalStats,
   filterArchivalRows,
   mergeAdvisorArchivalRows,
+  sortArchivalRows,
   triggerBrowserDownload,
 } from '../utils/archival';
 import { getThesisErrorMessage } from '../utils/thesisErrors';
@@ -45,9 +48,11 @@ export function useAdvisorArchival() {
 
   const [filterKey, setFilterKey] = useState<ArchivalFilterKey>('Submitted');
   const [keyword, setKeyword] = useState('');
+  const [sort, setSort] = useState<ArchivalSortState>({ field: 'submittedAt', direction: 'desc' });
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [manualSelectedId, setManualSelectedId] = useState<string | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [inspectedSubmissionId, setInspectedSubmissionId] = useState<string | null>(null);
   const [decisionBySubmission, setDecisionBySubmission] = useState<
     Record<string, AdvisorArchivalDecision>
   >({});
@@ -55,8 +60,14 @@ export function useAdvisorArchival() {
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<AdvisorArchivalDecision | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isMetadataOpen, setIsMetadataOpen] = useState(false);
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+  const [previewingKey, setPreviewingKey] = useState<string | null>(null);
+  const [pdfPreviewState, setPdfPreviewState] = useState<{
+    open: boolean;
+    url: string;
+    fileName?: string;
+    fileSize?: number;
+  }>({ open: false, url: '' });
 
   const listQuery = useQuery({
     queryKey: ['advisor-archival-list', user?.id, selectedBatchId],
@@ -99,10 +110,10 @@ export function useAdvisorArchival() {
     const submissions = listQuery.data?.submissions ?? [];
     const advisingGroups = listQuery.data?.advisingGroups ?? [];
     const baseMerged = mergeAdvisorArchivalRows(submissions, advisingGroups, {});
-    const filtered = filterArchivalRows(baseMerged, filterKey, keyword);
+    const filtered = sortArchivalRows(filterArchivalRows(baseMerged, filterKey, keyword), sort);
     const start = (pageNumber - 1) * pageSize;
     return filtered.slice(start, start + pageSize).map((item) => item.groupId);
-  }, [listQuery.data, filterKey, keyword, pageNumber, pageSize]);
+  }, [listQuery.data, filterKey, keyword, sort, pageNumber, pageSize]);
 
   const groupDetailQueries = useQueries({
     queries: visibleGroupIds.map((groupId) => ({
@@ -134,8 +145,8 @@ export function useAdvisorArchival() {
   }, [listQuery.data, detailByGroupId]);
 
   const filteredRows = useMemo(
-    () => filterArchivalRows(allMergedRows, filterKey, keyword),
-    [allMergedRows, filterKey, keyword],
+    () => sortArchivalRows(filterArchivalRows(allMergedRows, filterKey, keyword), sort),
+    [allMergedRows, filterKey, keyword, sort],
   );
 
   const totalCount = filteredRows.length;
@@ -147,75 +158,79 @@ export function useAdvisorArchival() {
   }, [filteredRows, safePageNumber, pageSize]);
 
   const selectedRow = useMemo(() => {
-    if (manualSelectedId) {
-      const matched = filteredRows.find((r) => r.submissionId === manualSelectedId);
-      if (matched) return matched;
-    }
-    return pagedRows[0] ?? filteredRows[0] ?? null;
-  }, [filteredRows, pagedRows, manualSelectedId]);
+    if (!selectedRowId) return null;
+    return filteredRows.find((r) => r.submissionId === selectedRowId) ?? null;
+  }, [filteredRows, selectedRowId]);
 
-  const selectedSubmissionId = selectedRow?.submissionId ?? null;
-  const selectedGroupId = selectedRow?.groupId ?? null;
+  const inspectedIndex = useMemo(() => {
+    if (!inspectedSubmissionId) return -1;
+    return filteredRows.findIndex((r) => r.submissionId === inspectedSubmissionId);
+  }, [filteredRows, inspectedSubmissionId]);
+
+  const inspectedRow = inspectedIndex >= 0 ? filteredRows[inspectedIndex] : null;
+  const activeSubmissionId = inspectedRow?.submissionId ?? null;
+  const activeGroupId = inspectedRow?.groupId ?? null;
+  const historySubmissionId = activeSubmissionId ?? selectedRow?.submissionId ?? null;
 
   const submissionDetailQuery = useQuery({
-    queryKey: ['advisor-archival-detail', selectedSubmissionId],
-    queryFn: ({ signal }) => archivalApi.getDetail(selectedSubmissionId!, signal),
-    enabled: Boolean(selectedSubmissionId && canAccess),
+    queryKey: ['advisor-archival-detail', activeSubmissionId],
+    queryFn: ({ signal }) => archivalApi.getDetail(activeSubmissionId!, signal),
+    enabled: Boolean(activeSubmissionId && canAccess),
     staleTime: STALE_TIME_MS,
     refetchOnWindowFocus: false,
   });
 
   const selectedGroupDetailQuery = useQuery({
-    queryKey: ['advisor-archival-group-detail', selectedGroupId],
+    queryKey: ['advisor-archival-group-detail', activeGroupId],
     queryFn: ({ signal }) =>
-      syllabusApi.getGroupDetail(selectedGroupId!, { batchName: selectedBatchName }, signal),
-    enabled: Boolean(selectedGroupId && canAccess),
+      syllabusApi.getGroupDetail(activeGroupId!, { batchName: selectedBatchName }, signal),
+    enabled: Boolean(activeGroupId && canAccess),
     staleTime: STALE_TIME_MS,
     refetchOnWindowFocus: false,
   });
 
   const packagesQuery = useQuery({
-    queryKey: ['advisor-archival-packages', selectedSubmissionId],
-    queryFn: ({ signal }) => archivalApi.getPackages(selectedSubmissionId!, signal),
-    enabled: Boolean(isHistoryOpen && selectedSubmissionId && canAccess),
+    queryKey: ['advisor-archival-packages', historySubmissionId],
+    queryFn: ({ signal }) => archivalApi.getPackages(historySubmissionId!, signal),
+    enabled: Boolean(isHistoryOpen && historySubmissionId && canAccess),
     staleTime: STALE_TIME_MS,
     refetchOnWindowFocus: false,
   });
 
-  const decision: AdvisorArchivalDecision = selectedSubmissionId
-    ? (decisionBySubmission[selectedSubmissionId] ?? 'AdvisorConfirm')
+  const decision: AdvisorArchivalDecision = activeSubmissionId
+    ? (decisionBySubmission[activeSubmissionId] ?? 'AdvisorConfirm')
     : 'AdvisorConfirm';
 
-  const revisionReason = selectedSubmissionId
-    ? (reasonsBySubmission[selectedSubmissionId] ?? '')
+  const revisionReason = activeSubmissionId
+    ? (reasonsBySubmission[activeSubmissionId] ?? '')
     : '';
 
   const selectDecision = (nextDecision: AdvisorArchivalDecision) => {
-    if (!selectedSubmissionId) return;
+    if (!activeSubmissionId) return;
     setReasonError(null);
     setDecisionBySubmission((prev) => ({
       ...prev,
-      [selectedSubmissionId]: nextDecision,
+      [activeSubmissionId]: nextDecision,
     }));
   };
 
   const setRevisionReason = (value: string) => {
-    if (!selectedSubmissionId) return;
+    if (!activeSubmissionId) return;
     setReasonError(null);
     setReasonsBySubmission((prev) => ({
       ...prev,
-      [selectedSubmissionId]: value,
+      [activeSubmissionId]: value,
     }));
   };
 
   const confirmMutation = useMutation({
     mutationFn: async (action: AdvisorArchivalDecision) => {
       const detail = submissionDetailQuery.data;
-      if (!selectedRow || !detail) {
+      if (!inspectedRow || !detail) {
         throw new Error('Không tìm thấy thông tin phiên bản hồ sơ hiện tại.');
       }
       const trimmedReason = revisionReason.trim();
-      return archivalApi.confirmArchive(selectedRow.submissionId, {
+      return archivalApi.confirmArchive(inspectedRow.submissionId, {
         action,
         expectedSubmissionVersion: detail.submissionVersion,
         expectedPackageVersion: detail.currentVersionNo,
@@ -225,13 +240,14 @@ export function useAdvisorArchival() {
     onSuccess: async (result) => {
       setPendingAction(null);
       setReasonError(null);
+      const groupLabel = inspectedRow?.groupCode ?? '';
       if (result.status === 'AdvisorConfirmed') {
         notify.success(
-          `Đã xác nhận bản chỉnh sửa của nhóm ${selectedRow?.groupCode ?? ''} và chuyển Khoa nghiệm thu.`,
+          `Đã xác nhận bản chỉnh sửa của nhóm ${groupLabel} và chuyển Khoa nghiệm thu.`,
         );
       } else {
         notify.success(
-          `Đã gửi yêu cầu chỉnh sửa hồ sơ lưu chiểu tới nhóm ${selectedRow?.groupCode ?? ''}.`,
+          `Đã gửi yêu cầu chỉnh sửa hồ sơ lưu chiểu tới nhóm ${groupLabel}.`,
         );
         setReasonsBySubmission((prev) => {
           const next = { ...prev };
@@ -239,6 +255,7 @@ export function useAdvisorArchival() {
           return next;
         });
       }
+      setInspectedSubmissionId(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['advisor-archival-list'] }),
         queryClient.invalidateQueries({ queryKey: ['advisor-archival-detail', result.submissionId] }),
@@ -277,12 +294,13 @@ export function useAdvisorArchival() {
     fileRole: string,
     fileName: string,
   ) => {
-    if (!selectedSubmissionId) return;
+    const downloadSubmissionId = activeSubmissionId ?? selectedRow?.submissionId ?? null;
+    if (!downloadSubmissionId) return;
     const key = `${packageVersion}-${fileRole}`;
     setDownloadingKey(key);
     try {
       const download = await archivalApi.getDownloadUrl(
-        selectedSubmissionId,
+        downloadSubmissionId,
         packageVersion,
         fileRole,
       );
@@ -294,6 +312,35 @@ export function useAdvisorArchival() {
     }
   };
 
+  const handlePreviewPdf = async (
+    packageVersion: number,
+    fileName: string,
+    fileSize?: number,
+  ) => {
+    const targetSubmissionId =
+      historySubmissionId ?? activeSubmissionId ?? selectedRow?.submissionId ?? null;
+    if (!targetSubmissionId) return;
+    const key = `${packageVersion}-ThesisPdf`;
+    setPreviewingKey(key);
+    try {
+      const download = await archivalApi.getDownloadUrl(
+        targetSubmissionId,
+        packageVersion,
+        'ThesisPdf',
+      );
+      setPdfPreviewState({
+        open: true,
+        url: download.downloadUrl,
+        fileName: download.fileName || fileName,
+        fileSize: download.fileSize ?? fileSize,
+      });
+    } catch (error) {
+      notify.error(getThesisErrorMessage(error, 'Không tạo được liên kết xem trước tệp PDF.'));
+    } finally {
+      setPreviewingKey(null);
+    }
+  };
+
   return {
     canAccess,
     batches,
@@ -301,13 +348,18 @@ export function useAdvisorArchival() {
     isLoadingBatches: batchesQuery.isLoading,
     filterKey,
     keyword,
+    sort,
     pageNumber: safePageNumber,
     pageSize,
     totalCount,
     stats,
     allRowsCount: allMergedRows.length,
     rows: pagedRows,
+    selectedRowId,
     selectedRow,
+    inspectedRow,
+    inspectedIndex,
+    filteredTotalCount: filteredRows.length,
     submissionDetail: submissionDetailQuery.data ?? null,
     isLoadingDetail: submissionDetailQuery.isLoading,
     detailError: submissionDetailQuery.isError
@@ -326,13 +378,15 @@ export function useAdvisorArchival() {
     pendingAction,
     isConfirming: confirmMutation.isPending,
     isHistoryOpen,
-    isMetadataOpen,
     downloadingKey,
+    previewingKey,
+    pdfPreviewState,
     actions: {
       selectBatch: (batchId: string) => {
         setExplicitBatchId(batchId);
         setPageNumber(1);
-        setManualSelectedId(null);
+        setSelectedRowId(null);
+        setInspectedSubmissionId(null);
       },
       changeFilter: (nextFilter: ArchivalFilterKey) => {
         setFilterKey(nextFilter);
@@ -342,9 +396,20 @@ export function useAdvisorArchival() {
         setKeyword(nextKeyword);
         setPageNumber(1);
       },
+      changeSort: (field: ArchivalSortField) => {
+        setSort((prev) => {
+          if (prev.field === field) {
+            return { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+          }
+          const defaultDirection = field === 'submittedAt' || field === 'version' ? 'desc' : 'asc';
+          return { field, direction: defaultDirection };
+        });
+        setPageNumber(1);
+      },
       resetFilters: () => {
         setFilterKey('Submitted');
         setKeyword('');
+        setSort({ field: 'submittedAt', direction: 'desc' });
         setPageNumber(1);
       },
       changePage: (nextPage: number) => setPageNumber(nextPage),
@@ -353,7 +418,26 @@ export function useAdvisorArchival() {
         setPageNumber(1);
       },
       selectRow: (submissionId: string) => {
-        setManualSelectedId(submissionId);
+        setSelectedRowId((prev) => (prev === submissionId ? null : submissionId));
+      },
+      clearSelection: () => setSelectedRowId(null),
+      openInspection: (submissionId: string) => {
+        setSelectedRowId(submissionId);
+        setInspectedSubmissionId(submissionId);
+        setReasonError(null);
+      },
+      closeInspection: () => {
+        if (!confirmMutation.isPending) {
+          setInspectedSubmissionId(null);
+          setReasonError(null);
+        }
+      },
+      navigateInspection: (delta: -1 | 1) => {
+        if (inspectedIndex < 0) return;
+        const target = filteredRows[inspectedIndex + delta];
+        if (!target) return;
+        setSelectedRowId(target.submissionId);
+        setInspectedSubmissionId(target.submissionId);
         setReasonError(null);
       },
       selectDecision,
@@ -367,9 +451,9 @@ export function useAdvisorArchival() {
       },
       openHistory: () => setIsHistoryOpen(true),
       closeHistory: () => setIsHistoryOpen(false),
-      openMetadata: () => setIsMetadataOpen(true),
-      closeMetadata: () => setIsMetadataOpen(false),
       downloadFile: handleDownloadFile,
+      previewPdf: handlePreviewPdf,
+      closePdfPreview: () => setPdfPreviewState((prev) => ({ ...prev, open: false })),
       refresh: () => void listQuery.refetch(),
       refetchDetail: () => void submissionDetailQuery.refetch(),
     },
