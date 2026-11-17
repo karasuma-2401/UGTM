@@ -132,11 +132,16 @@ export const midtermApi = {
       const advisorName = item.advisor?.fullName || 'Chưa phân công';
 
       return {
+        submissionId: item.midtermReportId,
         groupId: item.groupId,
         groupCode: `Nhóm ${item.groupId.slice(0, 4).toUpperCase()}`,
         topicCode: `KLTN-${item.topicId.slice(0, 8).toUpperCase()}`,
         topicTitleVi: item.topicTitleVi,
+        topicTitleEn: item.topicTitleEn ?? null,
+        batchId: item.batchId,
+        students: item.students || [],
         studentNames,
+        advisorId: item.advisor?.advisorId,
         advisorName,
         batchName: item.batchName || 'Học kỳ hiện tại',
         latestFileName: item.latestFile?.fileName || 'Chưa nộp tệp',
@@ -144,6 +149,8 @@ export const midtermApi = {
         currentStatus: item.currentStatus as MidtermReportStatus,
         submittedAtUtc: item.latestFile?.uploadedAtUtc || null,
         fileId: item.latestFile?.id || null,
+        fileSize: item.latestFile?.fileSize ?? null,
+        fileExtension: item.latestFile?.fileExtension ?? null,
       };
     });
 
