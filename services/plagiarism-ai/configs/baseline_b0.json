@@ -1,0 +1,114 @@
+{
+  "baseline_id": "B0",
+  "description": "Frozen baseline configuration before CP-01..CP-06 upgrades (UGTM-Plagiarism-AI v2 MVP snapshot)",
+  "frozen_at": "2026-10-30",
+  "git_repository": {
+    "branch": "dev",
+    "head_commit": "78e4a94f173a32f178bab70568d397625227533d",
+    "head_subject": "feat(fe): config FE for new source BE"
+  },
+  "parser": {
+    "supported_extensions": [".pdf", ".docx"],
+    "max_upload_mb": 20,
+    "max_docx_expanded_bytes": 104857600,
+    "max_pdf_pages": 250,
+    "max_docx_paragraph_chars": 2000000,
+    "pdf_extraction": "pymupdf page.get_text('text', sort=True) per page",
+    "docx_extraction": "python-docx non-empty doc.paragraphs joined into a single TextPage(page_number=None) and section-classified with page_number=1",
+    "normalization": "re.sub(r'\\s+', ' ', text).strip()"
+  },
+  "chunker": {
+    "tokenization": "regex whitespace spans (r'\\S+')",
+    "size_words": 90,
+    "overlap_words": 20,
+    "stride_words": 70,
+    "min_words": 8,
+    "online_tasks_exclude_sections": null,
+    "offline_annotation_candidates_exclude_sections": [
+      "abbreviations",
+      "cover",
+      "references",
+      "table_of_contents"
+    ]
+  },
+  "models": {
+    "embedding_model": "BAAI/bge-m3",
+    "embedding_revision_pinned": null,
+    "embedding_dimension": 1024,
+    "embedding_max_length": 512,
+    "embedding_modes": {
+      "return_dense": true,
+      "return_sparse": false,
+      "return_colbert_vecs": false
+    },
+    "reranker_model": "BAAI/bge-reranker-v2-m3",
+    "reranker_revision_pinned": null,
+    "reranker_max_length": 512,
+    "reranker_normalize": true,
+    "batch_sizes": {
+      "encode_local_default": 4,
+      "encode_remote_payload": 32,
+      "rerank_local_default": 4,
+      "rerank_tasks_call": 16,
+      "rerank_remote_payload": 32
+    }
+  },
+  "retrieval": {
+    "dense_backend": "pgvector exact cosine distance (<=>), dense_score = 1 - cosine_distance (HNSW index disabled)",
+    "lexical_backend": "PostgreSQL pg_trgm similarity(content, query_text) with GIN gin_trgm_ops",
+    "top_k_per_branch": 6,
+    "rrf_k": 60,
+    "fused_k": 5,
+    "rerank_prefilter": {
+      "operator": "OR",
+      "dense_score_min": 0.48,
+      "lexical_score_min": 0.25
+    }
+  },
+  "features": {
+    "feature_schema": "candidate-features-v1",
+    "feature_names": [
+      "semantic_cosine",
+      "reranker_score",
+      "char_trigram_dice",
+      "token_jaccard",
+      "length_ratio"
+    ]
+  },
+  "decision": {
+    "classifier_enabled_default": false,
+    "heuristic_rule": {
+      "operator": "OR",
+      "lexical_score_min": 0.65,
+      "dense_and_reranker": {
+        "dense_score_min": 0.68,
+        "reranker_score_min": 0.67
+      }
+    },
+    "classifier_artifact": {
+      "model_version": "candidate-lr-v1",
+      "artifact_path": "artifacts/suspicious_passage_classifier.joblib",
+      "manifest_path": "artifacts/suspicious_passage_classifier.manifest.json",
+      "pipeline": "StandardScaler + LogisticRegression(max_iter=3000, class_weight='balanced', random_state=310)",
+      "split_seeds": {
+        "outer_test_split": 310,
+        "inner_val_split": 311
+      },
+      "threshold": 0.25,
+      "near_exact_override_lexical_min": 0.92,
+      "dataset_size": 24,
+      "group_counts": {
+        "train": 6,
+        "validation": 3,
+        "test": 3
+      },
+      "validity_warning": "Smoke-test artifact trained on 24 synthetic pairs (examples/pairs.csv) with only 6 test pairs. Not statistically valid for academic reuse detection."
+    }
+  },
+  "alignment_and_report": {
+    "report_schema_version": 2,
+    "findings_cap_before_grouping": 200,
+    "alignment_algorithm": "group_adjacent_findings by (source_key, source_version) where 0 <= delta_submission_chunk_no <= 1 and 0 <= delta_source_chunk_no <= 1"
+  }
+}
+

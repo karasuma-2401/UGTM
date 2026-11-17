@@ -1,0 +1,24 @@
+# Optional local override. Prepare an isolated AI bucket and scoped credentials
+# before enabling it; existing local/R2 object keys must be migrated first.
+services:
+  api:
+    environment: &minio_env
+      STORAGE_BACKEND: s3
+      S3_ENDPOINT_URL: http://ugtm-minio:9000
+      S3_ACCESS_KEY_ID: ${AI_MINIO_ACCESS_KEY:?Set AI_MINIO_ACCESS_KEY}
+      S3_SECRET_ACCESS_KEY: ${AI_MINIO_SECRET_KEY:?Set AI_MINIO_SECRET_KEY}
+      S3_BUCKET_NAME: ${AI_MINIO_BUCKET:?Set AI_MINIO_BUCKET}
+      S3_REGION_NAME: us-east-1
+    networks:
+      - default
+      - ugtm_minio
+  worker:
+    environment: *minio_env
+    networks:
+      - default
+      - ugtm_minio
+
+networks:
+  ugtm_minio:
+    external: true
+    name: ${UGTM_MINIO_NETWORK:-ugtm_default}

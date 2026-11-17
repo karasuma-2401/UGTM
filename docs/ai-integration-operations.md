@@ -1,5 +1,7 @@
 # Vận hành tích hợp kiểm tra tương đồng
 
+Source AI hiện ở [`services/plagiarism-ai`](../services/plagiarism-ai/MONOREPO.md) trong cùng repository. Triển khai production theo [runbook Azure/Vercel/Modal](production-deployment.md); AI API, worker, reconciler vẫn là tiến trình riêng, dùng DB AI và bucket riêng.
+
 UGTM và dịch vụ `UGTM-Plagiarism-AI` phải được cập nhật cùng nhau: chức năng quét lại dùng endpoint `POST /api/v1/jobs/{jobId}/retry` của dịch vụ AI. Cấu hình UGTM bằng `PlagiarismAi__BaseUrl`, `PlagiarismAi__ApiKey` và `PlagiarismAi__DefaultCorpus`. API key phải khớp `API_KEY` của dịch vụ AI; corpus phải chứa dữ liệu nguồn đã được lập chỉ mục. Không đưa key thật vào mã nguồn. Nếu UGTM chạy trong container, `localhost` là container UGTM, không phải máy host hay container AI.
 
 Áp dụng các migration của UGTM trước khi chạy phiên bản mới. Migration `BackfillFinalReportPlagiarismScans` tạo lượt quét đang chờ cho từng phiên bản báo cáo cuối kỳ hiện có chưa có scan; worker sẽ tự gửi chúng tới AI khi được cấu hình. Cần dự tính dung lượng hàng đợi và tài nguyên xử lý cho dữ liệu cũ.

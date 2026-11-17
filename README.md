@@ -23,6 +23,7 @@ Các luồng nghiệp vụ đang tiếp tục được hoàn thiện và nghiệ
 | `backend/Database.Migrations` | Quản lý migration database tập trung     |
 | `backend/tests`               | Unit, integration và architecture tests  |
 | `frontend/src`                | Giao diện và kết nối API                 |
+| `services/plagiarism-ai`      | FastAPI, Celery, Modal worker và tests AI |
 | `docs`, `backend/docs`        | Yêu cầu, API contract và kiến trúc       |
 | `scripts`, `docker`           | Script phát triển và cấu hình triển khai |
 
@@ -62,6 +63,8 @@ npm run dev
 | MinIO console           | http://localhost:9001                                |
 
 API không tự chạy migration hoặc đọc `.env`; chạy lại `ConfigureDevelopment.ps1` sau khi đổi cấu hình. Nếu đặt `SMTP_HOST`, email sẽ gửi qua SMTP đó thay vì Mailpit. Database mới có thể tạo quản trị viên bằng [BootstrapAdmin.ps1](scripts/BootstrapAdmin.ps1). Cấu hình AI xem [hướng dẫn tích hợp](docs/ai-integration-operations.md).
+
+Source AI được quản lý trong monorepo nhưng vẫn chạy thành service riêng, dùng database Neon và bucket MinIO riêng. Bắt đầu tại [hướng dẫn AI trong monorepo](services/plagiarism-ai/MONOREPO.md). Triển khai toàn hệ thống từ nhánh `production` theo [runbook Azure/Vercel/Modal](docs/production-deployment.md); không dùng Compose local để thay thế cấu hình production.
 
 ## Kiểm tra trước khi gửi code
 

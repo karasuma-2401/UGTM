@@ -1,0 +1,25 @@
+{
+  "endpoint": "GET /api/v1/jobs/9f8c2d14-71a4-4e3a-8c05-3e19a72b4d90",
+  "response_200_processing": {
+    "job_id": "9f8c2d14-71a4-4e3a-8c05-3e19a72b4d90",
+    "type": "scan",
+    "status": "processing",
+    "error_code": null,
+    "updated_at": "2026-10-30T03:05:12.410284+00:00"
+  },
+  "response_200_completed": {
+    "job_id": "9f8c2d14-71a4-4e3a-8c05-3e19a72b4d90",
+    "type": "scan",
+    "status": "completed",
+    "error_code": null,
+    "updated_at": "2026-10-30T03:05:48.902115+00:00"
+  },
+  "response_200_failed": {
+    "job_id": "9f8c2d14-71a4-4e3a-8c05-3e19a72b4d90",
+    "type": "scan",
+    "status": "failed",
+    "error_code": "EMPTY_TEXT",
+    "updated_at": "2026-10-30T03:05:14.118004+00:00"
+  }
+}
+

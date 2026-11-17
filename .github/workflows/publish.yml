@@ -24,16 +24,16 @@ concurrency:
 
 jobs:
   ci-gate:
-    name: Require both CI workflows for this commit
+    name: Require backend, frontend and AI CI for this commit
     if: contains(fromJSON('["dev", "production"]'), github.ref_name)
     runs-on: ubuntu-latest
     timeout-minutes: 80
     steps:
-      - name: Wait for successful backend and frontend push runs
+      - name: Wait for successful backend, frontend and AI push runs
         uses: actions/github-script@v7
         with:
           script: |
-            const workflows = ['backend-ci.yml', 'frontend-ci.yml'];
+            const workflows = ['backend-ci.yml', 'frontend-ci.yml', 'ai-ci.yml'];
             const { owner, repo } = context.repo;
             for (let attempt = 0; attempt < 150; attempt++) {
               let allPassed = true;
@@ -55,7 +55,7 @@ jobs:
               if (allPassed) return;
               await new Promise(resolve => setTimeout(resolve, 30000));
             }
-            core.setFailed(`Timed out waiting for both CI workflows on ${context.sha}`);
+            core.setFailed(`Timed out waiting for all CI workflows on ${context.sha}`);
 
   publish:
     name: Build, Scan & Publish
@@ -71,6 +71,9 @@ jobs:
           - image: ugtm-frontend
             context: frontend
             dockerfile: frontend/Dockerfile
+          - image: ugtm-ai
+            context: services/plagiarism-ai
+            dockerfile: services/plagiarism-ai/Dockerfile
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -113,10 +116,12 @@ jobs:
             PUSH_TAGS="${PUSH_TAGS},ghcr.io/${IMAGE_NAME}:latest"
           fi
 
-          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-          echo "scan_tag=${SCAN_TAG}" >> "$GITHUB_OUTPUT"
-          echo "push_tags=${PUSH_TAGS}" >> "$GITHUB_OUTPUT"
-          echo "source_sha=${SHA}" >> "$GITHUB_OUTPUT"
+          {
+            echo "short_sha=${SHORT_SHA}"
+            echo "scan_tag=${SCAN_TAG}"
+            echo "push_tags=${PUSH_TAGS}"
+            echo "source_sha=${SHA}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build image for vulnerability scan
         uses: docker/build-push-action@v6

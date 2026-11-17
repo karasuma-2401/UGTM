@@ -1,0 +1,20 @@
+{
+  "baseline_id": "B1",
+  "name": "Lexical-Only Baseline (Char Trigram Dice + Token Jaccard)",
+  "description": "Pure lexical matching baseline on block-cleaned corpus without dense vector embeddings or cross-encoder reranking.",
+  "research_question": "RQ2",
+  "pipeline": {
+    "preprocessing": "block_cleaned",
+    "retrieval": {
+      "branch": "lexical_only",
+      "metric": "char_trigram_dice",
+      "top_k": 50
+    },
+    "classification": {
+      "mode": "heuristic_lexical_threshold",
+      "threshold": 0.65
+    }
+  },
+  "hardware_budget": "CPU-only (0 GPU FLOPs, 0 network latency)"
+}
+

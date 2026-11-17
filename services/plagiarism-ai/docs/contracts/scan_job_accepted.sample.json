@@ -1,0 +1,31 @@
+{
+  "request_metadata_example": {
+    "endpoint": "POST /api/v1/scans",
+    "content_type": "multipart/form-data",
+    "headers": {
+      "X-API-Key": "<REDACTED_UGTM_AI_SERVICE_KEY>",
+      "X-Request-ID": "6b1e0f4c-2a3d-4c89-9b5e-91c2b8f7a101"
+    },
+    "form_fields": {
+      "corpus_id": "uit-kltn-library-v1",
+      "submission_id": "d84b1c2e-5f7a-4b1e-9c0d-123456789abc",
+      "version": 2
+    },
+    "ugtm_source_mapping": {
+      "module": "UGTM.Modules.ThesisManagement",
+      "entity": "FinalReport",
+      "final_report_id": "d84b1c2e-5f7a-4b1e-9c0d-123456789abc",
+      "submission_file_version_no": 2,
+      "submission_file_checksum_sha256": "e27718d58584856ee16f59f43506849c70f71d06385c5740563e149fffc5652b"
+    }
+  },
+  "response_202_created": {
+    "job_id": "9f8c2d14-71a4-4e3a-8c05-3e19a72b4d90",
+    "status": "queued"
+  },
+  "response_202_idempotent_existing": {
+    "job_id": "9f8c2d14-71a4-4e3a-8c05-3e19a72b4d90",
+    "status": "existing"
+  }
+}
+
