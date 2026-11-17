@@ -123,6 +123,12 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.FinalSubmissionAccess>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.SubmitFinalSubmissionHandler>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.FinalSubmissionReadHandler>();
+        services.AddOptions<Library.ThesisLibraryOptions>()
+            .Bind(configuration.GetSection(Library.ThesisLibraryOptions.SectionName))
+            .Validate(options => options.IsValid(), "ThesisLibrary contains invalid or duplicate publications.")
+            .ValidateOnStart();
+        services.AddSingleton<UGTM.Modules.ThesisManagement.Application.Library.IThesisLibraryCatalog, Library.ConfiguredThesisLibraryCatalog>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.Library.ThesisLibraryDocumentHandler>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.ConfirmFinalSubmissionHandler>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.FinalSubmissions.IFinalSubmissionArchiveProofContract, FinalSubmissionArchiveProofContract>();
         services.AddScoped<UGTM.Modules.ThesisManagement.Application.FinalSubmissions.IFinalSubmissionUploadCleanup, FinalSubmissionUploadCleanup>();
@@ -228,6 +234,7 @@ public sealed class ThesisManagementModule : IModule
         endpoints.MapFinalReportSubmissionEndpoints();
         endpoints.MapPlagiarismScanEndpoints();
         endpoints.MapFinalSubmissionEndpoints();
+        endpoints.MapThesisLibraryEndpoints();
         endpoints.MapProgressMilestoneEndpoints();
         endpoints.MapProgressReportSubmissionEndpoints();
         endpoints.MapTopicRegistrationEndpoints();

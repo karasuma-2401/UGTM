@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router-dom';
 import { queryClient } from './app/queryClient';
 import { router } from './app/router';
 import { AuthProvider } from './shared/auth';
+import { CampusPresenceProvider } from './features/landing/CampusPresence';
 import { NotificationProvider } from './shared/notifications';
 import { ThemeProvider, useTheme } from './shared/theme';
 
@@ -33,7 +34,9 @@ function ThemedApp() {
       <QueryClientProvider client={queryClient}>
         <NotificationProvider>
           <AuthProvider>
-            <RouterProvider router={router} />
+            <CampusPresenceProvider>
+              <RouterProvider router={router} />
+            </CampusPresenceProvider>
           </AuthProvider>
         </NotificationProvider>
       </QueryClientProvider>

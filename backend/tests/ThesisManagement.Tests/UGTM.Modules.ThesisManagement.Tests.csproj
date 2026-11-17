@@ -34,6 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\..\host\Api\Campus\*.cs" Link="ProductionComposition\Campus\%(Filename)%(Extension)" />
     <Compile Include="..\..\host\Api\OpenApi\*.cs" Link="ProductionComposition\OpenApi\%(Filename)%(Extension)" />
     <Compile Include="..\..\host\Api\ScoreSummaries\ScoreSummaryWorkflowTransactionCoordinator.cs"
              Link="ProductionComposition\ScoreSummaryWorkflowTransactionCoordinator.cs" />

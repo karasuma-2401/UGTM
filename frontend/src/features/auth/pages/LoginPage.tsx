@@ -78,7 +78,10 @@ export function LoginPage() {
 
   const isLocked = Boolean(lockUntil && remainingSeconds > 0);
 
-  const redirectFrom = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+  const from = (location.state as { from?: { pathname?: string; search?: string; hash?: string } })?.from;
+  const redirectFrom = from?.pathname?.startsWith('/') && !from.pathname.startsWith('//') && !from.pathname.includes('\\')
+    ? `${from.pathname}${from.search || ''}${from.hash || ''}`
+    : '/';
 
   useEffect(() => {
     if (isAuthenticated && !isLoading) {

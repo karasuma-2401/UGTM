@@ -9,7 +9,7 @@ export function AuthLayout() {
   return (
     <div className="auth-shell">
       <header className="auth-header">
-        <Link to="/login" className="auth-brand">
+        <Link to="/welcome" className="auth-brand">
           <span className="auth-logo">
             <img src={logo} alt="UGTM" className="dark:brightness-125 dark:saturate-110" />
           </span>
@@ -18,8 +18,8 @@ export function AuthLayout() {
           </span>
         </Link>
         <div className="auth-header-actions">
-          <Link to="/modules/topic-catalog" className="auth-public">
-            Tra cứu Đề tài công khai <span aria-hidden="true">↗</span>
+          <Link to="/library" className="auth-public">
+            Tra cứu khóa luận <span aria-hidden="true">↗</span>
           </Link>
           <ThemeToggle variant="auth" />
         </div>
