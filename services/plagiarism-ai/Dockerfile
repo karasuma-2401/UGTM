@@ -6,7 +6,8 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgomp1 \
+    # Refresh zlib from Debian security updates even when the base image is cached.
+    && apt-get install -y --no-install-recommends libgomp1 zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
