@@ -196,7 +196,7 @@ export function ThesisSubmissionWorkspace({
               </p>
             </div>
             <Button asChild size="sm">
-              <Link to="/topics/student">
+              <Link to="/topics/catalog">
                 <BookOpen className="size-4 mr-1.5" />
                 Đi tới Đề tài và đăng ký
               </Link>

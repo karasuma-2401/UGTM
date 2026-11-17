@@ -149,9 +149,10 @@ test('ThesisSubmissionNavigation uses NavigationTabs with thesis-submission-tabs
   const html = renderToStaticMarkup(React.createElement(ThesisSubmissionNavigation, { gates }));
   assert.match(html, /data-continuity-key="thesis-submission-tabs"/);
   assert.match(html, /data-active-id="proposal"/);
-  assert.match(html, /2\/4/);
   assert.match(html, /Đạt/);
-  assert.match(html, /Chờ duyệt/);
+  assert.doesNotMatch(html, /2\/4/);
+  assert.doesNotMatch(html, /Chờ duyệt/);
+  assert.doesNotMatch(html, /Chờ Cổng 2/);
 });
 
 test('ThesisGroupDossierCard and FinalReportSummaryCard render Avatar member rows without fake mock fallbacks', () => {

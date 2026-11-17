@@ -277,7 +277,7 @@ export const router = createBrowserRouter([
       {
         path: 'admin/periods',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
             <PeriodPage />
           </ProtectedRoute>
         ),
@@ -285,7 +285,7 @@ export const router = createBrowserRouter([
       {
         path: 'academic/periods',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
             <PeriodPage />
           </ProtectedRoute>
         ),
@@ -293,7 +293,7 @@ export const router = createBrowserRouter([
       {
         path: 'academic/roster',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
             <SchoolRosterPage />
           </ProtectedRoute>
         ),

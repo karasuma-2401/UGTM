@@ -180,11 +180,36 @@ export function LecturerGradingPage() {
   }>({ open: false, url: '' });
 
   const batchesQuery = useAcademicBatches();
-  const activeBatch = useMemo(() => {
-    const batches = batchesQuery.data ?? [];
+  const batches = useMemo(() => batchesQuery.data ?? [], [batchesQuery.data]);
+  const [explicitBatchId, setExplicitBatchId] = useState<string | null>(null);
+  const defaultBatch = useMemo(() => {
     const current = getCurrentBatches(batches);
     return current[0] ?? batches[0] ?? null;
-  }, [batchesQuery.data]);
+  }, [batches]);
+  const activeBatch = useMemo(() => {
+    if (explicitBatchId) {
+      const matched = batches.find((batch) => batch.id === explicitBatchId);
+      if (matched) return matched;
+    }
+    return defaultBatch;
+  }, [batches, explicitBatchId, defaultBatch]);
+  const batchOptions = useMemo(
+    () =>
+      batches.map((batch) => ({
+        value: batch.id,
+        label: `${batch.batchName} (${batch.academicYear} - HK${batch.semester})`,
+      })),
+    [batches],
+  );
+
+  function handleBatchChange(nextBatchId: string) {
+    setExplicitBatchId(nextBatchId);
+    setSelectedRowId(null);
+    setActiveGroupId(null);
+    setPageNumber(1);
+    setApiGroupsByRole({ advisor: [], reviewer: [] });
+    setRoleLoadErrors({ advisor: null, reviewer: null });
+  }
 
   const sections = useMemo(() => buildRubricSections(apiCriteria), [apiCriteria]);
   const criteria = useMemo(() => sections.flatMap((section) => section.criteria), [sections]);
@@ -902,6 +927,21 @@ export function LecturerGradingPage() {
           ) : undefined
         }
       >
+        {!activeGroupId && (
+          <div className="w-full sm:w-80 md:w-[380px]">
+            <Select
+              aria-label="Chọn đợt khóa luận tốt nghiệp"
+              value={activeBatch?.id ?? ''}
+              disabled={batchesQuery.isLoading || batches.length === 0}
+              placeholder={batchesQuery.isLoading ? 'Đang tải đợt KLTN...' : 'Chọn đợt KLTN'}
+              options={batchOptions}
+              onChange={handleBatchChange}
+              triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300"
+              contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] left-0 right-auto p-1.5 rounded-xl border-slate-200/90 shadow-lg"
+              optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
+            />
+          </div>
+        )}
         {activeGroupId && group && group.submissionFileId && group.canDownloadReport !== false && (
           <Button
             type="button"
@@ -924,7 +964,7 @@ export function LecturerGradingPage() {
         >
           <ListCardHeader
             title="Nhóm được phân công"
-            description={`${role === 'advisor' ? 'Hướng dẫn' : 'Phản biện'} · ${activeBatch?.batchName ?? 'Đợt KLTN hiện hành'}`}
+            description={`${role === 'advisor' ? 'Hướng dẫn' : 'Phản biện'} - ${activeBatch?.batchName ?? 'Đợt KLTN hiện hành'}`}
             className="lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
           >
             <StatisticsBar

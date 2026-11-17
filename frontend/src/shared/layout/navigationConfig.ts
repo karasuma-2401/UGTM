@@ -61,20 +61,20 @@ export const navigationSections: NavSectionConfig[] = [
         label: 'Kế hoạch đợt',
         path: '/academic/periods',
         icon: CalendarRange,
-        roles: ['Admin'],
+        roles: ['Admin', 'AcademicAffairs'],
       },
       
       {
         label: 'Cấu hình điểm',
         path: '/admin/grade-config',
         icon: SlidersHorizontal,
-        roles: ['Admin'],
+        roles: ['Admin', 'AcademicAffairs'],
       },
       {
         label: 'Danh sách Sinh viên và Giảng viên',
         path: '/academic/roster',
         icon: UsersRound,
-        roles: ['Admin'],
+        roles: ['Admin', 'AcademicAffairs'],
       },
     ],
   },
