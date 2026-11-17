@@ -194,6 +194,7 @@ test('[P1 #2] useSyllabusSubmission scopes query keys by user.id and disables qu
     '../services/submissionUploadHelper': {
       validateReportFile: () => null,
     },
+    '../utils/archival': loadTsModule('features/thesis/utils/archival.ts'),
   });
 
   useSyllabusSubmission();
@@ -517,10 +518,12 @@ test('[P1 #6 & P2 #7] thesis APIs preserve HTTP errors without fake fallback dat
   assert.equal(classifyThesisError(new Error('Network error')), 'load_error');
 
   // syllabusApi.getGroupDetail must rethrow 403 instead of fabricating Confirmed group
+  const archivalUtils = loadTsModule('features/thesis/utils/archival.ts');
   const { syllabusApi } = loadTsModule('features/thesis/services/syllabusApi.ts', {
     './submissionUploadHelper': {
       buildUploadProgressHandler: () => undefined,
     },
+    '../utils/archival': archivalUtils,
     '@/shared/api': {
       httpClient: {
         get: async () => {
@@ -541,6 +544,7 @@ test('[P1 #6 & P2 #7] thesis APIs preserve HTTP errors without fake fallback dat
   // syllabusReviewApi.getReviewQueue forwards server params and preserves PagedResult metadata
   const capturedParams = [];
   const { syllabusReviewApi } = loadTsModule('features/thesis/services/syllabusReviewApi.ts', {
+    '../utils/archival': archivalUtils,
     '@/shared/api': {
       httpClient: {
         get: async (url, config) => {

@@ -347,6 +347,8 @@ public sealed partial class FinalReportWorkflowIntegrationTests
             => inner.CreateDownloadUriAsync(objectKey, validFor, cancellationToken);
         public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, CancellationToken cancellationToken = default)
             => inner.CreateDownloadUriAsync(objectKey, downloadFileName, validFor, cancellationToken);
+        public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, bool inline, CancellationToken cancellationToken = default)
+            => inner.CreateDownloadUriAsync(objectKey, downloadFileName, validFor, inline, cancellationToken);
         public Task DeleteAsync(string objectKey, CancellationToken cancellationToken = default)
             => owner._failArchivalDeletion ? Task.FromException(new IOException("Injected delete failure")) : inner.DeleteAsync(objectKey, cancellationToken);
         public void Dispose() => (inner as IDisposable)?.Dispose();

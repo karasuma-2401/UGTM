@@ -4,6 +4,7 @@ import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { syllabusApi } from '../services/syllabusApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
+import { triggerBrowserDownload } from '../utils/archival';
 import type { SyllabusStatus } from '../types/syllabus.types';
 
 export function useSyllabusSubmission() {
@@ -88,7 +89,7 @@ export function useSyllabusSubmission() {
       setActionError(null);
       const downloadInfo = await syllabusApi.getDownloadUrl(fileId);
       if (downloadInfo?.downloadUrl) {
-        window.open(downloadInfo.downloadUrl, '_blank', 'noopener,noreferrer');
+        triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
       const errorMsg =

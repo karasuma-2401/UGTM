@@ -17,7 +17,7 @@ import type {
   SubmissionFileDownloadDto,
   SubmissionReviewResultDto,
 } from '../types/review.types';
-import { triggerBrowserDownload } from '../utils/archival';
+import { triggerBrowserDownload, type DownloadUrlOptions } from '../utils/archival';
 import {
   REVIEW_FEEDBACK_MAX_LENGTH,
   sortReviewGateItems,
@@ -51,7 +51,10 @@ export interface ReviewGateApiAdapter<TItem extends ReviewGateItem> {
     signal?: AbortSignal,
   ) => Promise<PagedResult<TItem>>;
   getHistory: (groupId: string, signal?: AbortSignal) => Promise<ReviewGateHistoryDto | null>;
-  getDownloadUrl: (fileId: string, signal?: AbortSignal) => Promise<SubmissionFileDownloadDto>;
+  getDownloadUrl: (
+    fileId: string,
+    optionsOrSignal?: DownloadUrlOptions | AbortSignal,
+  ) => Promise<SubmissionFileDownloadDto>;
   submitReview: (
     groupId: string,
     payload: { decision: ReviewDecision; feedback: string },
@@ -342,7 +345,7 @@ export function useReviewGateWorkflow<TItem extends ReviewGateItem>({
   ) => {
     setPreviewingFileId(fileId);
     try {
-      const info = await adapter.getDownloadUrl(fileId);
+      const info = await adapter.getDownloadUrl(fileId, { inline: true });
       if (info?.downloadUrl) {
         setPdfPreviewState({
           open: true,

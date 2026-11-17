@@ -14,7 +14,7 @@ export function useMidtermReview(knownGroupId?: string) {
       listErrorFallback: 'Không thể tải danh sách hồ sơ báo cáo giữa kỳ.',
       getReviewQueue: (query, signal) => midtermApi.getMidtermReviewQueue(query, signal),
       getHistory: (groupId, signal) => midtermApi.getMidtermHistory(groupId, signal),
-      getDownloadUrl: (fileId) => midtermApi.getDownloadUrl(fileId),
+      getDownloadUrl: (fileId, optionsOrSignal) => midtermApi.getDownloadUrl(fileId, optionsOrSignal),
       submitReview: (groupId, payload) => midtermApi.reviewMidtermReport(groupId, payload),
     }),
     [],

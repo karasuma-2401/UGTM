@@ -6,6 +6,7 @@ import { syllabusApi } from '../services/syllabusApi';
 import { midtermApi } from '../services/midtermApi';
 import { finalReportApi } from '../services/finalReportApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
+import { triggerBrowserDownload } from '../utils/archival';
 import {
   validateProductLinksDraft,
   type ProductLinkDraft,
@@ -199,7 +200,7 @@ export function useFinalReportSubmission() {
       setActionError(null);
       const downloadInfo = await finalReportApi.getDownloadUrl(fileId);
       if (downloadInfo?.downloadUrl) {
-        window.open(downloadInfo.downloadUrl, '_blank', 'noopener,noreferrer');
+        triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
       const errorMsg =

@@ -282,7 +282,12 @@ export function useStudentArchival() {
     const key = `${packageVersion}-ThesisPdf`;
     setPreviewingKey(key);
     try {
-      const download = await archivalApi.getDownloadUrl(submissionId, packageVersion, 'ThesisPdf');
+      const download = await archivalApi.getDownloadUrl(
+        submissionId,
+        packageVersion,
+        'ThesisPdf',
+        { inline: true },
+      );
       setPdfPreviewState({
         open: true,
         url: download.downloadUrl,

@@ -14,7 +14,7 @@ export function useSyllabusReview(knownGroupId?: string) {
       listErrorFallback: 'Không thể tải danh sách hồ sơ đề cương.',
       getReviewQueue: (query, signal) => syllabusReviewApi.getReviewQueue(query, signal),
       getHistory: (groupId, signal) => syllabusReviewApi.getSyllabusHistory(groupId, signal),
-      getDownloadUrl: (fileId, signal) => syllabusReviewApi.getDownloadUrl(fileId, signal),
+      getDownloadUrl: (fileId, optionsOrSignal) => syllabusReviewApi.getDownloadUrl(fileId, optionsOrSignal),
       submitReview: (groupId, payload) => syllabusReviewApi.reviewSyllabus(groupId, payload),
     }),
     [],

@@ -8,6 +8,7 @@ import type {
   SyllabusReviewItemDto,
 } from '../types/review.types';
 import type { SyllabusStatus, SyllabusSubmissionHistoryDto } from '../types/syllabus.types';
+import { buildDownloadRequestConfig, type DownloadUrlOptions } from '../utils/archival';
 
 function unwrap<T>(response: ApiResponse<T>): T {
   if (!response.success) {
@@ -51,11 +52,11 @@ export const syllabusReviewApi = {
 
   async getDownloadUrl(
     fileId: string,
-    signal?: AbortSignal,
+    optionsOrSignal?: DownloadUrlOptions | AbortSignal,
   ): Promise<SubmissionFileDownloadDto> {
     const response = await httpClient.get<ApiResponse<SubmissionFileDownloadDto>>(
       `/api/thesis/submission-files/${fileId}/download`,
-      { signal },
+      buildDownloadRequestConfig(optionsOrSignal),
     );
     return unwrap(response.data);
   },

@@ -652,6 +652,12 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
             Downloads.Enqueue((objectKey, validFor));
             return Task.FromResult(new Uri($"https://storage.test/download/{Guid.NewGuid():N}?signature=test"));
         }
+        public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Downloads.Enqueue((objectKey, validFor));
+            return Task.FromResult(new Uri($"https://storage.test/download/{Guid.NewGuid():N}?signature=test&filename={Uri.EscapeDataString(downloadFileName)}"));
+        }
     }
 
     private sealed class TestAdvisorAssignments : ITopicAdvisorAssignmentContract

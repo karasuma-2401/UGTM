@@ -412,6 +412,8 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         public List<(string ObjectKey, TimeSpan Lifetime)> Downloads { get; } = [];
         public Task<Uri> CreateDownloadUriAsync(string objectKey, TimeSpan validFor, CancellationToken cancellationToken = default)
         { Downloads.Add((objectKey, validFor)); return Task.FromResult(new Uri($"https://download.test/{Downloads.Count}")); }
+        public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, CancellationToken cancellationToken = default)
+        { Downloads.Add((objectKey, validFor)); return Task.FromResult(new Uri($"https://download.test/{Downloads.Count}?filename={Uri.EscapeDataString(downloadFileName)}")); }
         public Task UploadAsync(ThesisSubmissionObjectWriteRequest request, Stream content, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task DeleteAsync(string objectKey, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }

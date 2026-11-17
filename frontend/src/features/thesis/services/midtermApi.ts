@@ -1,5 +1,6 @@
 import { httpClient } from '@/shared/api';
 import type { ApiResponse, PagedResult } from '@/shared/api/types';
+import { buildDownloadRequestConfig, type DownloadUrlOptions } from '../utils/archival';
 import { buildUploadProgressHandler } from './submissionUploadHelper';
 import type {
   MidtermReportSubmissionDto,
@@ -64,9 +65,13 @@ export const midtermApi = {
     }
   },
 
-  async getDownloadUrl(fileId: string): Promise<SubmissionFileDownloadDto> {
+  async getDownloadUrl(
+    fileId: string,
+    optionsOrSignal?: DownloadUrlOptions | AbortSignal,
+  ): Promise<SubmissionFileDownloadDto> {
     const response = await httpClient.get<ApiResponse<SubmissionFileDownloadDto>>(
-      `/api/thesis/submission-files/${fileId}/download`
+      `/api/thesis/submission-files/${fileId}/download`,
+      buildDownloadRequestConfig(optionsOrSignal),
     );
 
     return unwrap(response.data);

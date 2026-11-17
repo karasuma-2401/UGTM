@@ -2,4 +2,4 @@ using UGTM.BuildingBlocks.Domain;
 
 namespace UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.GetProgressReportAttachmentDownload;
 
-public sealed record GetProgressReportAttachmentDownloadQuery(Guid AttachmentId);
+public sealed record GetProgressReportAttachmentDownloadQuery(Guid AttachmentId, bool Inline = false);

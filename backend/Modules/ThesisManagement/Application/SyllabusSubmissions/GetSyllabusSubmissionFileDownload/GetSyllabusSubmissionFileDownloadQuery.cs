@@ -1,3 +1,3 @@
 namespace UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusSubmissionFileDownload;
 
-public sealed record GetSyllabusSubmissionFileDownloadQuery(Guid FileId);
+public sealed record GetSyllabusSubmissionFileDownloadQuery(Guid FileId, bool Inline = false);

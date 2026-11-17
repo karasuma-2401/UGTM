@@ -149,8 +149,11 @@ test('syllabusReviewApi and midtermApi preserve enriched review row metadata', a
     },
   };
 
+  const archivalUtils = loadModule('features/thesis/utils/archival.ts');
+
   const { syllabusReviewApi } = loadModule('features/thesis/services/syllabusReviewApi.ts', {
     '@/shared/api': { httpClient: createHttpStub(samplePayload) },
+    '../utils/archival': archivalUtils,
   });
   const syllabusPage = await syllabusReviewApi.getReviewQueue({ pageNumber: 1, pageSize: 10 });
   assert.equal(syllabusPage.items[0].submissionId, 'sub-1');
@@ -162,10 +165,50 @@ test('syllabusReviewApi and midtermApi preserve enriched review row metadata', a
   const { midtermApi } = loadModule('features/thesis/services/midtermApi.ts', {
     '@/shared/api': { httpClient: createHttpStub(samplePayload) },
     './submissionUploadHelper': { buildUploadProgressHandler: () => undefined },
+    '../utils/archival': archivalUtils,
   });
   const midtermPage = await midtermApi.getMidtermReviewQueue({ pageNumber: 1, pageSize: 10 });
   assert.equal(midtermPage.items[0].submissionId, 'mid-1');
   assert.equal(midtermPage.items[0].batchId, 'batch-1');
   assert.equal(midtermPage.items[0].advisorId, 'adv-1');
   assert.equal(midtermPage.items[0].fileSize, 2048);
+});
+
+test('buildDownloadRequestConfig and API getDownloadUrl forward inline flag for PDF preview only', async () => {
+  const archivalUtils = loadModule('features/thesis/utils/archival.ts');
+  assert.deepEqual(archivalUtils.buildDownloadRequestConfig(), {});
+  assert.deepEqual(archivalUtils.buildDownloadRequestConfig({ inline: true }), {
+    params: { inline: true },
+  });
+
+  const controller = new AbortController();
+  assert.deepEqual(archivalUtils.buildDownloadRequestConfig(controller.signal), {
+    signal: controller.signal,
+  });
+
+  const calls = [];
+  const httpStub = {
+    async get(url, config) {
+      calls.push({ url, config });
+      return {
+        data: {
+          success: true,
+          data: { fileId: 'f1', downloadUrl: 'https://storage.test/f1', expiresAtUtc: '2026-10-10T10:05:00Z' },
+        },
+      };
+    },
+  };
+
+  const { syllabusReviewApi } = loadModule('features/thesis/services/syllabusReviewApi.ts', {
+    '@/shared/api': { httpClient: httpStub },
+    '../utils/archival': archivalUtils,
+  });
+
+  await syllabusReviewApi.getDownloadUrl('f1');
+  await syllabusReviewApi.getDownloadUrl('f1', { inline: true });
+
+  assert.deepEqual(calls, [
+    { url: '/api/thesis/submission-files/f1/download', config: {} },
+    { url: '/api/thesis/submission-files/f1/download', config: { params: { inline: true } } },
+  ]);
 });

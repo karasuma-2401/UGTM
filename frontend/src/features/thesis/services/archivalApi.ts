@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
+import { buildDownloadRequestConfig, type DownloadUrlOptions } from '../utils/archival';
 import type {
   ArchivalFileRole,
   FinalSubmissionConfirmationDto,
@@ -111,11 +112,11 @@ export const archivalApi = {
     submissionId: string,
     packageVersion: number,
     fileRole: ArchivalFileRole | string,
-    signal?: AbortSignal,
+    optionsOrSignal?: DownloadUrlOptions | AbortSignal,
   ): Promise<FinalSubmissionDownloadDto> {
     const response = await httpClient.get<ApiResponse<FinalSubmissionDownloadDto>>(
       `/api/thesis/final-submissions/${submissionId}/packages/${packageVersion}/files/${fileRole}/download`,
-      { signal },
+      buildDownloadRequestConfig(optionsOrSignal),
     );
     return unwrap(response.data);
   },
