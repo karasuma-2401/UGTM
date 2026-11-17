@@ -48,7 +48,7 @@ export const navigationSections: NavSectionConfig[] = [
     items: [
       {
         label: 'Tổng quan',
-        path: '/',
+        path: '/dashboard',
         icon: LayoutDashboard,
       },
     ],

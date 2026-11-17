@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   CalendarClock,
   CheckCircle2,
   Clock3,
   FileCheck2,
+  Download,
   FilePenLine,
   Layers,
   ListFilter,
@@ -53,11 +55,13 @@ import {
   getStudentInitials,
 } from '@/features/thesis/utils/gradingRubricHelper';
 import { getThesisErrorMessage } from '@/features/thesis/utils/thesisErrors';
+import { finalReportApi } from '@/features/thesis/services/finalReportApi';
 import { councilGradingApi } from '../services/councilGradingApi';
 
 type Student = GradingStudentInfo;
 type CouncilGroup = {
   id: string;
+  groupId: string;
   assignmentId?: string | null;
   councilCode: string;
   memberLabel: string;
@@ -204,6 +208,7 @@ export function CouncilGradingPage() {
 
               builtGroups.push({
                 id: rowId,
+                groupId: grp.groupId,
                 assignmentId: resolvedAssignmentId,
                 councilCode: schedule.councilCode,
                 memberLabel,
@@ -264,6 +269,13 @@ export function CouncilGradingPage() {
     setReloadNonce((prev) => prev + 1);
   }
   const activeGroup = groups.find((group) => group.id === activeGroupId);
+  const revisedReportQuery = useQuery({
+    queryKey: ['council-revised-final-report', activeGroup?.groupId],
+    queryFn: ({ signal }) => finalReportApi.getRevisedFinalReportHistory(activeGroup!.groupId, signal),
+    enabled: Boolean(activeGroup?.groupId),
+    retry: false,
+  });
+  const latestRevisedVersion = revisedReportQuery.data?.versions.at(-1);
   const isLocked = Boolean(activeGroup?.isLocked);
 
   const groupProgress = (group: CouncilGroup) =>
@@ -442,6 +454,15 @@ export function CouncilGradingPage() {
     setSelectedRowId(groupId);
     setActiveGroupId(groupId);
     window.scrollTo({ top: 0 });
+  }
+
+  async function downloadRevisedReport(fileId: string) {
+    try {
+      const result = await finalReportApi.getDownloadUrl(fileId);
+      window.open(result.downloadUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      notify.error(getThesisErrorMessage(error, 'Không thể tải bản báo cáo chỉnh sửa.'));
+    }
   }
 
   function requestNavigation(target: 'list' | string) {
@@ -865,6 +886,28 @@ export function CouncilGradingPage() {
                 )}
               </div>
             </div>
+          </section>
+
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-xs" aria-label="Báo cáo phục vụ Hội đồng">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-slate-900">Báo cáo phục vụ Hội đồng</p>
+              {revisedReportQuery.isLoading ? (
+                <p className="mt-1 text-sm text-slate-500">Đang kiểm tra bản chỉnh sửa sau phản biện…</p>
+              ) : revisedReportQuery.isError ? (
+                <p className="mt-1 text-sm text-rose-700">Không thể tải thông tin báo cáo. Vui lòng thử lại.</p>
+              ) : latestRevisedVersion ? (
+                <p className="mt-1 truncate text-sm text-slate-600">Bản chỉnh sửa v{latestRevisedVersion.versionNo} · {latestRevisedVersion.file.fileName}</p>
+              ) : (
+                <p className="mt-1 text-sm text-slate-500">Nhóm chưa nộp bản chỉnh sửa sau phản biện.</p>
+              )}
+            </div>
+            {revisedReportQuery.isError ? (
+              <Button type="button" variant="outline" size="sm" onClick={() => void revisedReportQuery.refetch()}>Thử lại</Button>
+            ) : latestRevisedVersion ? (
+              <Button type="button" variant="outline" size="sm" onClick={() => void downloadRevisedReport(latestRevisedVersion.file.id)}>
+                <Download className="mr-2 size-4" aria-hidden="true" />Tải báo cáo
+              </Button>
+            ) : null}
           </section>
 
           <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_310px]">

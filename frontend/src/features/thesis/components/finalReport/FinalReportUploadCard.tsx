@@ -18,7 +18,6 @@ interface FinalReportUploadCardProps {
   onImagesChange: (files: File[]) => void;
   onFileSelect: (file: File | null) => void;
   onSubmit: () => void;
-  onOpenFeedback?: () => void;
   isSubmitting?: boolean;
   canSubmit?: boolean;
   midtermApproved?: boolean;
@@ -46,7 +45,6 @@ export function FinalReportUploadCard({
   onImagesChange,
   onFileSelect,
   onSubmit,
-  onOpenFeedback: _onOpenFeedback,
   isSubmitting = false,
   canSubmit = true,
   midtermApproved = true,
@@ -63,7 +61,7 @@ export function FinalReportUploadCard({
   const lockedTitle = !midtermApproved
     ? 'Chưa mở khóa nộp Báo cáo cuối kỳ'
     : currentStatus === 'UnderEvaluation'
-      ? 'Báo cáo cuối kỳ đang được GVHD chấm điểm'
+      ? 'Báo cáo cuối kỳ đang trong quá trình đánh giá'
       : 'Khu vực nộp báo cáo cuối kỳ tạm khóa';
 
   return (

@@ -45,4 +45,7 @@ export interface StudentConditionRow {
   statusLabel: string;
   statusTone: StatusTone;
   nextLabel: string;
+  done: boolean;
+  actionLabel?: string;
+  actionTo?: string;
 }

@@ -49,7 +49,7 @@ public sealed class GetFinalReportAttachmentDownloadHandler(
             return Result.Failure<SubmissionFileDownloadDto>(FinalReportSubmissionErrors.FileNotFound);
         }
 
-        if (!await accessChecker.CanReadAsync(group, cancellationToken))
+        if (!await accessChecker.CanReadAsync(group, cancellationToken, report.VersionType))
         {
             var versionFiles = await submissionFileRepository.GetByEntityAsync(
                 SubmissionEntityType.FinalReport,

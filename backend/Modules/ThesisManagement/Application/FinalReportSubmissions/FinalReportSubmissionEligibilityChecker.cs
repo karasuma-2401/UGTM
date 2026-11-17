@@ -27,7 +27,8 @@ public sealed class FinalReportSubmissionEligibilityChecker(
 {
     public async Task<Result<FinalReportSubmissionContext>> CheckAsync(
         Guid groupId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool revisedAfterReviewer = false)
     {
         if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue || currentUser.UserId == Guid.Empty)
         {
@@ -56,7 +57,9 @@ public sealed class FinalReportSubmissionEligibilityChecker(
             return Result.Failure<FinalReportSubmissionContext>(FinalReportSubmissionErrors.AccessDenied);
         }
 
-        if (group.Status is not (StudentGroupStatus.InProgress or StudentGroupStatus.FinalReportSubmitted))
+        if (revisedAfterReviewer
+            ? group.Status != StudentGroupStatus.ReadyForReviewerAssignment
+            : group.Status is not (StudentGroupStatus.InProgress or StudentGroupStatus.FinalReportSubmitted))
         {
             return Result.Failure<FinalReportSubmissionContext>(FinalReportSubmissionErrors.InvalidGroupState);
         }
@@ -74,12 +77,12 @@ public sealed class FinalReportSubmissionEligibilityChecker(
             return Result.Failure<FinalReportSubmissionContext>(FinalReportSubmissionErrors.BatchNotFound);
         }
 
-        // TODO(restore-after-demo): Khôi phục lại điều kiện kiểm tra stage FINAL_EVALUATION bên dưới sau khi báo cáo xong:
+        // TODO(restore-after-demo): Khôi phục lại điều kiện kiểm tra stage FINAL_EVALUATION cho cả lần nộp đầu sau khi báo cáo xong:
         // if (window.BatchStatus != "Open" || !window.IsSubmissionWindowOpen)
         // {
         //     return Result.Failure<FinalReportSubmissionContext>(FinalReportSubmissionErrors.OutsideAllowedWindow);
         // }
-        if (window.BatchStatus != "Open")
+        if (window.BatchStatus != "Open" || (revisedAfterReviewer && !window.IsSubmissionWindowOpen))
         {
             return Result.Failure<FinalReportSubmissionContext>(FinalReportSubmissionErrors.OutsideAllowedWindow);
         }

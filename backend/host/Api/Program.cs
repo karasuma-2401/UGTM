@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.HttpOverrides;
 using Scalar.AspNetCore;
 using UGTM.Api.Modules;
+using UGTM.Api.Campus;
 using UGTM.Api.OpenApi;
 using UGTM.BuildingBlocks.Infrastructure.Middlewares;
 
@@ -66,6 +67,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddUgtmModules(builder.Configuration);
+builder.Services.AddCampusPresence(builder.Configuration);
 
 var app = builder.Build();
 
@@ -173,6 +175,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapUgtmModules();
+app.MapCampusPresence();
 
 await app.RunAsync();
 return 0;

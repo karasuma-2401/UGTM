@@ -35,6 +35,24 @@ test('convertScoreScale10To4 and formatScale4Score calculate score / 10 * 4 roun
   assert.equal(formatScale4Score(undefined), '—');
 });
 
+test('getScoreClassificationMeta and computeWeightSharePercent format rank and weight share accurately', () => {
+  const { getScoreClassificationMeta, computeWeightSharePercent } = loadTsModule(
+    '../src/features/councils/utils/studentResults.ts',
+  );
+
+  assert.deepEqual(getScoreClassificationMeta(9.2), { label: 'Xuất sắc', tone: 'success' });
+  assert.deepEqual(getScoreClassificationMeta(8.82), { label: 'Giỏi', tone: 'success' });
+  assert.deepEqual(getScoreClassificationMeta(7.5), { label: 'Khá', tone: 'info' });
+  assert.deepEqual(getScoreClassificationMeta(5.5), { label: 'Trung bình', tone: 'warning' });
+  assert.deepEqual(getScoreClassificationMeta(4.5), { label: 'Chưa đạt', tone: 'error' });
+  assert.deepEqual(getScoreClassificationMeta(null), { label: '—', tone: 'neutral' });
+
+  assert.equal(computeWeightSharePercent(2, 7), 28.6);
+  assert.equal(computeWeightSharePercent(1, 7), 14.3);
+  assert.equal(computeWeightSharePercent(0, 7), 0);
+  assert.equal(computeWeightSharePercent(2, 0), 0);
+});
+
 test('buildStudentConditionRows reflects locked, archival pending, and published states accurately', () => {
   const { buildStudentConditionRows } = loadTsModule(
     '../src/features/councils/utils/studentResults.ts',
@@ -48,21 +66,27 @@ test('buildStudentConditionRows reflects locked, archival pending, and published
     },
     null,
   );
-  assert.equal(lockedRows[0].statusLabel, 'Chờ');
-  assert.equal(lockedRows[0].detailLabel, 'Chưa công bố');
-  assert.equal(lockedRows[1].statusLabel, 'Điểm còn khóa');
-  assert.equal(lockedRows[1].detailLabel, 'Chưa hoàn thành');
+  assert.equal(lockedRows[0].key, 'archive');
+  assert.equal(lockedRows[0].statusLabel, 'Chưa hoàn thành');
+  assert.equal(lockedRows[0].done, false);
+  assert.equal(lockedRows[0].actionTo, '/thesis/archival');
+  assert.equal(lockedRows[1].key, 'publication');
+  assert.equal(lockedRows[1].statusLabel, 'Chờ công bố');
+  assert.equal(lockedRows[1].done, false);
 
   const archivalWaitingRows = buildStudentConditionRows(
     {
       kind: 'locked',
-      code: 'ScoreSummary.NotYetPublished',
-      message: 'Điểm của nhóm chưa được công bố chính thức.',
+      code: 'ScoreSummary.ArchivalNotConfirmed',
+      message: 'Nhóm chưa hoàn thành nộp lưu chiểu nên chưa thể tra cứu điểm chính thức.',
     },
     { status: 'AdvisorConfirmed' },
   );
-  assert.equal(archivalWaitingRows[1].statusLabel, 'Chờ Khoa duyệt');
-  assert.equal(archivalWaitingRows[1].statusTone, 'info');
+  assert.equal(archivalWaitingRows[0].statusLabel, 'Chờ Khoa duyệt');
+  assert.equal(archivalWaitingRows[0].statusTone, 'info');
+  assert.equal(archivalWaitingRows[0].done, false);
+  assert.equal(archivalWaitingRows[1].statusLabel, 'Đã công bố');
+  assert.equal(archivalWaitingRows[1].done, true);
 
   const publishedRows = buildStudentConditionRows(
     {
@@ -79,10 +103,10 @@ test('buildStudentConditionRows reflects locked, archival pending, and published
     },
     null,
   );
-  assert.equal(publishedRows[0].statusLabel, 'Đạt');
-  assert.equal(publishedRows[1].statusLabel, 'Đạt');
-  assert.equal(publishedRows[0].detailLabel, 'Đã công bố');
-  assert.equal(publishedRows[1].detailLabel, 'Đã hoàn thành');
+  assert.equal(publishedRows[0].statusLabel, 'Đã nghiệm thu');
+  assert.equal(publishedRows[0].done, true);
+  assert.equal(publishedRows[1].statusLabel, 'Đã công bố');
+  assert.equal(publishedRows[1].done, true);
 });
 
 test('replaceInterpunctWithHyphen removes middle dot separators cleanly', () => {

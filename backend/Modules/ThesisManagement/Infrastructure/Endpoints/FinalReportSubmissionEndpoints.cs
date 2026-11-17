@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.SubmitFinalReport;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalReportHistory;
@@ -13,6 +14,7 @@ using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.GetFinalR
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.BeginFinalReportEvaluation;
 using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
+using UGTM.Modules.ThesisManagement.Domain.Enums;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Endpoints;
 
@@ -56,6 +58,16 @@ public static class FinalReportSubmissionEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
             .Produces<ApiResponse<object>>(StatusCodes.Status413PayloadTooLarge)
             .Produces(StatusCodes.Status415UnsupportedMediaType);
+        endpoints.MapPost("/api/thesis/revised-final-reports", SubmitRevisedAsync)
+            .WithTags("ThesisManagement.FinalReport")
+            .RequireAuthorization()
+            .DisableAntiforgery()
+            .WithMetadata(new RequestSizeLimitAttribute(MaximumRequestSizeBytes))
+            .Accepts<SubmitFinalReportRequest>("multipart/form-data")
+            .WithSummary("Nộp bản chỉnh sửa sau phản biện để phục vụ Hội đồng")
+            .WithDescription("Chỉ nhóm đủ điều kiện bảo vệ được nộp trong cửa sổ FINAL_EVALUATION. Giữ nguyên báo cáo InitialFinal và phiếu GVHD/GVPB đã chốt; các bản RevisedAfterReviewer được lưu riêng theo phiên bản.")
+            .Produces<ApiResponse<FinalReportSubmissionDto>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
         endpoints.MapGet("/api/thesis/groups/{groupId:guid}/final-report", GetHistoryAsync)
             .WithTags("ThesisManagement.FinalReport")
             .RequireAuthorization()
@@ -73,6 +85,17 @@ public static class FinalReportSubmissionEndpoints
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+        endpoints.MapGet("/api/thesis/groups/{groupId:guid}/revised-final-report", GetRevisedHistoryAsync)
+            .WithTags("ThesisManagement.FinalReport")
+            .RequireAuthorization()
+            .WithSummary("Xem lịch sử bản báo cáo chỉnh sửa sau phản biện")
+            .Produces<ApiResponse<FinalReportHistoryDto>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+        endpoints.MapGet("/api/thesis/groups/{groupId:guid}/revised-final-report/eligibility", GetRevisedEligibilityAsync)
+            .WithTags("ThesisManagement.FinalReport")
+            .RequireAuthorization()
+            .WithSummary("Kiểm tra quyền nộp bản chỉnh sửa sau phản biện")
+            .Produces<ApiResponse<RevisedFinalReportEligibilityDto>>();
 
         endpoints.MapGet("/api/thesis/final-report-files/{fileId:guid}/download", DownloadAsync)
             .WithTags("ThesisManagement.FinalReport")
@@ -133,6 +156,19 @@ public static class FinalReportSubmissionEndpoints
     private static async Task<IResult> SubmitAsync(
         HttpRequest request,
         SubmitFinalReportHandler handler,
+        CancellationToken cancellationToken)
+        => await SubmitCoreAsync(request, handler, FinalReportVersionType.InitialFinal, cancellationToken);
+
+    private static async Task<IResult> SubmitRevisedAsync(
+        HttpRequest request,
+        SubmitFinalReportHandler handler,
+        CancellationToken cancellationToken)
+        => await SubmitCoreAsync(request, handler, FinalReportVersionType.RevisedAfterReviewer, cancellationToken);
+
+    private static async Task<IResult> SubmitCoreAsync(
+        HttpRequest request,
+        SubmitFinalReportHandler handler,
+        FinalReportVersionType versionType,
         CancellationToken cancellationToken)
     {
         // Read explicitly so malformed forms and Kestrel body-limit failures retain their HTTP status
@@ -207,7 +243,7 @@ public static class FinalReportSubmissionEndpoints
         {
             await using var stream = file.OpenReadStream();
             return (await handler.HandleAsync(
-                new SubmitFinalReportCommand(groupId, file.FileName, stream, productLinks, imageUploads),
+                new SubmitFinalReportCommand(groupId, file.FileName, stream, productLinks, imageUploads, versionType),
                 cancellationToken))
                 .ToHttpResult();
         }
@@ -249,6 +285,14 @@ public static class FinalReportSubmissionEndpoints
     private static async Task<IResult> GetHistoryAsync(Guid groupId, GetFinalReportHistoryHandler handler,
         CancellationToken cancellationToken)
         => (await handler.HandleAsync(new GetFinalReportHistoryQuery(groupId), cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> GetRevisedHistoryAsync(Guid groupId, GetFinalReportHistoryHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(new GetFinalReportHistoryQuery(groupId, FinalReportVersionType.RevisedAfterReviewer), cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> GetRevisedEligibilityAsync(Guid groupId,
+        GetRevisedFinalReportEligibilityHandler handler, CancellationToken cancellationToken)
+        => (await handler.HandleAsync(groupId, cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> DownloadAsync(Guid fileId, GetFinalReportFileDownloadHandler handler,
         CancellationToken cancellationToken)

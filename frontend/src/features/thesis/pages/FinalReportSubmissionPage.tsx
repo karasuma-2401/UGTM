@@ -1,16 +1,17 @@
-import { RefreshCw } from 'lucide-react';
+import { Info, MessageSquareQuote, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { RichTextContent } from '@/components/ui/rich-text-content';
 import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
 import { useFinalReportSubmission } from '../hooks/useFinalReportSubmission';
 import { FINAL_REPORT_STATUS_LABELS, type FinalReportStatus } from '../types/finalReport.types';
-import { ThesisSubmissionWorkspace } from '../components/shared';
+import { SubmissionDropzoneCard, ThesisSubmissionWorkspace, VersionHistoryTimeline } from '../components/shared';
 import { SimilarityReportPanel } from '../components/SimilarityReportPanel';
 import {
   FinalReportSummaryCard,
   FinalReportUploadCard,
   FinalReportVersionCard,
-  ReviewerFeedbackDialog,
 } from '../components/finalReport';
 
 const headerToneMap: Record<string, StatusTone> = {
@@ -28,14 +29,18 @@ export function FinalReportSubmissionPage() {
     midtermHistoryQuery,
     historyQuery,
     feedbackQuery,
+    revisedEligibilityQuery,
+    revisedHistoryQuery,
+    selectedRevisedFile,
+    setSelectedRevisedFile,
+    canSubmitRevision,
+    submitRevisedMutation,
     selectedFile,
     productLinks,
     setProductLinks,
     selectedImages,
     setSelectedImages,
     uploadProgress,
-    isFeedbackOpen,
-    setIsFeedbackOpen,
     actionError,
     setActionError,
     actionSuccess,
@@ -55,45 +60,50 @@ export function FinalReportSubmissionPage() {
   const midtermApproved = midtermHistoryQuery.data?.currentStatus === 'Approved';
   const nextVersionNo = (historyQuery.data?.currentVersionNo || 0) + 1;
   const headerStatusLabel =
-    FINAL_REPORT_STATUS_LABELS[currentStatus as FinalReportStatus] || 'Chưa nộp';
-  const headerStatusTone = headerToneMap[currentStatus] || 'neutral';
+    revisedEligibilityQuery.data?.canSubmit
+      ? 'Được nộp bản sửa'
+      : feedbackQuery.data?.comment
+        ? 'Đã có góp ý phản biện'
+        : FINAL_REPORT_STATUS_LABELS[currentStatus as FinalReportStatus] || 'Chưa nộp';
+  const headerStatusTone = revisedEligibilityQuery.data?.canSubmit || feedbackQuery.data?.comment
+    ? 'info'
+    : headerToneMap[currentStatus] || 'neutral';
+  const feedbackComment = feedbackQuery.data?.comment?.trim() || '';
+  const revisedCurrentVersionNo = revisedHistoryQuery.data?.currentVersionNo ?? 0;
 
   const isLockedOrDone = !canSubmit || currentStatus === 'Approved';
-  const showUploadCard =
-    (canSubmit && currentStatus !== 'Approved') ||
-    !midtermApproved ||
-    (!historyQuery.isLoading && versions.length === 0 && currentStatus !== 'Approved');
+  const showUploadCard = canSubmit ||
+    (historyQuery.isSuccess && !historyQuery.data);
 
   const uploadCard = showUploadCard ? (
-    <FinalReportUploadCard
-      selectedFile={selectedFile}
-      productLinks={productLinks}
-      selectedImages={selectedImages}
-      uploadProgress={uploadProgress}
-      onProductLinksChange={setProductLinks}
-      onImagesChange={setSelectedImages}
-      onFileSelect={(file) => {
-        if (file) {
-          handleFileSelect(file);
-        } else {
-          handleRemoveFile();
-        }
-      }}
-      onSubmit={() => {
-        if (selectedFile && canSubmit) {
-          submitMutation.mutate(selectedFile);
-        }
-      }}
-      onOpenFeedback={() => setIsFeedbackOpen(true)}
-      isSubmitting={submitMutation.isPending}
-      canSubmit={canSubmit}
-      midtermApproved={midtermApproved}
-      currentStatus={currentStatus}
-      nextVersionNo={nextVersionNo}
-      disabled={!canSubmit || submitMutation.isPending}
-      disabledReason={notEligibleReason}
-      latestFileName={latestVersion?.file.fileName ?? null}
-    />
+      <FinalReportUploadCard
+        selectedFile={selectedFile}
+        productLinks={productLinks}
+        selectedImages={selectedImages}
+        uploadProgress={uploadProgress}
+        onProductLinksChange={setProductLinks}
+        onImagesChange={setSelectedImages}
+        onFileSelect={(file) => {
+          if (file) {
+            handleFileSelect(file);
+          } else {
+            handleRemoveFile();
+          }
+        }}
+        onSubmit={() => {
+          if (selectedFile && canSubmit) {
+            submitMutation.mutate(selectedFile);
+          }
+        }}
+        isSubmitting={submitMutation.isPending}
+        canSubmit={canSubmit}
+        midtermApproved={midtermApproved}
+        currentStatus={currentStatus}
+        nextVersionNo={nextVersionNo}
+        disabled={!canSubmit || submitMutation.isPending}
+        disabledReason={notEligibleReason}
+        latestFileName={latestVersion?.file.fileName ?? null}
+      />
   ) : null;
 
   const versionCard = (
@@ -102,7 +112,7 @@ export function FinalReportSubmissionPage() {
       currentStatus={currentStatus}
       currentVersionNo={historyQuery.data?.currentVersionNo}
       onDownload={(fileId) => void handleDownload(fileId)}
-      onOpenFeedback={() => setIsFeedbackOpen(true)}
+      hasReviewerFeedback={Boolean(feedbackComment)}
       isLoading={historyQuery.isLoading}
     />
   );
@@ -154,22 +164,124 @@ export function FinalReportSubmissionPage() {
         </InlineAlert>
       )}
 
-      {currentStatus === 'UnderEvaluation' && (
-        <InlineAlert tone="warning" title="Báo cáo cuối kỳ đang được GVHD chấm điểm">
-          Hồ sơ tạm khóa chỉnh sửa trong khi giảng viên hướng dẫn đánh giá trước phản biện.
+      {feedbackQuery.isError && (
+        <InlineAlert
+          tone="warning"
+          title="Chưa thể tải góp ý phản biện"
+          action={
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void feedbackQuery.refetch()}
+            >
+              <RefreshCw className="size-3.5 mr-1.5" />
+              Thử lại
+            </Button>
+          }
+        >
+          Hệ thống chưa thể đồng bộ góp ý đã phát hành. Bạn vẫn có thể xem lịch sử báo cáo.
+        </InlineAlert>
+      )}
+
+      {currentStatus === 'UnderEvaluation' && !feedbackComment && (
+        <InlineAlert tone="warning" title="Báo cáo cuối kỳ đang trong quá trình đánh giá">
+          Hồ sơ đã khóa chỉnh sửa từ khi bắt đầu đánh giá. Bạn có thể xem góp ý phản biện khi được phát hành.
         </InlineAlert>
       )}
 
       {currentStatus === 'Approved' && (
         <InlineAlert tone="success" title="GVHD đã đồng ý chuyển phản biện">
-          Báo cáo toàn văn của nhóm đã đủ điều kiện chuyển Hội đồng / Giảng viên phản biện. Nhấn Xem góp ý GVPB khi có nhận xét chính thức.
+          Báo cáo toàn văn đã được chuyển sang giai đoạn phản biện. Góp ý GVPB sẽ hiển thị tại đây khi được phát hành.
         </InlineAlert>
       )}
 
       {currentStatus === 'Rejected' && (
-        <InlineAlert tone="error" title="Cần chỉnh sửa lại báo cáo cuối kỳ">
-          Báo cáo cần được chỉnh sửa theo trao đổi với GVHD. Hãy tải lên phiên bản mới để nộp lại.
+        <InlineAlert tone="error" title="Báo cáo chưa được thông qua">
+          Phiên bản này đã khóa. Vui lòng liên hệ GVHD để biết hướng xử lý tiếp theo; cổng nộp báo cáo cuối kỳ không nhận phiên bản mới sau khi bắt đầu đánh giá.
         </InlineAlert>
+      )}
+
+      {feedbackComment && (
+        <Card className="overflow-hidden border-slate-200/80 bg-white shadow-xs">
+          <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+              <MessageSquareQuote className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-slate-900">Góp ý từ Giảng viên phản biện</h2>
+              <p className="mt-0.5 text-sm text-slate-500">Nhận xét chính thức cho bản báo cáo đã nộp.</p>
+            </div>
+          </div>
+          <div className="px-5 py-5 sm:px-6">
+            <RichTextContent content={feedbackComment} className="break-words text-sm leading-7 text-slate-800" />
+          </div>
+          {!revisedEligibilityQuery.data?.canSubmit && (
+            <div className="flex flex-wrap items-start justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
+              <div className="flex min-w-0 items-start gap-2.5 text-sm leading-6 text-slate-700">
+                <Info className="mt-1 size-4 shrink-0 text-blue-600" aria-hidden="true" />
+                <p>
+                  {revisedEligibilityQuery.isLoading
+                    ? 'Đang kiểm tra quyền nộp bản chỉnh sửa…'
+                    : revisedEligibilityQuery.isError
+                      ? 'Chưa thể kiểm tra quyền nộp bản chỉnh sửa.'
+                      : revisedEligibilityQuery.data?.reasonCode === 'OutsideAllowedWindow'
+                        ? 'Đã ngoài thời gian nhận bản chỉnh sửa. Vui lòng liên hệ Khoa để được hướng dẫn.'
+                        : 'Chưa mở quyền nộp bản chỉnh sửa để ra Hội đồng. Vui lòng theo dõi thông báo từ Khoa.'}
+                </p>
+              </div>
+              {revisedEligibilityQuery.isError && (
+                <Button type="button" variant="outline" size="sm" onClick={() => void revisedEligibilityQuery.refetch()}>
+                  <RefreshCw className="mr-1.5 size-3.5" aria-hidden="true" />Thử lại
+                </Button>
+              )}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {revisedHistoryQuery.isError && (
+        <InlineAlert
+          tone="warning"
+          title="Chưa thể tải lịch sử bản chỉnh sửa"
+          action={<Button type="button" variant="outline" size="sm" onClick={() => void revisedHistoryQuery.refetch()}>Thử lại</Button>}
+        >
+          Hãy tải lại lịch sử trước khi nộp để tránh ghi đè nhầm phiên bản.
+        </InlineAlert>
+      )}
+
+      {canSubmitRevision && (
+        <SubmissionDropzoneCard
+          title={`Bản chỉnh sửa sau phản biện · Phiên bản v${revisedCurrentVersionNo + 1}`}
+          subtitle="Nộp bản báo cáo đã chỉnh sửa theo góp ý GVPB để phục vụ Hội đồng. PDF, DOC hoặc DOCX · tối đa 20 MiB."
+          headerBadge={<StatusBadge tone="success">Được nộp bản chỉnh sửa</StatusBadge>}
+          selectedFile={selectedRevisedFile}
+          onFileSelect={setSelectedRevisedFile}
+          existingFileName={revisedHistoryQuery.data?.versions.at(-1)?.file.fileName}
+          canSubmit={canSubmitRevision}
+          isSubmitting={submitRevisedMutation.isPending}
+          onSubmit={() => { if (selectedRevisedFile) submitRevisedMutation.mutate(selectedRevisedFile); }}
+          submitLabel="Nộp bản chỉnh sửa"
+          submitLoadingLabel="Đang nộp bản chỉnh sửa…"
+        />
+      )}
+
+      {revisedHistoryQuery.data && revisedHistoryQuery.data.versions.length > 0 && (
+        <VersionHistoryTimeline
+          title="Bản chỉnh sửa sau phản biện"
+          items={revisedHistoryQuery.data.versions.map((version) => ({
+            key: version.versionNo,
+            versionNo: version.versionNo,
+            fileId: version.file.id,
+            fileName: version.file.fileName,
+            fileSize: version.file.fileSize,
+            timestampUtc: version.file.uploadedAtUtc,
+            statusBadge: <StatusBadge tone={version.versionNo === revisedCurrentVersionNo ? 'info' : 'neutral'}>
+              {version.versionNo === revisedCurrentVersionNo ? 'Bản mới nhất' : 'Bản cũ'}
+            </StatusBadge>,
+          }))}
+          onDownload={(fileId) => void handleDownload(fileId)}
+        />
       )}
 
       {isLockedOrDone ? (
@@ -186,12 +298,6 @@ export function FinalReportSubmissionPage() {
         </>
       )}
 
-      <ReviewerFeedbackDialog
-        open={isFeedbackOpen}
-        onClose={() => setIsFeedbackOpen(false)}
-        comment={feedbackQuery.data?.comment}
-        isLoading={feedbackQuery.isLoading}
-      />
     </ThesisSubmissionWorkspace>
   );
 }

@@ -151,3 +151,16 @@ test('visiting login with a settled authenticated session opens the default page
   const login = loginFixture({ isAuthenticated: true });
   assert.deepEqual(login.navigations, [['/', { replace: true }]]);
 });
+
+test('login returns to the thesis detail including search and hash', () => {
+  const from = { pathname: '/library/nghien-cuu', search: '?source=search', hash: '#document' };
+  const login = loginFixture({ isAuthenticated: true }, { from });
+  assert.deepEqual(login.navigations, [['/library/nghien-cuu?source=search#document', { replace: true }]]);
+});
+
+test('login rejects external return destinations', () => {
+  for (const pathname of ['https://example.test', '//example.test', '/\\example.test']) {
+    const login = loginFixture({ isAuthenticated: true }, { from: { pathname } });
+    assert.deepEqual(login.navigations, [['/', { replace: true }]]);
+  }
+});
