@@ -295,12 +295,12 @@ public static class FinalReportSubmissionEndpoints
         => (await handler.HandleAsync(groupId, cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> DownloadAsync(Guid fileId, GetFinalReportFileDownloadHandler handler,
-        CancellationToken cancellationToken)
-        => (await handler.HandleAsync(new GetFinalReportFileDownloadQuery(fileId), cancellationToken)).ToHttpResult();
+        CancellationToken cancellationToken, bool inline = false)
+        => (await handler.HandleAsync(new GetFinalReportFileDownloadQuery(fileId, inline), cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> DownloadAttachmentAsync(Guid attachmentId, GetFinalReportAttachmentDownloadHandler handler,
-        CancellationToken cancellationToken)
-        => (await handler.HandleAsync(new GetFinalReportAttachmentDownloadQuery(attachmentId), cancellationToken)).ToHttpResult();
+        CancellationToken cancellationToken, bool inline = false)
+        => (await handler.HandleAsync(new GetFinalReportAttachmentDownloadQuery(attachmentId, inline), cancellationToken)).ToHttpResult();
 
     private static IResult InvalidRequest()
         => Results.BadRequest(ApiResponse<FinalReportSubmissionDto>.Fail(ApiError.Create(

@@ -1061,3 +1061,92 @@ test('successful review refreshes both reviewer and lecturer lists; Lecturer/Stu
     assert.deepEqual(denied.mutationCalls, []);
   }
 });
+
+test('no-op RichTextEditor updates while locking do not dismiss ConfirmDialog, and detail disables focus refetch', () => {
+  const queryConfigs = [];
+  const state = [];
+  let cursor = 0;
+  const { TopicReviewDialog } = loadModule('features/topics/components/TopicReviewDialog.tsx', {
+    ...common,
+    react: {
+      useId: () => 'topic-review-preset-popover',
+      useRef: (initial) => ({ current: initial }),
+      useState: (initial) => {
+        const index = cursor++;
+        if (!(index in state)) state[index] = initial;
+        return [
+          state[index],
+          (value) => {
+            state[index] = typeof value === 'function' ? value(state[index]) : value;
+          },
+        ];
+      },
+    },
+    '@tanstack/react-query': {
+      useQuery: (config) => {
+        queryConfigs.push(config);
+        return { data: { ...fullTopic, status: 'Submitted' } };
+      },
+    },
+    '@/components/ui/dialog': ui.Dialog,
+    '@/components/ui/confirm-dialog': ui.ConfirmDialog,
+    '@/components/ui/button': ui.Button,
+    '@/components/ui/rich-text-editor': { RichTextEditor: 'RichTextEditor' },
+    '@/components/ui/select': ui.Select,
+    '@/shared/auth': { useAuth: () => ({ user: { id: 'faculty' } }) },
+    '../services/topicApi': { topicApi: {}, getTopicErrorMessage: String },
+    '../services/topicReviewApi': { topicReviewApi: {} },
+    '../types/topic.types': types,
+    './TopicPreview': ui.TopicPreview,
+    './TopicStatusBadge': ui.TopicStatusBadge,
+    './TopicDetailSkeleton': ui.TopicDetailSkeleton,
+  });
+
+  const render = () => {
+    cursor = 0;
+    return TopicReviewDialog({
+      topicId: 'topic-1',
+      batches: [],
+      advisorNames: {},
+      busy: false,
+      error: '',
+      onClose() {},
+      onAction() {},
+    });
+  };
+
+  let tree = render();
+  assert.equal(queryConfigs[0]?.refetchOnWindowFocus, false);
+
+  walk(tree, (node) => node.type === 'button' && node.props['data-decision'] === 'Approved')[0].props.onClick();
+  tree = render();
+  walk(tree, (node) => node.type === 'Button' && node.props.children === 'Gửi kết luận')[0].props.onClick();
+  tree = render();
+  assert.equal(walk(tree, (node) => node.type === 'ConfirmDialog' && node.props.open).length, 1);
+
+  // Locking RichTextEditor (disabled=true) must not dismiss ConfirmDialog if onChange fires with unchanged note.
+  walk(tree, (node) => node.type === 'RichTextEditor')[0].props.onChange('');
+  tree = render();
+  assert.equal(walk(tree, (node) => node.type === 'ConfirmDialog' && node.props.open).length, 1);
+});
+
+test('global queryClient disables window focus refetch and skips retrying 4xx errors', () => {
+  let capturedConfig;
+  loadModule('app/queryClient.ts', {
+    '@tanstack/react-query': {
+      QueryClient: class {
+        constructor(config) {
+          capturedConfig = config;
+        }
+      },
+    },
+    axios: { default: { isAxiosError: (err) => Boolean(err?.isAxiosError) } },
+  });
+
+  const queries = capturedConfig?.defaultOptions?.queries;
+  assert.equal(queries?.refetchOnWindowFocus, false);
+  assert.equal(queries?.retry(0, { isAxiosError: true, response: { status: 401 } }), false);
+  assert.equal(queries?.retry(0, { isAxiosError: true, response: { status: 403 } }), false);
+  assert.equal(queries?.retry(0, { isAxiosError: true, response: { status: 500 } }), true);
+  assert.equal(queries?.retry(3, { isAxiosError: true, response: { status: 500 } }), false);
+});

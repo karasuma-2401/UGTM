@@ -315,16 +315,39 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         await AssertNoSubmissionAsync();
     }
 
+    // TODO(restore-after-demo): Khôi phục lại test gốc khi bật lại FINAL_EVALUATION window:
+    // [Fact]
+    // public async Task A_closed_submission_window_returns_409_before_upload()
+    // {
+    //     _batchReader.IsOpen = false;
+    //     using var form = Form();
+    //     using var response = await _client.PostAsync("/api/thesis/final-reports", form);
+    //
+    //     Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    //     Assert.Contains(FinalReportSubmissionErrors.OutsideAllowedWindow.Code, await response.Content.ReadAsStringAsync());
+    //     await AssertNoSubmissionAsync();
+    // }
     [Fact]
-    public async Task A_closed_submission_window_returns_409_before_upload()
+    public async Task A_closed_batch_returns_409_before_upload()
     {
-        _batchReader.IsOpen = false;
+        _batchReader.BatchStatus = "Closed";
         using var form = Form();
         using var response = await _client.PostAsync("/api/thesis/final-reports", form);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains(FinalReportSubmissionErrors.OutsideAllowedWindow.Code, await response.Content.ReadAsStringAsync());
         await AssertNoSubmissionAsync();
+    }
+
+    [Fact]
+    public async Task An_open_batch_outside_the_final_stage_window_still_allows_submission()
+    {
+        _batchReader.BatchStatus = "Open";
+        _batchReader.IsOpen = false;
+        using var form = Form();
+        using var response = await _client.PostAsync("/api/thesis/final-reports", form);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -629,6 +652,12 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
             Downloads.Enqueue((objectKey, validFor));
             return Task.FromResult(new Uri($"https://storage.test/download/{Guid.NewGuid():N}?signature=test"));
         }
+        public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Downloads.Enqueue((objectKey, validFor));
+            return Task.FromResult(new Uri($"https://storage.test/download/{Guid.NewGuid():N}?signature=test&filename={Uri.EscapeDataString(downloadFileName)}"));
+        }
     }
 
     private sealed class TestAdvisorAssignments : ITopicAdvisorAssignmentContract
@@ -641,11 +670,12 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
 
     private sealed class TestBatchReader : IKltnBatchReader
     {
+        public string BatchStatus { get; set; } = "Open";
         public bool IsOpen { get; set; } = true;
         public DateTime OpensAtUtc { get; set; } = Now.AddDays(-1);
         public DateTime DeadlineAtUtc { get; set; } = Now.AddDays(1);
         public Task<BatchFinalReportSubmissionWindowContractDto?> GetFinalReportSubmissionWindowAsync(Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default)
-            => Task.FromResult<BatchFinalReportSubmissionWindowContractDto?>(new(batchId, "Open",
+            => Task.FromResult<BatchFinalReportSubmissionWindowContractDto?>(new(batchId, BatchStatus,
                 IsOpen && nowUtc >= OpensAtUtc && nowUtc <= DeadlineAtUtc, OpensAtUtc, DeadlineAtUtc));
         public Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<BatchRegistrationWindowContractDto?> GetRegistrationWindowAsync(Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();

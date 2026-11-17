@@ -56,9 +56,13 @@ public sealed class GetSyllabusSubmissionFileDownloadHandler(
             return Result.Failure<SubmissionFileDownloadDto>(SyllabusSubmissionErrors.AccessDenied);
         }
 
-        var downloadUrl = await objectStorage.CreateDownloadUriAsync(
+        var downloadUrl = await ThesisDownloadUriHelper.CreateSignedUriAsync(
+            objectStorage,
             file.ObjectKey,
+            file.FileName,
+            file.FileExtension,
             DownloadUriLifetime,
+            query.Inline,
             cancellationToken);
         var now = timeProvider.GetUtcNow().UtcDateTime;
         return Result.Success(new SubmissionFileDownloadDto(

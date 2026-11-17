@@ -1,5 +1,6 @@
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
+import { buildDownloadRequestConfig, type DownloadUrlOptions } from '../utils/archival';
 import { buildUploadProgressHandler } from './submissionUploadHelper';
 import type {
   SyllabusSubmissionDto,
@@ -71,11 +72,11 @@ export const syllabusApi = {
 
   async getDownloadUrl(
     fileId: string,
-    signal?: AbortSignal,
+    optionsOrSignal?: DownloadUrlOptions | AbortSignal,
   ): Promise<SubmissionFileDownloadDto> {
     const response = await httpClient.get<ApiResponse<SubmissionFileDownloadDto>>(
       `/api/thesis/submission-files/${fileId}/download`,
-      { signal },
+      buildDownloadRequestConfig(optionsOrSignal),
     );
     return unwrap(response.data);
   },

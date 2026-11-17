@@ -27,6 +27,11 @@ public interface IThesisSubmissionObjectStorage
         CancellationToken cancellationToken = default)
         => throw new NotSupportedException("The storage provider does not support named attachment downloads.");
 
+    /// <summary>Signs a download response with the validated original file name and attachment/inline disposition.</summary>
+    Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, bool inline,
+        CancellationToken cancellationToken = default)
+        => CreateDownloadUriAsync(objectKey, downloadFileName, validFor, cancellationToken);
+
     Task<Stream> OpenReadAsync(string objectKey, CancellationToken cancellationToken = default)
         => throw new NotSupportedException("The storage provider does not support opening streams directly.");
 

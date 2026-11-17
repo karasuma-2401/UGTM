@@ -17,7 +17,6 @@ export function ReviewerAssignmentPage() {
     setKeyword,
     statusFilter,
     setStatusFilter,
-    handleApplyFilter,
     handleResetFilter,
     filteredItems,
     pendingCount,
@@ -59,7 +58,6 @@ export function ReviewerAssignmentPage() {
         onKeywordChange={setKeyword}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
-        onApply={handleApplyFilter}
         onReset={handleResetFilter}
       />
 

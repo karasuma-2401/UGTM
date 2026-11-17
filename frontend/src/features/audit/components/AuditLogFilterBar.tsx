@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X, Calendar as CalendarIcon, RotateCcw, Filter } from 'lucide-react';
+import { Search, X, Calendar as CalendarIcon, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, type SelectOption } from '@/components/ui/select';
@@ -10,8 +10,7 @@ import { cn } from '@/lib/utils';
 
 interface AuditLogFilterBarProps {
   filter: AuditLogFilterState;
-  onFilterChange: (next: AuditLogFilterState) => void;
-  onApply: () => void;
+  onFilterChange: (next: AuditLogFilterState, immediate?: boolean) => void;
   onReset: () => void;
   isLoading?: boolean;
   actions?: string[];
@@ -48,16 +47,11 @@ function getPastDaysString(days: number): string {
 export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
   filter,
   onFilterChange,
-  onApply,
   onReset,
   isLoading = false,
   actions = [],
 }) => {
   const actionOptions = [...ACTION_OPTIONS, ...actions.filter((action) => !ACTION_OPTIONS.some((option) => option.value === action)).map((action) => ({ value: action, label: formatAuditAction(action) }))];
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onApply();
-  };
 
   const handlePresetChange = (preset: AuditTimePreset) => {
     const today = getLocalDateString(new Date());
@@ -68,33 +62,33 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
         timePreset: 'all',
         fromUtc: '',
         toUtc: '',
-      });
+      }, true);
     } else if (preset === 'today') {
       onFilterChange({
         ...filter,
         timePreset: 'today',
         fromUtc: today,
         toUtc: today,
-      });
+      }, true);
     } else if (preset === '7d') {
       onFilterChange({
         ...filter,
         timePreset: '7d',
         fromUtc: getPastDaysString(6),
         toUtc: today,
-      });
+      }, true);
     } else if (preset === '30d') {
       onFilterChange({
         ...filter,
         timePreset: '30d',
         fromUtc: getPastDaysString(29),
         toUtc: today,
-      });
+      }, true);
     } else {
       onFilterChange({
         ...filter,
         timePreset: 'custom',
-      });
+      }, true);
     }
   };
 
@@ -110,7 +104,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={(e) => e.preventDefault()}
       className="p-4 sm:p-5 border-b border-line-subtle bg-surface-subtle/40 space-y-3.5"
     >
       {/* Hàng 1: Search, Dropdowns, Action buttons */}
@@ -127,7 +121,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               filter.searchTerm ? (
                 <button
                   type="button"
-                  onClick={() => onFilterChange({ ...filter, searchTerm: '' })}
+                  onClick={() => onFilterChange({ ...filter, searchTerm: '' }, true)}
                   className="p-1 text-ink-subtle hover:text-ink-body rounded"
                   aria-label="Xóa từ khóa tìm kiếm"
                 >
@@ -144,7 +138,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
           <Select
             options={actionOptions}
             value={filter.action}
-            onChange={(val) => onFilterChange({ ...filter, action: String(val || '') })}
+            onChange={(val) => onFilterChange({ ...filter, action: String(val || '') }, true)}
             placeholder="Tất cả thao tác"
             searchable
             searchPlaceholder="Tìm thao tác..."
@@ -157,24 +151,14 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
           <Select
             options={OUTCOME_OPTIONS}
             value={filter.outcome}
-            onChange={(val) => onFilterChange({ ...filter, outcome: String(val || '') })}
+            onChange={(val) => onFilterChange({ ...filter, outcome: String(val || '') }, true)}
             placeholder="Tất cả kết quả"
             triggerClassName="h-10 rounded-xl border-line-input/90 bg-surface-card text-sm"
           />
         </div>
 
-        {/* Nút bấm Áp dụng và Đặt lại */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            type="submit"
-            disabled={isLoading}
-            leftIcon={<Filter className="size-3.5" />}
-            className="h-10 rounded-xl px-4 font-medium shadow-2xs"
-          >
-            Áp dụng
-          </Button>
-
-          {hasActiveFilters && (
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               type="button"
               variant="outline"
@@ -186,8 +170,8 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             >
               Đặt lại
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -298,7 +282,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               <DatePicker
                 aria-label="Từ ngày"
                 value={filter.fromUtc}
-                onValueChange={(val) => onFilterChange({ ...filter, fromUtc: val })}
+                onValueChange={(val) => onFilterChange({ ...filter, fromUtc: val }, true)}
                 className="w-48 h-8 px-2.5 text-xs rounded-md border border-line-input bg-surface-card focus:outline-none focus:ring-1 focus:ring-primary text-ink-secondary"
               />
             </div>
@@ -309,7 +293,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               <DatePicker
                 aria-label="Đến ngày"
                 value={filter.toUtc}
-                onValueChange={(val) => onFilterChange({ ...filter, toUtc: val })}
+                onValueChange={(val) => onFilterChange({ ...filter, toUtc: val }, true)}
                 className="w-48 h-8 px-2.5 text-xs rounded-md border border-line-input bg-surface-card focus:outline-none focus:ring-1 focus:ring-primary text-ink-secondary"
               />
             </div>

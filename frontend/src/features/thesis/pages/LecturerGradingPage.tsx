@@ -693,7 +693,9 @@ export function LecturerGradingPage() {
     }
     try {
       setIsLoadingPdf(true);
-      const downloadInfo = await finalReportApi.getDownloadUrl(group.submissionFileId);
+      const downloadInfo = await finalReportApi.getDownloadUrl(group.submissionFileId, {
+        inline: true,
+      });
       setPdfPreviewState({
         open: true,
         url: downloadInfo.downloadUrl,

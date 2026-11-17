@@ -16,9 +16,7 @@ export function useReviewerAssignment() {
 
   const [userSelectedBatchId, setUserSelectedBatchId] = useState<string>('');
   const [keyword, setKeyword] = useState<string>('');
-  const [appliedKeyword, setAppliedKeyword] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<ReviewerAssignmentFilterStatus>('all');
-  const [appliedStatusFilter, setAppliedStatusFilter] = useState<ReviewerAssignmentFilterStatus>('all');
 
   const [userSelectedGroupId, setUserSelectedGroupId] = useState<string | null>(null);
   const [selectedReviewerId, setSelectedReviewerId] = useState<string>('');
@@ -39,19 +37,23 @@ export function useReviewerAssignment() {
     [batches, selectedBatchId, defaultBatch],
   );
 
+  const trimmedKeyword = keyword.trim();
+
   const eligibilityQuery = useQuery({
-    queryKey: ['reviewer-eligibility', user?.id, selectedBatch?.id, appliedKeyword],
+    queryKey: ['reviewer-eligibility', user?.id, selectedBatch?.id, trimmedKeyword],
     queryFn: ({ signal }) =>
       reviewerAssignmentApi.getEligibilityList(
         {
           batchId: selectedBatch!.id,
           includeAssigned: true,
-          keyword: appliedKeyword,
+          keyword: trimmedKeyword,
           pageSize: 100,
         },
         signal,
       ),
     enabled: Boolean(user?.id && selectedBatch?.id),
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
   });
 
   const rawItems = useMemo(
@@ -60,14 +62,14 @@ export function useReviewerAssignment() {
   );
 
   const filteredItems = useMemo(() => {
-    if (appliedStatusFilter === 'pending') {
+    if (statusFilter === 'pending') {
       return rawItems.filter((item) => !item.hasActiveAssignment);
     }
-    if (appliedStatusFilter === 'assigned') {
+    if (statusFilter === 'assigned') {
       return rawItems.filter((item) => item.hasActiveAssignment);
     }
     return rawItems;
-  }, [rawItems, appliedStatusFilter]);
+  }, [rawItems, statusFilter]);
 
   const pendingCount = useMemo(
     () => rawItems.filter((item) => !item.hasActiveAssignment).length,
@@ -119,16 +121,9 @@ export function useReviewerAssignment() {
     [candidatesQuery.data?.items],
   );
 
-  const handleApplyFilter = () => {
-    setAppliedKeyword(keyword.trim());
-    setAppliedStatusFilter(statusFilter);
-  };
-
   const handleResetFilter = () => {
     setKeyword('');
-    setAppliedKeyword('');
     setStatusFilter('all');
-    setAppliedStatusFilter('all');
   };
 
   const canManage = useMemo(() => {
@@ -177,7 +172,6 @@ export function useReviewerAssignment() {
     setKeyword,
     statusFilter,
     setStatusFilter,
-    handleApplyFilter,
     handleResetFilter,
     eligibilityQuery,
     filteredItems,

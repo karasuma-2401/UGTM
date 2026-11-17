@@ -176,12 +176,30 @@ public sealed class FinalReportSubmissionEligibilityTests
         Assert.Equal(FinalReportSubmissionErrors.BatchNotFound, result.Error);
     }
 
+    // TODO(restore-after-demo): Khôi phục lại test gốc kiểm tra cả openWindow == false khi bật lại FINAL_EVALUATION window:
+    // [Theory]
+    // [InlineData("Draft", true)]
+    // [InlineData("Closed", true)]
+    // [InlineData("Archived", true)]
+    // [InlineData("Open", false)]
+    // public async Task A_submission_requires_both_an_open_batch_and_an_open_window(string batchStatus, bool openWindow)
+    // {
+    //     var fixtures = new Fixtures(CreateGroup());
+    //     fixtures.Batches.Window = fixtures.Batches.Window! with
+    //     {
+    //         BatchStatus = batchStatus,
+    //         IsSubmissionWindowOpen = openWindow
+    //     };
+    //
+    //     var result = await fixtures.Checker().CheckAsync(fixtures.Group.Id);
+    //
+    //     Assert.Equal(FinalReportSubmissionErrors.OutsideAllowedWindow, result.Error);
+    // }
     [Theory]
     [InlineData("Draft", true)]
     [InlineData("Closed", true)]
     [InlineData("Archived", true)]
-    [InlineData("Open", false)]
-    public async Task A_submission_requires_both_an_open_batch_and_an_open_window(string batchStatus, bool openWindow)
+    public async Task A_submission_requires_an_open_batch(string batchStatus, bool openWindow)
     {
         var fixtures = new Fixtures(CreateGroup());
         fixtures.Batches.Window = fixtures.Batches.Window! with
@@ -193,6 +211,21 @@ public sealed class FinalReportSubmissionEligibilityTests
         var result = await fixtures.Checker().CheckAsync(fixtures.Group.Id);
 
         Assert.Equal(FinalReportSubmissionErrors.OutsideAllowedWindow, result.Error);
+    }
+
+    [Fact]
+    public async Task An_open_batch_allows_submission_outside_the_final_evaluation_stage_window()
+    {
+        var fixtures = new Fixtures(CreateGroup());
+        fixtures.Batches.Window = fixtures.Batches.Window! with
+        {
+            BatchStatus = "Open",
+            IsSubmissionWindowOpen = false
+        };
+
+        var result = await fixtures.Checker().CheckAsync(fixtures.Group.Id);
+
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]

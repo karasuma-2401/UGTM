@@ -82,10 +82,31 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests
         Assert.Empty(_storage.Deletes);
     }
 
+    // TODO(restore-after-demo): Khôi phục lại test gốc kiểm tra deadline khi bật lại FINAL_EVALUATION window:
+    // [Theory]
+    // [InlineData(false)]
+    // [InlineData(true)]
+    // public async Task Resubmission_uses_the_same_inclusive_deadline_as_the_first_submission(bool afterDeadline)
+    // {
+    //     using var first = await SubmitVersionAsync(1);
+    //     Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+    //     _clock.UtcNow = _batchReader.DeadlineAtUtc.AddTicks(afterDeadline ? 1 : 0);
+    //
+    //     using var revision = await SubmitVersionAsync(2);
+    //
+    //     Assert.Equal(afterDeadline ? HttpStatusCode.Conflict : HttpStatusCode.OK, revision.StatusCode);
+    //     if (afterDeadline)
+    //     {
+    //         Assert.Contains(FinalReportSubmissionErrors.OutsideAllowedWindow.Code, await revision.Content.ReadAsStringAsync());
+    //     }
+    //     await AssertStoredVersionsAsync(afterDeadline ? 1 : 2);
+    //     Assert.Equal(afterDeadline ? 1 : 2, _storage.Uploads.Count);
+    //     Assert.Empty(_storage.Deletes);
+    // }
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Resubmission_uses_the_same_inclusive_deadline_as_the_first_submission(bool afterDeadline)
+    public async Task Resubmission_is_allowed_for_open_batch_regardless_of_stage_deadline(bool afterDeadline)
     {
         using var first = await SubmitVersionAsync(1);
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
@@ -93,13 +114,9 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests
 
         using var revision = await SubmitVersionAsync(2);
 
-        Assert.Equal(afterDeadline ? HttpStatusCode.Conflict : HttpStatusCode.OK, revision.StatusCode);
-        if (afterDeadline)
-        {
-            Assert.Contains(FinalReportSubmissionErrors.OutsideAllowedWindow.Code, await revision.Content.ReadAsStringAsync());
-        }
-        await AssertStoredVersionsAsync(afterDeadline ? 1 : 2);
-        Assert.Equal(afterDeadline ? 1 : 2, _storage.Uploads.Count);
+        Assert.Equal(HttpStatusCode.OK, revision.StatusCode);
+        await AssertStoredVersionsAsync(2);
+        Assert.Equal(2, _storage.Uploads.Count);
         Assert.Empty(_storage.Deletes);
     }
 

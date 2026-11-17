@@ -16,9 +16,16 @@ public sealed class ThesisLibraryTests
     private static readonly DateTimeOffset Now = new(2026, 11, 17, 0, 0, 0, TimeSpan.Zero);
     private static ThesisLibraryPublication Publication(string slug = "nghien-cuu-du-lieu", string year = "2025-2026") => new()
     {
-        Slug = slug, Title = "Nghiên cứu dữ liệu tiếng Việt", Abstract = "Ứng dụng học máy trong phân tích dữ liệu.",
-        Authors = ["Nguyễn Văn An"], Advisor = "Trần Minh", Department = "Khoa học Máy tính",
-        AcademicYear = year, Semester = "Học kỳ 2", Keywords = ["Học máy", "Dữ liệu"], PublishedAt = Now.AddDays(-1)
+        Slug = slug,
+        Title = "Nghiên cứu dữ liệu tiếng Việt",
+        Abstract = "Ứng dụng học máy trong phân tích dữ liệu.",
+        Authors = ["Nguyễn Văn An"],
+        Advisor = "Trần Minh",
+        Department = "Khoa học Máy tính",
+        AcademicYear = year,
+        Semester = "Học kỳ 2",
+        Keywords = ["Học máy", "Dữ liệu"],
+        PublishedAt = Now.AddDays(-1)
     };
     private sealed class Catalog(params ThesisLibraryPublication[] rows) : IThesisLibraryCatalog
     { public IReadOnlyList<ThesisLibraryPublication> Publications => rows; }
@@ -51,7 +58,10 @@ public sealed class ThesisLibraryTests
         Assert.Empty(ThesisLibrarySearch.Search(catalog, new(Page: 3, PageSize: 1), Now).Value.Items);
     }
     [Theory]
-    [InlineData(0, 12)] [InlineData(1, 0)] [InlineData(1, 25)] [InlineData(int.MaxValue, 12)]
+    [InlineData(0, 12)]
+    [InlineData(1, 0)]
+    [InlineData(1, 25)]
+    [InlineData(int.MaxValue, 12)]
     public void Invalid_pagination_is_rejected(int page, int size)
         => Assert.True(ThesisLibrarySearch.Search(new Catalog(), new(Page: page, PageSize: size), Now).IsFailure);
     [Fact]
@@ -107,13 +117,31 @@ public sealed class ThesisLibraryTests
     {
         public ThesisLibraryPublication Publication { get; } = ThesisLibraryTests.Publication();
         public User User { get; } = new(); public Authority Authority { get; } = new(); public Storage Storage { get; } = new();
-        public SubmissionFile File { get; } = new() { Id = Guid.NewGuid(), EntityId = Guid.NewGuid(), EntityType = SubmissionEntityType.FinalSubmission,
-            VersionNo = 1, ContentType = "application/pdf", FileSize = 100, ChecksumSha256 = new string('c', 64), ObjectKey = "private/bound-report.pdf", FileName = "report.pdf" };
-        public Store Store { get; } public Proofs Proofs { get; }
+        public SubmissionFile File { get; } = new()
+        {
+            Id = Guid.NewGuid(),
+            EntityId = Guid.NewGuid(),
+            EntityType = SubmissionEntityType.FinalSubmission,
+            VersionNo = 1,
+            ContentType = "application/pdf",
+            FileSize = 100,
+            ChecksumSha256 = new string('c', 64),
+            ObjectKey = "private/bound-report.pdf",
+            FileName = "report.pdf"
+        };
+        public Store Store { get; }
+        public Proofs Proofs { get; }
         public DocumentFixture()
         {
-            var row = new FinalSubmission { Id = File.EntityId, GroupId = Guid.NewGuid(), Status = FinalSubmissionStatus.ArchiveConfirmed,
-                CurrentVersionNo = 1, CurrentPackageId = Guid.NewGuid(), IsLegacy = false };
+            var row = new FinalSubmission
+            {
+                Id = File.EntityId,
+                GroupId = Guid.NewGuid(),
+                Status = FinalSubmissionStatus.ArchiveConfirmed,
+                CurrentVersionNo = 1,
+                CurrentPackageId = Guid.NewGuid(),
+                IsLegacy = false
+            };
             Publication.SubmissionId = row.Id; Publication.PackageVersion = 1; Publication.ManifestSha256 = new string('a', 64);
             Store = new(row, new([], [new() { PackageId = row.CurrentPackageId.Value, SubmissionId = row.Id, SubmissionFileId = File.Id, FileRole = "ThesisPdf" }], [File], []));
             Proofs = new(row, File);
@@ -144,7 +172,9 @@ public sealed class ThesisLibraryTests
     }
     private sealed class Storage : IThesisSubmissionObjectStorage
     {
-        public int Signs { get; private set; } public TimeSpan Ttl { get; private set; } public string? Key { get; private set; }
+        public int Signs { get; private set; }
+        public TimeSpan Ttl { get; private set; }
+        public string? Key { get; private set; }
         public Task<Uri> CreateDownloadUriAsync(string key, string name, TimeSpan ttl, CancellationToken token = default)
         { Signs++; Key = key; Ttl = ttl; return Task.FromResult(new Uri("https://storage.example.test/signed-report")); }
         public Task<Uri> CreateDownloadUriAsync(string key, TimeSpan ttl, CancellationToken token = default) => throw new NotSupportedException();

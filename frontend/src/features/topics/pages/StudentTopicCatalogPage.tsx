@@ -9,7 +9,6 @@ import {
   Search,
   Send,
   ShieldAlert,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { PageHeader } from '@/components/ui/page-header';
@@ -73,8 +72,11 @@ export function StudentTopicCatalogContent() {
   const canBrowse = student || hasRole('Admin');
   const canReadBatches = hasPermission('academic.batches.read');
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState<CatalogFilters>(EMPTY_FILTERS);
-  const [filters, setFilters] = useState<CatalogFilters>(EMPTY_FILTERS);
+  const [filterState, setFilterState] = useState<{
+    draft: CatalogFilters;
+    filters: CatalogFilters;
+  }>({ draft: EMPTY_FILTERS, filters: EMPTY_FILTERS });
+  const { draft, filters } = filterState;
   const [sortBy, setSortBy] = useState<CatalogSortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
@@ -171,20 +173,28 @@ export function StudentTopicCatalogContent() {
     }
   }
 
-  function applyFilters(next: CatalogFilters) {
-    const normalized: CatalogFilters = {
-      ...next,
-      keyword: next.keyword.trim(),
-    };
-    setDraft(normalized);
-    setFilters(normalized);
+  function updateFilters(updater: (prev: CatalogFilters) => CatalogFilters) {
+    setFilterState((prev) => {
+      const nextDraft = updater(prev.draft);
+      return {
+        draft: nextDraft,
+        filters: {
+          ...nextDraft,
+          keyword: nextDraft.keyword.trim(),
+        },
+      };
+    });
     setPage(1);
     setSelectedRowId(null);
   }
 
+  function applyFilters(next: CatalogFilters) {
+    updateFilters(() => next);
+  }
+
   function apply(event: FormEvent) {
     event.preventDefault();
-    applyFilters(draft);
+    updateFilters((prev) => prev);
   }
 
   function reset() {
@@ -472,7 +482,7 @@ export function StudentTopicCatalogContent() {
               placeholder="Tìm tên đề tài tiếng Việt hoặc tiếng Anh"
               leftIcon={<Search />}
               onChange={(event) =>
-                setDraft((prev) => ({ ...prev, keyword: event.target.value }))
+                updateFilters((prev) => ({ ...prev, keyword: event.target.value }))
               }
               className="h-10 rounded-xl shadow-none"
             />
@@ -489,7 +499,7 @@ export function StudentTopicCatalogContent() {
               { value: '', label: 'Tất cả đợt KLTN' },
               ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
             ]}
-            onChange={(batchId) => setDraft((prev) => ({ ...prev, batchId }))}
+            onChange={(batchId) => updateFilters((prev) => ({ ...prev, batchId }))}
           />
           <Select<CatalogAvailabilityFilter>
             aria-label="Lọc theo tình trạng chỗ trống"
@@ -502,12 +512,9 @@ export function StudentTopicCatalogContent() {
               { value: 'available', label: 'Chỉ đề tài còn chỗ' },
               { value: 'full', label: 'Đã đủ / tạm hết chỗ' },
             ]}
-            onChange={(availability) => setDraft((prev) => ({ ...prev, availability }))}
+            onChange={(availability) => updateFilters((prev) => ({ ...prev, availability }))}
           />
           <div className="flex items-center gap-2">
-            <Button type="submit" leftIcon={<SlidersHorizontal />} className="h-10 rounded-xl">
-              Áp dụng
-            </Button>
             <Button
               type="button"
               variant="outline"

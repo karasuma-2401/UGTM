@@ -101,16 +101,16 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Student'],
       },
       {
-        label: 'Duyệt đổi tên đề tài',
-        path: '/topics/rename/review',
-        icon: FilePenLine,
-        roles: ['Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
-      },
-      {
         label: 'Thẩm định đề tài',
         path: '/topics/review',
         icon: ClipboardCheck,
         roles: ['Faculty', 'Admin'],
+      },
+      {
+        label: 'Duyệt đổi tên đề tài',
+        path: '/topics/rename/review',
+        icon: FilePenLine,
+        roles: ['Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
       },
     ],
   },
@@ -119,15 +119,15 @@ export const navigationSections: NavSectionConfig[] = [
     title: 'Tiến độ và đánh giá',
     items: [
       {
-        label: 'Chấm điểm khóa luận',
-        path: '/thesis/lecturer-grading',
-        icon: SquarePen,
-        roles: ['Lecturer', 'Admin'],
-      },
-      {
         label: 'Tiến độ sinh viên',
         path: '/advisor/milestones',
         icon: CalendarCheck,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
+        label: 'Chấm điểm khóa luận',
+        path: '/thesis/lecturer-grading',
+        icon: SquarePen,
         roles: ['Lecturer', 'Admin'],
       },
       {
@@ -208,7 +208,7 @@ export const navigationSections: NavSectionConfig[] = [
   {
     id: 'admin',
     title: 'Hệ thống',
-    roles: ['Admin'],
+    roles: ['Admin', 'AcademicAffairs'],
     items: [
       {
         label: 'Tài khoản và Phân quyền',
@@ -219,6 +219,7 @@ export const navigationSections: NavSectionConfig[] = [
         label: 'Nhật ký hoạt động',
         path: '/admin/audit-logs',
         icon: ScrollText,
+        roles: ['Admin'],
       },
     ],
   },
