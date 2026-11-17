@@ -21,7 +21,10 @@ if (
 
 export const config: VercelConfig = {
   git: {
-    deploymentEnabled: false,
+    deploymentEnabled: {
+      '*': false,
+      production: true,
+    },
   },
   framework: 'vite',
   buildCommand: 'npm run build',

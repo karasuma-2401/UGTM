@@ -1,5 +1,7 @@
 # Kiểm thử Modal với Docker local
 
+> Tài liệu này giữ lại topology hai repository và các volume/network local đã có. Source AI mới nằm ở `services/plagiarism-ai`; xem [hướng dẫn monorepo](../services/plagiarism-ai/MONOREPO.md). Không dùng các tên container/network bên dưới để deploy production mới; dùng [runbook production](production-deployment.md).
+
 Môi trường thử nghiệm tách riêng database UGTM, corpus mẫu và Celery queue khỏi dữ liệu/quy trình cũ. AI API và worker dùng Docker Compose của `UGTM-Plagiarism-AI`; GPU worker chạy trên Modal.
 
 Trong `.env` riêng tư của UGTM cần cấu hình `PLAGIARISM_AI_API_KEY` khớp `AI_API_KEY` của Docker Compose AI. File `docker-compose.modal-test.yml` yêu cầu thêm `UGTM_MODAL_TEST_DB_NAME`, `UGTM_MODAL_TEST_DB_PASSWORD`, `UGTM_MODAL_TEST_CORPUS`; các giá trị thử nghiệm phải trỏ tới database và corpus riêng đã được chuẩn bị. Không commit `.env`.

@@ -43,7 +43,7 @@ using IdentityUser = UGTM.Modules.Identity.Domain.Entities.User;
 
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
-[Collection(PostgreSqlCollection.Name)]
+[Collection(FinalReportSubmissionPostgreSqlCollection.Name)]
 public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture fixture) : IAsyncLifetime
 {
     private static readonly DateTime Now = new(2026, 11, 16, 0, 0, 0, DateTimeKind.Utc);
@@ -315,39 +315,19 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         await AssertNoSubmissionAsync();
     }
 
-    // TODO(restore-after-demo): Khôi phục lại test gốc khi bật lại FINAL_EVALUATION window:
-    // [Fact]
-    // public async Task A_closed_submission_window_returns_409_before_upload()
-    // {
-    //     _batchReader.IsOpen = false;
-    //     using var form = Form();
-    //     using var response = await _client.PostAsync("/api/thesis/final-reports", form);
-    //
-    //     Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-    //     Assert.Contains(FinalReportSubmissionErrors.OutsideAllowedWindow.Code, await response.Content.ReadAsStringAsync());
-    //     await AssertNoSubmissionAsync();
-    // }
-    [Fact]
-    public async Task A_closed_batch_returns_409_before_upload()
+    [Theory]
+    [InlineData("Closed", true)]
+    [InlineData("Open", false)]
+    public async Task A_closed_batch_or_submission_window_returns_409_before_upload(string batchStatus, bool isOpen)
     {
-        _batchReader.BatchStatus = "Closed";
+        _batchReader.BatchStatus = batchStatus;
+        _batchReader.IsOpen = isOpen;
         using var form = Form();
         using var response = await _client.PostAsync("/api/thesis/final-reports", form);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains(FinalReportSubmissionErrors.OutsideAllowedWindow.Code, await response.Content.ReadAsStringAsync());
         await AssertNoSubmissionAsync();
-    }
-
-    [Fact]
-    public async Task An_open_batch_outside_the_final_stage_window_still_allows_submission()
-    {
-        _batchReader.BatchStatus = "Open";
-        _batchReader.IsOpen = false;
-        using var form = Form();
-        using var response = await _client.PostAsync("/api/thesis/final-reports", form);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

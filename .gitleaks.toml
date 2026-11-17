@@ -1,0 +1,17 @@
+[extend]
+useDefault = true
+
+# Gitleaks Action v2 uses 8.24.3: rule-scoped allowlists support AND on this version.
+# Keep the default detector and limit the exception to these document identifiers.
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "AI corpus document identifiers in imported report fixtures"
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)services/plagiarism-ai/(docs/corpus-duplicate-audit\.md|tests/fixtures/sample_report_v3_violations\.json)$''']
+regexes = [
+  '''\b(?:duplicate_key|canonical_key)":\s*"kltn-[0-9a-f]{16}"''',
+  '''\bsource_key":\s*"kltn_tham_chieu_cv_02"''',
+]

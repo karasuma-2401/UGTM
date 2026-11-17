@@ -1,0 +1,217 @@
+{
+  "manifest_version": "1.0.0",
+  "pipeline_version": "1.0.0-rc1",
+  "release_candidate": "RC1",
+  "freeze_milestone": "FREEZE-AI-RC1",
+  "frozen_at": "2026-10-30T15:07:00Z",
+  "git_commit": "85ea786e257b0b11a5601edfc5bc9a4ff575413d",
+  "architecture_summary": "Structure- and Citation-Aware Evidence Retrieval for Vietnamese-English Academic Text Reuse",
+  "components": {
+    "document_parser": {
+      "module": "app/documents.py",
+      "version": "2.0.0",
+      "parser_type": "block_level_structure_aware",
+      "section_filtering": {
+        "enabled": true,
+        "excluded_sections": [
+          "cover",
+          "table_of_contents",
+          "abbreviations",
+          "references",
+          "appendix"
+        ],
+        "eligible_sections": [
+          "body"
+        ]
+      },
+      "header_footer_filtering": {
+        "enabled": true,
+        "max_page_fraction": 0.35,
+        "min_page_occurrences": 3
+      }
+    },
+    "preprocessing_and_chunking": {
+      "module": "app/preprocessing.py",
+      "config_file": "configs/preprocessing_config.json",
+      "config_sha256": "d157066d1be38d38ddab3b0aea9f716362b09f8c6f2765889a93cb2c59cb5f85",
+      "chunk_strategy": "paragraph_boundary",
+      "max_words_per_chunk": 180,
+      "min_words_per_chunk": 30,
+      "overlap_words": 0,
+      "text_normalization": "NFC"
+    },
+    "candidate_retrieval": {
+      "module": "app/search.py",
+      "config_file": "configs/retrieval_config.json",
+      "config_sha256": "46d5d9d5115f6f1d9652b5dcc49e3823a01b4fbb86f67a2fff29c97f202a4759",
+      "top_k_per_branch": 30,
+      "fused_k": 25,
+      "prefilter_policy": "no_prefilter",
+      "fusion_algorithm": "reciprocal_rank_fusion",
+      "rrf_k0": 60,
+      "branches": [
+        "dense_vector_1024d",
+        "lexical_trigram_inverted_index"
+      ]
+    },
+    "dense_embedding_model": {
+      "model_id": "BAAI/bge-m3",
+      "revision": "5617a9f61b028005a4858fdac845db406aefb181",
+      "dimension": 1024,
+      "pooling": "cls",
+      "similarity_metric": "cosine",
+      "inference_route": "remote_gpu_with_auth_check"
+    },
+    "cross_encoder_reranker": {
+      "model_id": "BAAI/bge-reranker-v2-m3",
+      "revision": "27301c238b1836a99268593466f272365287f3dd",
+      "max_seq_length": 512,
+      "inference_route": "remote_gpu_with_auth_check"
+    },
+    "sentence_span_alignment": {
+      "module": "app/alignment.py",
+      "version": "1.0.0",
+      "algorithm": "constrained_local_sentence_span_alignment",
+      "min_sentence_similarity": 0.70,
+      "composite_margin": 0.05,
+      "chain_max_gap_sentences": 1,
+      "deduplicate_overlapping_spans": true,
+      "overlap_interval_strategy": "non_overlapping_interval_union",
+      "multi_source_separation": true,
+      "partition_key": [
+        "source_key",
+        "source_version"
+      ]
+    },
+    "citation_aware_context": {
+      "module": "app/citation.py",
+      "version": "1.0.0",
+      "supported_styles": [
+        "numeric",
+        "author_year",
+        "narrative",
+        "direct_quote"
+      ],
+      "negative_filtering": [
+        "table_prefix",
+        "figure_prefix",
+        "array_indexing"
+      ],
+      "misattribution_detection": true,
+      "orthogonality_to_text_reuse": true,
+      "statuses": [
+        "present",
+        "absent",
+        "uncertain"
+      ]
+    },
+    "classifier_and_review_policy": {
+      "module": "app/classifier.py",
+      "model_artifact": "artifacts/suspicious_passage_classifier.joblib",
+      "model_sha256": "0c066eb6e9c058b5fe00bd32a38616b5fce07aa0bee932275e611d855598294b",
+      "manifest_file": "artifacts/suspicious_passage_classifier.manifest.json",
+      "model_type": "LogisticRegression_Platt_Calibrated",
+      "calibration_method": "sigmoid_platt_scaling_cv5",
+      "features": [
+        "semantic_cosine",
+        "reranker_score",
+        "char_trigram_dice",
+        "token_jaccard",
+        "length_ratio"
+      ],
+      "thresholds": {
+        "tau_high": 0.70,
+        "tau_low": 0.30,
+        "high_confidence_positive_band": "p >= 0.70",
+        "uncertainty_human_review_band": "0.30 <= p < 0.70",
+        "clear_negative_band": "p < 0.30"
+      }
+    },
+    "report_and_provenance": {
+      "module": "app/reports.py",
+      "schema_version": "3.0.0",
+      "coverage_metric": "non_overlapping_character_union_ratio",
+      "provenance_tracking": true,
+      "backward_compatibility_v2": true
+    }
+  },
+  "corpus_snapshot": {
+    "snapshot_id": "CORPUS-SNAPSHOT-20261030-76DOCS",
+    "manifest_file": "data/corpus_manifest.csv",
+    "manifest_sha256": "43e0c46ae56ee29cfd844a6056571d5d1edf37b11bb9f30cb3dd5226d972f5e5",
+    "total_documents": 76,
+    "total_document_families": 73,
+    "deduplication_audit": "data/corpus_duplicate_audit.json"
+  },
+  "benchmark_split_lock": {
+    "split_manifest": "data/benchmark_v1/split_manifest.json",
+    "split_manifest_sha256": "217297880dd3579e9e848f1841c4da0e907e06e7f8cbcf0d4794828563ac4b90",
+    "train_pairs": 560,
+    "val_pairs": 120,
+    "test_pairs": 120,
+    "test_split_status": "LOCKED",
+    "lock_protocol": "FREEZE-BENCHMARK-SPLIT (Zero Test Leakage until CP-06.1)"
+  },
+  "dev_benchmark_validation_metrics": {
+    "eval_split": "val.csv",
+    "eval_pairs": 120,
+    "source_recall_at_25": 1.0000,
+    "pair_classification": {
+      "precision": 1.0000,
+      "recall": 1.0000,
+      "f1": 1.0000,
+      "pr_auc": 1.0000,
+      "confusion_matrix": [
+        [39, 0],
+        [0, 81]
+      ]
+    },
+    "calibration": {
+      "brier_score": 0.0024,
+      "ece": 0.0372
+    },
+    "span_alignment": {
+      "mean_iou": 0.7413,
+      "mean_precision": 0.8148,
+      "mean_recall": 0.7413,
+      "mean_f1": 0.7652,
+      "monolingual_precision": 1.0000
+    },
+    "system_reliability": {
+      "false_alarms_per_doc": 0.0000,
+      "estimated_pipeline_time_50_chunks_sec": 1.48
+    },
+    "citation_context": {
+      "routine_citations_exempted": 9,
+      "review_workload_reduction_pct": 11.1,
+      "misattribution_alerts_active": true
+    }
+  },
+  "known_limitations_and_unresolved_challenges": [
+    {
+      "id": "LIM-01",
+      "area": "cross_lingual_surface_alignment",
+      "description": "While cross-lingual retrieval and reranking achieve 100% recall on Vietnamese-to-English translations, surface character-level sentence alignment without a bilingual translation dictionary is unaligned (Span IoU 0.0). Spans are highlighted at passage/paragraph level.",
+      "mitigation_in_rc1": "Passage-level bounding boxes and full English source paragraph displayed in Evidence Workbench for human side-by-side inspection."
+    },
+    {
+      "id": "LIM-02",
+      "area": "scanned_pdf_text_extraction",
+      "description": "PDF files without a digital text layer (pure image scans) cannot be parsed by pdfminer.six in RC1.",
+      "mitigation_in_rc1": "Documents lacking extractable text layer trigger EMPTY_TEXT or CORRUPTED_DOCUMENT error codes cleanly without worker crash; selective OCR is deferred to conditional extension EXT-02."
+    },
+    {
+      "id": "LIM-03",
+      "area": "figures_and_source_code",
+      "description": "Non-text reuse modalities (diagrams, architectural figures, formulas, programming source code) are outside the 6-week academic text reuse charter.",
+      "mitigation_in_rc1": "Explicit scope boundary stated in thesis charter; negative regex filters prevent code array indices from polluting citation detectors."
+    },
+    {
+      "id": "LIM-04",
+      "area": "extreme_paraphrase_uncertainty",
+      "description": "Heavily rewritten passages with zero lexical overlap and abstract conceptual rephrasing may yield reranker scores near 0.40-0.65.",
+      "mitigation_in_rc1": "Calibrated three-band review policy routes ambiguous cases into uncertainty review queue rather than making unreliable binary assertions."
+    }
+  ]
+}
+

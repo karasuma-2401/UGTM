@@ -1,0 +1,117 @@
+name: AI CI
+
+on:
+  pull_request:
+    branches: [dev, production]
+    paths:
+      - services/plagiarism-ai/**
+      - docker/**
+      - .github/workflows/ai-ci.yml
+      - .github/workflows/publish.yml
+      - .github/workflows/deploy.yml
+      - scripts/Deploy-Production.sh
+  # Every release SHA needs a CI result, including commits changing other services.
+  push:
+    branches: [dev, production]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  POSTGRES_DSN: postgresql://ugtm_ai:ci-only@localhost:5432/ugtm_ai
+  POSTGRES_DIRECT_DSN: postgresql://ugtm_ai:ci-only@localhost:5432/ugtm_ai
+  REDIS_URL: redis://localhost:6379/0
+  API_KEY: ci-only-service-key
+  INFERENCE_MODE: remote
+  CLASSIFIER_ENABLED: "false"
+  PYTHONUTF8: "1"
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/plagiarism-ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/plagiarism-ai/requirements/*.txt
+      - run: python -m pip install -r requirements/dev.txt
+      - run: python -m pytest -c pytest.unit.ini --junitxml=test-results/unit.xml
+      - name: Verify production preparation, dotenv escaping and schema failure guard
+        working-directory: .
+        run: python scripts/tests/check_production_deployment.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-unit-results
+          path: services/plagiarism-ai/test-results/*.xml
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: ugtm_ai
+          POSTGRES_USER: ugtm_ai
+          POSTGRES_PASSWORD: ci-only
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ugtm_ai -d ugtm_ai"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    defaults:
+      run:
+        working-directory: services/plagiarism-ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/plagiarism-ai/requirements/*.txt
+      - run: python -m pip install -r requirements/dev.txt
+      - name: Migrate the disposable CI database only
+        run: python -m scripts.migrate apply
+      - run: python -m scripts.check_schema
+      - name: Verify broker, persistence and recovery contracts
+        run: >-
+          python -m pytest tests/test_queue_lifecycle.py
+          tests/test_job_lifecycle_resilience.py tests/test_commit_enqueue_reconciler.py
+          --junitxml=test-results/integration.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ai-integration-results
+          path: services/plagiarism-ai/test-results/*.xml
+
+  docker:
+    needs: [unit, integration]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Verify the Azure ARM64 image can build
+        uses: docker/build-push-action@v6
+        with:
+          context: services/plagiarism-ai
+          file: services/plagiarism-ai/Dockerfile
+          platforms: linux/arm64
+          push: false
+          cache-from: type=gha,scope=ai-verify
+          cache-to: type=gha,mode=max,scope=ai-verify

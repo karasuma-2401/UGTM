@@ -1,0 +1,5 @@
+# Local native development & automated testing dependencies (CPU-only; no CUDA/PyTorch).
+-r cpu-worker.txt
+pytest>=8,<10
+httpx>=0.27,<1
+

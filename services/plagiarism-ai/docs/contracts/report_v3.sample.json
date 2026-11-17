@@ -1,0 +1,125 @@
+{
+  "_comment": "Standard Report Schema v3 fixture with provenance, full interval coverage, and pagination (CP-02.4).",
+  "schema_version": 3,
+  "job_id": "9f8c2d14-71a4-4e3a-8c05-3e19a72b4d90",
+  "corpus_id": "uit-kltn-library-v1",
+  "submission_id": "d84b1c2e-5f7a-4b1e-9c0d-123456789abc",
+  "submission_version": 2,
+  "created_at": "2026-10-30T11:45:00.000000+00:00",
+  "provenance": {
+    "parser_version": "parser-v2.1-block",
+    "preprocessing_profile": "production_v1",
+    "preprocessing_config_hash": "a1b2c3d4e5f6",
+    "embedding_model": "BAAI/bge-m3",
+    "embedding_revision": "main",
+    "reranker_model": "BAAI/bge-reranker-v2-m3",
+    "reranker_revision": "main",
+    "classifier_version": null,
+    "detector_mode": "heuristic",
+    "corpus_snapshot_id": "corpus-v2-73fams"
+  },
+  "summary": {
+    "scanned_chunks": 84,
+    "scanned_characters": 35240,
+    "matched_characters": 830,
+    "similarity_coverage": 0.0236,
+    "max_reranker_score": 0.8634,
+    "flagged_pairs": 2,
+    "findings_returned": 2,
+    "total_findings": 2,
+    "matched_sources": 1,
+    "passage_groups": 1
+  },
+  "passage_groups": [
+    {
+      "passage_group_id": "PG-0001",
+      "source_key": "kltn-demo-0019",
+      "source_version": 1,
+      "source_filename": "kltn-demo-0019.pdf",
+      "findings_count": 2,
+      "submission_start": 1240,
+      "submission_end": 1990,
+      "source_start": 890,
+      "source_end": 1645,
+      "max_reranker_score": 0.8634
+    }
+  ],
+  "findings": [
+    {
+      "passage_group_id": "PG-0001",
+      "submission_chunk_no": 14,
+      "submission_page": 8,
+      "submission_start": 1240,
+      "submission_end": 1665,
+      "submission_text": "Mô hình Transformer sử dụng cơ chế tự chú ý (Self-Attention) để biểu diễn sự phụ thuộc xa giữa các từ trong câu.",
+      "chunk_id": 1042,
+      "source_key": "kltn-demo-0019",
+      "source_version": 1,
+      "source_filename": "kltn-demo-0019.pdf",
+      "document_family": "fam-demo-0019",
+      "source_chunk_no": 21,
+      "source_page": 11,
+      "source_start": 890,
+      "source_end": 1318,
+      "source_text": "Kiến trúc Transformer áp dụng cơ chế tự chú ý (Self-Attention) nhằm tính toán mối tương quan phụ thuộc xa giữa mọi từ.",
+      "rrf_score": 0.03252,
+      "dense_score": 0.8142,
+      "lexical_score": 0.4918,
+      "reranker_score": 0.8634,
+      "classifier_score": null,
+      "decision_source": "heuristic",
+      "citation_status": "unexamined",
+      "feature_values": {
+        "semantic_cosine": 0.8142,
+        "reranker_score": 0.8634,
+        "char_trigram_dice": 0.6124,
+        "token_jaccard": 0.4483,
+        "length_ratio": 0.9524
+      },
+      "review_required": true
+    },
+    {
+      "passage_group_id": "PG-0001",
+      "submission_chunk_no": 15,
+      "submission_page": 8,
+      "submission_start": 1580,
+      "submission_end": 1990,
+      "submission_text": "Nhờ khả năng tính toán song song trên toàn chuỗi, kiến trúc này khắc phục nút thắt tuần tự của mạng RNN và LSTM.",
+      "chunk_id": 1043,
+      "source_key": "kltn-demo-0019",
+      "source_version": 1,
+      "source_filename": "kltn-demo-0019.pdf",
+      "document_family": "fam-demo-0019",
+      "source_chunk_no": 22,
+      "source_page": 11,
+      "source_start": 1230,
+      "source_end": 1645,
+      "source_text": "Nhờ cơ chế xử lý song song toàn bộ chuỗi đầu vào, Transformer giải quyết hạn chế tính toán tuần tự của RNN và LSTM.",
+      "rrf_score": 0.032002,
+      "dense_score": 0.7985,
+      "lexical_score": 0.4602,
+      "reranker_score": 0.841,
+      "classifier_score": null,
+      "decision_source": "heuristic",
+      "citation_status": "unexamined",
+      "feature_values": {
+        "semantic_cosine": 0.7985,
+        "reranker_score": 0.841,
+        "char_trigram_dice": 0.589,
+        "token_jaccard": 0.4286,
+        "length_ratio": 0.9545
+      },
+      "review_required": true
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "page_size": 100,
+    "total_pages": 1,
+    "total_findings": 2,
+    "has_next": false,
+    "has_prev": false
+  },
+  "disclaimer": "Similarity evidence only; teachers and evaluators must verify sources, citations and context. No automatic plagiarism verdict."
+}
+

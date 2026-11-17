@@ -77,12 +77,7 @@ public sealed class FinalReportSubmissionEligibilityChecker(
             return Result.Failure<FinalReportSubmissionContext>(FinalReportSubmissionErrors.BatchNotFound);
         }
 
-        // TODO(restore-after-demo): Khôi phục lại điều kiện kiểm tra stage FINAL_EVALUATION cho cả lần nộp đầu sau khi báo cáo xong:
-        // if (window.BatchStatus != "Open" || !window.IsSubmissionWindowOpen)
-        // {
-        //     return Result.Failure<FinalReportSubmissionContext>(FinalReportSubmissionErrors.OutsideAllowedWindow);
-        // }
-        if (window.BatchStatus != "Open" || (revisedAfterReviewer && !window.IsSubmissionWindowOpen))
+        if (window.BatchStatus != "Open" || !window.IsSubmissionWindowOpen)
         {
             return Result.Failure<FinalReportSubmissionContext>(FinalReportSubmissionErrors.OutsideAllowedWindow);
         }

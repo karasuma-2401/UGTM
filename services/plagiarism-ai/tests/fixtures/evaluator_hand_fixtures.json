@@ -1,0 +1,173 @@
+{
+  "description": "Hand-calculated verification fixtures for multi-tier UGTM Evaluator (CP-03.4)",
+  "retrieval_cases": [
+    {
+      "query_id": "q1",
+      "relevant_sources": ["doc_A"],
+      "retrieved_ranked": ["doc_X", "doc_A", "doc_Y", "doc_Z"],
+      "expected": {
+        "recall_at_1": 0.0,
+        "recall_at_2": 1.0,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0,
+        "dcg_at_2": 0.63092975,
+        "idcg_at_2": 1.0,
+        "ndcg_at_2": 0.63092975,
+        "dcg_at_3": 0.63092975,
+        "idcg_at_3": 1.0,
+        "ndcg_at_3": 0.63092975
+      }
+    },
+    {
+      "query_id": "q2",
+      "relevant_sources": ["doc_B", "doc_C"],
+      "retrieved_ranked": ["doc_B", "doc_D", "doc_C", "doc_E"],
+      "expected": {
+        "recall_at_1": 0.5,
+        "recall_at_2": 0.5,
+        "recall_at_3": 1.0,
+        "recall_at_4": 1.0,
+        "dcg_at_3": 1.5,
+        "idcg_at_3": 1.63092975,
+        "ndcg_at_3": 0.91972138
+      }
+    }
+  ],
+  "macro_retrieval_expected": {
+    "mean_recall_at_1": 0.25,
+    "mean_recall_at_2": 0.75,
+    "mean_recall_at_3": 1.0,
+    "mean_ndcg_at_3": 0.77532556
+  },
+  "span_alignment_cases": [
+    {
+      "name": "partial_overlap_80_percent",
+      "ground_truth": [100, 200],
+      "predicted": [120, 220],
+      "expected": {
+        "intersection": 80,
+        "union": 120,
+        "iou": 0.66666667,
+        "precision": 0.8,
+        "recall": 0.8,
+        "f1": 0.8
+      }
+    },
+    {
+      "name": "zero_overlap_disjoint",
+      "ground_truth": [0, 50],
+      "predicted": [60, 100],
+      "expected": {
+        "intersection": 0,
+        "union": 90,
+        "iou": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+      }
+    },
+    {
+      "name": "exact_match",
+      "ground_truth": [50, 150],
+      "predicted": [50, 150],
+      "expected": {
+        "intersection": 100,
+        "union": 100,
+        "iou": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      }
+    }
+  ],
+  "pair_classification_cases": {
+    "threshold": 0.5,
+    "pairs": [
+      {
+        "pair_id": "p1",
+        "query_doc_id": "q1",
+        "family_id": "fam_1",
+        "y_true": 1,
+        "y_score": 0.9,
+        "slice": "verbatim_copy"
+      },
+      {
+        "pair_id": "p2",
+        "query_doc_id": "q2",
+        "family_id": "fam_1",
+        "y_true": 1,
+        "y_score": 0.4,
+        "slice": "paraphrase"
+      },
+      {
+        "pair_id": "p3",
+        "query_doc_id": "q3",
+        "family_id": "fam_2",
+        "y_true": 0,
+        "y_score": 0.7,
+        "slice": "hard_negatives"
+      },
+      {
+        "pair_id": "p4",
+        "query_doc_id": "q4",
+        "family_id": "fam_2",
+        "y_true": 0,
+        "y_score": 0.2,
+        "slice": "hard_negatives"
+      }
+    ],
+    "expected": {
+      "tp": 1,
+      "fp": 1,
+      "fn": 1,
+      "tn": 1,
+      "precision": 0.5,
+      "recall": 0.5,
+      "f1": 0.5,
+      "accuracy": 0.5,
+      "brier_score": 0.225
+    }
+  },
+  "error_isolation_cases": [
+    {
+      "sample_id": "err_1",
+      "category": "RETRIEVAL_MISS",
+      "true_source": "src_target",
+      "retrieved_candidates": ["src_other_1", "src_other_2"],
+      "predicted_span": null,
+      "classifier_score": null,
+      "expected_stage_failure": "retrieval"
+    },
+    {
+      "sample_id": "err_2",
+      "category": "ALIGNMENT_BOUNDARY_ERROR",
+      "true_source": "src_target",
+      "retrieved_candidates": ["src_target", "src_other_1"],
+      "ground_truth_span": [100, 300],
+      "predicted_span": [290, 400],
+      "classifier_score": 0.8,
+      "expected_stage_failure": "alignment"
+    },
+    {
+      "sample_id": "err_3",
+      "category": "CLASSIFIER_FALSE_POSITIVE",
+      "true_source": null,
+      "retrieved_candidates": ["src_other_1"],
+      "ground_truth_span": null,
+      "predicted_span": [50, 150],
+      "classifier_score": 0.85,
+      "expected_stage_failure": "classification"
+    },
+    {
+      "sample_id": "err_4",
+      "category": "CLASSIFIER_FALSE_NEGATIVE",
+      "true_source": "src_target",
+      "retrieved_candidates": ["src_target"],
+      "ground_truth_span": [100, 300],
+      "predicted_span": [100, 300],
+      "classifier_score": 0.35,
+      "expected_stage_failure": "classification"
+    }
+  ]
+}
+

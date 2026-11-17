@@ -1,0 +1,142 @@
+# ==============================================================================
+# UGTM-Plagiarism-AI - Git Ignore Configuration
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Environment & Secrets (Bảo mật tuyệt đối, không đẩy API key / Mật khẩu)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+
+# ------------------------------------------------------------------------------
+# 2. Frontend & Node.js Dependencies & Cache
+# ------------------------------------------------------------------------------
+node_modules/
+*/node_modules/
+.npm
+.vite/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.turbo/
+
+# ------------------------------------------------------------------------------
+# 3. Python Bytecode, Caches & Virtual Environments
+# ------------------------------------------------------------------------------
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# ------------------------------------------------------------------------------
+# 4. Testing, Code Quality & Coverage
+# ------------------------------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+nosetests.xml
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ------------------------------------------------------------------------------
+# 5. OS & IDE Metadata (Tệp rác hệ điều hành và Editor)
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ------------------------------------------------------------------------------
+# 6. Database, Uploads & Runtime Data
+# ------------------------------------------------------------------------------
+data/
+uploads/
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.db
+*.log
+
+# ------------------------------------------------------------------------------
+# 7. AI Models & Checkpoints (Tránh đẩy tệp nhị phân nặng)
+# ------------------------------------------------------------------------------
+models/
+artifacts/*.joblib
+*.joblib
+*.pt
+*.pth
+*.bin
+*.onnx
+*.safetensors
+*.h5
+!artifacts/.gitkeep
+!artifacts/*.manifest.json
+
+# ------------------------------------------------------------------------------
+# 8. Training Staging, Datasets & Archives
+# ------------------------------------------------------------------------------
+corpus_staging/
+training_data/
+training_runs/
+kaggle_bundle/
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# ------------------------------------------------------------------------------
+# 9. Document Uploads (Bỏ qua file PDF / DOCX nộp thử nghiệm)
+# ------------------------------------------------------------------------------
+*.pdf
+*.docx
+
+# Giữ lại các file tài liệu mẫu phục vụ nút Thử nghiệm 1-Click trên Web Dashboard
+!app/static/samples/*.docx
+!app/static/samples/*.pdf
+
+# CI output, not research artifacts.
+test-results/

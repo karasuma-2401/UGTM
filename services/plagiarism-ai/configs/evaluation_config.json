@@ -1,0 +1,36 @@
+{
+  "evaluator_version": "1.0.0",
+  "default_split": "val",
+  "random_seed": 42,
+  "retrieval": {
+    "k_values": [10, 50, 100],
+    "ndcg_k": 10,
+    "relevance_binary_threshold": 1
+  },
+  "alignment": {
+    "iou_match_threshold": 0.3,
+    "min_span_length_chars": 50
+  },
+  "classification": {
+    "decision_threshold": 0.5,
+    "priority_flag_threshold": 0.75,
+    "probability_calibration_bins": 10
+  },
+  "bootstrap": {
+    "enabled": true,
+    "n_iterations": 1000,
+    "confidence_level": 0.95,
+    "cluster_by": "document_family"
+  },
+  "slices": [
+    "verbatim_copy",
+    "paraphrase",
+    "summarization",
+    "cross_lingual_vi_en",
+    "multi_source",
+    "hard_negatives",
+    "out_of_corpus"
+  ],
+  "metrics_report_schema_version": "1.0.0"
+}
+

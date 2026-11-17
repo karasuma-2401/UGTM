@@ -1,0 +1,24 @@
+{
+  "retrieval_version": "1.0.0",
+  "selected_on_dev": true,
+  "checkpoint": "CP-04.1",
+  "experiment_id": "EXP-04.1-RETRIEVAL",
+  "top_k_per_branch": 30,
+  "fused_k": 25,
+  "rrf_k": 60,
+  "prefilter": {
+    "enabled": false,
+    "mode": "none",
+    "rationale": "Removed hard prefilter (dense>=0.48 | lex>=0.25) to eliminate SOURCE_MISS on cross-lingual and abstractive summarization. GPU rerank budget of 25 candidates easily runs within 90ms on Tesla T4."
+  },
+  "candidate_budget": {
+    "max_candidates_per_chunk": 25,
+    "estimated_rerank_time_ms_per_chunk": 85.0,
+    "max_total_pipeline_time_sec_50_chunks": 1.45
+  },
+  "chunk_source_deduplication": {
+    "enabled": true,
+    "merge_contiguous_chunks": true
+  }
+}
+

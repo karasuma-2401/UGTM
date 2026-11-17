@@ -51,7 +51,7 @@ namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
 // Unlike the focused HTTP tests, this host uses real batch/advisor readers, unit of work and S3 storage.
 // Only authentication and the business clock are controlled by the test.
-[Collection(PostgreSqlCollection.Name)]
+[Collection(FinalReportWorkflowPostgreSqlCollection.Name)]
 public sealed partial class FinalReportWorkflowIntegrationTests(PostgreSqlFixture database, MinioFixture minio)
     : IClassFixture<MinioFixture>, IAsyncLifetime
 {

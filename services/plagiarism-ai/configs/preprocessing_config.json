@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "preprocessing-v1",
+  "description": "Unified Preprocessing and Chunking Configuration for UGTM Plagiarism AI",
+  "default_profile": "production_v1",
+  "section_filtering": {
+    "enabled": true,
+    "exclude_sections": [
+      "cover",
+      "table_of_contents",
+      "abbreviations",
+      "references",
+      "appendix",
+      "header",
+      "footer",
+      "empty"
+    ],
+    "track_discard_reasons": true
+  },
+  "chunking": {
+    "strategy": "sliding_window",
+    "sliding_window": {
+      "size": 90,
+      "overlap": 20,
+      "min_words": 8
+    },
+    "sentence_window": {
+      "target_words": 90,
+      "overlap_sentences": 1,
+      "min_words": 8,
+      "max_words": 140
+    },
+    "paragraph_boundary": {
+      "target_words": 90,
+      "min_words": 8,
+      "max_words": 150
+    }
+  },
+  "profiles": {
+    "production_v1": {
+      "strategy": "sliding_window",
+      "exclude_sections": [
+        "cover",
+        "table_of_contents",
+        "abbreviations",
+        "references",
+        "appendix",
+        "header",
+        "footer",
+        "empty"
+      ],
+      "size": 90,
+      "overlap": 20,
+      "min_words": 8
+    },
+    "baseline_b0": {
+      "strategy": "sliding_window",
+      "exclude_sections": [],
+      "size": 90,
+      "overlap": 20,
+      "min_words": 8
+    },
+    "sentence_aware": {
+      "strategy": "sentence_window",
+      "exclude_sections": [
+        "cover",
+        "table_of_contents",
+        "abbreviations",
+        "references",
+        "appendix",
+        "header",
+        "footer",
+        "empty"
+      ],
+      "target_words": 90,
+      "overlap_sentences": 1,
+      "min_words": 8,
+      "max_words": 140
+    },
+    "paragraph_aware": {
+      "strategy": "paragraph_boundary",
+      "exclude_sections": [
+        "cover",
+        "table_of_contents",
+        "abbreviations",
+        "references",
+        "appendix",
+        "header",
+        "footer",
+        "empty"
+      ],
+      "target_words": 90,
+      "min_words": 8,
+      "max_words": 150
+    }
+  }
+}
+

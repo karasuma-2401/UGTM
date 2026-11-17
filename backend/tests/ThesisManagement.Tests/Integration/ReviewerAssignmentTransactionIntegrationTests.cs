@@ -39,7 +39,7 @@ using UGTM.Modules.TopicCatalog.Infrastructure.Persistence;
 
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
-[Collection(PostgreSqlCollection.Name)]
+[Collection(ReviewerAssignmentPostgreSqlCollection.Name)]
 public sealed partial class ReviewerAssignmentTransactionIntegrationTests(PostgreSqlFixture fixture) : IAsyncLifetime
 {
     private static readonly DateTime Now = new(2026, 10, 30, 5, 0, 0, DateTimeKind.Utc);
