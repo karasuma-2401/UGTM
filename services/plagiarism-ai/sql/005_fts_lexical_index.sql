@@ -11,4 +11,3 @@ CREATE INDEX IF NOT EXISTS idx_chunks_tsv
 
 CREATE INDEX IF NOT EXISTS idx_chunks_hnsw
     ON integrity.chunks USING hnsw (embedding vector_cosine_ops);
-
