@@ -21,6 +21,20 @@ def test_schema_preflight_requires_packaged_sql(tmp_path):
     assert check_schema.schema_errors({}, tmp_path)
 
 
+def test_packaged_migrations_preserve_existing_database_checksums():
+    # Historical migrations are immutable, including their trailing newlines.
+    applied = {
+        "001_init": "a60f5c48a0f9bf66b70cc26f86fb28c9afc6b09f6093ba81e148d2d164c902e1",
+        "002_corpus_family_and_permissions": "13fa6e00200419244708c5b1cf5ce757bf9832f9a24291234830e456b54d0ab4",
+        "003_job_lifecycle_resilience": "5df48dcf6961c881b3fa47cf73351b0f4ebf34d4d0badcbc010066bb0d60840f",
+        "004_outbox_reconciler_and_storage_durability": "11da45f31553ae02589d373d2fe8be25992223e15eb8fb30b4e922a7a3d6bdd4",
+        "005_fts_lexical_index": "d33f22eb04e7aaa074173aaa859ad276aaddb5524e33a397c2e703e32637e538",
+    }
+    for path in check_schema.SQL_DIR.glob("*.sql"):
+        if path.stem in applied:
+            assert sha256(path.read_bytes()).hexdigest() == applied[path.stem], path.name
+
+
 def test_reconciler_retries_an_outage_and_stops(monkeypatch, caplog):
     stop = Event()
     attempts = []

@@ -19,4 +19,3 @@ CREATE INDEX IF NOT EXISTS idx_jobs_reconcile_queued
 CREATE INDEX IF NOT EXISTS idx_jobs_reconcile_waiting
     ON integrity.jobs (retry_after)
     WHERE status = 'waiting_for_compute';
-
