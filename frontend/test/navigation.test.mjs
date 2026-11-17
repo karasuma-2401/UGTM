@@ -176,3 +176,17 @@ test('AcademicAffairs with identity.users.read sees Tài khoản và Phân quy�
   assert.match(navHtml, /href="\/modules\/identity\/staff"/);
   assert.doesNotMatch(navHtml, /href="\/modules\/identity\/permissions"/);
 });
+
+test('sidebar places Tiến độ sinh viên before Chấm điểm khóa luận and Thẩm định đề tài before Duyệt đổi tên đề tài', () => {
+  const lecturerLayout = renderLayout('/advisor/milestones', { roles: ['Lecturer'] });
+  const milestoneIdx = lecturerLayout.markup.indexOf('Tiến độ sinh viên');
+  const gradingIdx = lecturerLayout.markup.indexOf('Chấm điểm khóa luận');
+  assert.ok(milestoneIdx > -1 && gradingIdx > -1);
+  assert.ok(milestoneIdx < gradingIdx);
+
+  const facultyLayout = renderLayout('/topics/review', { roles: ['Faculty'] });
+  const reviewIdx = facultyLayout.markup.indexOf('Thẩm định đề tài');
+  const renameIdx = facultyLayout.markup.indexOf('Duyệt đổi tên đề tài');
+  assert.ok(reviewIdx > -1 && renameIdx > -1);
+  assert.ok(reviewIdx < renameIdx);
+});

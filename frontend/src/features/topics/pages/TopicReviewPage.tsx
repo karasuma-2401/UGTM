@@ -186,7 +186,7 @@ export function TopicReviewPage() {
 
   function applyFilters(next: TopicFilters) {
     setDraftFilters(next);
-    setFilters(next);
+    setFilters({ ...next, keyword: next.keyword.trim() });
     setPageNumber(1);
     setSelected([]);
     setSelectedRowId(null);
@@ -356,7 +356,7 @@ export function TopicReviewPage() {
                 className="h-9 rounded-lg border-line-input bg-surface-card pr-8 shadow-2xs"
                 value={draftFilters.keyword}
                 onChange={(event) =>
-                  setDraftFilters({ ...draftFilters, keyword: event.target.value })
+                  applyFilters({ ...draftFilters, keyword: event.target.value })
                 }
               />
               {draftFilters.keyword && (
@@ -385,17 +385,8 @@ export function TopicReviewPage() {
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="submit"
-                variant="soft"
-                size="sm"
-                leftIcon={<Search className="size-3.5" />}
-                className="h-9 rounded-lg px-3.5"
-              >
-                Tìm
-              </Button>
-              {hasFilters && (
+            {hasFilters && (
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -406,8 +397,8 @@ export function TopicReviewPage() {
                 >
                   Bỏ lọc
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </form>
 
           <div

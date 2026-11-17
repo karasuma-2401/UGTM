@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -92,14 +92,6 @@ export function UserFilterBar({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="submit"
-            variant="soft"
-            leftIcon={<SlidersHorizontal />}
-            className="h-10 rounded-xl px-5"
-          >
-            Áp dụng
-          </Button>
           <Button
             type="button"
             variant="outline"

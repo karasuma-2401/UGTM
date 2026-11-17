@@ -33,13 +33,18 @@ export function useUserFilters() {
     setPageNumber(1);
   };
 
-  const handleApplyFilters = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const updateFilters = (next: UserFilters) => {
+    setDraftFilters(next);
     setFilters({
-      ...draftFilters,
-      keyword: draftFilters.keyword.trim(),
+      ...next,
+      keyword: next.keyword.trim(),
     });
     setPageNumber(1);
+  };
+
+  const handleApplyFilters = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    updateFilters(draftFilters);
   };
 
   const clearFilters = () => {
@@ -67,7 +72,7 @@ export function useUserFilters() {
 
   return {
     draftFilters,
-    setDraftFilters,
+    setDraftFilters: updateFilters,
     filters,
     setFilters,
     pageNumber,

@@ -131,7 +131,7 @@ export function TopicAdvisingPage({
   function apply(next: AdvisingFilters) {
     const normalized = { ...next, keyword: next.keyword.trim() };
     setFilters(normalized);
-    setDraft(normalized);
+    setDraft(next);
     setPageNumber(1);
     setSelectedRowId(null);
     onFiltersChange?.(normalized);
@@ -259,7 +259,7 @@ export function TopicAdvisingPage({
               placeholder="Tên đề tài, sinh viên, MSSV hoặc mã nhóm"
               leftIcon={<Search className="size-4" />}
               value={draft.keyword}
-              onChange={(event) => setDraft({ ...draft, keyword: event.target.value })}
+              onChange={(event) => apply({ ...draft, keyword: event.target.value })}
             />
           </label>
           <div className="space-y-1.5">
@@ -272,7 +272,7 @@ export function TopicAdvisingPage({
                 { value: '', label: 'Tất cả đợt khóa luận' },
                 ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
               ]}
-              onChange={(batchId) => setDraft({ ...draft, batchId })}
+              onChange={(batchId) => apply({ ...draft, batchId })}
               searchable
               disabled={!canReadBatches || batchesQuery.isPending || batchesQuery.isError}
             />
@@ -286,7 +286,7 @@ export function TopicAdvisingPage({
                 value: value as GroupScope,
                 label,
               }))}
-              onChange={(scope) => setDraft({ ...draft, scope, status: '' })}
+              onChange={(scope) => apply({ ...draft, scope, status: '' })}
             />
           </div>
           <div className="space-y-1.5">
@@ -302,7 +302,7 @@ export function TopicAdvisingPage({
                   label,
                 })),
               ]}
-              onChange={(status) => setDraft({ ...draft, status })}
+              onChange={(status) => apply({ ...draft, status })}
             />
           </div>
           <div className="space-y-1.5">
@@ -316,11 +316,10 @@ export function TopicAdvisingPage({
                 { value: 'pending', label: 'Chờ xác nhận' },
                 { value: 'expired', label: 'Đã hết hạn' },
               ]}
-              onChange={(confirmation) => setDraft({ ...draft, confirmation })}
+              onChange={(confirmation) => apply({ ...draft, confirmation })}
             />
           </div>
           <div className="flex items-end gap-2 sm:col-span-2">
-            <Button type="submit">Áp dụng bộ lọc</Button>
             <Button type="button" variant="outline" onClick={clear}>
               Bỏ lọc
             </Button>

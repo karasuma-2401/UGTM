@@ -555,13 +555,17 @@ export function TopicProposePage({
     setSelectedRowId(null);
     onFiltersChange?.(next);
   }
-  function handleApplyFilters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const next = { ...draftFilters, keyword: draftFilters.keyword.trim() };
+  function applyFiltersNow(nextDraft: TopicFilters) {
+    const next = { ...nextDraft, keyword: nextDraft.keyword.trim() };
+    setDraftFilters(nextDraft);
     setFilters(next);
     setPageNumber(1);
     setSelectedRowId(null);
     onFiltersChange?.(next);
+  }
+  function handleApplyFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    applyFiltersNow(draftFilters);
   }
   function clearFilters() {
     setDraftFilters({ ...INITIAL_FILTERS });
@@ -1370,7 +1374,9 @@ export function TopicProposePage({
             leftIcon={<Search className="size-4" />}
             placeholder="Tên đề tài tiếng Việt hoặc tiếng Anh"
             value={draftFilters.keyword}
-            onChange={(event) => setDraftFilters({ ...draftFilters, keyword: event.target.value })}
+            onChange={(event) =>
+              applyFiltersNow({ ...draftFilters, keyword: event.target.value })
+            }
           />
         </label>
         <div className="space-y-1.5">
@@ -1383,7 +1389,7 @@ export function TopicProposePage({
               { value: '', label: 'Tất cả đợt khóa luận' },
               ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
             ]}
-            onChange={(batchId) => setDraftFilters({ ...draftFilters, batchId })}
+            onChange={(batchId) => applyFiltersNow({ ...draftFilters, batchId })}
             searchable
             disabled={!canReadBatches || batchesQuery.isPending || batchesQuery.isError}
           />
@@ -1401,11 +1407,10 @@ export function TopicProposePage({
                 label,
               })),
             ]}
-            onChange={(status) => setDraftFilters({ ...draftFilters, status })}
+            onChange={(status) => applyFiltersNow({ ...draftFilters, status })}
           />
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-4">
-          <Button type="submit">Áp dụng bộ lọc</Button>
           <Button type="button" variant="outline" disabled={!hasFilters} onClick={clearFilters}>
             Bỏ lọc
           </Button>
