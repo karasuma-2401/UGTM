@@ -53,6 +53,7 @@ CREATE INDEX IF NOT EXISTS idx_chunks_trgm
 CREATE INDEX IF NOT EXISTS idx_jobs_created
     ON integrity.jobs (created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_chunks_hnsw ON integrity.chunks
-    USING hnsw (embedding vector_cosine_ops);
+-- Chỉ tạo HNSW sau khi benchmark cho thấy exact search không còn đáp ứng.
+-- CREATE INDEX idx_chunks_hnsw ON integrity.chunks
+--     USING hnsw (embedding vector_cosine_ops);
 

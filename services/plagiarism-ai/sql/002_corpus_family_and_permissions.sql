@@ -11,4 +11,3 @@ CREATE INDEX IF NOT EXISTS idx_source_family
 ALTER TABLE integrity.jobs
     ADD COLUMN IF NOT EXISTS document_family TEXT,
     ADD COLUMN IF NOT EXISTS processing_permission TEXT NOT NULL DEFAULT 'all';
-
