@@ -277,26 +277,30 @@ test('[P1 #3] usePeriodData ignores stale batch detail response when switching b
   assert.equal(state.currentBatch?.batchName, 'Batch B Detail');
 });
 
-test('[P1 #3 & #5] usePeriodActions blocks mismatched batch save and reports partial gate update failures with retry', async () => {
+test('[P1 #3 & #5] usePeriodActions blocks mismatched batch save, saves batch + both review gates on executeSave, and retries partial gate failures', async () => {
   const { reactMock, render } = createHookRunner();
+  const createdBatches = [];
   const updatedScheduleFor = [];
   const gateUpserts = [];
   let midtermShouldFail = true;
   const errors = [];
   const successes = [];
-  const gateSuccesses = [];
+  const batchCreatedNotifications = [];
 
   const { usePeriodActions } = loadTsModule('features/academic/hooks/periods/usePeriodActions.ts', {
     react: reactMock,
     '../../services/periodApi': {
       periodApi: {
-        createBatch: async () => ({ id: 'new-id' }),
+        createBatch: async (payload) => {
+          createdBatches.push(payload);
+          return { id: 'new-id' };
+        },
         updateSchedule: async (batchId) => {
           updatedScheduleFor.push(batchId);
         },
         openBatch: async () => ({}),
-        upsertReviewGateConfiguration: async (batchId, gateType) => {
-          gateUpserts.push([batchId, gateType]);
+        upsertReviewGateConfiguration: async (batchId, gateType, payload) => {
+          gateUpserts.push([batchId, gateType, payload]);
           if (gateType === 'Midterm' && midtermShouldFail) {
             throw new Error('Midterm gate error');
           }
@@ -328,6 +332,11 @@ test('[P1 #3 & #5] usePeriodActions blocks mismatched batch save and reports par
     midtermDeadline: '2026-10-20',
     finalEvaluationDeadline: '',
     defenseDeadline: '',
+    syllabusGate: { initial: '2026-09-15', faculty: '2026-09-18', final: '2026-09-20' },
+    midtermGate: { initial: '2026-10-15', faculty: '2026-10-18', final: '2026-10-20' },
+    onBatchCreated: async (id) => {
+      batchCreatedNotifications.push(id);
+    },
     onSuccess: async (_id, msg) => {
       successes.push(msg);
     },
@@ -350,45 +359,75 @@ test('[P1 #3 & #5] usePeriodActions blocks mismatched batch save and reports par
   actions = render(() => usePeriodActions());
   await actions.executeSave({
     ...baseParams,
-    selectedBatchId: 'batch-b',
-    currentBatch: { id: 'batch-b', status: 'Draft' },
+    selectedBatchId: 'new',
+    currentBatch: null,
     isLoadingDetail: false,
-  });
-  assert.deepEqual(updatedScheduleFor, ['batch-b']);
-  assert.equal(gateUpserts.length, 0, 'executeSave must only call batch schedule API, not review gates');
-  assert.equal(successes.length, 1);
-  assert.equal(errors.length, 0);
-
-  actions = render(() => usePeriodActions());
-  await actions.handleSaveGates({
-    selectedBatchId: 'batch-b',
-    currentBatch: { id: 'batch-b', status: 'Draft' },
-    isLoadingDetail: false,
-    syllabus: { initial: '2026-09-15', faculty: '2026-09-18', final: '2026-09-20' },
-    midterm: { initial: '2026-10-15', faculty: '2026-10-18', final: '2026-10-20' },
-    onSyllabusDeadlineChange: () => {},
-    onMidtermDeadlineChange: () => {},
-    onSuccess: (gates) => {
-      gateSuccesses.push(gates);
-    },
-    onError: (msg) => {
-      errors.push(msg);
-    },
   });
   actions = render(() => usePeriodActions());
 
-  assert.equal(gateSuccesses.length, 0, 'Full onSuccess must not be called when a gate fails');
+  assert.equal(createdBatches.length, 1);
+  assert.deepEqual(updatedScheduleFor, ['new-id']);
+  assert.deepEqual(
+    gateUpserts.map(([batchId, gateType]) => [batchId, gateType]),
+    [
+      ['new-id', 'Syllabus'],
+      ['new-id', 'Midterm'],
+    ],
+  );
+  assert.deepEqual(batchCreatedNotifications, ['new-id'], 'Created batch should be selected on partial gate failure');
+  assert.equal(successes.length, 0, 'Full onSuccess must not be called when a gate fails');
   assert.equal(errors.length, 1, 'onError should report failed gate');
   assert.equal(actions.failedGateUpdates.length, 1);
   assert.equal(actions.failedGateUpdates[0].gateType, 'Midterm');
 
   midtermShouldFail = false;
   await actions.retryFailedGates({
-    selectedBatchId: 'batch-b',
+    selectedBatchId: 'new-id',
     onSuccess: (_id, msg) => successes.push(msg),
     onError: (msg) => errors.push(msg),
   });
-  assert.equal(successes.length, 2, 'Retrying failed gate should call onSuccess');
+  assert.equal(successes.length, 1, 'Retrying failed gate should call onSuccess');
+});
+
+test('usePeriodSchedule auto-syncs gate drafts with startDate changes and supports manual override', () => {
+  const { reactMock, render } = createHookRunner();
+  const periodDates = loadTsModule('features/academic/utils/periodDates.ts', {
+    '../types/period.types': loadTsModule('features/academic/types/period.types.ts'),
+  });
+  const { usePeriodSchedule } = loadTsModule('features/academic/hooks/periods/usePeriodSchedule.ts', {
+    react: reactMock,
+    '../../types/period.types': loadTsModule('features/academic/types/period.types.ts'),
+    '../../utils/periodDates': periodDates,
+  });
+
+  let schedule = render(() => usePeriodSchedule());
+  schedule.setStartDate('2026-09-01');
+  schedule = render(() => usePeriodSchedule());
+  const firstSyllabus = { ...schedule.syllabusGateDraft };
+  const firstMidterm = { ...schedule.midtermGateDraft };
+  assert.equal(firstSyllabus.final, schedule.syllabusDeadline);
+  assert.equal(firstSyllabus.faculty, periodDates.addDaysToDateString(schedule.syllabusDeadline, -2));
+  assert.equal(firstSyllabus.initial, periodDates.addDaysToDateString(schedule.syllabusDeadline, -5));
+  assert.equal(firstMidterm.final, schedule.midtermDeadline);
+
+  // Manual override from dialog persists while startDate stays the same.
+  schedule.setGateDrafts(
+    { initial: '2026-09-09', faculty: '2026-09-12', final: '2026-09-14' },
+    firstMidterm,
+  );
+  schedule = render(() => usePeriodSchedule());
+  assert.equal(schedule.syllabusGateDraft.initial, '2026-09-09');
+
+  // Changing startDate re-syncs gate drafts automatically.
+  schedule.setStartDate('2026-10-01');
+  schedule = render(() => usePeriodSchedule());
+  assert.equal(schedule.syllabusGateDraft.final, schedule.syllabusDeadline);
+  assert.equal(
+    schedule.syllabusGateDraft.initial,
+    periodDates.addDaysToDateString(schedule.syllabusDeadline, -5),
+  );
+  assert.notEqual(schedule.syllabusGateDraft.final, firstSyllabus.final);
+  assert.equal(schedule.midtermGateDraft.final, schedule.midtermDeadline);
 });
 
 test('[P1 #4] useScoreConfigActions saves unsaved draft changes before publishing and aborts publish if save fails', async () => {

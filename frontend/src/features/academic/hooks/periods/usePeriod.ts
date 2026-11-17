@@ -4,6 +4,7 @@ import { usePeriodModals } from './usePeriodModals';
 import { usePeriodData } from './usePeriodData';
 import { usePeriodSchedule } from './usePeriodSchedule';
 import { usePeriodActions } from './usePeriodActions';
+import type { GateTimeInput } from '../../utils/periodDates';
 
 export function usePeriod() {
   const { hasPermission } = useAuth();
@@ -38,14 +39,13 @@ export function usePeriod() {
 
   useEffect(() => {
     let cancelled = false;
-    clearFailedGateUpdates();
 
     if (selectedBatchId === 'new') {
       resetForm();
     } else if (selectedBatchId) {
       void loadBatchDetail(selectedBatchId).then((result) => {
         if (!cancelled && result?.detail && result.detail.id === selectedBatchId) {
-          populateFromDetail(result.detail);
+          populateFromDetail(result.detail, result.gates);
         }
       });
     }
@@ -53,14 +53,14 @@ export function usePeriod() {
     return () => {
       cancelled = true;
     };
-  }, [selectedBatchId, loadBatchDetail, resetForm, populateFromDetail, clearFailedGateUpdates]);
+  }, [selectedBatchId, loadBatchDetail, resetForm, populateFromDetail]);
 
   const reloadCurrentBatch = useCallback(async () => {
     if (selectedBatchId !== 'new') {
       setErrorMessage(null);
       const result = await loadBatchDetail(selectedBatchId);
       if (result?.detail && result.detail.id === selectedBatchId) {
-        populateFromDetail(result.detail);
+        populateFromDetail(result.detail, result.gates);
       }
     }
   }, [selectedBatchId, setErrorMessage, loadBatchDetail, populateFromDetail]);
@@ -73,6 +73,8 @@ export function usePeriod() {
       selectedBatchId: data.selectedBatchId,
       currentBatch: data.currentBatch,
       isLoadingDetail: data.isLoadingDetail,
+      canManageBatch: permissions.canManageBatch,
+      canManageReviewGate: permissions.canManageReviewGate,
       startDate: form.startDate,
       batchName: form.batchName,
       academicYear: form.academicYear,
@@ -82,18 +84,18 @@ export function usePeriod() {
       midtermDeadline: form.midtermDeadline,
       finalEvaluationDeadline: form.finalEvaluationDeadline,
       defenseDeadline: form.defenseDeadline,
+      syllabusGate: form.syllabusGateDraft,
+      midtermGate: form.midtermGateDraft,
       changeReason: reason,
       onBatchCreated: async (createdBatchId) => {
         await fetchBatches(createdBatchId);
       },
-      onSuccess: async (targetBatchId, message, isNew) => {
+      onSuccess: async (targetBatchId, message) => {
         modals.setNotice(message);
         await fetchBatches(targetBatchId);
-        if (!isNew) {
-          const result = await loadBatchDetail(targetBatchId);
-          if (result?.detail && result.detail.id === targetBatchId) {
-            populateFromDetail(result.detail);
-          }
+        const result = await loadBatchDetail(targetBatchId);
+        if (result?.detail && result.detail.id === targetBatchId) {
+          populateFromDetail(result.detail, result.gates);
         }
       },
       onError: modals.setErrorMessage,
@@ -110,7 +112,7 @@ export function usePeriod() {
         modals.setNotice(message);
         const result = await loadBatchDetail(targetBatchId);
         if (result?.detail && result.detail.id === targetBatchId) {
-          populateFromDetail(result.detail);
+          populateFromDetail(result.detail, result.gates);
         }
       },
       onError: modals.setErrorMessage,
@@ -159,26 +161,9 @@ export function usePeriod() {
     });
   };
 
-  const handleSaveGates = async (
-    syllabus: { initial: string; faculty: string; final: string },
-    midterm: { initial: string; faculty: string; final: string },
-  ) => {
-    modals.setNotice(null);
+  const handleSaveGates = (syllabus: GateTimeInput, midterm: GateTimeInput) => {
     modals.setErrorMessage(null);
-    await actions.handleSaveGates({
-      selectedBatchId: data.selectedBatchId,
-      currentBatch: data.currentBatch,
-      isLoadingDetail: data.isLoadingDetail,
-      syllabus,
-      midterm,
-      onSyllabusDeadlineChange: form.handleSyllabusDeadlineChange,
-      onMidtermDeadlineChange: form.handleMidtermDeadlineChange,
-      onSuccess: (updatedGates) => {
-        data.setReviewGates(updatedGates);
-        modals.setNotice('Cập nhật chi tiết cổng thẩm định thành công!');
-      },
-      onError: modals.setErrorMessage,
-    });
+    form.setGateDrafts(syllabus, midterm);
   };
 
   return {
