@@ -238,8 +238,9 @@ public static class ProgressReportSubmissionEndpoints
     private static async Task<IResult> DownloadAttachmentAsync(
         Guid attachmentId,
         GetProgressReportAttachmentDownloadHandler handler,
-        CancellationToken cancellationToken)
-        => (await handler.HandleAsync(new GetProgressReportAttachmentDownloadQuery(attachmentId), cancellationToken)).ToHttpResult();
+        CancellationToken cancellationToken,
+        bool inline = false)
+        => (await handler.HandleAsync(new GetProgressReportAttachmentDownloadQuery(attachmentId, inline), cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> ReviewAsync(
         Guid milestoneId,
@@ -259,8 +260,9 @@ public static class ProgressReportSubmissionEndpoints
     private static async Task<IResult> DownloadAsync(
         Guid fileId,
         GetProgressReportFileDownloadHandler handler,
-        CancellationToken cancellationToken)
-        => (await handler.HandleAsync(new GetProgressReportFileDownloadQuery(fileId), cancellationToken)).ToHttpResult();
+        CancellationToken cancellationToken,
+        bool inline = false)
+        => (await handler.HandleAsync(new GetProgressReportFileDownloadQuery(fileId, inline), cancellationToken)).ToHttpResult();
 
     public sealed record ReviewProgressReportRequest(string? Decision, string? Feedback);
 }

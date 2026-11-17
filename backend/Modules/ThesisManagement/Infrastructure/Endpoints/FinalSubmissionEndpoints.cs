@@ -47,8 +47,13 @@ public static class FinalSubmissionEndpoints
             .WithSummary("Lịch sử package và review, version giảm dần").Produces<ApiResponse<IReadOnlyList<FinalSubmissionPackageDto>>>();
         group.MapGet("/{id}/packages/{packageVersion}/files/{fileRole}/download", async (string id, string packageVersion, string fileRole,
             HttpRequest request, FinalSubmissionReadHandler handler, CancellationToken token) =>
-            !Query(request, []) || !Id(id, out var parsed) || !Positive(packageVersion, out var version) ? Invalid()
-                : (await handler.DownloadAsync(parsed, version, fileRole, token)).ToHttpResult())
+        {
+            var inline = false;
+            if (!Query(request, ["inline"]) || !Id(id, out var parsed) || !Positive(packageVersion, out var version)
+                || (request.Query.ContainsKey("inline") && !bool.TryParse(request.Query["inline"], out inline)))
+                return Invalid();
+            return (await handler.DownloadAsync(parsed, version, fileRole, token, inline)).ToHttpResult();
+        })
             .WithSummary("Kiểm tra quyền rồi cấp URL tải private TTL 300 giây").Produces<ApiResponse<FinalSubmissionDownloadDto>>();
         group.MapGet("", ListAsync).WithSummary("Faculty/PĐT/Admin hoặc GVHD xem danh sách trong scope")
             .Produces<ApiResponse<FinalSubmissionPageDto>>();

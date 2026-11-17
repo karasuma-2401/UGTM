@@ -327,6 +327,7 @@ export function useAdvisorArchival() {
         targetSubmissionId,
         packageVersion,
         'ThesisPdf',
+        { inline: true },
       );
       setPdfPreviewState({
         open: true,

@@ -274,6 +274,7 @@ export function useArchivalReview() {
         selectedSubmissionId,
         packageVersion,
         'ThesisPdf',
+        { inline: true },
       );
       setPdfPreviewState({
         open: true,

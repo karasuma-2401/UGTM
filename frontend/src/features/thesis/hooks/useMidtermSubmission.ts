@@ -5,6 +5,7 @@ import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches
 import { syllabusApi } from '../services/syllabusApi';
 import { midtermApi } from '../services/midtermApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
+import { triggerBrowserDownload } from '../utils/archival';
 import type { MidtermReportStatus } from '../types/midterm.types';
 
 export function useMidtermSubmission() {
@@ -97,7 +98,7 @@ export function useMidtermSubmission() {
       setActionError(null);
       const downloadInfo = await midtermApi.getDownloadUrl(fileId);
       if (downloadInfo?.downloadUrl) {
-        window.open(downloadInfo.downloadUrl, '_blank', 'noopener,noreferrer');
+        triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
       const errorMsg =

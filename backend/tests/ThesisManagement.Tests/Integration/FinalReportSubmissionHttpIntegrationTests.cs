@@ -43,7 +43,7 @@ using IdentityUser = UGTM.Modules.Identity.Domain.Entities.User;
 
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
-[Collection(PostgreSqlCollection.Name)]
+[Collection(FinalReportSubmissionPostgreSqlCollection.Name)]
 public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture fixture) : IAsyncLifetime
 {
     private static readonly DateTime Now = new(2026, 11, 16, 0, 0, 0, DateTimeKind.Utc);
@@ -315,10 +315,13 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         await AssertNoSubmissionAsync();
     }
 
-    [Fact]
-    public async Task A_closed_submission_window_returns_409_before_upload()
+    [Theory]
+    [InlineData("Closed", true)]
+    [InlineData("Open", false)]
+    public async Task A_closed_batch_or_submission_window_returns_409_before_upload(string batchStatus, bool isOpen)
     {
-        _batchReader.IsOpen = false;
+        _batchReader.BatchStatus = batchStatus;
+        _batchReader.IsOpen = isOpen;
         using var form = Form();
         using var response = await _client.PostAsync("/api/thesis/final-reports", form);
 
@@ -629,6 +632,12 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
             Downloads.Enqueue((objectKey, validFor));
             return Task.FromResult(new Uri($"https://storage.test/download/{Guid.NewGuid():N}?signature=test"));
         }
+        public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Downloads.Enqueue((objectKey, validFor));
+            return Task.FromResult(new Uri($"https://storage.test/download/{Guid.NewGuid():N}?signature=test&filename={Uri.EscapeDataString(downloadFileName)}"));
+        }
     }
 
     private sealed class TestAdvisorAssignments : ITopicAdvisorAssignmentContract
@@ -641,11 +650,12 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
 
     private sealed class TestBatchReader : IKltnBatchReader
     {
+        public string BatchStatus { get; set; } = "Open";
         public bool IsOpen { get; set; } = true;
         public DateTime OpensAtUtc { get; set; } = Now.AddDays(-1);
         public DateTime DeadlineAtUtc { get; set; } = Now.AddDays(1);
         public Task<BatchFinalReportSubmissionWindowContractDto?> GetFinalReportSubmissionWindowAsync(Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default)
-            => Task.FromResult<BatchFinalReportSubmissionWindowContractDto?>(new(batchId, "Open",
+            => Task.FromResult<BatchFinalReportSubmissionWindowContractDto?>(new(batchId, BatchStatus,
                 IsOpen && nowUtc >= OpensAtUtc && nowUtc <= DeadlineAtUtc, OpensAtUtc, DeadlineAtUtc));
         public Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<BatchRegistrationWindowContractDto?> GetRegistrationWindowAsync(Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();

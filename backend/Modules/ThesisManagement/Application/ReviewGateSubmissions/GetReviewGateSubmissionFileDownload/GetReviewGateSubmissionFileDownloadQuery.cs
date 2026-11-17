@@ -1,3 +1,3 @@
 namespace UGTM.Modules.ThesisManagement.Application.ReviewGateSubmissions.GetReviewGateSubmissionFileDownload;
 
-public sealed record GetReviewGateSubmissionFileDownloadQuery(Guid FileId);
+public sealed record GetReviewGateSubmissionFileDownloadQuery(Guid FileId, bool Inline = false);

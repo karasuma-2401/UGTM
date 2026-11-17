@@ -119,3 +119,75 @@ test('RichTextEditor helper functions normalize markdown and validate safe link 
   assert.equal(normalizeSafeLinkUrl('javascript:alert(1)'), null);
   assert.equal(normalizeSafeLinkUrl('   '), null);
 });
+
+test('RichTextEditor suppresses emitUpdate on setEditable and skips unchanged onUpdate calls', () => {
+  const editableCalls = [];
+  const changes = [];
+  let editorOptions;
+  const mockEditor = {
+    setEditable: (editable, emitUpdate) => editableCalls.push({ editable, emitUpdate }),
+    setOptions: () => {},
+    commands: { setContent: () => {}, focus: () => {} },
+    isActive: () => false,
+    can: () => ({ undo: () => false, redo: () => false }),
+    storage: { characterCount: { words: () => 0 } },
+    getAttributes: () => ({}),
+  };
+  let cursor = 0;
+  const refs = [];
+  const state = [];
+  const { RichTextEditor } = loadModule('components/ui/rich-text-editor.tsx', {
+    react: {
+      useId: () => 'rte-1',
+      useRef: (initial) => {
+        const index = cursor++;
+        if (!(index in refs)) refs[index] = { current: initial };
+        return refs[index];
+      },
+      useState: (initial) => {
+        const index = cursor++;
+        if (!(index in state)) state[index] = initial;
+        return [state[index], (v) => { state[index] = v; }];
+      },
+      useEffect: (fn) => { fn(); },
+    },
+    'react/jsx-runtime': jsxRuntime,
+    '@tiptap/react': {
+      EditorContent: 'EditorContent',
+      useEditor: (opts) => {
+        editorOptions = opts;
+        return mockEditor;
+      },
+      useEditorState: () => ({}),
+    },
+    '@tiptap/starter-kit': { default: { configure: () => ({}) } },
+    '@tiptap/extensions': {
+      CharacterCount: { configure: () => ({}) },
+      Placeholder: { configure: () => ({}) },
+    },
+    '@tiptap/markdown': { Markdown: {} },
+    'lucide-react': new Proxy({}, { get: (_, name) => String(name) }),
+    '@/lib/utils': { cn: (...parts) => parts.flat().filter(Boolean).join(' ') },
+    './button': { Button: 'Button' },
+    './dialog': { Dialog: 'Dialog' },
+  });
+
+  const previousRaf = globalThis.requestAnimationFrame;
+  const previousCancelRaf = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = () => 1;
+  globalThis.cancelAnimationFrame = () => {};
+  try {
+    cursor = 0;
+    RichTextEditor({ value: '', disabled: true, onChange: (val) => changes.push(val) });
+  } finally {
+    globalThis.requestAnimationFrame = previousRaf;
+    globalThis.cancelAnimationFrame = previousCancelRaf;
+  }
+  assert.deepEqual(editableCalls, [{ editable: false, emitUpdate: false }]);
+
+  editorOptions.onUpdate({ editor: { getMarkdown: () => '', isEmpty: true } });
+  assert.deepEqual(changes, []);
+
+  editorOptions.onUpdate({ editor: { getMarkdown: () => 'Góp ý mới', isEmpty: false } });
+  assert.deepEqual(changes, ['Góp ý mới']);
+});

@@ -66,9 +66,13 @@ public sealed class GetReviewGateSubmissionFileDownloadHandler(
             return Result.Failure<SubmissionFileDownloadDto>(ReviewGateSubmissionFileErrors.AccessDenied);
         }
 
-        var downloadUrl = await objectStorage.CreateDownloadUriAsync(
+        var downloadUrl = await ThesisDownloadUriHelper.CreateSignedUriAsync(
+            objectStorage,
             file.ObjectKey,
+            file.FileName,
+            file.FileExtension,
             DownloadUriLifetime,
+            query.Inline,
             cancellationToken);
         var now = timeProvider.GetUtcNow().UtcDateTime;
         return Result.Success(new SubmissionFileDownloadDto(

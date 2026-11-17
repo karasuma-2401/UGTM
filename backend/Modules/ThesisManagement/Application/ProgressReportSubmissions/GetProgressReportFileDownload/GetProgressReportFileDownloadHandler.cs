@@ -58,7 +58,14 @@ public sealed class GetProgressReportFileDownloadHandler(
             return Result.Failure<SubmissionFileDownloadDto>(ProgressReportErrors.AccessDenied);
         }
 
-        var downloadUrl = await objectStorage.CreateDownloadUriAsync(file.ObjectKey, DownloadUriLifetime, cancellationToken);
+        var downloadUrl = await ThesisDownloadUriHelper.CreateSignedUriAsync(
+            objectStorage,
+            file.ObjectKey,
+            file.FileName,
+            file.FileExtension,
+            DownloadUriLifetime,
+            query.Inline,
+            cancellationToken);
         var now = timeProvider.GetUtcNow().UtcDateTime;
         return Result.Success(new SubmissionFileDownloadDto(file.Id, downloadUrl.AbsoluteUri, now.Add(DownloadUriLifetime)));
     }

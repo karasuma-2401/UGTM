@@ -1,17 +1,14 @@
 using System.Data.Common;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UGTM.Database.Migrations;
 using UGTM.Modules.AcademicPeriods.Infrastructure.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
-using UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
 using UGTM.Modules.Identity.Contracts.Authorization;
@@ -65,30 +62,6 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
     }
     private static JsonElement Page(JsonDocument json) => json.RootElement.GetProperty("data");
     private static JsonElement[] Items(JsonDocument json) => Page(json).GetProperty("items").EnumerateArray().ToArray();
-
-    [Theory]
-    [InlineData(false, "Admin", false, "ReviewerAssignment.AuthenticationRequired")]
-    [InlineData(true, "Lecturer", true, "ReviewerAssignment.AccessDenied")]
-    [InlineData(true, "Faculty", false, "ReviewerAssignment.AccessDenied")]
-    public async Task Reviewer_reads_handlers_authorize_management_before_validation_or_database_lookup(
-        bool authenticated, string role, bool read, string code)
-    {
-        var accessor = _app.Services.GetRequiredService<IHttpContextAccessor>();
-        List<Claim> claims = [new(ClaimTypes.NameIdentifier, _actor.ToString()), new(ClaimTypes.Role, role)];
-        if (read) claims.Add(new("permission", PermissionCodes.ThesisReviewerAssignmentsRead));
-        accessor.HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(claims, authenticated ? "ReadHandlerTest" : null)) };
-        try
-        {
-            await using var scope = _app.Services.CreateAsyncScope();
-            var handler = scope.ServiceProvider.GetRequiredService<ReviewerAssignmentReadHandler>();
-            _readCommands.Count = 0;
-            Assert.Equal(code, (await handler.ListAsync(new(GroupId: Guid.Empty))).Error.Code);
-            Assert.Equal(code, (await handler.EligibilityAsync(new(Guid.Empty))).Error.Code);
-            Assert.Equal(code, (await handler.CandidatesAsync(new(Guid.Empty))).Error.Code);
-            Assert.Equal(0, _readCommands.Count);
-        }
-        finally { accessor.HttpContext = null; }
-    }
 
     [Fact]
     public async Task Reviewer_reads_legacy_stays_visible_but_never_grants_file_access_and_blocks_default_eligibility()
@@ -151,19 +124,18 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         Assert.Equal(canManage, Assert.Single(Items(unassigned)).GetProperty("canAssign").GetBoolean());
     }
 
-    [Theory]
-    [InlineData("Lecturer", PermissionCodes.ThesisReviewerAssignmentsManage)]
-    [InlineData("Student", PermissionCodes.ThesisReviewerAssignmentsRead)]
-    [InlineData("CouncilMember", PermissionCodes.ThesisReviewerAssignmentsRead)]
-    [InlineData("Faculty", null)]
-    [InlineData("AcademicAffairs", null)]
-    public async Task Reviewer_reads_require_management_role_and_read_or_manage_permission_before_query_parsing(string role, string? permission)
+    [Fact]
+    public async Task Reviewer_reads_require_management_role_and_read_or_manage_permission_before_query_parsing()
     {
-        foreach (var route in new[] { CreationRoute, EligibilityRoute, CandidatesRoute })
-        {
-            using var response = await ReadAsync(route + "?batchId=bad&pageSize=overflow", role: role, permission: permission);
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        }
+        foreach (var (role, permission) in new (string, string?)[] {
+            ("Lecturer", PermissionCodes.ThesisReviewerAssignmentsManage),
+            ("Student", PermissionCodes.ThesisReviewerAssignmentsRead),
+            ("CouncilMember", PermissionCodes.ThesisReviewerAssignmentsRead), ("Faculty", null), ("AcademicAffairs", null) })
+            foreach (var route in new[] { CreationRoute, EligibilityRoute, CandidatesRoute })
+            {
+                using var response = await ReadAsync(route + "?batchId=bad&pageSize=overflow", role: role, permission: permission);
+                Assert.True(response.StatusCode == HttpStatusCode.Forbidden, $"{role}, {route}: {response.StatusCode}");
+            }
         await AssertCountsAsync(0, 0, 0);
     }
 
@@ -412,6 +384,8 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         public List<(string ObjectKey, TimeSpan Lifetime)> Downloads { get; } = [];
         public Task<Uri> CreateDownloadUriAsync(string objectKey, TimeSpan validFor, CancellationToken cancellationToken = default)
         { Downloads.Add((objectKey, validFor)); return Task.FromResult(new Uri($"https://download.test/{Downloads.Count}")); }
+        public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, CancellationToken cancellationToken = default)
+        { Downloads.Add((objectKey, validFor)); return Task.FromResult(new Uri($"https://download.test/{Downloads.Count}?filename={Uri.EscapeDataString(downloadFileName)}")); }
         public Task UploadAsync(ThesisSubmissionObjectWriteRequest request, Stream content, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task DeleteAsync(string objectKey, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }

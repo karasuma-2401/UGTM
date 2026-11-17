@@ -233,9 +233,10 @@ public static class SyllabusSubmissionEndpoints
     private static async Task<IResult> GetDownloadAsync(
         Guid fileId,
         GetReviewGateSubmissionFileDownloadHandler handler,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool inline = false)
         => (await handler.HandleAsync(
-            new GetReviewGateSubmissionFileDownloadQuery(fileId),
+            new GetReviewGateSubmissionFileDownloadQuery(fileId, inline),
             cancellationToken)).ToHttpResult();
 
     public sealed record ReviewSyllabusRequest(string? Decision, string? Feedback);

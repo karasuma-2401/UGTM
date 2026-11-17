@@ -54,6 +54,7 @@ import {
   buildStudentScoresPayload,
   getStudentInitials,
 } from '@/features/thesis/utils/gradingRubricHelper';
+import { triggerBrowserDownload } from '@/features/thesis/utils/archival';
 import { getThesisErrorMessage } from '@/features/thesis/utils/thesisErrors';
 import { finalReportApi } from '@/features/thesis/services/finalReportApi';
 import { councilGradingApi } from '../services/councilGradingApi';
@@ -459,7 +460,7 @@ export function CouncilGradingPage() {
   async function downloadRevisedReport(fileId: string) {
     try {
       const result = await finalReportApi.getDownloadUrl(fileId);
-      window.open(result.downloadUrl, '_blank', 'noopener,noreferrer');
+      triggerBrowserDownload(result.downloadUrl);
     } catch (error) {
       notify.error(getThesisErrorMessage(error, 'Không thể tải bản báo cáo chỉnh sửa.'));
     }

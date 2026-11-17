@@ -42,7 +42,9 @@ public static class CampusPresence
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = 600, Window = TimeSpan.FromMinutes(1), QueueLimit = 0
+                    PermitLimit = 600,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
                 })));
         return services;
     }

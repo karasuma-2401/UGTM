@@ -2,6 +2,38 @@ import { STANDARD_7_STAGES } from '../types/period.types';
 
 export const DEFAULT_STAGE_WEEKS: readonly number[] = [1, 1, 7, 1, 8, 2, 1];
 
+export interface GateTimeInput {
+  initial: string;
+  faculty: string;
+  final: string;
+}
+
+export function toLocalDateInput(utcStr?: string | null): string {
+  if (!utcStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(utcStr)) {
+    return utcStr;
+  }
+  try {
+    const d = new Date(utcStr);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  } catch {
+    return '';
+  }
+}
+
+export function computeDefaultGateSchedule(deadlineDate?: string | null): GateTimeInput {
+  if (!deadlineDate) {
+    return { initial: '', faculty: '', final: '' };
+  }
+  return {
+    initial: addDaysToDateString(deadlineDate, -5),
+    faculty: addDaysToDateString(deadlineDate, -2),
+    final: deadlineDate,
+  };
+}
+
 export function getTodayDateString(): string {
   const today = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');

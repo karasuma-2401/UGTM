@@ -188,6 +188,8 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         { Objects.Add(request.ObjectKey); return Task.CompletedTask; }
         public Task<Uri> CreateDownloadUriAsync(string objectKey, TimeSpan validFor, CancellationToken cancellationToken = default)
             => Task.FromResult(new Uri("https://storage.test/"));
+        public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, CancellationToken cancellationToken = default)
+            => Task.FromResult(new Uri($"https://storage.test/?filename={Uri.EscapeDataString(downloadFileName)}"));
         public Task DeleteAsync(string objectKey, CancellationToken cancellationToken = default)
         {
             if (FailNextDelete) { FailNextDelete = false; throw new IOException("delete failed"); }

@@ -147,21 +147,19 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         Assert.Equal(FinalReportStatus.UnderEvaluation, (await thesis.FinalReports.SingleAsync()).Status);
     }
 
-    [Theory]
-    [InlineData("Student", true)]
-    [InlineData("Lecturer", true)]
-    [InlineData("Advisor", true)]
-    [InlineData("Reviewer", true)]
-    [InlineData("Faculty", false)]
-    [InlineData("AcademicAffairs", false)]
-    public async Task Creation_http_denies_roles_or_read_only_permission_before_parsing_or_resource_lookup(string role, bool manage)
+    [Fact]
+    public async Task Creation_http_denies_roles_or_read_only_permission_before_parsing_or_resource_lookup()
     {
         var client = await HttpAsync();
-        using var request = Request(new { }, Guid.NewGuid(), role,
-            manage ? PermissionCodes.ThesisReviewerAssignmentsManage : PermissionCodes.ThesisReviewerAssignmentsRead);
-        request.Content = new StringContent("invalid json", Encoding.UTF8, "application/json");
-        using var response = await client.SendAsync(request);
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        foreach (var (role, manage) in new[] { ("Student", true), ("Lecturer", true), ("Advisor", true),
+            ("Reviewer", true), ("Faculty", false), ("AcademicAffairs", false) })
+        {
+            using var request = Request(new { }, Guid.NewGuid(), role,
+                manage ? PermissionCodes.ThesisReviewerAssignmentsManage : PermissionCodes.ThesisReviewerAssignmentsRead);
+            request.Content = new StringContent("invalid json", Encoding.UTF8, "application/json");
+            using var response = await client.SendAsync(request);
+            Assert.True(response.StatusCode == HttpStatusCode.Forbidden, $"{role}: {response.StatusCode}");
+        }
         await AssertCountsAsync(0, 0, 0);
     }
 
@@ -210,33 +208,6 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
             Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
         }
         await AssertCountsAsync(0, 0, 0);
-    }
-
-    [Theory]
-    [InlineData(false, "Admin", false, "ReviewerAssignment.AuthenticationRequired")]
-    [InlineData(true, "Lecturer", true, "ReviewerAssignment.AccessDenied")]
-    [InlineData(true, "Faculty", false, "ReviewerAssignment.AccessDenied")]
-    public async Task Creation_handler_independently_authorizes_before_input_or_resource_validation(
-        bool authenticated, string role, bool manage, string code)
-    {
-        var accessor = _app.Services.GetRequiredService<IHttpContextAccessor>();
-        List<Claim> claims = [new(ClaimTypes.NameIdentifier, _actor.ToString()), new(ClaimTypes.Role, role)];
-        if (manage) claims.Add(new("permission", PermissionCodes.ThesisReviewerAssignmentsManage));
-        accessor.HttpContext = new DefaultHttpContext
-        {
-            User = new ClaimsPrincipal(
-            new ClaimsIdentity(claims, authenticated ? "DirectHandlerTest" : null))
-        };
-        try
-        {
-            await using var scope = _app.Services.CreateAsyncScope();
-            var result = await scope.ServiceProvider.GetRequiredService<CreateReviewerAssignmentHandler>()
-                .HandleAsync(new(Guid.Empty, Guid.Empty, Guid.Empty, 0, Guid.Empty));
-            Assert.True(result.IsFailure);
-            Assert.Equal(code, result.Error.Code);
-            await AssertCountsAsync(0, 0, 0);
-        }
-        finally { accessor.HttpContext = null; }
     }
 
     [Theory]

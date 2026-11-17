@@ -170,8 +170,8 @@ export const PeriodPage: React.FC = () => {
         open={modals.isGateDetailsOpen}
         onClose={() => modals.setIsGateDetailsOpen(false)}
         canEdit={permissions.canEdit}
-        syllabusGate={data.syllabusGate}
-        midtermGate={data.midtermGate}
+        syllabusGateDraft={form.syllabusGateDraft}
+        midtermGateDraft={form.midtermGateDraft}
         defaultSyllabusDeadline={form.syllabusDeadline}
         defaultMidtermDeadline={form.midtermDeadline}
         onSaveGates={actions.handleSaveGates}

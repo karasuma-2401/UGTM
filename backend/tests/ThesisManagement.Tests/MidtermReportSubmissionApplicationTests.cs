@@ -343,6 +343,13 @@ public sealed class MidtermReportSubmissionApplicationTests
             CancellationToken cancellationToken = default)
             => Task.FromResult(new Uri($"https://storage.example/{objectKey}"));
 
+        public Task<Uri> CreateDownloadUriAsync(
+            string objectKey,
+            string downloadFileName,
+            TimeSpan validFor,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(new Uri($"https://storage.example/{objectKey}?filename={Uri.EscapeDataString(downloadFileName)}"));
+
         public Task DeleteAsync(string objectKey, CancellationToken cancellationToken = default)
         {
             UploadedObjectKeys.Remove(objectKey);

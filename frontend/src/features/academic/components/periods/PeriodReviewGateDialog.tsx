@@ -3,52 +3,29 @@ import { AlertCircle, Sparkles, CheckCircle2 } from 'lucide-react';
 import { DatePicker } from '@/components/ui/calendar';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { addDaysToDateString } from '../../utils/periodDates';
-import type { ReviewGateConfigurationDto } from '../../types/period.types';
+import {
+  type GateTimeInput,
+  addDaysToDateString,
+  computeDefaultGateSchedule,
+} from '../../utils/periodDates';
 
 interface PeriodReviewGateDialogProps {
   open: boolean;
   onClose: () => void;
   canEdit: boolean;
-  syllabusGate?: ReviewGateConfigurationDto | null;
-  midtermGate?: ReviewGateConfigurationDto | null;
+  syllabusGateDraft?: GateTimeInput;
+  midtermGateDraft?: GateTimeInput;
   defaultSyllabusDeadline?: string;
   defaultMidtermDeadline?: string;
-  onSaveGates: (
-    syllabus: {
-      initial: string;
-      faculty: string;
-      final: string;
-    },
-    midterm: {
-      initial: string;
-      faculty: string;
-      final: string;
-    },
-  ) => Promise<void>;
-}
-
-function toLocalDateInput(utcStr?: string): string {
-  if (!utcStr) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(utcStr)) {
-    return utcStr;
-  }
-  try {
-    const d = new Date(utcStr);
-    if (isNaN(d.getTime())) return '';
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  } catch {
-    return '';
-  }
+  onSaveGates: (syllabus: GateTimeInput, midterm: GateTimeInput) => void;
 }
 
 export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
   open,
   onClose,
   canEdit,
-  syllabusGate,
-  midtermGate,
+  syllabusGateDraft,
+  midtermGateDraft,
   defaultSyllabusDeadline,
   defaultMidtermDeadline,
   onSaveGates,
@@ -63,7 +40,6 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
   const [mFaculty, setMFaculty] = useState('');
   const [mFinal, setMFinal] = useState('');
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fluent animation và feedback states
@@ -72,47 +48,35 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
 
   useEffect(() => {
     if (open) {
-      const savedSInitial = toLocalDateInput(syllabusGate?.initialSubmissionDeadlineUtc);
-      const savedSFaculty = toLocalDateInput(syllabusGate?.facultyResponseDeadlineUtc);
-      const savedSFinal = toLocalDateInput(syllabusGate?.finalClosureDeadlineUtc);
+      const nextSyllabus =
+        syllabusGateDraft &&
+        (syllabusGateDraft.initial || syllabusGateDraft.faculty || syllabusGateDraft.final)
+          ? syllabusGateDraft
+          : computeDefaultGateSchedule(defaultSyllabusDeadline);
+      setSInitial(nextSyllabus.initial);
+      setSFaculty(nextSyllabus.faculty);
+      setSFinal(nextSyllabus.final);
 
-      if (savedSInitial || savedSFaculty || savedSFinal) {
-        setSInitial(savedSInitial);
-        setSFaculty(savedSFaculty);
-        setSFinal(savedSFinal);
-      } else if (defaultSyllabusDeadline) {
-        setSFinal(defaultSyllabusDeadline);
-        setSFaculty(addDaysToDateString(defaultSyllabusDeadline, -2));
-        setSInitial(addDaysToDateString(defaultSyllabusDeadline, -5));
-      } else {
-        setSInitial('');
-        setSFaculty('');
-        setSFinal('');
-      }
-
-      const savedMInitial = toLocalDateInput(midtermGate?.initialSubmissionDeadlineUtc);
-      const savedMFaculty = toLocalDateInput(midtermGate?.facultyResponseDeadlineUtc);
-      const savedMFinal = toLocalDateInput(midtermGate?.finalClosureDeadlineUtc);
-
-      if (savedMInitial || savedMFaculty || savedMFinal) {
-        setMInitial(savedMInitial);
-        setMFaculty(savedMFaculty);
-        setMFinal(savedMFinal);
-      } else if (defaultMidtermDeadline) {
-        setMFinal(defaultMidtermDeadline);
-        setMFaculty(addDaysToDateString(defaultMidtermDeadline, -2));
-        setMInitial(addDaysToDateString(defaultMidtermDeadline, -5));
-      } else {
-        setMInitial('');
-        setMFaculty('');
-        setMFinal('');
-      }
+      const nextMidterm =
+        midtermGateDraft &&
+        (midtermGateDraft.initial || midtermGateDraft.faculty || midtermGateDraft.final)
+          ? midtermGateDraft
+          : computeDefaultGateSchedule(defaultMidtermDeadline);
+      setMInitial(nextMidterm.initial);
+      setMFaculty(nextMidterm.faculty);
+      setMFinal(nextMidterm.final);
 
       setError(null);
       setJustApplied(false);
       setIsFlashing(false);
     }
-  }, [open, syllabusGate, midtermGate, defaultSyllabusDeadline, defaultMidtermDeadline]);
+  }, [
+    open,
+    syllabusGateDraft,
+    midtermGateDraft,
+    defaultSyllabusDeadline,
+    defaultMidtermDeadline,
+  ]);
 
   const handleApplyDefaults = () => {
     if (activeTab === 'Syllabus' && defaultSyllabusDeadline) {
@@ -136,36 +100,38 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     setError(null);
 
-    if (sInitial && sFaculty && sFinal) {
+    const hasAnySyllabus = Boolean(sInitial || sFaculty || sFinal);
+    if (hasAnySyllabus) {
+      if (!sInitial || !sFaculty || !sFinal) {
+        setError('Cổng Đề cương: Vui lòng nhập đầy đủ cả 3 mốc ngày.');
+        return;
+      }
       if (sInitial >= sFaculty || sFaculty >= sFinal) {
         setError('Cổng Đề cương: Hạn sinh viên nộp < Hạn Khoa phản hồi < Hạn chót đóng cổng.');
         return;
       }
     }
 
-    if (mInitial && mFaculty && mFinal) {
+    const hasAnyMidterm = Boolean(mInitial || mFaculty || mFinal);
+    if (hasAnyMidterm) {
+      if (!mInitial || !mFaculty || !mFinal) {
+        setError('Cổng Giữa kỳ: Vui lòng nhập đầy đủ cả 3 mốc ngày.');
+        return;
+      }
       if (mInitial >= mFaculty || mFaculty >= mFinal) {
         setError('Cổng Giữa kỳ: Hạn sinh viên nộp < Hạn Khoa phản hồi < Hạn chót đóng cổng.');
         return;
       }
     }
 
-    setIsSubmitting(true);
-    try {
-      await onSaveGates(
-        { initial: sInitial, faculty: sFaculty, final: sFinal },
-        { initial: mInitial, faculty: mFaculty, final: mFinal },
-      );
-      onClose();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Có lỗi khi lưu cổng thẩm định.';
-      setError(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
+    onSaveGates(
+      { initial: sInitial, faculty: sFaculty, final: sFinal },
+      { initial: mInitial, faculty: mFaculty, final: mFinal },
+    );
+    onClose();
   };
 
   return (
@@ -455,11 +421,10 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
             <Button
               type="button"
               size="sm"
-              disabled={isSubmitting}
               onClick={handleSave}
               className="rounded-xl bg-brand-solid text-white font-semibold text-xs h-9 px-5 shadow-sm active:scale-[0.98] transition-all hover:bg-brand-solid-hover"
             >
-              {isSubmitting ? 'Đang lưu...' : 'Lưu cổng thẩm định'}
+              Lưu cổng thẩm định
             </Button>
           )}
         </div>

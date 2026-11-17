@@ -1,5 +1,6 @@
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
+import { buildDownloadRequestConfig, type DownloadUrlOptions } from '../utils/archival';
 import { buildUploadProgressHandler } from './submissionUploadHelper';
 import type {
   ProgressMilestoneDto,
@@ -111,16 +112,24 @@ export const milestoneApi = {
     return unwrap(response.data);
   },
 
-  async getDownloadUrl(fileId: string): Promise<SubmissionFileDownloadDto> {
+  async getDownloadUrl(
+    fileId: string,
+    optionsOrSignal?: DownloadUrlOptions | AbortSignal,
+  ): Promise<SubmissionFileDownloadDto> {
     const response = await httpClient.get<ApiResponse<SubmissionFileDownloadDto>>(
-      `/api/thesis/progress-report-files/${fileId}/download`
+      `/api/thesis/progress-report-files/${fileId}/download`,
+      buildDownloadRequestConfig(optionsOrSignal),
     );
     return unwrap(response.data);
   },
 
-  async getAttachmentUrl(attachmentId: string): Promise<SubmissionFileDownloadDto> {
+  async getAttachmentUrl(
+    attachmentId: string,
+    optionsOrSignal?: DownloadUrlOptions | AbortSignal,
+  ): Promise<SubmissionFileDownloadDto> {
     const response = await httpClient.get<ApiResponse<SubmissionFileDownloadDto>>(
-      `/api/thesis/progress-report-attachments/${attachmentId}/download`
+      `/api/thesis/progress-report-attachments/${attachmentId}/download`,
+      buildDownloadRequestConfig(optionsOrSignal),
     );
     return unwrap(response.data);
   },
