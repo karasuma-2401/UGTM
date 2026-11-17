@@ -143,6 +143,7 @@ export function TopicReviewDialog({
     queryKey: ['topic-review', user?.id, 'detail', topicId],
     queryFn: ({ signal }) => topicReviewApi.getDetail(topicId, signal),
     staleTime: 0,
+    refetchOnWindowFocus: false,
   });
 
   const topic = detail.data;
@@ -320,7 +321,7 @@ export function TopicReviewDialog({
         ) : (
           topic && (
             <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.1fr)_minmax(430px,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-line-subtle lg:overflow-hidden">
-              <div className="min-h-0 bg-surface-card lg:overflow-y-auto">
+              <div className="bg-surface-card lg:min-h-0 lg:overflow-y-auto">
                 <TopicPreview
                   reviewNote={topic.reviewNote}
                   values={{
@@ -467,6 +468,7 @@ export function TopicReviewDialog({
                             ) : undefined
                           }
                           onChange={(nextValue) => {
+                            if (nextValue === reviewNote) return;
                             setReviewNote(nextValue);
                             setNoteError('');
                             setConfirmation(null);

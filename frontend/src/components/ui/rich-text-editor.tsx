@@ -183,6 +183,7 @@ export function RichTextEditor({
       },
       onUpdate: ({ editor: currentEditor }) => {
         const next = normalizeRichTextMarkdown(currentEditor.getMarkdown(), currentEditor.isEmpty);
+        if (next === lastSerializedRef.current) return;
         lastSerializedRef.current = next;
         onChangeRef.current(next);
       },
@@ -192,7 +193,7 @@ export function RichTextEditor({
 
   useEffect(() => {
     if (!editor) return;
-    editor.setEditable(!isLocked);
+    editor.setEditable(!isLocked, false);
   }, [editor, isLocked]);
 
   useEffect(() => {
