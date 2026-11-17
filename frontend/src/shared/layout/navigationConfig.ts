@@ -208,7 +208,7 @@ export const navigationSections: NavSectionConfig[] = [
   {
     id: 'admin',
     title: 'Hệ thống',
-    roles: ['Admin'],
+    roles: ['Admin', 'AcademicAffairs'],
     items: [
       {
         label: 'Tài khoản và Phân quyền',
@@ -219,6 +219,7 @@ export const navigationSections: NavSectionConfig[] = [
         label: 'Nhật ký hoạt động',
         path: '/admin/audit-logs',
         icon: ScrollText,
+        roles: ['Admin'],
       },
     ],
   },

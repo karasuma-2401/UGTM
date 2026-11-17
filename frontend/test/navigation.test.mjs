@@ -36,10 +36,17 @@ function loadModule(path, dependencies = {}) {
   return exports;
 }
 
-function renderStudentLayout(pathname) {
+function renderLayout(
+  pathname,
+  {
+    roles = ['Student'],
+    permissions = [],
+  } = {},
+) {
   const { navigationSections } = loadModule('shared/layout/navigationConfig.ts', {
     'lucide-react': icons,
   });
+  const { getIdentityAccess } = loadModule('shared/auth/identityAccess.ts', {});
   const Link = ({ to, children, ...props }) =>
     React.createElement('a', { ...props, href: to }, children);
   const { SidebarNavigation } = loadModule('shared/layout/SidebarNavigation.tsx', {
@@ -52,6 +59,8 @@ function renderStudentLayout(pathname) {
       Badge: ({ children }) => React.createElement('span', null, children),
     },
   });
+  const hasPermission = (required) =>
+    (Array.isArray(required) ? required : [required]).some((perm) => permissions.includes(perm));
   const { AppLayout } = loadModule('shared/layout/AppLayout.tsx', {
     react: React,
     'react/jsx-runtime': jsxRuntime,
@@ -73,17 +82,17 @@ function renderStudentLayout(pathname) {
     '@/components/ui/input': { Input: () => React.createElement('input') },
     '@/shared/auth': {
       useAuth: () => ({
-        user: { fullName: 'Sinh viên thử nghiệm', roles: ['Student'] },
+        user: { fullName: 'Người dùng thử nghiệm', roles },
         hasRole: (required) =>
-          (Array.isArray(required) ? required : [required]).some(
-            (role) => role.toLowerCase() === 'student',
+          (Array.isArray(required) ? required : [required]).some((role) =>
+            roles.some((actual) => actual.toLowerCase() === role.toLowerCase()),
           ),
-        hasPermission: () => false,
+        hasPermission,
         logout: async () => {},
         isLoggingOut: false,
       }),
     },
-    '@/shared/auth/identityAccess': { getIdentityAccess: () => ({ canAccess: false }) },
+    '@/shared/auth/identityAccess': { getIdentityAccess },
     '@/shared/theme': {
       ThemeToggle: () => null,
       useTheme: () => ({ theme: 'system', resolvedTheme: 'light', setTheme: () => {}, toggleTheme: () => {} }),
@@ -106,7 +115,7 @@ test('Báo cáo và tiến độ defaults to /thesis/milestones and highlights s
     '/thesis/midterm',
     '/thesis/final-report',
   ]) {
-    const { markup } = renderStudentLayout(route);
+    const { markup } = renderLayout(route, { roles: ['Student'] });
     const sidebarMarkup = markup.match(/<aside[\s\S]*?<\/aside>/)?.[0] ?? '';
     const progressAnchor =
       sidebarMarkup.match(/<a[^>]*aria-label="Báo cáo và tiến độ"[^>]*>/)?.[0] ?? '';
@@ -119,4 +128,51 @@ test('Báo cáo và tiến độ defaults to /thesis/milestones and highlights s
       sidebarMarkup.match(/<a[^>]*aria-label="Hồ sơ lưu chiểu"[^>]*>/)?.[0] ?? '';
     assert.doesNotMatch(archivalAnchor, /aria-current="page"/);
   }
+});
+
+test('AcademicAffairs with identity.users.read sees Tài khoản và Phân quyền (without audit logs or permissions tab)', () => {
+  const { markup } = renderLayout('/modules/identity/students', {
+    roles: ['AcademicAffairs'],
+    permissions: ['identity.users.read', 'identity.users.import'],
+  });
+  const sidebarMarkup = markup.match(/<aside[\s\S]*?<\/aside>/)?.[0] ?? '';
+
+  const identityAnchor =
+    sidebarMarkup.match(/<a[^>]*aria-label="Tài khoản và Phân quyền"[^>]*>/)?.[0] ?? '';
+  assert.match(identityAnchor, /href="\/modules\/identity"/);
+  assert.match(identityAnchor, /aria-current="page"/);
+  assert.doesNotMatch(sidebarMarkup, /href="\/admin\/audit-logs"/);
+
+  const { getIdentityAccess } = loadModule('shared/auth/identityAccess.ts', {});
+  const NavLink = ({ to, children, className }) =>
+    React.createElement(
+      'a',
+      { href: to, className: typeof className === 'function' ? className({ isActive: false }) : className },
+      children,
+    );
+  const { IdentityNavigation } = loadModule(
+    'features/identity/components/users/IdentityNavigation.tsx',
+    {
+      'react/jsx-runtime': jsxRuntime,
+      'react-router-dom': {
+        NavLink,
+        useLocation: () => ({ pathname: '/modules/identity/students' }),
+        useNavigate: () => () => {},
+      },
+      '@/components/ui/selection-indicator': { SelectionIndicator: () => null },
+      'lucide-react': icons,
+      '@/shared/auth': {
+        useAuth: () => ({
+          hasPermission: (perm) => ['identity.users.read', 'identity.users.import'].includes(perm),
+        }),
+      },
+      '@/shared/auth/identityAccess': { getIdentityAccess },
+      '@/lib/utils': { cn: (...parts) => parts.filter(Boolean).join(' ') },
+    },
+  );
+
+  const navHtml = renderToStaticMarkup(React.createElement(IdentityNavigation));
+  assert.match(navHtml, /href="\/modules\/identity\/students"/);
+  assert.match(navHtml, /href="\/modules\/identity\/staff"/);
+  assert.doesNotMatch(navHtml, /href="\/modules\/identity\/permissions"/);
 });
