@@ -88,7 +88,7 @@ export function ForgotPasswordPage() {
             leftIcon={<Mail size={16} />}
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
-            className="bg-white border-[#cbd7e8] h-[39px]"
+            className="bg-surface-card border-[#cbd7e8] h-[39px]"
           />
           {identifier.trim() && (
             <p className="auth-hint">
@@ -113,7 +113,7 @@ export function ForgotPasswordPage() {
                 {value === 'email' ? (
                   <small>Khuyên dùng</small>
                 ) : (
-                  <small className="text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded ml-1 font-normal">Sắp hỗ trợ</small>
+                  <small className="text-tone-warning-icon bg-tone-warning-bg px-1.5 py-0.5 rounded ml-1 font-normal">Sắp hỗ trợ</small>
                 )}
                 <p>
                   {value === 'email'
@@ -152,7 +152,7 @@ export function ForgotPasswordPage() {
           loadingText="Đang gửi mã OTP…"
           rightIcon={<ArrowRight size={16} />}
         >
-          Gửi mã xác thực & Tiếp tục
+          Gửi mã xác thực và Tiếp tục
         </Button>
       </form>
       <p className="auth-bottom">

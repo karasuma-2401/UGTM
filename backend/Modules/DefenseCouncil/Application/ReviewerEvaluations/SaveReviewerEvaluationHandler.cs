@@ -1,0 +1,201 @@
+using System.Text.Json;
+using UGTM.BuildingBlocks.Application.Caching;
+using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.AcademicPeriods.Contracts.ReviewerAssignments;
+using UGTM.Modules.DefenseCouncil.Application.Common;
+using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Persistence;
+using UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments;
+using UGTM.Modules.DefenseCouncil.Domain.Entities;
+using UGTM.Modules.DefenseCouncil.Domain.Repositories;
+using UGTM.Modules.Identity.Contracts.Authorization;
+
+namespace UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations;
+
+public sealed class SaveReviewerEvaluationHandler(
+    IReviewerAssignmentWorkflowContract workflow, IReviewerAssignmentTransactionCoordinator coordinator,
+    IReviewerAssignmentRepository assignments, IReviewerEvaluationRepository evaluations,
+    IReviewerEvaluationIdempotencyRepository receipts, IReviewerAssignmentBatchReader batches,
+    ReviewerEvaluationAuthorization authorization, ReviewerEvaluationAudit audit, ICurrentUser currentUser, TimeProvider timeProvider,
+    ICacheService? cache = null)
+{
+    private const string Operation = "ReviewerEvaluation.Save";
+
+    public async Task<Result<SaveReviewerEvaluationResponse>> HandleAsync(SaveReviewerEvaluationCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (!currentUser.IsAuthenticated || currentUser.UserId is not { } actor || actor == Guid.Empty)
+            return Result.Failure<SaveReviewerEvaluationResponse>(ReviewerEvaluationErrors.AuthenticationRequired);
+        if (!ReviewerEvaluationAuthorization.CanWrite(currentUser.Roles))
+            return Result.Failure<SaveReviewerEvaluationResponse>(ReviewerEvaluationErrors.AccessDenied);
+        var normalized = ReviewerEvaluationInput.Normalize(command);
+        if (normalized.IsFailure) return Result.Failure<SaveReviewerEvaluationResponse>(normalized.Error);
+        command = normalized.Value;
+        var snapshot = await assignments.GetByIdAsync(command.AssignmentId, cancellationToken);
+        if (snapshot is null) return Result.Failure<SaveReviewerEvaluationResponse>(ReviewerEvaluationErrors.AssignmentNotFound);
+        if (!await authorization.CanAccessAsync(snapshot, true, cancellationToken))
+            return Result.Failure<SaveReviewerEvaluationResponse>(ReviewerEvaluationErrors.AccessDenied);
+        try
+        {
+            var result = await coordinator.ExecuteWithPostSaveAsync(
+                token => SaveAsync(command, actor, snapshot, ReviewerEvaluationInput.Fingerprint(command), token),
+                CompleteReceiptAsync, cancellationToken);
+            if (result.Error is { } error)
+            {
+                return Result.Failure<SaveReviewerEvaluationResponse>(error);
+            }
+
+            await DefenseCouncilCacheKeys.InvalidateGlobalAsync(cache, cancellationToken);
+            return Result.Success(new SaveReviewerEvaluationResponse(result.Response!, result.StatusCode));
+        }
+        catch (DefenseCouncilConcurrencyException) { return Result.Failure<SaveReviewerEvaluationResponse>(ReviewerEvaluationErrors.ConcurrencyConflict); }
+        catch (DefenseCouncilUniqueConstraintException) { return Result.Failure<SaveReviewerEvaluationResponse>(ReviewerEvaluationErrors.ConcurrencyConflict); }
+    }
+
+    private async Task<ReviewerAssignmentTransactionResult<SaveResult>> SaveAsync(SaveReviewerEvaluationCommand command,
+        Guid actor, ReviewerAssignment snapshot, string fingerprint, CancellationToken token)
+    {
+        await receipts.LockRequestAsync(actor, Operation, command.IdempotencyKey, token);
+        // A request can wait behind another receipt writer; do not replay on a revoked account.
+        if (!await authorization.CanAccessAsync(snapshot, true, token)) return Abort(ReviewerEvaluationErrors.AccessDenied);
+        var prior = await receipts.GetAsync(actor, Operation, command.IdempotencyKey, token);
+        if (prior is not null)
+        {
+            if (prior.RequestFingerprint != fingerprint) return Abort(ReviewerEvaluationErrors.IdempotencyConflict);
+            var response = JsonSerializer.Deserialize<ReviewerEvaluationDto>(prior.ResponsePayloadJson)
+                ?? throw new InvalidOperationException("The committed evaluation receipt is invalid.");
+            return ReviewerAssignmentTransactionResult<SaveResult>.Abort(new(Response: response, StatusCode: prior.ResponseStatusCode));
+        }
+        if (snapshot.IsLegacy) return Abort(ReviewerEvaluationErrors.LegacyRecordNeedsResolution);
+        var early = await evaluations.GetByAssignmentAsync(snapshot.Id, token);
+        if (early?.IsLegacy == true) return Abort(ReviewerEvaluationErrors.LegacyRecordNeedsResolution);
+        if (early?.IsLocked == true) return Abort(ReviewerEvaluationErrors.Locked);
+
+        // The existing guard holds all owner locks and the parent assignment to commit.
+        var access = await workflow.LockForEvaluationAsync(snapshot.Id, snapshot.ReviewerId, token);
+        if (access is null) return Abort(ReviewerEvaluationErrors.NotEligible);
+        if (access.AssignmentVersion != command.ExpectedAssignmentVersion) return Abort(ReviewerEvaluationErrors.AssignmentVersionConflict);
+        var batch = await batches.GetAsync(access.Binding.BatchId, token);
+        if (batch is null) return Abort(ReviewerEvaluationErrors.ContextInvalid);
+        if (!batch.IsOpen) return Abort(ReviewerEvaluationErrors.BatchNotOpen);
+        var assignment = await assignments.GetByIdAsync(snapshot.Id, token)
+            ?? throw new InvalidOperationException("The locked assignment disappeared.");
+        var evaluation = await evaluations.LockByAssignmentAsync(snapshot.Id, token);
+        if (evaluation?.IsLegacy == true) return Abort(ReviewerEvaluationErrors.LegacyRecordNeedsResolution);
+        if (evaluation?.IsLocked == true) return Abort(ReviewerEvaluationErrors.Locked);
+        if (evaluation is null ? command.ExpectedEvaluationVersion.HasValue : command.ExpectedEvaluationVersion != evaluation.Version)
+            return Abort(ReviewerEvaluationErrors.VersionConflict);
+
+        decimal? scoreToApply = command.Score;
+        List<EvaluationDetailResponseDto>? detailDtos = null;
+        int totalCriteriaCount = 0;
+        if (command.Details is { Count: > 0 } details)
+        {
+            var batchCriteria = await evaluations.GetGradingCriteriaByBatchIdAsync(access.Binding.BatchId, token);
+            totalCriteriaCount = batchCriteria.Count;
+            var criteriaMap = batchCriteria.ToDictionary(c => c.Id);
+
+            foreach (var item in details)
+            {
+                if (!criteriaMap.TryGetValue(item.CriteriaId, out var criterion))
+                {
+                    return Abort(ReviewerEvaluationErrors.CriteriaNotFound(item.CriteriaId));
+                }
+                if (item.Score < 0)
+                {
+                    return Abort(ReviewerEvaluationErrors.CriteriaScoreNegative(criterion.CriteriaName));
+                }
+                if (item.Score > criterion.MaxScore)
+                {
+                    return Abort(ReviewerEvaluationErrors.ScoreExceedsMaxScore(criterion.CriteriaName, item.Score, criterion.MaxScore));
+                }
+            }
+
+            if (command.Action == ReviewerEvaluationAction.Submit)
+            {
+                var hasStudentScope = details.Any(d => d.StudentId.HasValue && d.StudentId.Value != Guid.Empty);
+                if (hasStudentScope)
+                {
+                    foreach (var studentGroup in details.GroupBy(d => d.StudentId!.Value))
+                    {
+                        var submittedIds = studentGroup.Select(d => d.CriteriaId).ToHashSet();
+                        foreach (var req in batchCriteria)
+                        {
+                            if (!submittedIds.Contains(req.Id))
+                            {
+                                return Abort(ReviewerEvaluationErrors.MissingRequiredCriteria(req.CriteriaName));
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    var submittedIds = details.Select(d => d.CriteriaId).ToHashSet();
+                    foreach (var req in batchCriteria)
+                    {
+                        if (!submittedIds.Contains(req.Id))
+                        {
+                            return Abort(ReviewerEvaluationErrors.MissingRequiredCriteria(req.CriteriaName));
+                        }
+                    }
+                }
+            }
+
+            scoreToApply = StudentEvaluationGroupingHelper.ComputeAggregateScore(details);
+            detailDtos = details.Select(d =>
+            {
+                var crit = criteriaMap[d.CriteriaId];
+                return new EvaluationDetailResponseDto(Guid.Empty, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore, d.StudentId);
+            }).ToList();
+        }
+        else if (command.Action == ReviewerEvaluationAction.Submit && scoreToApply is null)
+        {
+            return Abort(ReviewerEvaluationErrors.IncompleteEvaluation);
+        }
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var status = evaluation is null ? 201 : 200;
+        if (evaluation is null)
+        {
+            evaluation = ReviewerEvaluation.CreateDraft(Guid.NewGuid(), assignment.Id, scoreToApply, command.Comment, command.DefenseApproval, actor, now);
+            evaluations.Add(evaluation);
+        }
+        var applied = command.Action == ReviewerEvaluationAction.Submit
+            ? evaluation.TrySubmit(scoreToApply, command.Comment, command.DefenseApproval, actor, now)
+            : evaluation.TrySaveDraft(scoreToApply, command.Comment, command.DefenseApproval, actor, now);
+        if (!applied) return Abort(ReviewerEvaluationErrors.Locked);
+
+        if (command.Details is { Count: > 0 } detailsToSave)
+        {
+            var detailsList = detailsToSave.Select(d => new EvaluationDetail
+            {
+                Id = Guid.NewGuid(),
+                CriteriaId = d.CriteriaId,
+                EvaluationId = evaluation.Id,
+                StudentId = d.StudentId,
+                Score = d.Score
+            }).ToList();
+            await evaluations.SaveEvaluationDetailsAsync(evaluation.Id, detailsList, token);
+        }
+
+        var receipt = ReviewerEvaluationIdempotencyRecord.Create(Guid.NewGuid(), actor, Operation, command.IdempotencyKey, fingerprint, status, now);
+        receipts.Add(receipt);
+        return ReviewerAssignmentTransactionResult<SaveResult>.Commit(new(Assignment: assignment, Evaluation: evaluation,
+            Receipt: receipt, TopicId: access.Binding.TopicId, BatchId: access.Binding.BatchId, StatusCode: status, Details: detailDtos, TotalCriteriaCount: totalCriteriaCount));
+    }
+
+    private Task<SaveResult> CompleteReceiptAsync(SaveResult result, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        audit.AddSaved(result.Evaluation!, result.Assignment!);
+        var response = ReviewerEvaluationDtoMapper.ToDto(result.Evaluation!, result.Assignment!, result.TopicId, result.BatchId, result.Details, result.TotalCriteriaCount);
+        result.Receipt!.SetResponsePayload(JsonSerializer.Serialize(response));
+        return Task.FromResult(result with { Response = response });
+    }
+    private static ReviewerAssignmentTransactionResult<SaveResult> Abort(Error error)
+        => ReviewerAssignmentTransactionResult<SaveResult>.Abort(new(Error: error));
+    private sealed record SaveResult(Error? Error = null, ReviewerEvaluationDto? Response = null, int StatusCode = 200,
+        ReviewerAssignment? Assignment = null, ReviewerEvaluation? Evaluation = null,
+        ReviewerEvaluationIdempotencyRecord? Receipt = null, Guid TopicId = default, Guid BatchId = default,
+        IReadOnlyList<EvaluationDetailResponseDto>? Details = null, int TotalCriteriaCount = 0);
+}

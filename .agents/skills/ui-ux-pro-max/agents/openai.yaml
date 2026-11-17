@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI/UX Pro Max — UGTM"
+  short_description: "Find UI/UX and React guidance for UGTM"
+  default_prompt: "Use $ui-ux-pro-max to find applicable guidance for this UGTM UI task."

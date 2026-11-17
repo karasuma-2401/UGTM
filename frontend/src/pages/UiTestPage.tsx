@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NotificationExamples } from '@/shared/notifications/NotificationExamples';
 import {
   Search,
   Mail,
@@ -73,8 +74,9 @@ export function UiTestPage() {
 
   return (
     <div className="space-y-10 pb-16">
+      <NotificationExamples />
       {/* Page Header */}
-      <div className="border-b border-slate-200 pb-5">
+      <div className="border-b border-line pb-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider">
@@ -82,16 +84,18 @@ export function UiTestPage() {
               <span>•</span>
               <span>Giai đoạn 1</span>
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 mt-1">
-              UI Playground & Component Testing
+            <h1 className="text-2xl font-bold text-ink-primary mt-1">
+              UI Playground và Component Testing
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-ink-muted mt-1">
               Trang kiểm thử trực quan các tính năng động của Button, Input và Badge.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 bg-slate-100 p-2 rounded-xl">
-            <span className="text-xs font-medium text-slate-600 pl-1">Mô phỏng Loading:</span>
+          <div className="flex items-center gap-3 bg-surface-muted p-2 rounded-xl border border-transparent">
+            <span className="text-xs font-medium text-ink-body pl-1">
+              Mô phỏng Loading:
+            </span>
             <Button
               size="sm"
               variant={globalLoading ? 'destructive' : 'default'}
@@ -107,14 +111,14 @@ export function UiTestPage() {
       {/* ========================================================================= */}
       {/* 1. BUTTON COMPONENT TESTS */}
       {/* ========================================================================= */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+      <section className="bg-surface-card border border-line rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex items-center justify-between border-b border-line-subtle pb-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-ink-primary flex items-center gap-2">
               <span>1. Button Component</span>
-              <Badge variant="info">Đầy đủ Variants & Icons</Badge>
+              <Badge variant="info">Đầy đủ Variants và Icons</Badge>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Kiểm tra icon linh hoạt (leftIcon, rightIcon, hoặc không icon), kích thước và trạng
               thái isLoading
             </p>
@@ -123,7 +127,7 @@ export function UiTestPage() {
 
         {/* 1.1 Variants */}
         <div className="space-y-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             A. Các biến thể màu sắc (Variants)
           </h3>
           <div className="flex flex-wrap items-center gap-3">
@@ -138,7 +142,7 @@ export function UiTestPage() {
 
         {/* 1.2 Sizes */}
         <div className="space-y-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             B. Kích thước (Sizes)
           </h3>
           <div className="flex flex-wrap items-center gap-3">
@@ -153,7 +157,7 @@ export function UiTestPage() {
 
         {/* 1.3 Icon Placements (Optional test) */}
         <div className="space-y-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             C. Vị trí Icon (leftIcon / rightIcon / Không icon)
           </h3>
           <div className="flex flex-wrap items-center gap-3">
@@ -170,10 +174,10 @@ export function UiTestPage() {
         </div>
 
         {/* 1.4 Loading State */}
-        <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-150">
-          <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+        <div className="space-y-3 bg-surface-subtle p-4 rounded-xl border border-line">
+          <h3 className="text-xs font-bold text-ink-secondary uppercase tracking-wider flex items-center justify-between">
             <span>D. Kiểm tra trạng thái đang tải (isLoading)</span>
-            <span className="text-[11px] font-normal text-slate-500">
+            <span className="text-[11px] font-normal text-ink-muted">
               {btnLoading ? '⏳ Đang giả lập tải trong 2.5s...' : 'Sẵn sàng'}
             </span>
           </h3>
@@ -205,14 +209,14 @@ export function UiTestPage() {
       {/* ========================================================================= */}
       {/* 2. INPUT COMPONENT TESTS */}
       {/* ========================================================================= */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+      <section className="bg-surface-card border border-line rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex items-center justify-between border-b border-line-subtle pb-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-ink-primary flex items-center gap-2">
               <span>2. Input Component</span>
-              <Badge variant="info">Icon Prefix/Suffix & Validation</Badge>
+              <Badge variant="info">Icon Prefix/Suffix và Validation</Badge>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Hỗ trợ leftIcon, rightIcon tùy chọn, text hướng dẫn helperText và trạng thái báo lỗi
               error
             </p>
@@ -220,15 +224,17 @@ export function UiTestPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* 2.1 Basic & No Icon */}
+          {/* 2.1 Basic và No Icon */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">A. Input cơ bản (Không Icon)</label>
+            <label className="text-xs font-bold text-ink-secondary">
+              A. Input cơ bản (Không Icon)
+            </label>
             <Input placeholder="Nhập tên đề tài khóa luận..." />
           </div>
 
           {/* 2.2 Left Icon only */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">
+            <label className="text-xs font-bold text-ink-secondary">
               B. Có Left Icon (Kính lúp tìm kiếm)
             </label>
             <Input
@@ -239,7 +245,9 @@ export function UiTestPage() {
 
           {/* 2.3 Right Icon only */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">C. Có Right Icon tương tác</label>
+            <label className="text-xs font-bold text-ink-secondary">
+              C. Có Right Icon tương tác
+            </label>
             <Input
               placeholder="Nhập địa chỉ email cá nhân..."
               rightIcon={<Mail />}
@@ -249,7 +257,7 @@ export function UiTestPage() {
 
           {/* 2.4 Interactive Password toggle */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">
+            <label className="text-xs font-bold text-ink-secondary">
               D. Cả Left Icon và Right Icon (Ô mật khẩu có nút mắt)
             </label>
             <Input
@@ -263,7 +271,7 @@ export function UiTestPage() {
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="hover:text-slate-800 transition-colors cursor-pointer"
+                  className="hover:text-ink-heading transition-colors cursor-pointer"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -273,7 +281,9 @@ export function UiTestPage() {
 
           {/* 2.5 Helper text */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">E. Input có Helper Text</label>
+            <label className="text-xs font-bold text-ink-secondary">
+              E. Input có Helper Text
+            </label>
             <Input
               placeholder="24521186"
               helperText="Mã số sinh viên định danh gồm 8 chữ số do phòng Đào tạo cấp."
@@ -282,7 +292,7 @@ export function UiTestPage() {
 
           {/* 2.6 Disabled state */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">
+            <label className="text-xs font-bold text-ink-secondary">
               F. Input Disabled (Khóa nhập)
             </label>
             <Input
@@ -294,9 +304,9 @@ export function UiTestPage() {
         </div>
 
         {/* 2.7 Interactive Error Validation Test */}
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-150 space-y-3">
+        <div className="bg-surface-subtle p-4 rounded-xl border border-line space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-ink-secondary uppercase tracking-wider">
               G. Trải nghiệm tương tác trạng thái Lỗi (Validation Error)
             </h3>
             <Button size="sm" variant="outline" onClick={() => setSimulateError((prev) => !prev)}>
@@ -320,7 +330,7 @@ export function UiTestPage() {
                 }
               />
             </div>
-            <div className="text-xs text-slate-500 flex items-center">
+            <div className="text-xs text-ink-muted flex items-center">
               💡 Hãy thử gõ vào ô trên: khi độ dài từ 1 đến 5 ký tự, component sẽ tự động chuyển
               viền đỏ và hiển thị thông báo lỗi bên dưới. Khi đủ từ 6 ký tự trở lên, lỗi sẽ tự biến
               mất.
@@ -332,16 +342,16 @@ export function UiTestPage() {
       {/* ========================================================================= */}
       {/* 3. BADGE COMPONENT TESTS */}
       {/* ========================================================================= */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+      <section className="bg-surface-card border border-line rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex items-center justify-between border-b border-line-subtle pb-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-ink-primary flex items-center gap-2">
               <span>3. Badge Component</span>
               <Badge variant="success" dot>
                 Trạng thái trực quan
               </Badge>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Hỗ trợ đầy đủ các màu sắc nghiệp vụ, chấm trạng thái dot và icon đi kèm
             </p>
           </div>
@@ -349,7 +359,7 @@ export function UiTestPage() {
 
         {/* 3.1 All Variants */}
         <div className="space-y-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             A. Các biến thể màu sắc (Variants)
           </h3>
           <div className="flex flex-wrap items-center gap-2.5">
@@ -365,7 +375,7 @@ export function UiTestPage() {
 
         {/* 3.2 Badges with Status Dot */}
         <div className="space-y-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             B. Chấm trạng thái chuẩn Mockup (Status Dot - dot=true)
           </h3>
           <div className="flex flex-wrap items-center gap-2.5">
@@ -392,7 +402,7 @@ export function UiTestPage() {
 
         {/* 3.3 Badges with Icons */}
         <div className="space-y-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             C. Badge kết hợp Icon (leftIcon / rightIcon)
           </h3>
           <div className="flex flex-wrap items-center gap-2.5">
@@ -418,14 +428,14 @@ export function UiTestPage() {
       {/* ========================================================================= */}
       {/* 4. PASSWORD COMPONENTS TESTS (PasswordField, PasswordStrength, PasswordFields) */}
       {/* ========================================================================= */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+      <section className="bg-surface-card border border-line rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line-subtle pb-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-ink-primary flex items-center gap-2">
               <span>4. Bộ ba Password Components</span>
               <Badge variant="success">Phase 2: Hoàn thiện</Badge>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Kiểm tra PasswordField (toggle mắt, icons, disabled), PasswordStrength (live rules
               checklist), và PasswordFields (cặp mật khẩu đồng bộ).
             </p>
@@ -451,13 +461,13 @@ export function UiTestPage() {
 
         {/* 4.1 PasswordField Standalone Variations */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             A. Các biến thể PasswordField Đơn lẻ
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Standard with toggle */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="text-xs font-semibold text-slate-700 block">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
+              <span className="text-xs font-semibold text-ink-secondary block">
                 1. Mặc định (Toggle Eye + Icon Khóa)
               </span>
               <PasswordField
@@ -470,10 +480,10 @@ export function UiTestPage() {
               />
             </div>
 
-            {/* Custom Icon & Right Action */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="text-xs font-semibold text-slate-700 block">
-                2. Custom Icon & Right Action
+            {/* Custom Icon và Right Action */}
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
+              <span className="text-xs font-semibold text-ink-secondary block">
+                2. Custom Icon và Right Action
               </span>
               <PasswordField
                 id="test-pwd-2"
@@ -495,10 +505,10 @@ export function UiTestPage() {
               />
             </div>
 
-            {/* Error & No Left Icon */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="text-xs font-semibold text-slate-700 block">
-                3. Không có Left Icon & Báo Lỗi
+            {/* Error và No Left Icon */}
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
+              <span className="text-xs font-semibold text-ink-secondary block">
+                3. Không có Left Icon và Báo Lỗi
               </span>
               <PasswordField
                 id="test-pwd-3"
@@ -515,14 +525,14 @@ export function UiTestPage() {
 
         {/* 4.2 PasswordStrength Live Testing */}
         <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             B. Đánh giá độ mạnh mật khẩu (PasswordStrength)
           </h3>
-          <div className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 max-w-2xl">
-            <div className="flex items-center justify-between text-xs text-slate-600">
+          <div className="p-5 rounded-xl border border-line bg-surface-subtle/50 space-y-3 max-w-2xl">
+            <div className="flex items-center justify-between text-xs text-ink-body">
               <span>
                 Đang đánh giá chuỗi:{' '}
-                <code className="bg-white px-2 py-0.5 rounded border border-slate-200 font-mono text-primary font-semibold">
+                <code className="bg-surface-card px-2 py-0.5 rounded border border-line-input font-mono text-primary font-semibold">
                   {pwdSingle || '(trống)'}
                 </code>
               </span>
@@ -533,11 +543,11 @@ export function UiTestPage() {
 
         {/* 4.3 PasswordFields Synchronized Pair */}
         <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            C. Bộ đôi thiết lập & xác nhận mật khẩu (PasswordFields)
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
+            C. Bộ đôi thiết lập và xác nhận mật khẩu (PasswordFields)
           </h3>
-          <div className="p-5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-4 max-w-xl">
-            <p className="text-xs text-slate-500">
+          <div className="p-5 rounded-xl border border-line bg-surface-subtle/50 space-y-4 max-w-xl">
+            <p className="text-xs text-ink-muted">
               Bao gồm tự động kiểm tra trùng khớp (autoValidateMismatch), đồng bộ trạng thái
               disabled, và tích hợp PasswordStrength ở giữa.
             </p>
@@ -557,16 +567,16 @@ export function UiTestPage() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 5. DROPDOWN BOX & COMBOBOX (Select, Combobox) */}
+      {/* 5. DROPDOWN BOX và COMBOBOX (Select, Combobox) */}
       {/* ========================================================================= */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+      <section className="bg-surface-card border border-line rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line-subtle pb-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>5. Dropdown Box & Combo Box</span>
+            <h2 className="text-lg font-bold text-ink-primary flex items-center gap-2">
+              <span>5. Dropdown Box và Combo Box</span>
               <Badge variant="info">Mới hoàn thành</Badge>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Hỗ trợ Select cơ bản, Combobox tìm kiếm (Searchable), Multi-select nhiều mục,
               Clearable, Icon slot và các trạng thái động.
             </p>
@@ -591,13 +601,13 @@ export function UiTestPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* 5.1 Basic Select with Icon & Description */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+          {/* 5.1 Basic Select with Icon và Description */}
+          <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-3">
             <div>
-              <span className="text-xs font-semibold text-slate-700 block">
+              <span className="text-xs font-semibold text-ink-secondary block">
                 1. Dropdown Chọn Ngành (Select cơ bản)
               </span>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-ink-muted">
                 Kèm mô tả mã ngành, leftIcon và nút xóa lựa chọn (clearable).
               </span>
             </div>
@@ -617,26 +627,26 @@ export function UiTestPage() {
                 { value: 'is', label: 'Hệ thống Thông tin', description: 'Mã ngành: 7480104' },
                 {
                   value: 'cn',
-                  label: 'Mạng máy tính & An toàn TT',
+                  label: 'Mạng máy tính và An toàn TT',
                   description: 'Mã ngành: 7480102',
                 },
                 { value: 'ce', label: 'Kỹ thuật Máy tính', description: 'Mã ngành: 7480106' },
               ]}
             />
 
-            <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200 font-mono">
+            <div className="text-xs text-ink-muted bg-surface-card p-2 rounded border border-line-input font-mono">
               Giá trị đã chọn:{' '}
               <strong className="text-primary">{selectedMajor || '(chưa chọn)'}</strong>
             </div>
           </div>
 
-          {/* 5.2 Searchable Combobox with Badges & Slots */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+          {/* 5.2 Searchable Combobox with Badges và Slots */}
+          <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-3">
             <div>
-              <span className="text-xs font-semibold text-slate-700 block">
+              <span className="text-xs font-semibold text-ink-secondary block">
                 2. Searchable Combobox (Tìm kiếm GVHD)
               </span>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-ink-muted">
                 Có ô tìm kiếm trực tiếp, phụ đề bộ môn, badge số slot, lọc nhanh.
               </span>
             </div>
@@ -665,37 +675,37 @@ export function UiTestPage() {
                 {
                   value: 'gv03',
                   label: 'TS. Lê Hoàng Khang',
-                  description: 'Khoa học Dữ liệu & AI',
+                  description: 'Khoa học Dữ liệu và AI',
                   badge: <Badge variant="success">Còn slot</Badge>,
                 },
                 {
                   value: 'gv04',
                   label: 'ThS. Đỗ Thanh Bình',
-                  description: 'Bộ môn Mạng & Bảo mật',
+                  description: 'Bộ môn Mạng và Bảo mật',
                   badge: <Badge variant="warning">Đầy slot</Badge>,
                   disabled: true,
                 },
                 {
                   value: 'gv05',
                   label: 'TS. Phạm Quốc Hùng',
-                  description: 'Hệ thống Nhúng & IoT',
+                  description: 'Hệ thống Nhúng và IoT',
                   badge: <Badge variant="success">Còn slot</Badge>,
                 },
               ]}
             />
 
-            <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200 font-mono">
+            <div className="text-xs text-ink-muted bg-surface-card p-2 rounded border border-line-input font-mono">
               GVHD: <strong className="text-primary">{selectedAdvisor || '(chưa chọn)'}</strong>
             </div>
           </div>
 
           {/* 5.3 Multi-Select with Tags count */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+          <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-3">
             <div>
-              <span className="text-xs font-semibold text-slate-700 block">
+              <span className="text-xs font-semibold text-ink-secondary block">
                 3. Multi-Select (Chọn nhiều công nghệ)
               </span>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-ink-muted">
                 Chọn nhiều mục cùng lúc, hiển thị tag đếm số lượng (+N).
               </span>
             </div>
@@ -718,21 +728,23 @@ export function UiTestPage() {
               ]}
             />
 
-            <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200 font-mono">
+            <div className="text-xs text-ink-muted bg-surface-card p-2 rounded border border-line-input font-mono">
               Đã chọn:{' '}
               <strong className="text-primary">{selectedTechs.join(', ') || '(trống)'}</strong>
             </div>
           </div>
         </div>
 
-        {/* 5.4 Size Variations & Custom Styling */}
+        {/* 5.4 Size Variations và Custom Styling */}
         <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             B. Các kích thước (Size: sm / default / lg)
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div>
-              <span className="text-xs text-slate-500 block mb-1">Small (h-8, text-xs):</span>
+              <span className="text-xs text-ink-muted block mb-1">
+                Small (h-8, text-xs):
+              </span>
               <Select
                 size="sm"
                 placeholder="Chọn đợt bảo vệ (sm)..."
@@ -740,7 +752,9 @@ export function UiTestPage() {
               />
             </div>
             <div>
-              <span className="text-xs text-slate-500 block mb-1">Default (h-9, text-sm):</span>
+              <span className="text-xs text-ink-muted block mb-1">
+                Default (h-9, text-sm):
+              </span>
               <Select
                 size="default"
                 placeholder="Chọn đợt bảo vệ (default)..."
@@ -748,7 +762,9 @@ export function UiTestPage() {
               />
             </div>
             <div>
-              <span className="text-xs text-slate-500 block mb-1">Large (h-10, text-base):</span>
+              <span className="text-xs text-ink-muted block mb-1">
+                Large (h-10, text-base):
+              </span>
               <Select
                 size="lg"
                 placeholder="Chọn đợt bảo vệ (lg)..."
@@ -762,14 +778,14 @@ export function UiTestPage() {
       {/* ========================================================================= */}
       {/* 6. PROGRESS BAR COMPONENT */}
       {/* ========================================================================= */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+      <section className="bg-surface-card border border-line rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line-subtle pb-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-lg font-bold text-ink-primary flex items-center gap-2">
               <span>6. Progress Bar (Thanh tiến trình)</span>
               <Badge variant="success">Khớp 100% Mockup</Badge>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Tiêu đề bên trái, phần trăm bên phải, thanh bo tròn pill-shape bên dưới. Hỗ trợ tùy
               chỉnh màu sắc, kích thước và định dạng số.
             </p>
@@ -793,14 +809,16 @@ export function UiTestPage() {
 
         {/* 6.1 Exact Mockup Implementation */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             A. Giao diện mẫu theo thiết kế yêu cầu (Ảnh minh họa)
           </h3>
-          <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50/50 max-w-xl space-y-4">
+          <div className="p-6 rounded-2xl border border-line bg-surface-subtle/50 max-w-xl space-y-4">
             <ProgressBar label="Tiến độ thẩm định" value={progressValue} />
 
             <div className="pt-2 flex items-center gap-3">
-              <span className="text-xs text-slate-500 shrink-0">Kéo trượt thử nghiệm:</span>
+              <span className="text-xs text-ink-muted shrink-0">
+                Kéo trượt thử nghiệm:
+              </span>
               <input
                 type="range"
                 min="0"
@@ -819,11 +837,11 @@ export function UiTestPage() {
 
         {/* 6.2 Color Variants */}
         <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             B. Các biến thể màu sắc (Color Variants)
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
               <ProgressBar
                 label="Primary (Mặc định - Màu thương hiệu)"
                 value={progressValue}
@@ -831,7 +849,7 @@ export function UiTestPage() {
               />
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
               <ProgressBar
                 label="Success (Hoàn thành điều kiện)"
                 value={progressValue}
@@ -839,7 +857,7 @@ export function UiTestPage() {
               />
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
               <ProgressBar
                 label="Warning (Sắp hết hạn thẩm định)"
                 value={progressValue}
@@ -847,7 +865,7 @@ export function UiTestPage() {
               />
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
               <ProgressBar
                 label="Destructive (Cảnh báo đạo văn / vi phạm)"
                 value={progressValue}
@@ -855,7 +873,7 @@ export function UiTestPage() {
               />
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
               <ProgressBar
                 label="Gradient (Dải màu hiện đại)"
                 value={progressValue}
@@ -863,7 +881,7 @@ export function UiTestPage() {
               />
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
               <ProgressBar
                 label="Custom Hex Color (#8b5cf6 - Tím)"
                 value={progressValue}
@@ -875,10 +893,10 @@ export function UiTestPage() {
 
         {/* 6.3 Size Variations */}
         <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             C. Các kích thước độ dày (Sizes: xs, sm, default, lg, xl)
           </h3>
-          <div className="space-y-4 max-w-2xl bg-slate-50/50 p-5 rounded-2xl border border-slate-200">
+          <div className="space-y-4 max-w-2xl bg-surface-subtle/50 p-5 rounded-2xl border border-line">
             <ProgressBar label="Extra Small (size='xs' - 4px)" size="xs" value={progressValue} />
             <ProgressBar label="Small (size='sm' - 6px)" size="sm" value={progressValue} />
             <ProgressBar
@@ -891,13 +909,13 @@ export function UiTestPage() {
           </div>
         </div>
 
-        {/* 6.4 Custom Text Formats & Subtitle */}
+        {/* 6.4 Custom Text Formats và Subtitle */}
         <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            D. Tùy biến định dạng text & mô tả phụ đề
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
+            D. Tùy biến định dạng text và mô tả phụ đề
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50">
               <ProgressBar
                 label="Chỉ tiêu đề tài đã duyệt"
                 value={progressValue}
@@ -906,7 +924,7 @@ export function UiTestPage() {
               />
             </div>
 
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50">
               <ProgressBar
                 label="Điểm tích lũy rèn luyện"
                 value={progressValue}
@@ -920,16 +938,16 @@ export function UiTestPage() {
       </section>
 
       {/* ========================================================================= */}
-      {/* 7. RADIO BUTTON & RADIO GROUP */}
+      {/* 7. RADIO BUTTON và RADIO GROUP */}
       {/* ========================================================================= */}
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+      <section className="bg-surface-card border border-line rounded-2xl p-6 shadow-sm space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line-subtle pb-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>7. Radio Button & Radio Group</span>
+            <h2 className="text-lg font-bold text-ink-primary flex items-center gap-2">
+              <span>7. Radio Button và Radio Group</span>
               <Badge variant="success">Khớp 100% Mockup</Badge>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Logic gom nhóm ràng buộc (chọn 1 trong nhiều), viền đổi màu xanh khi được chọn (mặc
               định --color-success), hỗ trợ icon và subtitle tùy chọn bên phải.
             </p>
@@ -948,13 +966,13 @@ export function UiTestPage() {
 
         {/* 7.1 Exact Mockup Implementation */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
             A. Giao diện mẫu theo ảnh minh họa (Thẩm định Khóa luận)
           </h3>
-          <div className="p-6 rounded-2xl border border-slate-200 bg-slate-50/50 max-w-2xl space-y-4">
-            <p className="text-xs text-slate-500">
+          <div className="p-6 rounded-2xl border border-line bg-surface-subtle/50 max-w-2xl space-y-4">
+            <p className="text-xs text-ink-muted">
               Khi được chọn, ô sẽ được tô viền màu{' '}
-              <code className="bg-white px-1.5 py-0.5 rounded border border-slate-200 text-emerald-600 font-mono">
+              <code className="bg-surface-card px-1.5 py-0.5 rounded border border-line-input text-tone-success-icon font-mono">
                 --color-success
               </code>{' '}
               (mặc định), nền nhạt và nút tròn màu primary.
@@ -985,20 +1003,24 @@ export function UiTestPage() {
               />
             </RadioGroup>
 
-            <div className="text-xs text-slate-500 bg-white p-2.5 rounded-lg border border-slate-200 font-mono">
+            <div className="text-xs text-ink-muted bg-surface-card p-2.5 rounded-lg border border-line-input font-mono">
               Quyết định đang chọn:{' '}
-              <strong className="text-emerald-700 font-semibold">{defenseDecision}</strong>
+              <strong className="text-tone-success-text font-semibold">
+                {defenseDecision}
+              </strong>
             </div>
           </div>
         </div>
 
-        {/* 7.2 Minimal / No Subtitle & Horizontal Layout */}
+        {/* 7.2 Minimal / No Subtitle và Horizontal Layout */}
         <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            B. Không có subtitle phải (Chỉ nút tròn + title) & Hàng ngang
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
+            B. Không có subtitle phải (Chỉ nút tròn + title) và Hàng ngang
           </h3>
-          <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/50 max-w-2xl space-y-3">
-            <span className="text-xs font-medium text-slate-600 block">Chọn vai trò tham gia:</span>
+          <div className="p-5 rounded-2xl border border-line bg-surface-subtle/50 max-w-2xl space-y-3">
+            <span className="text-xs font-medium text-ink-body block">
+              Chọn vai trò tham gia:
+            </span>
             <RadioGroup
               orientation="horizontal"
               value={roleOption}
@@ -1010,21 +1032,21 @@ export function UiTestPage() {
               <RadioButton value="reviewer" label="Cán bộ phản biện" />
             </RadioGroup>
 
-            <div className="text-xs text-slate-500 bg-white p-2.5 rounded-lg border border-slate-200 font-mono">
+            <div className="text-xs text-ink-muted bg-surface-card p-2.5 rounded-lg border border-line-input font-mono">
               Vai trò: <strong className="text-primary font-semibold">{roleOption}</strong>
             </div>
           </div>
         </div>
 
-        {/* 7.3 Shorthand Options Array & Custom Colors */}
+        {/* 7.3 Shorthand Options Array và Custom Colors */}
         <div className="space-y-3 pt-2">
-          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            C. Khởi tạo qua mảng `options=[...]` & Tùy biến màu viền
+          <h3 className="text-xs font-bold text-ink-subtle uppercase tracking-wider">
+            C. Khởi tạo qua mảng `options=[...]` và Tùy biến màu viền
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl">
             {/* Blue primary border variant */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="text-xs font-medium text-slate-600 block">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
+              <span className="text-xs font-medium text-ink-body block">
                 Variant Primary (Viền xanh dương):
               </span>
               <RadioGroup
@@ -1038,13 +1060,13 @@ export function UiTestPage() {
             </div>
 
             {/* Custom purple border */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-              <span className="text-xs font-medium text-slate-600 block">
+            <div className="p-4 rounded-xl border border-line bg-surface-subtle/50 space-y-2">
+              <span className="text-xs font-medium text-ink-body block">
                 Custom Border Color (#8b5cf6 - Viền tím):
               </span>
               <RadioGroup
                 selectedBorderColor="#8b5cf6"
-                selectedBgColor="#f5f3ff"
+                selectedBgColor="rgba(139, 92, 246, 0.12)"
                 defaultValue="thesis"
                 options={[
                   { value: 'thesis', label: 'Khóa luận Tốt nghiệp (10 TC)' },

@@ -1,12 +1,7 @@
 name: Publish Images
 
 on:
-  workflow_run:
-    workflows:
-      - Backend CI
-      - Frontend CI
-    types:
-      - completed
+  push:
     branches:
       - dev
       - production
@@ -23,16 +18,48 @@ permissions:
   security-events: write
   actions: read
 
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  ci-gate:
+    name: Require backend, frontend and AI CI for this commit
+    if: contains(fromJSON('["dev", "production"]'), github.ref_name)
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - name: Wait for successful backend, frontend and AI push runs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const workflows = ['backend-ci.yml', 'frontend-ci.yml', 'ai-ci.yml'];
+            const { owner, repo } = context.repo;
+            for (let attempt = 0; attempt < 150; attempt++) {
+              let allPassed = true;
+              for (const workflow_id of workflows) {
+                const { data } = await github.rest.actions.listWorkflowRuns({
+                  owner, repo, workflow_id, head_sha: context.sha,
+                  branch: context.ref.replace('refs/heads/', ''), event: 'push', per_page: 100
+                });
+                const run = data.workflow_runs.sort((a, b) => b.run_number - a.run_number)[0];
+                if (!run || run.status !== 'completed') {
+                  allPassed = false;
+                  continue;
+                }
+                if (run.conclusion !== 'success') {
+                  core.setFailed(`${workflow_id} failed for ${context.sha}: ${run.conclusion}`);
+                  return;
+                }
+              }
+              if (allPassed) return;
+              await new Promise(resolve => setTimeout(resolve, 30000));
+            }
+            core.setFailed(`Timed out waiting for all CI workflows on ${context.sha}`);
+
   publish:
     name: Build, Scan & Publish
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        contains(fromJSON('["dev", "production"]'), github.event.workflow_run.head_branch)
-      )
+    needs: ci-gate
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -44,11 +71,14 @@ jobs:
           - image: ugtm-frontend
             context: frontend
             dockerfile: frontend/Dockerfile
+          - image: ugtm-ai
+            context: services/plagiarism-ai
+            dockerfile: services/plagiarism-ai/Dockerfile
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
 
       - name: Set up QEMU for multi-arch build
         uses: docker/setup-qemu-action@v3
@@ -65,16 +95,11 @@ jobs:
 
       - name: Resolve Tags
         id: tags
+        env:
+          CUSTOM_TAG: ${{ inputs.image_tag }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            SHA="${GITHUB_SHA}"
-            BRANCH="${GITHUB_REF_NAME}"
-            CUSTOM_TAG="${{ inputs.image_tag }}"
-          else
-            SHA="${{ github.event.workflow_run.head_sha }}"
-            BRANCH="${{ github.event.workflow_run.head_branch }}"
-            CUSTOM_TAG=""
-          fi
+          SHA="${GITHUB_SHA}"
+          BRANCH="${GITHUB_REF_NAME}"
           SHORT_SHA="${SHA:0:7}"
           OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE_NAME="${OWNER}/${{ matrix.image }}"
@@ -86,15 +111,17 @@ jobs:
           fi
 
           SCAN_TAG="ghcr.io/${IMAGE_NAME}:scan-${SHORT_SHA}"
-          PUSH_TAGS="ghcr.io/${IMAGE_NAME}:${FLOATING_TAG},ghcr.io/${IMAGE_NAME}:sha-${SHORT_SHA}"
+          PUSH_TAGS="ghcr.io/${IMAGE_NAME}:${FLOATING_TAG},ghcr.io/${IMAGE_NAME}:sha-${SHA}"
           if [ "${BRANCH}" = "production" ]; then
             PUSH_TAGS="${PUSH_TAGS},ghcr.io/${IMAGE_NAME}:latest"
           fi
 
-          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-          echo "scan_tag=${SCAN_TAG}" >> "$GITHUB_OUTPUT"
-          echo "push_tags=${PUSH_TAGS}" >> "$GITHUB_OUTPUT"
-          echo "source_sha=${SHA}" >> "$GITHUB_OUTPUT"
+          {
+            echo "short_sha=${SHORT_SHA}"
+            echo "scan_tag=${SCAN_TAG}"
+            echo "push_tags=${PUSH_TAGS}"
+            echo "source_sha=${SHA}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build image for vulnerability scan
         uses: docker/build-push-action@v6
@@ -111,14 +138,26 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
       - name: Scan Image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
         with:
+          version: "v0.76.2"
           image-ref: ${{ steps.tags.outputs.scan_tag }}
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
+          # Otherwise the action unsets severity for SARIF and gates every level.
+          limit-severities-for-sarif: true
           ignore-unfixed: true
-          exit-code: 0
+          exit-code: 1
+          hide-progress: true
+
+      - name: Preserve Trivy report
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-${{ matrix.image }}-attempt-${{ github.run_attempt }}
+          path: trivy-results.sarif
+          retention-days: 7
 
       - name: Upload Trivy SARIF
         if: always()

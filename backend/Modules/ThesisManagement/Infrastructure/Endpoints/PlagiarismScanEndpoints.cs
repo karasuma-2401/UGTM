@@ -1,0 +1,187 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
+using UGTM.BuildingBlocks.Application.Responses;
+using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.ThesisManagement.Application.PlagiarismAI.Dtos;
+using UGTM.Modules.ThesisManagement.Application.PlagiarismAI.Handlers;
+
+namespace UGTM.Modules.ThesisManagement.Infrastructure.Endpoints;
+
+public static class PlagiarismScanEndpoints
+{
+    public static IEndpointRouteBuilder MapPlagiarismScanEndpoints(this IEndpointRouteBuilder endpoints)
+    {
+        endpoints.MapGet("/api/thesis/my-council-similarity-reports", GetMyCouncilReportsAsync)
+            .WithTags("ThesisManagement.Plagiarism")
+            .RequireAuthorization()
+            .WithSummary("Danh sách báo cáo được phân cho thành viên hội đồng hiện tại");
+
+        endpoints.MapGet("/api/thesis/final-reports/{finalReportId:guid}/similarity-report", GetReportAsync)
+            .WithTags("ThesisManagement.Plagiarism")
+            .RequireAuthorization()
+            .WithSummary("Lấy báo cáo đối chiếu đạo văn / biên nhận tương đồng của báo cáo cuối kỳ")
+            .WithDescription("""
+                Truy xuất kết quả kiểm tra tương đồng học thuật qua AI Service.
+                - Sinh viên trong nhóm: Chỉ nhận Biên nhận đối soát (Receipt) che toàn bộ phát hiện trùng lặp và văn bản nguồn.
+                - Giảng viên hướng dẫn / Khoa / Admin: Nhận toàn bộ báo cáo phân tích chi tiết (Full Report) bao gồm chỉ số tương đồng và danh sách trùng lặp.
+                - Hội đồng đánh giá: Chỉ được xem báo cáo chi tiết khi báo cáo đã chuyển sang giai đoạn chấm (UnderEvaluation).
+                400: finalReportId rỗng; 401: chưa đăng nhập; 403: không có quyền xem; 404: không tìm thấy báo cáo/lượt quét; 409: lượt quét chưa hoàn thành.
+                """)
+            .Produces<ApiResponse<object>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
+
+        endpoints.MapPost("/api/thesis/final-reports/{finalReportId:guid}/similarity-scan/retry", RetryScanAsync)
+            .WithTags("ThesisManagement.Plagiarism")
+            .RequireAuthorization()
+            .WithSummary("Yêu cầu quét lại kiểm tra tương đồng cho báo cáo cuối kỳ")
+            .WithDescription("""
+                Cho phép GVHD hoặc Quản trị viên kích hoạt quét lại lượt kiểm tra đạo văn khi có lỗi hoặc cập nhật nguồn dữ liệu.
+                Chỉ thực hiện được khi lượt quét trước đã ở trạng thái Completed, Failed hoặc ComputeUnavailable.
+                400: finalReportId rỗng; 401: chưa đăng nhập; 403: không có quyền (chỉ GVHD đề tài/Admin); 404: không tìm thấy; 409: đang xử lý hoặc chưa nộp.
+                """)
+            .Produces<ApiResponse<object>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
+
+        endpoints.MapPost("/api/thesis/similarity-scans/resume-pending", ResumePendingScansAsync)
+            .WithTags("ThesisManagement.Plagiarism")
+            .RequireAuthorization()
+            .Accepts<ResumePendingScansRequest>("application/json")
+            .WithSummary("Kích hoạt khôi phục hàng loạt các lượt quét đang chờ tài nguyên tính toán GPU")
+            .WithDescription("""
+                Khởi động lại các lượt quét ComputeUnavailable đã hết số lần thử khi GPU được bật lại. Các lượt đang chờ tiếp tục theo lịch của dịch vụ AI.
+                Chỉ Quản trị viên hoặc Trưởng khoa có quyền thực hiện.
+                401: chưa đăng nhập; 403: không có quyền Quản trị viên/Khoa.
+                """)
+            .Produces<ApiResponse<ResumePendingPlagiarismScansResult>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden);
+
+        endpoints.MapPost("/api/thesis/final-reports/{finalReportId:guid}/index-corpus", IndexCorpusAsync)
+            .WithTags("ThesisManagement.Plagiarism")
+            .RequireAuthorization()
+            .WithSummary("Đánh chỉ mục luận văn cuối kỳ vào kho ngữ văn AI phục vụ đối chiếu tương đồng")
+            .WithDescription("""
+                Đưa tệp luận văn đã qua thẩm định/bảo vệ vào kho ngữ văn (Corpus) của hệ thống AI.
+                Chỉ Quản trị viên hoặc Trưởng khoa có quyền thực hiện.
+                400: finalReportId rỗng; 401: chưa đăng nhập; 403: không có quyền; 404: không tìm thấy báo cáo/tệp; 415: định dạng không hỗ trợ.
+                """)
+            .Produces<ApiResponse<IndexFinalReportToCorpusResult>>()
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status415UnsupportedMediaType);
+
+        endpoints.MapGet("/api/thesis/similarity-index-jobs/{jobId:guid}", GetIndexStatusAsync)
+            .WithTags("ThesisManagement.Plagiarism")
+            .RequireAuthorization()
+            .WithSummary("Theo dõi trạng thái tác vụ đánh chỉ mục vào corpus");
+
+        return endpoints;
+    }
+
+    private static async Task<IResult> GetMyCouncilReportsAsync(
+        [FromServices] GetMyCouncilSimilarityReportsHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> GetReportAsync(
+        [FromRoute] Guid finalReportId,
+        [FromQuery] int? versionNo,
+        [FromServices] GetPlagiarismReportHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (finalReportId == Guid.Empty)
+        {
+            return Results.Json(
+                ApiResponse<object>.Fail(ApiError.Create("PlagiarismScan.InvalidRequest", "Mã báo cáo cuối kỳ không được rỗng.")),
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var result = await handler.HandleAsync(new GetPlagiarismReportQuery(finalReportId, versionNo), cancellationToken);
+        if (result.IsFailure)
+        {
+            return result.ToHttpResult();
+        }
+
+        var data = result.Value.IsReceiptOnly
+            ? (object)result.Value.Receipt!
+            : result.Value.FullReport!;
+
+        return Results.Ok(ApiResponse<object>.Ok(data));
+    }
+
+    private static async Task<IResult> RetryScanAsync(
+        [FromRoute] Guid finalReportId,
+        [FromQuery] int? versionNo,
+        [FromServices] RetryPlagiarismScanHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (finalReportId == Guid.Empty)
+        {
+            return Results.Json(
+                ApiResponse<object>.Fail(ApiError.Create("PlagiarismScan.InvalidRequest", "Mã báo cáo cuối kỳ không được rỗng.")),
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var result = await handler.HandleAsync(new RetryPlagiarismScanCommand(finalReportId, versionNo), cancellationToken);
+        if (result.IsFailure)
+        {
+            return result.ToHttpResult();
+        }
+
+        var data = result.Value.IsReceiptOnly
+            ? (object)result.Value.Receipt!
+            : result.Value.FullReport!;
+
+        return Results.Ok(ApiResponse<object>.Ok(data));
+    }
+
+    private static async Task<IResult> ResumePendingScansAsync(
+        [FromBody] ResumePendingScansRequest? request,
+        [FromServices] ResumePendingPlagiarismScansHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var limit = request?.Limit ?? 50;
+        var result = await handler.HandleAsync(new ResumePendingPlagiarismScansCommand(limit), cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> IndexCorpusAsync(
+        [FromRoute] Guid finalReportId,
+        [FromQuery] int? versionNo,
+        [FromServices] IndexFinalReportToCorpusHandler handler,
+        CancellationToken cancellationToken)
+    {
+        if (finalReportId == Guid.Empty)
+        {
+            return Results.Json(
+                ApiResponse<object>.Fail(ApiError.Create("PlagiarismScan.InvalidRequest", "Mã báo cáo cuối kỳ không được rỗng.")),
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var result = await handler.HandleAsync(new IndexFinalReportToCorpusCommand(finalReportId, versionNo), cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> GetIndexStatusAsync(
+        [FromRoute] Guid jobId,
+        [FromServices] GetCorpusIndexStatusHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(jobId, cancellationToken);
+        return result.ToHttpResult();
+    }
+}
+
+public sealed record ResumePendingScansRequest(int? Limit);

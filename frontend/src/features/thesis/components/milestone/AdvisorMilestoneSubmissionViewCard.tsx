@@ -1,0 +1,126 @@
+import { Download, FileText } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { RichTextContent } from '@/components/ui/rich-text-content';
+import type {
+  SubmissionAttachmentDto,
+  SubmissionFileDto,
+  SubmissionProductLinkDto,
+} from '../../types/syllabus.types';
+import {
+  formatFileSize,
+  formatMilestoneDateTime,
+} from '../../utils/milestoneFormatters';
+import {
+  SubmissionAttachmentGallery,
+  SubmissionProductLinksList,
+} from '../shared';
+
+export interface AdvisorMilestoneSubmissionViewCardProps {
+  versionNo: number;
+  groupCode?: string;
+  file?: SubmissionFileDto | null;
+  gitUrl?: string | null;
+  productLinks?: SubmissionProductLinkDto[] | null;
+  attachments?: SubmissionAttachmentDto[] | null;
+  resolveAttachmentUrl?: (attachmentId: string) => Promise<string | null>;
+  studentNote?: string | null;
+  onDownloadFile: (fileId: string) => void;
+  isDownloading?: boolean;
+}
+
+export function AdvisorMilestoneSubmissionViewCard({
+  versionNo,
+  groupCode = 'Nhóm KLTN',
+  file,
+  gitUrl,
+  productLinks,
+  attachments,
+  resolveAttachmentUrl,
+  studentNote,
+  onDownloadFile,
+  isDownloading = false,
+}: AdvisorMilestoneSubmissionViewCardProps) {
+  const hasLinks = Boolean((productLinks && productLinks.length > 0) || gitUrl);
+  const hasAttachments = Boolean(attachments && attachments.length > 0);
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-line/80 bg-surface-card shadow-2xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-subtle px-5 py-4">
+        <div className="space-y-0.5">
+          <h2 className="text-base font-semibold text-ink-primary">
+            Nội dung bài nộp · Phiên bản v{versionNo}
+          </h2>
+          <p className="text-xs text-ink-body">{groupCode}</p>
+        </div>
+        {file?.uploadedAtUtc && (
+          <span className="text-xs text-ink-body">
+            Tải lên lúc {formatMilestoneDateTime(file.uploadedAtUtc)}
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-4 p-5">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3.5">
+            <p className="text-xs font-semibold text-ink-body">Tệp báo cáo đính kèm</p>
+            {file ? (
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <FileText className="size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-ink-primary">{file.fileName}</p>
+                    <p className="text-xs text-ink-body">{formatFileSize(file.fileSize)}</p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isDownloading}
+                  onClick={() => onDownloadFile(file.id)}
+                  className="h-8 shrink-0 gap-1.5 text-xs"
+                >
+                  <Download className="size-3.5" aria-hidden="true" />
+                  <span>{isDownloading ? 'Đang tải...' : 'Tải xuống'}</span>
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-ink-muted">Không có tệp đính kèm</p>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-line/80 bg-surface-subtle/70 p-3.5">
+            <p className="text-xs font-semibold text-ink-body">Liên kết sản phẩm / mã nguồn</p>
+            {hasLinks ? (
+              <div className="mt-2">
+                <SubmissionProductLinksList links={productLinks} legacyGitUrl={gitUrl} />
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-ink-muted">Không có liên kết đính kèm</p>
+            )}
+          </div>
+        </div>
+
+        {hasAttachments && (
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-ink-body">Ảnh minh chứng sản phẩm</p>
+            <SubmissionAttachmentGallery
+              attachments={attachments}
+              resolveAttachmentUrl={resolveAttachmentUrl}
+            />
+          </div>
+        )}
+
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-ink-body">Ghi chú của sinh viên</p>
+          <div className="rounded-xl border border-line-subtle bg-surface-subtle/60 p-4 text-sm text-ink-secondary">
+            <RichTextContent
+              content={studentNote}
+              emptyFallback="Sinh viên không để lại ghi chú cho phiên bản này."
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

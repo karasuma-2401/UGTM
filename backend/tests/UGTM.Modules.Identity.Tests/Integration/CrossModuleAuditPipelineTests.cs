@@ -42,12 +42,16 @@ public sealed class CrossModuleAuditPipelineTests(PostgreSqlFixture fixture)
                         "KltnBatch",
                         "42",
                         IntegrationAuditActions.BatchConfigurationUpdated,
-                        "Success",
+                        "Succeeded",
                         null,
                         new { ChangedFields = new[] { "startDate", "endDate" } }),
                     Now);
                 eventId = Assert.Single(academicDb.AuditOutboxMessages.Local).Id;
                 await academicDb.SaveChangesAsync();
+                var health = await new AcademicPeriodsAuditEventSource(academicDb).GetHealthAsync(CancellationToken.None);
+                Assert.Equal(1, health.PendingCount);
+                Assert.Equal(0, health.FailedCount);
+                Assert.Equal(Now, health.OldestPendingUtc);
             }
 
             await using (var academicDb = CreateAcademicDbContext())
@@ -75,7 +79,11 @@ public sealed class CrossModuleAuditPipelineTests(PostgreSqlFixture fixture)
                 Assert.NotNull(message.ProcessedAt);
                 Assert.Equal("{}", message.PayloadJson);
                 Assert.Equal(IntegrationAuditActions.BatchConfigurationUpdated, auditLog.Action);
+                Assert.Equal("Success", auditLog.Outcome);
                 Assert.Equal("cross-module-request", auditLog.RequestId);
+                var health = await new AcademicPeriodsAuditEventSource(academicDb).GetHealthAsync(CancellationToken.None);
+                Assert.Equal(0, health.PendingCount);
+                Assert.Null(health.OldestPendingUtc);
             }
         }
         finally

@@ -1,0 +1,305 @@
+import React from 'react';
+import { Search, X, Calendar as CalendarIcon, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, type SelectOption } from '@/components/ui/select';
+import { DatePicker } from '@/components/ui/calendar';
+import { ACTION_GROUPS, formatAuditAction } from '../utils/parseAuditDiff';
+import type { AuditLogFilterState, AuditTimePreset } from '../types/auditLog.types';
+import { cn } from '@/lib/utils';
+
+interface AuditLogFilterBarProps {
+  filter: AuditLogFilterState;
+  onFilterChange: (next: AuditLogFilterState, immediate?: boolean) => void;
+  onReset: () => void;
+  isLoading?: boolean;
+  actions?: string[];
+}
+
+const ACTION_OPTIONS: SelectOption[] = [
+  { value: '', label: 'Tất cả thao tác' },
+  ...ACTION_GROUPS.flatMap((group) =>
+    group.items.map((item) => ({
+      value: item.value,
+      label: item.label,
+      description: group.group,
+    })),
+  ),
+];
+
+const OUTCOME_OPTIONS: SelectOption[] = [
+  { value: '', label: 'Tất cả kết quả' },
+  { value: 'Success', label: 'Thành công' },
+  { value: 'Denied', label: 'Bị từ chối (Denied)' },
+  { value: 'Failed', label: 'Thất bại / Lỗi (Failed)' },
+];
+
+function getLocalDateString(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+}
+
+function getPastDaysString(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return getLocalDateString(d);
+}
+
+export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
+  filter,
+  onFilterChange,
+  onReset,
+  isLoading = false,
+  actions = [],
+}) => {
+  const actionOptions = [...ACTION_OPTIONS, ...actions.filter((action) => !ACTION_OPTIONS.some((option) => option.value === action)).map((action) => ({ value: action, label: formatAuditAction(action) }))];
+
+  const handlePresetChange = (preset: AuditTimePreset) => {
+    const today = getLocalDateString(new Date());
+
+    if (preset === 'all') {
+      onFilterChange({
+        ...filter,
+        timePreset: 'all',
+        fromUtc: '',
+        toUtc: '',
+      }, true);
+    } else if (preset === 'today') {
+      onFilterChange({
+        ...filter,
+        timePreset: 'today',
+        fromUtc: today,
+        toUtc: today,
+      }, true);
+    } else if (preset === '7d') {
+      onFilterChange({
+        ...filter,
+        timePreset: '7d',
+        fromUtc: getPastDaysString(6),
+        toUtc: today,
+      }, true);
+    } else if (preset === '30d') {
+      onFilterChange({
+        ...filter,
+        timePreset: '30d',
+        fromUtc: getPastDaysString(29),
+        toUtc: today,
+      }, true);
+    } else {
+      onFilterChange({
+        ...filter,
+        timePreset: 'custom',
+      }, true);
+    }
+  };
+
+  const hasActiveFilters = Boolean(
+    filter.searchTerm ||
+      filter.action ||
+      filter.outcome ||
+      filter.fromUtc ||
+      filter.toUtc ||
+      filter.requestId || filter.targetId || filter.actorSessionId ||
+      filter.timePreset !== 'all',
+  );
+
+  return (
+    <form
+      onSubmit={(e) => e.preventDefault()}
+      className="p-4 sm:p-5 border-b border-line-subtle bg-surface-subtle/40 space-y-3.5"
+    >
+      {/* Hàng 1: Search, Dropdowns, Action buttons */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+        {/* Tìm kiếm */}
+        <div className="flex-1 min-w-0">
+          <Input
+            aria-label="Từ khóa tìm kiếm"
+            value={filter.searchTerm}
+            onChange={(e) => onFilterChange({ ...filter, searchTerm: e.target.value })}
+            placeholder="Tìm theo người thực hiện, mã hồ sơ hoặc nội dung..."
+            leftIcon={<Search className="size-4 text-ink-subtle" />}
+            rightIcon={
+              filter.searchTerm ? (
+                <button
+                  type="button"
+                  onClick={() => onFilterChange({ ...filter, searchTerm: '' }, true)}
+                  className="p-1 text-ink-subtle hover:text-ink-body rounded"
+                  aria-label="Xóa từ khóa tìm kiếm"
+                >
+                  <X className="size-3.5" />
+                </button>
+              ) : null
+            }
+            className="h-10 rounded-xl border-line-input/90 bg-surface-card text-sm"
+          />
+        </div>
+
+        {/* Dropdown Thao tác */}
+        <div className="w-full sm:w-60 lg:w-64 shrink-0">
+          <Select
+            options={actionOptions}
+            value={filter.action}
+            onChange={(val) => onFilterChange({ ...filter, action: String(val || '') }, true)}
+            placeholder="Tất cả thao tác"
+            searchable
+            searchPlaceholder="Tìm thao tác..."
+            triggerClassName="h-10 rounded-xl border-line-input/90 bg-surface-card text-sm"
+          />
+        </div>
+
+        {/* Dropdown Kết quả */}
+        <div className="w-full sm:w-48 lg:w-52 shrink-0">
+          <Select
+            options={OUTCOME_OPTIONS}
+            value={filter.outcome}
+            onChange={(val) => onFilterChange({ ...filter, outcome: String(val || '') }, true)}
+            placeholder="Tất cả kết quả"
+            triggerClassName="h-10 rounded-xl border-line-input/90 bg-surface-card text-sm"
+          />
+        </div>
+
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isLoading}
+              onClick={onReset}
+              leftIcon={<RotateCcw className="size-3.5" />}
+              className="h-10 rounded-xl px-3.5 text-ink-body hover:text-ink-primary"
+              title="Đặt lại bộ lọc về mặc định"
+            >
+              Đặt lại
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <Input
+          aria-label="Request ID chính xác"
+          placeholder="Request ID chính xác"
+          value={filter.requestId || ''}
+          onChange={(event) => onFilterChange({ ...filter, requestId: event.target.value })}
+          className="h-9 rounded-xl border-line-input/90 bg-surface-card text-xs"
+        />
+        <Input
+          aria-label="Mã đối tượng chính xác"
+          placeholder="Mã đối tượng chính xác"
+          value={filter.targetId || ''}
+          onChange={(event) => onFilterChange({ ...filter, targetId: event.target.value })}
+          className="h-9 rounded-xl border-line-input/90 bg-surface-card text-xs"
+        />
+        <Input
+          aria-label="Session ID chính xác"
+          placeholder="Session ID chính xác"
+          value={filter.actorSessionId || ''}
+          onChange={(event) => onFilterChange({ ...filter, actorSessionId: event.target.value })}
+          className="h-9 rounded-xl border-line-input/90 bg-surface-card text-xs"
+        />
+      </div>
+
+      {/* Hàng 2: Mốc thời gian nhanh (Time Presets) và Bộ chọn ngày */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-0.5">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <span className="text-xs font-medium text-ink-muted mr-1 flex items-center gap-1">
+            <CalendarIcon className="size-3.5 text-ink-subtle" />
+            Thời gian:
+          </span>
+
+          <button
+            type="button"
+            onClick={() => handlePresetChange('all')}
+            className={cn(
+              'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border',
+              filter.timePreset === 'all'
+                ? 'bg-brand-solid text-white border-primary shadow-2xs'
+                : 'bg-surface-card text-ink-body border-line-input hover:bg-surface-muted hover:text-ink-primary',
+            )}
+          >
+            Tất cả
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handlePresetChange('today')}
+            className={cn(
+              'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border',
+              filter.timePreset === 'today'
+                ? 'bg-brand-solid text-white border-primary shadow-2xs'
+                : 'bg-surface-card text-ink-body border-line-input hover:bg-surface-muted hover:text-ink-primary',
+            )}
+          >
+            Hôm nay
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handlePresetChange('7d')}
+            className={cn(
+              'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border',
+              filter.timePreset === '7d'
+                ? 'bg-brand-solid text-white border-primary shadow-2xs'
+                : 'bg-surface-card text-ink-body border-line-input hover:bg-surface-muted hover:text-ink-primary',
+            )}
+          >
+            7 ngày qua
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handlePresetChange('30d')}
+            className={cn(
+              'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border',
+              filter.timePreset === '30d'
+                ? 'bg-brand-solid text-white border-primary shadow-2xs'
+                : 'bg-surface-card text-ink-body border-line-input hover:bg-surface-muted hover:text-ink-primary',
+            )}
+          >
+            30 ngày qua
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handlePresetChange('custom')}
+            className={cn(
+              'px-2.5 py-1 text-xs rounded-lg font-medium transition-colors border',
+              filter.timePreset === 'custom'
+                ? 'bg-brand-solid text-white border-primary shadow-2xs'
+                : 'bg-surface-card text-ink-body border-line-input hover:bg-surface-muted hover:text-ink-primary',
+            )}
+          >
+            Tùy chọn ngày...
+          </button>
+        </div>
+
+        {/* Khối chọn ngày Từ - Đến khi chọn Tùy chọn ngày */}
+        {filter.timePreset === 'custom' && (
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto animate-in fade-in-50 duration-150">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-ink-muted whitespace-nowrap">
+                Từ:
+              </span>
+              <DatePicker
+                aria-label="Từ ngày"
+                value={filter.fromUtc}
+                onValueChange={(val) => onFilterChange({ ...filter, fromUtc: val }, true)}
+                className="w-48 h-8 px-2.5 text-xs rounded-md border border-line-input bg-surface-card focus:outline-none focus:ring-1 focus:ring-primary text-ink-secondary"
+              />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-ink-muted whitespace-nowrap">
+                Đến:
+              </span>
+              <DatePicker
+                aria-label="Đến ngày"
+                value={filter.toUtc}
+                onValueChange={(val) => onFilterChange({ ...filter, toUtc: val }, true)}
+                className="w-48 h-8 px-2.5 text-xs rounded-md border border-line-input bg-surface-card focus:outline-none focus:ring-1 focus:ring-primary text-ink-secondary"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </form>
+  );
+};

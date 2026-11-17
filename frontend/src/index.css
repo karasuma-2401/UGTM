@@ -4,6 +4,164 @@
 @tailwind components;
 @tailwind utilities;
 
+.fluent-dialog[open] {
+  animation: fluent-dialog-enter 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fluent-dialog[open]::backdrop {
+  animation: fluent-backdrop-enter 260ms ease-out;
+}
+
+.fluent-drawer[open] {
+  animation: fluent-drawer-enter 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fluent-drawer-enter {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes fluent-dialog-enter {
+  from {
+    opacity: 0.85;
+    transform: translateY(12px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.fluent-panel {
+  animation: fluent-panel-enter 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fluent-tab-enter {
+  animation: fluent-tab-enter 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fluent-detail-enter {
+  animation: fluent-detail-enter 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fluent-ai-progress-track {
+  position: relative;
+  overflow: hidden;
+}
+
+.fluent-ai-progress-track::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(32, 84, 165, 0.55) 50%,
+    transparent 100%
+  );
+  animation: fluent-ai-sweep 1.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.dark .fluent-ai-progress-track::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(96, 165, 250, 0.55) 50%,
+    transparent 100%
+  );
+}
+
+@keyframes fluent-panel-enter {
+  from {
+    opacity: 0.94;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fluent-tab-enter {
+  from {
+    opacity: 0.9;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fluent-detail-enter {
+  from {
+    opacity: 0.86;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fluent-ai-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fluent-reduced-feedback {
+  from {
+    opacity: 0.97;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fluent-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fluent-dialog[open],
+  .fluent-drawer[open],
+  .fluent-dialog[open]::backdrop,
+  .fluent-panel,
+  .fluent-tab-enter,
+  .fluent-detail-enter {
+    animation: fluent-reduced-feedback 120ms linear;
+  }
+
+  .fluent-ai-progress-track::after {
+    animation: none;
+    transform: translateX(0);
+    opacity: 0.35;
+  }
+}
+
+@keyframes access-check-scan {
+  0%,
+  100% {
+    transform: translate(-3px, 1px) rotate(-12deg);
+  }
+  35% {
+    transform: translate(3px, -3px) rotate(8deg);
+  }
+  70% {
+    transform: translate(3px, 2px) rotate(-4deg);
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -36,36 +194,166 @@
     --ring: 221.2 83.2% 53.3%;
 
     --radius: var(--radius-md, 0.5rem);
+
+    /* Semantic Theme Tokens (RGB triplets for Tailwind <alpha-value>) — Light Mode */
+    --surface-canvas: 248 250 252;    /* #f8fafc */
+    --surface-sidebar: 255 255 255;   /* #ffffff */
+    --surface-card: 255 255 255;      /* #ffffff */
+    --surface-elevated: 255 255 255;  /* #ffffff */
+    --surface-subtle: 248 250 252;    /* #f8fafc (slate-50) */
+    --surface-muted: 241 245 249;     /* #f1f5f9 (slate-100) */
+    --surface-hover: 248 250 252;     /* #f8fafc (slate-50) */
+    --surface-strong: 226 232 240;    /* #e2e8f0 (slate-200) */
+
+    --ink-primary: 15 23 42;          /* slate-900 */
+    --ink-heading: 30 41 59;          /* slate-800 */
+    --ink-secondary: 51 65 85;        /* slate-700 */
+    --ink-body: 71 85 105;            /* slate-600 */
+    --ink-muted: 100 116 139;         /* slate-500 */
+    --ink-subtle: 148 163 184;        /* slate-400 */
+    --ink-faint: 203 213 225;         /* slate-300 */
+
+    --line-subtle: 241 245 249;       /* slate-100 */
+    --line-default: 226 232 240;      /* slate-200 */
+    --line-input: 226 232 240;        /* slate-200 */
+    --line-strong: 203 213 225;       /* slate-300 */
+
+    --brand-ink: 32 84 165;           /* #2054a5 */
+    --brand-solid: 32 84 165;         /* #2054a5 */
+    --brand-solid-hover: 26 68 133;   /* #1a4485 */
+    --brand-soft-bg: 239 246 255;     /* blue-50 */
+    --brand-soft-border: 191 219 254; /* blue-200 */
+    --brand-soft-text: 29 78 216;     /* blue-700 */
+
+    --tone-info-bg: 239 246 255;      /* blue-50 */
+    --tone-info-border: 191 219 254;  /* blue-200 */
+    --tone-info-text: 29 78 216;      /* blue-700 */
+    --tone-info-icon: 37 99 235;      /* blue-600 */
+    --tone-info-strong: 30 64 175;    /* blue-800 */
+
+    --tone-success-bg: 236 253 245;     /* emerald-50 */
+    --tone-success-border: 167 243 208; /* emerald-200 */
+    --tone-success-text: 4 120 87;      /* emerald-700 */
+    --tone-success-icon: 5 150 105;     /* emerald-600 */
+    --tone-success-strong: 6 95 70;     /* emerald-800 */
+
+    --tone-warning-bg: 255 251 235;     /* amber-50 */
+    --tone-warning-border: 253 230 138; /* amber-200 */
+    --tone-warning-text: 180 83 9;      /* amber-700 */
+    --tone-warning-icon: 217 119 6;     /* amber-600 */
+    --tone-warning-strong: 146 64 14;   /* amber-800 */
+
+    --tone-danger-bg: 255 241 242;      /* rose-50 */
+    --tone-danger-border: 254 205 211;  /* rose-200 */
+    --tone-danger-text: 190 18 60;      /* rose-700 */
+    --tone-danger-icon: 225 29 72;      /* rose-600 */
+    --tone-danger-strong: 159 18 57;    /* rose-800 */
+
+    --tone-violet-bg: 245 243 255;      /* violet-50 */
+    --tone-violet-border: 221 214 254;  /* violet-200 */
+    --tone-violet-text: 109 40 217;     /* violet-700 */
+    --tone-violet-icon: 124 58 237;     /* violet-600 */
+
+    --tone-orange-bg: 255 247 237;      /* orange-50 */
+    --tone-orange-border: 254 215 170;  /* orange-200 */
+    --tone-orange-text: 194 65 12;      /* orange-700 */
+    --tone-orange-icon: 234 88 12;      /* orange-600 */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Cool Slate Layered + Fluent 2 elevation */
+    --background: 222 44% 6%;
+    --foreground: 210 40% 96%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 222.2 47.4% 11.2%;
+    --card-foreground: 210 40% 96%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 220 42% 13%;
+    --popover-foreground: 210 40% 96%;
 
-    --primary: 217.2 91.2% 59.8%;
+    /* Accessible bright blue on dark slate surfaces (>=5:1) */
+    --primary: 214 95% 65%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary-foreground: 210 40% 96%;
 
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted-foreground: 215 20.2% 68%;
 
     --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent-foreground: 210 40% 96%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --border: 217.2 32.6% 19%;
+    --input: 217.2 32.6% 21%;
+    --ring: 214 95% 65%;
+
+    /* Semantic Theme Tokens — Cool Slate Layered Dark Mode */
+    --surface-canvas: 9 13 22;        /* #090d16 */
+    --surface-sidebar: 12 18 32;      /* #0c1220 */
+    --surface-card: 15 23 42;         /* #0f172a (slate-900) */
+    --surface-elevated: 22 32 51;     /* #162033 */
+    --surface-subtle: 11 17 32;       /* #0b1120 */
+    --surface-muted: 30 41 59;        /* #1e293b (slate-800) */
+    --surface-hover: 30 41 59;        /* #1e293b (slate-800) */
+    --surface-strong: 51 65 85;       /* #334155 (slate-700) */
+
+    --ink-primary: 241 245 249;       /* slate-100 */
+    --ink-heading: 226 232 240;       /* slate-200 */
+    --ink-secondary: 203 213 225;     /* slate-300 */
+    --ink-body: 203 213 225;          /* slate-300 */
+    --ink-muted: 148 163 184;         /* slate-400 (>=5.8:1 AA on elevated dark surfaces) */
+    --ink-subtle: 140 154 176;        /* cool slate (#8c9ab0, >=4.8:1 AA on #0f172a / #162033) */
+    --ink-faint: 100 116 139;         /* slate-500 (visible subtle icons/disabled indicators) */
+
+    --line-subtle: 30 41 59;          /* slate-800 */
+    --line-default: 30 41 59;         /* slate-800 */
+    --line-input: 51 65 85;           /* slate-700 */
+    --line-strong: 71 85 105;         /* slate-600 */
+
+    --brand-ink: 96 165 250;          /* blue-400 */
+    --brand-solid: 37 99 235;         /* blue-600 (#2563eb on #fff = 5.17:1) */
+    --brand-solid-hover: 59 130 246;  /* blue-500 */
+    --brand-soft-bg: 23 37 84;        /* blended blue-950 */
+    --brand-soft-border: 30 64 175;   /* blue-800 */
+    --brand-soft-text: 147 197 253;   /* blue-300 */
+
+    --tone-info-bg: 20 35 72;         /* blended blue-950 */
+    --tone-info-border: 30 64 175;    /* blue-800 */
+    --tone-info-text: 147 197 253;    /* blue-300 */
+    --tone-info-icon: 96 165 250;     /* blue-400 */
+    --tone-info-strong: 191 219 254;  /* blue-200 */
+
+    --tone-success-bg: 12 45 38;      /* blended emerald-950 */
+    --tone-success-border: 6 95 70;   /* emerald-800 */
+    --tone-success-text: 110 231 183; /* emerald-300 */
+    --tone-success-icon: 52 211 153;  /* emerald-400 */
+    --tone-success-strong: 167 243 208; /* emerald-200 */
+
+    --tone-warning-bg: 50 32 14;      /* blended amber-950 */
+    --tone-warning-border: 146 64 14; /* amber-800 */
+    --tone-warning-text: 252 211 77;  /* amber-300 */
+    --tone-warning-icon: 251 191 36;  /* amber-400 */
+    --tone-warning-strong: 253 230 138; /* amber-200 */
+
+    --tone-danger-bg: 54 19 30;       /* blended rose-950 */
+    --tone-danger-border: 159 18 57;  /* rose-800 */
+    --tone-danger-text: 253 164 175;  /* rose-300 */
+    --tone-danger-icon: 251 113 133;  /* rose-400 */
+    --tone-danger-strong: 254 205 211; /* rose-200 */
+
+    --tone-violet-bg: 42 26 74;       /* blended violet-950 */
+    --tone-violet-border: 91 33 182;  /* violet-800 */
+    --tone-violet-text: 196 181 253;  /* violet-300 */
+    --tone-violet-icon: 167 139 250;  /* violet-400 */
+
+    --tone-orange-bg: 54 26 14;       /* blended orange-950 */
+    --tone-orange-border: 154 52 18;  /* orange-800 */
+    --tone-orange-text: 253 186 116;  /* orange-300 */
+    --tone-orange-icon: 251 146 60;   /* orange-400 */
   }
 }
 
@@ -74,9 +362,132 @@
     @apply border-border;
   }
 
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased selection:bg-primary/15 selection:text-primary;
     font-family: var(--font-family-sans);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1,
+      'cv02' 1,
+      'cv03' 1,
+      'cv04' 1,
+      'cv11' 1;
+  }
+
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Refined modern scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.55);
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.25);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.45);
+  }
+}
+
+@layer components {
+  .rich-text-prose {
+    @apply text-sm leading-relaxed text-ink-heading;
+  }
+
+  .rich-text-prose > * + * {
+    margin-top: 0.5rem;
+  }
+
+  .rich-text-prose p {
+    margin: 0;
+  }
+
+  .rich-text-prose ul {
+    list-style-type: disc;
+    padding-left: 1.25rem;
+  }
+
+  .rich-text-prose ol {
+    list-style-type: decimal;
+    padding-left: 1.25rem;
+  }
+
+  .rich-text-prose li > p {
+    margin: 0;
+  }
+
+  .rich-text-prose li + li {
+    margin-top: 0.25rem;
+  }
+
+  .rich-text-prose blockquote {
+    border-left: 2px solid rgb(var(--line-strong));
+    padding-left: 0.75rem;
+    color: rgb(var(--ink-body));
+    font-style: italic;
+  }
+
+  .rich-text-prose a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .rich-text-prose code {
+    border-radius: 0.25rem;
+    background-color: rgb(var(--surface-muted));
+    color: rgb(var(--ink-heading));
+    padding: 0.125rem 0.3rem;
+    font-size: 0.85em;
+  }
+
+  .rich-text-editor-content .ProseMirror {
+    outline: none;
+    min-height: inherit;
+    height: 100%;
+  }
+
+  .rich-text-editor-content .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    color: rgb(var(--ink-subtle));
+    pointer-events: none;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    color-scheme: light !important;
   }
 }

@@ -2,19 +2,64 @@ Project UGTM {
   database_type: 'PostgreSQL'
 }
 
+Table academic.audit_outbox_message {
+  id uuid [pk, not null]
+  action "character varying(100)" [not null]
+  attempt_count integer [not null]
+  created_at "timestamp with time zone" [not null]
+  last_error "character varying(1000)" [null]
+  next_attempt_at "timestamp with time zone" [not null]
+  payload_json jsonb [not null]
+  processed_at "timestamp with time zone" [null]
+
+  indexes {
+    (processed_at, next_attempt_at) [name: 'ix_academic_audit_outbox_pending']
+  }
+}
+
 Table academic.kltn_batch {
   id uuid [pk, not null]
   academic_year "character varying(20)" [not null]
   batch_name "character varying(100)" [not null]
   created_at "timestamp with time zone" [not null]
+  created_by uuid [null]
   end_date date [not null]
+  schedule_template_version_id uuid [null]
   semester integer [not null]
   start_date date [not null]
   status "character varying(50)" [not null, default: 'Draft']
+  time_zone_id "character varying(100)" [not null, default: 'Asia/Ho_Chi_Minh']
+  updated_at "timestamp with time zone" [null]
+  updated_by uuid [null]
+  xmin xid [not null]
+
+  indexes {
+    (academic_year, semester) [unique, name: 'ix_kltn_batch_academic_year_semester']
+    schedule_template_version_id [name: 'ix_kltn_batch_schedule_template_version_id']
+  }
 
   checks {
     `end_date > start_date` [name: 'ck_batch_dates']
     `semester > 0` [name: 'ck_batch_semester']
+  }
+}
+
+Table academic.schedule_template_version {
+  id uuid [pk, not null]
+  created_at "timestamp with time zone" [not null]
+  created_by uuid [null]
+  name "character varying(200)" [not null]
+  published_at "timestamp with time zone" [null]
+  published_by uuid [null]
+  retired_at "timestamp with time zone" [null]
+  status "character varying(50)" [not null]
+  template_code "character varying(100)" [not null]
+  time_zone_id "character varying(100)" [not null]
+  version_no integer [not null]
+
+  indexes {
+    template_code [unique, name: 'ix_schedule_template_one_active', note: "WHERE status = 'Active'"]
+    (template_code, version_no) [unique, name: 'ix_schedule_template_code_version']
   }
 }
 
@@ -33,10 +78,12 @@ Table academic.score_component_config {
 
   indexes {
     (config_id, component_code) [unique, name: 'ix_score_component_config_config_id_component_code']
+    (config_id, order_index) [unique, name: 'ix_score_component_config_config_id_order_index']
   }
 
   checks {
     `minimum_score IS NULL OR minimum_score BETWEEN 0 AND 10` [name: 'ck_score_component_minimum']
+    `order_index > 0` [name: 'ck_score_component_order']
     `weight >= 0` [name: 'ck_score_component_weight']
   }
 }
@@ -45,29 +92,65 @@ Table academic.score_weight_config {
   id uuid [pk, not null]
   batch_id uuid [not null]
   calculation_method "character varying(50)" [not null, default: 'IntegerCoefficient']
+  change_reason "character varying(1000)" [null]
   created_at "timestamp with time zone" [not null]
-  is_active boolean [not null, default: true]
+  created_by uuid [null]
+  published_at "timestamp with time zone" [null]
+  published_by uuid [null]
+  retired_at "timestamp with time zone" [null]
+  status "character varying(50)" [not null, default: 'Draft']
+  updated_at "timestamp with time zone" [null]
   version_no integer [not null, default: 1]
+  xmin xid [not null]
 
   indexes {
-    batch_id [unique, name: 'ix_score_weight_config_batch_id']
+    (batch_id, version_no) [unique, name: 'ix_score_weight_config_batch_version']
+    batch_id [unique, name: 'ix_score_weight_config_one_active', note: "WHERE status = 'Active'"]
+    batch_id [unique, name: 'ix_score_weight_config_one_draft', note: "WHERE status = 'Draft'"]
   }
 }
 
 Table academic.stage {
   id uuid [pk, not null]
   batch_id uuid [not null]
-  deadline_date "timestamp with time zone" [not null]
-  stage_index integer [not null]
+  deadline_at_utc "timestamp with time zone" [not null]
+  end_date date [not null]
+  is_overridden boolean [not null, default: false]
+  order_index integer [not null]
+  stage_code "character varying(100)" [not null]
   stage_name "character varying(150)" [not null]
   start_date date [not null]
 
   indexes {
-    (batch_id, stage_index) [unique, name: 'ix_stage_batch_id_stage_index']
+    (batch_id, order_index) [unique, name: 'ix_stage_batch_id_order_index']
+    (batch_id, stage_code) [unique, name: 'ix_stage_batch_id_stage_code']
   }
 
   checks {
-    `stage_index BETWEEN 1 AND 7` [name: 'ck_stage_index']
+    `end_date >= start_date` [name: 'ck_stage_dates']
+    `order_index BETWEEN 1 AND 7` [name: 'ck_stage_order_index']
+  }
+}
+
+Table academic.stage_template_definition {
+  id uuid [pk, not null]
+  deadline_adjustment_policy "character varying(50)" [not null]
+  default_deadline_local_time "time without time zone" [not null]
+  end_offset_days integer [not null]
+  order_index integer [not null]
+  stage_code "character varying(100)" [not null]
+  stage_name "character varying(150)" [not null]
+  start_offset_days integer [not null]
+  template_version_id uuid [not null]
+
+  indexes {
+    (template_version_id, order_index) [unique, name: 'ix_stage_template_version_order']
+    (template_version_id, stage_code) [unique, name: 'ix_stage_template_version_code']
+  }
+
+  checks {
+    `start_offset_days >= 0 AND end_offset_days >= start_offset_days` [name: 'ck_stage_template_offsets']
+    `order_index BETWEEN 1 AND 7` [name: 'ck_stage_template_order']
   }
 }
 
@@ -75,18 +158,34 @@ Table councils.advisor_evaluation {
   id uuid [pk, not null]
   allows_reviewer_assignment boolean [null]
   comment text [null]
+  decision_at "timestamp with time zone" [null]
+  decision_by uuid [null]
   evaluated_at "timestamp with time zone" [not null]
+  evaluated_by uuid [null]
   exclusion_reason text [null]
+  final_report_id uuid [null]
   group_id uuid [not null]
   is_ignored_in_calculation boolean [not null, default: false]
+  is_legacy boolean [not null, default: true]
+  rejection_reason text [null]
+  report_version_no integer [null]
   score numeric(4,2) [not null]
+  submission_checksum_sha256 "character varying(64)" [null]
+  submission_file_id uuid [null]
+  xmin xid [not null]
 
   indexes {
+    decision_by [name: 'ix_advisor_evaluation_decision_by']
+    evaluated_by [name: 'ix_advisor_evaluation_evaluated_by']
+    final_report_id [name: 'ix_advisor_evaluation_final_report_id']
     group_id [unique, name: 'ix_advisor_evaluation_group_id']
+    submission_file_id [name: 'ix_advisor_evaluation_submission_file_id']
   }
 
   checks {
     `score BETWEEN 0 AND 10` [name: 'ck_advisor_evaluation_score']
+    `is_legacy OR (final_report_id IS NOT NULL AND report_version_no > 0 AND submission_file_id IS NOT NULL AND submission_checksum_sha256 IS NOT NULL AND char_length(submission_checksum_sha256) = 64 AND evaluated_by IS NOT NULL AND comment IS NOT NULL AND char_length(btrim(comment)) BETWEEN 1 AND 2000)` [name: 'ck_advisor_evaluation_workflow_binding']
+    `is_legacy OR ((allows_reviewer_assignment IS NULL AND rejection_reason IS NULL AND decision_by IS NULL AND decision_at IS NULL) OR (allows_reviewer_assignment = FALSE AND rejection_reason IS NOT NULL AND char_length(btrim(rejection_reason)) BETWEEN 1 AND 1000 AND decision_by IS NOT NULL AND decision_at IS NOT NULL) OR (allows_reviewer_assignment = TRUE AND rejection_reason IS NULL AND decision_by IS NOT NULL AND decision_at IS NOT NULL))` [name: 'ck_advisor_evaluation_reviewer_assignment_decision']
   }
 }
 
@@ -205,36 +304,102 @@ Table councils.reviewer_assignment {
   group_id uuid [not null]
   is_active boolean [not null, default: true]
   reviewer_id uuid [not null]
+  advisor_id_at_assignment uuid [null]
+  advisor_evaluation_id uuid [null]
+  final_report_id uuid [null]
+  report_version_no integer [null]
+  submission_file_id uuid [null]
+  submission_checksum_sha256 "character varying(64)" [null]
+  is_legacy boolean [not null, default: true]
+  cancelled_by uuid [null]
+  cancelled_at "timestamp with time zone" [null]
+  cancellation_reason text [null]
+  xmin xid [not null, note: 'PostgreSQL system concurrency column']
 
   indexes {
     assigned_by [name: 'ix_reviewer_assignment_assigned_by']
     reviewer_id [name: 'ix_reviewer_assignment_reviewer_id']
-    (group_id, assignment_order) [unique, name: 'ix_reviewer_assignment_group_id_assignment_order']
-    (group_id, reviewer_id) [unique, name: 'ix_reviewer_assignment_group_id_reviewer_id']
+    (group_id, assigned_at) [name: 'ix_reviewer_assignment_group_id_assigned_at']
+    group_id [unique, name: 'ux_reviewer_assignment_active_group', note: 'PARTIAL: WHERE is_active = true; inactive history is not unique']
   }
+
+  checks {
+    `is_legacy OR ( id <> '00000000-0000-0000-0000-000000000000'::uuid AND group_id <> '00000000-0000-0000-0000-000000000000'::uuid AND reviewer_id <> '00000000-0000-0000-0000-000000000000'::uuid AND assigned_by <> '00000000-0000-0000-0000-000000000000'::uuid AND advisor_id_at_assignment IS NOT NULL AND advisor_id_at_assignment <> '00000000-0000-0000-0000-000000000000'::uuid AND reviewer_id <> advisor_id_at_assignment AND advisor_evaluation_id IS NOT NULL AND advisor_evaluation_id <> '00000000-0000-0000-0000-000000000000'::uuid AND final_report_id IS NOT NULL AND final_report_id <> '00000000-0000-0000-0000-000000000000'::uuid AND report_version_no IS NOT NULL AND report_version_no > 0 AND submission_file_id IS NOT NULL AND submission_file_id <> '00000000-0000-0000-0000-000000000000'::uuid AND submission_checksum_sha256 IS NOT NULL AND submission_checksum_sha256 ~ '^[0-9a-f]{64}$' AND assignment_order = 1 )` [name: 'ck_reviewer_assignment_workflow_binding']
+    `(is_active AND cancelled_by IS NULL AND cancelled_at IS NULL AND cancellation_reason IS NULL) OR (NOT is_active AND ( (is_legacy AND cancelled_by IS NULL AND cancelled_at IS NULL AND cancellation_reason IS NULL) OR (cancelled_by IS NOT NULL AND cancelled_by <> '00000000-0000-0000-0000-000000000000'::uuid AND cancelled_at IS NOT NULL AND cancelled_at >= assigned_at AND cancellation_reason IS NOT NULL AND char_length(btrim(cancellation_reason)) BETWEEN 1 AND 1000 AND cancellation_reason = btrim(cancellation_reason)) ))` [name: 'ck_reviewer_assignment_cancellation']
+  }
+  Note: 'SCRUM-104: one active reviewer per group; new AssignmentOrder = 1. Snapshot validated by owner contracts in shared transaction. DELETE is soft cancellation. DBML index note carries the PostgreSQL partial predicate.'
 }
 
+Table councils.reviewer_assignment_idempotency {
+  id uuid [pk, not null]
+  actor_id uuid [not null]
+  operation "character varying(100)" [not null]
+  idempotency_key uuid [not null]
+  request_fingerprint "character varying(64)" [not null]
+  response_status_code integer [not null]
+  response_payload_json jsonb [not null]
+  created_at_utc "timestamp with time zone" [not null]
+
+  indexes {
+    (actor_id, operation, idempotency_key) [unique, name: 'ux_reviewer_assignment_idempotency_actor_operation_key']
+  }
+  checks {
+    `response_status_code IN (200, 201)` [name: 'ck_reviewer_assignment_idempotency_status']
+    `request_fingerprint ~ '^[0-9a-f]{64}$'` [name: 'ck_reviewer_assignment_idempotency_fingerprint']
+    `char_length(btrim(operation)) BETWEEN 1 AND 100 AND operation = btrim(operation)` [name: 'ck_reviewer_assignment_idempotency_operation']
+  }
+}
 Table councils.reviewer_evaluation {
   id uuid [pk, not null]
   assignment_id uuid [not null]
   comment text [null]
-  defense_approval "character varying(50)" [not null]
+  score numeric(4,2) [null]
+  defense_approval "character varying(50)" [null]
+  status "character varying(50)" [null]
+  is_legacy boolean [not null, default: true]
+  created_by uuid [null]
+  created_at_utc "timestamp with time zone" [null]
+  evaluated_by uuid [null]
   evaluated_at "timestamp with time zone" [not null]
-  exclusion_reason text [null]
+  submitted_by uuid [null]
+  submitted_at_utc "timestamp with time zone" [null]
   is_ignored_in_calculation boolean [not null, default: false]
   is_visible_to_student boolean [not null, default: false]
+  exclusion_reason text [null]
   revision_feedback text [null]
-  score numeric(4,2) [not null]
+  xmin xid [not null, note: 'PostgreSQL system concurrency column']
 
   indexes {
     assignment_id [unique, name: 'ix_reviewer_evaluation_assignment_id']
   }
-
   checks {
     `score BETWEEN 0 AND 10` [name: 'ck_reviewer_evaluation_score']
+    `status IS NULL OR status IN ('Draft', 'Submitted')` [name: 'ck_reviewer_evaluation_status']
+    `defense_approval IS NULL OR defense_approval IN ('Approved', 'Rejected')` [name: 'ck_reviewer_evaluation_defense_approval']
+    `is_legacy OR ( id <> '00000000-0000-0000-0000-000000000000'::uuid AND assignment_id <> '00000000-0000-0000-0000-000000000000'::uuid AND status IS NOT NULL AND created_by IS NOT NULL AND created_by <> '00000000-0000-0000-0000-000000000000'::uuid AND evaluated_by IS NOT NULL AND evaluated_by <> '00000000-0000-0000-0000-000000000000'::uuid AND created_at_utc IS NOT NULL AND created_at_utc <= evaluated_at AND (comment IS NULL OR (char_length(btrim(comment)) BETWEEN 1 AND 2000 AND comment = btrim(comment))) AND ( (status = 'Draft' AND submitted_by IS NULL AND submitted_at_utc IS NULL AND NOT is_visible_to_student) OR (status = 'Submitted' AND score IS NOT NULL AND comment IS NOT NULL AND defense_approval IS NOT NULL AND submitted_by IS NOT NULL AND submitted_by = evaluated_by AND submitted_at_utc IS NOT NULL AND submitted_at_utc = evaluated_at AND is_visible_to_student) ) )` [name: 'ck_reviewer_evaluation_workflow']
   }
+  Note: 'SCRUM-105 CP1 schema reused by CP2-CP3: one draft or submitted evaluation per assignment. Legacy is not automatically submitted or public. Any evaluation blocks cancellation. CP3 derives gate from current Active rules with scheduling locks; no persisted ReadyForDefense. Student feedback is comment-only from visible Submitted/nonlegacy rows and the original approved snapshot, independent of later report current version or reviewer activity.'
 }
 
+Table councils.reviewer_evaluation_idempotency {
+  id uuid [pk, not null]
+  actor_id uuid [not null]
+  operation "character varying(100)" [not null]
+  idempotency_key uuid [not null]
+  request_fingerprint "character varying(64)" [not null]
+  response_status_code integer [not null]
+  response_payload_json jsonb [not null]
+  created_at_utc "timestamp with time zone" [not null]
+
+  indexes {
+    (actor_id, operation, idempotency_key) [unique, name: 'ux_reviewer_evaluation_idempotency_actor_operation_key']
+  }
+  checks {
+    `response_status_code IN (200, 201)` [name: 'ck_reviewer_evaluation_idempotency_status']
+    `request_fingerprint ~ '^[0-9a-f]{64}$'` [name: 'ck_reviewer_evaluation_idempotency_fingerprint']
+    `char_length(btrim(operation)) BETWEEN 1 AND 100 AND operation = btrim(operation)` [name: 'ck_reviewer_evaluation_idempotency_operation']
+  }
+}
 Table councils.score_summary {
   id uuid [pk, not null]
   advisor_score numeric(4,2) [null]
@@ -462,12 +627,18 @@ Table notifications.notification {
 Table thesis.final_report {
   id uuid [pk, not null]
   group_id uuid [not null]
+  current_version_no integer [not null, default: 1]
   status "character varying(50)" [not null, default: 'Submitted']
   submitted_at "timestamp with time zone" [not null]
   version_type "character varying(50)" [not null]
+  xmin xid [not null]
 
   indexes {
-    group_id [name: 'ix_final_report_group_id']
+    (group_id, version_type) [unique, name: 'ux_final_report_group_id_version_type']
+  }
+
+  checks {
+    `current_version_no > 0` [name: 'ck_final_report_current_version_no']
   }
 }
 
@@ -563,9 +734,11 @@ Table thesis.rename_request {
 
 Table thesis.student_group {
   id uuid [pk, not null]
+  allow_syllabus_resubmission boolean [not null, default: false]
   created_at "timestamp with time zone" [not null]
   status "character varying(50)" [not null, default: 'Registered']
   topic_id uuid [not null]
+  xmin xid [not null]
 
   indexes {
     topic_id [name: 'ix_student_group_topic_id']
@@ -575,12 +748,20 @@ Table thesis.student_group {
 Table thesis.student_group_member {
   id uuid [pk, not null]
   batch_id uuid [not null]
+  confirmation_status "character varying(50)" [not null, default: 'Confirmed']
+  confirmation_token_hash "character varying(128)" [null]
+  confirmation_expires_at_utc "timestamp with time zone" [null]
+  confirmed_at_utc "timestamp with time zone" [null]
   group_id uuid [not null]
+  invited_by_student_id uuid [null]
   joined_at "timestamp with time zone" [not null]
   student_id uuid [not null]
 
   indexes {
     batch_id [name: 'ix_student_group_member_batch_id']
+    confirmation_token_hash [name: 'ix_student_group_member_confirmation_token_hash']
+    invited_by_student_id [name: 'ix_student_group_member_invited_by_student_id']
+    (confirmation_status, confirmation_expires_at_utc) [name: 'ix_student_group_member_status_expires']
     (group_id, student_id) [unique, name: 'ix_student_group_member_group_id_student_id']
     (student_id, batch_id) [unique, name: 'ix_student_group_member_student_id_batch_id']
   }
@@ -590,10 +771,12 @@ Table thesis.submission_file {
   id uuid [pk, not null]
   entity_id uuid [not null]
   entity_type "character varying(50)" [not null]
+  checksum_sha256 "character varying(64)" [null]
+  content_type "character varying(100)" [not null, default: 'application/octet-stream']
   file_extension "character varying(10)" [not null]
   file_name "character varying(255)" [not null]
   file_size bigint [not null]
-  file_url "character varying(500)" [not null]
+  object_key "character varying(1000)" [not null]
   uploaded_at "timestamp with time zone" [not null]
   uploaded_by uuid [not null]
   version_no integer [not null, default: 1]
@@ -602,6 +785,8 @@ Table thesis.submission_file {
     uploaded_by [name: 'ix_submission_file_uploaded_by']
     (entity_type, entity_id, version_no) [name: 'ix_submission_file_entity_type_entity_id_version_no']
   }
+
+  Note: 'Partial unique ux_submission_file_final_report_entity_id_version_no on (entity_id, version_no) WHERE entity_type = FinalReport. DBML does not declare a global unique index here; see EF/migration for the PostgreSQL predicate.'
 }
 
 Table thesis.syllabus {
@@ -642,8 +827,10 @@ Table topics.topic {
 }
 
 Ref fk_score_component_config_score_weight_configs_config_id: academic.score_component_config.config_id > academic.score_weight_config.id [delete: cascade]
-Ref fk_score_weight_config_kltn_batch_batch_id: academic.kltn_batch.id - academic.score_weight_config.batch_id [delete: restrict]
+Ref fk_kltn_batch_schedule_template_version: academic.kltn_batch.schedule_template_version_id > academic.schedule_template_version.id [delete: restrict]
+Ref fk_score_weight_config_kltn_batch_batch_id: academic.score_weight_config.batch_id > academic.kltn_batch.id [delete: restrict]
 Ref fk_stage_kltn_batch_batch_id: academic.stage.batch_id > academic.kltn_batch.id [delete: cascade]
+Ref fk_stage_template_definition_version: academic.stage_template_definition.template_version_id > academic.schedule_template_version.id [delete: cascade]
 Ref fk_advisor_evaluation_student_groups_group_id: thesis.student_group.id - councils.advisor_evaluation.group_id [delete: cascade]
 Ref fk_council_users_approved_by: councils.council.approved_by > identity.user.id [delete: set null]
 Ref fk_council_kltn_batch_batch_id: councils.council.batch_id > academic.kltn_batch.id [delete: restrict]
@@ -661,7 +848,7 @@ Ref fk_grading_criteria_kltn_batch_batch_id: councils.grading_criteria.batch_id 
 Ref fk_reviewer_assignment_users_assigned_by: councils.reviewer_assignment.assigned_by > identity.user.id [delete: restrict]
 Ref fk_reviewer_assignment_student_groups_group_id: councils.reviewer_assignment.group_id > thesis.student_group.id [delete: cascade]
 Ref fk_reviewer_assignment_users_reviewer_id: councils.reviewer_assignment.reviewer_id > identity.user.id [delete: restrict]
-Ref fk_reviewer_evaluation_reviewer_assignment_assignment_id: councils.reviewer_assignment.id - councils.reviewer_evaluation.assignment_id [delete: cascade]
+Ref fk_reviewer_evaluation_reviewer_assignment_assignment_id: councils.reviewer_assignment.id - councils.reviewer_evaluation.assignment_id [delete: restrict]
 Ref fk_score_summary_student_groups_group_id: thesis.student_group.id - councils.score_summary.group_id [delete: cascade]
 Ref fk_score_summary_users_published_by: councils.score_summary.published_by > identity.user.id [delete: set null]
 Ref fk_score_summary_component_score_summaries_summary_id: councils.score_summary_component.summary_id > councils.score_summary.id [delete: cascade]
@@ -688,6 +875,7 @@ Ref fk_rename_request_student_groups_group_id: thesis.rename_request.group_id > 
 Ref fk_student_group_topics_topic_id: thesis.student_group.topic_id > topics.topic.id [delete: restrict]
 Ref fk_student_group_member_kltn_batch_batch_id: thesis.student_group_member.batch_id > academic.kltn_batch.id [delete: restrict]
 Ref fk_student_group_member_student_group_group_id: thesis.student_group_member.group_id > thesis.student_group.id [delete: cascade]
+Ref fk_student_group_member_user_invited_by_student_id: thesis.student_group_member.invited_by_student_id > identity.user.id [delete: set null]
 Ref fk_student_group_member_user_student_id: thesis.student_group_member.student_id > identity.user.id [delete: restrict]
 Ref fk_submission_file_user_uploaded_by: thesis.submission_file.uploaded_by > identity.user.id [delete: restrict]
 Ref fk_syllabus_student_group_group_id: thesis.student_group.id - thesis.syllabus.group_id [delete: cascade]

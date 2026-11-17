@@ -2,6 +2,7 @@ namespace UGTM.Modules.DefenseCouncil.Domain.Entities;
 
 public class CouncilScore
 {
+    public uint Version { get; set; }
     public Guid Id { get; set; }
     public Guid CouncilAssignmentId { get; set; }
     public Guid CouncilMemberId { get; set; }

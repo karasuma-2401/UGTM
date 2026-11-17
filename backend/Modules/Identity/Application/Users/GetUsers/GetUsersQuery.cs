@@ -5,4 +5,13 @@ public sealed record GetUsersQuery(
     string? Role = null,
     string? Status = null,
     int PageNumber = 1,
-    int PageSize = 10);
+    int PageSize = 10,
+    string? AccountGroup = null,
+    string? SortBy = null,
+    string? SortOrder = null);
+
+public enum UserAccountGroup
+{
+    Student,
+    Staff
+}

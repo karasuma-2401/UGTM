@@ -10,9 +10,16 @@ public class SubmissionFileConfiguration : IEntityTypeConfiguration<SubmissionFi
         builder.HasIndex(x => x.UploadedBy)
             .HasDatabaseName("ix_submission_file_uploaded_by");
 
+        builder.HasIndex(x => new { x.EntityId, x.VersionNo })
+            .HasDatabaseName("ux_submission_file_final_report_entity_id_version_no")
+            .HasFilter("entity_type = 'FinalReport'")
+            .IsUnique();
+
         builder.ToTable("submission_file", "thesis");
 
         builder.HasKey(x => x.Id);
+        builder.HasAlternateKey(x => new { x.Id, x.EntityType, x.EntityId, x.VersionNo })
+            .HasName("ak_submission_file_archival_binding");
 
         builder.Property(x => x.EntityType)
             .IsRequired();
@@ -28,9 +35,17 @@ public class SubmissionFileConfiguration : IEntityTypeConfiguration<SubmissionFi
             .HasMaxLength(255)
             .IsRequired();
 
-        builder.Property(x => x.FileUrl)
-            .HasMaxLength(500)
+        builder.Property(x => x.ObjectKey)
+            .HasMaxLength(1000)
             .IsRequired();
+
+        builder.Property(x => x.ContentType)
+            .HasMaxLength(100)
+            .HasDefaultValue("application/octet-stream")
+            .IsRequired();
+
+        builder.Property(x => x.ChecksumSha256)
+            .HasMaxLength(64);
 
         builder.Property(x => x.FileSize)
             .IsRequired();

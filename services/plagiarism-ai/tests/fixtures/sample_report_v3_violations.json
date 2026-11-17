@@ -1,0 +1,226 @@
+{
+  "schema_version": 3,
+  "report_id": "rep-7a3f89b2-20261031",
+  "job_id": "job-7a3f89b2-0001-4444-8888-abcdef123456",
+  "corpus_id": "uit_thesis",
+  "submission_id": "kltn_nop_sample_01",
+  "submission_version": 1,
+  "created_at": "2026-10-31T12:00:00Z",
+  "provenance": {
+    "parser_version": "2.1.0",
+    "preprocessing_profile": "production_v1",
+    "preprocessing_config_hash": "a1b2c3d4e5f60718",
+    "embedding_model": "BAAI/bge-m3",
+    "embedding_revision": "5617a9f61b028005a4858fdac845db406aefb181",
+    "reranker_model": "BAAI/bge-reranker-v2-m3",
+    "reranker_revision": "27301c2380d75069b736b4458fcc0332822a9446",
+    "classifier_version": "0c066eb6",
+    "detector_mode": "custom_classifier",
+    "corpus_snapshot_id": "corpus-v2-73fams"
+  },
+  "summary": {
+    "scanned_chunks": 45,
+    "scanned_characters": 18240,
+    "matched_characters": 4560,
+    "similarity_coverage": 0.25,
+    "max_reranker_score": 0.9425,
+    "flagged_pairs": 3,
+    "findings_returned": 3,
+    "total_findings": 3,
+    "matched_sources": 2,
+    "passage_groups": 2,
+    "cited_findings": 1,
+    "uncited_findings": 1,
+    "uncertain_findings": 1,
+    "review_recommended": true,
+    "detector_mode": "custom_classifier",
+    "interpretation": "Phát hiện 25.0% độ phủ tương đồng trên 18,240 ký tự đã quét; có 1 đoạn thiếu trích dẫn và 1 đoạn nghi vấn dẫn nguồn thứ cấp cần hội đồng thẩm định."
+  },
+  "passage_groups": [
+    {
+      "passage_group_id": "PG-0001",
+      "source_key": "kltn_tham_chieu_nlp_01",
+      "source_version": 1,
+      "source_filename": "KLTN_NLP_MoHinhNgonNgu.pdf",
+      "document_family": "fam_nlp_deeplearning",
+      "submission_start_chunk": 3,
+      "submission_end_chunk": 4,
+      "findings_count": 2,
+      "max_reranker_score": 0.9425,
+      "findings": [
+        {
+          "submission_chunk_no": 3,
+          "submission_page": 5,
+          "submission_start": 1200,
+          "submission_end": 1780,
+          "submission_text": "Mô hình ngôn ngữ lớn dựa trên kiến trúc Transformer đã tạo nên bước ngoặt vượt bậc trong xử lý ngôn ngữ tự nhiên. Bằng việc áp dụng cơ chế tự chú ý (self-attention), mô hình có khả năng nắm bắt ngữ cảnh từ cả hai phía của chuỗi văn bản một cách song song mà không cần dựa vào mạng hồi quy tuần tự.",
+          "source_id": 12,
+          "source_key": "kltn_tham_chieu_nlp_01",
+          "source_version": 1,
+          "source_filename": "KLTN_NLP_MoHinhNgonNgu.pdf",
+          "document_family": "fam_nlp_deeplearning",
+          "source_chunk_no": 7,
+          "source_page": 12,
+          "source_start": 3400,
+          "source_end": 3980,
+          "source_text": "Mô hình ngôn ngữ lớn dựa trên kiến trúc Transformer đã tạo nên bước ngoặt vượt bậc trong lĩnh vực xử lý ngôn ngữ tự nhiên. Bằng việc áp dụng cơ chế tự chú ý nhiều đầu (multi-head self-attention), mô hình có thể nắm bắt ngữ cảnh hai phía của chuỗi văn bản song song thay vì dựa vào mạng nơ-ron hồi quy tuần tự.",
+          "dense_score": 0.9124,
+          "lexical_score": 0.8842,
+          "reranker_score": 0.9425,
+          "classifier_score": 0.9315,
+          "decision_source": "custom_classifier",
+          "citation_status": "absent",
+          "citation_context": {
+            "status": "absent",
+            "citation_type": "none",
+            "markers": [],
+            "raw_markers": [],
+            "cited_works": [],
+            "potential_misattribution": false,
+            "confidence": 0.98,
+            "explanation": "Không phát hiện ký hiệu trích dẫn (dạng [n], tác giả-năm hoặc ngoặc kép) trong đoạn văn bản này."
+          },
+          "aligned_spans": [
+            {
+              "query_start": 1200,
+              "query_end": 1330,
+              "source_start": 3400,
+              "source_end": 3535,
+              "query_text": "Mô hình ngôn ngữ lớn dựa trên kiến trúc Transformer đã tạo nên bước ngoặt vượt bậc trong xử lý ngôn ngữ tự nhiên.",
+              "source_text": "Mô hình ngôn ngữ lớn dựa trên kiến trúc Transformer đã tạo nên bước ngoặt vượt bậc trong lĩnh vực xử lý ngôn ngữ tự nhiên.",
+              "match_type": "near_verbatim",
+              "length": 130
+            },
+            {
+              "query_start": 1331,
+              "query_end": 1600,
+              "source_start": 3536,
+              "source_end": 3810,
+              "query_text": "Bằng việc áp dụng cơ chế tự chú ý (self-attention), mô hình có khả năng nắm bắt ngữ cảnh từ cả hai phía của chuỗi văn bản một cách song song mà không cần dựa vào mạng hồi quy tuần tự.",
+              "source_text": "Bằng việc áp dụng cơ chế tự chú ý nhiều đầu (multi-head self-attention), mô hình có thể nắm bắt ngữ cảnh hai phía của chuỗi văn bản song song thay vì dựa vào mạng nơ-ron hồi quy tuần tự.",
+              "match_type": "paraphrase",
+              "length": 269
+            }
+          ],
+          "passage_group_id": "PG-0001"
+        },
+        {
+          "submission_chunk_no": 4,
+          "submission_page": 5,
+          "submission_start": 1781,
+          "submission_end": 2250,
+          "submission_text": "Theo nghiên cứu của Vaswani và cộng sự [1], cấu trúc Transformer bao gồm phần mã hóa (encoder) và giải mã (decoder), trong đó mỗi tầng gồm có các khối chú ý đa đầu và mạng truyền thẳng vị trí.",
+          "source_id": 12,
+          "source_key": "kltn_tham_chieu_nlp_01",
+          "source_version": 1,
+          "source_filename": "KLTN_NLP_MoHinhNgonNgu.pdf",
+          "document_family": "fam_nlp_deeplearning",
+          "source_chunk_no": 8,
+          "source_page": 13,
+          "source_start": 3981,
+          "source_end": 4440,
+          "source_text": "Kiến trúc Transformer nguyên bản do Vaswani và các cộng sự đề xuất bao gồm hai thành phần chính: bộ mã hóa (encoder) và bộ giải mã (decoder). Mỗi lớp của encoder và decoder đều chứa mạng chú ý đa đầu và mạng truyền thẳng.",
+          "dense_score": 0.8651,
+          "lexical_score": 0.7932,
+          "reranker_score": 0.8841,
+          "classifier_score": 0.7450,
+          "decision_source": "custom_classifier",
+          "citation_status": "present",
+          "citation_context": {
+            "status": "present",
+            "citation_type": "author_year_and_numeric",
+            "markers": ["[1]", "Vaswani và cộng sự"],
+            "raw_markers": ["[1]"],
+            "cited_works": ["Vaswani (2017)"],
+            "potential_misattribution": false,
+            "confidence": 0.94,
+            "explanation": "Có trích dẫn nguồn công khai [1] và ghi rõ tác giả Vaswani; nội dung đối soát mang tính tổng quan phương pháp."
+          },
+          "aligned_spans": [
+            {
+              "query_start": 1781,
+              "query_end": 2250,
+              "source_start": 3981,
+              "source_end": 4440,
+              "query_text": "cấu trúc Transformer bao gồm phần mã hóa (encoder) và giải mã (decoder), trong đó mỗi tầng gồm có các khối chú ý đa đầu và mạng truyền thẳng vị trí.",
+              "source_text": "Kiến trúc Transformer nguyên bản do Vaswani và các cộng sự đề xuất bao gồm hai thành phần chính: bộ mã hóa (encoder) và bộ giải mã (decoder).",
+              "match_type": "paraphrase",
+              "length": 140
+            }
+          ],
+          "passage_group_id": "PG-0001"
+        }
+      ]
+    },
+    {
+      "passage_group_id": "PG-0002",
+      "source_key": "kltn_tham_chieu_cv_02",
+      "source_version": 2,
+      "source_filename": "LuanVan_ThiGiacMayTinh_YOLO.docx",
+      "document_family": "fam_computervision_yolo",
+      "submission_start_chunk": 9,
+      "submission_end_chunk": 9,
+      "findings_count": 1,
+      "max_reranker_score": 0.9120,
+      "findings": [
+        {
+          "submission_chunk_no": 9,
+          "submission_page": 11,
+          "submission_start": 4500,
+          "submission_end": 5100,
+          "submission_text": "Các thực nghiệm trên tập dữ liệu COCO cho thấy phương pháp tối ưu hóa anchor box động cải thiện mAP@0.5 lên 4.2% so với baseline ban đầu theo công bố của Redmon [5].",
+          "source_id": 19,
+          "source_key": "kltn_tham_chieu_cv_02",
+          "source_version": 2,
+          "source_filename": "LuanVan_ThiGiacMayTinh_YOLO.docx",
+          "document_family": "fam_computervision_yolo",
+          "source_chunk_no": 15,
+          "source_page": 24,
+          "source_start": 7800,
+          "source_end": 8400,
+          "source_text": "Kết quả thực nghiệm trên tập MS-COCO chỉ ra rằng kỹ thuật tối ưu hóa anchor box động mang lại mức tăng mAP@0.5 đạt 4.2% so với đường cơ sở của nhóm tác giả Redmon.",
+          "dense_score": 0.8920,
+          "lexical_score": 0.8140,
+          "reranker_score": 0.9120,
+          "classifier_score": 0.8870,
+          "decision_source": "custom_classifier",
+          "citation_status": "uncertain",
+          "citation_context": {
+            "status": "uncertain",
+            "citation_type": "numeric_bracket",
+            "markers": ["[5]"],
+            "raw_markers": ["[5]"],
+            "cited_works": ["Redmon (YOLOv3)"],
+            "potential_misattribution": true,
+            "confidence": 0.85,
+            "explanation": "Cảnh báo dẫn nguồn thứ cấp (Potential Misattribution): Sinh viên dẫn nguồn tác giả Redmon [5], nhưng câu văn và số liệu thực nghiệm trùng khớp trực tiếp với luận văn tiền bối (kltn_tham_chieu_cv_02)."
+          },
+          "aligned_spans": [
+            {
+              "query_start": 4500,
+              "query_end": 5100,
+              "source_start": 7800,
+              "source_end": 8400,
+              "query_text": "Các thực nghiệm trên tập dữ liệu COCO cho thấy phương pháp tối ưu hóa anchor box động cải thiện mAP@0.5 lên 4.2% so với baseline ban đầu",
+              "source_text": "Kết quả thực nghiệm trên tập MS-COCO chỉ ra rằng kỹ thuật tối ưu hóa anchor box động mang lại mức tăng mAP@0.5 đạt 4.2% so với đường cơ sở",
+              "match_type": "paraphrase",
+              "length": 138
+            }
+          ],
+          "passage_group_id": "PG-0002"
+        }
+      ]
+    }
+  ],
+  "findings": [],
+  "pagination": {
+    "page": 1,
+    "page_size": 50,
+    "total_pages": 1,
+    "total_findings": 3,
+    "has_next": false,
+    "has_prev": false
+  },
+  "disclaimer": "Các chỉ số tương đồng và đoạn văn trùng lặp là bằng chứng kỹ thuật phục vụ hội đồng chấm và giảng viên hướng dẫn thẩm định ngữ cảnh, trích dẫn; hệ thống không tự động đưa ra kết luận kỷ luật đạo văn."
+}
+

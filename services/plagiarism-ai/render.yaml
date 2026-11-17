@@ -1,0 +1,82 @@
+# Render Blueprint specification for UGTM Plagiarism AI (CP-01.3)
+# Reference: https://render.com/docs/blueprint-spec
+
+version: "1"
+
+services:
+  # 1. FastAPI AI Web Service (API Gateway & Submission Endpoint)
+  - type: web
+    name: ugtm-plagiarism-ai-api
+    runtime: python
+    region: singapore
+    plan: free
+    branch: dev
+    buildCommand: pip install -r requirements/cpu-worker.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.9
+      - key: INFERENCE_MODE
+        value: remote
+      - key: POSTGRES_DSN
+        sync: false
+      - key: POSTGRES_DIRECT_DSN
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: API_KEY
+        generateValue: true
+      - key: REMOTE_GPU_URL
+        sync: false
+      - key: REMOTE_GPU_API_KEY
+        sync: false
+      - key: MAX_UPLOAD_MB
+        value: "20"
+      - key: DATA_DIR
+        value: /tmp/ugtm_ai_runtime
+
+  # 2. Celery CPU Orchestration Worker (Optional Full-Cloud Render Deployment)
+  # NOTE: Render Background Workers require a paid tier ($7/mo Starter).
+  # For 0-cost development (Topology A - Hybrid Dev), run this worker on your local machine:
+  #   celery -A app.celery_app.celery_app worker --loglevel=INFO --concurrency=1 --pool=solo --without-gossip --without-mingle --without-heartbeat
+  - type: worker
+    name: ugtm-plagiarism-ai-worker
+    runtime: python
+    region: singapore
+    plan: starter
+    branch: dev
+    buildCommand: pip install -r requirements/cpu-worker.txt
+    startCommand: celery -A app.celery_app.celery_app worker --loglevel=INFO --concurrency=2 --without-gossip --without-mingle --without-heartbeat
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.9
+      - key: INFERENCE_MODE
+        value: remote
+      - key: POSTGRES_DSN
+        fromService:
+          type: web
+          name: ugtm-plagiarism-ai-api
+          envVarKey: POSTGRES_DSN
+      - key: REDIS_URL
+        fromService:
+          type: web
+          name: ugtm-plagiarism-ai-api
+          envVarKey: REDIS_URL
+      - key: API_KEY
+        fromService:
+          type: web
+          name: ugtm-plagiarism-ai-api
+          envVarKey: API_KEY
+      - key: REMOTE_GPU_URL
+        fromService:
+          type: web
+          name: ugtm-plagiarism-ai-api
+          envVarKey: REMOTE_GPU_URL
+      - key: REMOTE_GPU_API_KEY
+        fromService:
+          type: web
+          name: ugtm-plagiarism-ai-api
+          envVarKey: REMOTE_GPU_API_KEY
+      - key: DATA_DIR
+        value: /tmp/ugtm_ai_runtime
+

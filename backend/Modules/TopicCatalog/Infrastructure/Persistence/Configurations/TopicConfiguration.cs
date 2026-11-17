@@ -37,8 +37,10 @@ public class TopicConfiguration : IEntityTypeConfiguration<Topic>
             .HasDefaultValue(TopicStatus.Draft)
             .HasSentinel(TopicStatus.Draft);
 
+        builder.Property(x => x.ReviewNote)
+            .HasMaxLength(2000);
+
         builder.Property(x => x.CreatedAt)
             .IsRequired();
-
     }
 }

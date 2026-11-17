@@ -1,0 +1,10 @@
+# Dependencies for the CPU Orchestration Worker (Render Background Worker / native CPU worker).
+# Handles PDF/DOCX parsing, chunking, Neon pgvector/pg_trgm retrieval, remote GPU HTTP calls,
+# alignment, and tabular passage classification — WITHOUT PyTorch, CUDA, or local BGE models.
+-r api.txt
+PyMuPDF>=1.24,<2
+python-docx>=1.1,<2
+numpy>=1.26,<3
+scikit-learn>=1.6,<2
+joblib>=1.4,<2
+

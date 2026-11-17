@@ -1,10 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
   <head>
     <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>UGTM - Quản lý Khóa luận Tốt nghiệp</title>
+    <script>
+      (function () {
+        try {
+          var pref = localStorage.getItem('ugtm:theme') || 'system';
+          var isDark =
+            pref === 'dark' ||
+            (pref === 'system' &&
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          root.classList.toggle('dark', isDark);
+          root.dataset.theme = isDark ? 'dark' : 'light';
+          root.style.colorScheme = isDark ? 'dark' : 'light';
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

@@ -93,9 +93,17 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
                     b.Property<DateOnly>("EndDate")
                         .HasColumnType("date")
                         .HasColumnName("end_date");
+
+                    b.Property<Guid?>("ScheduleTemplateVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("schedule_template_version_id");
 
                     b.Property<int>("Semester")
                         .HasColumnType("integer")
@@ -113,14 +121,126 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue("Draft")
                         .HasColumnName("status");
 
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasDefaultValue("Asia/Ho_Chi_Minh")
+                        .HasColumnName("time_zone_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_kltn_batch");
+
+                    b.HasIndex("ScheduleTemplateVersionId")
+                        .HasDatabaseName("ix_kltn_batch_schedule_template_version_id");
+
+                    b.HasIndex("AcademicYear", "Semester")
+                        .IsUnique()
+                        .HasDatabaseName("ix_kltn_batch_academic_year_semester");
 
                     b.ToTable("kltn_batch", "academic", t =>
                         {
                             t.HasCheckConstraint("ck_batch_dates", "end_date > start_date");
 
                             t.HasCheckConstraint("ck_batch_semester", "semester > 0");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.ScheduleTemplateVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<Guid?>("PublishedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("published_by");
+
+                    b.Property<DateTime?>("RetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retired_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TemplateCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("template_code");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("time_zone_id");
+
+                    b.Property<int>("VersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_schedule_template_version");
+
+                    b.HasIndex("TemplateCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_schedule_template_one_active")
+                        .HasFilter("status = 'Active'");
+
+                    b.HasIndex("TemplateCode", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_schedule_template_code_version");
+
+                    b.ToTable("schedule_template_version", "academic");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896"),
+                            CreatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "Quy trình KLTN chuẩn 21 tuần",
+                            PublishedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Status = "Active",
+                            TemplateCode = "UIT_KLTN_STANDARD",
+                            TimeZoneId = "Asia/Ho_Chi_Minh",
+                            VersionNo = 1
                         });
                 });
 
@@ -188,9 +308,15 @@ namespace UGTM.Database.Migrations.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_score_component_config_config_id_component_code");
 
+                    b.HasIndex("ConfigId", "OrderIndex")
+                        .IsUnique()
+                        .HasDatabaseName("ix_score_component_config_config_id_order_index");
+
                     b.ToTable("score_component_config", "academic", t =>
                         {
                             t.HasCheckConstraint("ck_score_component_minimum", "minimum_score IS NULL OR minimum_score BETWEEN 0 AND 10");
+
+                            t.HasCheckConstraint("ck_score_component_order", "order_index > 0");
 
                             t.HasCheckConstraint("ck_score_component_weight", "weight >= 0");
                         });
@@ -215,15 +341,48 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue("IntegerCoefficient")
                         .HasColumnName("calculation_method");
 
+                    b.Property<string>("ChangeReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("change_reason");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<bool>("IsActive")
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<Guid?>("PublishedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("published_by");
+
+                    b.Property<DateTime?>("RetiredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retired_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true)
-                        .HasColumnName("is_active");
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Draft")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<int>("VersionNo")
                         .ValueGeneratedOnAdd()
@@ -234,9 +393,19 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_score_weight_config");
 
-                    b.HasIndex("BatchId")
+                    b.HasIndex("BatchId", "VersionNo")
                         .IsUnique()
-                        .HasDatabaseName("ix_score_weight_config_batch_id");
+                        .HasDatabaseName("ix_score_weight_config_batch_version");
+
+                    b.HasIndex(new[] { "BatchId" }, "IX_ScoreWeightConfig_OneActive")
+                        .IsUnique()
+                        .HasDatabaseName("ix_score_weight_config_one_active")
+                        .HasFilter("status = 'Active'");
+
+                    b.HasIndex(new[] { "BatchId" }, "IX_ScoreWeightConfig_OneDraft")
+                        .IsUnique()
+                        .HasDatabaseName("ix_score_weight_config_one_draft")
+                        .HasFilter("status = 'Draft'");
 
                     b.ToTable("score_weight_config", "academic");
                 });
@@ -252,13 +421,29 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("batch_id");
 
-                    b.Property<DateTime>("DeadlineDate")
+                    b.Property<DateTime>("DeadlineAtUtc")
                         .HasColumnType("timestamp with time zone")
-                        .HasColumnName("deadline_date");
+                        .HasColumnName("deadline_at_utc");
 
-                    b.Property<int>("StageIndex")
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<bool>("IsOverridden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_overridden");
+
+                    b.Property<int>("OrderIndex")
                         .HasColumnType("integer")
-                        .HasColumnName("stage_index");
+                        .HasColumnName("order_index");
+
+                    b.Property<string>("StageCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("stage_code");
 
                     b.Property<string>("StageName")
                         .IsRequired()
@@ -273,13 +458,169 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_stage");
 
-                    b.HasIndex("BatchId", "StageIndex")
+                    b.HasIndex("BatchId", "OrderIndex")
                         .IsUnique()
-                        .HasDatabaseName("ix_stage_batch_id_stage_index");
+                        .HasDatabaseName("ix_stage_batch_id_order_index");
+
+                    b.HasIndex("BatchId", "StageCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_stage_batch_id_stage_code");
 
                     b.ToTable("stage", "academic", t =>
                         {
-                            t.HasCheckConstraint("ck_stage_index", "stage_index BETWEEN 1 AND 7");
+                            t.HasCheckConstraint("ck_stage_dates", "end_date >= start_date");
+
+                            t.HasCheckConstraint("ck_stage_order_index", "order_index BETWEEN 1 AND 7");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.StageTemplateDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("DeadlineAdjustmentPolicy")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("deadline_adjustment_policy");
+
+                    b.Property<TimeOnly>("DefaultDeadlineLocalTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("default_deadline_local_time");
+
+                    b.Property<int>("EndOffsetDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_offset_days");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("integer")
+                        .HasColumnName("order_index");
+
+                    b.Property<string>("StageCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("stage_code");
+
+                    b.Property<string>("StageName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("stage_name");
+
+                    b.Property<int>("StartOffsetDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("start_offset_days");
+
+                    b.Property<Guid>("TemplateVersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("template_version_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stage_template_definition");
+
+                    b.HasIndex("TemplateVersionId", "OrderIndex")
+                        .IsUnique()
+                        .HasDatabaseName("ix_stage_template_version_order");
+
+                    b.HasIndex("TemplateVersionId", "StageCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_stage_template_version_code");
+
+                    b.ToTable("stage_template_definition", "academic", t =>
+                        {
+                            t.HasCheckConstraint("ck_stage_template_offsets", "start_offset_days >= 0 AND end_offset_days >= start_offset_days");
+
+                            t.HasCheckConstraint("ck_stage_template_order", "order_index BETWEEN 1 AND 7");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("2f7fd572-7fc5-4620-972b-36cfcf8c0091"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 6,
+                            OrderIndex = 1,
+                            StageCode = "TOPIC_PREPARATION",
+                            StageName = "Chuẩn bị và công bố đề tài",
+                            StartOffsetDays = 0,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("11e9e9ab-789e-462f-8eb1-f2d6be05e3b3"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 13,
+                            OrderIndex = 2,
+                            StageCode = "REGISTRATION_AND_SYLLABUS",
+                            StageName = "Đăng ký và đề cương",
+                            StartOffsetDays = 7,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("abf58e41-725e-421b-b9f4-d6dcfe4dddc2"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 62,
+                            OrderIndex = 3,
+                            StageCode = "PROGRESS_EXECUTION",
+                            StageName = "Thực hiện và theo dõi tiến độ",
+                            StartOffsetDays = 14,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("a08f9813-286c-4da4-999b-4334a4cf3a20"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 69,
+                            OrderIndex = 4,
+                            StageCode = "MIDTERM_GATE",
+                            StageName = "Đánh giá giữa kỳ",
+                            StartOffsetDays = 63,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("e938156b-26e7-4256-9465-ac2a458e8c15"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 125,
+                            OrderIndex = 5,
+                            StageCode = "FINAL_EVALUATION",
+                            StageName = "Báo cáo cuối kỳ và phản biện",
+                            StartOffsetDays = 70,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("32488d73-1973-4ea6-b6d2-23fc1fd13a99"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 139,
+                            OrderIndex = 6,
+                            StageCode = "DEFENSE",
+                            StageName = "Hội đồng và bảo vệ",
+                            StartOffsetDays = 126,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
+                        },
+                        new
+                        {
+                            Id = new Guid("b2b70276-7538-451b-86a5-cf61031cfbd1"),
+                            DeadlineAdjustmentPolicy = "None",
+                            DefaultDeadlineLocalTime = new TimeOnly(23, 59, 0),
+                            EndOffsetDays = 146,
+                            OrderIndex = 7,
+                            StageCode = "ARCHIVAL_AND_PUBLICATION",
+                            StageName = "Lưu chiểu và công bố kết quả",
+                            StartOffsetDays = 140,
+                            TemplateVersionId = new Guid("4e035a70-f7d5-49ef-b977-d818eff26896")
                         });
                 });
 
@@ -298,13 +639,29 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("comment");
 
+                    b.Property<DateTime?>("DecisionAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decision_at");
+
+                    b.Property<Guid?>("DecisionBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decision_by");
+
                     b.Property<DateTime>("EvaluatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("evaluated_at");
 
+                    b.Property<Guid?>("EvaluatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("evaluated_by");
+
                     b.Property<string>("ExclusionReason")
                         .HasColumnType("text")
                         .HasColumnName("exclusion_reason");
+
+                    b.Property<Guid?>("FinalReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("final_report_id");
 
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
@@ -316,22 +673,117 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_ignored_in_calculation");
 
+                    b.Property<bool>("IsLegacy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_legacy");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("text")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<int?>("ReportVersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("report_version_no");
+
                     b.Property<decimal>("Score")
                         .HasPrecision(4, 2)
                         .HasColumnType("numeric(4,2)")
                         .HasColumnName("score");
 
+                    b.Property<string>("SubmissionChecksumSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("submission_checksum_sha256");
+
+                    b.Property<Guid?>("SubmissionFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_file_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_advisor_evaluation");
+
+                    b.HasIndex("DecisionBy")
+                        .HasDatabaseName("ix_advisor_evaluation_decision_by");
+
+                    b.HasIndex("EvaluatedBy")
+                        .HasDatabaseName("ix_advisor_evaluation_evaluated_by");
+
+                    b.HasIndex("FinalReportId")
+                        .HasDatabaseName("ix_advisor_evaluation_final_report_id");
 
                     b.HasIndex("GroupId")
                         .IsUnique()
                         .HasDatabaseName("ix_advisor_evaluation_group_id");
 
+                    b.HasIndex("SubmissionFileId")
+                        .HasDatabaseName("ix_advisor_evaluation_submission_file_id");
+
                     b.ToTable("advisor_evaluation", "councils", t =>
                         {
+                            t.HasCheckConstraint("ck_advisor_evaluation_reviewer_assignment_decision", "is_legacy OR (\r\n    (allows_reviewer_assignment IS NULL\r\n        AND rejection_reason IS NULL\r\n        AND decision_by IS NULL\r\n        AND decision_at IS NULL)\r\n    OR (allows_reviewer_assignment = FALSE\r\n        AND rejection_reason IS NOT NULL\r\n        AND char_length(btrim(rejection_reason)) BETWEEN 1 AND 1000\r\n        AND decision_by IS NOT NULL\r\n        AND decision_at IS NOT NULL)\r\n    OR (allows_reviewer_assignment = TRUE\r\n        AND rejection_reason IS NULL\r\n        AND decision_by IS NOT NULL\r\n        AND decision_at IS NOT NULL)\r\n)");
+
                             t.HasCheckConstraint("ck_advisor_evaluation_score", "score BETWEEN 0 AND 10");
+
+                            t.HasCheckConstraint("ck_advisor_evaluation_workflow_binding", "is_legacy OR (\r\n    final_report_id IS NOT NULL\r\n    AND report_version_no > 0\r\n    AND submission_file_id IS NOT NULL\r\n    AND submission_checksum_sha256 IS NOT NULL\r\n    AND char_length(submission_checksum_sha256) = 64\r\n    AND evaluated_by IS NOT NULL\r\n    AND comment IS NOT NULL\r\n    AND char_length(btrim(comment)) BETWEEN 1 AND 2000\r\n)");
                         });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.AdvisorEvaluationIdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_fingerprint");
+
+                    b.Property<string>("ResponsePayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_payload_json");
+
+                    b.Property<int>("ResponseStatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_advisor_evaluation_idempotency");
+
+                    b.HasIndex("ActorId", "Operation", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_advisor_evaluation_idempotency_actor_operation_key");
+
+                    b.ToTable("advisor_evaluation_idempotency", "councils");
                 });
 
             modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.AuditOutboxMessage", b =>
@@ -421,6 +873,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("date")
                         .HasColumnName("defense_date");
 
+                    b.Property<bool>("IsSubmittedToAcademicAffairs")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_submitted_to_academic_affairs");
+
                     b.Property<string>("Room")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -438,6 +896,19 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Draft")
                         .HasColumnName("status");
+
+                    b.Property<string>("SubmissionNotes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("submission_notes");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid?>("SubmittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by");
 
                     b.Property<string>("TimeSlot")
                         .IsRequired()
@@ -478,6 +949,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue(1)
                         .HasColumnName("order_number");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_council_assignment");
 
@@ -487,6 +964,10 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasIndex("GroupId")
                         .IsUnique()
                         .HasDatabaseName("ix_council_assignment_group_id");
+
+                    b.HasIndex("CouncilId", "OrderNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_council_assignment_council_order");
 
                     b.ToTable("council_assignment", "councils");
                 });
@@ -512,11 +993,22 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_council_member");
 
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_council_member_user_id");
+
+                    b.HasIndex("CouncilId", "RoleInCouncil")
+                        .IsUnique()
+                        .HasDatabaseName("ux_council_member_leadership_role")
+                        .HasFilter("role_in_council IN ('Chairman', 'Secretary')");
 
                     b.HasIndex("CouncilId", "UserId")
                         .IsUnique()
@@ -572,6 +1064,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("unlocked_by");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_council_minute");
 
@@ -626,6 +1124,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("numeric(4,2)")
                         .HasColumnName("score");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_council_score");
 
@@ -662,12 +1166,21 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("numeric(4,2)")
                         .HasColumnName("score");
 
+                    b.Property<Guid?>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
                     b.HasKey("Id")
                         .HasName("pk_evaluation_detail");
 
-                    b.HasIndex("CriteriaId", "EvaluationId")
+                    b.HasIndex("StudentId")
+                        .HasDatabaseName("ix_evaluation_detail_student_id");
+
+                    b.HasIndex("CriteriaId", "EvaluationId", "StudentId")
                         .IsUnique()
-                        .HasDatabaseName("ix_evaluation_detail_criteria_id_evaluation_id");
+                        .HasDatabaseName("ix_evaluation_detail_criteria_id_evaluation_id_student_id");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("CriteriaId", "EvaluationId", "StudentId"), false);
 
                     b.ToTable("evaluation_detail", "councils");
                 });
@@ -695,6 +1208,11 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(250)")
                         .HasColumnName("criteria_name");
 
+                    b.Property<string>("Elo")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("elo");
+
                     b.Property<decimal>("MaxScore")
                         .HasPrecision(4, 2)
                         .HasColumnType("numeric(4,2)")
@@ -705,6 +1223,20 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
                         .HasColumnName("order_index");
+
+                    b.Property<string>("SectionCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("section_code");
+
+                    b.Property<string>("SectionName")
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)")
+                        .HasColumnName("section_name");
+
+                    b.Property<int?>("SectionOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("section_order");
 
                     b.HasKey("Id")
                         .HasName("pk_grading_criteria");
@@ -723,6 +1255,14 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("AdvisorEvaluationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("advisor_evaluation_id");
+
+                    b.Property<Guid?>("AdvisorIdAtAssignment")
+                        .HasColumnType("uuid")
+                        .HasColumnName("advisor_id_at_assignment");
+
                     b.Property<DateTime>("AssignedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("assigned_at");
@@ -737,6 +1277,22 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue(1)
                         .HasColumnName("assignment_order");
 
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("text")
+                        .HasColumnName("cancellation_reason");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<Guid?>("CancelledBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cancelled_by");
+
+                    b.Property<Guid?>("FinalReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("final_report_id");
+
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
@@ -747,9 +1303,34 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
+                    b.Property<bool>("IsLegacy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_legacy");
+
+                    b.Property<int?>("ReportVersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("report_version_no");
+
                     b.Property<Guid>("ReviewerId")
                         .HasColumnType("uuid")
                         .HasColumnName("reviewer_id");
+
+                    b.Property<string>("SubmissionChecksumSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("submission_checksum_sha256");
+
+                    b.Property<Guid?>("SubmissionFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_file_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_reviewer_assignment");
@@ -757,18 +1338,80 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasIndex("AssignedBy")
                         .HasDatabaseName("ix_reviewer_assignment_assigned_by");
 
+                    b.HasIndex("GroupId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_reviewer_assignment_active_group")
+                        .HasFilter("is_active = true");
+
                     b.HasIndex("ReviewerId")
                         .HasDatabaseName("ix_reviewer_assignment_reviewer_id");
 
-                    b.HasIndex("GroupId", "AssignmentOrder")
-                        .IsUnique()
-                        .HasDatabaseName("ix_reviewer_assignment_group_id_assignment_order");
+                    b.HasIndex("GroupId", "AssignedAt")
+                        .HasDatabaseName("ix_reviewer_assignment_group_id_assigned_at");
 
-                    b.HasIndex("GroupId", "ReviewerId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_reviewer_assignment_group_id_reviewer_id");
+                    b.ToTable("reviewer_assignment", "councils", t =>
+                        {
+                            t.HasCheckConstraint("ck_reviewer_assignment_cancellation", "(is_active AND cancelled_by IS NULL AND cancelled_at IS NULL AND cancellation_reason IS NULL)\r\nOR (NOT is_active AND (\r\n    (is_legacy AND cancelled_by IS NULL AND cancelled_at IS NULL AND cancellation_reason IS NULL)\r\n    OR (cancelled_by IS NOT NULL\r\n        AND cancelled_by <> '00000000-0000-0000-0000-000000000000'::uuid\r\n        AND cancelled_at IS NOT NULL AND cancelled_at >= assigned_at\r\n        AND cancellation_reason IS NOT NULL\r\n        AND char_length(btrim(cancellation_reason)) BETWEEN 1 AND 1000\r\n        AND cancellation_reason = btrim(cancellation_reason))\r\n))");
 
-                    b.ToTable("reviewer_assignment", "councils");
+                            t.HasCheckConstraint("ck_reviewer_assignment_workflow_binding", "is_legacy OR (\r\n    id <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND group_id <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND reviewer_id <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND assigned_by <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND advisor_id_at_assignment IS NOT NULL\r\n    AND advisor_id_at_assignment <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND reviewer_id <> advisor_id_at_assignment\r\n    AND advisor_evaluation_id IS NOT NULL\r\n    AND advisor_evaluation_id <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND final_report_id IS NOT NULL\r\n    AND final_report_id <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND report_version_no IS NOT NULL AND report_version_no > 0\r\n    AND submission_file_id IS NOT NULL\r\n    AND submission_file_id <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND submission_checksum_sha256 IS NOT NULL\r\n    AND submission_checksum_sha256 ~ '^[0-9a-f]{64}$'\r\n    AND assignment_order = 1\r\n)");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.ReviewerAssignmentIdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_fingerprint");
+
+                    b.Property<string>("ResponsePayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_payload_json");
+
+                    b.Property<int>("ResponseStatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reviewer_assignment_idempotency");
+
+                    b.HasIndex("ActorId", "Operation", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_reviewer_assignment_idempotency_actor_operation_key");
+
+                    b.ToTable("reviewer_assignment_idempotency", "councils", t =>
+                        {
+                            t.HasCheckConstraint("ck_reviewer_assignment_idempotency_fingerprint", "request_fingerprint ~ '^[0-9a-f]{64}$'");
+
+                            t.HasCheckConstraint("ck_reviewer_assignment_idempotency_operation", "char_length(btrim(operation)) BETWEEN 1 AND 100 AND operation = btrim(operation)");
+
+                            t.HasCheckConstraint("ck_reviewer_assignment_idempotency_status", "response_status_code IN (200, 201)");
+                        });
                 });
 
             modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.ReviewerEvaluation", b =>
@@ -786,8 +1429,15 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("comment");
 
+                    b.Property<DateTime?>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
                     b.Property<string>("DefenseApproval")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("defense_approval");
@@ -795,6 +1445,10 @@ namespace UGTM.Database.Migrations.Migrations
                     b.Property<DateTime>("EvaluatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("evaluated_at");
+
+                    b.Property<Guid?>("EvaluatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("evaluated_by");
 
                     b.Property<string>("ExclusionReason")
                         .HasColumnType("text")
@@ -806,6 +1460,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_ignored_in_calculation");
 
+                    b.Property<bool>("IsLegacy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_legacy");
+
                     b.Property<bool>("IsVisibleToStudent")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -816,10 +1476,29 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("revision_feedback");
 
-                    b.Property<decimal>("Score")
+                    b.Property<decimal?>("Score")
                         .HasPrecision(4, 2)
                         .HasColumnType("numeric(4,2)")
                         .HasColumnName("score");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at_utc");
+
+                    b.Property<Guid?>("SubmittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_reviewer_evaluation");
@@ -830,7 +1509,70 @@ namespace UGTM.Database.Migrations.Migrations
 
                     b.ToTable("reviewer_evaluation", "councils", t =>
                         {
+                            t.HasCheckConstraint("ck_reviewer_evaluation_defense_approval", "defense_approval IS NULL OR defense_approval IN ('Approved', 'Rejected')");
+
                             t.HasCheckConstraint("ck_reviewer_evaluation_score", "score BETWEEN 0 AND 10");
+
+                            t.HasCheckConstraint("ck_reviewer_evaluation_status", "status IS NULL OR status IN ('Draft', 'Submitted')");
+
+                            t.HasCheckConstraint("ck_reviewer_evaluation_workflow", "is_legacy OR (\r\n    id <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND assignment_id <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND status IS NOT NULL\r\n    AND created_by IS NOT NULL AND created_by <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND evaluated_by IS NOT NULL AND evaluated_by <> '00000000-0000-0000-0000-000000000000'::uuid\r\n    AND created_at_utc IS NOT NULL AND created_at_utc <= evaluated_at\r\n    AND (comment IS NULL OR (char_length(btrim(comment)) BETWEEN 1 AND 2000 AND comment = btrim(comment)))\r\n    AND (\r\n        (status = 'Draft' AND submitted_by IS NULL AND submitted_at_utc IS NULL AND NOT is_visible_to_student)\r\n        OR (status = 'Submitted' AND score IS NOT NULL AND comment IS NOT NULL AND defense_approval IS NOT NULL\r\n            AND submitted_by IS NOT NULL AND submitted_by = evaluated_by\r\n            AND submitted_at_utc IS NOT NULL AND submitted_at_utc = evaluated_at AND is_visible_to_student)\r\n    )\r\n)");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.ReviewerEvaluationIdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_fingerprint");
+
+                    b.Property<string>("ResponsePayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_payload_json");
+
+                    b.Property<int>("ResponseStatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status_code");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reviewer_evaluation_idempotency");
+
+                    b.HasIndex("ActorId", "Operation", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_reviewer_evaluation_idempotency_actor_operation_key");
+
+                    b.ToTable("reviewer_evaluation_idempotency", "councils", t =>
+                        {
+                            t.HasCheckConstraint("ck_reviewer_evaluation_idempotency_fingerprint", "request_fingerprint ~ '^[0-9a-f]{64}$'");
+
+                            t.HasCheckConstraint("ck_reviewer_evaluation_idempotency_operation", "char_length(btrim(operation)) BETWEEN 1 AND 100 AND operation = btrim(operation)");
+
+                            t.HasCheckConstraint("ck_reviewer_evaluation_idempotency_status", "response_status_code IN (200, 201)");
                         });
                 });
 
@@ -841,6 +1583,10 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("ActiveRevisionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("active_revision_id");
+
                     b.Property<decimal?>("AdvisorScore")
                         .HasPrecision(4, 2)
                         .HasColumnType("numeric(4,2)")
@@ -850,6 +1596,10 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("calculated_at");
 
+                    b.Property<Guid?>("CalculatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("calculated_by");
+
                     b.Property<string>("CalculationConfigSnapshot")
                         .HasColumnType("jsonb")
                         .HasColumnName("calculation_config_snapshot");
@@ -858,6 +1608,10 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("calculation_formula");
+
+                    b.Property<Guid?>("ConfigId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("config_id");
 
                     b.Property<int?>("ConfigVersionNo")
                         .HasColumnType("integer")
@@ -877,6 +1631,21 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
 
+                    b.Property<string>("InputFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("input_fingerprint");
+
+                    b.Property<bool>("IsLegacy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_legacy");
+
+                    b.Property<string>("LegacySnapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("legacy_snapshot");
+
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("published_at");
@@ -884,6 +1653,10 @@ namespace UGTM.Database.Migrations.Migrations
                     b.Property<Guid?>("PublishedBy")
                         .HasColumnType("uuid")
                         .HasColumnName("published_by");
+
+                    b.Property<Guid?>("PublishedRevisionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("published_revision_id");
 
                     b.Property<decimal?>("ReviewerScore")
                         .HasPrecision(4, 2)
@@ -902,6 +1675,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasPrecision(12, 4)
                         .HasColumnType("numeric(12,4)")
                         .HasColumnName("total_weight");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_score_summary");
@@ -929,6 +1708,11 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("component_code");
 
+                    b.Property<string>("ComponentName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("component_name");
+
                     b.Property<string>("ExclusionReason")
                         .HasColumnType("text")
                         .HasColumnName("exclusion_reason");
@@ -937,16 +1721,28 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_ignored_in_calculation");
 
+                    b.Property<Guid?>("RevisionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revision_id");
+
                     b.Property<decimal>("Score")
-                        .HasPrecision(6, 4)
-                        .HasColumnType("numeric(6,4)")
+                        .HasColumnType("numeric")
                         .HasColumnName("score");
+
+                    b.Property<string>("Source")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("source");
 
                     b.Property<string>("SourceKey")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)")
                         .HasColumnName("source_key");
+
+                    b.Property<string>("SourceReferences")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("source_references");
 
                     b.Property<Guid>("SummaryId")
                         .HasColumnType("uuid")
@@ -960,15 +1756,177 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_score_summary_component");
 
+                    b.HasIndex("RevisionId", "SummaryId")
+                        .HasDatabaseName("ix_score_summary_component_revision_id_summary_id");
+
+                    b.HasIndex("RevisionId", "ComponentCode", "SourceKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_score_summary_component_revision_id_component_code_source_k")
+                        .HasFilter("revision_id IS NOT NULL");
+
                     b.HasIndex("SummaryId", "ComponentCode", "SourceKey")
                         .IsUnique()
-                        .HasDatabaseName("ix_score_summary_component_summary_id_component_code_source_key");
+                        .HasDatabaseName("ix_score_summary_component_summary_id_component_code_source_key")
+                        .HasFilter("revision_id IS NULL");
 
                     b.ToTable("score_summary_component", "councils", t =>
                         {
                             t.HasCheckConstraint("ck_summary_component_score", "score BETWEEN 0 AND 10");
 
                             t.HasCheckConstraint("ck_summary_component_weight", "weight >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.ScoreSummaryIdempotency", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("fingerprint");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("ResponsePayload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_payload");
+
+                    b.Property<int>("ResponseStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_score_summary_idempotency");
+
+                    b.HasIndex("ActorId", "Operation", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_score_summary_idempotency_actor_id_operation_idempotency_key");
+
+                    b.ToTable("score_summary_idempotency", "councils", t =>
+                        {
+                            t.HasCheckConstraint("ck_score_receipt", "operation IN ('ScoreSummary.Calculate','ScoreSummary.Publish') AND response_status=200 AND fingerprint ~ '^[0-9a-f]{64}$' AND jsonb_typeof(response_payload)='object'");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.ScoreSummaryRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_id");
+
+                    b.Property<DateTime>("CalculatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("calculated_at_utc");
+
+                    b.Property<Guid>("CalculatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("calculated_by");
+
+                    b.Property<string>("CalculationFormula")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("calculation_formula");
+
+                    b.Property<Guid>("ConfigId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("config_id");
+
+                    b.Property<string>("ConfigSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("config_snapshot");
+
+                    b.Property<int>("ConfigVersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("config_version_no");
+
+                    b.Property<decimal>("FinalScore")
+                        .HasPrecision(4, 2)
+                        .HasColumnType("numeric(4,2)")
+                        .HasColumnName("final_score");
+
+                    b.Property<decimal>("FinalScoreRaw")
+                        .HasColumnType("numeric")
+                        .HasColumnName("final_score_raw");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("InputFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("input_fingerprint");
+
+                    b.Property<int>("Precision")
+                        .HasColumnType("integer")
+                        .HasColumnName("precision");
+
+                    b.Property<int>("RevisionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("revision_no");
+
+                    b.Property<string>("RoundingMode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("rounding_mode");
+
+                    b.Property<string>("SourceSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("source_snapshot");
+
+                    b.Property<Guid>("SummaryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("summary_id");
+
+                    b.Property<decimal>("TotalWeight")
+                        .HasPrecision(12, 4)
+                        .HasColumnType("numeric(12,4)")
+                        .HasColumnName("total_weight");
+
+                    b.HasKey("Id")
+                        .HasName("pk_score_summary_revision");
+
+                    b.HasAlternateKey("Id", "SummaryId")
+                        .HasName("ak_score_summary_revision_id_summary_id");
+
+                    b.HasIndex("SummaryId", "RevisionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_score_summary_revision_summary_id_revision_no");
+
+                    b.ToTable("score_summary_revision", "councils", t =>
+                        {
+                            t.HasCheckConstraint("ck_score_revision", "revision_no > 0 AND config_version_no > 0 AND final_score_raw BETWEEN 0 AND 10 AND final_score BETWEEN 0 AND 10 AND total_weight > 0 AND rounding_mode='AwayFromZero' AND precision=2 AND input_fingerprint ~ '^[0-9a-f]{64}$'");
                         });
                 });
 
@@ -1680,6 +2638,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<int>("CurrentVersionNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("current_version_no");
+
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
@@ -1696,6 +2660,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<string>("VersionType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -1705,10 +2675,153 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_final_report");
 
-                    b.HasIndex("GroupId")
-                        .HasDatabaseName("ix_final_report_group_id");
+                    b.HasIndex("GroupId", "VersionType")
+                        .IsUnique()
+                        .HasDatabaseName("ux_final_report_group_id_version_type");
 
-                    b.ToTable("final_report", "thesis");
+                    b.ToTable("final_report", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_final_report_current_version_no", "current_version_no > 0");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalReportPlagiarismScan", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("attempt_count");
+
+                    b.Property<int?>("CitedFindingsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("cited_findings_count");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("ErrorCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("error_code");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("error_message");
+
+                    b.Property<Guid>("FinalReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("final_report_id");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("job_id");
+
+                    b.Property<DateTime?>("LastPolledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_polled_at");
+
+                    b.Property<int?>("MatchedCharacters")
+                        .HasColumnType("integer")
+                        .HasColumnName("matched_characters");
+
+                    b.Property<double?>("MaxRerankerScore")
+                        .HasColumnType("double precision")
+                        .HasColumnName("max_reranker_score");
+
+                    b.Property<DateTime?>("NextCheckAfterUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_check_after_utc");
+
+                    b.Property<string>("RawReportJson")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("raw_report_json");
+
+                    b.Property<int?>("ScannedCharacters")
+                        .HasColumnType("integer")
+                        .HasColumnName("scanned_characters");
+
+                    b.Property<int?>("ScannedChunks")
+                        .HasColumnType("integer")
+                        .HasColumnName("scanned_chunks");
+
+                    b.Property<double?>("SimilarityCoverage")
+                        .HasColumnType("double precision")
+                        .HasColumnName("similarity_coverage");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("PendingSubmission")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SubmissionFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_file_id");
+
+                    b.Property<int?>("SuspectedFindingsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("suspected_findings_count");
+
+                    b.Property<int?>("UncitedFindingsCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("uncited_findings_count");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("VersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_no");
+
+                    b.Property<string>("WorkerPartition")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("worker_partition");
+
+                    b.HasKey("Id")
+                        .HasName("pk_final_report_plagiarism_scan");
+
+                    b.HasIndex("JobId")
+                        .HasDatabaseName("ix_final_report_plagiarism_scan_job_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_final_report_plagiarism_scan_status");
+
+                    b.HasIndex("SubmissionFileId")
+                        .HasDatabaseName("ix_final_report_plagiarism_scan_submission_file_id");
+
+                    b.HasIndex("WorkerPartition")
+                        .HasDatabaseName("ix_final_report_plagiarism_scan_worker_partition");
+
+                    b.HasIndex("FinalReportId", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_final_report_plagiarism_scan_report_id_version_no");
+
+                    b.ToTable("final_report_plagiarism_scan", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_final_report_plagiarism_scan_max_reranker_score", "max_reranker_score IS NULL OR (max_reranker_score >= 0 AND max_reranker_score <= 1)");
+
+                            t.HasCheckConstraint("ck_final_report_plagiarism_scan_similarity_coverage", "similarity_coverage IS NULL OR (similarity_coverage >= 0 AND similarity_coverage <= 100)");
+
+                            t.HasCheckConstraint("ck_final_report_plagiarism_scan_version_no", "version_no > 0");
+                        });
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmission", b =>
@@ -1742,6 +2855,10 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("archived_confirmed_by");
 
+                    b.Property<Guid?>("CurrentPackageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("current_package_id");
+
                     b.Property<int>("CurrentVersionNo")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -1756,6 +2873,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
 
+                    b.Property<bool>("IsLegacy")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_legacy");
+
                     b.Property<string>("KeywordsEn")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
@@ -1766,6 +2889,10 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("keywords_vi");
 
+                    b.Property<string>("LegacySnapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("legacy_snapshot");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -1773,6 +2900,20 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("NotSubmitted")
                         .HasColumnName("status");
+
+                    b.Property<DateTime?>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at_utc");
+
+                    b.Property<Guid?>("SubmittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_final_submission");
@@ -1790,6 +2931,363 @@ namespace UGTM.Database.Migrations.Migrations
                     b.ToTable("final_submission", "thesis");
                 });
 
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionIdempotency", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("fingerprint");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("ResponsePayload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("response_payload");
+
+                    b.Property<int>("ResponseStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_final_submission_idempotency");
+
+                    b.HasIndex("ActorId", "Operation", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_final_submission_idempotency_actor_id_operation_idempotency");
+
+                    b.ToTable("final_submission_idempotency", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_archival_receipt", "operation IN ('FinalSubmission.Submit','FinalSubmission.Confirm') AND fingerprint ~ '^[0-9a-f]{64}$' AND response_status IN (200,201) AND jsonb_typeof(response_payload) = 'object'");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionPackage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AbstractEn")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("abstract_en");
+
+                    b.Property<string>("AbstractVi")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("abstract_vi");
+
+                    b.Property<string>("KeywordsEn")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("keywords_en");
+
+                    b.Property<string>("KeywordsVi")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("keywords_vi");
+
+                    b.Property<string>("ManifestSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("manifest_sha256");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<DateTime>("SubmittedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at_utc");
+
+                    b.Property<Guid>("SubmittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<int>("VersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_final_submission_package");
+
+                    b.HasAlternateKey("Id", "SubmissionId", "VersionNo")
+                        .HasName("ak_archival_package_binding");
+
+                    b.HasIndex("SubmissionId", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_final_submission_package_submission_id_version_no");
+
+                    b.ToTable("final_submission_package", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_archival_package", "version_no > 0 AND manifest_sha256 ~ '^[0-9a-f]{64}$' AND char_length(btrim(abstract_vi)) BETWEEN 1 AND 10000 AND char_length(btrim(abstract_en)) BETWEEN 1 AND 10000 AND char_length(btrim(keywords_vi)) BETWEEN 1 AND 1000 AND char_length(btrim(keywords_en)) BETWEEN 1 AND 1000");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionPackageFile", b =>
+                {
+                    b.Property<Guid>("PackageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("package_id");
+
+                    b.Property<string>("FileRole")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("file_role");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<Guid>("SubmissionFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_file_id");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<int>("VersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_no");
+
+                    b.HasKey("PackageId", "FileRole")
+                        .HasName("pk_final_submission_package_file");
+
+                    b.HasIndex("SubmissionFileId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_final_submission_package_file_submission_file_id");
+
+                    b.HasIndex("PackageId", "SubmissionId", "VersionNo")
+                        .HasDatabaseName("ix_final_submission_package_file_package_id_submission_id_vers");
+
+                    b.HasIndex("SubmissionFileId", "EntityType", "SubmissionId", "VersionNo")
+                        .HasDatabaseName("ix_final_submission_package_file_submission_file_id_entity_typ");
+
+                    b.ToTable("final_submission_package_file", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_archival_file_role", "file_role IN ('ThesisPdf','ThesisDocx') AND entity_type = 'FinalSubmission'");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<Guid>("AssignedAdvisorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assigned_advisor_id");
+
+                    b.Property<DateTime>("DecidedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at_utc");
+
+                    b.Property<string>("DefenseProofSnapshot")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("defense_proof_snapshot");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("ManifestSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("manifest_sha256");
+
+                    b.Property<Guid>("PackageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("package_id");
+
+                    b.Property<int>("PackageVersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("package_version_no");
+
+                    b.Property<string>("PreviousStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("previous_status");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("ResultStatus")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("result_status");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("stage");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_final_submission_review");
+
+                    b.HasIndex("PackageId", "SubmissionId", "PackageVersionNo")
+                        .HasDatabaseName("ix_final_submission_review_package_id_submission_id_package_ve");
+
+                    b.HasIndex("SubmissionId", "PackageVersionNo", "DecidedAtUtc", "Id")
+                        .HasDatabaseName("ix_final_submission_review_submission_id_package_version_no_de");
+
+                    b.ToTable("final_submission_review", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_archival_review", "action IN ('AdvisorConfirm','FacultyConfirm','RequestRevision') AND stage IN ('Advisor','Faculty') AND manifest_sha256 ~ '^[0-9a-f]{64}$' AND ((action = 'RequestRevision' AND char_length(btrim(reason)) BETWEEN 1 AND 1000) OR (action <> 'RequestRevision' AND reason IS NULL))");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionUploadAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<Guid?>("CommittedPackageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("committed_package_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("DocxObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("docx_object_key");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("fingerprint");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_error_code");
+
+                    b.Property<DateTime>("LeaseExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lease_expires_at_utc");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("operation");
+
+                    b.Property<string>("PdfObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("pdf_object_key");
+
+                    b.Property<DateTime?>("RetryAfterUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retry_after_utc");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("state");
+
+                    b.HasKey("Id")
+                        .HasName("pk_final_submission_upload_attempt");
+
+                    b.HasIndex("CommittedPackageId")
+                        .HasDatabaseName("ix_final_submission_upload_attempt_committed_package_id");
+
+                    b.HasIndex("DocxObjectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_final_submission_upload_attempt_docx_object_key");
+
+                    b.HasIndex("GroupId")
+                        .HasDatabaseName("ix_final_submission_upload_attempt_group_id");
+
+                    b.HasIndex("PdfObjectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_final_submission_upload_attempt_pdf_object_key");
+
+                    b.HasIndex("State", "RetryAfterUtc", "LeaseExpiresAtUtc")
+                        .HasDatabaseName("ix_final_submission_upload_attempt_state_retry_after_utc_lease");
+
+                    b.ToTable("final_submission_upload_attempt", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_archival_attempt", "state IN ('Uploading','Committed','CleanupPending','Cleaning','Cleaned') AND retry_count >= 0 AND ((state = 'Committed' AND committed_package_id IS NOT NULL) OR (state <> 'Committed' AND committed_package_id IS NULL))");
+                        });
+                });
+
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.MidtermReport", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1797,19 +3295,15 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("AdvisorFeedback")
-                        .HasColumnType("text")
-                        .HasColumnName("advisor_feedback");
-
-                    b.Property<bool?>("AllowedToContinue")
-                        .HasColumnType("boolean")
-                        .HasColumnName("allowed_to_continue");
-
                     b.Property<int>("CurrentVersionNo")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
                         .HasColumnName("current_version_no");
+
+                    b.Property<string>("FacultyFeedback")
+                        .HasColumnType("text")
+                        .HasColumnName("faculty_feedback");
 
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
@@ -1830,10 +3324,6 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Submitted")
                         .HasColumnName("status");
-
-                    b.Property<string>("StopReason")
-                        .HasColumnType("text")
-                        .HasColumnName("stop_reason");
 
                     b.HasKey("Id")
                         .HasName("pk_midterm_report");
@@ -1938,6 +3428,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_progress_report");
 
@@ -1949,6 +3445,77 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDatabaseName("ix_progress_report_milestone_id_group_id");
 
                     b.ToTable("progress_report", "thesis");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.ProgressReportVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AdvisorFeedback")
+                        .HasColumnType("text")
+                        .HasColumnName("advisor_feedback");
+
+                    b.Property<string>("GitUrl")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("git_url");
+
+                    b.Property<bool>("IsLate")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_late");
+
+                    b.Property<Guid>("ProgressReportId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("progress_report_id");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StudentNote")
+                        .HasColumnType("text")
+                        .HasColumnName("student_note");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid>("SubmittedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<int>("VersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_progress_report_version");
+
+                    b.HasIndex("ReviewedBy")
+                        .HasDatabaseName("ix_progress_report_version_reviewed_by");
+
+                    b.HasIndex("SubmittedBy")
+                        .HasDatabaseName("ix_progress_report_version_submitted_by");
+
+                    b.HasIndex("ProgressReportId", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_progress_report_version_report_id_version_no");
+
+                    b.ToTable("progress_report_version", "thesis");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.RenameRequest", b =>
@@ -2005,6 +3572,22 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("text")
                         .HasColumnName("reason");
 
+                    b.Property<DateTime?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rejected_at");
+
+                    b.Property<Guid?>("RejectedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rejected_by");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("text")
+                        .HasColumnName("rejection_reason");
+
+                    b.Property<Guid>("RequestedByStudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by_student_id");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -2013,13 +3596,88 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasDefaultValue("Created")
                         .HasColumnName("status");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_rename_request");
 
                     b.HasIndex("GroupId")
                         .HasDatabaseName("ix_rename_request_group_id");
 
+                    b.HasIndex(new[] { "GroupId" }, "ux_rename_request_active_group")
+                        .IsUnique()
+                        .HasDatabaseName("ux_rename_request_active_group")
+                        .HasFilter("status IN ('Created', 'AdvisorConfirmed', 'FacultyApproved')");
+
                     b.ToTable("rename_request", "thesis");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.ReviewGateConfiguration", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BatchId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("batch_id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime>("FacultyResponseDeadlineUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("faculty_response_deadline_utc");
+
+                    b.Property<DateTime>("FinalClosureDeadlineUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("final_closure_deadline_utc");
+
+                    b.Property<string>("GateType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("gate_type");
+
+                    b.Property<DateTime>("InitialSubmissionDeadlineUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("initial_submission_deadline_utc");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_review_gate_configuration");
+
+                    b.HasIndex("CreatedBy")
+                        .HasDatabaseName("ix_review_gate_configuration_created_by");
+
+                    b.HasIndex("UpdatedBy")
+                        .HasDatabaseName("ix_review_gate_configuration_updated_by");
+
+                    b.HasIndex("BatchId", "GateType")
+                        .IsUnique()
+                        .HasDatabaseName("ix_review_gate_configuration_batch_gate_type");
+
+                    b.ToTable("review_gate_configuration", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_review_gate_configuration_deadline_order", "initial_submission_deadline_utc < faculty_response_deadline_utc AND faculty_response_deadline_utc < final_closure_deadline_utc");
+                        });
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.StudentGroup", b =>
@@ -2028,6 +3686,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<bool>("AllowSyllabusResubmission")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("allow_syllabus_resubmission");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2044,6 +3708,12 @@ namespace UGTM.Database.Migrations.Migrations
                     b.Property<Guid>("TopicId")
                         .HasColumnType("uuid")
                         .HasColumnName("topic_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_student_group");
@@ -2065,9 +3735,35 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("batch_id");
 
+                    b.Property<DateTime?>("ConfirmationExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmation_expires_at_utc");
+
+                    b.Property<string>("ConfirmationStatus")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasDefaultValue("Confirmed")
+                        .HasColumnName("confirmation_status");
+
+                    b.Property<string>("ConfirmationTokenHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("confirmation_token_hash");
+
+                    b.Property<DateTime?>("ConfirmedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at_utc");
+
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
+
+                    b.Property<Guid?>("InvitedByStudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invited_by_student_id");
 
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2083,6 +3779,15 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasIndex("BatchId")
                         .HasDatabaseName("ix_student_group_member_batch_id");
 
+                    b.HasIndex("ConfirmationTokenHash")
+                        .HasDatabaseName("ix_student_group_member_confirmation_token_hash");
+
+                    b.HasIndex("InvitedByStudentId")
+                        .HasDatabaseName("ix_student_group_member_invited_by_student_id");
+
+                    b.HasIndex("ConfirmationStatus", "ConfirmationExpiresAtUtc")
+                        .HasDatabaseName("ix_student_group_member_status_expires");
+
                     b.HasIndex("GroupId", "StudentId")
                         .IsUnique()
                         .HasDatabaseName("ix_student_group_member_group_id_student_id");
@@ -2094,12 +3799,67 @@ namespace UGTM.Database.Migrations.Migrations
                     b.ToTable("student_group_member", "thesis");
                 });
 
-            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionFile", b =>
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.StudentRegistrationPenalty", b =>
+                {
+                    b.Property<Guid>("StudentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("student_id");
+
+                    b.Property<DateTime?>("BlockedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("blocked_at_utc");
+
+                    b.Property<bool>("IsRegistrationBlocked")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_registration_blocked");
+
+                    b.Property<DateTime?>("LastViolationAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_violation_at_utc");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("ViolationCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("violation_count");
+
+                    b.HasKey("StudentId")
+                        .HasName("pk_student_registration_penalty");
+
+                    b.ToTable("student_registration_penalty", "thesis");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionAttachment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("ChecksumSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("checksum_sha256");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("display_order");
 
                     b.Property<Guid>("EntityId")
                         .HasColumnType("uuid")
@@ -2127,11 +3887,92 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("file_size");
 
-                    b.Property<string>("FileUrl")
+                    b.Property<string>("ObjectKey")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("file_url");
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("object_key");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("uploaded_at");
+
+                    b.Property<Guid>("UploadedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("uploaded_by");
+
+                    b.Property<int>("VersionNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_submission_attachment");
+
+                    b.HasIndex("UploadedBy")
+                        .HasDatabaseName("ix_submission_attachment_uploaded_by");
+
+                    b.HasIndex("EntityType", "EntityId", "VersionNo", "DisplayOrder")
+                        .HasDatabaseName("ix_submission_attachment_entity_version");
+
+                    b.ToTable("submission_attachment", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_submission_attachment_version_no", "version_no > 0");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ChecksumSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("checksum_sha256");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasDefaultValue("application/octet-stream")
+                        .HasColumnName("content_type");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("FileExtension")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("file_extension");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint")
+                        .HasColumnName("file_size");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("object_key");
 
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2150,13 +3991,142 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasKey("Id")
                         .HasName("pk_submission_file");
 
+                    b.HasAlternateKey("Id", "EntityType", "EntityId", "VersionNo")
+                        .HasName("ak_submission_file_archival_binding");
+
                     b.HasIndex("UploadedBy")
                         .HasDatabaseName("ix_submission_file_uploaded_by");
+
+                    b.HasIndex("EntityId", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ux_submission_file_final_report_entity_id_version_no")
+                        .HasFilter("entity_type = 'FinalReport'");
 
                     b.HasIndex("EntityType", "EntityId", "VersionNo")
                         .HasDatabaseName("ix_submission_file_entity_type_entity_id_version_no");
 
                     b.ToTable("submission_file", "thesis");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionProductLink", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("display_order");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("label");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)")
+                        .HasColumnName("url");
+
+                    b.Property<int>("VersionNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_submission_product_link");
+
+                    b.HasIndex("EntityType", "EntityId", "VersionNo", "DisplayOrder")
+                        .HasDatabaseName("ix_submission_product_link_entity_version");
+
+                    b.ToTable("submission_product_link", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_submission_product_link_version_no", "version_no > 0");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Decision")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("decision");
+
+                    b.Property<string>("Feedback")
+                        .HasColumnType("text")
+                        .HasColumnName("feedback");
+
+                    b.Property<string>("GateType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("gate_type");
+
+                    b.Property<DateTime>("ReviewedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at_utc");
+
+                    b.Property<Guid>("ReviewedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<int>("VersionNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_no");
+
+                    b.HasKey("Id")
+                        .HasName("pk_submission_review");
+
+                    b.HasIndex("ReviewedBy")
+                        .HasDatabaseName("ix_submission_review_reviewed_by");
+
+                    b.HasIndex("GateType", "SubmissionId", "VersionNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_submission_review_gate_submission_version");
+
+                    b.ToTable("submission_review", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_submission_review_version_no", "version_no > 0");
+                        });
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.Syllabus", b =>
@@ -2209,6 +4179,123 @@ namespace UGTM.Database.Migrations.Migrations
                     b.ToTable("syllabus", "thesis");
                 });
 
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.ThesisUploadAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_error_code");
+
+                    b.Property<DateTime>("LeaseExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lease_expires_at_utc");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("object_key");
+
+                    b.Property<DateTime?>("RetryAfterUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("retry_after_utc");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("state");
+
+                    b.HasKey("Id")
+                        .HasName("pk_submission_upload_attempt");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_submission_upload_attempt_object_key");
+
+                    b.HasIndex("State", "LeaseExpiresAtUtc")
+                        .HasDatabaseName("ix_submission_upload_attempt_state_lease_expires_at_utc");
+
+                    b.ToTable("submission_upload_attempt", "thesis", t =>
+                        {
+                            t.HasCheckConstraint("ck_submission_upload_attempt", "state IN ('Uploading','Committed','CleanupPending','Cleaning','Cleaned') AND retry_count >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.TopicRegistrationEmail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_error_code");
+
+                    b.Property<Guid>("MemberId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("member_id");
+
+                    b.Property<DateTime>("NextAttemptAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at_utc");
+
+                    b.Property<DateTime?>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at_utc");
+
+                    b.Property<string>("ProtectedPayload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("protected_payload");
+
+                    b.Property<string>("ProtectionPurpose")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("protection_purpose");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_topic_registration_email");
+
+                    b.HasIndex("MemberId", "Type", "ProcessedAtUtc")
+                        .HasDatabaseName("ix_topic_registration_email_member");
+
+                    b.HasIndex("ProtectionPurpose", "ProcessedAtUtc", "NextAttemptAtUtc")
+                        .HasDatabaseName("ix_topic_registration_email_dispatch");
+
+                    b.ToTable("topic_registration_email", "thesis");
+                });
+
             modelBuilder.Entity("UGTM.Modules.TopicCatalog.Domain.Entities.Topic", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2235,6 +4322,11 @@ namespace UGTM.Database.Migrations.Migrations
                     b.Property<string>("Requirements")
                         .HasColumnType("text")
                         .HasColumnName("requirements");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("review_note");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -2274,6 +4366,17 @@ namespace UGTM.Database.Migrations.Migrations
                         });
                 });
 
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.KltnBatch", b =>
+                {
+                    b.HasOne("UGTM.Modules.AcademicPeriods.Domain.Entities.ScheduleTemplateVersion", "ScheduleTemplateVersion")
+                        .WithMany()
+                        .HasForeignKey("ScheduleTemplateVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_kltn_batch_schedule_template_version");
+
+                    b.Navigation("ScheduleTemplateVersion");
+                });
+
             modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.ScoreComponentConfig", b =>
                 {
                     b.HasOne("UGTM.Modules.AcademicPeriods.Domain.Entities.ScoreWeightConfig", "Config")
@@ -2289,8 +4392,8 @@ namespace UGTM.Database.Migrations.Migrations
             modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.ScoreWeightConfig", b =>
                 {
                     b.HasOne("UGTM.Modules.AcademicPeriods.Domain.Entities.KltnBatch", "Batch")
-                        .WithOne("ScoreWeightConfig")
-                        .HasForeignKey("UGTM.Modules.AcademicPeriods.Domain.Entities.ScoreWeightConfig", "BatchId")
+                        .WithMany("ScoreConfigurations")
+                        .HasForeignKey("BatchId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_score_weight_config_kltn_batch_batch_id");
@@ -2310,14 +4413,50 @@ namespace UGTM.Database.Migrations.Migrations
                     b.Navigation("Batch");
                 });
 
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.StageTemplateDefinition", b =>
+                {
+                    b.HasOne("UGTM.Modules.AcademicPeriods.Domain.Entities.ScheduleTemplateVersion", "TemplateVersion")
+                        .WithMany("StageDefinitions")
+                        .HasForeignKey("TemplateVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stage_template_definition_version");
+
+                    b.Navigation("TemplateVersion");
+                });
+
             modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.AdvisorEvaluation", b =>
                 {
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("DecisionBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_advisor_evaluation_users_decision_by");
+
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("EvaluatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_advisor_evaluation_users_evaluated_by");
+
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.FinalReport", null)
+                        .WithMany()
+                        .HasForeignKey("FinalReportId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_advisor_evaluation_final_reports_final_report_id");
+
                     b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.StudentGroup", null)
                         .WithOne()
                         .HasForeignKey("UGTM.Modules.DefenseCouncil.Domain.Entities.AdvisorEvaluation", "GroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_advisor_evaluation_student_groups_group_id");
+
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionFile", null)
+                        .WithMany()
+                        .HasForeignKey("SubmissionFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_advisor_evaluation_submission_files_submission_file_id");
                 });
 
             modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.Council", b =>
@@ -2470,7 +4609,7 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasOne("UGTM.Modules.DefenseCouncil.Domain.Entities.ReviewerAssignment", "Assignment")
                         .WithOne("Evaluation")
                         .HasForeignKey("UGTM.Modules.DefenseCouncil.Domain.Entities.ReviewerEvaluation", "AssignmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_reviewer_evaluation_reviewer_assignment_assignment_id");
 
@@ -2498,11 +4637,28 @@ namespace UGTM.Database.Migrations.Migrations
                     b.HasOne("UGTM.Modules.DefenseCouncil.Domain.Entities.ScoreSummary", "Summary")
                         .WithMany("Components")
                         .HasForeignKey("SummaryId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_score_summary_component_score_summaries_summary_id");
 
+                    b.HasOne("UGTM.Modules.DefenseCouncil.Domain.Entities.ScoreSummaryRevision", null)
+                        .WithMany()
+                        .HasForeignKey("RevisionId", "SummaryId")
+                        .HasPrincipalKey("Id", "SummaryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_score_summary_component_score_summary_revision_revision_id_");
+
                     b.Navigation("Summary");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.DefenseCouncil.Domain.Entities.ScoreSummaryRevision", b =>
+                {
+                    b.HasOne("UGTM.Modules.DefenseCouncil.Domain.Entities.ScoreSummary", null)
+                        .WithMany()
+                        .HasForeignKey("SummaryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_score_summary_revision_score_summary_summary_id");
                 });
 
             modelBuilder.Entity("UGTM.Modules.Identity.Domain.Entities.AuthenticationSession", b =>
@@ -2611,28 +4767,105 @@ namespace UGTM.Database.Migrations.Migrations
                     b.Navigation("Group");
                 });
 
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalReportPlagiarismScan", b =>
+                {
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.FinalReport", "FinalReport")
+                        .WithMany()
+                        .HasForeignKey("FinalReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_final_report_plagiarism_scan_final_report_id");
+
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionFile", "SubmissionFile")
+                        .WithMany()
+                        .HasForeignKey("SubmissionFileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_final_report_plagiarism_scan_submission_file_id");
+
+                    b.Navigation("FinalReport");
+
+                    b.Navigation("SubmissionFile");
+                });
+
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmission", b =>
                 {
                     b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("AdvisorConfirmedBy")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_final_submission_user_advisor_confirmed_by");
 
                     b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("ArchivedConfirmedBy")
-                        .OnDelete(DeleteBehavior.SetNull)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_final_submission_user_archived_confirmed_by");
 
                     b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.StudentGroup", "Group")
                         .WithOne()
                         .HasForeignKey("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmission", "GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_final_submission_student_groups_group_id");
 
                     b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionPackage", b =>
+                {
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmission", null)
+                        .WithMany()
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_final_submission_package_final_submission_submission_id");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionPackageFile", b =>
+                {
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionPackage", null)
+                        .WithMany()
+                        .HasForeignKey("PackageId", "SubmissionId", "VersionNo")
+                        .HasPrincipalKey("Id", "SubmissionId", "VersionNo")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_final_submission_package_file_final_submission_package_pack");
+
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionFile", null)
+                        .WithMany()
+                        .HasForeignKey("SubmissionFileId", "EntityType", "SubmissionId", "VersionNo")
+                        .HasPrincipalKey("Id", "EntityType", "EntityId", "VersionNo")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_final_submission_package_file_submission_file_submission_fi");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionReview", b =>
+                {
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionPackage", null)
+                        .WithMany()
+                        .HasForeignKey("PackageId", "SubmissionId", "PackageVersionNo")
+                        .HasPrincipalKey("Id", "SubmissionId", "VersionNo")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_final_submission_review_final_submission_package_package_id");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionUploadAttempt", b =>
+                {
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.FinalSubmissionPackage", null)
+                        .WithMany()
+                        .HasForeignKey("CommittedPackageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_final_submission_upload_attempt_final_submission_package_co");
+
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.StudentGroup", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_final_submission_upload_attempt_student_group_group_id");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.MidtermReport", b =>
@@ -2693,6 +4926,18 @@ namespace UGTM.Database.Migrations.Migrations
                     b.Navigation("Milestone");
                 });
 
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.ProgressReportVersion", b =>
+                {
+                    b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.ProgressReport", "ProgressReport")
+                        .WithMany()
+                        .HasForeignKey("ProgressReportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_progress_report_version_progress_report_report_id");
+
+                    b.Navigation("ProgressReport");
+                });
+
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.RenameRequest", b =>
                 {
                     b.HasOne("UGTM.Modules.ThesisManagement.Domain.Entities.StudentGroup", "Group")
@@ -2703,6 +4948,30 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasConstraintName("fk_rename_request_student_groups_group_id");
 
                     b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.ReviewGateConfiguration", b =>
+                {
+                    b.HasOne("UGTM.Modules.AcademicPeriods.Domain.Entities.KltnBatch", null)
+                        .WithMany()
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_review_gate_configuration_kltn_batch_batch_id");
+
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_review_gate_configuration_user_created_by");
+
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_review_gate_configuration_user_updated_by");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.StudentGroup", b =>
@@ -2733,12 +5002,28 @@ namespace UGTM.Database.Migrations.Migrations
 
                     b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
                         .WithMany()
+                        .HasForeignKey("InvitedByStudentId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_student_group_member_user_invited_by_student_id");
+
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
+                        .WithMany()
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_student_group_member_user_student_id");
 
                     b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.StudentRegistrationPenalty", b =>
+                {
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_student_registration_penalty_user_student_id");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionFile", b =>
@@ -2749,6 +5034,16 @@ namespace UGTM.Database.Migrations.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_submission_file_user_uploaded_by");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.SubmissionReview", b =>
+                {
+                    b.HasOne("UGTM.Modules.Identity.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_submission_review_user_reviewed_by");
                 });
 
             modelBuilder.Entity("UGTM.Modules.ThesisManagement.Domain.Entities.Syllabus", b =>
@@ -2788,9 +5083,14 @@ namespace UGTM.Database.Migrations.Migrations
 
             modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.KltnBatch", b =>
                 {
-                    b.Navigation("ScoreWeightConfig");
+                    b.Navigation("ScoreConfigurations");
 
                     b.Navigation("Stages");
+                });
+
+            modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.ScheduleTemplateVersion", b =>
+                {
+                    b.Navigation("StageDefinitions");
                 });
 
             modelBuilder.Entity("UGTM.Modules.AcademicPeriods.Domain.Entities.ScoreWeightConfig", b =>

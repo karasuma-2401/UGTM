@@ -1,0 +1,4 @@
+interface:
+  display_name: "Impeccable — UGTM"
+  short_description: "Design and refine UGTM frontend interfaces"
+  default_prompt: "Use $impeccable to improve this UGTM interface within the requested scope."

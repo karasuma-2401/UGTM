@@ -1,0 +1,3 @@
+namespace UGTM.Modules.ThesisManagement.Application.TopicRegistrations.AdvisorUnassignTopicStudents;
+
+public sealed record AdvisorUnassignTopicStudentsCommand(Guid TopicId);

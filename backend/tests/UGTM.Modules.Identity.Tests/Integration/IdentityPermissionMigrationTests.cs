@@ -100,24 +100,24 @@ public sealed class IdentityPermissionMigrationTests(PostgreSqlFixture fixture)
             Assert.Equal(
                 RequiredPermissionCodes.Order(),
                 assignments
-                    .Where(assignment => assignment.Role == SystemRoleName.Admin)
+                    .Where(assignment => assignment.Role == nameof(SystemRoleName.Admin))
                     .Select(assignment => assignment.Permission)
                     .Order());
             Assert.Equal(
                 [PermissionCodes.IdentityUsersRead],
                 assignments
-                    .Where(assignment => assignment.Role == SystemRoleName.Faculty)
+                    .Where(assignment => assignment.Role == nameof(SystemRoleName.Faculty))
                     .Select(assignment => assignment.Permission)
                     .Order());
             Assert.Equal(
                 [PermissionCodes.IdentityUsersImport, PermissionCodes.IdentityUsersRead],
                 assignments
-                    .Where(assignment => assignment.Role == SystemRoleName.AcademicAffairs)
+                    .Where(assignment => assignment.Role == nameof(SystemRoleName.AcademicAffairs))
                     .Select(assignment => assignment.Permission)
                     .Order());
 
             Assert.True(await identityDb.RolePermissions.AnyAsync(rolePermission =>
-                rolePermission.Role.RoleName == SystemRoleName.Faculty
+                rolePermission.Role.RoleName == nameof(SystemRoleName.Faculty)
                 && rolePermission.Permission.PermissionCode == "legacy.permission"));
         }
         finally
@@ -159,7 +159,7 @@ public sealed class IdentityPermissionMigrationTests(PostgreSqlFixture fixture)
                 1,
                 await verificationDb.Users.CountAsync(user =>
                     user.Status == AccountStatus.Active
-                    && user.UserRoles.Any(userRole => userRole.Role.RoleName == SystemRoleName.Admin)));
+                    && user.UserRoles.Any(userRole => userRole.Role.RoleName == nameof(SystemRoleName.Admin))));
         }
         finally
         {
@@ -171,7 +171,7 @@ public sealed class IdentityPermissionMigrationTests(PostgreSqlFixture fixture)
     {
         await using var db = CreateIdentityDbContext();
         var adminRoleId = await db.Roles
-            .Where(role => role.RoleName == SystemRoleName.Admin)
+            .Where(role => role.RoleName == nameof(SystemRoleName.Admin))
             .Select(role => role.Id)
             .SingleAsync();
         var now = new DateTime(2026, 10, 17, 12, 0, 0, DateTimeKind.Utc);

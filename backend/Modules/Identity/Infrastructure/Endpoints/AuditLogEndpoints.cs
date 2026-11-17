@@ -1,72 +1,119 @@
+using System.Globalization;
+using System.Data;
+using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using UGTM.BuildingBlocks.Application.Responses;
-using UGTM.Modules.Identity.Application.AuditLogs.Dtos;
 using UGTM.Modules.Identity.Application.AuditLogs.GetAuditLogs;
+using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.Identity.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace UGTM.Modules.Identity.Infrastructure.Endpoints;
 
 public static class AuditLogEndpoints
 {
-    public static IEndpointRouteBuilder MapIdentityAuditLogEndpoints(
-        this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapIdentityAuditLogEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/audit-logs", GetAuditLogsAsync)
-            .WithTags("Identity.AuditLogs")
-            .WithSummary("Tra cứu và phân trang nhật ký kiểm toán hệ thống")
-            .WithDescription("""
-                Lấy danh sách Audit Log có hỗ trợ phân trang và kết hợp nhiều điều kiện lọc:
-                - `actorUserId`: ID người dùng thực hiện thao tác.
-                - `action`: Mã hành động nghiệp vụ, ví dụ `Identity.User.Created`, `Identity.Authentication.Login`
-                  hoặc `Identity.Session.RefreshTokenReuseDetected`.
-                - `targetType`: Loại đối tượng chịu tác động, ví dụ `User`, `Role`, `AuthenticationSession`
-                  hoặc `Authentication` đối với request ẩn danh chưa xác định được tài khoản.
-                - `outcome`: Kết quả xử lý, chỉ nhận `Success`, `Denied` hoặc `Failed` và không phân biệt hoa thường.
-                - `fromUtc`: Thời điểm bắt đầu theo UTC, được tính trong khoảng kết quả.
-                - `toUtc`: Thời điểm kết thúc theo UTC, là cận trên không bao gồm.
-                - `pageNumber`: Số trang; giá trị nhỏ hơn 1 được chuẩn hóa thành 1.
-                - `pageSize`: Kích thước trang; giá trị nhỏ hơn 1 dùng mặc định 20 và giá trị lớn hơn 100 được giới hạn về 100.
-
-                Chỉ người dùng có vai trò `Admin` được phép truy cập endpoint này.
-                - Thành công: 200 OK kèm `PagedResult<AuditLogDto>`.
-                - Khoảng thời gian không phải UTC, `fromUtc` lớn hơn `toUtc` hoặc `outcome` không hợp lệ:
-                  400 Bad Request (`Identity.InvalidAuditLogFilter`).
-                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
-                - Người dùng không có vai trò Admin: 403 Forbidden.
-                """)
-            .RequireAuthorization("AdminOnly")
-            .Produces<ApiResponse<PagedResult<AuditLogDto>>>(StatusCodes.Status200OK)
-            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status401Unauthorized)
-            .Produces(StatusCodes.Status403Forbidden);
-
+        var group = endpoints.MapGroup("/api/audit-logs").WithTags("Identity.AuditLogs").RequireAuthorization("AdminOnly");
+        group.MapGet("/", GetAuditLogsAsync).WithSummary("Tra cứu nhật ký kiểm toán");
+        group.MapGet("/statistics", GetStatisticsAsync).WithSummary("Thống kê kết quả theo bộ lọc");
+        group.MapGet("/actions", async (IAuditLogQueryReader reader, CancellationToken ct) =>
+            Results.Ok(ApiResponse<List<string>>.Ok(await reader.GetActionsAsync(ct))))
+            .WithSummary("Các mã thao tác đã ghi nhận");
+        group.MapGet("/outbox-health", async (IEnumerable<IAuditIntegrationEventSource> sources, CancellationToken ct) =>
+        {
+            var health = new List<AuditOutboxHealth>();
+            foreach (var source in sources) health.Add(await source.GetHealthAsync(ct));
+            return Results.Ok(ApiResponse<List<AuditOutboxHealth>>.Ok(health));
+        }).WithSummary("Độ trễ và lỗi chuyển sự kiện kiểm toán");
+        group.MapGet("/export", ExportAsync).WithSummary("Xuất CSV nhật ký theo bộ lọc (tối đa 100.000 sự kiện)");
+        group.MapGet("/{id:long}", GetByIdAsync).WithSummary("Chi tiết sự kiện kiểm toán");
         return endpoints;
     }
 
-    private static async Task<IResult> GetAuditLogsAsync(
-        Guid? actorUserId,
-        string? action,
-        string? targetType,
-        string? outcome,
-        DateTime? fromUtc,
-        DateTime? toUtc,
-        int pageNumber = 1,
-        int pageSize = 20,
-        GetAuditLogsHandler handler = null!,
-        CancellationToken cancellationToken = default)
-    {
-        var query = new GetAuditLogsQuery(
-            actorUserId,
-            action,
-            targetType,
-            outcome,
-            fromUtc,
-            toUtc,
-            pageNumber,
-            pageSize);
+    private static async Task<IResult> GetAuditLogsAsync([AsParameters] AuditLogParameters p, GetAuditLogsHandler handler, CancellationToken cancellationToken)
+        => (await handler.HandleAsync(p.ToQuery(), cancellationToken)).ToHttpResult();
 
-        var result = await handler.HandleAsync(query, cancellationToken);
-        return result.ToHttpResult();
+    private static async Task<IResult> GetStatisticsAsync([AsParameters] AuditLogParameters p, IAuditLogQueryReader reader, CancellationToken cancellationToken)
+    {
+        var query = GetAuditLogsHandler.NormalizeQuery(p.ToQuery() with { Outcome = null });
+        if (query.IsFailure) return query.ToHttpResult();
+        return Results.Ok(ApiResponse<AuditLogStatistics>.Ok(await reader.GetStatisticsAsync(query.Value, cancellationToken)));
+    }
+
+    private static async Task<IResult> GetByIdAsync(long id, IAuditLogQueryReader reader, CancellationToken cancellationToken)
+    {
+        var log = await reader.GetByIdAsync(id, cancellationToken);
+        return log is null ? Results.NotFound() : Results.Ok(ApiResponse<UGTM.Modules.Identity.Application.AuditLogs.Dtos.AuditLogDto>.Ok(log));
+    }
+
+    private static async Task<IResult> ExportAsync([AsParameters] AuditLogParameters p, IAuditLogQueryReader reader, IdentityDbContext db, CancellationToken cancellationToken)
+    {
+        var query = GetAuditLogsHandler.NormalizeQuery(p.ToQuery());
+        if (query.IsFailure) return query.ToHttpResult();
+        // Count and export share one snapshot, including when new events arrive while streaming.
+        var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
+        try
+        {
+            var count = await reader.GetAuditLogsAsync(query.Value with { PageNumber = 1, PageSize = 1 }, cancellationToken);
+            if (count.TotalCount > 100_000)
+            {
+                await transaction.DisposeAsync();
+                return Results.BadRequest(new { message = "Vui lòng thu hẹp bộ lọc: mỗi lần xuất tối đa 100.000 sự kiện." });
+            }
+        }
+        catch
+        {
+            await transaction.DisposeAsync();
+            throw;
+        }
+
+        return Results.Stream(async stream =>
+        {
+            await using var exportTransaction = transaction;
+            await using var writer = new StreamWriter(stream, new UTF8Encoding(true), 4096, leaveOpen: true);
+            await writer.WriteLineAsync("Id,TimestampUtc,ActorUserId,ActorEmail,ActorFullName,ActorSessionId,TargetType,TargetId,Action,Outcome,ReasonCode,RequestId,Metadata");
+            await foreach (var log in reader.ExportAsync(query.Value, cancellationToken))
+            {
+                string?[] cells = [log.Id.ToString(CultureInfo.InvariantCulture), log.Timestamp.ToString("O", CultureInfo.InvariantCulture),
+                    log.ActorUserId?.ToString(), log.ActorEmail, log.ActorFullName, log.ActorSessionId?.ToString(), log.TargetType,
+                    log.TargetId, log.Action, log.Outcome, log.ReasonCode, log.RequestId, log.Metadata?.GetRawText()];
+                await writer.WriteLineAsync(string.Join(',', cells.Select(CsvCell)));
+            }
+            await writer.FlushAsync(cancellationToken);
+            await exportTransaction.CommitAsync(cancellationToken);
+        }, "text/csv; charset=utf-8", "audit-logs.csv");
+    }
+
+    private static string CsvCell(string? value)
+    {
+        value ??= "";
+        // Spreadsheet applications may execute untrusted fields as formulas.
+        if (value.TrimStart().StartsWith('=') || value.TrimStart().StartsWith('+') || value.TrimStart().StartsWith('-') ||
+            value.TrimStart().StartsWith('@') || value.TrimStart().StartsWith('＝') || value.TrimStart().StartsWith('＋') ||
+            value.TrimStart().StartsWith('－') || value.TrimStart().StartsWith('＠') || value.StartsWith('\t') || value.StartsWith('\r') || value.StartsWith('\n')) value = "'" + value;
+        return "\"" + value.Replace("\"", "\"\"") + "\"";
+    }
+
+    public sealed class AuditLogParameters
+    {
+        public Guid? ActorUserId { get; init; }
+        public Guid? ActorSessionId { get; init; }
+        public string? Action { get; init; }
+        public string? TargetType { get; init; }
+        public string? TargetId { get; init; }
+        public string? RequestId { get; init; }
+        public string? Outcome { get; init; }
+        public string? SearchTerm { get; init; }
+        public DateTime? FromUtc { get; init; }
+        public DateTime? ToUtc { get; init; }
+        public int? PageNumber { get; init; }
+        public int? PageSize { get; init; }
+        public string? SortBy { get; init; }
+        public string? SortOrder { get; init; }
+        public GetAuditLogsQuery ToQuery() => new(ActorUserId, Action, TargetType, Outcome, FromUtc, ToUtc, PageNumber ?? 1, PageSize ?? 20,
+            SearchTerm, RequestId, TargetId, ActorSessionId, SortBy, SortOrder);
     }
 }

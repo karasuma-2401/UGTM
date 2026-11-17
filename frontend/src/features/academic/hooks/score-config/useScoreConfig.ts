@@ -1,0 +1,156 @@
+import { useEffect, useMemo } from 'react';
+import type { ScoreConfigurationDto } from '../../types/scoreConfig.types';
+import {
+  isConfigDifferentFromDefault,
+  isConfigDifferentFromSaved,
+} from '../../utils/scoreWeights';
+import { useScoreConfigModals } from './useScoreConfigModals';
+import { useScoreConfigData } from './useScoreConfigData';
+import { useScoreConfigForm } from './useScoreConfigForm';
+import { useScoreConfigActions } from './useScoreConfigActions';
+
+export function useScoreConfig() {
+  const modals = useScoreConfigModals();
+  const data = useScoreConfigData(modals.setErrorMessage);
+  const form = useScoreConfigForm(
+    modals.setNotice,
+    modals.setErrorMessage,
+    () => modals.setIsAddModalOpen(true),
+  );
+  const actions = useScoreConfigActions();
+
+  const { selectedBatchId, loadBatchConfig } = data;
+  const { populateFromConfig } = form;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (selectedBatchId) {
+      void loadBatchConfig(selectedBatchId).then((loaded) => {
+        if (!cancelled) {
+          populateFromConfig(loaded);
+        }
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedBatchId, loadBatchConfig, populateFromConfig]);
+
+  const isDirty = useMemo(
+    () =>
+      isConfigDifferentFromSaved(
+        data.currentConfig,
+        form.calculationMethod,
+        form.components,
+      ),
+    [data.currentConfig, form.calculationMethod, form.components],
+  );
+
+  const handleApplyDefaultTemplateClick = () => {
+    const isDifferent = isConfigDifferentFromDefault(
+      form.calculationMethod,
+      form.reviewerMinimumScore,
+      form.components,
+    );
+
+    if (isDifferent) {
+      modals.setIsResetConfirmModalOpen(true);
+      return;
+    }
+
+    form.applyDefaultTemplate();
+  };
+
+  const applyDefaultTemplateWithModalClose = () => {
+    form.applyDefaultTemplate();
+    modals.setIsResetConfirmModalOpen(false);
+  };
+
+  const executeSaveDraft = async (changeReasonText?: string | null) => {
+    modals.setErrorMessage(null);
+    modals.setNotice(null);
+
+    await actions.executeSaveDraft({
+      selectedBatchId: data.selectedBatchId,
+      currentConfig: data.currentConfig,
+      currentBatch: data.currentBatch,
+      isLoadingConfig: data.isLoadingConfig,
+      calculationMethod: form.calculationMethod,
+      components: form.components,
+      isValid: form.isValid,
+      totalWeight: form.totalWeight,
+      changeReasonText,
+      onSuccess: async (savedConfig) => {
+        const batchTitle = data.currentBatch?.batchName || 'đợt khóa luận';
+        modals.setNotice(
+          savedConfig.status === 'Draft'
+            ? `Đã lưu thành công bản nháp cấu hình điểm (Phiên bản v${savedConfig.versionNo}) cho ${batchTitle}. Bạn có thể tiếp tục chỉnh sửa hoặc bấm "Công bố" để áp dụng chính thức.`
+            : `Đã tạo thành công bản nháp cấu hình điểm (Phiên bản v${savedConfig.versionNo}) cho ${batchTitle}.`,
+        );
+        const reloaded = await data.loadBatchConfig(data.selectedBatchId);
+        form.populateFromConfig(reloaded);
+      },
+      onError: modals.setErrorMessage,
+    });
+  };
+
+  const handleSaveClick = () => {
+    if (data.currentConfig && data.currentConfig.status === 'Active') {
+      modals.setIsCloneReasonModalOpen(true);
+      return;
+    }
+
+    void executeSaveDraft(null);
+  };
+
+  const handlePublish = async () => {
+    modals.setErrorMessage(null);
+    modals.setNotice(null);
+
+    await actions.handlePublish({
+      selectedBatchId: data.selectedBatchId,
+      currentConfig: data.currentConfig,
+      isLoadingConfig: data.isLoadingConfig,
+      calculationMethod: form.calculationMethod,
+      components: form.components,
+      totalWeight: form.totalWeight,
+      isDirty,
+      isValid: form.isValid,
+      onSuccess: async (published) => {
+        const batchTitle = data.currentBatch?.batchName || 'đợt khóa luận';
+        modals.setNotice(
+          `Đã công bố thành công cấu hình điểm phiên bản v${published.versionNo} cho ${batchTitle}. Cấu hình hiện đang có hiệu lực áp dụng!`,
+        );
+        const reloaded = await data.loadBatchConfig(data.selectedBatchId);
+        form.populateFromConfig(reloaded);
+      },
+      onError: modals.setErrorMessage,
+    });
+  };
+
+  const handleSelectHistoryVersion = (selected: ScoreConfigurationDto) => {
+    form.populateFromConfig(selected);
+    modals.setNotice(
+      `Đã nạp thông số từ phiên bản v${selected.versionNo} (${selected.status}) vào biểu mẫu.`,
+    );
+  };
+
+  return {
+    data,
+    form: {
+      ...form,
+      isDirty,
+    },
+    modals,
+    actions: {
+      isSaving: actions.isSaving,
+      isPublishing: actions.isPublishing,
+      handleApplyDefaultTemplateClick,
+      applyDefaultTemplate: applyDefaultTemplateWithModalClose,
+      executeSaveDraft,
+      handleSaveClick,
+      handlePublish,
+      handleSelectHistoryVersion,
+    },
+  };
+}

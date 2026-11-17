@@ -1,0 +1,33 @@
+---
+version: 1
+slug: "res-councils-pages-studentresultspage-tsx-34a699f3"
+primary_target: "frontend/src/features/councils/pages/StudentResultsPage.tsx"
+related_targets: ["frontend/src/features/councils/utils/studentResults.ts","frontend/src/features/councils/components/results/StudentResultsSidebar.tsx","frontend/src/features/councils/components/results/StudentTranscriptPrintDocument.tsx"]
+---
+
+## Scope
+Route `/councils/results`, Operate mode. Serves confirmed `Student` members of a thesis group viewing either gate blockers while scores are locked (`ScoreSummary.NotYetPublished` / `ScoreSummary.ArchivalNotConfirmed`) or their published official thesis score breakdown (`StudentScoreSummaryDto`) once Khoa confirms archival (`ArchiveConfirmed`) and publishes results (`PublishedToStudent`). Connects to `syllabusApi.getMyStatus`, `syllabusApi.getGroupDetail`, `studentResultsApi.getMyScoreSummary`, `studentResultsApi.getMyFinalSubmission`, and `finalReportApi.getReviewerFeedback`.
+
+## Direction contract
+THESIS: An official student score transcript paired with an adaptive gate-readiness tracker and a sticky 340px context dock, replacing a single-use `"—"` column table, orphaned lock/print cards, and dead no-op action buttons with clear lifecycle orientation and real A4 printable output.
+OWN-WORLD: Inherit UGTM Modern Clean SaaS + Fluent Design (`bg-surface-canvas`, `bg-surface-card`, `rounded-2xl`, `border-line/80`, Inter typography with `tabular-nums`, `#2054a5` to `#fa7921` PageHeader accent stripe, no icon inside PageHeader matching `AcademicResultsPage` and `StudentArchivalPage`, semantic `tone-*` badges and `InlineAlert` banners, weight proportion bars, `@media print` A4 transcript output matching `CouncilMinutePrintDocument`, and `AvatarGroup`).
+STORY: When results are locked, the student immediately sees the 2 required gates (*Khoa xác nhận lưu chiểu* and *Khoa công bố kết quả*), why access is locked, and a live action button straight to `/thesis/archival`; when published, the student sees their official headline scores (`Thang 10`, `Thang 4`, and reference classification badge), the weighted source breakdown with percentage weight bars and calculation formula, post-defense feedback, and triggers a real A4 printable transcript (`window.print()`) cleanly hiding sidebar/header/controls via `print:hidden`.
+FIRST VIEWPORT: `PageHeader` (`accent`, no icon per system convention, concise group/publication status description, `StatusBadge` + `Làm mới` button; plus `In phiếu điểm` button when published); responsive 2-column grid (`lg:grid-cols-[minmax(0,1fr)_340px]`): left column adapts cleanly to `Locked` (unified `Card` with `divide-y` containing `InlineAlert` + 2-gate readiness list with direct action links to `/thesis/archival` and `/thesis/final-report` + optional post-defense feedback) vs `Published` (official transcript `Card` with `divide-y` containing headline score band — `Thang 10`, `Thang 4`, reference rank & publication timestamp — followed by weighted component breakdown table on `>=md` / stacked cards on `<md` with proportion bars & formula, post-defense feedback block, and integrated print footer); right sticky `340px` hairline-divided dock (`StudentResultsSidebar`) holds dossier identity (`topicCode`, `groupCode`, titles), confirmed student `AvatarGroup`, advisor `AvatarGroup`, batch name, processing notes, and working `/thesis/archival` navigation link. Hidden-on-screen `print:block` `StudentTranscriptPrintDocument` outputs a monochrome A4 sheet during print.
+FORM: Selected candidate `official-score-transcript-and-gate-tracker` (index 3 on grounded list; `seed:0dd4ff0e6230adcd`), code-led. Signature interaction: seamless visual pivot from a 2-gate actionable readiness sheet (with working `/thesis/archival` deep-link) to a weighted official transcript sheet (with proportion bars + `@media print` A4 output).
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+## Finish review
+- **Verdict:** Shipped cleanly. Redesigned `/councils/results` (`StudentResultsPage.tsx`, `studentResults.ts`, `studentResults.types.ts`, `StudentResultsSidebar.tsx`, `StudentTranscriptPrintDocument.tsx`) to **Official Score Transcript + Adaptive Gate Tracker** matching Modern Clean SaaS + Fluent Design.
+- **Changes implemented & verified:**
+  1. Removed `icon={<BarChart3 />}` from `PageHeader` (matching `AcademicResultsPage`, `StudentArchivalPage`, and `StudentRenameRequestPage`).
+  2. Replaced the dead no-op `handleOpenArchival` / `handlePrintTranscript` handlers with real `<Link to="/thesis/archival">` navigation and `window.print()` A4 transcript printing (`StudentTranscriptPrintDocument`). Also fixed the `/thesis/results` -> `/councils/results` route link in `ArchivalDossierSidebar.tsx` and `StudentArchivalPage.tsx`.
+  3. Replaced the empty `"Tiếp theo: —"` 4-column table and orphaned lock/print cards with unified `divide-y` sheets: actionable 2-gate readiness tracker when locked, and 3-metric score band (`Thang 10`, `Thang 4`, reference rank) + weighted proportion bars + calculation formula + post-defense feedback + integrated print footer when published.
+  4. Seeded complete `ArchiveConfirmed` archival proof and calculated + published official scores via the real backend workflow (`POST /api/thesis/scores/calculate` + `PUT /api/thesis/scores/publish`) for Group C (`22520305` = `8.82`, `22520306` = `7.82`) while keeping Group A (`22520301`) in `Locked` state.
+- **Issues caught & fixed during visual inspection:**
+  1. Fixed sidebar section heading (`"Thông tin công bố"` / `"Thông tin hồ sơ"`) wrapping mid-phrase by stacking `{topicCode} · {groupCode}` cleanly above the topic title in `StudentResultsSidebar.tsx`.
+  2. Added stacked responsive score cards (`md:hidden`) alongside the 5-column desktop `Table` (`hidden md:block`) so `390x844` mobile renders without horizontal table overflow or word-by-word wrapping.
+- **Verification:**
+  - `impeccable detect --json` on `StudentResultsPage.tsx`, `StudentResultsSidebar.tsx`, `StudentTranscriptPrintDocument.tsx` -> `[]` (0 violations).
+  - `npm --prefix frontend run build` (`tsc -b && vite build`) succeeded; `npm --prefix frontend run lint` (`oxlint`) reported `0 errors` and 0 warnings in touched files.
+  - Playwright screenshots visually verified across Desktop Light/Dark (`1440x900`), Mobile (`390x844`), and `@media print` A4 for both `22520301` (`Locked`) and `22520305` (`Published`), with `0` `pageerror`s.
+  - Documented conventions under `## Kết quả khóa luận (/councils/results)` in `DESIGN.md`.

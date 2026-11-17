@@ -30,7 +30,7 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.HasData(Enum.GetValues<SystemRoleName>().Select(role => new Role
         {
             Id = (int)role + 1,
-            RoleName = role,
+            RoleName = role.ToString(),
             Description = role.ToString()
         }));
     }

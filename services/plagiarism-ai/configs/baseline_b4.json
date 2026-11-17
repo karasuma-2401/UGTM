@@ -1,0 +1,28 @@
+{
+  "baseline_id": "B4",
+  "name": "Hybrid RRF + Cross-Encoder Reranker Baseline (Upgraded MVP v2)",
+  "description": "Full hybrid pipeline with block-cleaned preprocessing, hybrid RRF retrieval, BAAI/bge-reranker-v2-m3 scoring, and calibrated decision thresholding prior to sentence-level dynamic alignment.",
+  "research_question": "RQ1, RQ2",
+  "pipeline": {
+    "preprocessing": "block_cleaned",
+    "retrieval": {
+      "branch": "hybrid_rrf",
+      "lexical_metric": "char_trigram_dice",
+      "dense_model": "BAAI/bge-m3",
+      "rrf_k": 60,
+      "top_k_per_branch": 50,
+      "fused_k": 50
+    },
+    "reranking": {
+      "model": "BAAI/bge-reranker-v2-m3",
+      "max_length": 512,
+      "normalize": true
+    },
+    "classification": {
+      "mode": "calibrated_reranker_threshold",
+      "threshold": 0.50
+    }
+  },
+  "hardware_budget": "Dense embedding compute + Cross-Encoder GPU FLOPs (32 batch cap)"
+}
+

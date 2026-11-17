@@ -1,0 +1,9 @@
+# Default cross-platform runtime profile for Render Python Native Runtime (API + CPU Worker).
+# Excludes PyTorch/CUDA/FlagEmbedding so API and CPU Worker stay lightweight.
+#
+# Profiles:
+#   - Minimal API only:            pip install -r requirements/api.txt
+#   - API + CPU Worker (default):  pip install -r requirements/cpu-worker.txt
+#   - Local dev + test suite:      pip install -r requirements/dev.txt
+#   - Colab / Local GPU worker:    pip install -r requirements/gpu-colab.txt
+-r requirements/cpu-worker.txt

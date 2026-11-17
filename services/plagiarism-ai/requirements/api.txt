@@ -1,0 +1,11 @@
+# Minimal dependencies for the FastAPI AI Web Service (Render Web Service / native API).
+# Does NOT include PDF/DOCX parsers, scikit-learn, PyTorch, CUDA, or FlagEmbedding.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+python-multipart>=0.0.12,<1
+pydantic-settings>=2.5,<3
+psycopg[binary]>=3.2,<4
+celery[redis]>=5.4,<6
+requests>=2.32,<3
+boto3>=1.34,<2
+

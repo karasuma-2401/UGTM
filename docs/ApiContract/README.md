@@ -7,5 +7,26 @@ Mỗi module có một contract riêng. Contract chỉ mô tả endpoint đã tr
 | Identity (Auth) | [IdentityApiContract.md](IdentityApiContract.md) | Đã triển khai |
 | Identity (Users) | [UserManagementApiContract.md](UserManagementApiContract.md) | Đã triển khai |
 | Identity (Role & Permission) | [RolePermissionApiContract.md](RolePermissionApiContract.md) | Đã triển khai |
+| TopicCatalog (Topics & Tracking) | [TopicCatalogApiContract.md](TopicCatalogApiContract.md) | Mục 1–4 đã triển khai; mục 5 ghi rõ phần đã có/còn thiếu, thời hạn 24h |
+| AcademicPeriods (Batches, Timeline & Score Configuration) | [AcademicPeriodsApiContract.md](AcademicPeriodsApiContract.md) | SCRUM-81 và SCRUM-83 đã triển khai |
+| ThesisManagement (Groups, Review gates, Progress & Final reports) | [ThesisManagementApiContract.md](ThesisManagementApiContract.md) | SCRUM-88, SCRUM-89, SCRUM-102, chi tiết nhóm và danh sách hồ sơ Cổng 1/Cổng 2 đã triển khai; nghiệm thu SCRUM-102 xem bên dưới |
+| Advisor evaluation & reviewer handoff | [AdvisorEvaluationApprovalApiContract.md](AdvisorEvaluationApprovalApiContract.md) | SCRUM-103 đã triển khai và nghiệm thu CP6: ghi/duyệt/đọc phiếu, contract eligibility và luồng PostgreSQL/MinIO production-host |
+| Reviewer assignment & bound report access | [ReviewerAssignmentApiContract.md](ReviewerAssignmentApiContract.md) | SCRUM-104 có POST/DELETE, bốn API đọc và quyền tải đúng báo cáo được duyệt; phạm vi/bằng chứng CP6 tại [ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md) |
+| Reviewer evaluation, defense eligibility & student feedback | [ReviewerEvaluationApiContract.md](ReviewerEvaluationApiContract.md) | SCRUM-105: nháp/chốt/đọc phiếu, gate theo Active hiện tại, feedback chỉ comment và contract khóa cho scheduling; nghiệm thu CP4 tại [ReviewerEvaluationVerification.md](ReviewerEvaluationVerification.md) |
+| Final submission archival & verification | [FinalSubmissionApiContract.md](FinalSubmissionApiContract.md) | SCRUM-106 CP1–CP2: POST/sáu GET, hai bước xác nhận/trả sửa, khóa hồ sơ và Get/Lock ArchiveProof; không thêm migration CP2. [Bằng chứng](FinalSubmissionVerification.md) |
+| Thesis score calculation & publication | [ScoreCalculationPublicationApiContract.md](ScoreCalculationPublicationApiContract.md) | SCRUM-110 CP3–CP4: calculate/private reads, publish nguyên tử và Student GET theo snapshot. [Bằng chứng CP3](ScoreCalculationVerification.md), [CP4](ScorePublicationVerification.md) |
+| Shared archival/score design | [ArchivalScoreWorkflowDesign.md](ArchivalScoreWorkflowDesign.md) | CP0: schema/FK/history, owner contracts, coordinator, lock protocol, cleanup và legacy handoff; [nghiệm thu CP5](ArchivalScoreAcceptance.md) |
 
 Quy ước response, authentication, lỗi và hành vi đặc biệt được ghi trong contract của module đang sở hữu endpoint. Khi thay đổi request, response, status code hoặc error code, cập nhật contract trong cùng pull request.
+
+Báo cáo tích hợp Topic Advising và danh sách API còn thiếu: [TopicAdvisingIntegration.md](TopicAdvisingIntegration.md).
+
+Báo cáo màn hình sinh viên, API đã nối và các trường dữ liệu còn thiếu: [StudentTopicRegistrationIntegration.md](StudentTopicRegistrationIntegration.md).
+
+Nghiệm thu báo cáo cuối kỳ (SCRUM-102), ma trận test và cách kiểm tra PostgreSQL/MinIO: [FinalReportSubmissionVerification.md](FinalReportSubmissionVerification.md).
+
+Nghiệm thu phiếu chấm GVHD và bàn giao phản biện (SCRUM-103): [AdvisorEvaluationApprovalVerification.md](AdvisorEvaluationApprovalVerification.md).
+
+Nghiệm thu phân công GVPB (SCRUM-104), giao dịch/race, luồng PostgreSQL/MinIO và OpenAPI: [ReviewerAssignmentVerification.md](ReviewerAssignmentVerification.md).
+
+Nghiệm thu chấm GVPB, điều kiện bảo vệ và góp ý sinh viên (SCRUM-105), ma trận RV-01–RV-36 và hồi quy source cuối: [ReviewerEvaluationVerification.md](ReviewerEvaluationVerification.md).

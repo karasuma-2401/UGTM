@@ -10,13 +10,55 @@ import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { OtpPage } from '../features/auth/pages/OtpPage';
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage';
-import { UsersPage } from '../features/admin/pages/UsersPage';
-import { IdentityLayout, IdentityIndexRedirect } from '../features/admin/layouts/IdentityLayout';
+import { UsersPage } from '../features/identity';
+import { TopicReviewPage } from '../features/topics/pages/TopicReviewPage';
+import { TopicGuidancePage } from '../features/topics/pages/TopicGuidancePage';
+import { StudentTopicCatalogPage } from '../features/topics/pages/StudentTopicCatalogPage';
+import { StudentRenameRequestPage } from '../features/topics/pages/StudentRenameRequestPage';
+import { RenameReviewEntryPage, RenameReviewPage } from '../features/topics/pages/RenameReviewPage';
+import {
+  SyllabusSubmissionPage,
+  SyllabusReviewPage,
+  MidtermSubmissionPage,
+  MidtermReviewPage,
+  StudentMilestoneSubmissionPage,
+  AdvisorMilestoneSetupPage,
+  AdvisorMilestoneReviewPage,
+  FinalReportSubmissionPage,
+  StudentArchivalPage,
+  ArchivalReviewPage,
+  AdvisorArchivalPage,
+} from '../features/thesis';
+import {
+  ReviewerAssignmentPage,
+  CouncilApprovalPage,
+  CouncilMinutesPage,
+  ResultsEntryPage,
+} from '../features/councils';
+import { CouncilSimilarityReportsPage } from '../features/thesis/pages/CouncilSimilarityReportsPage';
+import { LecturerGradingPage } from '../features/thesis/pages/LecturerGradingPage';
+import { CouncilGradingPage } from '../features/councils/pages/CouncilGradingPage';
+import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
-import { RolePermissionPage } from '../features/admin';
+import { PublicLayout } from '../features/landing/PublicLayout';
+import { HomeEntry, LandingPage } from '../features/landing/LandingPage';
+import { LibraryPage } from '../features/library/LibraryPage';
+import { ThesisDetailPage } from '../features/library/ThesisDetailPage';
+import { RolePermissionPage } from '../features/identity';
+import { AuditLogPage } from '../features/audit';
+import { ScoreConfigPage, PeriodPage, SchoolRosterPage } from '../features/academic';
 
 export const router = createBrowserRouter([
+  {
+    element: <PublicLayout />,
+    children: [
+      { path: '/', element: <HomeEntry /> },
+      { path: '/welcome', element: <LandingPage /> },
+      { path: '/library', element: <LibraryPage /> },
+      { path: '/library/:slug', element: <ThesisDetailPage /> },
+    ],
+  },
   {
     element: <AuthLayout />,
     children: [
@@ -35,8 +77,248 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
+      { path: 'dashboard', element: <DashboardPage /> },
       { path: 'ui-test', element: <UiTestPage /> },
+      {
+        path: 'topics/catalog',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <StudentTopicCatalogPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'topics/rename',
+        element: <ProtectedRoute allowedRoles={['Student']}><StudentRenameRequestPage /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review',
+        element: <ProtectedRoute allowedRoles={['Lecturer', 'Faculty', 'AcademicAffairs', 'Admin']}><RenameReviewEntryPage /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review/advisor',
+        element: <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}><RenameReviewPage level="advisor" /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review/faculty',
+        element: <ProtectedRoute allowedRoles={['Faculty', 'Admin']}><RenameReviewPage level="faculty" /></ProtectedRoute>,
+      },
+      {
+        path: 'topics/rename/review/academic-affairs',
+        element: <ProtectedRoute allowedRoles={['AcademicAffairs', 'Admin']}><RenameReviewPage level="academic-affairs" /></ProtectedRoute>,
+      },
+      {
+        path: 'thesis/proposal',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <SyllabusSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/midterm',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <MidtermSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/milestones',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <StudentMilestoneSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/final-report',
+        element: (
+          <ProtectedRoute allowedRoles={['Student', 'Admin']}>
+            <FinalReportSubmissionPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/archival',
+        element: (
+          <ProtectedRoute allowedRoles={['Student']}>
+            <StudentArchivalPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/review/archival',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin']}>
+            <ArchivalReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/review/syllabus',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin', 'AcademicAffairs']}>
+            <SyllabusReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/review/midterm',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin', 'AcademicAffairs']}>
+            <MidtermReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/review',
+        element: <Navigate to="/thesis/review/syllabus" replace />,
+      },
+      {
+        path: 'thesis/progress',
+        element: <Navigate to="/thesis/milestones" replace />,
+      },
+      {
+        path: 'councils/reviewer-assignments',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin', 'AcademicAffairs']}>
+            <ReviewerAssignmentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'councils/similarity-reports',
+        element: <ProtectedRoute allowedRoles={['CouncilMember']}><CouncilSimilarityReportsPage /></ProtectedRoute>,
+      },
+      {
+        path: 'councils/grading',
+        element: <ProtectedRoute allowedRoles={['CouncilMember', 'Admin']}><CouncilGradingPage /></ProtectedRoute>,
+      },
+      {
+        path: 'councils/minutes',
+        element: (
+          <ProtectedRoute allowedRoles={['CouncilMember', 'Lecturer', 'Faculty', 'AcademicAffairs', 'Admin']}>
+            <CouncilMinutesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'councils/approval',
+        element: (
+          <ProtectedRoute allowedRoles={['AcademicAffairs', 'Admin']}>
+            <CouncilApprovalPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'councils/results',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'AcademicAffairs', 'Admin', 'Student']}>
+            <ResultsEntryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'thesis/lecturer-grading',
+        element: <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}><LecturerGradingPage /></ProtectedRoute>,
+      },
+      {
+        path: 'advisor/milestones',
+        element: (
+          <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
+            <AdvisorMilestoneSetupPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'advisor/milestones/:milestoneId/review',
+        element: (
+          <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
+            <AdvisorMilestoneReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'advisor/archival',
+        element: (
+          <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
+            <AdvisorArchivalPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'topics/advising',
+        element: (
+          <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
+            <TopicGuidancePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'topics/propose',
+        element: (
+          <ProtectedRoute allowedRoles={['Lecturer', 'Admin']}>
+            <Navigate to="/topics/advising" replace />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'topics/review',
+        element: (
+          <ProtectedRoute allowedRoles={['Faculty', 'Admin']}>
+            <TopicReviewPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/audit-logs',
+        element: (
+          <ProtectedRoute allowedRoles={['Admin']}>
+            <AuditLogPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/grade-config',
+        element: (
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
+            <ScoreConfigPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/periods',
+        element: (
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
+            <PeriodPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'academic/periods',
+        element: (
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
+            <PeriodPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'academic/roster',
+        element: (
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
+            <SchoolRosterPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'academic/school-roster',
+        element: <Navigate to="/academic/roster" replace />,
+      },
+      {
+        path: 'admin/school-roster',
+        element: <Navigate to="/academic/roster" replace />,
+      },
       {
         path: 'modules/identity',
         element: <IdentityLayout />,
@@ -44,9 +326,21 @@ export const router = createBrowserRouter([
           { index: true, element: <IdentityIndexRedirect /> },
           {
             path: 'accounts',
+            element: <Navigate to="../students" replace />,
+          },
+          {
+            path: 'students',
             element: (
               <ProtectedRoute requiredPermissions={['identity.users.read']}>
-                <UsersPage />
+                <UsersPage key="students" accountGroup="Student" />
+              </ProtectedRoute>
+            ),
+          },
+          {
+            path: 'staff',
+            element: (
+              <ProtectedRoute requiredPermissions={['identity.users.read']}>
+                <UsersPage key="staff" accountGroup="Staff" />
               </ProtectedRoute>
             ),
           },

@@ -9,9 +9,18 @@ public class RenameRequestConfiguration : IEntityTypeConfiguration<RenameRequest
         builder.HasIndex(x => x.GroupId)
             .HasDatabaseName("ix_rename_request_group_id");
 
+        builder.HasIndex(x => x.GroupId, "ux_rename_request_active_group")
+            .HasDatabaseName("ux_rename_request_active_group")
+            .IsUnique()
+            .HasFilter("status IN ('Created', 'AdvisorConfirmed', 'FacultyApproved')");
+
         builder.ToTable("rename_request", "thesis");
 
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Version).IsRowVersion();
+
+        builder.Property(x => x.RequestedByStudentId)
+            .IsRequired();
 
         builder.Property(x => x.OldTitleVi)
             .HasMaxLength(300)
@@ -34,6 +43,13 @@ public class RenameRequestConfiguration : IEntityTypeConfiguration<RenameRequest
         builder.Property(x => x.Status)
             .HasDefaultValue(RenameRequestStatus.Created)
             .HasSentinel(RenameRequestStatus.Created);
+
+        builder.Property(x => x.RejectionReason)
+            .HasColumnType("text");
+
+        builder.Property(x => x.RejectedBy);
+
+        builder.Property(x => x.RejectedAt);
 
         builder.Property(x => x.CreatedAt)
             .IsRequired();

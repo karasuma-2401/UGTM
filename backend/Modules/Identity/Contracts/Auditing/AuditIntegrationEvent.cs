@@ -32,6 +32,7 @@ public static class AuditIntegrationEventValidation
         EnsureValue(entry.TargetId, 100, nameof(entry.TargetId));
         EnsureValue(entry.Action, 100, nameof(entry.Action));
         EnsureValue(entry.Outcome, 50, nameof(entry.Outcome));
+        _ = NormalizeOutcome(entry.Outcome);
 
         if (entry.ReasonCode is not null)
         {
@@ -45,6 +46,14 @@ public static class AuditIntegrationEventValidation
                 nameof(occurredAtUtc));
         }
     }
+
+    public static string NormalizeOutcome(string outcome) => outcome.Trim() switch
+    {
+        "Succeeded" or "Success" => "Success",
+        "Denied" => "Denied",
+        "Failed" => "Failed",
+        _ => throw new ArgumentException("Unsupported audit outcome.", nameof(outcome))
+    };
 
     private static void EnsureValue(string value, int maxLength, string parameterName)
     {
@@ -60,6 +69,33 @@ public static class AuditIntegrationEventValidation
 
 public static class IntegrationAuditActions
 {
+    public const string BatchCreated =
+        "AcademicPeriods.Batch.Created";
+
+    public const string BatchScheduleUpdated =
+        "AcademicPeriods.Batch.ScheduleUpdated";
+
+    public const string BatchOpened =
+        "AcademicPeriods.Batch.Opened";
+
+    public const string BatchClosed =
+        "AcademicPeriods.Batch.Closed";
+
+    public const string BatchArchived =
+        "AcademicPeriods.Batch.Archived";
+
+    public const string ScoreConfigurationDraftCreated =
+        "AcademicPeriods.ScoreConfiguration.DraftCreated";
+
+    public const string ScoreConfigurationDraftUpdated =
+        "AcademicPeriods.ScoreConfiguration.DraftUpdated";
+
+    public const string ScoreConfigurationPublished =
+        "AcademicPeriods.ScoreConfiguration.Published";
+
+    public const string ScoreConfigurationRetired =
+        "AcademicPeriods.ScoreConfiguration.Retired";
+
     public const string BatchConfigurationUpdated =
         "AcademicPeriods.Batch.ConfigurationUpdated";
 
@@ -69,12 +105,71 @@ public static class IntegrationAuditActions
     public const string RenameRequestApproved =
         "ThesisManagement.RenameRequest.Approved";
 
+    public const string ReviewGateConfigurationCreated =
+        "ThesisManagement.ReviewGateConfiguration.Created";
+
+    public const string ReviewGateConfigurationUpdated =
+        "ThesisManagement.ReviewGateConfiguration.Updated";
+
+    public const string SyllabusSubmitted =
+        "ThesisManagement.Syllabus.Submitted";
+
+    public const string SyllabusReviewed =
+        "ThesisManagement.Syllabus.Reviewed";
+
+    public const string MidtermReportSubmitted =
+        "ThesisManagement.MidtermReport.Submitted";
+
+    public const string FinalReportSubmitted =
+        "ThesisManagement.FinalReport.Submitted";
+
+    public const string FinalReportEvaluationStarted =
+        "ThesisManagement.FinalReport.EvaluationStarted";
+
+    public const string MidtermReportReviewed =
+        "ThesisManagement.MidtermReport.Reviewed";
+
+    public const string ReviewGateDeadlineClosed =
+        "ThesisManagement.ReviewGate.DeadlineClosed";
+
+    public const string ProgressMilestoneCreated =
+        "ThesisManagement.ProgressMilestone.Created";
+
+    public const string ProgressReportSubmitted =
+        "ThesisManagement.ProgressReport.Submitted";
+
+    public const string ProgressReportReviewed =
+        "ThesisManagement.ProgressReport.Reviewed";
+
     public const string CouncilMinuteUnlockGranted =
         "DefenseCouncil.CouncilMinute.UnlockGranted";
+
+    public const string CouncilMinuteLocked =
+        "DefenseCouncil.CouncilMinute.Locked";
 
     public const string ScoreAdjusted =
         "DefenseCouncil.Score.Adjusted";
 
     public const string ScoreExcluded =
         "DefenseCouncil.Score.Excluded";
+
+    public const string AdvisorEvaluationSaved =
+        "DefenseCouncil.AdvisorEvaluation.Saved";
+
+    public const string ReviewerAssignmentCreated = "DefenseCouncil.ReviewerAssignment.Created";
+    public const string ReviewerAssignmentCancelled = "DefenseCouncil.ReviewerAssignment.Cancelled";
+    public const string ReviewerEvaluationDraftSaved = "DefenseCouncil.ReviewerEvaluation.DraftSaved";
+    public const string ReviewerEvaluationSubmitted = "DefenseCouncil.ReviewerEvaluation.Submitted";
+
+    public const string AdvisorEvaluationApproved =
+        "DefenseCouncil.AdvisorEvaluation.Approved";
+
+    public const string AdvisorEvaluationRejected =
+        "DefenseCouncil.AdvisorEvaluation.Rejected";
+
+    public const string AdvisorEvaluationReviewerAssignmentApproved =
+        "ThesisManagement.AdvisorEvaluation.ReviewerAssignmentApproved";
+
+    public const string AdvisorEvaluationReviewerAssignmentRejected =
+        "ThesisManagement.AdvisorEvaluation.ReviewerAssignmentRejected";
 }

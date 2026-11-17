@@ -1,61 +1,53 @@
-# Auth frontend
+# Authentication frontend
 
-This feature implements the login, account activation, recovery, OTP verification,
-and password reset screens using an in-memory demo service.
+The UI uses the Identity backend at `VITE_API_BASE_URL` (development default:
+`http://localhost:5287`). Scalar: `http://localhost:5287/scalar/v1`.
 
-## Structure
+## Connected flows
 
-- `pages/`: one route-level component per screen.
-- `components/`: reusable auth form components with named props interfaces.
-- `layouts/`: the shared header, background, and footer.
-- `services/`: real API functions for endpoints with defined request/response contracts.
-- `mocks/`: demo service, fixtures, and local simulation state types.
-- `utils/`: pure password validation functions.
-- `constants/`: storage keys and OTP settings; no demo credentials.
-- `types/`: auth request/response contracts and shared auth domain types.
-- `styles/`: feature CSS, scoped using the `auth-` prefix.
+- Login: fetch CSRF, send identifier/password, receive an access token and an
+  HttpOnly refresh cookie. Remembering an identifier only remembers MSSV/email.
+- Activation: `/activate` requests an email through `activation/resend`.
+  `/activate#token=...` validates the email token, then completes activation with
+  the initial password. Success returns to login; it does not create a session.
+- Recovery: email OTP, verification, and password reset use the recovery APIs.
+- Logout: wait for an in-flight refresh, revoke the server session, then clear
+  local state. If server logout fails, the login screen explains that server
+  revocation was not confirmed.
+- Startup: verify `/me` before admitting protected routes. If no access token is
+  present, try the HttpOnly refresh cookie first. A rejected session clears local
+  state; connection/server errors show a retry action and block protected pages.
+- Refresh: startup and HTTP retries share one rotating refresh request. Retried
+  requests cannot enter an infinite refresh loop.
 
-## Conventions
+SSO is not connected. Auth pages use real API services; the obsolete demo mocks have been removed.
 
-- Use PascalCase for React components and their filenames.
-- Use camelCase for variables and functions; prefix event handlers with `handle`.
-- Use `is`/`has` prefixes for boolean values and UPPER_SNAKE_CASE for constants.
-- Declare component props with a named `ComponentNameProps` interface.
-- Keep service logic and validation outside JSX.
-- Use relative imports inside this feature and `@/` for shared frontend modules.
-- Keep `ApiResponse` and `ApiError` in `shared/api/types.ts`; auth types have one
-  source of truth in `features/auth/types/auth.types.ts`. Shared infrastructure
-  may import these contracts using `import type`, without loading auth UI or mocks.
-- Format with Prettier: two spaces, single quotes, semicolons, and trailing commas.
+## Activation requirements
+
+The account must already exist in `PendingActivation`. Requesting an activation
+email does not register an account. Email delivery requires the backend outbox
+processor and configured mail transport. `PublicWebBaseUrl` must point at the
+frontend so emailed links open `/activate#token=...`.
+
+Activation APIs are anonymous and do not require CSRF. The three routes share
+5 requests per 10 minutes per IP. A successful resend does not reveal whether an
+account exists. Resending invalidates older activation links.
 
 ## Local checks
 
-Run `npm.cmd run format:auth`, `npm.cmd run format:auth:check`,
-`npm.cmd run lint`, and `npm.cmd run build` from `frontend/`.
+Run these commands from `frontend/`:
 
-## API integration boundary
+```powershell
+npm.cmd run test:auth
+npm.cmd run lint
+npm.cmd run build
+```
 
-The pages currently import `mocks/authMock.ts` explicitly. Adding `services/authApi.ts`
-does not enable real authentication or change route protection.
+The Node tests execute the TypeScript services with controlled HTTP/storage
+boundaries, including refresh races, cookie-only startup, outages, and API bodies.
+They do not exercise real email delivery or a real account's activation.
 
-The API service covers login, refresh, logout, current user, and authenticated
-password changes. It returns `ApiResponse<T>` on successful HTTP responses;
-HTTP failures are Axios errors containing the contract error envelope in
-`response.data`. Callers handle `error.code` and field errors, not message text.
-
-Login, refresh, and logout use a public HTTP client to avoid automatic refresh
-on invalid login credentials. Authenticated operations use the shared client.
-The shared interceptor performs automatic refresh; do not also trigger a manual
-refresh for the same failure. Session/profile cleanup is the caller's responsibility.
-
-Activation, recovery, and OTP still use mocks because their detailed API contract
-is unfinished. Define those request/response shapes before adding API functions.
-When connecting real login, also wire `AuthProvider`, `/me`, and protected routes.
-
-## Demo flow
-
-Open `/login`. The initial account is `24521186` / `UGTM@2025SecureKey`.
-The demo OTP is `123456`, valid for five minutes, with a 45-second resend
-cooldown and a five-attempt limit. Password changes exist only in memory;
-reload restores the initial password. Remembering an account stores only
-its identifier. SSO, Google, email, and SMS do not contact external services.
+For manual verification, use a pending test account, request its activation email,
+open the newest link, set a strong password, and log in. Refresh the browser and
+check that `/me` is requested. Log out and verify the server rejects the old access
+token. Reusing the activation link must fail.

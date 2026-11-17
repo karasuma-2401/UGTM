@@ -1,6 +1,6 @@
 # Kiến trúc backend UGTM
 
-Đối chiếu source ngày 13/10/2026. Nghiệp vụ theo [Requirements.md](../../../docs/Requirements.md), đã chốt từ báo cáo final do nhóm quản lý ngoài repo. Kiến trúc cũ trong Word không dùng làm hiện trạng triển khai.
+Đối chiếu source ngày 21/10/2026. Nghiệp vụ theo [Requirements.md](../../../docs/Requirements.md), đã chốt từ báo cáo final do nhóm quản lý ngoài repo. Kiến trúc cũ trong Word không dùng làm hiện trạng triển khai.
 
 ## 1. Quyết định kiến trúc
 
@@ -23,7 +23,7 @@ UGTM là **Modular Monolith**: một ASP.NET Core .NET 10 host, sáu module, m�
 
 MidtermProgress được gom vào ThesisManagement; FinalReportEvaluation và GradingConsolidation vào DefenseCouncil. Chúng là các bước trong cùng vòng đời hồ sơ hoặc chuỗi đánh giá; khung cũ chỉ có ping, chưa có API nghiệp vụ cần di chuyển. Sáu module là lựa chọn theo tính gắn kết nghiệp vụ của UGTM, không phải số lượng bắt buộc của DDD. DefenseCouncil có thể tách khi Assessment/Results có nhu cầu độc lập thực tế.
 
-38 bảng nghiệp vụ nằm trong sáu schema trên; `public.__ef_migrations_history` là lịch sử kỹ thuật. Không có schema shared. Audit, session và auth challenge thuộc Identity; notification nghiệp vụ thuộc Notifications; nhóm sinh viên thuộc thesis. RoleScoreWeight cũ được loại bằng migration vì RoleId không thể phân biệt GVHD/GVPB cùng là Lecturer; cấu hình mới dùng ScoreComponentConfig.
+41 bảng nghiệp vụ nằm trong sáu schema trên; `public.__ef_migrations_history` là lịch sử kỹ thuật. Không có schema shared. Audit, session và auth challenge thuộc Identity; notification nghiệp vụ thuộc Notifications; nhóm sinh viên thuộc thesis. RoleScoreWeight cũ được loại bằng migration vì RoleId không thể phân biệt GVHD/GVPB cùng là Lecturer; cấu hình mới dùng ScoreComponentConfig có version.
 
 ## 3. Tổ chức source và phụ thuộc
 
@@ -61,11 +61,13 @@ ModuleDbContext kiểm tra schema của các entity được ghi qua SaveChanges
 
 [ThesisGradeCalculator](../../Modules/DefenseCouncil/Domain/Grading/ThesisGradeCalculator.cs) tính công thức chia 6/7 đã chốt, loại cả điểm và hệ số, không tự loại vì sai biệt hoặc tự làm tròn. GVPB kiêm ủy viên không nhập điểm Hội đồng riêng, điểm phản biện giữ hệ số 2. [ScoreWeightRules](../../Modules/AcademicPeriods/Domain/Grading/ScoreWeightRules.cs) kiểm tra % tổng 100 và hệ số nguyên không âm có tổng dương. GradeCalculationService/Contracts có DI; chưa có orchestrator lấy phiếu, kiểm tra điểm sàn/lưu chiểu và lưu snapshot kết quả.
 
+AcademicPeriods đã triển khai CQRS/API quản lý batch, lịch bảy giai đoạn, timeline/current stage và cấu hình điểm versioned. Lịch batch được materialize từ `ScheduleTemplateVersion`, giữ timezone IANA `Asia/Ho_Chi_Minh`; cấu hình điểm có vòng đời `Draft → Active → Retired`. Partial unique index và `xmin` xử lý tranh chấp ở PostgreSQL; lỗi đồng thời được trả về `409`. Quyền quản lý batch/cấu hình chỉ cấp mặc định cho Admin và PĐT (`AcademicAffairs`); quyền đọc batch cấp cho các vai trò hệ thống, còn quyền đọc cấu hình điểm chỉ cấp Admin/PĐT. Mọi mutation tạo audit integration event trong `academic.audit_outbox_message` cùng transaction dữ liệu.
+
 Giao dịch xuyên module phải được thiết kế theo use case; nhiều DbContext không tự tạo transaction chung. Ghi nhóm và thành viên dùng một context/transaction. Các bước cần nhất quán xuyên module phải phối hợp rõ ràng; không tự giả định mọi SaveChanges cùng database là nguyên tử. Identity đã có outbox và worker riêng cho email activation/recovery; chưa có event bus hoặc outbox dùng chung giữa các module.
 
 ## 5. Trạng thái runtime/frontend
 
-[ModuleRegistration.cs](../../host/Api/Modules/ModuleRegistration.cs) đăng ký sáu IModule. Mỗi module có endpoint ping; Identity có thêm API authentication tại `/api/identity/auth`. Các model/repository/domain services không đồng nghĩa 75 FR đã được triển khai.
+[ModuleRegistration.cs](../../host/Api/Modules/ModuleRegistration.cs) đăng ký sáu IModule. Mỗi module có endpoint ping; Identity cung cấp API authentication/quản trị, TopicCatalog có API đề tài và AcademicPeriods có 15 endpoint batch/cấu hình điểm dưới `/api/academic-periods/batches`. Các model/repository/domain services còn lại không đồng nghĩa toàn bộ FR đã được triển khai.
 
 Frontend React 19/TypeScript/Vite 8 có dashboard `/` và trang ping `/modules/:modulePath`. Router dùng AppLayout với Tailwind/shadcn/Radix; App/ModulePingPage còn dùng Ant Design. AuthContext/ProtectedRoute và các màn hình auth chưa được tích hợp. Backend đã có refresh endpoint nhưng frontend chưa nối theo contract mới.
 

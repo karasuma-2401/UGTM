@@ -1,0 +1,3 @@
+namespace UGTM.Modules.ThesisManagement.Application.TopicRegistrations.GetMyRegistrationStatus;
+
+public sealed record GetMyRegistrationStatusQuery;

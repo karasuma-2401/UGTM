@@ -15,13 +15,13 @@ export interface SelectOption<T = string> {
 export type RawOption<T = string> = SelectOption<T> | string | number;
 
 const selectTriggerVariants = cva(
-  'flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-left',
+  'flex w-full items-center justify-between rounded-xl border border-line-input/90 bg-surface-card px-3 py-1.5 text-xs font-medium text-ink-heading shadow-2xs outline-none transition-[background-color,border-color,box-shadow] duration-150 placeholder:text-ink-subtle hover:border-line-strong focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:cursor-not-allowed disabled:bg-surface-subtle disabled:opacity-60 text-left cursor-pointer select-none',
   {
     variants: {
       size: {
         default: 'h-9 py-2',
         sm: 'h-8 px-2.5 py-1 text-xs',
-        lg: 'h-10 px-3.5 py-2 text-base',
+        lg: 'h-10 px-3.5 py-2 text-xs sm:text-sm',
       },
     },
     defaultVariants: {
@@ -151,11 +151,9 @@ export function Select<T = string>({
     };
   }, [isOpen]);
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     if (isOpen && searchable && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 50);
+      searchInputRef.current.focus({ preventScroll: true });
     }
   }, [isOpen, searchable]);
 
@@ -234,7 +232,7 @@ export function Select<T = string>({
       );
     }
 
-    if (!multiple && currentValue !== undefined && currentValue !== null && currentValue !== '') {
+    if (!multiple && currentValue !== undefined && currentValue !== null) {
       const selectedOpt = normalizedOptions.find((opt) => opt.value === currentValue);
       if (selectedOpt) {
         return (
@@ -261,7 +259,7 @@ export function Select<T = string>({
   return (
     <div
       ref={containerRef}
-      className={cn('relative w-full text-left', containerClassName, className)}
+      className={cn('relative w-full text-left', isOpen && 'z-50', containerClassName, className)}
       {...props}
     >
       <button
@@ -271,9 +269,13 @@ export function Select<T = string>({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-invalid={hasError ? 'true' : undefined}
+        aria-label={props['aria-label']}
         className={cn(
           selectTriggerVariants({ size }),
-          hasError && 'border-destructive text-destructive focus:ring-destructive',
+          isOpen && 'border-primary ring-2 ring-primary/15',
+          hasError &&
+            'border-destructive text-destructive focus:border-destructive focus:ring-destructive/15',
+          hasError && isOpen && 'ring-destructive/15',
           triggerClassName,
         )}
       >
@@ -292,7 +294,7 @@ export function Select<T = string>({
               role="button"
               tabIndex={-1}
               onClick={handleClear}
-              className="rounded-sm p-0.5 hover:text-foreground hover:bg-slate-100 transition-colors cursor-pointer"
+              className="rounded-sm p-0.5 hover:text-foreground hover:bg-surface-muted transition-colors cursor-pointer"
               aria-label="Xóa lựa chọn"
             >
               <X className="size-3.5" />
@@ -318,27 +320,27 @@ export function Select<T = string>({
           tabIndex={-1}
           style={{ maxHeight: maxMenuHeight }}
           className={cn(
-            'absolute z-50 left-0 right-0 mt-1 w-full rounded-md border border-slate-200 bg-white p-1 text-slate-900 shadow-md outline-none overflow-hidden flex flex-col animate-in fade-in-0 zoom-in-95',
+            'absolute z-50 left-0 top-full mt-1.5 w-max min-w-full max-w-[90vw] sm:max-w-md rounded-xl border border-line-input/90 bg-surface-card p-1.5 text-ink-primary shadow-lg outline-none overflow-hidden flex flex-col animate-in fade-in-0 zoom-in-95 dark:shadow-[0_16px_40px_rgba(0,0,0,0.55)]',
             contentClassName,
           )}
         >
           {searchable && (
-            <div className="flex items-center border-b border-slate-100 px-2.5 py-1.5 mb-1 shrink-0">
-              <Search className="size-4 text-slate-400 mr-2 shrink-0" />
+            <div className="flex items-center border-b border-line-subtle px-2.5 py-1.5 mb-1 shrink-0">
+              <Search className="size-4 text-ink-subtle mr-2 shrink-0" />
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400 outline-none"
+                className="w-full bg-transparent text-sm text-ink-heading placeholder:text-ink-muted outline-none"
                 onClick={(e) => e.stopPropagation()}
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="text-slate-400 hover:text-slate-600 p-0.5"
+                  className="text-ink-subtle hover:text-ink-body p-0.5"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -348,7 +350,7 @@ export function Select<T = string>({
 
           <div className="overflow-y-auto flex-1 space-y-0.5">
             {filteredOptions.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-400">{noOptionsMessage}</div>
+              <div className="py-6 text-center text-xs text-ink-subtle">{noOptionsMessage}</div>
             ) : (
               filteredOptions.map((opt) => {
                 const isSelected = isOptionSelected(opt.value);
@@ -360,22 +362,22 @@ export function Select<T = string>({
                     aria-disabled={opt.disabled}
                     onClick={(e) => handleSelectOption(opt, e)}
                     className={cn(
-                      'relative flex items-center justify-between gap-2 px-2.5 py-2 text-sm rounded-md select-none transition-colors cursor-pointer',
+                      'relative flex items-center justify-between gap-2 px-3 py-2 text-xs rounded-lg select-none font-medium transition-colors cursor-pointer',
                       isSelected
-                        ? 'bg-blue-50/80 text-primary font-medium'
-                        : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
+                        ? 'bg-tone-info-bg text-primary font-semibold'
+                        : 'text-ink-secondary hover:bg-surface-hover hover:text-ink-primary',
                       opt.disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
                       optionClassName,
                     )}
                   >
                     <div className="flex items-center gap-2 truncate flex-1">
                       {opt.icon && (
-                        <span className="[&_svg]:size-4 text-slate-400 shrink-0">{opt.icon}</span>
+                        <span className="[&_svg]:size-4 text-ink-subtle shrink-0">{opt.icon}</span>
                       )}
                       <div className="truncate">
                         <div className="truncate">{opt.label}</div>
                         {opt.description && (
-                          <div className="text-[11px] text-slate-400 font-normal truncate mt-0.5">
+                          <div className="text-[11px] text-ink-subtle font-normal truncate mt-0.5">
                             {opt.description}
                           </div>
                         )}

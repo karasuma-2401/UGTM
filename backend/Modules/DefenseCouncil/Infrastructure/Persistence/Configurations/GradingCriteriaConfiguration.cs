@@ -20,6 +20,17 @@ public class GradingCriteriaConfiguration : IEntityTypeConfiguration<GradingCrit
             .HasMaxLength(250)
             .IsRequired();
 
+        builder.Property(x => x.SectionCode)
+            .HasMaxLength(20);
+
+        builder.Property(x => x.SectionName)
+            .HasMaxLength(250);
+
+        builder.Property(x => x.SectionOrder);
+
+        builder.Property(x => x.Elo)
+            .HasMaxLength(100);
+
         builder.Property(x => x.MaxScore)
             .HasPrecision(4, 2)
             .IsRequired();

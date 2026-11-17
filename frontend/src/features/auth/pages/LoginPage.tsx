@@ -31,7 +31,16 @@ function formatCountdown(totalSeconds: number): string {
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const {
+    login,
+    isAuthenticated,
+    isLoading: isRestoringSession,
+    isLoggingOut,
+    sessionError,
+    sessionNotice,
+    retrySession,
+  } = useAuth();
+  const isLoading = isRestoringSession || isLoggingOut;
   const [identifier, setIdentifier] = useState(
     () => localStorage.getItem(REMEMBERED_IDENTIFIER_KEY) || '',
   );
@@ -69,13 +78,16 @@ export function LoginPage() {
 
   const isLocked = Boolean(lockUntil && remainingSeconds > 0);
 
-  const redirectFrom = (location.state as { from?: { pathname?: string } })?.from?.pathname || '/';
+  const from = (location.state as { from?: { pathname?: string; search?: string; hash?: string } })?.from;
+  const redirectFrom = from?.pathname?.startsWith('/') && !from.pathname.startsWith('//') && !from.pathname.includes('\\')
+    ? `${from.pathname}${from.search || ''}${from.hash || ''}`
+    : '/';
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !isLoading) {
       navigate(redirectFrom, { replace: true });
     }
-  }, [isAuthenticated, navigate, redirectFrom]);
+  }, [isAuthenticated, isLoading, navigate, redirectFrom]);
 
   useEffect(() => {
     if (!lockUntil) return;
@@ -101,7 +113,7 @@ export function LoginPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isLocked || isSubmitting) return;
+    if (isLocked || isSubmitting || isLoading || sessionError) return;
 
     setError('');
     setIsSubmitting(true);
@@ -192,6 +204,24 @@ export function LoginPage() {
       <p className="auth-subtitle">
         Đăng nhập tài khoản định danh để truy cập không gian làm việc Khóa luận
       </p>
+      {sessionNotice && (
+        <p className="auth-hint" role="status">
+          {sessionNotice}
+        </p>
+      )}
+      {isLoading && (
+        <p className="auth-hint" role="status">
+          Đang kiểm tra phiên đăng nhập…
+        </p>
+      )}
+      {sessionError && (
+        <div className="auth-error" role="alert">
+          <p>{sessionError}</p>
+          <Button type="button" variant="outline" onClick={retrySession}>
+            Thử lại
+          </Button>
+        </div>
+      )}
       {success && (
         <p className="auth-success" role="status">
           {success}
@@ -202,30 +232,30 @@ export function LoginPage() {
         <div
           role="alert"
           aria-live="assertive"
-          className="my-3 p-3.5 rounded-lg border border-red-200 bg-red-50 text-red-900 shadow-sm transition-all"
+          className="my-3 p-3.5 rounded-lg border border-tone-danger-border bg-tone-danger-bg text-tone-danger-strong shadow-sm transition-all"
         >
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-red-100 rounded-full text-red-600 shrink-0 mt-0.5">
+            <div className="p-2 bg-red-100 rounded-full text-tone-danger-icon shrink-0 mt-0.5">
               <Lock className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className="text-xs font-semibold text-red-900 uppercase tracking-wide">
+              <h4 className="text-xs font-semibold text-tone-danger-strong uppercase tracking-wide">
                 Giao diện đăng nhập tạm thời bị khóa
               </h4>
-              <p className="text-xs text-red-700 mt-1 leading-relaxed">
+              <p className="text-xs text-tone-danger-text mt-1 leading-relaxed">
                 {lockReason || 'Hệ thống đã tạm dừng nhận yêu cầu đăng nhập để đảm bảo an toàn.'}
               </p>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-red-200/80">
-                <div className="flex items-center gap-1.5 text-xs text-red-800 font-medium">
-                  <Clock className="w-3.5 h-3.5 text-red-600" />
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-tone-danger-border">
+                <div className="flex items-center gap-1.5 text-xs text-tone-danger-strong font-medium">
+                  <Clock className="w-3.5 h-3.5 text-tone-danger-icon" />
                   <span>Tự động mở khóa sau:</span>
-                  <span className="font-mono font-bold text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded border border-red-200">
+                  <span className="font-mono font-bold text-xs bg-red-100 text-tone-danger-text px-2 py-0.5 rounded border border-tone-danger-border">
                     {formatCountdown(remainingSeconds)}
                   </span>
                 </div>
                 <Link
                   to="/forgot-password"
-                  className="text-xs font-semibold text-red-700 hover:text-red-900 underline underline-offset-2 hover:no-underline transition-colors ml-auto"
+                  className="text-xs font-semibold text-tone-danger-text hover:text-tone-danger-strong underline underline-offset-2 hover:no-underline transition-colors ml-auto"
                 >
                   Quên mật khẩu? Đặt lại ngay &rarr;
                 </Link>
@@ -238,9 +268,11 @@ export function LoginPage() {
       <div className="auth-social">
         <button
           type="button"
-          disabled={isSubmitting || isLocked}
+          disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
           className="disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={() => setNotice('Cổng SSO đang ở chế độ demo. Hãy dùng tài khoản mẫu bên dưới.')}
+          onClick={() =>
+            setNotice('SSO chưa được kết nối. Vui lòng đăng nhập bằng MSSV hoặc email và mật khẩu.')
+          }
         >
           <img src={sso} alt="" />
           Cổng SSO Trường
@@ -261,12 +293,12 @@ export function LoginPage() {
             id="identifier"
             autoComplete="username"
             required
-            disabled={isSubmitting || isLocked}
+            disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
             placeholder="Nhập MSSV hoặc Email..."
             leftIcon={<IdCard size={16} />}
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
-            className="bg-[#f1f3f6] border-[#eef0f4] text-[13px] h-[34px]"
+            className="bg-[var(--color-bg-input-muted)] border-[var(--color-border-input-muted)] text-[13px] h-[34px]"
           />
         </div>
         <PasswordField
@@ -275,15 +307,15 @@ export function LoginPage() {
           value={password}
           onChange={setPassword}
           autoComplete="current-password"
-          disabled={isSubmitting || isLocked}
-          className="bg-[#f1f3f6] border-[#eef0f4] text-[13px] h-[34px]"
+          disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
+          className="bg-[var(--color-bg-input-muted)] border-[var(--color-border-input-muted)] text-[13px] h-[34px]"
         >
           <Link to="/forgot-password">Quên mật khẩu?</Link>
         </PasswordField>
         <label className={`auth-checkbox ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}>
           <input
             type="checkbox"
-            disabled={isSubmitting || isLocked}
+            disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
             checked={shouldRememberIdentifier}
             onChange={(event) => setShouldRememberIdentifier(event.target.checked)}
           />
@@ -297,7 +329,7 @@ export function LoginPage() {
         <Button
           type="submit"
           className="auth-submit"
-          disabled={isSubmitting || isLocked}
+          disabled={isSubmitting || isLocked || isLoading || Boolean(sessionError)}
           isLoading={isSubmitting}
           loadingText="Đang đăng nhập…"
           rightIcon={isLocked ? <Lock size={16} /> : <ArrowRight size={16} />}

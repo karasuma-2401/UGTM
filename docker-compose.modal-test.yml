@@ -1,0 +1,18 @@
+# Optional local integration test override. Start with:
+# docker compose -f docker-compose.yml -f docker-compose.modal-test.yml up -d
+# Requires the AI Compose network and an isolated UGTM test database.
+services:
+  backend:
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=ugtm-plagiarism-ai-db-1;Port=5432;Database=${UGTM_MODAL_TEST_DB_NAME:?Set UGTM_MODAL_TEST_DB_NAME};Username=ugtm_ai;Password=${UGTM_MODAL_TEST_DB_PASSWORD:?Set UGTM_MODAL_TEST_DB_PASSWORD}
+      - Redis__ConnectionString=ugtm-redis:6379,password=${REDIS_PASSWORD:-ugtm_redis_pass_123}
+      - PlagiarismAi__BaseUrl=http://ugtm-plagiarism-ai-api-1:8000
+      - PlagiarismAi__DefaultCorpus=${UGTM_MODAL_TEST_CORPUS:?Set UGTM_MODAL_TEST_CORPUS}
+    networks:
+      - default
+      - ai_modal_test
+
+networks:
+  ai_modal_test:
+    external: true
+    name: ugtm-plagiarism-ai_default

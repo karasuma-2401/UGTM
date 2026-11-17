@@ -1,7 +1,24 @@
+using UGTM.Modules.AcademicPeriods.Domain.Enums;
+
 namespace UGTM.Modules.AcademicPeriods.Domain.Grading;
 
 public static class ScoreWeightRules
 {
+    public static void Validate(ScoreCalculationMethod method, IEnumerable<decimal> weights)
+    {
+        switch (method)
+        {
+            case ScoreCalculationMethod.Percentage:
+                ValidatePercentage(weights);
+                break;
+            case ScoreCalculationMethod.IntegerCoefficient:
+                ValidateCoefficients(weights);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(method), method, "Unsupported score calculation method.");
+        }
+    }
+
     public static void ValidatePercentage(IEnumerable<decimal> weights)
     {
         var values = ReadNonnegativeWeights(weights);

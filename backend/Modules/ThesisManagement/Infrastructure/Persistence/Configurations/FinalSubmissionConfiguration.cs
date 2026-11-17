@@ -25,6 +25,9 @@ public class FinalSubmissionConfiguration : IEntityTypeConfiguration<FinalSubmis
         builder.Property(x => x.KeywordsVi).HasMaxLength(1000);
         builder.Property(x => x.KeywordsEn).HasMaxLength(1000);
         builder.Property(x => x.FacultyFeedback).HasColumnType("text");
+        builder.Property(x => x.IsLegacy).HasDefaultValue(true);
+        builder.Property(x => x.Version).IsRowVersion();
+        builder.Property(x => x.LegacySnapshot).HasColumnType("jsonb");
 
         builder.Property(x => x.Status)
             .HasDefaultValue(FinalSubmissionStatus.NotSubmitted)
@@ -34,7 +37,7 @@ public class FinalSubmissionConfiguration : IEntityTypeConfiguration<FinalSubmis
             .WithOne()
             .HasForeignKey<FinalSubmission>(x => x.GroupId)
             .HasConstraintName("fk_final_submission_student_groups_group_id")
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
     }
 }

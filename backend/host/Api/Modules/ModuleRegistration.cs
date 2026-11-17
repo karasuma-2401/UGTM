@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.AcademicPeriods.Infrastructure;
 using UGTM.Modules.DefenseCouncil.Infrastructure;
@@ -5,6 +8,9 @@ using UGTM.Modules.Identity.Infrastructure;
 using UGTM.Modules.Notifications.Infrastructure;
 using UGTM.Modules.ThesisManagement.Infrastructure;
 using UGTM.Modules.TopicCatalog.Infrastructure;
+using UGTM.Api.AdvisorEvaluations;
+using UGTM.BuildingBlocks.Infrastructure.Caching;
+using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
 
 namespace UGTM.Api.Modules;
 
@@ -12,6 +18,8 @@ public static class ModuleRegistration
 {
     public static IServiceCollection AddUgtmModules(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddUgtmCaching(configuration);
+
         IModule[] modules =
         [
             new IdentityModule(),
@@ -27,6 +35,18 @@ public static class ModuleRegistration
             services.AddSingleton<IModule>(module);
             module.RegisterModule(services, configuration);
         }
+
+        services.AddScoped<IAdvisorWorkflowTransactionCoordinator, AdvisorWorkflowTransactionCoordinator>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Application.Persistence.IRenameRequestTransactionCoordinator,
+            UGTM.Api.RenameRequests.RenameRequestTransactionCoordinator>();
+        services.AddScoped<UGTM.Modules.TopicCatalog.Application.Persistence.ITopicMutationTransactionCoordinator,
+            UGTM.Api.Topics.TopicMutationTransactionCoordinator>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.ScoreSummaries.IScoreSummaryWorkflowTransactionCoordinator,
+            UGTM.Api.ScoreSummaries.ScoreSummaryWorkflowTransactionCoordinator>();
+        services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.FinalSubmissions.IFinalSubmissionWorkflowTransactionCoordinator,
+            UGTM.Api.FinalSubmissions.FinalSubmissionWorkflowTransactionCoordinator>();
+        services.AddScoped<UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments.IReviewerAssignmentTransactionCoordinator,
+            UGTM.Api.ReviewerAssignments.ReviewerAssignmentTransactionCoordinator>();
 
         return services;
     }

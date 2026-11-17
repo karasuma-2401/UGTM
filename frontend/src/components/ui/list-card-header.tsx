@@ -1,0 +1,44 @@
+import type { ReactNode } from 'react';
+import { CardHeader, CardTitle } from './card';
+import { cn } from '@/lib/utils';
+
+interface ListCardHeaderProps {
+  title: ReactNode;
+  icon?: ReactNode;
+  description?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}
+
+export function ListCardHeader({
+  title,
+  icon,
+  description,
+  children,
+  className,
+}: ListCardHeaderProps) {
+  return (
+    <CardHeader
+      className={cn(
+        'grid min-h-[96px] grid-cols-1 items-center gap-4 space-y-0 border-b border-line-subtle/90 bg-gradient-to-r from-surface-subtle/80 via-surface-card to-surface-card px-5 py-4 xl:grid-cols-[minmax(0,1fr)_560px]',
+        className,
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-3.5">
+        {icon && (
+          <span
+            aria-hidden="true"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-tone-info-border bg-tone-info-bg text-primary shadow-2xs [&_svg]:size-5"
+          >
+            {icon}
+          </span>
+        )}
+        <div className="min-w-0 space-y-0.5">
+          <CardTitle className="text-base font-semibold tracking-tight text-ink-primary">{title}</CardTitle>
+          {description != null && <p className="text-xs text-ink-muted">{description}</p>}
+        </div>
+      </div>
+      {children}
+    </CardHeader>
+  );
+}

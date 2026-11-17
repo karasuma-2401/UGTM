@@ -1,0 +1,533 @@
+using Microsoft.EntityFrameworkCore;
+using UGTM.BuildingBlocks.Application.Responses;
+using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
+using UGTM.Modules.TopicCatalog.Application.Topics;
+using UGTM.Modules.TopicCatalog.Application.Topics.Dtos;
+using UGTM.Modules.TopicCatalog.Application.Topics.GetAllTopics;
+using UGTM.Modules.TopicCatalog.Application.Topics.GetMyTopics;
+using UGTM.Modules.TopicCatalog.Domain.Entities;
+using UGTM.Modules.TopicCatalog.Domain.Enums;
+
+namespace UGTM.Modules.TopicCatalog.Infrastructure.Persistence.Repositories;
+
+public sealed class TopicQueryReader : ITopicQueryReader
+{
+    private readonly TopicCatalogDbContext? _db;
+    private readonly IReadOnlyList<Topic>? _inMemoryTopics;
+    private readonly IThesisRegistrationContract _registrationContract;
+    private readonly IStudentInfoReader _studentInfoReader;
+    private readonly TimeProvider _timeProvider;
+    private readonly IAdvisorNameReader? _advisorNameReader;
+
+    public TopicQueryReader(
+        TopicCatalogDbContext db,
+        IThesisRegistrationContract registrationContract,
+        IStudentInfoReader studentInfoReader,
+        IAdvisorNameReader advisorNameReader,
+        TimeProvider? timeProvider = null)
+    {
+        _db = db;
+        _registrationContract = registrationContract;
+        _studentInfoReader = studentInfoReader;
+        _advisorNameReader = advisorNameReader;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
+
+    private TopicQueryReader(
+        IReadOnlyList<Topic> inMemoryTopics,
+        IThesisRegistrationContract registrationContract,
+        IStudentInfoReader studentInfoReader,
+        TimeProvider? timeProvider = null,
+        IAdvisorNameReader? advisorNameReader = null)
+    {
+        _inMemoryTopics = inMemoryTopics;
+        _advisorNameReader = advisorNameReader;
+        _registrationContract = registrationContract;
+        _studentInfoReader = studentInfoReader;
+        _timeProvider = timeProvider ?? TimeProvider.System;
+    }
+
+    public static TopicQueryReader CreateInMemory(
+        IEnumerable<Topic> topics,
+        IThesisRegistrationContract registrationContract,
+        IStudentInfoReader studentInfoReader,
+        TimeProvider? timeProvider = null,
+        IAdvisorNameReader? advisorNameReader = null)
+        => new(topics.ToList(), registrationContract, studentInfoReader, timeProvider, advisorNameReader);
+
+    public async Task<PagedResult<TopicSummaryDto>> GetAllTopicsAsync(
+        GetAllTopicsQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var topicsQuery = QueryTopics()
+            .Where(t => t.Status == TopicStatus.Published);
+
+        if (query.BatchId.HasValue)
+        {
+            topicsQuery = topicsQuery.Where(t => t.BatchId == query.BatchId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            topicsQuery = ApplyKeywordFilter(topicsQuery, query.Keyword);
+        }
+
+        var availabilityFilter = query.Availability?.Trim();
+        var filterAvailable = string.Equals(availabilityFilter, "available", StringComparison.OrdinalIgnoreCase);
+        var filterFull = string.Equals(availabilityFilter, "full", StringComparison.OrdinalIgnoreCase);
+        var sortBySlots = string.Equals(query.SortBy?.Trim(), "availableSlots", StringComparison.OrdinalIgnoreCase);
+        var nowUtc = _timeProvider.GetUtcNow().UtcDateTime;
+
+        int totalCount;
+        List<(Topic Topic, int Confirmed, int Reserved, int? Available)> pagedRows;
+
+        if (!filterAvailable && !filterFull && !sortBySlots)
+        {
+            totalCount = await CountSafeAsync(topicsQuery, cancellationToken);
+
+            var pagedQuery = SortTopics(topicsQuery, query.SortBy, query.SortOrder)
+                .Skip((query.PageNumber - 1) * query.PageSize)
+                .Take(query.PageSize);
+
+            var pagedTopics = await ToListSafeAsync(pagedQuery, cancellationToken);
+            var registrations = await _registrationContract.GetRegistrationsByTopicIdsAsync(
+                pagedTopics.Select(t => t.Id), cancellationToken);
+
+            pagedRows = pagedTopics.Select(topic =>
+            {
+                registrations.TryGetValue(topic.Id, out var registration);
+                var (confirmed, reserved, available) = ComputeSlotOccupancy(topic, registration, nowUtc);
+                return (topic, confirmed, reserved, available);
+            }).ToList();
+        }
+        else
+        {
+            var candidateQuery = sortBySlots
+                ? topicsQuery.OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.Id)
+                : SortTopics(topicsQuery, query.SortBy, query.SortOrder);
+
+            var candidateTopics = await ToListSafeAsync(candidateQuery, cancellationToken);
+            var registrations = await _registrationContract.GetRegistrationsByTopicIdsAsync(
+                candidateTopics.Select(t => t.Id), cancellationToken);
+
+            IEnumerable<(Topic Topic, int Confirmed, int Reserved, int? Available)> computed = candidateTopics.Select(topic =>
+            {
+                registrations.TryGetValue(topic.Id, out var registration);
+                var (confirmed, reserved, available) = ComputeSlotOccupancy(topic, registration, nowUtc);
+                return (topic, confirmed, reserved, available);
+            });
+
+            if (filterAvailable)
+            {
+                computed = computed.Where(row => row.Available is > 0);
+            }
+            else if (filterFull)
+            {
+                computed = computed.Where(row => row.Available is 0);
+            }
+
+            if (sortBySlots)
+            {
+                var ascending = string.Equals(query.SortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+                computed = (ascending
+                        ? computed.OrderBy(row => row.Available == null).ThenBy(row => row.Available)
+                        : computed.OrderBy(row => row.Available == null).ThenByDescending(row => row.Available))
+                    .ThenByDescending(row => row.Topic.CreatedAt)
+                    .ThenByDescending(row => row.Topic.Id);
+            }
+
+            var filteredList = computed.ToList();
+            totalCount = filteredList.Count;
+            pagedRows = filteredList
+                .Skip((query.PageNumber - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .ToList();
+        }
+
+        var advisorNames = _advisorNameReader is null
+            ? new Dictionary<Guid, string>()
+            : await _advisorNameReader.GetNamesByIdsAsync(
+                pagedRows.Select(row => row.Topic.AdvisorId).Distinct(), cancellationToken);
+
+        var items = pagedRows.Select(row => new TopicSummaryDto(
+            row.Topic.Id,
+            row.Topic.BatchId,
+            row.Topic.AdvisorId,
+            row.Topic.TitleVi,
+            row.Topic.TitleEn,
+            row.Topic.Description,
+            row.Topic.Requirements,
+            row.Topic.Status.ToString(),
+            row.Topic.StudentNumber,
+            row.Topic.CreatedAt,
+            IsPublished: true,
+            ReviewNote: null,
+            ConfirmedStudentsCount: row.Confirmed,
+            ReservedSlots: row.Reserved,
+            AvailableSlots: row.Available,
+            AdvisorName: advisorNames.GetValueOrDefault(row.Topic.AdvisorId))).ToList();
+
+        return new PagedResult<TopicSummaryDto>(
+            items,
+            totalCount,
+            query.PageNumber,
+            query.PageSize);
+    }
+
+    private static (int Confirmed, int Reserved, int? Available) ComputeSlotOccupancy(
+        Topic topic,
+        TopicRegistrationContractDto? registration,
+        DateTime nowUtc)
+    {
+        var confirmed = registration?.Members.Count(member => member.ConfirmationStatus == "Confirmed") ?? 0;
+        // Match registration-write occupancy. Expired invitations free their
+        // slot at the deadline, even before the cleanup worker removes them.
+        var reserved = registration?.Members.Count(member =>
+            member.ConfirmationStatus == "Pending" &&
+            (!member.ConfirmationExpiresAtUtc.HasValue || member.ConfirmationExpiresAtUtc.Value > nowUtc)) ?? 0;
+        int? available = topic.StudentNumber is 1 or 2
+            ? Math.Max(0, topic.StudentNumber.Value - confirmed - reserved)
+            : null;
+        return (confirmed, reserved, available);
+    }
+
+    private static IOrderedQueryable<Topic> SortTopics(
+        IQueryable<Topic> topics,
+        string? sortBy,
+        string? sortOrder)
+    {
+        var ascending = string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+        var ordered = sortBy?.ToLowerInvariant() switch
+        {
+            "title" => ascending ? topics.OrderBy(t => t.TitleVi) : topics.OrderByDescending(t => t.TitleVi),
+            "studentnumber" => ascending
+                ? topics.OrderBy(t => t.StudentNumber == null).ThenBy(t => t.StudentNumber)
+                : topics.OrderBy(t => t.StudentNumber == null).ThenByDescending(t => t.StudentNumber),
+            _ => ascending ? topics.OrderBy(t => t.CreatedAt) : topics.OrderByDescending(t => t.CreatedAt)
+        };
+        return ordered.ThenByDescending(t => t.Id);
+    }
+
+    private static IOrderedQueryable<Topic> SortMyTopics(IQueryable<Topic> topics, GetMyTopicsQuery query)
+        => SortTopics(topics, query.SortBy, query.SortOrder);
+
+    public async Task<PagedResult<TopicTrackingSummaryDto>> GetMyTopicsAsync(
+        GetMyTopicsQuery query,
+        Guid? advisorId,
+        bool isPrivileged,
+        CancellationToken cancellationToken = default)
+    {
+        var topicsQuery = QueryTopics();
+
+        if (advisorId.HasValue)
+        {
+            topicsQuery = topicsQuery.Where(t => t.AdvisorId == advisorId.Value);
+        }
+
+        if (query.BatchId.HasValue)
+        {
+            topicsQuery = topicsQuery.Where(t => t.BatchId == query.BatchId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Status)
+            && !int.TryParse(query.Status.Trim(), out _)
+            && Enum.TryParse<TopicStatus>(query.Status.Trim(), ignoreCase: true, out var statusEnum)
+            && Enum.IsDefined(statusEnum))
+        {
+            topicsQuery = topicsQuery.Where(t => t.Status == statusEnum);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            topicsQuery = ApplyKeywordFilter(topicsQuery, query.Keyword);
+        }
+
+        var filter = query.RegistrationStatus?.Trim();
+        var needsRegistrationFilter = !string.IsNullOrWhiteSpace(filter)
+            && !string.Equals(filter, "All", StringComparison.OrdinalIgnoreCase);
+
+        if (!needsRegistrationFilter)
+        {
+            var totalCount = await CountSafeAsync(topicsQuery, cancellationToken);
+
+            var pagedQuery = SortMyTopics(topicsQuery, query)
+                .Skip((query.PageNumber - 1) * query.PageSize)
+                .Take(query.PageSize);
+
+            var pagedTopics = await ToListSafeAsync(pagedQuery, cancellationToken);
+
+            var topicIds = pagedTopics.Select(t => t.Id).ToList();
+            var registrations = await _registrationContract.GetRegistrationsByTopicIdsAsync(topicIds, cancellationToken);
+
+            var allStudentIds = registrations.Values
+                .SelectMany(r => r.Members.Select(m => m.StudentId))
+                .Distinct()
+                .ToList();
+
+            var studentsMap = await _studentInfoReader.GetStudentsByIdsAsync(allStudentIds, cancellationToken);
+
+            var items = pagedTopics.Select(t =>
+            {
+                registrations.TryGetValue(t.Id, out var reg);
+                return BuildTrackingSummary(t, reg, studentsMap, _timeProvider.GetUtcNow().UtcDateTime);
+            }).ToList();
+
+            return new PagedResult<TopicTrackingSummaryDto>(
+                items,
+                totalCount,
+                query.PageNumber,
+                query.PageSize);
+        }
+        else
+        {
+            var candidateQuery = SortMyTopics(topicsQuery, query);
+
+            var candidateTopics = await ToListSafeAsync(candidateQuery, cancellationToken);
+
+            var topicIds = candidateTopics.Select(t => t.Id).ToList();
+            var registrations = await _registrationContract.GetRegistrationsByTopicIdsAsync(topicIds, cancellationToken);
+
+            var filteredTopics = new List<(Topic Topic, TopicRegistrationContractDto? Registration)>();
+            foreach (var topic in candidateTopics)
+            {
+                registrations.TryGetValue(topic.Id, out var reg);
+                var (_, _, regStatus, _, _) = ComputeRegistrationMetrics(topic.StudentNumber, reg?.Members.Count ?? 0);
+
+                if (string.Equals(regStatus, filter, StringComparison.OrdinalIgnoreCase))
+                {
+                    filteredTopics.Add((topic, reg));
+                }
+            }
+
+            var totalCount = filteredTopics.Count;
+            var pagedPairs = filteredTopics
+                .Skip((query.PageNumber - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .ToList();
+
+            var pagedStudentIds = pagedPairs
+                .Where(p => p.Registration != null)
+                .SelectMany(p => p.Registration!.Members.Select(m => m.StudentId))
+                .Distinct()
+                .ToList();
+
+            var studentsMap = await _studentInfoReader.GetStudentsByIdsAsync(pagedStudentIds, cancellationToken);
+
+            var items = pagedPairs.Select(p =>
+                BuildTrackingSummary(p.Topic, p.Registration, studentsMap, _timeProvider.GetUtcNow().UtcDateTime)).ToList();
+
+            return new PagedResult<TopicTrackingSummaryDto>(
+                items,
+                totalCount,
+                query.PageNumber,
+                query.PageSize);
+        }
+    }
+
+    public async Task<TopicTrackingDetailDto?> GetTopicTrackingDetailAsync(
+        Guid topicId,
+        CancellationToken cancellationToken = default)
+    {
+        Topic? topic;
+        if (_inMemoryTopics is not null)
+        {
+            topic = _inMemoryTopics.FirstOrDefault(t => t.Id == topicId);
+        }
+        else
+        {
+            topic = _db!.Topics.Local.FirstOrDefault(t => t.Id == topicId)
+                ?? await _db.Topics
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(t => t.Id == topicId, cancellationToken);
+        }
+
+        if (topic is null)
+        {
+            return null;
+        }
+
+        var registration = await _registrationContract.GetRegistrationByTopicIdAsync(topicId, cancellationToken);
+
+        IReadOnlyDictionary<Guid, StudentInfoContractDto> studentsMap = new Dictionary<Guid, StudentInfoContractDto>();
+        if (registration != null && registration.Members.Count > 0)
+        {
+            var studentIds = registration.Members.Select(m => m.StudentId).Distinct();
+            studentsMap = await _studentInfoReader.GetStudentsByIdsAsync(studentIds, cancellationToken);
+        }
+
+        return BuildTrackingDetail(topic, registration, studentsMap, _timeProvider.GetUtcNow().UtcDateTime);
+    }
+
+    public static (int RegisteredCount, int RemainingSlots, string RegistrationStatus, bool HasRegistration, bool IsAvailable) ComputeRegistrationMetrics(
+        int? maxStudentNumber,
+        int registeredStudentsCount)
+    {
+        var registeredCount = Math.Max(0, registeredStudentsCount);
+        var maxSlots = Math.Max(1, maxStudentNumber ?? 1);
+        var remainingSlots = Math.Max(0, maxSlots - registeredCount);
+
+        var regStatus = registeredCount switch
+        {
+            0 => "Empty",
+            _ when registeredCount >= maxSlots => "Full",
+            _ => "Registered"
+        };
+
+        return (
+            RegisteredCount: registeredCount,
+            RemainingSlots: remainingSlots,
+            RegistrationStatus: regStatus,
+            HasRegistration: registeredCount > 0,
+            IsAvailable: remainingSlots > 0);
+    }
+
+    public static TopicTrackingSummaryDto BuildTrackingSummary(
+        Topic topic,
+        TopicRegistrationContractDto? reg,
+        IReadOnlyDictionary<Guid, StudentInfoContractDto> studentsMap,
+        DateTime? nowUtc = null)
+    {
+        var (registeredCount, remainingSlots, regStatus, hasRegistration, isAvailable) =
+            ComputeRegistrationMetrics(topic.StudentNumber, reg?.Members.Count ?? 0);
+
+        var groupDto = BuildGroupDto(reg, studentsMap);
+
+        return new TopicTrackingSummaryDto(
+            topic.Id,
+            topic.BatchId,
+            topic.AdvisorId,
+            topic.TitleVi,
+            topic.TitleEn,
+            topic.Description,
+            topic.Requirements,
+            topic.Status.ToString(),
+            topic.StudentNumber,
+            topic.CreatedAt,
+            registeredCount,
+            remainingSlots,
+            regStatus,
+            HasRegistration: hasRegistration,
+            IsAvailable: isAvailable,
+            Group: groupDto,
+            IsPublished: topic.IsPublished,
+            ReviewNote: topic.ReviewNote,
+            ConfirmedStudentsCount: CountConfirmedStudents(reg),
+            PendingConfirmationsCount: CountPendingConfirmations(reg, nowUtc ?? DateTime.UtcNow));
+    }
+
+    public static TopicTrackingDetailDto BuildTrackingDetail(
+        Topic topic,
+        TopicRegistrationContractDto? reg,
+        IReadOnlyDictionary<Guid, StudentInfoContractDto> studentsMap,
+        DateTime? nowUtc = null)
+    {
+        var (registeredCount, remainingSlots, regStatus, hasRegistration, isAvailable) =
+            ComputeRegistrationMetrics(topic.StudentNumber, reg?.Members.Count ?? 0);
+
+        var groupDto = BuildGroupDto(reg, studentsMap);
+
+        return new TopicTrackingDetailDto(
+            topic.Id,
+            topic.BatchId,
+            topic.AdvisorId,
+            topic.TitleVi,
+            topic.TitleEn,
+            topic.Description,
+            topic.Requirements,
+            topic.Status.ToString(),
+            topic.StudentNumber,
+            topic.CreatedAt,
+            registeredCount,
+            remainingSlots,
+            regStatus,
+            HasRegistration: hasRegistration,
+            IsAvailable: isAvailable,
+            Group: groupDto,
+            IsPublished: topic.IsPublished,
+            ReviewNote: topic.ReviewNote,
+            ConfirmedStudentsCount: CountConfirmedStudents(reg),
+            PendingConfirmationsCount: CountPendingConfirmations(reg, nowUtc ?? DateTime.UtcNow));
+    }
+
+    private static int CountConfirmedStudents(TopicRegistrationContractDto? registration)
+        => registration?.Members.Count(member => member.ConfirmationStatus == "Confirmed") ?? 0;
+
+    private static int CountPendingConfirmations(TopicRegistrationContractDto? registration, DateTime nowUtc)
+    {
+        return registration?.Members.Count(member =>
+            member.ConfirmationStatus == "Pending" &&
+            (!member.ConfirmationExpiresAtUtc.HasValue || member.ConfirmationExpiresAtUtc.Value > nowUtc)) ?? 0;
+    }
+
+    private static TopicGroupDto? BuildGroupDto(
+        TopicRegistrationContractDto? reg,
+        IReadOnlyDictionary<Guid, StudentInfoContractDto> studentsMap)
+    {
+        if (reg is null || reg.Members.Count == 0)
+        {
+            return null;
+        }
+
+        var students = reg.Members
+            .OrderBy(m => m.JoinedAt)
+            .ThenBy(m => m.StudentId)
+            .Select(m =>
+            {
+                studentsMap.TryGetValue(m.StudentId, out var info);
+                return new TopicStudentDto(
+                    m.StudentId,
+                    info?.UserCode,
+                    info?.FullName ?? $"Sinh viên ({m.StudentId})",
+                    info?.Email ?? string.Empty,
+                    info?.PhoneNumber,
+                    m.JoinedAt);
+            }).ToList();
+
+        return new TopicGroupDto(
+            reg.GroupId,
+            reg.Status,
+            reg.CreatedAt,
+            students);
+    }
+
+    private IQueryable<Topic> QueryTopics()
+        => _inMemoryTopics is not null
+            ? _inMemoryTopics.AsQueryable()
+            : _db!.Topics.AsNoTracking();
+
+    private static Task<int> CountSafeAsync<T>(IQueryable<T> query, CancellationToken cancellationToken)
+        => query is IAsyncEnumerable<T>
+            ? query.CountAsync(cancellationToken)
+            : Task.FromResult(query.Count());
+
+    private static Task<List<T>> ToListSafeAsync<T>(IQueryable<T> query, CancellationToken cancellationToken)
+        => query is IAsyncEnumerable<T>
+            ? query.ToListAsync(cancellationToken)
+            : Task.FromResult(query.ToList());
+
+    private IQueryable<Topic> ApplyKeywordFilter(IQueryable<Topic> topicsQuery, string rawKeyword)
+    {
+        var keyword = rawKeyword.Trim();
+        var escapedKeyword = EscapeIlike(keyword);
+
+        if (_inMemoryTopics is null
+            && _db?.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return topicsQuery.Where(t =>
+                EF.Functions.ILike(t.TitleVi, $"%{escapedKeyword}%", @"\")
+                || (t.TitleEn != null && EF.Functions.ILike(t.TitleEn, $"%{escapedKeyword}%", @"\")));
+        }
+
+        var lowerKeyword = keyword.ToLowerInvariant();
+        return topicsQuery.Where(t =>
+            t.TitleVi.ToLower().Contains(lowerKeyword)
+            || (t.TitleEn != null && t.TitleEn.ToLower().Contains(lowerKeyword)));
+    }
+
+    public static string EscapeIlike(string input)
+        => input
+            .Replace(@"\", @"\\")
+            .Replace("%", @"\%")
+            .Replace("_", @"\_");
+}

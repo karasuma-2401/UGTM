@@ -5,6 +5,7 @@ public class EvaluationDetail
     public Guid Id { get; set; }
     public Guid CriteriaId { get; set; }
     public Guid EvaluationId { get; set; }
+    public Guid? StudentId { get; set; }
     public decimal Score { get; set; }
 
     public GradingCriteria Criteria { get; set; } = null!;

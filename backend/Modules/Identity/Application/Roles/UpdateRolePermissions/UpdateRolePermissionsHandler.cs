@@ -36,7 +36,7 @@ public sealed class UpdateRolePermissionsHandler(
                 .ToList();
 
             // Bảo vệ vai trò Admin: không cho phép gỡ sạch toàn bộ quyền
-            if (role.RoleName == SystemRoleName.Admin && targetPermissionIds.Count == 0)
+            if (string.Equals(role.RoleName, nameof(SystemRoleName.Admin), StringComparison.OrdinalIgnoreCase) && targetPermissionIds.Count == 0)
             {
                 return Result.Failure<RolePermissionsDto>(IdentityErrors.CannotRevokeAllAdminPermissions);
             }
@@ -103,7 +103,7 @@ public sealed class UpdateRolePermissionsHandler(
 
             return Result.Success(new RolePermissionsDto(
                 role.Id,
-                role.RoleName.ToString(),
+                role.RoleName,
                 role.Description,
                 permissions));
         }, cancellationToken);

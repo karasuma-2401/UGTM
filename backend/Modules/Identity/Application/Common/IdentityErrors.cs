@@ -78,6 +78,10 @@ public static class IdentityErrors
         "Identity.InvalidStatus",
         "Trạng thái tài khoản không hợp lệ.");
 
+    public static readonly Error InvalidAccountGroup = Error.Validation(
+        "Identity.InvalidAccountGroup",
+        "Nhóm tài khoản không hợp lệ. Chỉ chấp nhận Student hoặc Staff.");
+
     public static readonly Error InvalidStatusTransition = Error.Validation(
         "Identity.InvalidStatusTransition",
         "Không thể chuyển đổi trạng thái tài khoản theo yêu cầu.");
@@ -102,6 +106,14 @@ public static class IdentityErrors
         "Identity.RoleNotFound",
         "Không tìm thấy vai trò người dùng.");
 
+    public static readonly Error RoleAlreadyExists = Error.Conflict(
+        "Identity.RoleAlreadyExists",
+        "Vai trò người dùng đã tồn tại trong hệ thống.");
+
+    public static readonly Error InvalidRoleName = Error.Validation(
+        "Identity.InvalidRoleName",
+        "Tên vai trò không được để trống, phải từ 2 đến 50 ký tự và không chứa ký tự đặc biệt không hợp lệ.");
+
     public static readonly Error InvalidPermission = Error.Validation(
         "Identity.InvalidPermission",
         "Một hoặc nhiều quyền được chọn không tồn tại hoặc không hợp lệ.");
@@ -125,4 +137,8 @@ public static class IdentityErrors
     public static readonly Error InvalidAuditLogFilter = Error.Validation(
         "Identity.InvalidAuditLogFilter",
         "Bộ lọc nhật ký hệ thống không hợp lệ.");
+
+    public static readonly Error InvalidSort = Error.Validation(
+        "Identity.InvalidSort",
+        "Tham số sắp xếp không hợp lệ.");
 }

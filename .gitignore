@@ -68,4 +68,15 @@ amuse-deploy-main/
 .env.local
 
 # Generated migration review artifacts
-artifacts/
+/artifacts/
+
+# Private deployment settings (examples are safe to version).
+.env.*
+!.env.example
+!.env.*.example
+
+# Agent/browser runtime files (skill sources remain tracked)
+.playwright/
+.playwright-cli/
+__pycache__/
+*.pyc

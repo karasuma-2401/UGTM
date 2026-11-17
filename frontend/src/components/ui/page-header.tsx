@@ -1,0 +1,69 @@
+import type { ReactNode } from 'react';
+import { cn } from '@/lib/utils';
+
+interface PageHeaderProps {
+  title: string;
+  description?: ReactNode;
+  icon?: ReactNode;
+  children?: ReactNode;
+  navigation?: ReactNode;
+  actionsClassName?: string;
+  compact?: boolean;
+  accent?: boolean;
+}
+
+export function PageHeader({
+  title,
+  description,
+  icon,
+  children,
+  navigation,
+  actionsClassName,
+  compact = false,
+  accent = !compact,
+}: PageHeaderProps) {
+  return (
+    <header className="relative z-20 rounded-2xl border border-line/80 bg-surface-card shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.03)]">
+      {accent && (
+        <div
+          aria-hidden="true"
+          className="h-1 rounded-t-2xl bg-[linear-gradient(90deg,#2054a5_0%,#2563eb_55%,#fa7921_100%)]"
+        />
+      )}
+      <div
+        className={`flex flex-wrap items-center justify-between gap-4 px-5 sm:px-6 ${compact ? 'py-3.5' : 'py-5'}`}
+      >
+        <div className="flex min-w-0 items-center gap-3.5">
+          {icon && !compact && (
+            <span
+              aria-hidden="true"
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#2054a5] to-[#2563eb] text-white shadow-xs ring-4 ring-blue-50/80 dark:ring-blue-950/60 [&_svg]:size-5"
+            >
+              {icon}
+            </span>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-ink-primary">{title}</h1>
+            {description && (
+              <div className="text-xs sm:text-sm text-ink-muted mt-0.5 leading-relaxed">
+                {description}
+              </div>
+            )}
+          </div>
+        </div>
+        {children && (
+          <div className={cn('flex flex-wrap items-center gap-2.5', actionsClassName)}>
+            {children}
+          </div>
+        )}
+      </div>
+      {navigation && (
+        <div
+          className={`overflow-hidden rounded-b-2xl border-t border-line-subtle/90 bg-surface-subtle/40 ${compact ? '' : 'px-3 sm:px-4'}`}
+        >
+          {navigation}
+        </div>
+      )}
+    </header>
+  );
+}

@@ -1,0 +1,3 @@
+namespace UGTM.Modules.ThesisManagement.Application.ReviewGateConfigurations.GetReviewGateConfigurations;
+
+public sealed record GetReviewGateConfigurationsQuery(Guid BatchId);

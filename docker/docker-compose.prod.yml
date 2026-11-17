@@ -1,56 +1,179 @@
+x-ai: &ai
+  image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-ai:${IMAGE_TAG:?Set IMAGE_TAG to an immutable release tag}
+  restart: unless-stopped
+  init: true
+  environment:
+    POSTGRES_DSN: ${AI_POSTGRES_DSN:?Configure the existing AI Neon database}
+    POSTGRES_DIRECT_DSN: ${AI_POSTGRES_DIRECT_DSN:?Configure a direct AI database connection}
+    REDIS_URL: redis://ai-redis:6379/0
+    API_KEY: ${PLAGIARISM_AI_API_KEY:?Configure the private UGTM-to-AI key}
+    CELERY_QUEUE: ugtm-ai-production
+    INFERENCE_MODE: remote
+    REMOTE_GPU_URL: ${REMOTE_GPU_URL:?Configure the existing Modal endpoint}
+    REMOTE_GPU_API_KEY: ${REMOTE_GPU_API_KEY:?Configure the Modal worker key}
+    REMOTE_GPU_TIMEOUT_SECONDS: "180"
+    REMOTE_GPU_HEALTH_TIMEOUT_SECONDS: "120"
+    REMOTE_GPU_BATCH_SIZE: "32"
+    STORAGE_BACKEND: s3
+    S3_ENDPOINT_URL: http://minio:9000
+    S3_ACCESS_KEY_ID: ${AI_S3_ACCESS_KEY:?Configure the AI MinIO user}
+    S3_SECRET_ACCESS_KEY: ${AI_S3_SECRET_KEY:?Configure the AI MinIO secret}
+    S3_BUCKET_NAME: ${AI_S3_BUCKET_NAME:-ugtm-ai}
+    S3_REGION_NAME: us-east-1
+    DATA_DIR: /data
+    MAX_UPLOAD_MB: "20"
+    CLASSIFIER_ENABLED: ${AI_CLASSIFIER_ENABLED:-false}
+    CLASSIFIER_PATH: /artifacts/suspicious_passage_classifier.joblib
+  volumes:
+    - ai_runtime:/data
+    - type: bind
+      source: ${AI_ARTIFACTS_DIR:?Set AI_ARTIFACTS_DIR to a provisioned directory}
+      target: /artifacts
+      read_only: true
+      bind:
+        create_host_path: false
+  depends_on:
+    ai-redis:
+      condition: service_healthy
+    minio:
+      condition: service_started
+
 services:
   backend:
-    image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-api:${IMAGE_TAG:-latest}
-    container_name: ugtm-backend
-    restart: always
+    image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-api:${IMAGE_TAG:?Set IMAGE_TAG}
+    container_name: ugtm-production-backend
+    restart: unless-stopped
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_HTTP_PORTS=8080
-      - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING:?DATABASE_CONNECTION_STRING must be configured}
-      - Cors__AllowedOrigins__0=${APP_URL:?APP_URL must be configured}
-      - Identity__Email__PublicWebBaseUrl=${APP_URL:?APP_URL must be configured}
-      - Identity__Email__OutboxPartition=azure-production
-      - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
-      - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:?IDENTITY_IP_HASH_KEY must be configured}
-      - Proxy__KnownProxies__0=172.29.0.10
-      - Proxy__KnownProxies__1=::ffff:172.29.0.10
-      - Notifications__Smtp__Host=${SMTP_HOST:?SMTP_HOST must be configured}
-      - Notifications__Smtp__Port=${SMTP_PORT:-587}
-      - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS:?SMTP_FROM_ADDRESS must be configured}
-      - Notifications__Smtp__FromName=${SMTP_FROM_NAME:-UGTM}
-      - Notifications__Smtp__Username=${SMTP_USERNAME}
-      - Notifications__Smtp__Password=${SMTP_PASSWORD}
-      - Notifications__Smtp__Security=${SMTP_SECURITY:-StartTls}
-      - Notifications__Smtp__TimeoutSeconds=${SMTP_TIMEOUT_SECONDS:-30}
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__DefaultConnection: ${DATABASE_CONNECTION_STRING:?Configure the existing UGTM Neon database}
+      Cors__AllowedOrigins__0: ${APP_URL:?Set the public Vercel origin}
+      Identity__Email__PublicWebBaseUrl: ${APP_URL:?Set APP_URL}
+      ThesisManagement__Email__PublicWebBaseUrl: ${APP_URL:?Set APP_URL}
+      ThesisManagement__Email__OutboxPartition: azure-production
+      PlagiarismAi__BaseUrl: http://ai-api:8000
+      PlagiarismAi__ApiKey: ${PLAGIARISM_AI_API_KEY:?Set the shared service key}
+      PlagiarismAi__DefaultCorpus: ${PLAGIARISM_AI_DEFAULT_CORPUS:?Set the existing corpus identifier}
+      PlagiarismAi__WorkerPartition: azure-production
+      S3Storage__Endpoint: http://minio:9000
+      S3Storage__PublicEndpoint: https://${API_HOST:?Set API_HOST}:8443
+      S3Storage__AccessKey: ${S3_ACCESS_KEY:?Configure the UGTM MinIO user}
+      S3Storage__SecretKey: ${S3_SECRET_KEY:?Configure the UGTM MinIO secret}
+      S3Storage__BucketName: ${S3_BUCKET_NAME:-ugtm-thesis-submissions}
+      S3Storage__Region: us-east-1
+      Identity__Email__OutboxPartition: azure-production
+      Identity__DataProtection__KeyRingPath: /var/lib/ugtm/data-protection-keys
+      Identity__ClientMetadata__IpHashKey: ${IDENTITY_IP_HASH_KEY:?Set the stable HMAC key}
+      Proxy__KnownProxies__0: 172.29.0.10
+      Proxy__KnownProxies__1: "::ffff:172.29.0.10"
+      Notifications__Smtp__Host: ${SMTP_HOST:?Configure SMTP}
+      Notifications__Smtp__Port: ${SMTP_PORT:-587}
+      Notifications__Smtp__FromAddress: ${SMTP_FROM_ADDRESS:?Configure the sender}
+      Notifications__Smtp__FromName: ${SMTP_FROM_NAME:-UGTM}
+      Notifications__Smtp__Username: ${SMTP_USERNAME:-}
+      Notifications__Smtp__Password: ${SMTP_PASSWORD:-}
+      Notifications__Smtp__Security: ${SMTP_SECURITY:-StartTls}
+      Notifications__Smtp__TimeoutSeconds: ${SMTP_TIMEOUT_SECONDS:-30}
     expose:
       - "8080"
     volumes:
       - data_protection_keys:/var/lib/ugtm/data-protection-keys
-      - ${JWT_PRIVATE_KEY_FILE:?JWT_PRIVATE_KEY_FILE must point to the RSA private PEM}:/run/secrets/ugtm-jwt-private.pem:ro
-
-  frontend:
-    image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-frontend:${IMAGE_TAG:-latest}
-    container_name: ugtm-frontend
-    restart: always
+      - type: bind
+        source: ${JWT_PRIVATE_KEY_FILE:?Set the RSA PEM path}
+        target: /run/secrets/ugtm-jwt-private.pem
+        read_only: true
+        bind:
+          create_host_path: false
     depends_on:
-      - backend
+      ai-api:
+        condition: service_healthy
+
+  # Retained as a fallback during the Vercel cutover.
+  frontend:
+    image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-frontend:${IMAGE_TAG:?Set IMAGE_TAG}
+    container_name: ugtm-production-frontend
+    restart: unless-stopped
     expose:
       - "80"
 
+  ai-api:
+    <<: *ai
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, "8000"]
+    expose:
+      - "8000"
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=5)"]
+      interval: 15s
+      timeout: 6s
+      retries: 5
+      start_period: 20s
+
+  ai-worker:
+    <<: *ai
+    command: [celery, -A, app.celery_app.celery_app, worker, --loglevel=INFO, --concurrency=1, --pool=solo, -Q, ugtm-ai-production]
+    stop_grace_period: 5m
+
+  ai-reconciler:
+    <<: *ai
+    command: [python, -m, scripts.run_reconciler]
+
+  ai-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes", --maxmemory-policy, noeviction]
+    volumes:
+      - ai_redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56}
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set the MinIO administrator}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set the MinIO administrator password}
+    ports:
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+
+  # Explicit one-time operation; never runs as part of a normal deployment.
+  minio-init:
+    image: ${MINIO_MC_IMAGE:-cgr.dev/chainguard/minio-client@sha256:b0e6a285831396d65c8ceb3246cb0379b36e9954469f173a8daded098acd6fc5}
+    profiles: [tools]
+    entrypoint: [/bin/sh, /tools/initialize-minio.sh]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Set S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?Set S3_SECRET_KEY}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-ugtm-thesis-submissions}
+      AI_S3_ACCESS_KEY: ${AI_S3_ACCESS_KEY:?Set AI_S3_ACCESS_KEY}
+      AI_S3_SECRET_KEY: ${AI_S3_SECRET_KEY:?Set AI_S3_SECRET_KEY}
+      AI_S3_BUCKET_NAME: ${AI_S3_BUCKET_NAME:-ugtm-ai}
+    volumes:
+      - ./initialize-minio.sh:/tools/initialize-minio.sh:ro
+
   gateway:
     image: caddy:2.11.7-alpine
-    container_name: ugtm-gateway
-    restart: always
+    container_name: ugtm-production-gateway
+    restart: unless-stopped
     depends_on:
       - backend
       - frontend
+      - minio
     environment:
-      API_HOST: ${API_HOST:?API_HOST must be configured}
-      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be configured}
+      API_HOST: ${API_HOST:?Set the Azure DNS hostname}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
     ports:
       - "80:80"
       - "443:443"
       - "443:443/udp"
+      - "8443:8443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -61,8 +184,15 @@ services:
 
 volumes:
   data_protection_keys:
+    name: ${DATA_PROTECTION_VOLUME:-ugtm-production_data_protection_keys}
   caddy_data:
+    name: ${CADDY_DATA_VOLUME:-ugtm-production_caddy_data}
   caddy_config:
+    name: ${CADDY_CONFIG_VOLUME:-ugtm-production_caddy_config}
+  minio_data:
+    name: ${MINIO_DATA_VOLUME:-ugtm-production_minio_data}
+  ai_runtime:
+  ai_redis:
 
 networks:
   default:

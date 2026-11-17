@@ -1,0 +1,226 @@
+import type { ComponentType } from 'react';
+import {
+  LayoutDashboard,
+  ShieldCheck,
+  SlidersHorizontal,
+  ScrollText,
+  ClipboardCheck,
+  BookOpen,
+  CalendarRange,
+  UsersRound,
+  FileText,
+  CalendarCheck,
+  UserCheck,
+  FilePenLine,
+  BarChart3,
+  Archive,
+  FolderCheck,
+  FileCheck2,
+  Gavel,
+  SquarePen,
+} from 'lucide-react';
+
+export interface NavItemConfig {
+  label: string;
+  path: string;
+  activePaths?: string[];
+  icon: ComponentType<{ className?: string }>;
+  badge?: string;
+  permission?: string | string[];
+  permissions?: string | string[];
+  role?: string | string[];
+  roles?: string | string[];
+  requireAllPermissions?: boolean;
+}
+
+export interface NavSectionConfig {
+  id: string;
+  title?: string;
+  roles?: string | string[];
+  permissions?: string | string[];
+  items: NavItemConfig[];
+}
+
+export const navigationSections: NavSectionConfig[] = [
+  {
+    id: 'overview',
+    roles: ['Admin'],
+    items: [
+      {
+        label: 'Tổng quan',
+        path: '/dashboard',
+        icon: LayoutDashboard,
+      },
+    ],
+  },
+  {
+    id: 'planning',
+    title: 'Tổ chức và kế hoạch',
+    items: [
+      {
+        label: 'Kế hoạch đợt',
+        path: '/academic/periods',
+        icon: CalendarRange,
+        roles: ['Admin', 'AcademicAffairs'],
+      },
+      
+      {
+        label: 'Cấu hình điểm',
+        path: '/admin/grade-config',
+        icon: SlidersHorizontal,
+        roles: ['Admin', 'AcademicAffairs'],
+      },
+      {
+        label: 'Danh sách Sinh viên và Giảng viên',
+        path: '/academic/roster',
+        icon: UsersRound,
+        roles: ['Admin', 'AcademicAffairs'],
+      },
+    ],
+  },
+  {
+    id: 'topics',
+    title: 'Đề tài và hướng dẫn',
+    items: [
+      {
+        label: 'Đề tài hướng dẫn',
+        path: '/topics/advising',
+        icon: BookOpen,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
+        label: 'Đề tài và đăng ký',
+        path: '/topics/catalog',
+        icon: BookOpen,
+        roles: ['Student', 'Admin'],
+      },
+      {
+        label: 'Xin đổi tên đề tài',
+        path: '/topics/rename',
+        icon: FilePenLine,
+        roles: ['Student'],
+      },
+      {
+        label: 'Thẩm định đề tài',
+        path: '/topics/review',
+        icon: ClipboardCheck,
+        roles: ['Faculty', 'Admin'],
+      },
+      {
+        label: 'Duyệt đổi tên đề tài',
+        path: '/topics/rename/review',
+        icon: FilePenLine,
+        roles: ['Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
+      },
+    ],
+  },
+  {
+    id: 'progress',
+    title: 'Tiến độ và đánh giá',
+    items: [
+      {
+        label: 'Tiến độ sinh viên',
+        path: '/advisor/milestones',
+        icon: CalendarCheck,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
+        label: 'Chấm điểm khóa luận',
+        path: '/thesis/lecturer-grading',
+        icon: SquarePen,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
+        label: 'Xác nhận lưu chiểu',
+        path: '/advisor/archival',
+        icon: Archive,
+        roles: ['Lecturer', 'Admin'],
+      },
+      {
+        label: 'Báo cáo và tiến độ',
+        path: '/thesis/milestones',
+        activePaths: ['/thesis/proposal', '/thesis/midterm', '/thesis/final-report'],
+        icon: FileText,
+        roles: ['Student', 'Admin'],
+      },
+      {
+        label: 'Thẩm định quy trình',
+        path: '/thesis/review/syllabus',
+        icon: ClipboardCheck,
+        roles: ['Faculty', 'Admin', 'AcademicAffairs'],
+      },
+      {
+        label: 'Phân công giảng viên',
+        path: '/councils/reviewer-assignments',
+        icon: UserCheck,
+        roles: ['Faculty', 'Admin', 'AcademicAffairs'],
+      },
+      {
+        label: 'Báo cáo tương đồng',
+        path: '/councils/similarity-reports',
+        icon: FileText,
+        roles: ['CouncilMember'],
+      },
+      {
+        label: 'Chấm điểm Hội đồng',
+        path: '/councils/grading',
+        icon: Gavel,
+        roles: ['CouncilMember', 'Admin'],
+      },
+      {
+        label: 'Biên bản hội đồng',
+        path: '/councils/minutes',
+        icon: FileCheck2,
+        roles: ['CouncilMember', 'Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
+      },
+      {
+        label: 'Phê duyệt hội đồng',
+        path: '/councils/approval',
+        icon: ClipboardCheck,
+        roles: ['AcademicAffairs', 'Admin'],
+      },
+      {
+        label: 'Tổng hợp kết quả',
+        path: '/councils/results',
+        icon: BarChart3,
+        roles: ['Faculty', 'AcademicAffairs', 'Admin'],
+      },
+      {
+        label: 'Hồ sơ lưu chiểu',
+        path: '/thesis/archival',
+        icon: Archive,
+        roles: ['Student'],
+      },
+      {
+        label: 'Duyệt hồ sơ lưu chiểu',
+        path: '/thesis/review/archival',
+        icon: FolderCheck,
+        roles: ['Faculty', 'Admin'],
+      },
+      {
+        label: 'Kết quả',
+        path: '/councils/results',
+        icon: BarChart3,
+        roles: ['Student'],
+      },
+    ],
+  },
+  {
+    id: 'admin',
+    title: 'Hệ thống',
+    roles: ['Admin', 'AcademicAffairs'],
+    items: [
+      {
+        label: 'Tài khoản và Phân quyền',
+        path: '/modules/identity',
+        icon: ShieldCheck,
+      },
+      {
+        label: 'Nhật ký hoạt động',
+        path: '/admin/audit-logs',
+        icon: ScrollText,
+        roles: ['Admin'],
+      },
+    ],
+  },
+];

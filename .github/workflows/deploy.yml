@@ -2,78 +2,95 @@ name: Deploy to VPS
 
 on:
   workflow_run:
-    workflows:
-      - Publish Images
-    types:
-      - completed
-    branches:
-      - dev
-      - production
+    workflows: [Publish Images]
+    types: [completed]
+    branches: [production]
   workflow_dispatch:
     inputs:
       target_env:
-        description: "Target Environment"
+        description: Target Environment
         required: true
-        default: "dev"
+        default: production
         type: choice
-        options:
-          - dev
-          - production
+        options: [production]
+      commit_sha:
+        description: Full SHA of a tested release with all three published images
+        required: true
+        type: string
+      deploy_mode:
+        description: Prepare files/images only for the first data cutover, or deploy
+        required: true
+        default: deploy
+        type: choice
+        options: [prepare, deploy]
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   deploy:
-    name: Deploy via SSH
-    if: >
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push'
-      )
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.target_env == 'production') ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'production')
     runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha || github.event.workflow_run.head_sha }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Verify VPS Secrets
-        id: check-secrets
+      - name: Validate release and SSH configuration
         env:
-          API_HOST: ${{ vars.API_HOST }}
-          ACME_EMAIL: ${{ vars.ACME_EMAIL }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-          APP_URL: ${{ secrets.APP_URL }}
-          DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
-          JWT_PRIVATE_KEY_PEM_BASE64: ${{ secrets.JWT_PRIVATE_KEY_PEM_BASE64 }}
-          IDENTITY_IP_HASH_KEY: ${{ secrets.IDENTITY_IP_HASH_KEY }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_FROM_ADDRESS: ${{ secrets.SMTP_FROM_ADDRESS }}
+          DEPLOYMENT_SCOPE: ${{ vars.DEPLOYMENT_SCOPE }}
         run: |
-          if [ -z "$API_HOST" ] || [ -z "$ACME_EMAIL" ] || \
-             [ -z "$VPS_HOST" ] || [ -z "$VPS_SSH_KEY" ] || [ -z "$APP_URL" ] || \
-             [ -z "$DATABASE_CONNECTION_STRING" ] || [ -z "$JWT_PRIVATE_KEY_PEM_BASE64" ] || \
-             [ -z "$IDENTITY_IP_HASH_KEY" ] || [ "${#IDENTITY_IP_HASH_KEY}" -lt 32 ] || \
-             [ -z "$SMTP_HOST" ] || [ -z "$SMTP_FROM_ADDRESS" ]; then
-            echo "One or more required deployment secrets are not configured."
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Skip notification
-        if: steps.check-secrets.outputs.configured == 'false'
-        run: |
-          echo "::warning ::Deployment skipped because required secrets are missing."
-          echo "Configure API_HOST and ACME_EMAIL as GitHub Actions variables."
-          echo "Configure VPS_HOST, VPS_SSH_KEY, APP_URL, DATABASE_CONNECTION_STRING, JWT_PRIVATE_KEY_PEM_BASE64, IDENTITY_IP_HASH_KEY (at least 32 characters), SMTP_HOST and SMTP_FROM_ADDRESS as GitHub Actions secrets."
-
-      - name: Deploy to VPS via SSH
-        if: steps.check-secrets.outputs.configured == 'true'
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'Invalid release SHA'; exit 1; }
+          [[ -n "$VPS_HOST" && -n "$VPS_SSH_KEY" && "$DEPLOYMENT_SCOPE" == production ]] || {
+            echo 'Configure production SSH secrets and DEPLOYMENT_SCOPE=production'; exit 1;
+          }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+      - name: Copy the versioned deployment files
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME || 'ubuntu' }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          source: docker/docker-compose.prod.yml,docker/Caddyfile,docker/initialize-minio.sh,scripts/Deploy-Production.sh
+          target: ugtm/production/releases/${{ env.SOURCE_SHA }}
+      - name: Deploy the verified release
         uses: appleboy/ssh-action@v1.2.0
         env:
+          IMAGE_OWNER: ${{ github.repository_owner }}
+          DEPLOY_MODE: ${{ inputs.deploy_mode || 'deploy' }}
           API_HOST: ${{ vars.API_HOST }}
           ACME_EMAIL: ${{ vars.ACME_EMAIL }}
-          DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
           APP_URL: ${{ secrets.APP_URL }}
+          DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
+          AI_POSTGRES_DSN: ${{ secrets.AI_POSTGRES_DSN }}
+          AI_POSTGRES_DIRECT_DSN: ${{ secrets.AI_POSTGRES_DIRECT_DSN }}
+          PLAGIARISM_AI_API_KEY: ${{ secrets.PLAGIARISM_AI_API_KEY }}
+          PLAGIARISM_AI_DEFAULT_CORPUS: ${{ vars.PLAGIARISM_AI_DEFAULT_CORPUS }}
+          REMOTE_GPU_URL: ${{ secrets.REMOTE_GPU_URL }}
+          REMOTE_GPU_API_KEY: ${{ secrets.REMOTE_GPU_API_KEY }}
+          MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
+          S3_ACCESS_KEY: ${{ secrets.S3_ACCESS_KEY }}
+          S3_SECRET_KEY: ${{ secrets.S3_SECRET_KEY }}
+          S3_BUCKET_NAME: ${{ vars.S3_BUCKET_NAME || 'ugtm-thesis-submissions' }}
+          AI_S3_ACCESS_KEY: ${{ secrets.AI_S3_ACCESS_KEY }}
+          AI_S3_SECRET_KEY: ${{ secrets.AI_S3_SECRET_KEY }}
+          AI_S3_BUCKET_NAME: ${{ vars.AI_S3_BUCKET_NAME || 'ugtm-ai' }}
+          MINIO_IMAGE: ${{ vars.MINIO_IMAGE }}
+          MINIO_MC_IMAGE: ${{ vars.MINIO_MC_IMAGE }}
+          AI_CLASSIFIER_ENABLED: ${{ vars.AI_CLASSIFIER_ENABLED || 'false' }}
           JWT_PRIVATE_KEY_PEM_BASE64: ${{ secrets.JWT_PRIVATE_KEY_PEM_BASE64 }}
           IDENTITY_IP_HASH_KEY: ${{ secrets.IDENTITY_IP_HASH_KEY }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
@@ -84,151 +101,19 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           SMTP_SECURITY: ${{ secrets.SMTP_SECURITY || 'StartTls' }}
           SMTP_TIMEOUT_SECONDS: ${{ secrets.SMTP_TIMEOUT_SECONDS || '30' }}
+          DATA_PROTECTION_VOLUME: ${{ vars.DATA_PROTECTION_VOLUME }}
+          CADDY_DATA_VOLUME: ${{ vars.CADDY_DATA_VOLUME }}
+          CADDY_CONFIG_VOLUME: ${{ vars.CADDY_CONFIG_VOLUME }}
+          MINIO_DATA_VOLUME: ${{ vars.MINIO_DATA_VOLUME }}
           DEPLOY_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME || 'ubuntu' }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
-          envs: API_HOST,ACME_EMAIL,DATABASE_CONNECTION_STRING,APP_URL,JWT_PRIVATE_KEY_PEM_BASE64,IDENTITY_IP_HASH_KEY,SMTP_HOST,SMTP_PORT,SMTP_FROM_ADDRESS,SMTP_FROM_NAME,SMTP_USERNAME,SMTP_PASSWORD,SMTP_SECURITY,SMTP_TIMEOUT_SECONDS,DEPLOY_GITHUB_TOKEN
+          command_timeout: 20m
+          envs: SOURCE_SHA,IMAGE_OWNER,DEPLOY_MODE,API_HOST,ACME_EMAIL,APP_URL,DATABASE_CONNECTION_STRING,AI_POSTGRES_DSN,AI_POSTGRES_DIRECT_DSN,PLAGIARISM_AI_API_KEY,PLAGIARISM_AI_DEFAULT_CORPUS,REMOTE_GPU_URL,REMOTE_GPU_API_KEY,MINIO_ROOT_USER,MINIO_ROOT_PASSWORD,S3_ACCESS_KEY,S3_SECRET_KEY,S3_BUCKET_NAME,AI_S3_ACCESS_KEY,AI_S3_SECRET_KEY,AI_S3_BUCKET_NAME,MINIO_IMAGE,MINIO_MC_IMAGE,AI_CLASSIFIER_ENABLED,JWT_PRIVATE_KEY_PEM_BASE64,IDENTITY_IP_HASH_KEY,SMTP_HOST,SMTP_PORT,SMTP_FROM_ADDRESS,SMTP_FROM_NAME,SMTP_USERNAME,SMTP_PASSWORD,SMTP_SECURITY,SMTP_TIMEOUT_SECONDS,DATA_PROTECTION_VOLUME,CADDY_DATA_VOLUME,CADDY_CONFIG_VOLUME,MINIO_DATA_VOLUME,DEPLOY_GITHUB_TOKEN
           script: |
-            set -e
-            APP_DIR="$HOME/ugtm"
-            mkdir -p "$APP_DIR"
-            cd "$APP_DIR"
-
-            # Determine image tag based on trigger
-            BRANCH="${{ github.event_name == 'workflow_dispatch' && inputs.target_env || github.event.workflow_run.head_branch }}"
-            OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-
-            echo "Deploying UGTM (${BRANCH}) to VPS..."
-
-            # Create or update docker-compose.prod.yml
-            cat << 'EOF' > docker-compose.prod.yml
-            services:
-              backend:
-                image: ghcr.io/${IMAGE_OWNER}/ugtm-api:${IMAGE_TAG}
-                container_name: ugtm-backend
-                restart: always
-                environment:
-                  - ASPNETCORE_ENVIRONMENT=Production
-                  - ASPNETCORE_HTTP_PORTS=8080
-                  - ConnectionStrings__DefaultConnection=${DATABASE_CONNECTION_STRING:?DATABASE_CONNECTION_STRING must be configured}
-                  - Cors__AllowedOrigins__0=${APP_URL:?APP_URL must be configured}
-                  - Identity__Email__PublicWebBaseUrl=${APP_URL:?APP_URL must be configured}
-                  - Identity__Email__OutboxPartition=azure-production
-                  - Identity__DataProtection__KeyRingPath=/var/lib/ugtm/data-protection-keys
-                  - Identity__ClientMetadata__IpHashKey=${IDENTITY_IP_HASH_KEY:?IDENTITY_IP_HASH_KEY must be configured}
-                  - Proxy__KnownProxies__0=172.29.0.10
-                  - Proxy__KnownProxies__1=::ffff:172.29.0.10
-                  - Notifications__Smtp__Host=${SMTP_HOST}
-                  - Notifications__Smtp__Port=${SMTP_PORT:-587}
-                  - Notifications__Smtp__FromAddress=${SMTP_FROM_ADDRESS}
-                  - Notifications__Smtp__FromName=${SMTP_FROM_NAME:-UGTM}
-                  - Notifications__Smtp__Username=${SMTP_USERNAME}
-                  - Notifications__Smtp__Password=${SMTP_PASSWORD}
-                  - Notifications__Smtp__Security=${SMTP_SECURITY:-StartTls}
-                  - Notifications__Smtp__TimeoutSeconds=${SMTP_TIMEOUT_SECONDS:-30}
-                expose:
-                  - "8080"
-                volumes:
-                  - data_protection_keys:/var/lib/ugtm/data-protection-keys
-                  - ${JWT_PRIVATE_KEY_FILE}:/run/secrets/ugtm-jwt-private.pem:ro
-
-              frontend:
-                image: ghcr.io/${IMAGE_OWNER}/ugtm-frontend:${IMAGE_TAG}
-                container_name: ugtm-frontend
-                restart: always
-                depends_on:
-                  - backend
-                expose:
-                  - "80"
-
-              gateway:
-                image: caddy:2.11.7-alpine
-                container_name: ugtm-gateway
-                restart: always
-                depends_on:
-                  - backend
-                  - frontend
-                environment:
-                  API_HOST: ${API_HOST:?API_HOST must be configured}
-                  ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be configured}
-                ports:
-                  - "80:80"
-                  - "443:443"
-                  - "443:443/udp"
-                volumes:
-                  - ./Caddyfile:/etc/caddy/Caddyfile:ro
-                  - caddy_data:/data
-                  - caddy_config:/config
-                networks:
-                  default:
-                    ipv4_address: 172.29.0.10
-
-            volumes:
-              data_protection_keys:
-              caddy_data:
-              caddy_config:
-
-            networks:
-              default:
-                ipam:
-                  config:
-                    - subnet: 172.29.0.0/24
-            EOF
-
-            cat << 'EOF' > Caddyfile
-            {
-              email {$ACME_EMAIL}
-            }
-
-            {$API_HOST} {
-              encode zstd gzip
-
-              @backend path /api/*
-              handle @backend {
-                reverse_proxy backend:8080
-              }
-
-              handle {
-                reverse_proxy frontend:80
-              }
-
-              header {
-                -Server
-                Strict-Transport-Security "max-age=31536000"
-                X-Content-Type-Options "nosniff"
-                Referrer-Policy "strict-origin-when-cross-origin"
-              }
-
-              log {
-                output stdout
-                format json
-              }
-            }
-            EOF
-
-            umask 077
-            mkdir -p "$APP_DIR/secrets"
-            printf '%s' "$JWT_PRIVATE_KEY_PEM_BASE64" | base64 --decode > "$APP_DIR/secrets/ugtm-jwt-private.pem"
-
-            export IMAGE_OWNER="$OWNER"
-            export IMAGE_TAG="$BRANCH"
-            export JWT_PRIVATE_KEY_FILE="$APP_DIR/secrets/ugtm-jwt-private.pem"
-
-            # Login to GHCR to pull images
-            printf '%s' "$DEPLOY_GITHUB_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
-            # Pull and restart containers
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
-
-            # Verify that DNS, TLS termination and the backend route all work publicly.
-            curl --fail --silent --show-error \
-              --retry 12 --retry-delay 5 --retry-all-errors \
-              "https://${API_HOST}/api/modules/Identity/ping"
-
-            # Clean dangling images
-            docker image prune -f
-            echo "Deployment completed successfully!"
+            set -eu
+            export IMAGE_OWNER=$(printf '%s' "$IMAGE_OWNER" | tr '[:upper:]' '[:lower:]')
+            bash "$HOME/ugtm/production/releases/$SOURCE_SHA/scripts/Deploy-Production.sh"

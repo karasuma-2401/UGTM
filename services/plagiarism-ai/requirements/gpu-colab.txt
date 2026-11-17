@@ -1,0 +1,19 @@
+# Dedicated GPU inference dependencies (Google Colab T4/L4 worker or explicit INFERENCE_MODE=local).
+# Do NOT install into Render Web Service or CPU Orchestration Worker.
+# Compatible stack (torch>=2.6.0 + safetensors>=0.4.5 + transformers>=4.48,<5) loads
+# BAAI/bge-m3 and BAAI/bge-reranker-v2-m3 safely without bypassing CVE-2025-32434.
+torch>=2.6.0,<3
+safetensors>=0.4.5,<1
+FlagEmbedding>=1.3.4,<2
+transformers>=4.48,<5
+sentence-transformers>=3.3,<4
+huggingface-hub>=0.26,<1.0
+datasets>=2.19,<3.2
+numpy>=1.26,<3
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.7,<3
+requests>=2.32,<3
+pycloudflared>=0.2.0
+nest-asyncio>=1.6,<2
+

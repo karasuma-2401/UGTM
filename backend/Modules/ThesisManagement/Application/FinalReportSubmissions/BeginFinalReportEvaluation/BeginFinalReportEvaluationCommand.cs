@@ -1,0 +1,3 @@
+namespace UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.BeginFinalReportEvaluation;
+
+public sealed record BeginFinalReportEvaluationCommand(Guid FinalReportId, int ExpectedVersionNo);

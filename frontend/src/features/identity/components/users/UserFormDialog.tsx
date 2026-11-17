@@ -1,0 +1,144 @@
+import { useEffect, useState } from 'react';
+import { useBlocker } from 'react-router-dom';
+import { Pencil, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Dialog } from '@/components/ui/dialog';
+import { UserForm } from './UserForm';
+import { UserAccountDetails, UserAccountHeader } from './UserAccountDetails';
+import type { AccountGroup, UserFormValues, UserSummary } from '../../types/user.types';
+
+interface UserFormDialogProps {
+  accountGroup: AccountGroup;
+  user: UserSummary | null;
+  isSaving: boolean;
+  error: string | null;
+  onSave: (values: UserFormValues) => void;
+  onClose: () => void;
+}
+
+export function UserFormDialog({
+  accountGroup,
+  user,
+  isSaving,
+  error,
+  onSave,
+  onClose,
+}: UserFormDialogProps) {
+  const [editing, setEditing] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [discardAction, setDiscardAction] = useState<'close' | 'cancel' | null>(null);
+  const blocker = useBlocker(dirty || isSaving);
+  const groupLabel = accountGroup === 'Student' ? 'sinh viên' : 'giảng viên và cán bộ';
+  const title = `Tạo tài khoản ${groupLabel}`;
+
+  useEffect(() => {
+    if (!dirty && !isSaving) return;
+    const beforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => window.removeEventListener('beforeunload', beforeUnload);
+  }, [dirty, isSaving]);
+
+  function requestClose(action: 'close' | 'cancel') {
+    if (isSaving) return;
+    if (dirty) {
+      setDiscardAction(action);
+      return;
+    }
+    if (action === 'cancel') setEditing(false);
+    else onClose();
+  }
+  function discard() {
+    if (isSaving) return;
+    setDirty(false);
+    setDiscardAction(null);
+    if (blocker.state === 'blocked') blocker.proceed();
+    else if (discardAction === 'cancel') setEditing(false);
+    else onClose();
+  }
+
+  return (
+    <>
+      <Dialog
+        variant={user ? 'drawer' : 'modal'}
+        headerClassName="border-b border-line/80 bg-surface-card dark:bg-gradient-to-r dark:from-blue-950/50 dark:via-slate-900 dark:to-orange-950/30 px-5 py-4 sm:px-6"
+        title={
+          user ? (
+            <UserAccountHeader user={user} />
+          ) : (
+            <span className="flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-info-bg text-primary ring-1 ring-inset ring-blue-100"
+              >
+                <UserPlus className="size-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-base font-semibold text-ink-primary">
+                  {title}
+                </span>
+                <span className="mt-0.5 block text-xs font-normal text-ink-muted">
+                  Điền thông tin và gửi liên kết kích hoạt
+                </span>
+              </span>
+            </span>
+          )
+        }
+        busy={isSaving}
+        onClose={() => requestClose('close')}
+      >
+        <div className={user ? 'flex min-h-[calc(100dvh-5rem)] flex-col' : undefined}>
+          {user && !editing ? (
+            <>
+              <UserAccountDetails user={user} accountGroup={accountGroup} />
+              <div className="sticky bottom-0 z-10 mt-auto flex justify-end gap-2.5 border-t border-line/80 bg-surface-card/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+                <Button
+                  variant="outline"
+                  onClick={() => requestClose('close')}
+                  className="h-9 rounded-xl px-4 text-xs font-semibold"
+                >
+                  Đóng
+                </Button>
+                <Button
+                  leftIcon={<Pencil />}
+                  onClick={() => setEditing(true)}
+                  className="h-9 rounded-xl px-4 text-xs font-semibold"
+                >
+                  Chỉnh sửa
+                </Button>
+              </div>
+            </>
+          ) : (
+            <UserForm
+              accountGroup={accountGroup}
+              user={user}
+              isSaving={isSaving}
+              error={error}
+              onSave={onSave}
+              onCancel={() => requestClose(user ? 'cancel' : 'close')}
+              onDirtyChange={setDirty}
+            />
+          )}
+        </div>
+      </Dialog>
+      <ConfirmDialog
+        open={discardAction !== null || blocker.state === 'blocked'}
+        type="warning"
+        title={isSaving ? 'Đang lưu tài khoản' : 'Bỏ thay đổi chưa lưu?'}
+        description={
+          isSaving
+            ? 'Vui lòng chờ lưu xong trước khi rời trang.'
+            : 'Thông tin bạn vừa chỉnh sửa sẽ không được lưu.'
+        }
+        confirmText="Bỏ thay đổi"
+        cancelText={isSaving ? 'Tiếp tục chờ' : 'Tiếp tục chỉnh sửa'}
+        isConfirming={isSaving}
+        onClose={() => {
+          setDiscardAction(null);
+          if (blocker.state === 'blocked') blocker.reset();
+        }}
+        onConfirm={discard}
+      />
+    </>
+  );
+}

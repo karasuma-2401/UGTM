@@ -1,0 +1,556 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+import ts from 'typescript';
+import * as React from 'react';
+import * as jsxRuntime from 'react/jsx-runtime';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { Save, UserPlus } from 'lucide-react';
+import * as icons from 'lucide-react';
+
+function loadModule(path, dependencies = {}) {
+  dependencies = {
+    '@/shared/notifications': { OperationToast: 'OperationToast', notify: { success() {} } },
+    '@/components/ui/inline-alert': { InlineAlert: 'InlineAlert' },
+    ...dependencies,
+  };
+  const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
+  const { outputText } = ts.transpileModule(source, {
+    compilerOptions: {
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2022,
+      jsx: ts.JsxEmit.ReactJSX,
+    },
+  });
+  const exports = {};
+  new Function('require', 'exports', outputText)((name) => {
+    assert.ok(name in dependencies, `Unexpected dependency: ${name}`);
+    return { __esModule: true, ...dependencies[name] };
+  }, exports);
+  return exports;
+}
+
+const groups = loadModule('features/identity/utils/accountGroups.ts');
+
+test('student and staff forms keep distinct role defaults and constraints', () => {
+  assert.deepEqual(groups.defaultRolesForGroup('Student'), ['Student']);
+  assert.deepEqual(groups.defaultRolesForGroup('Staff'), ['Lecturer']);
+  assert.equal(groups.rolesBelongToGroup(['Student'], 'Student'), true);
+  assert.equal(groups.rolesBelongToGroup(['Student', 'Admin'], 'Student'), false);
+  assert.equal(groups.rolesBelongToGroup(['Student'], 'Staff'), false);
+  assert.equal(groups.rolesBelongToGroup([], 'Staff'), false);
+  assert.equal(groups.rolesBelongToGroup(['Lecturer', 'CouncilMember'], 'Staff'), true);
+});
+
+function renderForm(accountGroup) {
+  const { SYSTEM_ROLES } = loadModule('features/identity/constants/systemRoles.ts');
+  const { UserForm } = loadModule('features/identity/components/users/UserForm.tsx', {
+    react: React,
+    'react/jsx-runtime': jsxRuntime,
+    'lucide-react': { Save, UserPlus },
+    '../../constants/systemRoles': { SYSTEM_ROLES },
+    '../../utils/accountGroups': groups,
+    '@/components/ui/button': {
+      Button: ({ children }) => React.createElement('button', null, children),
+    },
+    '@/components/ui/input': { Input: (props) => React.createElement('input', props) },
+    '@/components/ui/checkbox': {
+      Checkbox: ({ label, checked }) =>
+        React.createElement(
+          'label',
+          null,
+          React.createElement('input', { type: 'checkbox', checked, readOnly: true }),
+          label,
+        ),
+    },
+  });
+  return renderToStaticMarkup(
+    React.createElement(UserForm, {
+      accountGroup,
+      user: null,
+      isSaving: false,
+      error: null,
+      onSave() {},
+      onCancel() {},
+    }),
+  );
+}
+
+test('student form requires MSSV and has no staff role checkboxes', () => {
+  const html = renderForm('Student');
+  assert.match(html, /Mã số sinh viên/);
+  assert.match(html, /Tài khoản được khởi tạo với vai trò sinh viên/);
+  assert.doesNotMatch(html, /type="checkbox"/);
+  assert.doesNotMatch(html, /Quản trị viên/);
+});
+
+test('staff form offers staff roles and does not allow selecting Student', () => {
+  const html = renderForm('Staff');
+  assert.match(html, /Mã cán bộ/);
+  assert.match(html, /Quản trị viên/);
+  assert.equal((html.match(/type="checkbox"/g) || []).length, 5);
+  assert.equal((html.match(/checked=""/g) || []).length, 1);
+});
+
+function apiFixture(httpClient) {
+  return loadModule('features/identity/services/userApi.ts', {
+    axios: { default: { isAxiosError: () => false } },
+    '@/shared/api': { httpClient },
+  }).userApi;
+}
+
+test('every statistic uses the selected group and server totals', async () => {
+  const requests = [];
+  const api = apiFixture({
+    get: async (path, config) => {
+      requests.push(config.params);
+      assert.equal(path, '/api/users');
+      const totals = config.params.accountGroup === 'Student' ? [5000, 150, 5] : [20, 2, 1];
+      const index =
+        config.params.status === 'PendingActivation'
+          ? 1
+          : config.params.status === 'Disabled'
+            ? 2
+            : 0;
+      return { data: { success: true, data: { totalCount: totals[index], items: [] } } };
+    },
+  });
+  assert.deepEqual(await api.getStatistics('Student'), {
+    total: 5000,
+    pendingActivation: 150,
+    disabled: 5,
+  });
+  assert.deepEqual(await api.getStatistics('Staff'), {
+    total: 20,
+    pendingActivation: 2,
+    disabled: 1,
+  });
+  assert.equal(requests.length, 6);
+  assert.ok(requests.every((request) => request.pageSize === 1 && request.accountGroup));
+});
+
+test('list requests send group, paging and trimmed search to the server', async () => {
+  const api = apiFixture({
+    get: async (_path, { params }) => {
+      assert.equal(params.accountGroup, 'Staff');
+      assert.equal(params.keyword, 'GV001');
+      assert.equal(params.pageSize, 50);
+      assert.equal(params.pageNumber, 2);
+      assert.equal(params.role, undefined);
+      return { data: { success: true, data: { items: [] } } };
+    },
+  });
+  await api.getUsers({
+    accountGroup: 'Staff',
+    keyword: ' GV001 ',
+    role: '',
+    status: '',
+    pageNumber: 2,
+    pageSize: 50,
+  });
+});
+
+test('student import uploads multipart data with a fixed Student role', async () => {
+  const file = new File(['test'], 'students.xlsx');
+  const api = apiFixture({
+    post: async (path, body, config) => {
+      assert.equal(path, '/api/users/import');
+      assert.equal(body.get('role'), 'Student');
+      assert.equal(body.get('file').name, 'students.xlsx');
+      assert.equal(config.headers['Content-Type'], undefined);
+      return { data: { success: true, data: { importedCount: 25 } } };
+    },
+  });
+  assert.equal((await api.importStudents(file)).importedCount, 25);
+});
+
+function usersPageFixture(accountGroup, queryState = {}) {
+  const state = [];
+  let cursor = 0;
+  let queries = [];
+  const component = (name) => ({ [name]: name });
+  const reactMock = {
+    useState(initial) {
+      const index = cursor++;
+      if (!(index in state)) state[index] = typeof initial === 'function' ? initial() : initial;
+      return [
+        state[index],
+        (value) => {
+          state[index] = typeof value === 'function' ? value(state[index]) : value;
+        },
+      ];
+    },
+  };
+  const reactQueryMock = {
+    useQueryClient: () => ({}),
+    useQuery(options) {
+      queries.push(options);
+      return {
+        data: options.queryKey.includes('statistics')
+          ? { total: 30, pendingActivation: 4, disabled: 2 }
+          : { items: [{}], pageNumber: options.queryKey[4], pageSize: 20 },
+        ...queryState,
+      };
+    },
+    useMutation: () => ({ reset() {}, mutate() {}, isPending: false }),
+  };
+  const authMock = { useAuth: () => ({ user: { id: 'admin' }, hasPermission: () => true }) };
+  const userTypes = loadModule('features/identity/types/user.types.ts');
+  const systemRoles = loadModule('features/identity/constants/systemRoles.ts');
+  const userApiMock = {
+    userApi: { getUsers: async (query) => query },
+    getUserErrorMessage: String,
+  };
+  const useUserFiltersMod = loadModule('features/identity/hooks/useUserFilters.ts', {
+    react: reactMock,
+  });
+  const useUserModalsMod = loadModule('features/identity/hooks/useUserModals.ts', {
+    react: reactMock,
+  });
+  const useUserDataMod = loadModule('features/identity/hooks/useUserData.ts', {
+    '@tanstack/react-query': reactQueryMock,
+    '../services/userApi': userApiMock,
+  });
+  const useUserActionsMod = loadModule('features/identity/hooks/useUserActions.ts', {
+    react: reactMock,
+    '@tanstack/react-query': reactQueryMock,
+    '../services/userApi': userApiMock,
+    '@/features/auth/services/authApi': {},
+  });
+  const useUsersMod = loadModule('features/identity/hooks/useUsers.ts', {
+    '@/shared/auth': authMock,
+    './useUserFilters': useUserFiltersMod,
+    './useUserData': useUserDataMod,
+    './useUserModals': useUserModalsMod,
+    './useUserActions': useUserActionsMod,
+  });
+  const { UserFilterBar } = loadModule('features/identity/components/users/UserFilterBar.tsx', {
+    'react/jsx-runtime': jsxRuntime,
+    'lucide-react': icons,
+    '@/components/ui/button': component('Button'),
+    '@/components/ui/input': component('Input'),
+    '@/components/ui/select': component('Select'),
+    '../../constants/systemRoles': systemRoles,
+    '../../types/user.types': userTypes,
+  });
+  const { UsersPage } = loadModule('features/identity/pages/UsersPage.tsx', {
+    react: reactMock,
+    'react/jsx-runtime': jsxRuntime,
+    'lucide-react': icons,
+    '@tanstack/react-query': reactQueryMock,
+    '@/shared/auth': authMock,
+    '@/components/ui/button': component('Button'),
+    '@/components/ui/input': component('Input'),
+    '@/components/ui/card': { Card: 'Card', CardHeader: 'CardHeader', CardTitle: 'CardTitle' },
+    '@/components/ui/select': component('Select'),
+    '@/components/ui/page-header': component('PageHeader'),
+    '@/components/ui/list-card-header': component('ListCardHeader'),
+    '@/components/ui/statistics-bar': component('StatisticsBar'),
+    '@/components/ui/table-pagination': component('TablePagination'),
+    '@/components/ui/table-floating-bar': component('TableFloatingBar'),
+    '@/components/ui/table-skeleton': component('TableSkeleton'),
+    '@/components/ui/confirm-dialog': component('ConfirmDialog'),
+    '../components/users': {
+      UserFormDialog: 'UserFormDialog',
+      StudentImportDialog: 'StudentImportDialog',
+      UsersTable: 'UsersTable',
+      IdentityNavigation: 'IdentityNavigation',
+      UserFilterBar,
+    },
+    '../hooks': useUsersMod,
+    '../types/user.types': userTypes,
+    '../constants/systemRoles': systemRoles,
+    '../services/userApi': userApiMock,
+    '@/features/auth/services/authApi': {},
+  });
+  let tree;
+  function render() {
+    cursor = 0;
+    queries = [];
+    tree = UsersPage({ accountGroup });
+  }
+  function find(predicate, node) {
+    if (Array.isArray(node)) return node.flatMap((item) => find(predicate, item));
+    if (!React.isValidElement(node)) return [];
+    const rendered = typeof node.type === 'function' ? node.type(node.props) : null;
+    return [
+      ...(predicate(node) ? [node] : []),
+      ...(rendered ? find(predicate, rendered) : []),
+      ...find(predicate, node.props.children),
+    ];
+  }
+  render();
+  return {
+    render,
+    find: (predicate) => find(predicate, tree),
+    stat: (key) =>
+      find((node) => node.type === 'StatisticsBar', tree)[0].props.items.find(
+        (item) => item.key === key,
+      ),
+    listQuery: () => queries[0].queryFn({}),
+    listOptions: () => queries[0],
+  };
+}
+
+for (const accountGroup of ['Student', 'Staff']) {
+  test(`${accountGroup} status filters update the server list while statistics support quick filters`, async () => {
+    const page = usersPageFixture(accountGroup);
+    assert.equal(page.stat('total').active, true);
+    page.find((node) => node.type === 'Input')[0].props.onChange({ target: { value: ' NGUYEN ' } });
+    page.render();
+    if (accountGroup === 'Staff') {
+      page
+        .find((node) => node.props['aria-label'] === 'Lọc theo vai trò')[0]
+        .props.onChange('Lecturer');
+      page.render();
+    }
+    page.find((node) => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+    page.render();
+    assert.equal((await page.listQuery()).keyword, 'NGUYEN');
+    assert.equal(page.stat('total').active, false);
+    page.find((node) => node.type === 'TablePagination')[0].props.onPageChange(3);
+    page.render();
+
+    for (const [key, status] of [
+      ['pending', 'PendingActivation'],
+      ['disabled', 'Disabled'],
+      ['total', ''],
+    ]) {
+      assert.equal(typeof page.stat(key).onClick, 'function');
+      page.find((node) => node.type === 'Input')[0].props.onChange({ target: { value: '' } });
+      page.render();
+      if (accountGroup === 'Staff') {
+        page.find((node) => node.props['aria-label'] === 'Lọc theo vai trò')[0].props.onChange('');
+        page.render();
+      }
+      page
+        .find((node) => node.props['aria-label'] === 'Lọc theo trạng thái')[0]
+        .props.onChange(status);
+      page.render();
+      page.find((node) => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+      page.render();
+      assert.deepEqual(await page.listQuery(), {
+        keyword: '',
+        role: '',
+        status,
+        accountGroup,
+        pageNumber: 1,
+        pageSize: 20,
+      });
+      assert.equal(page.stat(key).active, true);
+      assert.equal(
+        page.find((node) => node.props['aria-label'] === 'Lọc theo trạng thái')[0].props.value,
+        status,
+      );
+    }
+  });
+}
+
+test('Users filter chips and Bỏ lọc synchronize applied filters and pending inputs', async () => {
+  const page = usersPageFixture('Staff');
+  const clear = () =>
+    page.find((node) => node.type === 'Button' && node.props.children === 'Bỏ lọc')[0];
+  assert.equal(clear().props.disabled, true);
+  page
+    .find((node) => node.props['aria-label'] === 'Lọc theo trạng thái')[0]
+    .props.onChange('PendingActivation');
+  page.render();
+  page.find((node) => node.type === 'Input')[0].props.onChange({ target: { value: 'An' } });
+  page.render();
+  page.find((node) => node.type === 'form')[0].props.onSubmit({ preventDefault() {} });
+  page.render();
+  page.find((node) => node.props['aria-label'] === 'Bỏ lọc trạng thái')[0].props.onClick();
+  page.render();
+  assert.equal((await page.listQuery()).keyword, 'An');
+  assert.equal((await page.listQuery()).status, '');
+  page.find((node) => node.type === 'Input')[0].props.onChange({ target: { value: 'unsent' } });
+  page.render();
+  clear().props.onClick();
+  page.render();
+  assert.equal(page.find((node) => node.type === 'Input')[0].props.value, '');
+  assert.equal((await page.listQuery()).keyword, '');
+  assert.equal(page.find((node) => node.props['aria-label'] === 'Bộ lọc đang áp dụng').length, 0);
+  assert.equal(clear().props.disabled, true);
+  assert.equal(page.stat('total').active, true);
+});
+
+test('Users statistics filter immediately and reset paging for both account groups', async () => {
+  for (const group of ['Student', 'Staff']) {
+    const page = usersPageFixture(group);
+    page.find((node) => node.type === 'TablePagination')[0].props.onPageChange(3);
+    page.render();
+    page.stat('pending').onClick();
+    page.render();
+    assert.equal((await page.listQuery()).status, 'PendingActivation');
+    assert.equal((await page.listQuery()).pageNumber, 1);
+    assert.equal(page.stat('pending').active, true);
+    page.stat('total').onClick();
+    page.render();
+    assert.equal((await page.listQuery()).status, '');
+  }
+});
+
+test('Users keeps rows only within the same account/group and locks actions while refreshing', () => {
+  const page = usersPageFixture('Staff', { isFetching: true, isPending: false });
+  const query = page.listOptions();
+  const previous = { items: [{ id: 'staff-1' }], totalCount: 1 };
+  assert.equal(query.placeholderData(previous, { queryKey: query.queryKey }), previous);
+  assert.equal(
+    query.placeholderData(previous, { queryKey: ['admin-users', 'other-admin', 'Staff'] }),
+    undefined,
+  );
+  assert.equal(
+    query.placeholderData(previous, { queryKey: ['admin-users', 'admin', 'Student'] }),
+    undefined,
+  );
+  assert.equal(query.placeholderData(previous, undefined), undefined);
+  assert.equal(page.find((node) => node.type === 'UsersTable')[0].props.isChangingStatus, true);
+  assert.equal(page.find((node) => node.type === 'TablePagination')[0].props.isLoading, true);
+  assert.ok(
+    page.find((node) => node.props['aria-busy'] && node.props.className?.includes('opacity-60'))
+      .length,
+  );
+});
+
+test('Users supports server-side column sorting and renders TableFloatingBar for selected user', async () => {
+  const page = usersPageFixture('Student', {
+    isSuccess: true,
+    isPending: false,
+    isFetching: false,
+    data: {
+      items: [
+        {
+          id: 'sv-1',
+          email: 'sv1@gm.uit.edu.vn',
+          fullName: 'Nguyen Van A',
+          userCode: '24520001',
+          phoneNumber: null,
+          roles: ['Student'],
+          status: 'Active',
+          lastLoginAt: null,
+        },
+      ],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 20,
+      hasPreviousPage: false,
+      hasNextPage: false,
+    },
+  });
+
+  const tableBefore = page.find((node) => node.type === 'UsersTable')[0];
+  assert.equal(page.find((node) => node.type === 'TableFloatingBar').length, 0);
+
+  tableBefore.props.onSortChange('fullname');
+  page.render();
+  assert.deepEqual(await page.listQuery(), {
+    keyword: '',
+    role: '',
+    status: '',
+    accountGroup: 'Student',
+    pageNumber: 1,
+    pageSize: 20,
+    sortBy: 'fullname',
+    sortOrder: 'asc',
+  });
+
+  tableBefore.props.onSortChange('fullname');
+  page.render();
+  assert.equal((await page.listQuery()).sortOrder, 'desc');
+
+  page.find((node) => node.type === 'UsersTable')[0].props.onSelectRow('sv-1');
+  page.render();
+  const floatingBars = page.find((node) => node.type === 'TableFloatingBar');
+  assert.equal(floatingBars.length, 1);
+  assert.equal(floatingBars[0].props.selectedCount, 1);
+});
+
+test("editing only enables save for actual changes and restores clean state when reverted", () => {
+  const { SYSTEM_ROLES } = loadModule(
+    "features/identity/constants/systemRoles.ts",
+  );
+  const slots = [];
+  let cursor = 0;
+  const dirtyStates = [];
+  const saves = [];
+  const { UserForm } = loadModule(
+    "features/identity/components/users/UserForm.tsx",
+    {
+      react: {
+        useState(initial) {
+          const index = cursor++;
+          if (!(index in slots))
+            slots[index] = typeof initial === "function" ? initial() : initial;
+          return [
+            slots[index],
+            (next) => {
+              slots[index] =
+                typeof next === "function" ? next(slots[index]) : next;
+            },
+          ];
+        },
+        useEffect(callback) {
+          callback();
+        },
+      },
+      "react/jsx-runtime": jsxRuntime,
+      "lucide-react": { Save, UserPlus },
+      "../../constants/systemRoles": { SYSTEM_ROLES },
+      "../../utils/accountGroups": groups,
+      "@/components/ui/button": { Button: "Button" },
+      "@/components/ui/input": { Input: "Input" },
+      "@/components/ui/checkbox": { Checkbox: "Checkbox" },
+    },
+  );
+  const user = {
+    fullName: "Nguyễn Minh Anh",
+    email: "sv@example.test",
+    userCode: "2452001",
+    phoneNumber: null,
+    roles: ["Student"],
+  };
+  const render = () => {
+    cursor = 0;
+    return UserForm({
+      accountGroup: "Student",
+      user,
+      isSaving: false,
+      error: null,
+      onSave: (value) => saves.push(value),
+      onCancel() {},
+      onDirtyChange: (value) => dirtyStates.push(value),
+    });
+  };
+  const walk = (node, predicate) =>
+    !node || typeof node !== "object"
+      ? []
+      : Array.isArray(node)
+        ? node.flatMap((n) => walk(n, predicate))
+        : [
+            ...(predicate(node) ? [node] : []),
+            ...walk(node.props?.children, predicate),
+          ];
+  let tree = render();
+  const save = () =>
+    walk(tree, (n) => n.type === "Button" && n.props.type === "submit")[0];
+  assert.equal(save().props.disabled, true);
+  tree.props.onSubmit({ preventDefault() {} });
+  assert.equal(saves.length, 0);
+  walk(
+    tree,
+    (n) => n.type === "Input" && n.props["aria-label"] === "Họ và tên",
+  )[0].props.onChange({ target: { value: "Tên mới" } });
+  tree = render();
+  assert.equal(save().props.disabled, false);
+  assert.equal(dirtyStates.at(-1), true);
+  tree.props.onSubmit({ preventDefault() {} });
+  assert.equal(saves[0].fullName, "Tên mới");
+  assert.deepEqual(saves[0].roles, ["Student"]);
+  walk(
+    tree,
+    (n) => n.type === "Input" && n.props["aria-label"] === "Họ và tên",
+  )[0].props.onChange({ target: { value: user.fullName } });
+  tree = render();
+  assert.equal(save().props.disabled, true);
+  assert.equal(dirtyStates.at(-1), false);
+});

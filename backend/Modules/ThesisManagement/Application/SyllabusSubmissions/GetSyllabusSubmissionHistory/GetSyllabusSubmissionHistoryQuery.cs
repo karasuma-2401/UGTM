@@ -1,0 +1,3 @@
+namespace UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusSubmissionHistory;
+
+public sealed record GetSyllabusSubmissionHistoryQuery(Guid GroupId);

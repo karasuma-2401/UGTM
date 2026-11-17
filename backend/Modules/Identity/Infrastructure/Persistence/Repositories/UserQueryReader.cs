@@ -12,7 +12,7 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
         GetUsersQuery query,
         CancellationToken cancellationToken)
     {
-        var usersQuery = db.Users.AsNoTracking();
+        var usersQuery = db.Users.AsNoTracking().FilterByAccountGroup(query.AccountGroup);
 
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
@@ -41,13 +41,33 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
             && Enum.TryParse<SystemRoleName>(query.Role.Trim(), ignoreCase: true, out var roleEnum)
             && Enum.IsDefined(roleEnum))
         {
-            usersQuery = usersQuery.Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == roleEnum));
+            var roleName = roleEnum.ToString();
+            usersQuery = usersQuery.Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == roleName));
         }
 
         var totalCount = await usersQuery.CountAsync(cancellationToken);
 
-        var pagedUsers = await usersQuery
-            .OrderByDescending(u => u.CreatedAt)
+        var isAsc = string.Equals(query.SortOrder, "asc", StringComparison.OrdinalIgnoreCase);
+        var sortedUsers = (query.SortBy?.ToLowerInvariant()) switch
+        {
+            "fullname" => isAsc
+                ? usersQuery.OrderBy(u => u.FullName).ThenBy(u => u.Id)
+                : usersQuery.OrderByDescending(u => u.FullName).ThenBy(u => u.Id),
+            "usercode" => isAsc
+                ? usersQuery.OrderBy(u => u.UserCode == null).ThenBy(u => u.UserCode).ThenBy(u => u.Id)
+                : usersQuery.OrderBy(u => u.UserCode == null).ThenByDescending(u => u.UserCode).ThenBy(u => u.Id),
+            "lastloginat" => isAsc
+                ? usersQuery.OrderBy(u => u.LastLoginAt == null).ThenBy(u => u.LastLoginAt).ThenBy(u => u.Id)
+                : usersQuery.OrderBy(u => u.LastLoginAt == null).ThenByDescending(u => u.LastLoginAt).ThenBy(u => u.Id),
+            "status" => isAsc
+                ? usersQuery.OrderBy(u => u.Status).ThenBy(u => u.Id)
+                : usersQuery.OrderByDescending(u => u.Status).ThenBy(u => u.Id),
+            _ => isAsc
+                ? usersQuery.OrderBy(u => u.CreatedAt).ThenBy(u => u.Id)
+                : usersQuery.OrderByDescending(u => u.CreatedAt).ThenBy(u => u.Id),
+        };
+
+        var pagedUsers = await sortedUsers
             .Skip((query.PageNumber - 1) * query.PageSize)
             .Take(query.PageSize)
             .Select(u => new
@@ -58,7 +78,7 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
                 u.UserCode,
                 u.PhoneNumber,
                 Status = u.Status.ToString(),
-                Roles = u.UserRoles.Select(ur => ur.Role.RoleName.ToString()).ToList(),
+                Roles = u.UserRoles.Select(ur => ur.Role.RoleName).ToList(),
                 u.CreatedAt,
                 u.LastLoginAt
             })

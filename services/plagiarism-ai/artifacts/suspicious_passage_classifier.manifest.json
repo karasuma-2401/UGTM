@@ -1,0 +1,58 @@
+{
+  "model_version": "candidate-lr-v2-calibrated",
+  "feature_schema": "candidate-features-v1",
+  "feature_names": [
+    "semantic_cosine",
+    "reranker_score",
+    "char_trigram_dice",
+    "token_jaccard",
+    "length_ratio"
+  ],
+  "embedding_model": "BAAI/bge-m3",
+  "reranker_model": "BAAI/bge-reranker-v2-m3",
+  "artifact_sha256": "0c066eb6e9c058b5fe00bd32a38616b5fce07aa0bee932275e611d855598294b",
+  "sklearn_version": "1.9.1",
+  "threshold": 0.14,
+  "calibration_method": "sigmoid_platt_scaling_cv5",
+  "decision_bands": {
+    "tau_low": 0.3,
+    "tau_high": 0.7,
+    "uncertainty_band_action": "flag_with_needs_human_review"
+  },
+  "created_at": "2026-10-30T14:44:10.178925+00:00",
+  "dataset_size": 560,
+  "group_counts": {
+    "train_pairs": 560,
+    "val_pairs": 120
+  },
+  "feature_coefficients": {
+    "semantic_cosine": 0.4819,
+    "reranker_score": 4.3353,
+    "char_trigram_dice": 0.6647,
+    "token_jaccard": 0.7182,
+    "length_ratio": -0.8697
+  },
+  "intercept": 2.2156,
+  "validation_metrics": {
+    "model_name": "Calibrated Logistic Regression (Platt Scaling)",
+    "threshold": 0.14,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "pr_auc": 1.0,
+    "roc_auc": 1.0,
+    "brier_score": 0.0024,
+    "ece": 0.0372,
+    "confusion_matrix": [
+      [
+        39,
+        0
+      ],
+      [
+        0,
+        81
+      ]
+    ]
+  },
+  "meaning": "calibrated probability of content reuse; not a final plagiarism verdict"
+}

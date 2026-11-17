@@ -42,7 +42,7 @@ public sealed class InitialAdminBootstrapperTests
         Assert.Equal("ADMIN01", user.UserCode);
         Assert.Equal(AccountStatus.Active, user.Status);
         Assert.Equal("hashed-StrongAdmin123!", user.PasswordHash);
-        Assert.Contains(user.UserRoles, ur => ur.Role.RoleName == SystemRoleName.Admin);
+        Assert.Contains(user.UserRoles, ur => ur.Role.RoleName == nameof(SystemRoleName.Admin));
         Assert.Equal(1, repo.AdminMutationLockCount);
 
         var auditEntry = Assert.Single(auditLogs.Entries);
@@ -309,7 +309,7 @@ public sealed class InitialAdminBootstrapperTests
         {
             UserId = user.Id,
             RoleId = (int)role + 1,
-            Role = new Role { Id = (int)role + 1, RoleName = role },
+            Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
             AssignedAt = Now,
             User = user
         });
@@ -363,7 +363,7 @@ public sealed class InitialAdminBootstrapperTests
             {
                 UserId = user.Id,
                 RoleId = (int)role + 1,
-                Role = new Role { Id = (int)role + 1, RoleName = role },
+                Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
                 AssignedAt = assignedAt,
                 User = user
             });
@@ -388,7 +388,7 @@ public sealed class InitialAdminBootstrapperTests
                 {
                     UserId = user.Id,
                     RoleId = (int)role + 1,
-                    Role = new Role { Id = (int)role + 1, RoleName = role },
+                    Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
                     AssignedAt = assignedAt,
                     User = user
                 });
@@ -399,7 +399,7 @@ public sealed class InitialAdminBootstrapperTests
         public Task<int> CountActiveAdminsAsync(Guid? excludeUserId, CancellationToken cancellationToken)
         {
             var count = Users
-                .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin))
+                .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == nameof(SystemRoleName.Admin)))
                 .Where(u => !excludeUserId.HasValue || u.Id != excludeUserId.Value)
                 .Count();
             return Task.FromResult(count);
@@ -416,7 +416,7 @@ public sealed class InitialAdminBootstrapperTests
 
         public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)
         {
-            var exists = Users.Any(u => u.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin));
+            var exists = Users.Any(u => u.UserRoles.Any(ur => ur.Role.RoleName == nameof(SystemRoleName.Admin)));
             return Task.FromResult(exists);
         }
 

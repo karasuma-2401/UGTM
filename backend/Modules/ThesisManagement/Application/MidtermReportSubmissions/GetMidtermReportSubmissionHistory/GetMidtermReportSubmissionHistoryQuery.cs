@@ -1,0 +1,3 @@
+namespace UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.GetMidtermReportSubmissionHistory;
+
+public sealed record GetMidtermReportSubmissionHistoryQuery(Guid GroupId);

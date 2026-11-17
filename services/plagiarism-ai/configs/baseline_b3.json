@@ -1,0 +1,24 @@
+{
+  "baseline_id": "B3",
+  "name": "Hybrid RRF Baseline (Lexical + Dense without Reranker)",
+  "description": "Reciprocal Rank Fusion of pg_trgm lexical and BGE-M3 dense branches without cross-encoder reranking.",
+  "research_question": "RQ2",
+  "pipeline": {
+    "preprocessing": "block_cleaned",
+    "retrieval": {
+      "branch": "hybrid_rrf",
+      "lexical_metric": "char_trigram_dice",
+      "dense_model": "BAAI/bge-m3",
+      "rrf_k": 60,
+      "top_k_per_branch": 50,
+      "fused_k": 50
+    },
+    "classification": {
+      "mode": "disjunctive_heuristic_threshold",
+      "dense_threshold": 0.68,
+      "lexical_threshold": 0.65
+    }
+  },
+  "hardware_budget": "Dense embedding compute + CPU fusion, 0 cross-encoder FLOPs"
+}
+

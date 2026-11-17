@@ -83,8 +83,11 @@ Hỗ trợ phân trang, tìm kiếm theo từ khóa và lọc theo vai trò, tr�
 | `pageNumber` | `integer` | `1` | Số trang cần lấy ($\ge 1$, nếu nhỏ hơn 1 hệ thống tự căn chỉnh về 1) |
 | `pageSize` | `integer` | `10` | Số lượng người dùng trên một trang ($1 \le pageSize \le 100$, vượt ngưỡng tự căn chỉnh) |
 | `keyword` | `string?` | — | Từ khóa tìm kiếm không phân biệt hoa thường (so khớp `NormalizedEmail`, `FullName`, `UserCode`) |
+| `accountGroup` | `string?` | — | `Student`: có vai trò Sinh viên. `Staff`: không có vai trò Sinh viên (bao gồm tài khoản chưa có vai trò). Bỏ trống để tra cứu tất cả như trước. Giá trị không hợp lệ hoặc chuỗi số trả 400 `Identity.InvalidAccountGroup`. |
 | `role` | `string?` | — | Lọc theo vai trò (`Student`, `Lecturer`, `Admin`, `Faculty`, `AcademicAffairs`, `CouncilMember`). Chuỗi số (ví dụ `"999"`, `"0"`, `"-1"`) hoặc tên vai trò không tồn tại sẽ bị từ chối với lỗi 400 |
 | `status` | `string?` | — | Lọc theo trạng thái (`PendingActivation`, `Active`, `Suspended`, `Disabled`). Chuỗi số (ví dụ `"999"`, `"0"`, `"-1"`) hoặc trạng thái không tồn tại sẽ bị từ chối với lỗi 400 |
+
+Nhóm tài khoản được lọc tại database trước khi đếm tổng và phân trang. Có thể kết hợp `accountGroup` với các bộ lọc khác, ví dụ `/api/users?accountGroup=Student&status=PendingActivation&pageSize=20` hoặc `/api/users?accountGroup=Staff&role=Lecturer`.
 
 #### Phản hồi thành công (200 OK)
 

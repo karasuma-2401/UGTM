@@ -3,6 +3,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '@/shared/api/config';
 import { clearCsrfToken, CSRF_HEADER_NAME, getCsrfToken } from '@/shared/api/csrf';
 import { httpClient } from '@/shared/api/httpClient';
+import { refreshSession } from '@/shared/api/sessionRefresh';
 import type { ApiResponse } from '@/shared/api/types';
 
 import type {
@@ -14,10 +15,9 @@ import type {
 
 const AUTH_BASE_PATH = '/api/identity/auth';
 
-// Public auth operations (login, refresh, logout) must use withCredentials: true
-// to receive and send HttpOnly refresh and csrf cookies, and bypass Bearer interceptor.
 const publicAuthClient = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 15_000,
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -40,17 +40,7 @@ export async function loginApi(payload: LoginRequest): Promise<ApiResponse<Login
 }
 
 export async function refreshTokenApi(): Promise<ApiResponse<LoginData>> {
-  const csrfToken = await getCsrfToken(true);
-  const response = await publicAuthClient.post<ApiResponse<LoginData>>(
-    `${AUTH_BASE_PATH}/refresh`,
-    {},
-    {
-      headers: {
-        [CSRF_HEADER_NAME]: csrfToken,
-      },
-    },
-  );
-  return response.data;
+  return refreshSession();
 }
 
 export async function logoutApi(): Promise<ApiResponse<null>> {
@@ -72,7 +62,9 @@ export async function logoutApi(): Promise<ApiResponse<null>> {
 }
 
 export async function getCurrentUserApi(): Promise<ApiResponse<UserProfile>> {
-  const response = await httpClient.get<ApiResponse<UserProfile>>(`${AUTH_BASE_PATH}/me`);
+  const response = await httpClient.get<ApiResponse<UserProfile>>(`${AUTH_BASE_PATH}/me`, {
+    timeout: 15_000,
+  });
   return response.data;
 }
 
@@ -85,8 +77,6 @@ export async function changePasswordApi(
   );
   return response.data;
 }
-
-// --- Account Activation APIs ---
 
 export interface ActivationValidateData {
   maskedEmail: string;
@@ -122,8 +112,6 @@ export async function resendActivationApi(identifier: string): Promise<ApiRespon
   );
   return response.data;
 }
-
-// --- Password Recovery APIs ---
 
 export interface RecoveryStartData {
   challengeId: string;

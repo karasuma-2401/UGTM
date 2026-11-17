@@ -277,7 +277,7 @@ public sealed class IdentityLifecycleIntegrationTests(PostgreSqlFixture fixture)
             Now,
             Now.Add(policy.ActivationLifetime));
         var studentRoleId = await db.Roles
-            .Where(role => role.RoleName == SystemRoleName.Student)
+            .Where(role => role.RoleName == nameof(SystemRoleName.Student))
             .Select(role => role.Id)
             .SingleAsync();
 

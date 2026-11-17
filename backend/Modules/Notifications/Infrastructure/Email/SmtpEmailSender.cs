@@ -1,5 +1,6 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using UGTM.Modules.Notifications.Contracts.Email;
@@ -27,11 +28,15 @@ public sealed record SmtpOptions
     public int TimeoutSeconds { get; init; } = 30;
 }
 
-public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSender
+public sealed class SmtpEmailSender(
+    IOptions<SmtpOptions> options,
+    ILogger<SmtpEmailSender> logger) : IEmailSender
 {
     public async Task SendAsync(EmailMessage email, CancellationToken cancellationToken)
     {
         var settings = options.Value;
+        logger.LogInformation("SMTP: Bắt đầu gửi email đến {To} | Tiêu đề: '{Subject}'", email.To, email.Subject);
+
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(settings.FromName, settings.FromAddress));
         message.To.Add(MailboxAddress.Parse(email.To));
@@ -57,34 +62,43 @@ public sealed class SmtpEmailSender(IOptions<SmtpOptions> options) : IEmailSende
 
         message.Body = bodyBuilder.ToMessageBody();
 
-        using var client = new SmtpClient();
-        client.Timeout = checked(settings.TimeoutSeconds * 1000);
-        client.CheckCertificateRevocation = true;
-        await client.ConnectAsync(
-            settings.Host,
-            settings.Port,
-            settings.Security switch
-            {
-                SmtpSecurityMode.None => SecureSocketOptions.None,
-                SmtpSecurityMode.StartTls => SecureSocketOptions.StartTls,
-                SmtpSecurityMode.SslOnConnect => SecureSocketOptions.SslOnConnect,
-                _ => throw new InvalidOperationException("Unsupported SMTP security mode.")
-            },
-            cancellationToken);
-
-        if (!string.IsNullOrWhiteSpace(settings.Username))
+        try
         {
-            var password = settings.Password
-                ?? throw new InvalidOperationException(
-                    "SMTP password is required when a username is configured.");
-
-            await client.AuthenticateAsync(
-                settings.Username,
-                password,
+            using var client = new SmtpClient();
+            client.Timeout = checked(settings.TimeoutSeconds * 1000);
+            client.CheckCertificateRevocation = true;
+            await client.ConnectAsync(
+                settings.Host,
+                settings.Port,
+                settings.Security switch
+                {
+                    SmtpSecurityMode.None => SecureSocketOptions.None,
+                    SmtpSecurityMode.StartTls => SecureSocketOptions.StartTls,
+                    SmtpSecurityMode.SslOnConnect => SecureSocketOptions.SslOnConnect,
+                    _ => throw new InvalidOperationException("Unsupported SMTP security mode.")
+                },
                 cancellationToken);
-        }
 
-        await client.SendAsync(message, cancellationToken);
-        await client.DisconnectAsync(true, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(settings.Username))
+            {
+                var password = settings.Password
+                    ?? throw new InvalidOperationException(
+                        "SMTP password is required when a username is configured.");
+
+                await client.AuthenticateAsync(
+                    settings.Username,
+                    password,
+                    cancellationToken);
+            }
+
+            await client.SendAsync(message, cancellationToken);
+            await client.DisconnectAsync(true, cancellationToken);
+            logger.LogInformation("SMTP: Gửi email thành công đến {To}!", email.To);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "SMTP: Lỗi khi gửi email đến {To}: {ErrorMessage}", email.To, ex.Message);
+            throw;
+        }
     }
 }

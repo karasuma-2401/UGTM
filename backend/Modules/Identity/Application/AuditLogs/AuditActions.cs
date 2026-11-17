@@ -7,6 +7,7 @@ public static class AuditActions
     public const string UserStatusChanged = "Identity.User.StatusChanged";
     public const string UserRolesChanged = "Identity.User.RolesChanged";
     public const string UsersImported = "Identity.Users.Imported";
+    public const string RoleCreated = "Identity.Role.Created";
     public const string RolePermissionsChanged = "Identity.Role.PermissionsChanged";
     public const string SessionRevoked = "Identity.Session.Revoked";
     public const string UserSessionsRevoked = "Identity.User.SessionsRevoked";
@@ -20,6 +21,7 @@ public static class AuditActions
     public const string PasswordRecoveryRequested = "Identity.Account.PasswordRecoveryRequested";
     public const string RecoveryOtpVerified = "Identity.Account.RecoveryOtpVerified";
     public const string PasswordReset = "Identity.Account.PasswordReset";
+    public const string Reauthentication = "Identity.Account.Reauthentication";
 }
 
 public static class AuditOutcomes

@@ -19,6 +19,38 @@ namespace UGTM.Modules.Identity.Tests.Application;
 
 public sealed class UsersHandlerTests
 {
+    [Theory]
+    [InlineData("student", "Student")]
+    [InlineData(" STAFF ", "Staff")]
+    [InlineData(null, null)]
+    [InlineData(" ", null)]
+    public async Task GetUsersHandler_normalizes_account_groups(string? input, string? expected)
+    {
+        var reader = new StubUserQueryReader();
+        var result = await new GetUsersHandler(reader).HandleAsync(
+            new GetUsersQuery(AccountGroup: input), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(expected, reader.LastQuery!.AccountGroup);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("1")]
+    [InlineData("-1")]
+    [InlineData("Lecturer")]
+    [InlineData("Student, Staff")]
+    public async Task GetUsersHandler_rejects_invalid_account_groups(string input)
+    {
+        var reader = new StubUserQueryReader();
+        var result = await new GetUsersHandler(reader).HandleAsync(
+            new GetUsersQuery(AccountGroup: input), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidAccountGroup", result.Error.Code);
+        Assert.Null(reader.LastQuery);
+    }
+
     private static readonly DateTime Now = new(2026, 10, 13, 10, 0, 0, DateTimeKind.Utc);
 
     [Fact]
@@ -63,7 +95,7 @@ public sealed class UsersHandlerTests
         {
             Assert.Equal(AccountStatus.PendingActivation, user.Status);
             Assert.Null(user.PasswordHash);
-            Assert.Contains(user.UserRoles, userRole => userRole.Role.RoleName == SystemRoleName.Student);
+            Assert.Contains(user.UserRoles, userRole => userRole.Role.RoleName == nameof(SystemRoleName.Student));
         });
         Assert.Contains(repo.Users, user => user.UserCode == "SV001");
         Assert.Equal(AuditActions.UsersImported, Assert.Single(auditLogs.Entries).Action);
@@ -663,6 +695,49 @@ public sealed class UsersHandlerTests
         Assert.Null(stubReader.LastQuery);
     }
 
+    [Theory]
+    [InlineData(null, null, "createdat", "desc")]
+    [InlineData(" FullName ", " ASC ", "fullname", "asc")]
+    [InlineData("userCode", "DeSc", "usercode", "desc")]
+    [InlineData("lastLoginAt", "asc", "lastloginat", "asc")]
+    [InlineData("STATUS", "DESC", "status", "desc")]
+    public async Task GetUsersHandler_normalizes_sort_parameters(
+        string? sortBy,
+        string? sortOrder,
+        string expectedSortBy,
+        string expectedSortOrder)
+    {
+        var stubReader = new StubUserQueryReader();
+        var handler = new GetUsersHandler(stubReader);
+
+        var result = await handler.HandleAsync(
+            new GetUsersQuery(SortBy: sortBy, SortOrder: sortOrder),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(stubReader.LastQuery);
+        Assert.Equal(expectedSortBy, stubReader.LastQuery!.SortBy);
+        Assert.Equal(expectedSortOrder, stubReader.LastQuery!.SortOrder);
+    }
+
+    [Theory]
+    [InlineData("email", "asc")]
+    [InlineData("fullname", "up")]
+    [InlineData("drop table users", null)]
+    public async Task GetUsersHandler_rejects_invalid_sort_parameters(string? sortBy, string? sortOrder)
+    {
+        var stubReader = new StubUserQueryReader();
+        var handler = new GetUsersHandler(stubReader);
+
+        var result = await handler.HandleAsync(
+            new GetUsersQuery(SortBy: sortBy, SortOrder: sortOrder),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Identity.InvalidSort", result.Error.Code);
+        Assert.Null(stubReader.LastQuery);
+    }
+
     [Fact]
     public async Task CreateUserHandler_and_UpdateUserHandler_reject_null_or_whitespace_role_elements()
     {
@@ -829,7 +904,7 @@ public sealed class UsersHandlerTests
         Assert.Equal(IdentityErrors.CannotBecomeStudent.Code, result.Error.Code);
         Assert.Equal("Original Name", user.FullName);
         Assert.Equal(oldStamp, user.SecurityStamp);
-        Assert.Equal(existingRole, Assert.Single(user.UserRoles).Role.RoleName);
+        Assert.Equal(existingRole.ToString(), Assert.Single(user.UserRoles).Role.RoleName);
     }
 
     [Fact]
@@ -875,7 +950,7 @@ public sealed class UsersHandlerTests
         {
             UserId = user.Id,
             RoleId = (int)role + 1,
-            Role = new Role { Id = (int)role + 1, RoleName = role },
+            Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
             AssignedAt = Now,
             User = user
         });
@@ -1227,7 +1302,7 @@ public sealed class UsersHandlerTests
             {
                 UserId = user.Id,
                 RoleId = (int)role + 1,
-                Role = new Role { Id = (int)role + 1, RoleName = role },
+                Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
                 AssignedAt = assignedAt,
                 User = user
             });
@@ -1252,7 +1327,7 @@ public sealed class UsersHandlerTests
                 {
                     UserId = user.Id,
                     RoleId = (int)role + 1,
-                    Role = new Role { Id = (int)role + 1, RoleName = role },
+                    Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
                     AssignedAt = assignedAt,
                     User = user
                 });
@@ -1263,7 +1338,7 @@ public sealed class UsersHandlerTests
         public Task<int> CountActiveAdminsAsync(Guid? excludeUserId, CancellationToken cancellationToken)
         {
             var count = Users
-                .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin))
+                .Where(u => u.Status == AccountStatus.Active && u.UserRoles.Any(ur => ur.Role.RoleName == nameof(SystemRoleName.Admin)))
                 .Where(u => !excludeUserId.HasValue || u.Id != excludeUserId.Value)
                 .Count();
             return Task.FromResult(count);
@@ -1280,7 +1355,7 @@ public sealed class UsersHandlerTests
 
         public Task<bool> AnyAdminExistsAsync(CancellationToken cancellationToken)
         {
-            var exists = Users.Any(u => u.UserRoles.Any(ur => ur.Role.RoleName == SystemRoleName.Admin));
+            var exists = Users.Any(u => u.UserRoles.Any(ur => ur.Role.RoleName == nameof(SystemRoleName.Admin)));
             return Task.FromResult(exists);
         }
 

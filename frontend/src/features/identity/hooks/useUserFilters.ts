@@ -1,0 +1,91 @@
+import { useState, type FormEvent } from 'react';
+import type { AccountStatus, UsersQuery, UsersSortField } from '../types/user.types';
+
+export type UserFilters = Pick<UsersQuery, 'keyword' | 'role' | 'status'>;
+
+export const INITIAL_FILTERS: UserFilters = {
+  keyword: '',
+  role: '',
+  status: '',
+};
+
+export function useUserFilters() {
+  const [draftFilters, setDraftFilters] = useState<UserFilters>(INITIAL_FILTERS);
+  const [filters, setFilters] = useState<UserFilters>(INITIAL_FILTERS);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [sort, setSort] = useState<{ field: UsersSortField; direction: 'asc' | 'desc' } | undefined>(
+    undefined,
+  );
+
+  const handleSortChange = (field: UsersSortField) => {
+    setSort((prev) => ({
+      field,
+      direction: prev?.field === field && prev.direction === 'asc' ? 'desc' : 'asc',
+    }));
+    setPageNumber(1);
+  };
+
+  const quickFilter = (status: AccountStatus | '') => {
+    const next = { ...INITIAL_FILTERS, status };
+    setFilters(next);
+    setDraftFilters(next);
+    setPageNumber(1);
+  };
+
+  const updateFilters = (next: UserFilters) => {
+    setDraftFilters(next);
+    setFilters({
+      ...next,
+      keyword: next.keyword.trim(),
+    });
+    setPageNumber(1);
+  };
+
+  const handleApplyFilters = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    updateFilters(draftFilters);
+  };
+
+  const clearFilters = () => {
+    setDraftFilters({ ...INITIAL_FILTERS });
+    setFilters({ ...INITIAL_FILTERS });
+    setSort(undefined);
+    setPageNumber(1);
+  };
+
+  const removeFilter = (key: keyof UserFilters) => {
+    const next = { ...filters, [key]: '' };
+    setDraftFilters(next);
+    setFilters(next);
+    setPageNumber(1);
+  };
+
+  const hasFilters = Boolean(
+    filters.keyword ||
+    filters.role ||
+    filters.status ||
+    draftFilters.keyword ||
+    draftFilters.role ||
+    draftFilters.status,
+  );
+
+  return {
+    draftFilters,
+    setDraftFilters: updateFilters,
+    filters,
+    setFilters,
+    pageNumber,
+    setPageNumber,
+    pageSize,
+    setPageSize,
+    sort,
+    setSort,
+    handleSortChange,
+    quickFilter,
+    handleApplyFilters,
+    clearFilters,
+    removeFilter,
+    hasFilters,
+  };
+}

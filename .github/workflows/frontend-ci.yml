@@ -12,9 +12,6 @@ on:
     branches:
       - dev
       - production
-    paths:
-      - "frontend/**"
-      - ".github/workflows/frontend-ci.yml"
   workflow_dispatch:
 
 concurrency:
@@ -51,6 +48,9 @@ jobs:
 
       - name: TypeScript typecheck
         run: npx tsc -b
+
+      - name: Run frontend unit tests
+        run: npm test
 
   build:
     name: Build SPA

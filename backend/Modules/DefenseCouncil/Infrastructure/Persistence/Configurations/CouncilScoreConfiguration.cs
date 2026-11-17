@@ -15,6 +15,7 @@ public class CouncilScoreConfiguration : IEntityTypeConfiguration<CouncilScore>
             table.HasCheckConstraint("ck_council_score_score", "score BETWEEN 0 AND 10"));
 
         builder.HasKey(x => x.Id);
+        builder.Property(x => x.Version).IsRowVersion();
         builder.Property(x => x.IsIgnoredInCalculation).HasDefaultValue(false);
         builder.Property(x => x.ExclusionReason).HasColumnType("text");
 

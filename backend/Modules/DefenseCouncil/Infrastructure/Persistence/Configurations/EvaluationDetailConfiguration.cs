@@ -4,13 +4,20 @@ public class EvaluationDetailConfiguration : IEntityTypeConfiguration<Evaluation
 {
     public void Configure(EntityTypeBuilder<EvaluationDetail> builder)
     {
-        builder.HasIndex(x => new { x.CriteriaId, x.EvaluationId })
-            .HasDatabaseName("ix_evaluation_detail_criteria_id_evaluation_id")
-            .IsUnique();
+        builder.HasIndex(x => new { x.CriteriaId, x.EvaluationId, x.StudentId })
+            .HasDatabaseName("ix_evaluation_detail_criteria_id_evaluation_id_student_id")
+            .IsUnique()
+            .AreNullsDistinct(false);
+
+        builder.HasIndex(x => x.StudentId)
+            .HasDatabaseName("ix_evaluation_detail_student_id");
 
         builder.ToTable("evaluation_detail", "councils");
 
         builder.HasKey(x => x.Id);
+
+        builder.Property(x => x.StudentId)
+            .HasColumnName("student_id");
 
         builder.Property(x => x.Score)
             .HasPrecision(4, 2)

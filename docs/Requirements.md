@@ -11,7 +11,7 @@ Hệ thống quản lý KLTN tại UIT, gồm 7 giai đoạn và 2 cổng kiểm
 | 1 | Tuần 0–1 | GVHD đề xuất đề tài; Văn phòng Khoa thẩm định, phê duyệt và công bố danh mục đề tài. |
 | 2 | Tuần 2 | Sinh viên đăng ký đề tài, ghép nhóm và nộp đề cương chi tiết; Văn phòng Khoa thẩm định đề cương tại Cổng kiểm soát 1. |
 | 3 | Tuần 3–10 | Sinh viên thực hiện đề tài theo các Milestones do GVHD thiết lập, nộp sản phẩm tiến độ, báo cáo giữa kỳ và thực hiện thủ tục đổi tên đề tài khi có nhu cầu. |
-| 4 | Tuần 10 | GVHD đánh giá báo cáo giữa kỳ và quyết định cho phép tiếp tục hoặc dừng KLTN tại Cổng kiểm soát 2; Văn phòng Khoa tổng hợp kết quả gửi Phòng Đào tạo. |
+| 4 | Tuần 10 | Văn phòng Khoa thẩm định báo cáo giữa kỳ tại Cổng kiểm soát 2; kết quả `Approved`, `NeedRevision` hoặc `Rejected` quyết định nhóm tiếp tục, nộp lại hay dừng KLTN. |
 | 5 | Tuần 11–18 | Sinh viên nộp báo cáo cuối kỳ; GVHD nhận xét, chấm điểm và xác nhận chuyển phản biện; GVPB đánh giá, chấm điểm và kết luận điều kiện bảo vệ. |
 | 6 | Tuần 19–21 | Văn phòng Khoa lập Hội đồng và xếp lịch bảo vệ; Phòng Đào tạo phê duyệt quyết định; Hội đồng tổ chức bảo vệ, chấm điểm và khóa biên bản. Sau bảo vệ, sinh viên hoàn thiện hồ sơ lưu chiểu, GVHD kiểm tra bản chỉnh sửa và Khoa xác nhận hoàn thành lưu chiểu. |
 | 7 | Tuần 21 | Văn phòng Khoa tổng hợp điểm theo cấu hình động của đợt KLTN, rà soát bảng điểm dự thảo và công bố kết quả chính thức; Khoa và Phòng Đào tạo xuất báo cáo phục vụ xét tốt nghiệp. |
@@ -38,7 +38,7 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 | Tạo, chỉnh sửa đề tài | — | TH | — | X | — | — | — |
 | Thẩm định, duyệt và công bố đề tài | X | X | — | D | — | — | — |
 | Tạo nhóm, đăng ký đề tài | TH | — | — | X | — | — | — |
-| Xác nhận tiếp nhận nhóm đăng ký | X | D | — | X | — | — | — |
+| Xác nhận tham gia nhóm và theo dõi đăng ký | TH | X | — | X | — | — | — |
 | Nộp đề cương chi tiết | N | X | — | X | — | — | — |
 | Thẩm định đề cương — Cổng 1 | X | X | — | D | X | — | — |
 | Chỉnh sửa, nộp lại đề cương khi Khoa yêu cầu | N* | X | — | X | — | — | — |
@@ -50,7 +50,7 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 | Theo dõi trạng thái, hạn nộp và cảnh báo trễ mốc | X | X | — | — | — | — | — |
 | 4. Báo cáo giữa kỳ và thẩm định điều kiện tiếp tục — Cổng 2 |  |  |  |  |  |  |  |
 | Nộp báo cáo giữa kỳ | N | X | — | X | — | — | — |
-| Nhận xét, quyết định Tiếp tục/Dừng KLTN | X | D | — | X | — | — | — |
+| Thẩm định báo cáo giữa kỳ — Cổng 2 | X | X | — | D | — | — | D |
 | Tổng hợp kết quả giữa kỳ và chuyển PĐT | X | X | — | TH | X | — | — |
 | 5. Đổi tên đề tài liên thông ba cấp |  |  |  |  |  |  |  |
 | Tạo đơn xin đổi tên đề tài | TH | X | — | X | X | — | — |
@@ -102,7 +102,7 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 **Luồng lý tưởng:**
 
 - Quản trị viên hoặc phòng Đào tạo khởi tạo đợt KLTN mới theo năm học và học kỳ (chu kỳ 21 tuần cố định), cấu hình hạn chót cho từng giai đoạn và nạp danh sách người dùng (import danh sách sinh viên đủ điều kiện, giảng viên từ Excel).
-- Văn phòng Khoa truy cập phân hệ cấu hình bảng điểm để thiết lập phương thức tính điểm tổng kết (tính theo phần trăm trọng số hoặc trung bình cộng hệ số nguyên):
+- PĐT hoặc Admin truy cập phân hệ cấu hình bảng điểm để thiết lập phương thức tính điểm tổng kết (tính theo phần trăm trọng số hoặc trung bình cộng hệ số nguyên):
 - + Thiết lập danh mục các đầu điểm thành phần: Điểm Cán bộ hướng dẫn (ADVISOR), Điểm Cán bộ phản biện (REVIEWER), Điểm Hội đồng bảo vệ (COUNCIL), kèm các đầu điểm tùy chọn khác.
 - + Gán tỷ lệ trọng số (Wi%) hoặc hệ số nguyên (Ci) tương ứng cho từng đầu điểm (ví dụ: GVHD hệ số 2, GVPB hệ số 2, Hội đồng hệ số 1).
 - + Cấu hình điều kiện tiên quyết cho từng đầu điểm (ví dụ: GVPB bắt buộc có điểm sàn ≥5.0 mới đủ điều kiện ra bảo vệ).
@@ -110,7 +110,7 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 
 **Luồng phát sinh:**
 
-- Điều chỉnh công thức/trọng số điểm giữa kỳ: Văn phòng Khoa/Admin chỉ cần cập nhật tham số trên giao diện cấu hình đợt mà không cần can thiệp chỉnh sửa mã nguồn.
+- Điều chỉnh công thức/trọng số điểm: PĐT/Admin tạo Draft từ version đang hoạt động, nhập lý do và công bố version mới mà không cần can thiệp chỉnh sửa mã nguồn.
 - Ràng buộc cấu hình trọng số: Nếu cấu hình theo tỷ lệ phần trăm (%), tổng các Wi phải bằng 100%; nếu cấu hình theo hệ số nguyên (Ci), tổng hệ số phải lớn hơn 0. Nếu vi phạm, hệ thống từ chối lưu và đưa ra cảnh báo lỗi trực quan.
 
 ### Quy trình đăng ký đề tài, ghép nhóm và thẩm định đề cương (Cổng kiểm soát 1 — Tuần 0 đến tuần 2)
@@ -122,8 +122,8 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 - Khoa tiến hành thẩm định danh mục đề tài → Phê duyệt → Công bố công khai để sinh viên tra cứu.
 - Sinh viên đủ điều kiện tra cứu đề tài, chọn đề tài mong muốn và tạo nhóm (tối đa 2 sinh viên). Từng thành viên hoặc đại diện nhóm đăng ký đề tài.
 - Hệ thống kích hoạt giao tác CSDL và cơ chế khóa dữ liệu (Database Transaction + Locking/Updlock) để trừ chỉ tiêu trống của đề tài, ngăn chặn tình trạng nhiều nhóm cùng đăng ký một lúc và xuất phiếu tiếp nhận đăng ký dạng PDF.
-- GVHD nhận thông báo, truy cập hệ thống và bấm xác nhận tiếp nhận nhóm sinh viên.
-- Nhóm sinh viên cùng GVHD xây dựng đề cương chi tiết → Đại diện nhóm upload file đề cương (định dạng .pdf, .doc, .docx ≤20 MB) lên hệ thống trước hạn chót Tuần 2.
+- Đăng ký cá nhân hoặc sinh viên do GVHD chỉ định có hiệu lực ngay; thành viên được mời xác nhận trong 24 giờ theo hạn hệ thống. GVHD theo dõi nhóm và tiến độ, không có bước phê duyệt tiếp nhận nhóm riêng (chốt ngày 13/11/2026).
+- Nhóm sinh viên cùng GVHD xây dựng đề cương chi tiết → Đại diện nhóm upload file đề cương (định dạng .pdf, .doc, .docx ≤20 MiB (20,971,520 byte)) lên hệ thống trước hạn chót Tuần 2.
 - Văn phòng Khoa thẩm định đề cương (Cổng kiểm soát 1): Khoa đánh giá "Đạt" → Hệ thống tự động chuyển trạng thái của nhóm sang "Đang thực hiện KLTN" và mở khóa quyền truy cập các tính năng tiếp theo.
 
 **Luồng phát sinh:**
@@ -154,14 +154,15 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 
 - Trong suốt giai đoạn Tuần 3 đến Tuần 10, nhóm sinh viên hoàn thiện nội dung theo các mốc và theo dõi tiến độ tổng thể trên Dashboard.
 - Đến hạn chót Tuần 10, sinh viên upload tệp Báo cáo giữa kỳ lên hệ thống.
-- GVHD xem xét báo cáo, nhập phiếu nhận xét tiến độ giữa kỳ và đưa ra quyết định thẩm định.
-- GVHD chọn "Đồng ý tiếp tục KLTN" → Dữ liệu báo cáo của nhóm được chuyển lên Văn phòng Khoa.
-- Khoa tiếp nhận, tổng hợp danh sách nhóm được tiếp tục thực hiện và chuyển dữ liệu sang Phòng Đào tạo để theo dõi.
+- Văn phòng Khoa thẩm định báo cáo giữa kỳ tại Cổng 2, nhập nhận xét và chọn `Approved`, `NeedRevision` hoặc `Rejected`.
+- `Approved` giữ nhóm ở trạng thái thực hiện KLTN; `NeedRevision` mở quyền nộp phiên bản mới trước hạn chót cuối cùng; `Rejected` chuyển nhóm sang `Stopped`.
+- Khi qua hạn chốt cuối cùng mà báo cáo chưa `Approved`, hệ thống tự động dừng nhóm và lưu audit trail.
 
 **Luồng phát sinh:**
 
-- GVHD đánh giá "Không đồng ý tiếp tục KLTN": GVHD nhập lý do đình chỉ trên hệ thống → Đề tài chuyển sang trạng thái "Dừng KLTN", ngắt quyền truy cập các giai đoạn sau và ghi nhận điểm kết quả giữa kỳ/học phần là 0 điểm theo quy chế.
-- Nộp trễ hạn Tuần 10: Hệ thống tự động khóa chức năng upload báo cáo giữa kỳ khi qua hạn chót; sinh viên không thể nộp bài và tự động bị xem xét dừng đề tài.
+- Khoa chọn `NeedRevision`: Khoa nhập feedback → hệ thống mở quyền cho nhóm nộp phiên bản mới cho đến deadline chốt cuối cùng; lịch sử phiên bản và feedback cũ được giữ nguyên.
+- Khoa chọn `Rejected`: Khoa nhập feedback → nhóm chuyển `Stopped` và các nghiệp vụ KLTN tiếp theo bị khóa.
+- Quá deadline chốt cuối cùng: worker tự động dừng nhóm nếu báo cáo giữa kỳ chưa `Approved`; deadline lấy từ cấu hình đợt, không hard-code tuần hoặc ngày trong source.
 
 ### Luồng Đổi tên đề tài (ĐTĐT) liên thông 3 bên (Tuần 3 đến Tuần 10)
 
@@ -186,8 +187,9 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 
 **Luồng lý tưởng:**
 
-- Sinh viên upload bản Báo cáo cuối kỳ toàn văn hoàn chỉnh (file .pdf, .docx ≤20 MB) lên hệ thống trong giai đoạn Tuần 11–18.
-- GVHD truy cập đọc báo cáo, nhập phiếu nhận xét hướng dẫn, chấm điểm hướng dẫn (ADVISOR) trực tiếp trên hệ thống và xác nhận cho phép chuyển sang khâu phản biện.
+- Student đã Confirmed trong nhóm đang hoạt động, được Khoa/Admin Approved giữa kỳ, upload báo cáo cuối kỳ toàn văn PDF/DOC/DOCX ≤20 MiB (20,971,520 byte). Đợt phải Open và thời điểm nhận nằm trong FINAL_EVALUATION theo lịch/múi giờ cấu hình của đợt (mặc định Tuần 11–18), bao gồm đúng giờ mở và deadline.
+- Bất kỳ thành viên đã Confirmed nào cũng được nộp lại trong hạn khi chưa bắt đầu chấm. Giữ nguyên mã/loại InitialFinal, tăng số phiên bản, giữ toàn bộ file/người nộp/thời điểm và audit cũ. GVHD hiện tại hoặc Admin bấm “Bắt đầu chấm” với số phiên bản đang xem; hệ thống chuyển Submitted → UnderEvaluation, khóa đúng bản và không cho nộp lại. Bắt đầu chấm có thể thực hiện sau deadline nộp.
+- GVHD hiện được phân công hoặc Admin truy cập đọc đúng bản báo cáo đã khóa, nhập/sửa phiếu nhận xét và điểm hướng dẫn (ADVISOR) từ 0.0 đến 10.0. Điểm được làm tròn hai chữ số thập phân; trước khi duyệt, người có quyền được sửa phiếu theo phiên bản concurrency. Khi đồng ý chuyển phản biện, hệ thống khóa điểm, nhận xét và quyết định, chuyển nhóm sang sẵn sàng phân công GVPB; không có thu hồi trong phạm vi workflow này.
 - Văn phòng Khoa phân công Cán bộ phản biện (GVPB) cho từng đề tài (đảm bảo GVPB không trùng GVHD).
 - GVPB tải báo cáo cuối kỳ, nhập phiếu nhận xét phản biện, chấm điểm phản biện (REVIEWER) trực tiếp trên hệ thống và tích chọn kết luận: "Đồng ý cho bảo vệ".
 - Cổng kiểm soát bảo vệ: Khi đề tài thỏa mãn đồng thời hai điều kiện (Điểm GVPB ≥5.0 VÀ GVPB chọn "Đồng ý cho bảo vệ"), hệ thống tự động gắn trạng thái đủ điều kiện ra Hội đồng bảo vệ.
@@ -196,7 +198,7 @@ Quy ước: TH = Thực hiện; D = Duyệt/Xác nhận; N = Nộp; X = Xem; CH 
 
 **Luồng phát sinh:**
 
-- GVHD không đồng ý cho phản biện: Đề tài bị chặn chuyển tiếp sang khâu phân công phản biện; sinh viên không được ra Hội đồng.
+- GVHD/Admin không đồng ý cho phản biện: phải ghi lý do; hệ thống giữ nguyên bản báo cáo đã khóa và chặn phân công GVPB. GVHD/Admin có thể sửa phiếu rồi xét lại. Hệ thống không tự dừng nhóm, không tự mở nộp lại, không tự gán điểm 0; gia hạn, mở khóa hoặc chuyển đợt do Khoa xử lý ở quy trình riêng.
 - GVPB đánh giá điểm phản biện <5.0 hoặc chọn "Không đồng ý cho bảo vệ": Hệ thống chặn không cho đưa đề tài vào danh sách xếp lịch Hội đồng → Khoa kích hoạt quy trình xử lý không đồng thuận: tổ chức trao đổi giữa GVHD và GVPB, mời GVPB thứ 2 hoặc trình Trưởng Khoa ra quyết định cuối cùng theo quy chế.
 
 ### Quy trình thành lập hội đồng, tổ chức bảo vệ và khóa biên bản điểm (Tuần 19 đến Tuần 20)
@@ -286,13 +288,13 @@ Mã FR được giữ theo báo cáo để truy vết với Use Case và kiểm 
 | --- | --- | --- | --- |
 | FR-SYS-01 | Xác thực và quản lý tài khoản cá nhân | Hệ thống cho phép người dùng đăng nhập bằng email trường và mật khẩu được quản lý nội bộ. Mật khẩu được lưu trữ dưới dạng băm bảo mật (Password Hashing). Sau khi xác thực thành công, hệ thống cấp JWT để xác định danh tính và phục vụ kiểm soát quyền truy cập. Cho phép người dùng thay đổi mật khẩu bằng cách xác thực mật khẩu hiện tại và nhập mật khẩu mới. | Tất cả vai trò |
 | FR-SYS-02 | Khởi tạo và cấu hình đợt KLTN | Cho phép tạo đợt KLTN theo năm học và học kỳ với chu kỳ cố định 21 tuần; thiết lập các giai đoạn và cấu hình thời hạn nộp, xét duyệt tương ứng trong từng giai đoạn. | Admin, PĐT |
-| FR-SYS-03 | Thiết lập phương thức tính điểm động | Cho phép lựa chọn phương thức tính điểm tổng kết của từng đợt KLTN theo tỷ lệ trọng số phần trăm hoặc trung bình cộng có hệ số nguyên. Các tham số được thiết lập thông qua giao diện cấu hình mà không cần thay đổi mã nguồn. | Khoa, Admin |
+| FR-SYS-03 | Thiết lập phương thức tính điểm động | Cho phép lựa chọn phương thức tính điểm tổng kết của từng đợt KLTN theo tỷ lệ trọng số phần trăm hoặc trung bình cộng có hệ số nguyên. Các tham số được thiết lập thông qua giao diện cấu hình mà không cần thay đổi mã nguồn. | PĐT, Admin |
 | FR-SYS-04 | Tra cứu nhật ký hệ thống | Cho phép tìm kiếm, xem và lọc AuditLog theo tài khoản người dùng, loại thao tác và khoảng thời gian. Chỉ Admin được phép truy cập chức năng này. | Admin |
 | FR-SYS-05 | Quản lý tài khoản và phân quyền RBAC | Cho phép Admin tạo mới, cập nhật, vô hiệu hóa tài khoản và gán vai trò người dùng theo 7 nhóm: Sinh viên, GVHD, GVPB, Khoa, PĐT, Hội đồng và Admin. Hệ thống áp dụng RBAC kết hợp Policy-based Authorization để kiểm soát quyền thao tác theo chức danh và ngữ cảnh nghiệp vụ. | Admin |
 | FR-SYS-06 | Import danh sách sinh viên và giảng viên | Cho phép tải lên tệp Excel chứa danh sách sinh viên đủ điều kiện thực hiện KLTN và danh sách giảng viên để phục vụ quản lý, phân công và đăng ký trong từng đợt. | Admin, PĐT |
-| FR-SYS-07 | Quản lý danh mục đầu điểm thành phần | Cho phép thiết lập danh mục đầu điểm của từng đợt KLTN, bao gồm điểm GVHD (ADVISOR), điểm GVPB (REVIEWER), điểm Hội đồng (COUNCIL) và các đầu điểm tùy chọn khác theo cấu hình. | Khoa, Admin |
-| FR-SYS-08 | Cấu hình trọng số và hệ số điểm | Cho phép gán, cập nhật tỷ lệ phần trăm hoặc hệ số nguyên cho từng đầu điểm thành phần. Hỗ trợ điều chỉnh tham số tính điểm trong quá trình thực hiện đợt KLTN theo quyền được cấp. | Khoa, Admin |
-| FR-SYS-09 | Cấu hình điều kiện tiên quyết của đầu điểm | Cho phép thiết lập các điều kiện bắt buộc đối với từng đầu điểm, chẳng hạn ngưỡng điểm phản biện tối thiểu để xét điều kiện ra Hội đồng bảo vệ. Các điều kiện này được lưu theo cấu hình của từng đợt KLTN. | Khoa, Admin |
+| FR-SYS-07 | Quản lý danh mục đầu điểm thành phần | Cho phép thiết lập danh mục đầu điểm của từng đợt KLTN, bao gồm điểm GVHD (ADVISOR), điểm GVPB (REVIEWER), điểm Hội đồng (COUNCIL) và các đầu điểm tùy chọn khác theo cấu hình. | PĐT, Admin |
+| FR-SYS-08 | Cấu hình trọng số và hệ số điểm | Cho phép gán, cập nhật tỷ lệ phần trăm hoặc hệ số nguyên cho từng đầu điểm thành phần. Hỗ trợ điều chỉnh tham số tính điểm trong quá trình thực hiện đợt KLTN theo quyền được cấp. | PĐT, Admin |
+| FR-SYS-09 | Cấu hình điều kiện tiên quyết của đầu điểm | Cho phép thiết lập các điều kiện bắt buộc đối với từng đầu điểm, chẳng hạn ngưỡng điểm phản biện tối thiểu để xét điều kiện ra Hội đồng bảo vệ. Các điều kiện này được lưu theo cấu hình của từng đợt KLTN. | PĐT, Admin |
 | FR-SYS-10 | Kiểm tra tính hợp lệ của cấu hình điểm | Hệ thống tự động kiểm tra các tham số trước khi lưu. Với phương thức tỷ lệ phần trăm, tổng trọng số phải bằng 100%; với phương thức hệ số nguyên, tổng hệ số phải lớn hơn 0. Nếu không hợp lệ, hệ thống từ chối lưu và hiển thị thông báo lỗi. | Hệ thống (tự động) |
 | FR-SYS-11 | Kiểm soát quyền theo chính sách nghiệp vụ | Hệ thống kiểm tra quyền thao tác dựa trên vai trò RBAC kết hợp các chính sách đã xác định tại mục 1.3.2, bao gồm chức danh được phân công, phạm vi đề tài, giai đoạn, trạng thái hồ sơ và các quyền đặc biệt. Từ chối thao tác khi không thỏa mãn điều kiện tương ứng. | Hệ thống (tự động) |
 | FR-SYS-12 | Tự động ghi nhận AuditLog | Hệ thống ghi nhận nhật ký đối với các thao tác quan trọng như thay đổi phân quyền, cập nhật cấu hình, phê duyệt hồ sơ, mở khóa biên bản, điều chỉnh và loại trừ điểm. Nhật ký lưu thông tin người thực hiện, thời điểm và nội dung thao tác để phục vụ kiểm tra. | Hệ thống (tự động) |
@@ -310,7 +312,7 @@ Mã FR được giữ theo báo cáo để truy vết với Use Case và kiểm 
 | FR-TOPIC-05 | Kiểm tra điều kiện đăng ký | Hệ thống kiểm tra điều kiện tham gia KLTN của sinh viên, trạng thái công bố đề tài, thời hạn đăng ký và số lượng chỉ tiêu còn trống. Những yêu cầu không đáp ứng điều kiện sẽ bị từ chối và hiển thị thông báo tương ứng. | Hệ thống |
 | FR-TOPIC-06 | Kiểm soát chỉ tiêu và xử lý đăng ký đồng thời | Hệ thống sử dụng Database Transaction kết hợp cơ chế khóa dữ liệu để bảo đảm không vượt quá chỉ tiêu tiếp nhận của đề tài khi nhiều nhóm đăng ký đồng thời. Nếu chỉ tiêu đã hết, hệ thống thực hiện Rollback giao tác và thông báo đăng ký không thành công. | Hệ thống |
 | FR-TOPIC-07 | Tạo phiếu tiếp nhận đăng ký đề tài | Sau khi đăng ký được ghi nhận thành công, hệ thống tự động tạo phiếu tiếp nhận đăng ký đề tài dưới định dạng PDF, thể hiện thông tin đề tài, sinh viên và nhóm đăng ký. | Sinh viên, Hệ thống |
-| FR-TOPIC-08 | Xác nhận tiếp nhận nhóm sinh viên | Sau khi sinh viên đăng ký đề tài thành công, hệ thống thông báo đến GVHD phụ trách. GVHD truy cập danh sách đăng ký và thực hiện xác nhận tiếp nhận nhóm sinh viên theo đề tài tương ứng. | GVHD |
+| FR-TOPIC-08 | Theo dõi nhóm và xác nhận thành viên | Đăng ký cá nhân hoặc chỉ định của GVHD có hiệu lực ngay. Thành viên được mời chủ động xác nhận trong 24 giờ theo hạn hệ thống; không có bước GVHD phê duyệt tiếp nhận riêng. GVHD xem nhóm đang thực hiện, hoàn thành, đã dừng và tình trạng lời mời theo đợt. | Sinh viên, GVHD |
 | FR-TOPIC-09 | Thông báo kết quả đăng ký | Hệ thống tự động thông báo kết quả đăng ký đề tài cho sinh viên, đồng thời gửi thông báo đến GVHD khi có yêu cầu đăng ký cần xác nhận. | Hệ thống |
 
 ### 2.1.3. Phân hệ Đề cương và Tiến độ giữa kỳ
@@ -318,7 +320,7 @@ Mã FR được giữ theo báo cáo để truy vết với Use Case và kiểm 
 
 | Mã FR | Tên nghiệp vụ | Chi tiết yêu cầu chức năng | Vai trò tác động |
 | --- | --- | --- | --- |
-| FR-REG-01 | Nộp đề cương chi tiết | Cho phép đại diện nhóm sinh viên tải lên tệp đề cương chi tiết định dạng PDF, DOC hoặc DOCX với dung lượng dưới 20 MB trước hạn chót Tuần 2. GVHD được phép truy cập và xem đề cương của nhóm mình hướng dẫn. | Sinh viên, GVHD |
+| FR-REG-01 | Nộp đề cương chi tiết | Cho phép đại diện nhóm sinh viên tải lên tệp đề cương chi tiết định dạng PDF, DOC hoặc DOCX với dung lượng tối đa 20 MiB (20,971,520 byte) trước hạn chót Tuần 2. GVHD được phép truy cập và xem đề cương của nhóm mình hướng dẫn. | Sinh viên, GVHD |
 | FR-REG-02 | Thẩm định đề cương – Cổng kiểm soát 1 | Cho phép Văn phòng Khoa xem xét đề cương đã nộp, nhập nhận xét và đưa ra một trong ba kết luận: Đạt, Yêu cầu chỉnh sửa hoặc Không đạt. Hệ thống ghi nhận kết quả thẩm định và thông báo đến nhóm sinh viên. | Khoa |
 | FR-REG-03 | Chỉnh sửa và nộp lại đề cương | Khi Khoa đánh giá "Yêu cầu chỉnh sửa", hệ thống cho phép nhóm sinh viên tải lên phiên bản đề cương cập nhật trước thời hạn bổ sung. Các phiên bản và kết quả thẩm định được lưu lại để phục vụ tra cứu. | Sinh viên, Hệ thống |
 | FR-REG-04 | Cập nhật trạng thái sau thẩm định đề cương | Hệ thống tự động chuyển trạng thái nhóm sang "Đang thực hiện KLTN" và mở quyền truy cập các nghiệp vụ tiếp theo khi đề cương đạt yêu cầu. Nếu kết quả "Không đạt", hệ thống chuyển trạng thái sang "Dừng KLTN" và khóa quyền thực hiện các nghiệp vụ KLTN tiếp theo trong học kỳ. | Hệ thống (tự động) |
@@ -328,11 +330,11 @@ Mã FR được giữ theo báo cáo để truy vết với Use Case và kiểm 
 | FR-MILE-04 | Chỉnh sửa và nộp lại sản phẩm Milestones | Khi GVHD đánh giá "Cần chỉnh sửa", hệ thống mở quyền cho phép nhóm sinh viên nộp lại sản phẩm của Milestone tương ứng. Các phiên bản nộp lại (v2, v3,...) và lịch sử phản hồi được lưu trữ để theo dõi tiến trình thực hiện. | Sinh viên, Hệ thống |
 | FR-MILE-05 | Theo dõi và cảnh báo tiến độ Milestones | Hệ thống theo dõi thời hạn hoàn thành của từng Milestone, tự động ghi nhận trạng thái nộp trễ và hiển thị cảnh báo trên Dashboard. GVHD có thể sử dụng thông tin nộp trễ làm căn cứ đánh giá chuyên cần và tiến độ thực hiện của nhóm. | Sinh viên, GVHD, Hệ thống |
 | FR-MILE-06 | Thông báo kết quả đánh giá Milestones | Hệ thống tự động gửi thông báo trong ứng dụng (in-app) và email đến sinh viên khi GVHD hoàn thành đánh giá Milestone. Đồng thời lưu vết lịch sử trao đổi và phản hồi giữa GVHD với nhóm sinh viên. | Hệ thống (tự động) |
-| FR-MID-01 | Nộp và đánh giá báo cáo giữa kỳ | Cho phép nhóm sinh viên tải lên báo cáo giữa kỳ trước hạn chót Tuần 10. GVHD truy cập báo cáo, nhập phiếu nhận xét tiến độ và đưa ra quyết định "Đồng ý tiếp tục KLTN" hoặc "Không đồng ý tiếp tục KLTN". Khi GVHD đồng ý, dữ liệu báo cáo được chuyển đến Văn phòng Khoa. | Sinh viên, GVHD |
+| FR-MID-01 | Nộp và thẩm định báo cáo giữa kỳ | Cho phép mọi thành viên nhóm tải lên báo cáo giữa kỳ trước deadline cấu hình. Văn phòng Khoa hoặc Admin thẩm định từng phiên bản với `Approved`, `NeedRevision` hoặc `Rejected`; feedback bắt buộc cho hai kết quả không đạt. Phiên bản nộp và kết quả thẩm định được lưu lịch sử. | Sinh viên, Khoa, Admin |
 | FR-MID-02 | Tạo đơn xin đổi tên đề tài | Cho phép sinh viên tạo và gửi đơn xin đổi tên đề tài trực tuyến trong giai đoạn Tuần 3 đến Tuần 10. Đơn phải có tên đề tài mới bằng tiếng Việt, tiếng Anh và lý do điều chỉnh. Hệ thống không cho phép tạo đơn sau Tuần 10. | Sinh viên |
-| FR-MID-03 | Tổng hợp kết quả đánh giá giữa kỳ | Cho phép Văn phòng Khoa tiếp nhận kết quả đánh giá từ GVHD, tổng hợp danh sách các nhóm được tiếp tục hoặc phải dừng thực hiện KLTN và chuyển dữ liệu tổng hợp sang Phòng Đào tạo để theo dõi. | Khoa, PĐT |
-| FR-MID-04 | Xử lý kết quả không đạt giữa kỳ | Khi GVHD chọn "Không đồng ý tiếp tục KLTN", hệ thống yêu cầu ghi nhận lý do đình chỉ, tự động chuyển trạng thái đề tài sang "Dừng KLTN", khóa quyền truy cập các giai đoạn tiếp theo và ghi nhận điểm kết quả giữa kỳ/học phần bằng 0 theo quy chế đã xác định. | GVHD, Hệ thống |
-| FR-MID-05 | Kiểm soát thời hạn nộp báo cáo giữa kỳ | Hệ thống tự động kiểm tra hạn chót nộp báo cáo giữa kỳ tại Tuần 10. Khi vượt quá thời hạn, hệ thống khóa chức năng tải lên báo cáo giữa kỳ và ghi nhận trường hợp chưa hoàn thành để xem xét dừng đề tài theo quy định. | Hệ thống (tự động) |
+| FR-MID-03 | Tổng hợp kết quả giữa kỳ | Cho phép Khoa tổng hợp các nhóm đã `Approved`, đang `NeedRevision` hoặc bị `Rejected` tại Cổng 2 và chuyển dữ liệu cần thiết sang PĐT theo dõi. | Khoa, PĐT |
+| FR-MID-04 | Xử lý kết quả không đạt giữa kỳ | Khi Khoa chọn `Rejected`, hệ thống yêu cầu feedback, tự động chuyển nhóm sang `Stopped` và khóa quyền truy cập các giai đoạn tiếp theo. Khi Khoa chọn `NeedRevision`, hệ thống chỉ mở quyền nộp phiên bản mới đến deadline chốt cuối cùng. | Khoa, Hệ thống |
+| FR-MID-05 | Kiểm soát deadline Cổng 2 | Hệ thống kiểm tra ba deadline cấu hình của Cổng 2. Qua hạn chốt cuối cùng, worker dừng nhóm chưa được `Approved`; không hard-code tuần hoặc ngày. | Hệ thống (tự động) |
 | FR-MID-06 | Phê duyệt đơn đổi tên đề tài liên thông ba cấp | Cho phép xử lý đơn đổi tên đề tài lần lượt qua ba cấp: GVHD xác nhận cấp 1, Văn phòng Khoa thẩm định và ký duyệt cấp 2, Phòng Đào tạo phê duyệt chính thức cấp 3. Hệ thống quản lý trạng thái đơn và chỉ chuyển sang cấp tiếp theo khi cấp trước đã đồng ý. | GVHD, Khoa, PĐT |
 | FR-MID-07 | Từ chối đơn đổi tên đề tài | Cho phép người thẩm định tại bất kỳ cấp nào từ chối đơn đổi tên đề tài và nhập lý do từ chối. Hệ thống dừng quy trình phê duyệt, giữ nguyên tên đề tài hiện tại và thông báo kết quả cùng lý do cho sinh viên. | GVHD, Khoa, PĐT |
 | FR-MID-08 | Cập nhật đề tài sau phê duyệt đổi tên | Sau khi Phòng Đào tạo phê duyệt chính thức, hệ thống tự động cập nhật tên đề tài mới trong cơ sở dữ liệu, chuyển trạng thái đơn sang "Hoàn tất", ghi nhận lịch sử thay đổi vào AuditLog và mở quyền cho sinh viên nộp lại bản đề cương chi tiết cập nhật. | Hệ thống (tự động), Sinh viên |
@@ -343,13 +345,13 @@ Mã FR được giữ theo báo cáo để truy vết với Use Case và kiểm 
 
 | Mã FR | Tên nghiệp vụ | Chi tiết yêu cầu chức năng | Vai trò tác động |
 | --- | --- | --- | --- |
-| FR-FIN-01 | Nộp báo cáo cuối kỳ và chấm điểm GVHD | Cho phép sinh viên tải lên báo cáo cuối kỳ hoàn chỉnh định dạng PDF hoặc DOCX trong giai đoạn Tuần 11–18. GVHD truy cập báo cáo của nhóm được phân công, nhập phiếu nhận xét và chấm điểm hướng dẫn (ADVISOR) trực tiếp trên hệ thống. | Sinh viên, GVHD |
-| FR-FIN-02 | Phân công và chấm điểm phản biện | Cho phép Văn phòng Khoa phân công GVPB cho từng đề tài. GVPB được phân công có quyền truy cập báo cáo cuối kỳ, nhập phiếu nhận xét, chấm điểm phản biện (REVIEWER) và đưa ra kết luận "Đồng ý cho bảo vệ" hoặc "Không đồng ý cho bảo vệ". | Khoa, GVPB |
-| FR-FIN-03 | Xác nhận chuyển sang phản biện | Cho phép GVHD đưa ra quyết định đồng ý hoặc không đồng ý chuyển đề tài sang khâu phản biện sau khi hoàn thành đánh giá cuối kỳ. Nếu GVHD không đồng ý, hệ thống chặn việc chuyển đề tài sang bước phân công phản biện và không cho phép đề tài tham gia Hội đồng bảo vệ. | GVHD, Hệ thống |
-| FR-FIN-04 | Kiểm tra điều kiện phân công GVPB | Hệ thống tự động kiểm tra khi Văn phòng Khoa thực hiện phân công phản biện, bảo đảm GVPB không trùng với GVHD của cùng đề tài và chỉ được truy cập hồ sơ thuộc phạm vi phân công. | Hệ thống (tự động) |
+| FR-FIN-01 | Nộp báo cáo cuối kỳ và chấm điểm GVHD | Student đã Confirmed trong nhóm được duyệt giữa kỳ được nộp PDF/DOC/DOCX ≤20 MiB trong FINAL_EVALUATION của đợt Open (mặc định Tuần 11–18); nộp lại trước khi bắt đầu chấm, giữ lịch sử. GVHD hiện tại/Admin bắt đầu chấm để khóa đúng phiên bản. GVHD/Admin lưu phiếu nhận xét và điểm ADVISOR 0–10, làm tròn hai chữ số thập phân; được sửa đến trước khi đồng ý chuyển phản biện. SCRUM-102 triển khai phần nộp/lịch sử/tải/khóa phiên bản; SCRUM-103 triển khai phiếu điểm/duyệt. | Sinh viên, GVHD, Admin |
+| FR-FIN-02 | Phân công và chấm điểm phản biện | SCRUM-104: Faculty/Khoa, AcademicAffairs/PĐT có quyền manage hoặc Admin được phân công trên toàn hệ thống, tối đa một GVPB active/nhóm. Tài khoản được chọn phải Active, có Lecturer và khác GVHD hiện tại. Chỉ tạo khi đợt Open và eligibility SCRUM-103 hợp lệ; không chặn thêm theo FINAL_EVALUATION/hạn nộp bài. Chụp đúng phiếu duyệt, báo cáo/version/file/checksum; giữ nhóm `ReadyForReviewerAssignment`. Hủy mềm cần lý do, phiên bản và audit actor thực tế; có bất kỳ phiếu GVPB nào đều chặn hủy. Hủy chưa chấm được phép cả khi đợt đóng; phân công lại tạo dòng mới, kể cả cùng giảng viên. GVPB chỉ được tải đúng bản đã duyệt, không xem lịch sử báo cáo hoặc phiếu/điểm GVHD qua quyền phân công. Nhập phiếu/điểm và kết luận bảo vệ thuộc SCRUM-105; phản biện thứ hai thuộc task riêng. | Khoa, PĐT, Admin, GVPB |
+| FR-FIN-03 | Xác nhận chuyển sang phản biện | GVHD hiện tại hoặc Admin quyết định sau khi đã có phiếu cho đúng bản báo cáo bị khóa. Không đồng ý phải có lý do, giữ nhóm ở `FinalReportSubmitted`, chặn phân công GVPB và cho phép xét lại. Đồng ý là quyết định cuối: khóa phiếu và chuyển nhóm sang `ReadyForReviewerAssignment`; mọi thao tác sau đó bị chặn. Audit ghi actor thực tế, kể cả Admin thao tác thay GVHD. | GVHD, Admin, Hệ thống |
+| FR-FIN-04 | Kiểm tra điều kiện phân công GVPB | Hệ thống cung cấp contract kiểm tra lại ngay trước phân công: chỉ trả điều kiện khi phiếu GVHD đã đồng ý và khóa, nhóm `ReadyForReviewerAssignment`, báo cáo `InitialFinal`/phiên bản/file/checksum vẫn khớp bản đã khóa. SCRUM-104 tiếp tục kiểm tra GVPB không trùng GVHD hiện tại và quyền phân công. | Hệ thống (tự động) |
 | FR-FIN-05 | Xét duyệt điều kiện ra Hội đồng bảo vệ | Hệ thống tự động kiểm tra điều kiện ra Hội đồng sau khi hoàn tất phản biện, bao gồm: GVHD đã đồng ý chuyển sang phản biện, điểm GVPB đáp ứng ngưỡng tối thiểu theo cấu hình của đợt và GVPB chọn "Đồng ý cho bảo vệ". Chỉ những đề tài thỏa mãn đầy đủ điều kiện mới được chuyển sang trạng thái đủ điều kiện bảo vệ. | Hệ thống (tự động) |
 | FR-FIN-06 | Xử lý kết quả phản biện không đồng thuận | Khi điểm GVPB không đạt ngưỡng quy định hoặc GVPB không đồng ý cho bảo vệ, hệ thống chặn đề tài khỏi danh sách xếp lịch Hội đồng. Văn phòng Khoa được phép ghi nhận quá trình xử lý không đồng thuận thông qua việc trao đổi giữa GVHD và GVPB, phân công GVPB thứ hai hoặc trình Trưởng Khoa xem xét quyết định cuối cùng theo quy chế. | Khoa, GVHD, GVPB |
-| FR-FIN-07 | Bảo mật điểm số và phiếu nhận xét | Hệ thống không cho phép sinh viên xem điểm và phiếu nhận xét của GVHD, GVPB trước khi Khoa công bố kết quả chính thức. Riêng Thư ký Hội đồng được phân công có quyền xem các phiếu điểm cần thiết để lập hồ sơ bảo vệ theo chính sách phân quyền. | Hệ thống (tự động), Hội đồng |
+| FR-FIN-07 | Bảo mật điểm số và phiếu nhận xét | Phiếu GVHD của SCRUM-103 chỉ cho GVHD hiện được phân công hoặc Admin đọc/ghi. Student, Faculty chỉ có quyền xem báo cáo theo contract SCRUM-102, GVHD cũ và người khác không được suy ra quyền xem phiếu; audit quyết định không chứa nội dung nhận xét/lý do từ chối. Công bố điểm và quyền xem phiếu của Hội đồng thực hiện theo workflow riêng. | Hệ thống (tự động), Hội đồng |
 | FR-FIN-08 | Xem góp ý và nộp báo cáo chỉnh sửa sau phản biện | Cho phép sinh viên truy cập các ý kiến góp ý chỉnh sửa của GVPB trước khi công bố điểm và tải lên phiên bản báo cáo đã chỉnh sửa để phục vụ Hội đồng bảo vệ. Hệ thống lưu lại các phiên bản báo cáo được nộp. | Sinh viên, GVPB |
 | FR-COU-01 | Thành lập và phê duyệt Hội đồng bảo vệ | Cho phép Văn phòng Khoa lập dự thảo Hội đồng bảo vệ, phân công Chủ tịch, Thư ký, Ủy viên, phòng thi, ca thi và danh sách đề tài đủ điều kiện bảo vệ. Phòng Đào tạo xem xét, phê duyệt và tải lên Quyết định thành lập Hội đồng chính thức. | Khoa, PĐT |
 | FR-COU-02 | Chấm điểm Hội đồng và khóa biên bản | Cho phép từng thành viên Hội đồng được phân công nhập điểm thành phần theo thang điểm từ 0.0 đến 10.0 và ý kiến đánh giá trực tiếp trên hệ thống. Thư ký Hội đồng ghi nhận biên bản bảo vệ điện tử và thực hiện thao tác "Khóa biên bản điểm" sau khi xác thực bằng mật khẩu hoặc OTP. Khi biên bản được khóa, toàn bộ điểm Hội đồng chuyển sang trạng thái chỉ đọc. | Hội đồng |
@@ -394,7 +396,7 @@ Mã FR được giữ theo báo cáo để truy vết với Use Case và kiểm 
 
 - Hệ thống phải duy trì vận hành ổn định, không bị tắc nghẽn tài nguyên vào các mốc chót nộp bài đồng loạt (Tuần 2 nộp đề cương, Tuần 18 nộp báo cáo cuối kỳ)
 
-- Xử lý tải tệp bất đồng bộ, dung lượng tệp <= 20MB
+- Xử lý tải tệp bất đồng bộ; tệp đề cương, giữa kỳ, tiến độ và cuối kỳ tối đa 20 MiB (20 × 1024 × 1024 = 20,971,520 byte), chấp nhận đúng giới hạn.
 
 
 ### 2.2.2. An toàn và Bảo mật
@@ -429,10 +431,10 @@ Các câu về SQL Server, DbContext riêng mỗi module và không có FK liên
 
 ## 6. Quy tắc diễn giải và giới hạn
 
-- Cổng 1 do Khoa thẩm định: Đạt / Yêu cầu chỉnh sửa / Không đạt. Cổng 2 do GVHD quyết định Tiếp tục / Dừng; Khoa tổng hợp và chuyển PĐT, không có vòng Khoa duyệt giữa kỳ thay GVHD.
-- Quá hạn giữa kỳ: khóa upload và ghi nhận để xem xét dừng; không tự kết luận điểm 0 ngay khi hết hạn. Điểm 0 gắn với quyết định dừng theo quy chế.
+- Cổng 1 và Cổng 2 đều do Khoa hoặc Admin thẩm định theo cùng state machine: `Submitted` → `NeedRevision` → `Submitted` (v2, v3, ...) → `Approved` hoặc `Rejected`. GVHD không thẩm định Cổng 2; GVHD chỉ đánh giá các Milestone của đề tài được phân công.
+- Quá deadline chốt cuối cùng của Cổng 1 hoặc Cổng 2: worker dừng nhóm chưa `Approved` và lưu audit trail. Hệ thống không tự gán điểm 0; điểm theo quy chế là nghiệp vụ riêng.
 - Ngưỡng phản biện lấy từ cấu hình đợt; `5.0` trong luồng mô tả là giá trị minh họa, không hard-code.
-- Tệp tối đa 20 MB theo ràng buộc chung và QĐ2.1 (bảng FR-REG-01 ghi “dưới 20 MB”). Đề cương: PDF/DOC/DOCX; cuối kỳ: PDF/DOCX; lưu chiểu cần cả PDF, DOCX, tóm tắt và từ khóa Việt/Anh.
+- Quy tắc file đã chốt cho validator hiện tại: PDF/DOC/DOCX ≤20 MiB (20,971,520 byte), bao gồm báo cáo cuối kỳ; kiểm tra extension và chữ ký nội dung, không tin MIME từ client. Đây là quy tắc thay thế cách ghi “20 MB”, “dưới 20 MB” hoặc “PDF/DOCX” cũ trong phần nộp báo cáo. Lưu chiểu vẫn là nghiệp vụ riêng, cần cả PDF, DOCX, tóm tắt và từ khóa Việt/Anh; SCRUM-102 không thay đổi yêu cầu lưu chiểu.
 - Điểm và phiếu nhận xét bảo mật không trả cho sinh viên trước công bố. Góp ý chỉnh sửa của GVPB và Hội đồng phải được cung cấp riêng, không kèm dữ liệu điểm chưa công bố.
 - Chỉ Thư ký khóa biên bản sau xác thực mật khẩu/OTP; chỉ Lãnh đạo Khoa cấp quyền mở khóa có lý do. Người chấm chỉ sửa điểm mình nhập sau cấp quyền. Chỉ Admin tra cứu AuditLog.
 - Sai biệt từ 2 điểm trở lên so với điểm tổng kết cần thảo luận; không tự loại điểm. Chủ tịch xác nhận kết luận không công nhận, Thư ký ghi biên bản và đánh dấu `IsIgnoredInCalculation = True`. Phạm vi bao gồm điểm GVHD, GVPB và thành viên Hội đồng.
@@ -473,6 +475,21 @@ Ví dụ kiểm chứng với GVHD=8, GVPB=7, Chủ tịch=9, Thư ký=8, Ủy v
 | Trường hợp chia 7, Hội đồng không công nhận điểm ủy viên | `(16 + 14 + 9 + 8) / 6` | `47/6 ≈ 7.833333` |
 
 Ví dụ không đặt quy tắc làm tròn. Điểm tham chiếu để phát hiện sai biệt, thời hạn quyền sửa và thủ tục khóa lại vẫn là nội dung Word chưa định nghĩa đầy đủ; không suy ra từ các công thức đã chốt.
+
+Phần chấm GVPB của FR-FIN-02 đã có backend SCRUM-105 CP2: GVPB Active/Lecturer đang được phân công hoặc Admin lưu toàn bộ nội dung nháp/chốt khi đợt Open và snapshot còn hợp lệ. Nháp cho phép thiếu nội dung; Submit bắt buộc điểm 0–10 (AwayFromZero hai chữ số), góp ý 1–2.000 Unicode rune sau trim và Approved/Rejected. Cả hai kết luận đều khóa phiếu sau chốt; mọi nháp đã tồn tại cũng chặn hủy phân công. Faculty/PĐT có role và permission đọc riêng chỉ được tra cứu. Ghi actor thực tế, xmin, receipt và audit trong một transaction; không dùng hạn sinh viên hoặc cấu hình ngưỡng để chặn chốt. Không mở phiếu/điểm GVHD qua quyền chấm GVPB. Gate/feedback sinh viên tiếp tục thuộc CP3; xem [contract và bằng chứng theo checkpoint](ApiContract/ReviewerEvaluationApiContract.md).
+
+SCRUM-105 CP3 đã bổ sung đầu ra của FR-FIN-02: gate dùng cấu hình Active hiện tại và thứ tự reason, yêu cầu Submitted/Approved/score đạt sàn/binding hợp lệ, không dùng account nghỉ để ngầm thu hồi giá trị phiếu. Gate không persist trạng thái ReadyForDefense hoặc tự xếp Hội đồng. Feedback Student Confirmed đúng group chỉ có comment đã phát hành hoặc explicit null, không có điểm/kết luận/gate/metadata, không có override quản trị. Liên kết report/file/version/checksum gốc phải hợp lệ nhưng không áp write readiness, current report version hoặc thời hạn sinh viên lên đọc góp ý. Writer scheduling phải kiểm tra gate khóa trong transaction của chính lần ghi; GET không cấp quyền scheduling. Chi tiết và bằng chứng ở [CP3](ApiContract/ReviewerEvaluationApiContract.md#15-cp3--gate-hội-đồng-và-góp-ý-sinh-viên).
+
+### 6.2. Thiết kế lưu chiểu và công bố điểm — SCRUM-106/110 CP0
+
+Thiết kế CP0 ngày 02/11/2026 được triển khai theo checkpoint: **CP1–CP2 đã hoàn tất lưu chiểu/ArchiveProof; CP3 đã có schema/lịch sử summary, POST calculate, ba GET private/readiness/list, resolver động và bảo vệ nguồn; CP4 bổ sung publish và Student GET**. Các công thức mục 6.1 được giữ nguyên; SCRUM-110 đọc cấu hình Active của đợt, không hard-code mẫu số 6/7 hoặc tự thêm luật đạt/rớt. Phạm vi/bằng chứng tại [lưu chiểu](ApiContract/FinalSubmissionVerification.md) và [điểm CP3](ApiContract/ScoreCalculationVerification.md).
+
+- SCRUM-106 nhận package mới nguyên vẹn gồm PDF + DOCX ≤20 MiB mỗi file, Abstract/Keywords Việt–Anh. Student Active/Confirmed chọn groupId và được nộp lại khi Submitted/NeedRevision, trong cửa sổ ARCHIVAL_AND_PUBLICATION của đợt Open. Mỗi lần nộp tăng version và giữ lịch sử. GVHD/Admin xác nhận bước 1, Faculty/Admin bước 2; yêu cầu sửa phải có lý do. ArchiveConfirmed bất biến.
+- CouncilMinute Locked có actor/time và đúng group/assignment là bằng chứng bảo vệ bắt buộc; AllScoresEntered không thay thế được. API khóa biên bản thuộc task Hội đồng. Archive proof phải có package/manifest/hai file/hai review hợp lệ, không tin riêng status legacy.
+- Faculty/Admin tính/công bố khi đợt Open hoặc Closed; PĐT chỉ đọc. Tính cần đủ nguồn đã hoàn tất và archive proof hợp lệ; nguồn/ánh xạ nhiều UV hoặc Custom chưa rõ thì từ chối. Decimal, chỉ round kết quả cuối hai chữ số AwayFromZero theo quyết định thiết kế. Nguồn bị loại kéo theo loại trọng số và chuẩn hóa phần còn lại.
+- Publish chọn 1–100 nhóm cùng đợt, tất cả thành công hoặc tất cả rollback. Cấu hình/nguồn thay đổi trước công bố yêu cầu tính lại; sau công bố khóa kết quả và writer liên quan. Sinh viên chỉ xem published snapshot của đúng nhóm qua DTO allowlist. Xuất Excel/PDF, email và thu hồi/điều chỉnh sau công bố thuộc task riêng.
+
+Request, permission, acceptance và schema/handoff tại [contract lưu chiểu](ApiContract/FinalSubmissionApiContract.md), [contract điểm](ApiContract/ScoreCalculationPublicationApiContract.md) và [thiết kế chung](ApiContract/ArchivalScoreWorkflowDesign.md). Các consumer phải tham gia shared transaction/lock protocol; seed Locked chỉ kiểm thử consumer, không chứng minh đã có E2E API khóa biên bản.
 
 ## 7. Tài liệu liên quan
 

@@ -1,74 +1,191 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-
-const tones = {
-  primary: {
-    background: 'bg-primary/5',
-    value: 'text-primary',
-    label: 'text-slate-500',
-    icon: 'text-primary',
-  },
-  warning: {
-    background: 'bg-amber-50/80',
-    value: 'text-amber-700',
-    label: 'text-amber-700/80',
-    icon: 'text-amber-600',
-  },
-  muted: {
-    background: 'bg-slate-50',
-    value: 'text-slate-600',
-    label: 'text-slate-500',
-    icon: 'text-slate-400',
-  },
-};
+import { SelectionIndicator } from './selection-indicator';
+import { SELECTION_TONES, type SelectionTone } from './selection-tones';
+import { Skeleton } from './skeleton';
 
 export interface StatisticItem {
   key: string;
   label: string;
   value: ReactNode;
   icon?: ReactNode;
-  tone?: keyof typeof tones;
+  tone?: SelectionTone;
+  onClick?: () => void;
+  active?: boolean;
+  actionLabel?: string;
 }
 
 export interface StatisticsBarProps {
   items: StatisticItem[];
   className?: string;
+  loading?: boolean;
+  compact?: boolean;
+  layout?: 'row' | 'card';
 }
 
-export function StatisticsBar({ items, className }: StatisticsBarProps) {
+export function StatisticsBar({
+  items,
+  className,
+  loading = false,
+  compact = false,
+  layout = 'row',
+}: StatisticsBarProps) {
+  const isCard = layout === 'card';
+  const activeItem = !loading ? items.find((item) => Boolean(item.active)) : undefined;
+  const activeColors = activeItem
+    ? SELECTION_TONES[activeItem.tone ?? 'muted']
+    : SELECTION_TONES.primary;
+
   return (
     <dl
+      aria-busy={loading}
       className={cn(
-        'grid auto-cols-fr grid-flow-col gap-1 rounded-lg border border-slate-200/80 bg-white p-1 shadow-sm',
+        'relative isolate',
+        isCard
+          ? 'grid gap-2 rounded-2xl border border-line/80 bg-surface-subtle/50 p-2'
+          : 'grid auto-cols-fr grid-flow-col gap-1.5 rounded-xl border border-line/80 bg-surface-subtle/80 p-1.5',
         className,
+        compact && 'flex flex-wrap border-0 bg-transparent p-0 gap-2 dark:bg-transparent',
       )}
     >
-      {items.map(({ key, label, value, icon, tone = 'muted' }) => {
-        const colors = tones[tone];
+      <SelectionIndicator
+        activeKey={activeItem?.key ?? null}
+        selector='[data-selection-item][data-active="true"]'
+        className={cn(
+          'z-0 border-[1.5px] border-transparent shadow-xs',
+          isCard ? 'rounded-xl' : 'rounded-lg',
+          activeColors.activeIndicator,
+        )}
+      />
+      {items.map(({ key, label, value, icon, tone = 'muted', onClick, active, actionLabel }) => {
+        const colors = SELECTION_TONES[tone];
+        const isActive = !loading && Boolean(active);
         return (
           <div
             key={key}
-            className={cn('flex items-center gap-2 rounded-md px-2.5 py-1.5', colors.background)}
-          >
-            {icon && (
-              <span
-                aria-hidden="true"
-                className={cn('hidden shrink-0 md:block [&_svg]:size-3.5', colors.icon)}
-              >
-                {icon}
-              </span>
+            data-selection-item
+            data-active={isActive ? 'true' : undefined}
+            className={cn(
+              'group relative flex min-w-0 transition-colors duration-200 ease-out border',
+              isCard
+                ? 'flex-col justify-between rounded-xl p-3 border-line/70'
+                : 'items-center gap-2.5 rounded-lg px-3 py-2 border-transparent',
+              compact && 'flex-none',
+              loading
+                ? 'bg-surface-card/70'
+                : isActive
+                  ? 'bg-transparent border-transparent'
+                  : isCard
+                    ? cn('bg-surface-card shadow-2xs hover:shadow-xs', onClick && colors.hoverCardBorder)
+                    : cn(colors.background, onClick && colors.hover),
             )}
-            <div className="flex min-w-0 flex-col">
-              <dt className={cn('order-2 mt-1 text-[10px] font-medium', colors.label)}>{label}</dt>
-              <dd
+          >
+            {onClick && (
+              <button
+                type="button"
+                aria-label={actionLabel ?? `Lọc: ${label}`}
+                {...(active !== undefined ? { 'aria-pressed': !loading && active } : {})}
+                disabled={loading}
+                onClick={onClick}
                 className={cn(
-                  'order-1 text-base font-semibold leading-none tabular-nums',
-                  colors.value,
+                  'absolute inset-0 z-20 bg-transparent focus-visible:outline-none focus-visible:ring-2 cursor-pointer disabled:cursor-wait',
+                  isCard ? 'rounded-xl' : 'rounded-lg',
+                  colors.focusRing,
                 )}
-              >
-                {value}
-              </dd>
-            </div>
+              />
+            )}
+            {isCard ? (
+              <>
+                <div className="relative z-10 pointer-events-none flex items-center justify-between gap-2 w-full mb-1">
+                  <dd
+                    className={cn(
+                      'text-lg sm:text-xl font-bold leading-none tracking-tight tabular-nums',
+                      colors.value,
+                    )}
+                  >
+                    {loading ? <Skeleton className="h-5 w-8 max-w-full" /> : value}
+                  </dd>
+                  {icon && (
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        'flex size-6 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 ease-out [&_svg]:size-3.5',
+                        onClick && !loading && 'group-hover:scale-105',
+                        isActive && 'scale-105',
+                        colors.icon,
+                      )}
+                    >
+                      {loading ? <Skeleton className="size-3.5 rounded-sm" /> : icon}
+                    </span>
+                  )}
+                </div>
+                <dt
+                  title={label}
+                  className={cn(
+                    'relative z-10 pointer-events-none text-[11px] font-semibold leading-tight line-clamp-2 text-ink-body',
+                  )}
+                >
+                  {loading ? (
+                    <>
+                      <span className="invisible" aria-hidden="true">
+                        {label}
+                      </span>
+                      <span className="sr-only">{label}</span>
+                      <Skeleton className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2" />
+                    </>
+                  ) : (
+                    label
+                  )}
+                </dt>
+              </>
+            ) : (
+              <>
+                {icon && !compact && (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'relative z-10 pointer-events-none hidden size-7 shrink-0 items-center justify-center rounded-lg transition-transform duration-200 ease-out md:flex [&_svg]:size-3.5',
+                      onClick && !loading && 'group-hover:scale-105',
+                      isActive && 'scale-105',
+                      colors.icon,
+                    )}
+                  >
+                    {loading ? <Skeleton className="size-3.5 rounded-sm" /> : icon}
+                  </span>
+                )}
+                <div className={cn('relative z-10 pointer-events-none flex min-w-0 flex-1', compact ? 'items-center gap-2' : 'flex-col')}>
+                  <dt
+                    title={label}
+                    className={cn(
+                      'relative order-2 mt-0.5 truncate text-[11px] font-medium transition-colors duration-200',
+                      colors.label,
+                      compact && 'order-none mt-0 text-sm',
+                    )}
+                  >
+                    {loading ? (
+                      <>
+                        <span className="invisible" aria-hidden="true">
+                          {label}
+                        </span>
+                        <span className="sr-only">{label}</span>
+                        <Skeleton className="absolute inset-x-0 top-1/2 h-2.5 -translate-y-1/2" />
+                      </>
+                    ) : (
+                      label
+                    )}
+                  </dt>
+                  <dd
+                    className={cn(
+                      'order-1 text-base font-bold leading-tight tracking-tight tabular-nums',
+                      colors.value,
+                      compact && 'order-none text-sm',
+                    )}
+                  >
+                    {loading ? <Skeleton className="h-4 w-8 max-w-full" /> : value}
+                  </dd>
+                </div>
+              </>
+            )}
           </div>
         );
       })}

@@ -4,6 +4,7 @@ namespace UGTM.Modules.DefenseCouncil.Domain.Entities;
 
 public class CouncilMember
 {
+    public uint Version { get; set; }
     public Guid Id { get; set; }
     public Guid CouncilId { get; set; }
     public Guid UserId { get; set; }

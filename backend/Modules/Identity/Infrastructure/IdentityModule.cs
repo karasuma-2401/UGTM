@@ -28,6 +28,7 @@ using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Application.Permissions.GetPermissions;
 using UGTM.Modules.Identity.Application.Provisioning;
 using UGTM.Modules.Identity.Application.Recovery;
+using UGTM.Modules.Identity.Application.Roles.CreateRole;
 using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
 using UGTM.Modules.Identity.Application.Security;
@@ -148,6 +149,13 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IOneTimeChallengeRepository, OneTimeChallengeRepository>();
         services.AddScoped<IUserProfileReader, UserProfileReader>();
         services.AddScoped<IUserQueryReader, UserQueryReader>();
+        services.AddScoped<UGTM.Modules.Identity.Contracts.Users.IStudentInfoReader, StudentInfoReader>();
+        services.AddScoped<UGTM.Modules.Identity.Contracts.Users.IStudentSearchReader, StudentSearchReader>();
+        services.AddScoped<UGTM.Modules.Identity.Contracts.Users.IAdvisorNameReader, AdvisorNameReader>();
+        services.AddScoped<UGTM.Modules.Identity.Contracts.Users.ICouncilUserInfoReader, CouncilUserInfoReader>();
+        services.AddScoped<UGTM.Modules.Identity.Contracts.ReviewerAssignments.IReviewerCandidateReader, ReviewerCandidateReader>();
+        services.AddScoped<UGTM.Modules.Identity.Contracts.FinalSubmissions.IFinalSubmissionAuthorityReader, FinalSubmissionAuthorityReader>();
+        services.AddScoped<UGTM.Modules.Identity.Contracts.Authentication.IReauthenticationVerifier, UGTM.Modules.Identity.Application.Authentication.Reauthentication.ReauthenticationVerifier>();
         services.AddScoped<IUserImportFileReader, ClosedXmlUserImportFileReader>();
         services.AddSingleton<IUserImportTemplateGenerator, ClosedXmlUserImportTemplateGenerator>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
@@ -186,6 +194,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<UpdateUserStatusHandler>();
         services.AddScoped<GetPermissionsHandler>();
         services.AddScoped<GetRolePermissionsHandler>();
+        services.AddScoped<CreateRoleHandler>();
         services.AddScoped<UpdateRolePermissionsHandler>();
         services.AddScoped<GetAuditLogsHandler>();
         services.AddScoped<IInitialAdminBootstrapper, InitialAdminBootstrapper>();
@@ -252,6 +261,7 @@ public sealed class IdentityModule : IModule
                 Không cần xác thực hoặc body. Trả 200 với module Identity và status ok khi endpoint có thể phục vụ request.
                 Endpoint này không kiểm tra kết nối database, SMTP hoặc các dịch vụ phụ trợ.
                 """)
-            .WithName($"{Name}.Ping");
+            .WithName($"{Name}.Ping")
+            .ExcludeFromDescription();
     }
 }

@@ -14,7 +14,9 @@ public sealed class HttpCurrentUser(IHttpContextAccessor accessor) : ICurrentUse
     public Guid? SessionId => Parse("sid");
 
     public IReadOnlySet<string> Roles => Principal.FindAll(ClaimTypes.Role)
-        .Select(x => x.Value).ToHashSet(StringComparer.Ordinal);
+        .Concat(Principal.FindAll("role"))
+        .Select(x => x.Value)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlySet<string> Permissions => Principal.FindAll("permission")
         .Select(x => x.Value).ToHashSet(StringComparer.Ordinal);
