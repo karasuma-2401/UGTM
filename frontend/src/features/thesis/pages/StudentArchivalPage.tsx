@@ -505,7 +505,7 @@ export const StudentArchivalPage: React.FC = () => {
                     </Link>
                   </Button>
                   <Button asChild variant="outline" size="sm" className="bg-surface-card">
-                    <Link to="/thesis/results">
+                    <Link to="/councils/results">
                       Kết quả bảo vệ
                       <ExternalLink className="size-3.5" />
                     </Link>

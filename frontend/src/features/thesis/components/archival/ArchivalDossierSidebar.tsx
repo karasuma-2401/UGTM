@@ -166,7 +166,7 @@ export const ArchivalDossierSidebar: React.FC<ArchivalDossierSidebarProps> = ({
           )}
 
           <Link
-            to="/thesis/results"
+            to="/councils/results"
             className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-body hover:text-primary transition-colors"
           >
             Tra cứu điểm chính thức
