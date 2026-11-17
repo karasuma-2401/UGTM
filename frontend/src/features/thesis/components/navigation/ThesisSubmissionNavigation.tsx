@@ -71,18 +71,16 @@ export function ThesisSubmissionNavigation({
       const gate = gates?.find((g) => g.id === tab.id);
       return {
         ...tab,
-        label: `${tab.stepCode} · ${tab.label}`,
+        label: `${tab.stepCode} - ${tab.label}`,
         badge:
-          gate && !gate.isLoading && gate.shortLabel ? (
+          gate && !gate.isLoading && gate.state === 'completed' && gate.shortLabel ? (
             <span
               className={cn(
                 'hidden md:inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold leading-none whitespace-nowrap',
                 pillToneClasses[gate.state],
               )}
             >
-              {gate.state === 'completed' && (
-                <CheckCircle2 className="size-3 text-tone-success-icon shrink-0" aria-hidden="true" />
-              )}
+              <CheckCircle2 className="size-3 text-tone-success-icon shrink-0" aria-hidden="true" />
               <span>{gate.shortLabel}</span>
             </span>
           ) : undefined,
