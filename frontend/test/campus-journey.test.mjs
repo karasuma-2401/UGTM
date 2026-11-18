@@ -192,6 +192,76 @@ test('expanded overview canvas preserves camera distance and pixel scale without
   }
 });
 
+test('entrance roads stay on the campus island instead of protruding past gate B', async () => {
+  const model = await loadModel();
+  const bounds = new THREE.Box3();
+  let roads = 0;
+  for (const groupName of ['Landscape', 'Gate_B']) {
+    model.getObjectByName(groupName).traverse((object) => {
+      if (!object.isMesh || object.material.color.getHexString() !== 'b4bbae') return;
+      roads++;
+      bounds.setFromObject(object, true);
+      assert.ok(
+        bounds.min.x >= -64 && bounds.max.x <= 64,
+        `Road outside east/west edge: ${groupName}`,
+      );
+      assert.ok(
+        bounds.min.z >= -63 && bounds.max.z <= 63,
+        `Road outside north/south edge: ${groupName}`,
+      );
+    });
+  }
+  assert.ok(roads > 0);
+});
+
+test('sports courts occupy the marked annex outside the old tree line, clear of buildings', async () => {
+  const model = await loadModel();
+  const sports = model.getObjectByName('Sports_courts');
+  const bounds = new THREE.Box3().setFromObject(sports);
+  const annex = model.getObjectByName('Sports_annex_ground');
+  const foundation = new THREE.Box3();
+  annex.traverse((object) => {
+    if (object.isMesh && object.material.color.getHexString() === 'f0ede3')
+      foundation.expandByObject(object, true);
+  });
+  assert.ok(bounds.max.z < -63, 'All sports and furniture must be beyond the old campus edge');
+  assert.ok(
+    bounds.min.x >= foundation.min.x &&
+      bounds.max.x <= foundation.max.x &&
+      bounds.min.z >= foundation.min.z &&
+      bounds.max.z <= foundation.max.z,
+    'The sports cluster must sit on the new foundation',
+  );
+  assert.equal(foundation.max.z, -63, 'The new foundation must join the original campus edge');
+  const buildings = [
+    'E_glass_tower',
+    'B_curved_courtyard',
+    'C_long_teaching_wing',
+    'Student_services',
+    'Canteen_and_student_dining',
+    'Parking_shelters',
+  ].map((name) => model.getObjectByName(name));
+  const ray = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
+  let samples = 0;
+  sports.traverse((object) => {
+    if (!object.isMesh || object.material.color.getHexString() !== '5a8db5') return;
+    const positions = object.geometry.attributes.position;
+    for (let i = 0; i < positions.count; i++) {
+      const point = new THREE.Vector3()
+        .fromBufferAttribute(positions, i)
+        .applyMatrix4(object.matrixWorld);
+      ray.ray.origin.set(point.x, 100, point.z);
+      assert.equal(
+        ray.intersectObjects(buildings, true).length,
+        0,
+        'Court surface overlaps a building',
+      );
+      samples++;
+    }
+  });
+  assert.ok(samples > 0);
+});
+
 test('the cinematic rail clears the actual roofs, walls and trees while flying inside the campus', async () => {
   const scene = await loadModel();
   const tour = tourModule.createCampusTour();
@@ -200,7 +270,6 @@ test('the cinematic rail clears the actual roofs, walls and trees while flying i
   const ray = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
   for (let index = 0; index <= 2100; index++) {
     tour.sample(index / 2100, position, target);
-    if (Math.abs(position.x) > 65 || Math.abs(position.z) > 65) continue;
     ray.ray.origin.set(position.x, 100, position.z);
     const hit = ray.intersectObject(scene, true)[0];
     assert.ok(
@@ -224,13 +293,16 @@ test('visitor path and gait are deterministic across viewers, finite and inside 
   }
 });
 
-test('walking routes clear the actual GLB buildings, gates and trees at ground level', async () => {
+test('walking routes have human headroom beneath canopies and clear columns, walls and furniture', async () => {
   const bytes = readFileSync(new URL('../public/models/uit-campus.glb', import.meta.url));
   const { scene } = await new GLTFLoader().parseAsync(
     bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
     '',
   );
   scene.updateMatrixWorld(true);
+  scene.traverse((object) => {
+    if (object.isMesh) object.material.side = THREE.DoubleSide;
+  });
   const ray = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0));
   for (const path of journey.walkingPaths) {
     for (let index = 0; index < path.length; index++) {
@@ -244,10 +316,38 @@ test('walking routes clear the actual GLB buildings, gates and trees at ground l
         ray.ray.origin.set(x, 100, z);
         const hits = ray.intersectObject(scene, true);
         assert.ok(hits.length > 0, `No campus ground at ${x}, ${z}`);
-        assert.ok(
-          hits[0].point.y < 0.5,
-          `Route intersects ${hits[0].object.parent.name} at ${x}, ${z}`,
-        );
+        // A roof above a pedestrian is valid. Closed solid intervals intersecting
+        // the figure's body are not; double-sided rays also detect starting inside a wall.
+        const solids = new Map();
+        for (const hit of hits) {
+          const direction = hit.face.normal.y;
+          if (Math.abs(direction) < 1e-5) continue;
+          const state = solids.get(hit.object) ?? {
+            depth: 0,
+            top: 0,
+            lastY: Infinity,
+            lastDirection: 0,
+          };
+          if (
+            Math.abs(hit.point.y - state.lastY) < 1e-5 &&
+            Math.sign(direction) === state.lastDirection
+          )
+            continue;
+          state.lastY = hit.point.y;
+          state.lastDirection = Math.sign(direction);
+          if (direction > 0) {
+            if (state.depth === 0) state.top = hit.point.y;
+            state.depth++;
+          } else {
+            state.depth--;
+            if (state.depth === 0)
+              assert.ok(
+                state.top < 0.45 || hit.point.y > 2.5,
+                `Body intersects ${hit.object.parent.name} (${hit.point.y}–${state.top}) at ${x}, ${z}`,
+              );
+          }
+          solids.set(hit.object, state);
+        }
       }
     }
   }
