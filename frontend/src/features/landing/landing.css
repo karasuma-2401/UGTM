@@ -291,13 +291,13 @@
   color: #5a6d7d;
 }
 .hero-campus {
+  --campus-reference-height: 560px;
   position: relative;
   isolation: isolate;
-  height: 560px;
+  height: var(--campus-reference-height);
   margin-left: -30px;
   margin-right: -50px;
   min-width: 0;
-  margin-bottom: var(--campus-extra-height, 0px);
 }
 .hero-campus-explorer {
   min-width: 0;
@@ -312,8 +312,7 @@
   border-radius: 12px;
   background: var(--pub-paper);
 }
-.campus-explorer-status,
-.campus-explorer-footer {
+.campus-explorer-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -353,22 +352,13 @@
   min-height: 36px;
   padding: 7px 10px;
 }
-.campus-explorer-footer {
-  padding-top: 10px;
-  border-top: 1px solid var(--pub-line);
+.campus-zoom-controls {
+  display: flex;
+  gap: 4px;
 }
-.campus-explorer-footer a {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-.campus-motion-toggle {
-  border: 0;
-  background: transparent;
-  padding: 5px 0;
-}
-.campus-motion-toggle:hover {
-  color: var(--pub-blue);
+.campus-zoom-controls .campus-control {
+  min-width: 44px;
+  justify-content: center;
 }
 .hero-campus-disc {
   position: absolute;
@@ -380,7 +370,7 @@
 .campus-scene {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: var(--campus-reference-height);
   overflow: visible;
   touch-action: pan-y;
 }
@@ -394,7 +384,7 @@
 }
 .campus-scene.is-interactive canvas {
   pointer-events: auto;
-  touch-action: pan-y;
+  touch-action: none;
   cursor: grab;
 }
 .campus-scene.is-interactive canvas:active {
@@ -1101,7 +1091,7 @@
     min-height: 760px;
   }
   .hero-campus {
-    height: 620px;
+    --campus-reference-height: 620px;
   }
 }
 @media (max-width: 1100px) {
@@ -1122,7 +1112,7 @@
     font-size: 56px;
   }
   .hero-campus {
-    height: 500px;
+    --campus-reference-height: 500px;
     margin-right: -20px;
     margin-left: -20px;
   }
@@ -1210,9 +1200,8 @@
     width: 16px;
   }
   .hero-campus {
-    height: 390px;
+    --campus-reference-height: 390px;
     margin: 0 -15px;
-    margin-bottom: var(--campus-extra-height, 0px);
   }
   .hero-campus-explorer {
     width: 100%;
@@ -1240,13 +1229,6 @@
   .hero-campus-panel .campus-control {
     min-height: 44px;
     font-size: 11px !important;
-  }
-  .campus-explorer-footer {
-    flex-wrap: wrap;
-  }
-  .campus-explorer-footer a,
-  .campus-motion-toggle {
-    min-height: 44px;
   }
   .hero-campus-disc {
     inset: 13% 5% 12%;

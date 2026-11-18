@@ -7,8 +7,10 @@ import {
   ChevronRight,
   GraduationCap,
   Move,
+  Minus,
   Pause,
   Play,
+  Plus,
   RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '@/shared/auth';
@@ -29,7 +31,7 @@ export function LandingPage() {
   const [cameraReset, setCameraReset] = useState(0);
   const [interactive, setInteractive] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [walking, setWalking] = useState(true);
+  const [zoomStep, setZoomStep] = useState(0);
   const presence = useCampusPresence();
   const { isAuthenticated } = useAuth();
   useEffect(() => {
@@ -95,7 +97,7 @@ export function LandingPage() {
                   interactive={interactive}
                   visitors={presence.snapshot?.visitors}
                   serverTime={presence.snapshot?.serverTime}
-                  walking={walking}
+                  zoomStep={zoomStep}
                   touring={playing}
                   onViewChange={setView}
                 />
@@ -122,6 +124,7 @@ export function LandingPage() {
                   type="button"
                   className={`campus-control ${interactive ? 'active' : ''}`}
                   aria-pressed={interactive}
+                  title="Kéo để xoay; cuộn chuột hoặc chụm hai ngón tay để thu phóng"
                   onClick={() => {
                     setInteractive(!interactive);
                     setPlaying(false);
@@ -142,20 +145,46 @@ export function LandingPage() {
                   {playing ? <Pause size={15} /> : <Play size={15} />}
                   {playing ? 'Dừng tham quan' : 'Tham quan tự động'}
                 </button>
-                {interactive && (
+                <div className="campus-zoom-controls" role="group" aria-label="Thu phóng mô hình">
                   <button
                     type="button"
                     className="campus-control"
-                    aria-label="Đặt lại góc nhìn"
+                    aria-label="Phóng to mô hình"
+                    title="Phóng to"
                     onClick={() => {
-                      setInteractive(false);
-                      setView(0);
-                      setCameraReset((current) => current + 1);
+                      setPlaying(false);
+                      setInteractive(true);
+                      setZoomStep((current) => current + 1);
                     }}
                   >
-                    <RotateCcw size={16} />
+                    <Plus size={16} />
                   </button>
-                )}
+                  <button
+                    type="button"
+                    className="campus-control"
+                    aria-label="Thu nhỏ mô hình"
+                    title="Thu nhỏ"
+                    onClick={() => {
+                      setPlaying(false);
+                      setInteractive(true);
+                      setZoomStep((current) => current - 1);
+                    }}
+                  >
+                    <Minus size={16} />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="campus-control"
+                  aria-label="Đặt lại góc nhìn"
+                  onClick={() => {
+                    setInteractive(false);
+                    setView(0);
+                    setCameraReset((current) => current + 1);
+                  }}
+                >
+                  <RotateCcw size={16} />
+                </button>
               </div>
               <div className="campus-explorer-views">
                 <div
@@ -180,23 +209,6 @@ export function LandingPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-              <div className="campus-explorer-footer">
-                <button
-                  type="button"
-                  className="campus-motion-toggle"
-                  aria-pressed={!walking}
-                  onClick={() => setWalking(!walking)}
-                >
-                  {walking ? 'Dừng người đi bộ' : 'Cho người đi bộ'}
-                </button>
-                <a
-                  href="https://tuyensinh.uit.edu.vn/uit-tour-360/"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  UIT thực tế 360° <ArrowUpRight size={14} />
-                </a>
               </div>
             </div>
           </div>
