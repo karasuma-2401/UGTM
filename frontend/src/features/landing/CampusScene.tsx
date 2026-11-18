@@ -24,6 +24,7 @@ export default function CampusScene({
   view = 0,
   resetKey = 0,
   interactive = false,
+  zoomStep = 0,
   visitors = [],
   serverTime,
   walking = true,
@@ -34,6 +35,7 @@ export default function CampusScene({
   view?: number;
   resetKey?: number;
   interactive?: boolean;
+  zoomStep?: number;
   visitors?: string[];
   serverTime?: number;
   walking?: boolean;
@@ -45,10 +47,12 @@ export default function CampusScene({
   const controller = useRef<{
     select: (index: number, key: number) => void;
     tour: (enabled: boolean) => void;
+    zoom: (steps: number) => void;
     controls: OrbitControls;
     presence: (ids: string[], time?: number) => void;
     motion: (enabled: boolean) => void;
   } | null>(null);
+  const appliedZoomStep = useRef(0);
   const readyCallback = useRef(onReady);
   const viewCallback = useRef(onViewChange);
   useEffect(() => {
@@ -132,8 +136,32 @@ export default function CampusScene({
       camera.aspect = viewportWidth / viewportHeight;
       camera.updateProjectionMatrix();
       setRenderSize(viewportWidth, viewportHeight);
-      if (renderer) renderer.domElement.style.left = '0px';
-      element.parentElement?.style.setProperty('--campus-extra-height', '0px');
+      if (renderer) {
+        renderer.domElement.style.left = '0px';
+        renderer.domElement.style.top = '0px';
+      }
+    }
+    function beginManualView() {
+      targetPosition = null;
+      if (!overview || !renderer) return;
+      // Convert the expanded overview into the fixed interaction viewport without
+      // moving a single pixel. Auto-fitting after a dolly would cancel the zoom.
+      const offsetX =
+        (camera.view?.enabled ? camera.view.offsetX : 0) -
+        (parseFloat(renderer.domElement.style.left) || 0);
+      const offsetY =
+        (camera.view?.enabled ? camera.view.offsetY : 0) -
+        (parseFloat(renderer.domElement.style.top) || 0);
+      resetViewport();
+      camera.setViewOffset(
+        viewportWidth,
+        viewportHeight,
+        offsetX,
+        offsetY,
+        viewportWidth,
+        viewportHeight,
+      );
+      overview = false;
     }
     function render() {
       frame = 0;
@@ -206,10 +234,7 @@ export default function CampusScene({
           innerWidth - size.width - 5,
         );
         renderer.domElement.style.left = `${left - bounds.left}px`;
-        element.parentElement?.style.setProperty(
-          '--campus-extra-height',
-          `${size.height - viewportHeight}px`,
-        );
+        renderer.domElement.style.top = `${viewportHeight - size.height}px`;
         overviewNeedsFit = false;
       }
       const animateWalkers = walkingEnabled && !reduced.matches;
@@ -255,19 +280,35 @@ export default function CampusScene({
         element.appendChild(renderer.domElement);
         controls = new OrbitControls(camera, renderer.domElement);
         controls.target.copy(targetLook);
-        controls.enableZoom = false;
+        controls.enableZoom = true;
+        controls.zoomSpeed = 0.8;
+        controls.minDistance = 35;
+        controls.maxDistance = 450;
         controls.enablePan = false;
         controls.enableDamping = !reduced.matches;
         controls.dampingFactor = 0.08;
         controls.minPolarAngle = 0.08;
         controls.maxPolarAngle = 1.35;
         controls.enabled = false;
-        controls.addEventListener('start', () => {
-          targetPosition = null;
-        });
+        controls.addEventListener('start', beginManualView);
         controls.addEventListener('change', requestRender);
         controller.current = {
           controls,
+          zoom(steps) {
+            beginManualView();
+            const distance = camera.position.distanceTo(controls!.target);
+            const next = THREE.MathUtils.clamp(
+              distance * 0.8 ** steps,
+              controls!.minDistance,
+              controls!.maxDistance,
+            );
+            camera.position
+              .sub(controls!.target)
+              .multiplyScalar(next / distance)
+              .add(controls!.target);
+            controls!.update();
+            requestRender();
+          },
           tour(enabled) {
             if (enabled === tourRunning) return;
             tourRunning = enabled;
@@ -282,7 +323,9 @@ export default function CampusScene({
               entryOffsetX =
                 (camera.view?.enabled ? camera.view.offsetX : 0) -
                 (parseFloat(renderer!.domElement.style.left) || 0);
-              entryOffsetY = camera.view?.enabled ? camera.view.offsetY : 0;
+              entryOffsetY = camera.view?.enabled
+                ? camera.view.offsetY + camera.view.height - viewportHeight
+                : 0;
               resetViewport();
               blendElapsed = 0;
               clock.reset();
@@ -411,6 +454,12 @@ export default function CampusScene({
   useEffect(() => {
     if (controller.current) controller.current.controls.enabled = interactive;
   }, [interactive, status]);
+  useEffect(() => {
+    if (!controller.current) return;
+    const steps = zoomStep - appliedZoomStep.current;
+    if (steps) controller.current.zoom(steps);
+    appliedZoomStep.current = zoomStep;
+  }, [zoomStep, status]);
   useEffect(() => {
     controller.current?.presence(visitors, serverTime);
   }, [visitors, serverTime, status]);

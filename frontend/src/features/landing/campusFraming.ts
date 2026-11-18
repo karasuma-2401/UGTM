@@ -56,12 +56,15 @@ export function frameCampusOverview(
     measure();
   }
   const frameWidth = Math.max(width, Math.ceil((maxX - minX) * 1.04));
-  const frameHeight = Math.max(height, Math.ceil((maxY - minY) * 1.04));
+  const verticalPadding = Math.max(12, (maxY - minY) * 0.02);
+  const frameHeight = Math.max(height, Math.ceil(maxY - minY + verticalPadding * 2));
   camera.setViewOffset(
     width,
     height,
     width / 2 + (minX + maxX) / 2 - frameWidth / 2,
-    height / 2 + (minY + maxY) / 2 - frameHeight / 2,
+    // Anchor the ground just above the controls. Overscan grows upward in paint
+    // space, so orbiting never changes the hero's layout or leaves a large gap.
+    height / 2 + maxY - frameHeight + verticalPadding,
     frameWidth,
     frameHeight,
   );
