@@ -20,13 +20,16 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMemberCandidates;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilsOverview;
 using UGTM.Modules.DefenseCouncil.Application.Councils.LockCouncilMinute;
+using UGTM.Modules.DefenseCouncil.Application.Councils.RemoveCouncilMember;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilToAcademicAffairs;
 using UGTM.Modules.DefenseCouncil.Application.Councils.UnlockCouncilMinute;
+using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilMembers;
 using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilSchedule;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
@@ -730,6 +733,11 @@ public sealed class DefenseCouncilRedisCachingTests
         }
         public Task AddAsync(Council council, CancellationToken ct = default) => inner.AddAsync(council, ct);
         public Task AddMembersAsync(IEnumerable<CouncilMember> members, CancellationToken ct = default) => inner.AddMembersAsync(members, ct);
+        public Task RemoveMemberAsync(CouncilMember member, CancellationToken ct = default) => inner.RemoveMemberAsync(member, ct);
+        public Task ReplaceMembersAsync(IEnumerable<CouncilMember> existingMembers, IEnumerable<CouncilMember> newMembers, CancellationToken ct = default)
+            => inner.ReplaceMembersAsync(existingMembers, newMembers, ct);
+        public Task<IReadOnlySet<Guid>> GetUserIdsWithAnyCouncilMembershipAsync(IEnumerable<Guid> userIds, Guid? excludeCouncilId = null, CancellationToken ct = default)
+            => inner.GetUserIdsWithAnyCouncilMembershipAsync(userIds, excludeCouncilId, ct);
         public Task AddAssignmentsAsync(IEnumerable<CouncilAssignment> assignments, CancellationToken ct = default) => inner.AddAssignmentsAsync(assignments, ct);
         public Task<CouncilAssignment?> GetAssignmentWithCouncilAndMembersAsync(Guid assignmentId, CancellationToken ct = default)
             => inner.GetAssignmentWithCouncilAndMembersAsync(assignmentId, ct);

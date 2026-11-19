@@ -68,6 +68,7 @@ public sealed class FakeBatchReader : IKltnBatchReader
 public sealed class FakeCouncilUserInfoReader : ICouncilUserInfoReader
 {
     public Dictionary<Guid, CouncilUserInfoContractDto> Users { get; } = [];
+    public HashSet<Guid> GrantedCouncilMemberUserIds { get; } = [];
 
     public Task<CouncilUserInfoContractDto?> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default)
         => Task.FromResult(Users.GetValueOrDefault(userId));
@@ -80,6 +81,47 @@ public sealed class FakeCouncilUserInfoReader : ICouncilUserInfoReader
             .ToDictionary(id => id, id => Users[id]);
 
         return Task.FromResult<IReadOnlyDictionary<Guid, CouncilUserInfoContractDto>>(result);
+    }
+
+    public Task<IReadOnlyList<CouncilUserInfoContractDto>> GetActiveLecturersAsync(string? keyword = null, CancellationToken cancellationToken = default)
+    {
+        var query = Users.Values.Where(u => u.IsActive && u.IsLecturer);
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var trimmed = keyword.Trim();
+            query = query.Where(u =>
+                u.FullName.Contains(trimmed, StringComparison.OrdinalIgnoreCase)
+                || u.Email.Contains(trimmed, StringComparison.OrdinalIgnoreCase)
+                || (u.UserCode != null && u.UserCode.Contains(trimmed, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        IReadOnlyList<CouncilUserInfoContractDto> result = query
+            .OrderBy(u => u.FullName)
+            .ThenBy(u => u.UserCode)
+            .ToList();
+
+        return Task.FromResult(result);
+    }
+
+    public Task GrantCouncilMemberRoleAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        foreach (var id in userIds.Where(x => x != Guid.Empty))
+        {
+            GrantedCouncilMemberUserIds.Add(id);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task RevokeCouncilMemberRoleAsync(IEnumerable<Guid> userIds, CancellationToken cancellationToken = default)
+    {
+        foreach (var id in userIds)
+        {
+            GrantedCouncilMemberUserIds.Remove(id);
+        }
+
+        return Task.CompletedTask;
     }
 }
 
@@ -359,6 +401,36 @@ public sealed class FakeCouncilRepository : ICouncilRepository
     {
         Members.AddRange(members);
         return Task.CompletedTask;
+    }
+
+    public Task RemoveMemberAsync(CouncilMember member, CancellationToken ct = default)
+    {
+        Members.RemoveAll(m => m.Id == member.Id);
+        return Task.CompletedTask;
+    }
+
+    public Task ReplaceMembersAsync(
+        IEnumerable<CouncilMember> existingMembers,
+        IEnumerable<CouncilMember> newMembers,
+        CancellationToken ct = default)
+    {
+        var existingIds = existingMembers.Select(m => m.Id).ToHashSet();
+        Members.RemoveAll(m => existingIds.Contains(m.Id));
+        Members.AddRange(newMembers);
+        return Task.CompletedTask;
+    }
+
+    public Task<IReadOnlySet<Guid>> GetUserIdsWithAnyCouncilMembershipAsync(
+        IEnumerable<Guid> userIds,
+        Guid? excludeCouncilId = null,
+        CancellationToken ct = default)
+    {
+        var idSet = userIds.ToHashSet();
+        var active = Members
+            .Where(m => idSet.Contains(m.UserId) && (excludeCouncilId == null || m.CouncilId != excludeCouncilId))
+            .Select(m => m.UserId)
+            .ToHashSet();
+        return Task.FromResult<IReadOnlySet<Guid>>(active);
     }
 
     public Task AddAssignmentsAsync(IEnumerable<CouncilAssignment> assignments, CancellationToken ct = default)

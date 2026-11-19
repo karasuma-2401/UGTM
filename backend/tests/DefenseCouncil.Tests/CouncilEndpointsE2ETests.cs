@@ -20,11 +20,14 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMemberCandidates;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
 using UGTM.Modules.DefenseCouncil.Application.Councils.LockCouncilMinute;
+using UGTM.Modules.DefenseCouncil.Application.Councils.RemoveCouncilMember;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.UnlockCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilsOverview;
+using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilMembers;
 using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilSchedule;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilToAcademicAffairs;
 using UGTM.Modules.DefenseCouncil.Application.Grading;
@@ -99,6 +102,9 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         builder.Services.AddSingleton<UGTM.Modules.AcademicPeriods.Contracts.ScoreSummaries.IScoreSummaryConfigurationReader, FakeMinuteConfigurationReader>();
         builder.Services.AddScoped<CreateCouncilHandler>();
         builder.Services.AddScoped<AddCouncilMembersHandler>();
+        builder.Services.AddScoped<GetCouncilMemberCandidatesHandler>();
+        builder.Services.AddScoped<UpdateCouncilMembersHandler>();
+        builder.Services.AddScoped<RemoveCouncilMemberHandler>();
         builder.Services.AddScoped<AssignCouncilGroupsHandler>();
         builder.Services.AddSingleton<UGTM.Modules.DefenseCouncil.Application.Councils.Common.ICouncilSchedulingGuard, FakeCouncilSchedulingGuard>();
         builder.Services.AddScoped<ApproveCouncilHandler>();
@@ -734,6 +740,751 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, approveResponse.StatusCode);
         var error = await ReadErrorAsync(approveResponse);
         Assert.Equal("Council.NoAssignedGroups", error.Code);
+    }
+
+    [Fact]
+    public async Task E2E_GetMemberCandidates_ReturnsLecturersWithConflictAndReviewerFlags()
+    {
+        var facultyId = Guid.NewGuid();
+        var advisorId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        var busyLecturerId = Guid.NewGuid();
+        var chairmanInThisCouncilId = Guid.NewGuid();
+        var studentUserId = Guid.NewGuid();
+        var inactiveLecturerId = Guid.NewGuid();
+
+        _userInfoReader.Users[advisorId] = new CouncilUserInfoContractDto(advisorId, "TS. Nguyễn GVHD", "gvhd@uit.edu.vn", "GV101", true, true);
+        _userInfoReader.Users[reviewerId] = new CouncilUserInfoContractDto(reviewerId, "TS. Trần GVPB", "gvpb@uit.edu.vn", "GV102", true, true);
+        _userInfoReader.Users[busyLecturerId] = new CouncilUserInfoContractDto(busyLecturerId, "ThS. Lê Trùng Lịch", "busy@uit.edu.vn", "GV103", true, true);
+        _userInfoReader.Users[chairmanInThisCouncilId] = new CouncilUserInfoContractDto(chairmanInThisCouncilId, "PGS. Phạm Chủ Tịch", "ct@uit.edu.vn", "GV104", true, true);
+        _userInfoReader.Users[studentUserId] = new CouncilUserInfoContractDto(studentUserId, "Sinh Viên A", "sv@uit.edu.vn", "SV001", true, false);
+        _userInfoReader.Users[inactiveLecturerId] = new CouncilUserInfoContractDto(inactiveLecturerId, "GV Đã Nghỉ", "off@uit.edu.vn", "GV999", false, true);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(
+            groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(
+            topicId, _batchId, advisorId, "Đề tài Candidate Test", "Candidate Test");
+        _councilRepo.ActiveReviewers[groupId] = reviewerId;
+
+        Authenticate(facultyId, "Faculty");
+
+        // Create another council at same date/slot with busyLecturerId
+        var otherRes = await _client.PostAsJsonAsync("/api/councils",
+            new CreateCouncilInputDto(_batchId, "HD-CAND-BUSY", _defenseDate, TimeSlotMorning, RoomB202));
+        var otherCouncilId = (await ReadDataAsync(otherRes)).GetProperty("id").GetGuid();
+        await _client.PostAsJsonAsync($"/api/councils/{otherCouncilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(busyLecturerId, CouncilMemberRole.Secretary)]));
+
+        // Create target council at same date/slot with chairmanInThisCouncilId + assigned group
+        var targetRes = await _client.PostAsJsonAsync("/api/councils",
+            new CreateCouncilInputDto(_batchId, "HD-CAND-MAIN", _defenseDate, TimeSlotMorning, RoomA101));
+        var councilId = (await ReadDataAsync(targetRes)).GetProperty("id").GetGuid();
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/assignments",
+            new AssignCouncilGroupsInputDto(Assignments: [new(groupId, 1)]));
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(chairmanInThisCouncilId, CouncilMemberRole.Chairman)]));
+
+        var candidatesResponse = await _client.GetAsync($"/api/councils/{councilId}/member-candidates");
+        Assert.Equal(HttpStatusCode.OK, candidatesResponse.StatusCode);
+
+        var candidates = await ReadDataAsync(candidatesResponse);
+        Assert.Equal(4, candidates.GetArrayLength());
+
+        var byId = candidates.EnumerateArray().ToDictionary(x => x.GetProperty("userId").GetGuid());
+        Assert.False(byId.ContainsKey(studentUserId));
+        Assert.False(byId.ContainsKey(inactiveLecturerId));
+
+        // Advisor conflict
+        var adv = byId[advisorId];
+        Assert.True(adv.GetProperty("isAdvisorConflict").GetBoolean());
+        Assert.False(adv.GetProperty("isEligible").GetBoolean());
+        Assert.Equal(0, adv.GetProperty("allowedRoles").GetArrayLength());
+
+        // Reviewer restricted to Member
+        var rev = byId[reviewerId];
+        Assert.True(rev.GetProperty("isReviewerForCouncilGroups").GetBoolean());
+        Assert.True(rev.GetProperty("isEligible").GetBoolean());
+        Assert.Equal(new[] { "Member" }, rev.GetProperty("allowedRoles").EnumerateArray().Select(r => r.GetString()!).ToArray());
+
+        // Busy schedule conflict
+        var busy = byId[busyLecturerId];
+        Assert.True(busy.GetProperty("isScheduleConflict").GetBoolean());
+        Assert.False(busy.GetProperty("isEligible").GetBoolean());
+        Assert.Equal(0, busy.GetProperty("allowedRoles").GetArrayLength());
+
+        // Already in THIS council as Chairman (not schedule-conflicting with self)
+        var chair = byId[chairmanInThisCouncilId];
+        Assert.True(chair.GetProperty("isAlreadyInCouncil").GetBoolean());
+        Assert.Equal("Chairman", chair.GetProperty("currentRoleInCouncil").GetString());
+        Assert.False(chair.GetProperty("isScheduleConflict").GetBoolean());
+        Assert.True(chair.GetProperty("isEligible").GetBoolean());
+        Assert.Equal(3, chair.GetProperty("allowedRoles").GetArrayLength());
+
+        // Keyword filtering
+        var searchResponse = await _client.GetAsync($"/api/councils/{councilId}/member-candidates?keyword=GV102");
+        Assert.Equal(HttpStatusCode.OK, searchResponse.StatusCode);
+        var searched = await ReadDataAsync(searchResponse);
+        Assert.Equal(1, searched.GetArrayLength());
+        Assert.Equal(reviewerId, searched[0].GetProperty("userId").GetGuid());
+    }
+
+    [Fact]
+    public async Task E2E_AddCouncilMembers_WhenUserIsNotLecturer_Returns400BadRequest()
+    {
+        var facultyId = Guid.NewGuid();
+        var studentId = Guid.NewGuid();
+        _userInfoReader.Users[studentId] = new CouncilUserInfoContractDto(studentId, "Sinh viên X", "svx@uit.edu.vn", "22520099", true, false);
+
+        Authenticate(facultyId, "Faculty");
+        var createRes = await _client.PostAsJsonAsync("/api/councils",
+            new CreateCouncilInputDto(_batchId, "HD-NONLEC-01", _defenseDate, TimeSlotMorning, RoomA101));
+        var councilId = (await ReadDataAsync(createRes)).GetProperty("id").GetGuid();
+
+        var addRes = await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(studentId, CouncilMemberRole.Member)]));
+
+        Assert.Equal(HttpStatusCode.BadRequest, addRes.StatusCode);
+        var error = await ReadErrorAsync(addRes);
+        Assert.Equal("Council.MemberNotLecturer", error.Code);
+        Assert.DoesNotContain(studentId, _userInfoReader.GrantedCouncilMemberUserIds);
+    }
+
+    [Fact]
+    public async Task E2E_UpdateCouncilMembers_InDraftCouncil_ReplacesRosterAndSyncsCouncilMemberRole()
+    {
+        var facultyId = Guid.NewGuid();
+        var lecA = Guid.NewGuid();
+        var lecB = Guid.NewGuid();
+        var lecC = Guid.NewGuid();
+        var lecD = Guid.NewGuid();
+
+        _userInfoReader.Users[lecA] = new CouncilUserInfoContractDto(lecA, "Giảng viên A", "a@uit.edu.vn", "GV01", true, true);
+        _userInfoReader.Users[lecB] = new CouncilUserInfoContractDto(lecB, "Giảng viên B", "b@uit.edu.vn", "GV02", true, true);
+        _userInfoReader.Users[lecC] = new CouncilUserInfoContractDto(lecC, "Giảng viên C", "c@uit.edu.vn", "GV03", true, true);
+        _userInfoReader.Users[lecD] = new CouncilUserInfoContractDto(lecD, "Giảng viên D", "d@uit.edu.vn", "GV04", true, true);
+
+        Authenticate(facultyId, "Faculty");
+
+        // Council 2 also includes lecA (so removing lecA from Council 1 must NOT revoke lecA's CouncilMember role)
+        var c2Res = await _client.PostAsJsonAsync("/api/councils",
+            new CreateCouncilInputDto(_batchId, "HD-SYNC-02", _defenseDate.AddDays(1), TimeSlotAfternoon, RoomB202));
+        var c2Id = (await ReadDataAsync(c2Res)).GetProperty("id").GetGuid();
+        await _client.PostAsJsonAsync($"/api/councils/{c2Id}/members",
+            new AddCouncilMembersInputDto(Members: [new(lecA, CouncilMemberRole.Member)]));
+
+        // Council 1 starts with lecA (Chairman), lecB (Secretary), lecD (Member)
+        var c1Res = await _client.PostAsJsonAsync("/api/councils",
+            new CreateCouncilInputDto(_batchId, "HD-SYNC-01", _defenseDate, TimeSlotMorning, RoomA101));
+        var c1Id = (await ReadDataAsync(c1Res)).GetProperty("id").GetGuid();
+        var addRes = await _client.PostAsJsonAsync($"/api/councils/{c1Id}/members",
+            new AddCouncilMembersInputDto(Members:
+            [
+                new(lecA, CouncilMemberRole.Chairman),
+                new(lecB, CouncilMemberRole.Secretary),
+                new(lecD, CouncilMemberRole.Member)
+            ]));
+        Assert.Equal(HttpStatusCode.OK, addRes.StatusCode);
+        Assert.Contains(lecA, _userInfoReader.GrantedCouncilMemberUserIds);
+        Assert.Contains(lecB, _userInfoReader.GrantedCouncilMemberUserIds);
+        Assert.Contains(lecD, _userInfoReader.GrantedCouncilMemberUserIds);
+
+        // Replace roster in Council 1 with lecB (Chairman) and lecC (Secretary)
+        var putRes = await _client.PutAsJsonAsync($"/api/councils/{c1Id}/members",
+            new UpdateCouncilMembersInputDto(
+            [
+                new(lecB, CouncilMemberRole.Chairman),
+                new(lecC, CouncilMemberRole.Secretary)
+            ]));
+
+        Assert.Equal(HttpStatusCode.OK, putRes.StatusCode);
+        var updatedMembers = await ReadDataAsync(putRes);
+        Assert.Equal(2, updatedMembers.GetArrayLength());
+
+        Assert.Contains(lecB, _userInfoReader.GrantedCouncilMemberUserIds);
+        Assert.Contains(lecC, _userInfoReader.GrantedCouncilMemberUserIds);
+        Assert.Contains(lecA, _userInfoReader.GrantedCouncilMemberUserIds); // Still in c2
+        Assert.DoesNotContain(lecD, _userInfoReader.GrantedCouncilMemberUserIds); // Revoked completely
+    }
+
+    [Fact]
+    public async Task E2E_UpdateCouncilMembers_WhenNotDraft_Returns409Conflict()
+    {
+        var facultyId = Guid.NewGuid();
+        var aaId = Guid.NewGuid();
+        var cId = Guid.NewGuid();
+        var sId = Guid.NewGuid();
+        var newId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+
+        _userInfoReader.Users[cId] = new CouncilUserInfoContractDto(cId, "Chủ tịch", "ct@uit.edu.vn", "GV11", true, true);
+        _userInfoReader.Users[sId] = new CouncilUserInfoContractDto(sId, "Thư ký", "tk@uit.edu.vn", "GV12", true, true);
+        _userInfoReader.Users[newId] = new CouncilUserInfoContractDto(newId, "Giảng viên Mới", "new@uit.edu.vn", "GV13", true, true);
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài Active", "Active");
+
+        Authenticate(facultyId, "Faculty");
+        var createRes = await _client.PostAsJsonAsync("/api/councils",
+            new CreateCouncilInputDto(_batchId, "HD-PUTLOCK-01", _defenseDate, TimeSlotMorning, RoomA101));
+        var councilId = (await ReadDataAsync(createRes)).GetProperty("id").GetGuid();
+
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(cId, CouncilMemberRole.Chairman), new(sId, CouncilMemberRole.Secretary)]));
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/assignments",
+            new AssignCouncilGroupsInputDto(Assignments: [new(groupId, 1)]));
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/submit", new SubmitCouncilToAcademicAffairsInputDto());
+
+        Authenticate(aaId, "AcademicAffairs");
+        var approveRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/approve", new ApproveCouncilInputDto("QD-PUTLOCK"));
+        Assert.Equal(HttpStatusCode.OK, approveRes.StatusCode);
+
+        var putRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto([new(newId, CouncilMemberRole.Chairman), new(sId, CouncilMemberRole.Secretary)]));
+
+        Assert.Equal(HttpStatusCode.Conflict, putRes.StatusCode);
+        var error = await ReadErrorAsync(putRes);
+        Assert.Equal("Council.NotInDraftStatus", error.Code);
+    }
+
+    [Fact]
+    public async Task E2E_RemoveCouncilMember_InDraftCouncil_RemovesMemberAndRevokesRoleWhenNoOtherCouncils()
+    {
+        var facultyId = Guid.NewGuid();
+        var lec1 = Guid.NewGuid();
+        var lec2 = Guid.NewGuid();
+        var lec3 = Guid.NewGuid();
+
+        _userInfoReader.Users[lec1] = new CouncilUserInfoContractDto(lec1, "Chủ tịch", "ct@uit.edu.vn", "GV21", true, true);
+        _userInfoReader.Users[lec2] = new CouncilUserInfoContractDto(lec2, "Thư ký", "tk@uit.edu.vn", "GV22", true, true);
+        _userInfoReader.Users[lec3] = new CouncilUserInfoContractDto(lec3, "Ủy viên", "uv@uit.edu.vn", "GV23", true, true);
+
+        Authenticate(facultyId, "Faculty");
+        var createRes = await _client.PostAsJsonAsync("/api/councils",
+            new CreateCouncilInputDto(_batchId, "HD-DEL-01", _defenseDate, TimeSlotMorning, RoomA101));
+        var councilId = (await ReadDataAsync(createRes)).GetProperty("id").GetGuid();
+
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members:
+            [
+                new(lec1, CouncilMemberRole.Chairman),
+                new(lec2, CouncilMemberRole.Secretary),
+                new(lec3, CouncilMemberRole.Member)
+            ]));
+        Assert.Contains(lec3, _userInfoReader.GrantedCouncilMemberUserIds);
+
+        var deleteRes = await _client.DeleteAsync($"/api/councils/{councilId}/members/{lec3}");
+        Assert.Equal(HttpStatusCode.OK, deleteRes.StatusCode);
+        var remaining = await ReadDataAsync(deleteRes);
+        Assert.Equal(2, remaining.GetArrayLength());
+        Assert.Contains(lec1, _userInfoReader.GrantedCouncilMemberUserIds);
+        Assert.Contains(lec2, _userInfoReader.GrantedCouncilMemberUserIds);
+        Assert.DoesNotContain(lec3, _userInfoReader.GrantedCouncilMemberUserIds);
+
+        var notFoundRes = await _client.DeleteAsync($"/api/councils/{councilId}/members/{Guid.NewGuid()}");
+        Assert.Equal(HttpStatusCode.NotFound, notFoundRes.StatusCode);
+        var error = await ReadErrorAsync(notFoundRes);
+        Assert.Equal("Council.MemberNotInCouncil", error.Code);
+    }
+
+    #endregion
+
+    #region QA Boundary, Negative & Malformed Input Tests — Council Member Assignment
+
+    private async Task<Guid> CreateDraftCouncilForQaAsync(string code, DateOnly? date = null, string? slot = null, string? room = null)
+    {
+        Authenticate(Guid.NewGuid(), "Faculty");
+        var res = await _client.PostAsJsonAsync("/api/councils",
+            new CreateCouncilInputDto(_batchId, code, date ?? _defenseDate, slot ?? TimeSlotMorning, room ?? RoomA101));
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        return (await ReadDataAsync(res)).GetProperty("id").GetGuid();
+    }
+
+    private Task<HttpResponseMessage> SendRawJsonAsync(HttpMethod method, string url, string rawJson)
+    {
+        var request = new HttpRequestMessage(method, url)
+        {
+            Content = new StringContent(rawJson, System.Text.Encoding.UTF8, "application/json")
+        };
+        return _client.SendAsync(request);
+    }
+
+    [Fact]
+    public async Task QA_MemberAssignment_Unauthenticated_Returns401AcrossAllEndpoints()
+    {
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-401");
+        ClearAuthentication();
+
+        var getRes = await _client.GetAsync($"/api/councils/{councilId}/member-candidates");
+        var postRes = await _client.PostAsJsonAsync($"/api/councils/{councilId}/members", new AddCouncilMembersInputDto());
+        var putRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members", new UpdateCouncilMembersInputDto());
+        var delRes = await _client.DeleteAsync($"/api/councils/{councilId}/members/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, getRes.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, postRes.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, putRes.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, delRes.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Student")]
+    [InlineData("Lecturer")]
+    [InlineData("CouncilMember")]
+    public async Task QA_MemberAssignment_UnauthorizedRoles_Return403AcrossAllEndpoints(string role)
+    {
+        var councilId = await CreateDraftCouncilForQaAsync($"HD-QA-403-{role}");
+        Authenticate(Guid.NewGuid(), role);
+
+        var getRes = await _client.GetAsync($"/api/councils/{councilId}/member-candidates");
+        var postRes = await _client.PostAsJsonAsync($"/api/councils/{councilId}/members", new AddCouncilMembersInputDto());
+        var putRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members", new UpdateCouncilMembersInputDto());
+        var delRes = await _client.DeleteAsync($"/api/councils/{councilId}/members/{Guid.NewGuid()}");
+
+        foreach (var res in new[] { getRes, postRes, putRes, delRes })
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, res.StatusCode);
+            var err = await ReadErrorAsync(res);
+            Assert.Equal("Council.Forbidden", err.Code);
+        }
+    }
+
+    [Theory]
+    [InlineData("Faculty")]
+    [InlineData("AcademicAffairs")]
+    [InlineData("Admin")]
+    public async Task QA_MemberAssignment_AuthorizedRoles_SucceedAcrossWorkflow(string role)
+    {
+        var councilId = await CreateDraftCouncilForQaAsync($"HD-QA-OK-{role}");
+        var lec1 = Guid.NewGuid();
+        var lec2 = Guid.NewGuid();
+        _userInfoReader.Users[lec1] = new CouncilUserInfoContractDto(lec1, "GV QA 1", "qa1@uit.edu.vn", "QA01", true, true);
+        _userInfoReader.Users[lec2] = new CouncilUserInfoContractDto(lec2, "GV QA 2", "qa2@uit.edu.vn", "QA02", true, true);
+
+        Authenticate(Guid.NewGuid(), role);
+
+        var getRes = await _client.GetAsync($"/api/councils/{councilId}/member-candidates");
+        Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+
+        var postRes = await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(lec1, CouncilMemberRole.Chairman)]));
+        Assert.Equal(HttpStatusCode.OK, postRes.StatusCode);
+
+        var putRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto([new(lec1, CouncilMemberRole.Chairman), new(lec2, CouncilMemberRole.Secretary)]));
+        Assert.Equal(HttpStatusCode.OK, putRes.StatusCode);
+
+        var delRes = await _client.DeleteAsync($"/api/councils/{councilId}/members/{lec2}");
+        Assert.Equal(HttpStatusCode.OK, delRes.StatusCode);
+    }
+
+    [Fact]
+    public async Task QA_MemberAssignment_InvalidRouteGuids_Return404NotFound()
+    {
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-BADGUID");
+
+        var getBadCouncil = await _client.GetAsync("/api/councils/not-a-guid/member-candidates");
+        var postBadCouncil = await _client.PostAsJsonAsync("/api/councils/not-a-guid/members", new AddCouncilMembersInputDto());
+        var putBadCouncil = await _client.PutAsJsonAsync("/api/councils/not-a-guid/members", new UpdateCouncilMembersInputDto());
+        var delBadCouncil = await _client.DeleteAsync($"/api/councils/not-a-guid/members/{Guid.NewGuid()}");
+        var delBadUser = await _client.DeleteAsync($"/api/councils/{councilId}/members/12345-not-a-guid");
+
+        Assert.Equal(HttpStatusCode.NotFound, getBadCouncil.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, postBadCouncil.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, putBadCouncil.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, delBadCouncil.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, delBadUser.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("{ \"members\": [ { invalid_json }")]
+    [InlineData("not json at all")]
+    [InlineData("{ \"members\": \"should-be-array\" }")]
+    [InlineData("{ \"members\": [ { \"userId\": \"not-a-guid\", \"role\": \"Chairman\" } ] }")]
+    [InlineData("{ \"members\": [ { \"userId\": \"11111111-1111-1111-1111-111111111111\", \"role\": \"SuperAdmin\" } ] }")]
+    public async Task QA_MemberAssignment_MalformedOrWrongTypeJson_Returns400BadRequest(string rawJson)
+    {
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-BADJSON");
+
+        var postRes = await SendRawJsonAsync(HttpMethod.Post, $"/api/councils/{councilId}/members", rawJson);
+        var putRes = await SendRawJsonAsync(HttpMethod.Put, $"/api/councils/{councilId}/members", rawJson);
+
+        Assert.Equal(HttpStatusCode.BadRequest, postRes.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, putRes.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(999)]
+    [InlineData(-1)]
+    public async Task QA_MemberAssignment_OutOfRangeIntegerEnumRole_Returns400InvalidMember(int badRole)
+    {
+        var councilId = await CreateDraftCouncilForQaAsync($"HD-QA-ENUM-{badRole}");
+        var lecId = Guid.NewGuid();
+        var rawJson = $"{{ \"members\": [ {{ \"userId\": \"{lecId}\", \"role\": {badRole} }} ] }}";
+
+        var postRes = await SendRawJsonAsync(HttpMethod.Post, $"/api/councils/{councilId}/members", rawJson);
+        var putRes = await SendRawJsonAsync(HttpMethod.Put, $"/api/councils/{councilId}/members", rawJson);
+
+        Assert.Equal(HttpStatusCode.BadRequest, postRes.StatusCode);
+        Assert.Equal("Council.InvalidMember", (await ReadErrorAsync(postRes)).Code);
+
+        Assert.Equal(HttpStatusCode.BadRequest, putRes.StatusCode);
+        Assert.Equal("Council.InvalidMember", (await ReadErrorAsync(putRes)).Code);
+    }
+
+    [Fact]
+    public async Task QA_MemberAssignment_StringEnumAndNumericEnumInRawJson_BothBindAndSucceed()
+    {
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-STRENUM");
+        var lec1 = Guid.NewGuid();
+        var lec2 = Guid.NewGuid();
+        var lec3 = Guid.NewGuid();
+        _userInfoReader.Users[lec1] = new CouncilUserInfoContractDto(lec1, "GV String 1", "s1@uit.edu.vn", "GV51", true, true);
+        _userInfoReader.Users[lec2] = new CouncilUserInfoContractDto(lec2, "GV String 2", "s2@uit.edu.vn", "GV52", true, true);
+        _userInfoReader.Users[lec3] = new CouncilUserInfoContractDto(lec3, "GV Num 3", "s3@uit.edu.vn", "GV53", true, true);
+
+        // String enum via POST
+        var postJson = $"{{ \"members\": [ {{ \"userId\": \"{lec1}\", \"role\": \"Chairman\" }}, {{ \"userId\": \"{lec2}\", \"role\": \"Secretary\" }} ] }}";
+        var postRes = await SendRawJsonAsync(HttpMethod.Post, $"/api/councils/{councilId}/members", postJson);
+        Assert.Equal(HttpStatusCode.OK, postRes.StatusCode);
+
+        // Mix string enum and numeric enum via PUT
+        var putJson = $"{{ \"members\": [ {{ \"userId\": \"{lec1}\", \"role\": \"Chairman\" }}, {{ \"userId\": \"{lec2}\", \"role\": 1 }}, {{ \"userId\": \"{lec3}\", \"role\": \"Member\" }} ] }}";
+        var putRes = await SendRawJsonAsync(HttpMethod.Put, $"/api/councils/{councilId}/members", putJson);
+        Assert.Equal(HttpStatusCode.OK, putRes.StatusCode);
+        var putData = await ReadDataAsync(putRes);
+        Assert.Equal(3, putData.GetArrayLength());
+
+        // Single-member shorthand on PUT
+        var singlePutJson = $"{{ \"userId\": \"{lec1}\", \"role\": \"Chairman\" }}";
+        var singlePutRes = await SendRawJsonAsync(HttpMethod.Put, $"/api/councils/{councilId}/members", singlePutJson);
+        Assert.Equal(HttpStatusCode.OK, singlePutRes.StatusCode);
+        Assert.Equal(1, (await ReadDataAsync(singlePutRes)).GetArrayLength());
+    }
+
+    [Theory]
+    [InlineData("{}", "Council.EmptyMembers")]
+    [InlineData("null", "Council.EmptyMembers")]
+    [InlineData("{ \"members\": [] }", "Council.EmptyMembers")]
+    [InlineData("{ \"members\": null }", "Council.EmptyMembers")]
+    [InlineData("{ \"members\": [null] }", "Council.InvalidMember")]
+    [InlineData("{ \"members\": [ { \"userId\": \"00000000-0000-0000-0000-000000000000\", \"role\": \"Chairman\" } ] }", "Council.InvalidMember")]
+    public async Task QA_MemberAssignment_EmptyNullAndZeroGuidPayloads_Return400Safely(string rawJson, string expectedCode)
+    {
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-EMPTY");
+
+        var postRes = await SendRawJsonAsync(HttpMethod.Post, $"/api/councils/{councilId}/members", rawJson);
+        var putRes = await SendRawJsonAsync(HttpMethod.Put, $"/api/councils/{councilId}/members", rawJson);
+
+        Assert.Equal(HttpStatusCode.BadRequest, postRes.StatusCode);
+        Assert.Equal(expectedCode, (await ReadErrorAsync(postRes)).Code);
+
+        Assert.Equal(HttpStatusCode.BadRequest, putRes.StatusCode);
+        Assert.Equal(expectedCode, (await ReadErrorAsync(putRes)).Code);
+    }
+
+    [Theory]
+    [InlineData("   ")]
+    [InlineData("%_\\'")]
+    [InlineData("  GV501  ")]
+    public async Task QA_GetMemberCandidates_WhitespaceAndSpecialKeywords_HandledGracefully(string keyword)
+    {
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-KW");
+        var lecId = Guid.NewGuid();
+        _userInfoReader.Users[lecId] = new CouncilUserInfoContractDto(lecId, "TS. Keyword Test", "kw@uit.edu.vn", "GV501", true, true);
+
+        var res = await _client.GetAsync($"/api/councils/{councilId}/member-candidates?keyword={Uri.EscapeDataString(keyword)}");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var data = await ReadDataAsync(res);
+
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            Assert.True(data.GetArrayLength() >= 1);
+        }
+        else if (keyword.Trim() == "GV501")
+        {
+            Assert.Equal(1, data.GetArrayLength());
+        }
+        else
+        {
+            Assert.Equal(0, data.GetArrayLength());
+        }
+    }
+
+    [Fact]
+    public async Task QA_MemberAssignment_NonExistentCouncil_Returns404CouncilNotFound()
+    {
+        var missingCouncilId = Guid.NewGuid();
+        var someUser = Guid.NewGuid();
+        Authenticate(Guid.NewGuid(), "Faculty");
+
+        var getRes = await _client.GetAsync($"/api/councils/{missingCouncilId}/member-candidates");
+        var postRes = await _client.PostAsJsonAsync($"/api/councils/{missingCouncilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(someUser, CouncilMemberRole.Chairman)]));
+        var putRes = await _client.PutAsJsonAsync($"/api/councils/{missingCouncilId}/members",
+            new UpdateCouncilMembersInputDto(Members: [new(someUser, CouncilMemberRole.Chairman)]));
+        var delRes = await _client.DeleteAsync($"/api/councils/{missingCouncilId}/members/{someUser}");
+
+        foreach (var res in new[] { getRes, postRes, putRes, delRes })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, res.StatusCode);
+            Assert.Equal("Council.NotFound", (await ReadErrorAsync(res)).Code);
+        }
+    }
+
+    [Fact]
+    public async Task QA_MemberAssignment_NonExistentInactiveAndNonLecturerUsers_RejectedProperly()
+    {
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-REFS");
+        var missingUserId = Guid.NewGuid();
+        var inactiveUserId = Guid.NewGuid();
+        var studentId = Guid.NewGuid();
+
+        _userInfoReader.Users[inactiveUserId] = new CouncilUserInfoContractDto(inactiveUserId, "GV Nghỉ", "inactive@uit.edu.vn", "GV90", false, true);
+        _userInfoReader.Users[studentId] = new CouncilUserInfoContractDto(studentId, "Sinh viên B", "svb@uit.edu.vn", "SV90", true, false);
+
+        // Missing user -> 404 Council.MemberNotFound
+        var postMissing = await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(missingUserId, CouncilMemberRole.Chairman)]));
+        var putMissing = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto(Members: [new(missingUserId, CouncilMemberRole.Chairman)]));
+        Assert.Equal(HttpStatusCode.NotFound, postMissing.StatusCode);
+        Assert.Equal("Council.MemberNotFound", (await ReadErrorAsync(postMissing)).Code);
+        Assert.Equal(HttpStatusCode.NotFound, putMissing.StatusCode);
+        Assert.Equal("Council.MemberNotFound", (await ReadErrorAsync(putMissing)).Code);
+
+        // Inactive lecturer -> 404 Council.MemberNotFound
+        var postInactive = await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(inactiveUserId, CouncilMemberRole.Chairman)]));
+        var putInactive = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto(Members: [new(inactiveUserId, CouncilMemberRole.Chairman)]));
+        Assert.Equal(HttpStatusCode.NotFound, postInactive.StatusCode);
+        Assert.Equal("Council.MemberNotFound", (await ReadErrorAsync(postInactive)).Code);
+        Assert.Equal(HttpStatusCode.NotFound, putInactive.StatusCode);
+        Assert.Equal("Council.MemberNotFound", (await ReadErrorAsync(putInactive)).Code);
+
+        // Active Student (IsLecturer = false) via PUT -> 400 Council.MemberNotLecturer
+        var putStudent = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto(Members: [new(studentId, CouncilMemberRole.Member)]));
+        Assert.Equal(HttpStatusCode.BadRequest, putStudent.StatusCode);
+        Assert.Equal("Council.MemberNotLecturer", (await ReadErrorAsync(putStudent)).Code);
+
+        // DELETE with Guid.Empty -> 404 Council.MemberNotInCouncil
+        var delEmptyUser = await _client.DeleteAsync($"/api/councils/{councilId}/members/{Guid.Empty}");
+        Assert.Equal(HttpStatusCode.NotFound, delEmptyUser.StatusCode);
+        Assert.Equal("Council.MemberNotInCouncil", (await ReadErrorAsync(delEmptyUser)).Code);
+    }
+
+    [Fact]
+    public async Task QA_GetMemberCandidates_WhenAssignedGroupOrTopicMissing_HandlesOrphanReferenceGracefully()
+    {
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-ORPHAN");
+        var orphanGroupId = Guid.NewGuid();
+        var lecId = Guid.NewGuid();
+        _userInfoReader.Users[lecId] = new CouncilUserInfoContractDto(lecId, "TS. Orphan Safe", "orphan@uit.edu.vn", "GV601", true, true);
+
+        // Inject orphan assignment directly into repository without corresponding group/topic contract entries
+        _councilRepo.Assignments.Add(new CouncilAssignment
+        {
+            Id = Guid.NewGuid(),
+            CouncilId = councilId,
+            GroupId = orphanGroupId,
+            OrderNumber = 1
+        });
+
+        var getRes = await _client.GetAsync($"/api/councils/{councilId}/member-candidates");
+        Assert.Equal(HttpStatusCode.OK, getRes.StatusCode);
+
+        var putRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto(Members: [new(lecId, CouncilMemberRole.Chairman)]));
+        Assert.Equal(HttpStatusCode.OK, putRes.StatusCode);
+    }
+
+    [Fact]
+    public async Task QA_UpdateCouncilMembers_BusinessRulesRoleSwapAndAtomicity_EnforcedStrictly()
+    {
+        var advisorId = Guid.NewGuid();
+        var reviewerId = Guid.NewGuid();
+        var busyId = Guid.NewGuid();
+        var lecA = Guid.NewGuid();
+        var lecB = Guid.NewGuid();
+        var extraNewValidId = Guid.NewGuid();
+
+        _userInfoReader.Users[advisorId] = new CouncilUserInfoContractDto(advisorId, "GVHD Conflict", "gvhd@uit.edu.vn", "GV701", true, true);
+        _userInfoReader.Users[reviewerId] = new CouncilUserInfoContractDto(reviewerId, "GVPB Reviewer", "gvpb@uit.edu.vn", "GV702", true, true);
+        _userInfoReader.Users[busyId] = new CouncilUserInfoContractDto(busyId, "GV Busy", "busy@uit.edu.vn", "GV703", true, true);
+        _userInfoReader.Users[lecA] = new CouncilUserInfoContractDto(lecA, "GV A", "a@uit.edu.vn", "GV704", true, true);
+        _userInfoReader.Users[lecB] = new CouncilUserInfoContractDto(lecB, "GV B", "b@uit.edu.vn", "GV705", true, true);
+        _userInfoReader.Users[extraNewValidId] = new CouncilUserInfoContractDto(extraNewValidId, "GV Valid", "valid@uit.edu.vn", "GV706", true, true);
+
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, advisorId, "Đề tài QA Rules", "QA Rules");
+        _councilRepo.ActiveReviewers[groupId] = reviewerId;
+
+        // Busy lecturer on same slot
+        var otherCouncilId = await CreateDraftCouncilForQaAsync("HD-QA-BUSY2", _defenseDate, TimeSlotMorning, RoomB202);
+        await _client.PostAsJsonAsync($"/api/councils/{otherCouncilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(busyId, CouncilMemberRole.Chairman)]));
+
+        // Main council with assigned group and initial roster [lecA=Chairman, lecB=Secretary]
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-RULES", _defenseDate, TimeSlotMorning, RoomA101);
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/assignments",
+            new AssignCouncilGroupsInputDto(Assignments: [new(groupId, 1)]));
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(lecA, CouncilMemberRole.Chairman), new(lecB, CouncilMemberRole.Secretary)]));
+
+        // 1. Duplicate UserId in same PUT request -> 409
+        var dupUserRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto([new(lecA, CouncilMemberRole.Chairman), new(lecA, CouncilMemberRole.Secretary)]));
+        Assert.Equal(HttpStatusCode.Conflict, dupUserRes.StatusCode);
+        Assert.Equal("Council.DuplicateMemberInRequest", (await ReadErrorAsync(dupUserRes)).Code);
+
+        // 2. Duplicate Chairman in PUT -> 409
+        var dupChairRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto([new(lecA, CouncilMemberRole.Chairman), new(lecB, CouncilMemberRole.Chairman)]));
+        Assert.Equal(HttpStatusCode.Conflict, dupChairRes.StatusCode);
+        Assert.Equal("Council.DuplicateChairman", (await ReadErrorAsync(dupChairRes)).Code);
+
+        // 3. Duplicate Secretary in PUT -> 409
+        var dupSecRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto([new(lecA, CouncilMemberRole.Secretary), new(lecB, CouncilMemberRole.Secretary)]));
+        Assert.Equal(HttpStatusCode.Conflict, dupSecRes.StatusCode);
+        Assert.Equal("Council.DuplicateSecretary", (await ReadErrorAsync(dupSecRes)).Code);
+
+        // 4. Reviewer assigned as Secretary in PUT -> 409
+        var revSecRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto([new(lecA, CouncilMemberRole.Chairman), new(reviewerId, CouncilMemberRole.Secretary)]));
+        Assert.Equal(HttpStatusCode.Conflict, revSecRes.StatusCode);
+        Assert.Equal("Council.MemberIsGroupReviewerWithInvalidRole", (await ReadErrorAsync(revSecRes)).Code);
+
+        // 5. Atomicity test: PUT with 1 valid new member + 1 advisor conflict -> 409 AND existing roster & roles unchanged
+        var atomicFailRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto([new(extraNewValidId, CouncilMemberRole.Chairman), new(advisorId, CouncilMemberRole.Secretary)]));
+        Assert.Equal(HttpStatusCode.Conflict, atomicFailRes.StatusCode);
+        Assert.Equal("Council.MemberIsGroupAdvisor", (await ReadErrorAsync(atomicFailRes)).Code);
+
+        // Verify extraNewValidId was NOT added or granted role, and lecA/lecB remain untouched
+        var currentMembers = _councilRepo.Members.Where(m => m.CouncilId == councilId).ToList();
+        Assert.Equal(2, currentMembers.Count);
+        Assert.Contains(currentMembers, m => m.UserId == lecA && m.RoleInCouncil == CouncilMemberRole.Chairman);
+        Assert.Contains(currentMembers, m => m.UserId == lecB && m.RoleInCouncil == CouncilMemberRole.Secretary);
+        Assert.DoesNotContain(extraNewValidId, _userInfoReader.GrantedCouncilMemberUserIds);
+
+        // 6. Schedule conflict in PUT -> 409
+        var busyRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto([new(lecA, CouncilMemberRole.Chairman), new(busyId, CouncilMemberRole.Secretary)]));
+        Assert.Equal(HttpStatusCode.Conflict, busyRes.StatusCode);
+        Assert.Equal("Council.MemberScheduleConflict", (await ReadErrorAsync(busyRes)).Code);
+
+        // 7. Role Swap (lecA <-> lecB) + Reviewer allowed as Member -> 200 OK
+        var swapRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto(
+            [
+                new(lecB, CouncilMemberRole.Chairman),
+                new(lecA, CouncilMemberRole.Secretary),
+                new(reviewerId, CouncilMemberRole.Member)
+            ]));
+        Assert.Equal(HttpStatusCode.OK, swapRes.StatusCode);
+        var swapped = await ReadDataAsync(swapRes);
+        Assert.Equal(3, swapped.GetArrayLength());
+        Assert.Contains(reviewerId, _userInfoReader.GrantedCouncilMemberUserIds);
+    }
+
+    [Fact]
+    public async Task QA_RemoveCouncilMember_WhenNotDraft_Returns409NotInDraftStatus()
+    {
+        var aaId = Guid.NewGuid();
+        var cId = Guid.NewGuid();
+        var sId = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+
+        _userInfoReader.Users[cId] = new CouncilUserInfoContractDto(cId, "Chủ tịch Active", "ca@uit.edu.vn", "GV801", true, true);
+        _userInfoReader.Users[sId] = new CouncilUserInfoContractDto(sId, "Thư ký Active", "sa@uit.edu.vn", "GV802", true, true);
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài Lock DEL", "Lock DEL");
+
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-DELLOCK");
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(cId, CouncilMemberRole.Chairman), new(sId, CouncilMemberRole.Secretary)]));
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/assignments",
+            new AssignCouncilGroupsInputDto(Assignments: [new(groupId, 1)]));
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/submit", new SubmitCouncilToAcademicAffairsInputDto());
+
+        Authenticate(aaId, "AcademicAffairs");
+        var approveRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/approve", new ApproveCouncilInputDto("QD-QA-DEL"));
+        Assert.Equal(HttpStatusCode.OK, approveRes.StatusCode);
+
+        var delRes = await _client.DeleteAsync($"/api/councils/{councilId}/members/{sId}");
+        Assert.Equal(HttpStatusCode.Conflict, delRes.StatusCode);
+        Assert.Equal("Council.NotInDraftStatus", (await ReadErrorAsync(delRes)).Code);
+        Assert.Contains(sId, _userInfoReader.GrantedCouncilMemberUserIds);
+    }
+
+    [Fact]
+    public async Task MemberModifications_WhenCouncilWasSubmitted_ResetsSubmissionFlag()
+    {
+        var facultyId = Guid.NewGuid();
+        Authenticate(facultyId, "Faculty");
+
+        var cId = Guid.NewGuid();
+        var sId = Guid.NewGuid();
+        var mId1 = Guid.NewGuid();
+        var mId2 = Guid.NewGuid();
+        var groupId = Guid.NewGuid();
+        var topicId = Guid.NewGuid();
+
+        _userInfoReader.Users[cId] = new CouncilUserInfoContractDto(cId, "Chủ tịch Reset", "cr@uit.edu.vn", "GV810", true, true);
+        _userInfoReader.Users[sId] = new CouncilUserInfoContractDto(sId, "Thư ký Reset", "sr@uit.edu.vn", "GV811", true, true);
+        _userInfoReader.Users[mId1] = new CouncilUserInfoContractDto(mId1, "Ủy viên 1 Reset", "m1r@uit.edu.vn", "GV812", true, true);
+        _userInfoReader.Users[mId2] = new CouncilUserInfoContractDto(mId2, "Ủy viên 2 Reset", "m2r@uit.edu.vn", "GV813", true, true);
+        _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
+        _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài Reset Test", "Reset Test");
+
+        var councilId = await CreateDraftCouncilForQaAsync("HD-QA-RESET-FLAG");
+        var council = _councilRepo.Councils.First(c => c.Id == councilId);
+
+        // 1. Initial setup: Add Chairman + Secretary, assign 1 group, then submit to Academic Affairs
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(cId, CouncilMemberRole.Chairman), new(sId, CouncilMemberRole.Secretary)]));
+        await _client.PostAsJsonAsync($"/api/councils/{councilId}/assignments",
+            new AssignCouncilGroupsInputDto(Assignments: [new(groupId, 1)]));
+        var submitRes1 = await _client.PostAsJsonAsync($"/api/councils/{councilId}/submit", new SubmitCouncilToAcademicAffairsInputDto());
+        Assert.Equal(HttpStatusCode.OK, submitRes1.StatusCode);
+        Assert.True(council.IsSubmittedToAcademicAffairs);
+
+        // 2. Action A: Add member (POST) -> should reset submission flag
+        var addRes = await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
+            new AddCouncilMembersInputDto(Members: [new(mId1, CouncilMemberRole.Member)]));
+        Assert.Equal(HttpStatusCode.OK, addRes.StatusCode);
+        Assert.False(council.IsSubmittedToAcademicAffairs);
+
+        // Re-submit
+        var submitRes2 = await _client.PostAsJsonAsync($"/api/councils/{councilId}/submit", new SubmitCouncilToAcademicAffairsInputDto());
+        Assert.Equal(HttpStatusCode.OK, submitRes2.StatusCode);
+        Assert.True(council.IsSubmittedToAcademicAffairs);
+
+        // 3. Action B: Replace members (PUT) -> should reset submission flag
+        var putRes = await _client.PutAsJsonAsync($"/api/councils/{councilId}/members",
+            new UpdateCouncilMembersInputDto(Members: [
+                new(cId, CouncilMemberRole.Chairman),
+                new(sId, CouncilMemberRole.Secretary),
+                new(mId2, CouncilMemberRole.Member)
+            ]));
+        Assert.Equal(HttpStatusCode.OK, putRes.StatusCode);
+        Assert.False(council.IsSubmittedToAcademicAffairs);
+
+        // Re-submit
+        var submitRes3 = await _client.PostAsJsonAsync($"/api/councils/{councilId}/submit", new SubmitCouncilToAcademicAffairsInputDto());
+        Assert.Equal(HttpStatusCode.OK, submitRes3.StatusCode);
+        Assert.True(council.IsSubmittedToAcademicAffairs);
+
+        // 4. Action C: Remove member (DELETE) -> should reset submission flag
+        var delRes = await _client.DeleteAsync($"/api/councils/{councilId}/members/{mId2}");
+        Assert.Equal(HttpStatusCode.OK, delRes.StatusCode);
+        Assert.False(council.IsSubmittedToAcademicAffairs);
     }
 
     #endregion
