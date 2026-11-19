@@ -1,4 +1,4 @@
-import { routes, type VercelConfig } from '@vercel/config/v1';
+import type { VercelConfig } from '@vercel/config/v1';
 
 const configuredApiOrigin = process.env.API_ORIGIN?.trim();
 if (!configuredApiOrigin) {
@@ -30,7 +30,7 @@ export const config: VercelConfig = {
   buildCommand: 'npm run build',
   outputDirectory: 'dist',
   rewrites: [
-    routes.rewrite('/api/(.*)', `${apiOrigin.origin}/api/$1`),
-    routes.rewrite('/(.*)', '/index.html'),
+    { source: '/api/(.*)', destination: `${apiOrigin.origin}/api/$1` },
+    { source: '/(.*)', destination: '/index.html' },
   ],
 };

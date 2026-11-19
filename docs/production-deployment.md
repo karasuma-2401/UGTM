@@ -49,6 +49,8 @@ Tạo dòng known_hosts với hostname/IP đúng `VPS_HOST`, ví dụ `104.208.1
 
 Vercel giữ Root Directory `frontend`, `API_ORIGIN=https://ugtm.eastasia.cloudapp.azure.com`, Node 24, build `npm run build`, output `dist`. Bỏ `VITE_API_BASE_URL` cũ để dùng rewrite `/api/*`. CLI được cố định ở `66.2.0`; cập nhật có review. Source được lấy đúng approved commit, không lấy checkout ngẫu nhiên của workflow điều phối.
 
+Khi staging bằng CLI từ source mới giải nén, driver truyền `API_ORIGIN=https://<API_HOST>` vào cả tiến trình đọc config và build trên Vercel (`--build-env`). Config chỉ dùng type import của SDK để chạy được trước `npm install`; PR CI kiểm tra trong thư mục tạm không có `node_modules`. Khi CLI lỗi, log giữ dòng lỗi đã che credentials; không in command arguments hoặc toàn bộ build output.
+
 Kiểm tra branch protection sau khi đổi sang reusable CI: required checks cần khớp tên check mới xuất hiện trong PR. Giữ review và kiểm tra bắt buộc; không bỏ branch protection để merge. Pin Actions bằng commit SHA; Dependabot gửi cập nhật Actions hằng tuần. Chỉ job build/publish có `packages: write`, deploy có quyền đọc.
 
 ## Deployment attempts và trạng thái

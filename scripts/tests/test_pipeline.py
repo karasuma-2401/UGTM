@@ -1,6 +1,8 @@
 import io
 import json
 import os
+import subprocess
+import urllib.parse
 from pathlib import Path
 import shutil
 import tarfile
@@ -13,6 +15,63 @@ import production_pipeline as pipeline
 
 
 class PipelineTests(unittest.TestCase):
+    def test_deploy_provides_the_same_api_origin_to_config_loader_and_cloud_build(self):
+        with patch.dict(
+            os.environ,
+            {
+                "API_HOST": "api.example.test",
+                "API_ORIGIN": "https://stale.example.test",
+                "VERCEL_TOKEN": "test-only",
+            },
+        ), patch.object(
+            pipeline, "run", return_value="https://candidate.vercel.app"
+        ) as run:
+            pipeline.vercel("deploy", "--prod", "--skip-domain", cwd=Path("source"))
+        args = run.call_args.args[0]
+        self.assertIn("--skip-domain", args)
+        self.assertEqual(
+            args[args.index("--build-env") + 1], "API_ORIGIN=https://api.example.test"
+        )
+        self.assertEqual(
+            run.call_args.kwargs["env"]["API_ORIGIN"], "https://api.example.test"
+        )
+
+    def test_rollback_does_not_require_backend_environment_settings(self):
+        with patch.dict(
+            os.environ, {"VERCEL_TOKEN": "test-only"}, clear=True
+        ), patch.object(pipeline, "run", return_value="") as run:
+            pipeline.vercel("rollback", "https://previous.vercel.app", "--yes")
+        self.assertNotIn("--build-env", run.call_args.args[0])
+
+    def test_vercel_error_keeps_the_cause_without_leaking_secrets_or_build_output(self):
+        token = "synthetic/token+with special=characters"
+        stderr = (
+            "build output that must not be logged\n"
+            f"\x1b[31mError: API_ORIGIN missing; token={token}; encoded={urllib.parse.quote(token, safe='')}; "
+            "postgresql://user:password@db.example.test/db; ::warning::payload\x1b[0m\n"
+        )
+        with patch.dict(os.environ, {"VERCEL_TOKEN": token}), patch.object(
+            pipeline.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess(
+                [], 1, stdout="private stdout", stderr=stderr
+            ),
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                pipeline.run(["vercel", "deploy", "--token", token])
+        message = str(raised.exception)
+        self.assertIn("API_ORIGIN missing", message)
+        for private in (
+            token,
+            urllib.parse.quote(token, safe=""),
+            "user:password",
+            "private stdout",
+            "build output",
+            "::warning::",
+            "\x1b",
+        ):
+            self.assertNotIn(private, message)
+
     def execute(self, directory, fail=None):
         source = directory / "artifact"
         source.mkdir()
