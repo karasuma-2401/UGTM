@@ -1,0 +1,8 @@
+{
+  "data_contract": 1,
+  "auto_rollback": true,
+  "infrastructure": {
+    "redis": "redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe",
+    "minio": "cgr.dev/chainguard/minio@sha256:16b824a0016ffad3dfa8b059755f83800aa42ca68fe86f1782cabd0c5a16d322"
+  }
+}

@@ -16,9 +16,9 @@ https://{$API_HOST}:8443 {
 		reverse_proxy backend:8080
 	}
 
-	# Keep the existing containerized frontend available until the Vercel cutover.
+	# Frontend is served by Vercel. Preserve deep links on the Azure hostname.
 	handle {
-		reverse_proxy frontend:80
+		redir {$APP_URL}{uri} 302
 	}
 
 	header {

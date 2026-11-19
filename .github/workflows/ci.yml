@@ -1,0 +1,49 @@
+name: CI
+on:
+  pull_request:
+    branches: [dev, production]
+  workflow_dispatch:
+    inputs:
+      verify_image:
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      verify_image:
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  backend:
+    uses: ./.github/workflows/backend-ci.yml
+    with:
+      verify_image: ${{ github.event_name == 'pull_request' || inputs.verify_image }}
+    permissions:
+      contents: read
+      pull-requests: read
+  frontend:
+    uses: ./.github/workflows/frontend-ci.yml
+  ai:
+    uses: ./.github/workflows/ai-ci.yml
+    with:
+      verify_image: ${{ github.event_name == 'pull_request' || inputs.verify_image }}
+  release-contracts:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Release state machine and metadata tests
+        run: python -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - name: Deployment shell contracts and real Compose parser
+        run: python scripts/tests/check_production_deployment.py
+      - name: Shell syntax and lint
+        run: |
+          bash -n scripts/Deploy-Production.sh scripts/Backup-Production.sh scripts/Restore-Drill.sh
+          shellcheck scripts/Deploy-Production.sh scripts/Backup-Production.sh scripts/Restore-Drill.sh
+      - name: Workflow contracts
+        run: >-
+          docker run --rm --mount "type=bind,source=$GITHUB_WORKSPACE,target=/repo,readonly" -w /repo
+          rhysd/actionlint:1.7.7@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9

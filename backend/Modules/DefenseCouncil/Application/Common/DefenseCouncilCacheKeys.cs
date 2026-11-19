@@ -17,6 +17,7 @@ public static class DefenseCouncilCacheKeys
     public static readonly TimeSpan MinuteWorkspaceTtl = TimeSpan.FromMinutes(3);
     public static readonly TimeSpan DiscrepancyTtl = TimeSpan.FromMinutes(3);
     public static readonly TimeSpan GradingRubricTtl = TimeSpan.FromMinutes(10);
+    public static readonly TimeSpan MemberCandidatesTtl = TimeSpan.FromMinutes(3);
 
     public static string BatchScope(Guid batchId) => $"dc:batch:{batchId:N}";
 
@@ -44,6 +45,9 @@ public static class DefenseCouncilCacheKeys
 
     public static string GradingRubric(Guid batchId, string batchVer)
         => $"dc:grading-rubric:{batchId:N}:{batchVer}";
+
+    public static string CouncilMemberCandidates(Guid councilId, string keywordKey, string councilVer, string batchVer, string globalVer)
+        => $"dc:member-candidates:{councilId:N}:{keywordKey}:{councilVer}:{batchVer}:{globalVer}";
 
     public static async Task InvalidateBatchAsync(
         ICacheService? cache,

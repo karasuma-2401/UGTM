@@ -181,6 +181,77 @@ public sealed class CouncilRepository(
     public async Task AddMembersAsync(IEnumerable<CouncilMember> members, CancellationToken ct = default)
         => await db.CouncilMembers.AddRangeAsync(members, ct);
 
+    public Task RemoveMemberAsync(CouncilMember member, CancellationToken ct = default)
+    {
+        db.CouncilMembers.Remove(member);
+        return Task.CompletedTask;
+    }
+
+    public async Task ReplaceMembersAsync(
+        IEnumerable<CouncilMember> existingMembers,
+        IEnumerable<CouncilMember> newMembers,
+        CancellationToken ct = default)
+    {
+        var existingList = existingMembers.ToList();
+        var newList = newMembers.ToList();
+
+        if (db.Database.CurrentTransaction is not null)
+        {
+            if (existingList.Count > 0)
+            {
+                db.CouncilMembers.RemoveRange(existingList);
+                await db.SaveChangesAsync(ct);
+            }
+
+            if (newList.Count > 0)
+            {
+                await db.CouncilMembers.AddRangeAsync(newList, ct);
+            }
+
+            return;
+        }
+
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            if (existingList.Count > 0)
+            {
+                db.CouncilMembers.RemoveRange(existingList);
+                await db.SaveChangesAsync(ct);
+            }
+
+            if (newList.Count > 0)
+            {
+                await db.CouncilMembers.AddRangeAsync(newList, ct);
+                await db.SaveChangesAsync(ct);
+            }
+
+            await transaction.CommitAsync(ct);
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetUserIdsWithAnyCouncilMembershipAsync(
+        IEnumerable<Guid> userIds,
+        Guid? excludeCouncilId = null,
+        CancellationToken ct = default)
+    {
+        var idList = userIds.Distinct().ToList();
+        if (idList.Count == 0) return new HashSet<Guid>();
+
+        var activeIds = await db.CouncilMembers
+            .Where(m => idList.Contains(m.UserId) && (excludeCouncilId == null || m.CouncilId != excludeCouncilId))
+            .Select(m => m.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        return activeIds.ToHashSet();
+    }
+
     public async Task AddAssignmentsAsync(IEnumerable<CouncilAssignment> assignments, CancellationToken ct = default)
         => await db.CouncilAssignments.AddRangeAsync(assignments, ct);
 

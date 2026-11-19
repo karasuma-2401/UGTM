@@ -19,6 +19,28 @@ public static class ScoreWeightRules
         }
     }
 
+    public static void ValidateDraftWeights(ScoreCalculationMethod method, IEnumerable<decimal> weights)
+    {
+        var values = ReadNonnegativeWeights(weights);
+        switch (method)
+        {
+            case ScoreCalculationMethod.Percentage:
+                if (values.Any(x => x > 100m))
+                {
+                    throw new ArgumentException("Percentage weights must be between 0 and 100.", nameof(weights));
+                }
+                break;
+            case ScoreCalculationMethod.IntegerCoefficient:
+                if (values.Any(x => decimal.Truncate(x) != x))
+                {
+                    throw new ArgumentException("Coefficients must be nonnegative integers.", nameof(weights));
+                }
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(method), method, "Unsupported score calculation method.");
+        }
+    }
+
     public static void ValidatePercentage(IEnumerable<decimal> weights)
     {
         var values = ReadNonnegativeWeights(weights);

@@ -48,39 +48,60 @@ public sealed class UpdateScoreConfigurationDraftHandler(
             return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.ChangeReasonRequired);
         }
 
-        var parsed = ScoreConfigurationInputParser.Parse(command.CalculationMethod, command.Components);
+        var parsed = ScoreConfigurationInputParser.Parse(
+            command.CalculationMethod,
+            command.Components,
+            allowIncompleteTotal: true);
         if (parsed.IsFailure)
         {
             return Result.Failure<ScoreConfigurationDto>(parsed.Error);
         }
 
-        var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
         try
         {
-            configuration.UpdateDraft(
+            configuration.ValidateDraftUpdate(
                 parsed.Value.CalculationMethod,
                 parsed.Value.Components,
-                occurredAt,
-                command.ChangeReason);
+                command.ChangeReason,
+                allowIncompleteTotal: true);
         }
         catch (ArgumentException)
         {
             return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.InvalidRequest);
         }
 
-        auditOutbox.Add(
-            CreateScoreConfigurationDraftHandler.AuditEntry(
-                configuration,
-                IntegrationAuditActions.ScoreConfigurationDraftUpdated),
-            occurredAt);
-        var saveError = await unitOfWork.TrySaveChangesAsync(
-            ScoreConfigurationErrors.ConcurrencyConflict,
-            cancellationToken: cancellationToken);
-        if (saveError is not null)
+        var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
+        try
         {
-            return Result.Failure<ScoreConfigurationDto>(saveError);
-        }
+            return await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+            {
+                // Flush deletion of existing components before inserting replacements so
+                // PostgreSQL unique indexes on (config_id, component_code) / (config_id, order_index)
+                // and ScoreWeightConfig xmin concurrency tokens never produce false 409 conflicts.
+                configuration.RemoveComponentsForReplacement();
+                await unitOfWork.SaveChangesAsync(transactionCancellationToken);
+                await configurationRepository.ReloadAsync(configuration, transactionCancellationToken);
 
-        return Result.Success(ScoreConfigurationMapper.ToDto(configuration));
+                configuration.UpdateDraft(
+                    parsed.Value.CalculationMethod,
+                    parsed.Value.Components,
+                    occurredAt,
+                    command.ChangeReason,
+                    allowIncompleteTotal: true);
+
+                configurationRepository.AddComponents(configuration.Components);
+                auditOutbox.Add(
+                    CreateScoreConfigurationDraftHandler.AuditEntry(
+                        configuration,
+                        IntegrationAuditActions.ScoreConfigurationDraftUpdated),
+                    occurredAt);
+                await unitOfWork.SaveChangesAsync(transactionCancellationToken);
+                return Result.Success(ScoreConfigurationMapper.ToDto(configuration));
+            }, cancellationToken);
+        }
+        catch (AcademicPeriodsPersistenceException)
+        {
+            return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.ConcurrencyConflict);
+        }
     }
 }

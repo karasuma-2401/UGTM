@@ -1,7 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { UserSummary } from '@/features/identity/types/user.types';
 import { userApi, getUserErrorMessage } from '@/features/identity/services/userApi';
+import { notify } from '@/shared/notifications';
 import {
+  INVALID_EXCEL_FILE_MESSAGE,
+  isExcelXlsxFile,
   parseXlsxFile,
   validateRosterRows,
   type RawParsedRow,
@@ -25,8 +28,12 @@ export function useRosterImport(existingUsers: UserSummary[], onImportSuccess: (
       setErrorMessage(null);
       setNotice(null);
 
-      if (!file.name.toLowerCase().endsWith('.xlsx')) {
-        setErrorMessage('Vui lòng chọn tệp bảng tính Excel có định dạng .xlsx');
+      if (!isExcelXlsxFile(file)) {
+        setErrorMessage(INVALID_EXCEL_FILE_MESSAGE);
+        notify.error(INVALID_EXCEL_FILE_MESSAGE, {
+          title: 'Định dạng tệp không hợp lệ',
+          duration: 5000,
+        });
         return;
       }
 

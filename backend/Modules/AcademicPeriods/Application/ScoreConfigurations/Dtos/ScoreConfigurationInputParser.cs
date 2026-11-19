@@ -9,7 +9,8 @@ internal static class ScoreConfigurationInputParser
 {
     internal static Result<ParsedScoreConfiguration> Parse(
         string? calculationMethod,
-        IReadOnlyCollection<ScoreComponentInput>? components)
+        IReadOnlyCollection<ScoreComponentInput>? components,
+        bool allowIncompleteTotal = false)
     {
         if (string.IsNullOrWhiteSpace(calculationMethod)
             || int.TryParse(calculationMethod.Trim(), out _)
@@ -48,8 +49,8 @@ internal static class ScoreConfigurationInputParser
         }
 
         if (method == ScoreCalculationMethod.Percentage
-            && (components.Any(component => component.Weight < 0)
-                || components.Sum(component => component.Weight) != 100m))
+            && (components.Any(component => component.Weight < 0 || component.Weight > 100m)
+                || (!allowIncompleteTotal && components.Sum(component => component.Weight) != 100m)))
         {
             return Result.Failure<ParsedScoreConfiguration>(ScoreConfigurationErrors.InvalidPercentageTotal);
         }
@@ -57,7 +58,7 @@ internal static class ScoreConfigurationInputParser
         if (method == ScoreCalculationMethod.IntegerCoefficient
             && (components.Any(component => component.Weight < 0
                                             || component.Weight != decimal.Truncate(component.Weight))
-                || components.Sum(component => component.Weight) <= 0m))
+                || (!allowIncompleteTotal && components.Sum(component => component.Weight) <= 0m)))
         {
             return Result.Failure<ParsedScoreConfiguration>(ScoreConfigurationErrors.InvalidCoefficient);
         }

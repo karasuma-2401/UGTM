@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { PasswordField } from './PasswordField';
 import { PasswordStrength } from './PasswordStrength';
 
@@ -72,9 +72,27 @@ export function PasswordFields({
   fieldClassName,
   containerClassName,
 }: PasswordFieldsProps) {
+  const [shouldValidateMismatch, setShouldValidateMismatch] = useState(false);
+
+  const handleConfirmationChange = (value: string) => {
+    setShouldValidateMismatch(false);
+    onConfirmationChange?.(value);
+  };
+
+  const handleConfirmationFocus = () => {
+    setShouldValidateMismatch(false);
+  };
+
+  const handleConfirmationBlur = () => {
+    setShouldValidateMismatch(true);
+  };
+
   const effectiveConfirmationError =
     confirmationError ||
-    (autoValidateMismatch && confirmationPassword.length > 0 && password !== confirmationPassword
+    (autoValidateMismatch &&
+    shouldValidateMismatch &&
+    confirmationPassword.length > 0 &&
+    password !== confirmationPassword
       ? 'Mật khẩu xác nhận không khớp'
       : undefined);
 
@@ -111,7 +129,9 @@ export function PasswordFields({
         name={confirmationName}
         label={confirmationLabel}
         value={confirmationPassword}
-        onChange={onConfirmationChange}
+        onChange={handleConfirmationChange}
+        onFocus={handleConfirmationFocus}
+        onBlur={handleConfirmationBlur}
         disabled={disabled}
         required={required}
         placeholder={confirmationPlaceholder}

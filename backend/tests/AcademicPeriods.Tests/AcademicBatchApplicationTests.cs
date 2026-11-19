@@ -406,7 +406,10 @@ public sealed class AcademicBatchApplicationTests
             => Task.FromResult<ScoreWeightConfig?>(null);
         public Task<int> GetLatestVersionNoAsync(Guid batchId, CancellationToken cancellationToken = default)
             => Task.FromResult(active?.VersionNo ?? 0);
+        public Task ReloadAsync(ScoreWeightConfig configuration, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
         public void Add(ScoreWeightConfig configuration) => throw new NotSupportedException();
+        public void AddComponents(IEnumerable<ScoreComponentConfig> components) => throw new NotSupportedException();
     }
 
     private sealed class FakeUnitOfWork : IAcademicPeriodsUnitOfWork

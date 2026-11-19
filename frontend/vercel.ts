@@ -23,7 +23,7 @@ export const config: VercelConfig = {
   git: {
     deploymentEnabled: {
       '*': false,
-      production: true,
+      production: false,
     },
   },
   framework: 'vite',
