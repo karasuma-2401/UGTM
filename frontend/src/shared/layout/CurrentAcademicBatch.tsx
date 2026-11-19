@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { CalendarRange } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
+
+const CLOCK_SYNC_INTERVAL_MS = 60_000;
 
 function formatShortDateVi(dateStr?: string | null): string | null {
   if (!dateStr) return null;
@@ -14,8 +17,25 @@ function formatShortDateVi(dateStr?: string | null): string | null {
 export function CurrentAcademicBatch() {
   const { hasPermission } = useAuth();
   const query = useAcademicBatches();
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const syncClock = () => setNow(new Date());
+    const intervalId = window.setInterval(syncClock, CLOCK_SYNC_INTERVAL_MS);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncClock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   const canRead = hasPermission('academic.batches.read');
-  const currentBatches = getCurrentBatches(query.data ?? []);
+  const currentBatches = getCurrentBatches(query.data ?? [], now);
 
   return (
     <section

@@ -10,5 +10,7 @@ export function useAcademicBatches() {
     enabled: Boolean(user?.id) && hasPermission('academic.batches.read'),
     staleTime: 60_000,
     refetchInterval: 60_000,
+    refetchOnWindowFocus: 'always',
+    refetchOnReconnect: 'always',
   });
 }
