@@ -170,9 +170,15 @@ def vercel(*args, cwd=None):
                 "API_HOST must be a hostname/IP without scheme, port or path"
             )
         origin = f"https://{host}"
-        # vercel.ts runs locally before upload as well as during the cloud build.
+        # Validate locally; bind routing and build env to the same API host.
         environment["API_ORIGIN"] = origin
-        args = (*args, "--build-env", f"API_ORIGIN={origin}")
+        args = (
+            *args,
+            "--build-env",
+            f"API_ORIGIN={origin}",
+            "--env",
+            f"API_ORIGIN={origin}",
+        )
     return run(
         ["vercel", *args, "--token", os.environ["VERCEL_TOKEN"]],
         cwd=cwd,

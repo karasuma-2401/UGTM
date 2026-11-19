@@ -46,12 +46,13 @@ class FrontendConfigTests(unittest.TestCase):
             [
                 {
                     "source": "/api/(.*)",
-                    "destination": "https://api.example.test/api/$1",
+                    "destination": "$API_ORIGIN/api/$1",
+                    "env": ["API_ORIGIN"],
                 },
                 {"source": "/(.*)", "destination": "/index.html"},
             ],
         )
-        self.assertFalse(config["git"]["deploymentEnabled"]["production"])
+        self.assertIs(config["git"]["deploymentEnabled"], False)
 
     def test_missing_api_origin_is_rejected_before_upload(self):
         result = self.evaluate(None)

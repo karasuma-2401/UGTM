@@ -15,7 +15,7 @@ import production_pipeline as pipeline
 
 
 class PipelineTests(unittest.TestCase):
-    def test_deploy_provides_the_same_api_origin_to_config_loader_and_cloud_build(self):
+    def test_deploy_provides_the_same_api_origin_to_config_build_and_routing(self):
         with patch.dict(
             os.environ,
             {
@@ -31,6 +31,9 @@ class PipelineTests(unittest.TestCase):
         self.assertIn("--skip-domain", args)
         self.assertEqual(
             args[args.index("--build-env") + 1], "API_ORIGIN=https://api.example.test"
+        )
+        self.assertEqual(
+            args[args.index("--env") + 1], "API_ORIGIN=https://api.example.test"
         )
         self.assertEqual(
             run.call_args.kwargs["env"]["API_ORIGIN"], "https://api.example.test"

@@ -21,16 +21,18 @@ if (
 
 export const config: VercelConfig = {
   git: {
-    deploymentEnabled: {
-      '*': false,
-      production: false,
-    },
+    deploymentEnabled: false,
   },
   framework: 'vite',
   buildCommand: 'npm run build',
   outputDirectory: 'dist',
   rewrites: [
-    { source: '/api/(.*)', destination: `${apiOrigin.origin}/api/$1` },
+    // Git integration reads literals before build; env is resolved per deployment.
+    {
+      source: '/api/(.*)',
+      destination: '$API_ORIGIN/api/$1',
+      env: ['API_ORIGIN'],
+    },
     { source: '/(.*)', destination: '/index.html' },
   ],
 };
