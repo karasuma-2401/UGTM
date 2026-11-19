@@ -1,0 +1,59 @@
+name: Rescan Production Images
+on:
+  schedule:
+    - cron: '47 3 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: read
+jobs:
+  resolve:
+    if: github.event_name == 'workflow_dispatch' || vars.OPS_ENABLED == 'true'
+    environment: production
+    runs-on: ubuntu-24.04
+    outputs:
+      images: ${{ steps.images.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Resolve the active production digests
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME || 'ubuntu' }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: python scripts/production_operations.py images
+      - id: images
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          images = json.load(open(os.environ['RUNNER_TEMP']+'/ugtm-operations/images.json'))
+          print('matrix='+json.dumps({'include': images}))
+          PY
+  scan:
+    needs: resolve
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.resolve.outputs.images) }}
+    steps:
+      - uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ github.token }}
+        with:
+          version: v0.76.2
+          image-ref: ${{ matrix.image }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+          format: sarif
+          limit-severities-for-sarif: true
+          output: scan.sarif
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: production-rescan-${{ matrix.component }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: scan.sarif
+          retention-days: 30

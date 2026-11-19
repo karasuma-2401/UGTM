@@ -1,27 +1,16 @@
 name: Backend CI
 
 on:
-  pull_request:
-    branches:
-      - dev
-      - production
-    paths:
-      - "backend/**"
-      - "docker/**"
-      - "docker-compose.yml"
-      - ".env.example"
-      - "UGTM.sln"
-      - ".github/workflows/backend-ci.yml"
-      - ".github/workflows/deploy.yml"
-  push:
-    branches:
-      - dev
-      - production
+  workflow_call:
+    inputs:
+      verify_image:
+        type: boolean
+        default: true
   workflow_dispatch:
-
-concurrency:
-  group: backend-ci-${{ github.ref }}
-  cancel-in-progress: true
+    inputs:
+      verify_image:
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -33,10 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 10.0.x
 
@@ -48,12 +37,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
       - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Findings remain in the summary/artifact; this workflow has read-only PR access.
@@ -75,15 +64,15 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: 10.0.x
 
       - name: Cache NuGet packages
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('backend/**/*.csproj', 'UGTM.sln') }}
@@ -99,9 +88,12 @@ jobs:
       - name: Execute tests (Architecture, Unit & Integration)
         run: dotnet test UGTM.sln -c Release --no-build --logger "trx;LogFileName=results.trx"
 
+      - name: Verify read-only schema gate against a disposable database
+        run: python scripts/tests/test_api_schema.py backend/host/Api/bin/Release/net10.0/UGTM.Api.dll
+
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: backend-test-results
           path: "**/TestResults/*.trx"
@@ -113,9 +105,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Build API Docker image
+        if: ${{ inputs.verify_image }}
         run: docker build -f backend/host/Api/Dockerfile backend
 
       - name: Validate production Compose configuration
@@ -128,7 +121,8 @@ jobs:
           JWT_PRIVATE_KEY_FILE: /tmp/ci-only-jwt-private.pem
           SMTP_HOST: smtp.example.test
           SMTP_FROM_ADDRESS: no-reply@example.test
-          IMAGE_TAG: sha-ci
+          API_IMAGE: ghcr.io/example/ugtm-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          AI_IMAGE: ghcr.io/example/ugtm-ai@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
           AI_POSTGRES_DSN: postgresql://ai:ci-only@database/ai
           AI_POSTGRES_DIRECT_DSN: postgresql://ai:ci-only@database/ai
           PLAGIARISM_AI_API_KEY: ci-only-internal-key-at-least-32-characters
@@ -149,6 +143,7 @@ jobs:
         run: >-
           docker run --rm
           -e API_HOST=api.example.test
+          -e APP_URL=https://frontend.example.test
           -e ACME_EMAIL=ops@example.test
           -v "${{ github.workspace }}/docker/Caddyfile:/etc/caddy/Caddyfile:ro"
           caddy:2.11.7-alpine caddy validate --config /etc/caddy/Caddyfile

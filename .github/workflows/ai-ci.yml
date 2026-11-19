@@ -1,26 +1,19 @@
 name: AI CI
 
 on:
-  pull_request:
-    branches: [dev, production]
-    paths:
-      - services/plagiarism-ai/**
-      - docker/**
-      - .github/workflows/ai-ci.yml
-      - .github/workflows/publish.yml
-      - .github/workflows/deploy.yml
-      - scripts/Deploy-Production.sh
-  # Every release SHA needs a CI result, including commits changing other services.
-  push:
-    branches: [dev, production]
+  workflow_call:
+    inputs:
+      verify_image:
+        type: boolean
+        default: true
   workflow_dispatch:
+    inputs:
+      verify_image:
+        type: boolean
+        default: true
 
 permissions:
   contents: read
-
-concurrency:
-  group: ai-ci-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   POSTGRES_DSN: postgresql://ugtm_ai:ci-only@localhost:5432/ugtm_ai
@@ -38,18 +31,15 @@ jobs:
       run:
         working-directory: services/plagiarism-ai
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: services/plagiarism-ai/requirements/*.txt
       - run: python -m pip install -r requirements/dev.txt
       - run: python -m pytest -c pytest.unit.ini --junitxml=test-results/unit.xml
-      - name: Verify production preparation, dotenv escaping and schema failure guard
-        working-directory: .
-        run: python scripts/tests/check_production_deployment.py
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: ai-unit-results
@@ -78,8 +68,8 @@ jobs:
       run:
         working-directory: services/plagiarism-ai
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
           cache: pip
@@ -93,25 +83,25 @@ jobs:
           python -m pytest tests/test_queue_lifecycle.py
           tests/test_job_lifecycle_resilience.py tests/test_commit_enqueue_reconciler.py
           --junitxml=test-results/integration.xml
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: ai-integration-results
           path: services/plagiarism-ai/test-results/*.xml
 
   docker:
+    if: ${{ inputs.verify_image }}
     needs: [unit, integration]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
       - name: Verify the Azure ARM64 image can build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: services/plagiarism-ai
           file: services/plagiarism-ai/Dockerfile
           platforms: linux/arm64
           push: false
-          cache-from: type=gha,scope=ai-verify
-          cache-to: type=gha,mode=max,scope=ai-verify
+          cache-from: type=gha,scope=ai-arm64
+          cache-to: type=gha,mode=max,scope=ai-arm64
