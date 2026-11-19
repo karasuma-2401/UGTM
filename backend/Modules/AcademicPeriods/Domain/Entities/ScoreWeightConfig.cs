@@ -64,11 +64,11 @@ public sealed class ScoreWeightConfig : AggregateRoot<Guid>
         string? changeReason = null)
         => new(id, batchId, versionNo, calculationMethod, components, createdBy, createdAt, changeReason);
 
-    public void UpdateDraft(
+    public void ValidateDraftUpdate(
         ScoreCalculationMethod calculationMethod,
         IEnumerable<ScoreComponentDefinition> components,
-        DateTime updatedAt,
-        string? changeReason)
+        string? changeReason,
+        bool allowIncompleteTotal = false)
     {
         EnsureDraft();
         var normalizedChangeReason = NormalizeOptionalText(changeReason, 1000, nameof(changeReason));
@@ -77,7 +77,32 @@ public sealed class ScoreWeightConfig : AggregateRoot<Guid>
             throw new ArgumentException("A change reason is required after the first score configuration version.", nameof(changeReason));
         }
 
-        ReplaceComponents(calculationMethod, components);
+        var values = components?.OrderBy(x => x.OrderIndex).ToArray()
+            ?? throw new ArgumentNullException(nameof(components));
+        ValidateConfiguration(calculationMethod, values, allowIncompleteTotal);
+    }
+
+    public void RemoveComponentsForReplacement()
+    {
+        EnsureDraft();
+        _components.Clear();
+    }
+
+    public void UpdateDraft(
+        ScoreCalculationMethod calculationMethod,
+        IEnumerable<ScoreComponentDefinition> components,
+        DateTime updatedAt,
+        string? changeReason,
+        bool allowIncompleteTotal = false)
+    {
+        EnsureDraft();
+        var normalizedChangeReason = NormalizeOptionalText(changeReason, 1000, nameof(changeReason));
+        if (VersionNo > 1 && normalizedChangeReason is null)
+        {
+            throw new ArgumentException("A change reason is required after the first score configuration version.", nameof(changeReason));
+        }
+
+        ReplaceComponents(calculationMethod, components, allowIncompleteTotal);
         UpdatedAt = RequireUtc(updatedAt, nameof(updatedAt));
         ChangeReason = normalizedChangeReason;
     }
@@ -124,11 +149,12 @@ public sealed class ScoreWeightConfig : AggregateRoot<Guid>
 
     private void ReplaceComponents(
         ScoreCalculationMethod calculationMethod,
-        IEnumerable<ScoreComponentDefinition> components)
+        IEnumerable<ScoreComponentDefinition> components,
+        bool allowIncompleteTotal = false)
     {
         var values = components?.OrderBy(x => x.OrderIndex).ToArray()
             ?? throw new ArgumentNullException(nameof(components));
-        ValidateConfiguration(calculationMethod, values);
+        ValidateConfiguration(calculationMethod, values, allowIncompleteTotal);
 
         _components.Clear();
         _components.AddRange(values.Select(value => ScoreComponentConfig.Create(Id, value)));
@@ -137,7 +163,8 @@ public sealed class ScoreWeightConfig : AggregateRoot<Guid>
 
     private static void ValidateConfiguration(
         ScoreCalculationMethod calculationMethod,
-        IReadOnlyCollection<ScoreComponentDefinition> components)
+        IReadOnlyCollection<ScoreComponentDefinition> components,
+        bool allowIncompleteTotal = false)
     {
         if (components.Count == 0)
         {
@@ -159,7 +186,14 @@ public sealed class ScoreWeightConfig : AggregateRoot<Guid>
             ScoreComponentConfig.Validate(component);
         }
 
-        ScoreWeightRules.Validate(calculationMethod, components.Select(x => x.Weight));
+        if (allowIncompleteTotal)
+        {
+            ScoreWeightRules.ValidateDraftWeights(calculationMethod, components.Select(x => x.Weight));
+        }
+        else
+        {
+            ScoreWeightRules.Validate(calculationMethod, components.Select(x => x.Weight));
+        }
     }
 
     private void EnsureDraft()

@@ -36,30 +36,74 @@ export function useScoreConfigForm(
     return totalWeight > 0;
   }, [calculationMethod, totalWeight, components.length]);
 
-  const populateFromConfig = useCallback((targetConfig: ScoreConfigurationDto | null) => {
-    if (targetConfig) {
-      setCalculationMethod(targetConfig.calculationMethod);
-      const mappedComponents: ScoreComponentInput[] = targetConfig.components.map((c) => ({
-        componentCode: c.componentCode,
-        componentName: c.componentName,
-        source: c.source,
-        applicability: c.applicability,
-        weight: c.weight,
-        isRequired: c.isRequired,
-        minimumScore: c.minimumScore,
-        requiresApproval: c.requiresApproval,
-        orderIndex: c.orderIndex,
-      }));
-      setComponents(mappedComponents);
-
-      const reviewerComp = mappedComponents.find((c) => c.source === 'Reviewer');
-      setReviewerMinimumScore(reviewerComp?.minimumScore ?? null);
-    } else {
-      setCalculationMethod('IntegerCoefficient');
-      setReviewerMinimumScore(5.0);
-      setComponents(UIT_INTEGER_PRESET_COMPONENTS);
-    }
+  const syncReviewerMinimumScore = useCallback((nextComponents: ScoreComponentInput[]) => {
+    const reviewerComp = nextComponents.find((c) => c.source === 'Reviewer');
+    setReviewerMinimumScore(reviewerComp?.minimumScore ?? null);
   }, []);
+
+  const populateFromConfig = useCallback(
+    (targetConfig: ScoreConfigurationDto | null) => {
+      if (targetConfig) {
+        setCalculationMethod(targetConfig.calculationMethod);
+        const mappedComponents: ScoreComponentInput[] = targetConfig.components.map((c) => ({
+          componentCode: c.componentCode,
+          componentName: c.componentName,
+          source: c.source,
+          applicability: c.applicability,
+          weight: c.weight,
+          isRequired: c.isRequired,
+          minimumScore: c.minimumScore,
+          requiresApproval: c.requiresApproval,
+          orderIndex: c.orderIndex,
+        }));
+        setComponents(mappedComponents);
+        syncReviewerMinimumScore(mappedComponents);
+      } else {
+        setCalculationMethod('IntegerCoefficient');
+        setReviewerMinimumScore(5.0);
+        setComponents(UIT_INTEGER_PRESET_COMPONENTS);
+      }
+    },
+    [syncReviewerMinimumScore],
+  );
+
+  const addComponent = useCallback(
+    (newComponent: ScoreComponentInput) => {
+      setComponents((prev) => {
+        const next = [...prev, newComponent];
+        syncReviewerMinimumScore(next);
+        return next;
+      });
+    },
+    [syncReviewerMinimumScore],
+  );
+
+  const updateComponent = useCallback(
+    (index: number, updatedComponent: ScoreComponentInput) => {
+      setComponents((prev) => {
+        const next = prev.map((item, idx) => (idx === index ? updatedComponent : item));
+        syncReviewerMinimumScore(next);
+        return next;
+      });
+    },
+    [syncReviewerMinimumScore],
+  );
+
+  const removeComponent = useCallback(
+    (index: number) => {
+      setComponents((prev) => {
+        const next = prev
+          .filter((_, idx) => idx !== index)
+          .map((item, idx) => ({
+            ...item,
+            orderIndex: idx + 1,
+          }));
+        syncReviewerMinimumScore(next);
+        return next;
+      });
+    },
+    [syncReviewerMinimumScore],
+  );
 
   const handleReviewerMinScoreChange = (score: number | null) => {
     setReviewerMinimumScore(score);
@@ -134,6 +178,9 @@ export function useScoreConfigForm(
     totalWeight,
     isValid,
     populateFromConfig,
+    addComponent,
+    updateComponent,
+    removeComponent,
     handleReviewerMinScoreChange,
     handleSwitchCalculationMethod,
     applyDefaultTemplate,

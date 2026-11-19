@@ -216,6 +216,111 @@ public sealed class ScoreConfigurationApplicationTests
         Assert.Equal(1, unitOfWork.TransactionCount);
     }
 
+    [Fact]
+    public async Task Update_draft_replaces_components_in_transaction_and_allows_incomplete_percentage_until_publish()
+    {
+        var batch = AcademicPeriodTestData.DraftBatch();
+        var draft = ScoreWeightConfig.CreateDraft(
+            Guid.NewGuid(),
+            batch.Id,
+            1,
+            ScoreCalculationMethod.Percentage,
+            PercentageComponents().Select(component => new UGTM.Modules.AcademicPeriods.Domain.Grading.ScoreComponentDefinition(
+                component.ComponentCode,
+                component.ComponentName,
+                Enum.Parse<ScoreComponentSource>(component.Source),
+                Enum.Parse<ScoreComponentApplicability>(component.Applicability),
+                component.Weight,
+                component.IsRequired,
+                component.MinimumScore,
+                component.RequiresApproval,
+                component.OrderIndex)),
+            AcademicPeriodTestData.ActorId,
+            AcademicPeriodTestData.OccurredAtUtc);
+        var repository = new FakeScoreConfigurationRepository(draft: draft, byId: draft);
+        var audit = new FakeAuditOutbox();
+        var unitOfWork = new FakeUnitOfWork();
+        var updateHandler = new UpdateScoreConfigurationDraftHandler(
+            repository,
+            audit,
+            unitOfWork,
+            AuthorizedUser(),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
+
+        // Delete one component (30%) so remaining total is 70%
+        var remaining = PercentageComponents().Take(2).ToArray();
+        var updateResult = await updateHandler.HandleAsync(new UpdateScoreConfigurationDraftCommand(
+            batch.Id,
+            draft.Id,
+            "Percentage",
+            remaining,
+            null));
+
+        Assert.True(updateResult.IsSuccess);
+        Assert.Equal(2, updateResult.Value.Components.Count);
+        Assert.Equal(1, unitOfWork.TransactionCount);
+        Assert.Equal(2, unitOfWork.SaveCount);
+        Assert.Equal(1, repository.ReloadCount);
+        Assert.Equal(2, repository.AddedComponentsCount);
+        Assert.Single(audit.Entries);
+        Assert.Equal(IntegrationAuditActions.ScoreConfigurationDraftUpdated, audit.Entries[0].Action);
+
+        // Publishing the incomplete 70% draft must fail cleanly with InvalidPercentageTotal
+        var publishUnitOfWork = new FakeUnitOfWork();
+        var publishHandler = new PublishScoreConfigurationHandler(
+            repository,
+            new FakeAuditOutbox(),
+            publishUnitOfWork,
+            AuthorizedUser(),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc.AddMinutes(3)));
+
+        var publishResult = await publishHandler.HandleAsync(new PublishScoreConfigurationCommand(batch.Id, draft.Id));
+        Assert.True(publishResult.IsFailure);
+        Assert.Equal(ScoreConfigurationErrors.InvalidPercentageTotal.Code, publishResult.Error.Code);
+        Assert.Equal(0, publishUnitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task Update_draft_still_rejects_empty_components()
+    {
+        var batch = AcademicPeriodTestData.DraftBatch();
+        var draft = ScoreWeightConfig.CreateDraft(
+            Guid.NewGuid(),
+            batch.Id,
+            1,
+            ScoreCalculationMethod.Percentage,
+            PercentageComponents().Select(component => new UGTM.Modules.AcademicPeriods.Domain.Grading.ScoreComponentDefinition(
+                component.ComponentCode,
+                component.ComponentName,
+                Enum.Parse<ScoreComponentSource>(component.Source),
+                Enum.Parse<ScoreComponentApplicability>(component.Applicability),
+                component.Weight,
+                component.IsRequired,
+                component.MinimumScore,
+                component.RequiresApproval,
+                component.OrderIndex)),
+            AcademicPeriodTestData.ActorId,
+            AcademicPeriodTestData.OccurredAtUtc);
+        var unitOfWork = new FakeUnitOfWork();
+        var updateHandler = new UpdateScoreConfigurationDraftHandler(
+            new FakeScoreConfigurationRepository(draft: draft, byId: draft),
+            new FakeAuditOutbox(),
+            unitOfWork,
+            AuthorizedUser(),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
+
+        var result = await updateHandler.HandleAsync(new UpdateScoreConfigurationDraftCommand(
+            batch.Id,
+            draft.Id,
+            "Percentage",
+            [],
+            null));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ScoreConfigurationErrors.EmptyComponents.Code, result.Error.Code);
+        Assert.Equal(0, unitOfWork.SaveCount);
+    }
+
     private static CreateScoreConfigurationDraftHandler CreateHandler(
         KltnBatch batch,
         FakeScoreConfigurationRepository configurations,
@@ -294,6 +399,8 @@ public sealed class ScoreConfigurationApplicationTests
         ScoreWeightConfig? byId = null) : IScoreConfigurationRepository
     {
         public ScoreWeightConfig? Added { get; private set; }
+        public int ReloadCount { get; private set; }
+        public int AddedComponentsCount { get; private set; }
         public Task<ScoreWeightConfig?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
             => Task.FromResult(byId?.Id == id ? byId : null);
         public Task<ScoreWeightConfig?> GetActiveByBatchAsync(Guid batchId, CancellationToken cancellationToken = default)
@@ -306,7 +413,14 @@ public sealed class ScoreConfigurationApplicationTests
                 .Select(item => item!.VersionNo)
                 .DefaultIfEmpty(0)
                 .Max());
+        public Task ReloadAsync(ScoreWeightConfig configuration, CancellationToken cancellationToken = default)
+        {
+            ReloadCount++;
+            return Task.CompletedTask;
+        }
         public void Add(ScoreWeightConfig configuration) => Added = configuration;
+        public void AddComponents(IEnumerable<ScoreComponentConfig> components)
+            => AddedComponentsCount += components.Count();
     }
 
     private sealed class FakeAuditOutbox : IAcademicPeriodsAuditOutbox

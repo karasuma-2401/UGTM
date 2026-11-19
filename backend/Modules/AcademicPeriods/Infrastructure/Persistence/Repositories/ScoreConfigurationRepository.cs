@@ -31,5 +31,11 @@ public sealed class ScoreConfigurationRepository(AcademicPeriodsDbContext db) : 
             .Select(x => (int?)x.VersionNo)
             .MaxAsync(cancellationToken) ?? 0;
 
+    public Task ReloadAsync(ScoreWeightConfig configuration, CancellationToken cancellationToken = default)
+        => db.Entry(configuration).ReloadAsync(cancellationToken);
+
     public void Add(ScoreWeightConfig configuration) => db.ScoreWeightConfigs.Add(configuration);
+
+    public void AddComponents(IEnumerable<ScoreComponentConfig> components)
+        => db.ScoreComponentConfigs.AddRange(components);
 }

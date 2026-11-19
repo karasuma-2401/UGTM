@@ -22,6 +22,16 @@ interface SaveDraftParams {
   onError: (msg: string) => void;
 }
 
+interface DeleteComponentFromDraftParams {
+  selectedBatchId: string;
+  currentConfig: ScoreConfigurationDto | null;
+  isLoadingConfig?: boolean;
+  calculationMethod: ScoreCalculationMethod;
+  nextComponents: ScoreComponentInput[];
+  onSuccess: (savedConfig: ScoreConfigurationDto) => void;
+  onError: (msg: string) => void;
+}
+
 interface PublishParams {
   selectedBatchId: string;
   currentConfig: ScoreConfigurationDto | null;
@@ -38,6 +48,7 @@ interface PublishParams {
 
 export function useScoreConfigActions() {
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isDeletingComponent, setIsDeletingComponent] = useState<boolean>(false);
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
 
   const executeSaveDraft = async ({
@@ -67,7 +78,18 @@ export function useScoreConfigActions() {
       return;
     }
 
-    if (!isValid) {
+    if (currentConfig && currentConfig.status !== 'Draft') {
+      onError('Cấu hình điểm đã công bố hoặc lưu trữ không thể chỉnh sửa.');
+      return;
+    }
+
+    if (components.length === 0) {
+      onError('Cấu hình điểm phải có ít nhất 1 đầu điểm.');
+      return;
+    }
+
+    const isUpdatingExistingDraft = Boolean(currentConfig && currentConfig.status === 'Draft');
+    if (!isUpdatingExistingDraft && !isValid) {
       if (calculationMethod === 'Percentage') {
         onError(
           `Cấu hình chưa hợp lệ. Tổng tỷ lệ phần trăm hiện tại là ${totalWeight}%, cần đạt chính xác 100%.`,
@@ -81,7 +103,7 @@ export function useScoreConfigActions() {
     setIsSaving(true);
     try {
       let savedConfig: ScoreConfigurationDto;
-      if (currentConfig && currentConfig.status === 'Draft') {
+      if (isUpdatingExistingDraft && currentConfig) {
         savedConfig = await scoreConfigApi.updateDraft(selectedBatchId, currentConfig.id, {
           calculationMethod,
           components,
@@ -100,6 +122,52 @@ export function useScoreConfigActions() {
       onError(getScoreConfigErrorMessage(err));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const deleteComponentFromDraft = async ({
+    selectedBatchId,
+    currentConfig,
+    isLoadingConfig = false,
+    calculationMethod,
+    nextComponents,
+    onSuccess,
+    onError,
+  }: DeleteComponentFromDraftParams): Promise<boolean> => {
+    if (!selectedBatchId || !currentConfig || currentConfig.status !== 'Draft') {
+      onError('Chỉ có thể xóa trực tiếp đầu điểm trên cấu hình đang ở trạng thái Bản nháp.');
+      return false;
+    }
+
+    if (
+      isLoadingConfig ||
+      (currentConfig.batchId && currentConfig.batchId !== selectedBatchId)
+    ) {
+      onError(
+        'Dữ liệu cấu hình của đợt khóa luận đang chọn chưa tải xong hoặc không khớp. Vui lòng đợi tải hoàn tất rồi thử lại.',
+      );
+      return false;
+    }
+
+    if (nextComponents.length === 0) {
+      onError('Bản nháp cấu hình điểm phải có ít nhất 1 đầu điểm.');
+      return false;
+    }
+
+    setIsDeletingComponent(true);
+    try {
+      const savedConfig = await scoreConfigApi.updateDraft(selectedBatchId, currentConfig.id, {
+        calculationMethod,
+        components: nextComponents,
+        changeReason: currentConfig.changeReason || null,
+      });
+      onSuccess(savedConfig);
+      return true;
+    } catch (err) {
+      onError(getScoreConfigErrorMessage(err));
+      return false;
+    } finally {
+      setIsDeletingComponent(false);
     }
   };
 
@@ -177,8 +245,10 @@ export function useScoreConfigActions() {
 
   return {
     isSaving,
+    isDeletingComponent,
     isPublishing,
     executeSaveDraft,
+    deleteComponentFromDraft,
     handlePublish,
   };
 }
