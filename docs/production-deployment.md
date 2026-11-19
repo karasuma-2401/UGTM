@@ -12,14 +12,16 @@ Một VM vẫn là điểm lỗi đơn. Workflow giảm thao tác thủ công v�
 
 1. PR vào `dev`/`production` chạy `CI`: reusable backend/frontend/AI jobs và release contracts. Không lọc đường dẫn ở cấp required workflow để tránh check bị treo vì skip.
 2. Push `dev`/`production` chạy `Publish Images`, gọi lại cùng CI bằng `needs`; không còn job polling GitHub API. Các Docker build xác minh riêng không chạy lại trong release CI.
-3. Mỗi component API/AI build trên runner native ARM64; AMD64 cũng build native khi repository variable `BUILD_AMD64=true` (mặc định). Repo public hiện dùng được standard ARM64 hosted runner. Không cài runner trên VM production.
-4. Image mới được push bằng candidate tag duy nhất, kèm SBOM/provenance. Trivy scan đúng platform digest trên runner tương ứng; các digest Redis/Caddy/MinIO trong policy cũng phải pass scan ARM64. Candidate không được coi là release khi scan chưa pass. SARIF được giữ trong artifact và gửi lên Security tab khi GitHub hỗ trợ. Chính sách giữ HIGH/CRITICAL có bản vá; `ignore-unfixed=true` được giữ từ workflow cũ.
+3. Mỗi component API/AI/gateway build trên runner native ARM64; AMD64 cũng build native khi repository variable `BUILD_AMD64=true` (mặc định). Repo public hiện dùng được standard ARM64 hosted runner. Không cài runner trên VM production.
+4. Image mới được push bằng candidate tag duy nhất, kèm SBOM/provenance. Trivy chọn platform rõ ràng qua `TRIVY_PLATFORM=linux/<arch>` và scan đúng digest; Redis/MinIO trong policy cũng phải pass scan ARM64. Gateway dùng source Caddy upstream với Go và `x/net` đã vá trong `docker/gateway`, giữ layout runtime upstream, và phải qua `caddy validate` bằng đúng candidate image. Candidate không được coi là release khi scan chưa pass. SARIF được giữ trong artifact và gửi lên Security tab khi GitHub hỗ trợ. Chính sách giữ HIGH/CRITICAL có bản vá; `ignore-unfixed=true` được giữ từ workflow cũ.
 5. Image không thay đổi được tái sử dụng từ manifest thành công cùng branch trong tối đa 7 ngày tính từ lần build thực tế, và vẫn được scan lại. Không có manifest/artifact đã hết hạn thì build toàn bộ. `force_rebuild=true` luôn refresh base images. Lịch thứ Hai rebuild default branch; production không tự phát hành từ lịch này.
 6. Ghép manifest từ các digest đã scan, không build lần hai. Bundle `release-bundle-<run-attempt>` lưu commit, run ID/attempt, image/platform digests, source fingerprints, schema fingerprints, rollback policy, deployment scripts và checksums. Artifact giữ 90 ngày; retry tạo artifact mới, không ghi đè bằng chứng của attempt trước.
 7. Production publish từ push kích hoạt `Deploy to VPS`. Run thủ công nhận **Publish run ID**, không nhận SHA hoặc floating tag tùy ý. Driver xác minh run thành công, đúng repo/workflow/branch và commit thuộc lịch sử `production`. Auto deploy bỏ qua release đã bị commit mới thay thế.
 8. Vercel tạo production deployment với `--skip-domain`. Azure chạy candidate, kiểm tra trong VM rồi kiểm tra từ runner bên ngoài. Sau đó promote frontend, chạy HTTP/auth smoke đã cấu hình, rồi mới cập nhật `current`.
 
 Trình tự này không tạo giao dịch nguyên tử giữa Azure và Vercel. API phải tương thích với frontend trước và sau release trong khoảng chuyển đổi; breaking API changes cần kế hoạch riêng.
+
+Manifest v2 bắt buộc có gateway đã scan; `GATEWAY_IMAGE` được lấy từ manifest, không cần thêm GitHub variable. Manifest v1 vẫn đọc được để lập kế hoạch nâng cấp/khôi phục. Lần chuyển v1 sang v2 hoặc thay digest MinIO không tự rollback qua ranh giới này; giữ release cũ và backup đã kiểm tra cho phương án khôi phục thủ công. Nếu đang đặt variable `MINIO_IMAGE` trỏ digest cũ, bỏ override đó để dùng digest đã review trong release policy.
 
 ## Cấu hình trước lần chuyển sang workflow mới
 

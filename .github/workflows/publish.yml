@@ -73,6 +73,8 @@ jobs:
       security-events: write
     steps:
       - uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
+        env:
+          TRIVY_PLATFORM: linux/arm64
         with:
           version: v0.76.2
           image-ref: ${{ matrix.image }}
@@ -133,8 +135,21 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=${{ matrix.component }}-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.component }}-${{ matrix.arch }}
+      - name: Validate the exact gateway image
+        if: matrix.component == 'gateway'
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}@${{ matrix.reuse && matrix.digest || steps.build.outputs.digest }}
+        run: |
+          docker run --rm --platform "linux/${{ matrix.arch }}" --network none \
+            -e API_HOST=api.example.test \
+            -e APP_URL=https://frontend.example.test \
+            -e ACME_EMAIL=ops@example.test \
+            -v "$GITHUB_WORKSPACE/docker/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            "$IMAGE" caddy validate --config /etc/caddy/Caddyfile
       - name: Scan the exact platform digest (also re-scan reused images)
         uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
+        env:
+          TRIVY_PLATFORM: linux/${{ matrix.arch }}
         with:
           version: v0.76.2
           image-ref: ${{ steps.image.outputs.name }}@${{ matrix.reuse && matrix.digest || steps.build.outputs.digest }}
@@ -202,7 +217,7 @@ jobs:
         run: |
           python - <<'PY'
           import json, os, pathlib, subprocess
-          for component in ('api', 'ai'):
+          for component in ('api', 'ai', 'gateway'):
               paths = list(pathlib.Path('records').glob(f'{component}-*.json'))
               items = [json.loads(p.read_text()) for p in paths]
               image = items[0]['image']

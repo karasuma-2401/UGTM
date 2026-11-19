@@ -22,7 +22,13 @@ with tempfile.TemporaryDirectory(prefix="ugtm-compose-test-") as temporary:
         for key, value in os.environ.items()
         if key not in values
         and key
-        not in ("API_IMAGE", "AI_IMAGE", "AI_ARTIFACTS_DIR", "JWT_PRIVATE_KEY_FILE")
+        not in (
+            "API_IMAGE",
+            "AI_IMAGE",
+            "GATEWAY_IMAGE",
+            "AI_ARTIFACTS_DIR",
+            "JWT_PRIVATE_KEY_FILE",
+        )
     }
     config = subprocess.run(
         [
@@ -57,7 +63,7 @@ with tempfile.TemporaryDirectory(prefix="ugtm-compose-test-") as temporary:
     infrastructure = json.loads((ROOT / "docker/release-policy.json").read_text())[
         "infrastructure"
     ]
-    assert services["gateway"]["image"] == infrastructure["gateway"]
+    assert services["gateway"]["image"] == manifest()["images"]["gateway"]["reference"]
     assert services["ai-redis"]["image"] == infrastructure["redis"]
     assert services["minio"]["image"] == infrastructure["minio"]
     probe = directory / "probe.json"

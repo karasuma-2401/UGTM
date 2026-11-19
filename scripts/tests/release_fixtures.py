@@ -13,7 +13,7 @@ from production_metadata import REQUIRED
 
 def manifest():
     return {
-        "version": 1,
+        "version": 2,
         "source_sha": "a" * 40,
         "repository": "example/ugtm",
         "branch": "production",
@@ -30,7 +30,7 @@ def manifest():
                 "built_from": "a" * 40,
                 "built_at": datetime.now(timezone.utc).isoformat(),
             }
-            for name, character in [("api", "a"), ("ai", "b")]
+            for name, character in [("api", "a"), ("ai", "b"), ("gateway", "c")]
         },
     }
 

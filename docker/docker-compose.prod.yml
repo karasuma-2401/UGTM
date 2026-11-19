@@ -122,7 +122,7 @@ services:
       retries: 5
 
   minio:
-    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56}
+    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio@sha256:16b824a0016ffad3dfa8b059755f83800aa42ca68fe86f1782cabd0c5a16d322}
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -151,7 +151,7 @@ services:
       - ./initialize-minio.sh:/tools/initialize-minio.sh:ro
 
   gateway:
-    image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+    image: ${GATEWAY_IMAGE:?Set GATEWAY_IMAGE to a scanned release digest}
     container_name: ugtm-production-gateway
     restart: unless-stopped
     depends_on:

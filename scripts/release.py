@@ -13,7 +13,11 @@ import tempfile
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
-COMPONENTS = {"api": "backend", "ai": "services/plagiarism-ai"}
+COMPONENTS = {
+    "api": "backend",
+    "ai": "services/plagiarism-ai",
+    "gateway": "docker/gateway",
+}
 DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 
@@ -76,7 +80,9 @@ def schemas():
 
 
 def validate(data, repository=None, sha=None):
-    if data.get("version") != 1 or not SHA.fullmatch(data.get("source_sha", "")):
+    if data.get("version") not in (1, 2) or not SHA.fullmatch(
+        data.get("source_sha", "")
+    ):
         raise ValueError("Unsupported or invalid release manifest")
     if data.get("branch") != "production" and repository is not None:
         raise ValueError("Only production releases may be deployed")
@@ -84,8 +90,10 @@ def validate(data, repository=None, sha=None):
         raise ValueError("Release repository mismatch")
     if sha and data["source_sha"] != sha:
         raise ValueError("Release source SHA mismatch")
-    if set(data.get("images", {})) != set(COMPONENTS):
-        raise ValueError("Release must contain the API and AI images")
+    # V1 remains readable for planning/recovery; every V2 release needs a scanned gateway.
+    expected = {"api", "ai"} if data["version"] == 1 else set(COMPONENTS)
+    if set(data.get("images", {})) != expected:
+        raise ValueError("Release images do not match the manifest version")
     owner = data["repository"].split("/")[0].lower()
     for component, item in data["images"].items():
         prefix = f"ghcr.io/{owner}/ugtm-{component}@"
@@ -208,7 +216,7 @@ def main():
             }
             images[component]["platforms"] = {r["arch"]: r["digest"] for r in items}
         data = {
-            "version": 1,
+            "version": 2,
             "source_sha": os.environ["GITHUB_SHA"],
             "repository": os.environ["GITHUB_REPOSITORY"],
             "branch": os.environ["GITHUB_REF_NAME"],

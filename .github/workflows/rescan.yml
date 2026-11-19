@@ -40,6 +40,7 @@ jobs:
     steps:
       - uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
         env:
+          TRIVY_PLATFORM: linux/arm64
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ github.token }}
         with:
