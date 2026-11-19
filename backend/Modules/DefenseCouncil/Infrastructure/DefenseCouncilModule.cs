@@ -22,13 +22,16 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CheckCouncilDiscrepancy;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMemberCandidates;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.RemoveCouncilMember;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.LockCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.UnlockCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilsOverview;
+using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilMembers;
 using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilSchedule;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilToAcademicAffairs;
 using UGTM.Modules.DefenseCouncil.Application.Grading;
@@ -98,6 +101,9 @@ public sealed class DefenseCouncilModule : IModule
         // Council Use Cases
         services.AddScoped<CreateCouncilHandler>();
         services.AddScoped<AddCouncilMembersHandler>();
+        services.AddScoped<GetCouncilMemberCandidatesHandler>();
+        services.AddScoped<UpdateCouncilMembersHandler>();
+        services.AddScoped<RemoveCouncilMemberHandler>();
         services.AddScoped<AssignCouncilGroupsHandler>();
         services.AddScoped<ApproveCouncilHandler>();
         services.AddScoped<GetCouncilScheduleHandler>();

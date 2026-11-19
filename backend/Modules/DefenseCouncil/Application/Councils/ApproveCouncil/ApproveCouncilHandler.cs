@@ -52,11 +52,23 @@ public sealed class ApproveCouncilHandler(
             return Result.Failure<CouncilResponseDto>(CouncilErrors.DecisionNumberRequired);
         }
 
-        return await schedulingGuard.ExecuteAsync(token => HandleCoreAsync(command, token), cancellationToken);
+        IReadOnlyList<Guid>? approvedMemberUserIds = null;
+        var result = await schedulingGuard.ExecuteAsync(
+            token => HandleCoreAsync(command, ids => approvedMemberUserIds = ids, token),
+            cancellationToken);
+
+        if (result.IsSuccess && approvedMemberUserIds is { Count: > 0 })
+        {
+            await userInfoReader.GrantCouncilMemberRoleAsync(approvedMemberUserIds, cancellationToken);
+        }
+
+        return result;
     }
 
     private async Task<Result<CouncilResponseDto>> HandleCoreAsync(
-        ApproveCouncilCommand command, CancellationToken cancellationToken)
+        ApproveCouncilCommand command,
+        Action<IReadOnlyList<Guid>> onMembersLoaded,
+        CancellationToken cancellationToken)
     {
 
         var council = await councilRepository.GetByIdWithDetailsAsync(command.CouncilId, cancellationToken);
@@ -203,6 +215,7 @@ public sealed class ApproveCouncilHandler(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await DefenseCouncilCacheKeys.InvalidateCouncilAsync(cache, council.Id, council.BatchId, cancellationToken);
+        onMembersLoaded(memberUserIds);
 
         return Result.Success(new CouncilResponseDto(
             council.Id,

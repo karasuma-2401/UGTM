@@ -50,6 +50,12 @@ public static class CouncilErrors
     public static Error MemberNotFound(Guid userId) =>
         Error.NotFound("Council.MemberNotFound", $"Không tìm thấy thông tin giảng viên hoặc tài khoản không hoạt động (Id: {userId}).");
 
+    public static Error MemberNotLecturer(string lecturerDetail) =>
+        Error.Validation("Council.MemberNotLecturer", $"Tài khoản ({lecturerDetail}) không có vai trò Giảng viên (Lecturer) để tham gia Hội đồng bảo vệ.");
+
+    public static Error MemberNotInCouncil(Guid userId) =>
+        Error.NotFound("Council.MemberNotInCouncil", $"Giảng viên (Id: {userId}) không phải là thành viên hiện tại của Hội đồng này.");
+
     public static Error GroupNotFound(Guid groupId) =>
         Error.NotFound("Council.GroupNotFound", $"Không tìm thấy nhóm đề tài sinh viên (Id: {groupId}).");
 
