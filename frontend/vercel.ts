@@ -1,4 +1,4 @@
-import { routes, type VercelConfig } from '@vercel/config/v1';
+import type { VercelConfig } from '@vercel/config/v1';
 
 const configuredApiOrigin = process.env.API_ORIGIN?.trim();
 if (!configuredApiOrigin) {
@@ -21,16 +21,18 @@ if (
 
 export const config: VercelConfig = {
   git: {
-    deploymentEnabled: {
-      '*': false,
-      production: false,
-    },
+    deploymentEnabled: false,
   },
   framework: 'vite',
   buildCommand: 'npm run build',
   outputDirectory: 'dist',
   rewrites: [
-    routes.rewrite('/api/(.*)', `${apiOrigin.origin}/api/$1`),
-    routes.rewrite('/(.*)', '/index.html'),
+    // Git integration reads literals before build; env is resolved per deployment.
+    {
+      source: '/api/(.*)',
+      destination: '$API_ORIGIN/api/$1',
+      env: ['API_ORIGIN'],
+    },
+    { source: '/(.*)', destination: '/index.html' },
   ],
 };

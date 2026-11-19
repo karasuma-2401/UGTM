@@ -20,6 +20,39 @@ from production_metadata import REQUIRED, OPTIONAL
 from production_smoke import health, authenticated
 
 
+def vercel_error(stderr):
+    # Only show CLI error lines, never command arguments or arbitrary build logs.
+    clean = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", stderr)
+    messages = re.findall(r"^.*?\bError(?: \[[^\]]+\])?: (.+)$", clean, re.M | re.I)
+    detail = "\n".join(messages)
+    secrets = set()
+    for name, value in os.environ.items():
+        if value and (
+            any(
+                word in name.upper()
+                for word in ("TOKEN", "PASSWORD", "SECRET", "DSN", "CONNECTION_STRING")
+            )
+            or name.upper().endswith("_KEY")
+            or "PRIVATE_KEY" in name.upper()
+        ):
+            secrets.update(
+                (
+                    value,
+                    urllib.parse.quote(value, safe=""),
+                    urllib.parse.quote_plus(value),
+                )
+            )
+            secrets.add(json.dumps(value)[1:-1])
+            secrets.update(line for line in value.splitlines() if len(line) >= 8)
+    for secret in sorted(secrets, key=len, reverse=True):
+        detail = detail.replace(secret, "[REDACTED]")
+    detail = re.sub(r"(?i)(--token(?:=|\s+))\S+", r"\1[REDACTED]", detail)
+    detail = re.sub(r"(?i)(Bearer\s+)\S+", r"\1[REDACTED]", detail)
+    detail = re.sub(r"(://)[^/\s@]+@", r"\1[REDACTED]@", detail)
+    # GitHub workflow commands must never be interpreted from external CLI output.
+    return detail.replace("::", ": :")[:2000]
+
+
 def run(args, **kwargs):
     # Never echo command arguments: CLI tokens and connection settings can be sensitive.
     result = subprocess.run(
@@ -33,6 +66,12 @@ def run(args, **kwargs):
         if args[0] == "ssh" and "Permission denied" in result.stderr:
             raise RuntimeError(
                 "SSH authentication failed; verify VPS_USERNAME and VPS_SSH_KEY"
+            )
+        if Path(args[0]).name == "vercel":
+            detail = vercel_error(result.stderr)
+            raise RuntimeError(
+                f"Vercel command failed; exit {result.returncode}"
+                + (f"\n{detail}" if detail else "")
             )
         raise RuntimeError(
             f"Command failed: {Path(args[0]).name}; exit {result.returncode}"
@@ -123,8 +162,28 @@ class Remote:
 
 
 def vercel(*args, cwd=None):
+    environment = dict(os.environ)
+    if args and args[0] == "deploy":
+        host = os.environ["API_HOST"]
+        if not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?", host):
+            raise ValueError(
+                "API_HOST must be a hostname/IP without scheme, port or path"
+            )
+        origin = f"https://{host}"
+        # Validate locally; bind routing and build env to the same API host.
+        environment["API_ORIGIN"] = origin
+        args = (
+            *args,
+            "--build-env",
+            f"API_ORIGIN={origin}",
+            "--env",
+            f"API_ORIGIN={origin}",
+        )
     return run(
-        ["vercel", *args, "--token", os.environ["VERCEL_TOKEN"]], cwd=cwd, timeout=600
+        ["vercel", *args, "--token", os.environ["VERCEL_TOKEN"]],
+        cwd=cwd,
+        env=environment,
+        timeout=600,
     )
 
 
