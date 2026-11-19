@@ -5,8 +5,7 @@ WORKDIR /src
 RUN go mod init ugtm-gateway \
     && go get github.com/caddyserver/caddy/v2@v2.11.9 golang.org/x/net@v0.62.0
 COPY main.go .
-RUN go mod tidy \
-    && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/caddy .
+RUN CGO_ENABLED=0 go build -mod=mod -trimpath -ldflags='-s -w' -o /out/caddy .
 
 FROM caddy:2.11.9-alpine@sha256:003a97808e781aa9f7e75cc2f43d34d461099031faf5e20faefb9f61126836f0
 COPY --from=build /out/caddy /usr/bin/caddy
