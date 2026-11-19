@@ -2,7 +2,7 @@ import { InlineAlert } from '@/components/ui/inline-alert';
 import { PageHeader } from '@/components/ui/page-header';
 import { OperationToast } from '@/shared/notifications';
 import React from 'react';
-import { History, Wand2, Save, Send } from 'lucide-react';
+import { History, Wand2, Save, Send, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -11,12 +11,13 @@ import {
   ScoreConfigSummaryCard,
   ScoreComponentAddDialog,
   ScoreConfigHistoryDialog,
-  ScoreConfigCloneReasonDialog,
 } from '../components/score-config';
 import { useScoreConfig } from '../hooks/score-config';
 
 export const ScoreConfigPage: React.FC = () => {
   const { data, form, modals, actions } = useScoreConfig();
+  const isLoading = data.isLoadingConfig || data.isLoadingBatches;
+  const isReadOnly = isLoading || data.isConfigLocked;
 
   return (
     <div className="space-y-6 pb-10 selection:bg-tone-info-bg selection:text-tone-info-strong">
@@ -25,15 +26,18 @@ export const ScoreConfigPage: React.FC = () => {
         title="Cấu hình đợt điểm"
         description="Thiết lập cách tính điểm và trọng số cho từng đợt khóa luận."
       >
-        <Button
-          type="button"
-          variant="outline"
-          onClick={actions.handleApplyDefaultTemplateClick}
-          className="h-10 rounded-xl px-4 shadow-2xs"
-          leftIcon={<Wand2 className="size-4 text-primary" />}
-        >
-          Cấu hình đợt mẫu
-        </Button>
+        {!data.isConfigLocked && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={actions.handleApplyDefaultTemplateClick}
+            disabled={isLoading || actions.isSaving || actions.isDeletingComponent}
+            className="h-10 rounded-xl px-4 shadow-2xs"
+            leftIcon={<Wand2 className="size-4 text-primary" />}
+          >
+            Cấu hình đợt mẫu
+          </Button>
+        )}
 
         {data.historyConfigs.length > 0 && (
           <Button
@@ -50,12 +54,19 @@ export const ScoreConfigPage: React.FC = () => {
 
       <OperationToast message={modals.notice} onConsumed={() => modals.setNotice(null)} />
 
-      {modals.errorMessage && <InlineAlert title="Không thể hoàn tất" onDismiss={() => modals.setErrorMessage(null)}>{modals.errorMessage}</InlineAlert>}
+      {modals.errorMessage && (
+        <InlineAlert
+          title="Không thể hoàn tất"
+          onDismiss={() => modals.setErrorMessage(null)}
+        >
+          {modals.errorMessage}
+        </InlineAlert>
+      )}
 
       {data.batches.length === 0 && !data.isLoadingBatches && (
         <InlineAlert tone="warning" title="Chưa có đợt khóa luận">
-              Chưa có đợt khóa luận nào trong hệ thống. Vui lòng tạo đợt khóa luận trước khi tiến
-              hành cấu hình điểm.
+          Chưa có đợt khóa luận nào trong hệ thống. Vui lòng tạo đợt khóa luận trước khi tiến hành
+          cấu hình điểm.
         </InlineAlert>
       )}
 
@@ -70,7 +81,7 @@ export const ScoreConfigPage: React.FC = () => {
             reviewerMinimumScore={form.reviewerMinimumScore}
             onReviewerMinimumScoreChange={form.handleReviewerMinScoreChange}
             onAddOptionalComponent={form.handleAddOptionalComponent}
-            isReadOnly={data.isLoadingConfig || data.isLoadingBatches}
+            isReadOnly={isReadOnly}
             isLoadingBatches={data.isLoadingBatches}
           />
 
@@ -78,8 +89,13 @@ export const ScoreConfigPage: React.FC = () => {
             components={form.components}
             calculationMethod={form.calculationMethod}
             onChangeComponents={form.setComponents}
-            isReadOnly={data.isLoadingConfig || data.isLoadingBatches}
-            onAddComponent={() => modals.setIsAddModalOpen(true)}
+            isReadOnly={isReadOnly}
+            isLoading={isLoading}
+            isDeleting={actions.isDeletingComponent}
+            configStatus={data.currentConfig?.status ?? null}
+            onAddComponent={actions.handleOpenAddComponent}
+            onEditComponent={actions.handleOpenEditComponent}
+            onDeleteComponent={actions.handleRequestDeleteComponent}
             isDirty={form.isDirty}
             hasSavedConfig={Boolean(data.currentConfig)}
             isValid={form.isValid}
@@ -98,62 +114,82 @@ export const ScoreConfigPage: React.FC = () => {
             versionNo={data.currentConfig?.versionNo}
             status={data.currentConfig?.status}
             isValid={form.isValid}
-            isLoading={data.isLoadingConfig || data.isLoadingBatches}
+            isLoading={isLoading}
           />
           <div className="border-t border-line/80 bg-surface-subtle/70 p-5 space-y-3">
-            <p role="status" className="flex items-center gap-2 text-xs font-medium text-ink-body">
-              <span
-                className={`size-2 shrink-0 rounded-full ${form.isDirty ? 'bg-amber-500' : 'bg-slate-400 dark:bg-slate-500'}`}
-                aria-hidden="true"
-              />
-              {form.isDirty ? 'Có thay đổi chưa lưu' : 'Không có thay đổi chưa lưu'}
-            </p>
-            <Button
-              type="button"
-              onClick={actions.handleSaveClick}
-              disabled={actions.isSaving || data.isLoadingConfig || data.isLoadingBatches}
-              className="w-full h-10 rounded-xl font-semibold shadow-2xs"
-              isLoading={actions.isSaving}
-              leftIcon={<Save className="size-4" />}
-            >
-              {data.currentConfig?.status === 'Draft'
-                ? 'Lưu bản nháp'
-                : data.currentConfig?.status === 'Active'
-                  ? 'Sửa cấu hình'
-                  : 'Lưu cấu hình'}
-            </Button>
-
-            {data.currentConfig?.status === 'Draft' && (
-              <Button
-                type="button"
-                variant="success"
-                className="w-full h-10 rounded-xl font-semibold shadow-2xs"
-                onClick={actions.handlePublish}
-                disabled={
-                  !form.isValid ||
-                  actions.isSaving ||
-                  actions.isPublishing ||
-                  data.isLoadingConfig ||
-                  data.isLoadingBatches
-                }
-                isLoading={actions.isPublishing}
-                leftIcon={<Send className="size-4" />}
+            {data.isConfigLocked ? (
+              <div
+                role="status"
+                className="flex items-start gap-2.5 rounded-xl border border-line/80 bg-surface-card px-3.5 py-3 text-xs leading-relaxed text-ink-body"
               >
-                {form.isDirty ? 'Lưu và Công bố' : 'Công bố'}
-              </Button>
-            )}
+                <Lock className="size-4 shrink-0 text-ink-muted mt-0.5" aria-hidden="true" />
+                <span>
+                  {data.currentConfig?.status === 'Active'
+                    ? 'Cấu hình điểm đã được công bố nên không thể chỉnh sửa hoặc xóa đầu điểm.'
+                    : 'Cấu hình điểm đang ở trạng thái chỉ đọc nên không thể chỉnh sửa.'}
+                </span>
+              </div>
+            ) : (
+              <>
+                <p
+                  role="status"
+                  className="flex items-center gap-2 text-xs font-medium text-ink-body"
+                >
+                  <span
+                    className={`size-2 shrink-0 rounded-full ${form.isDirty ? 'bg-amber-500' : 'bg-slate-400 dark:bg-slate-500'}`}
+                    aria-hidden="true"
+                  />
+                  {form.isDirty ? 'Có thay đổi chưa lưu' : 'Không có thay đổi chưa lưu'}
+                </p>
+                <Button
+                  type="button"
+                  onClick={actions.handleSaveClick}
+                  disabled={
+                    form.components.length === 0 ||
+                    actions.isSaving ||
+                    actions.isDeletingComponent ||
+                    isLoading
+                  }
+                  className="w-full h-10 rounded-xl font-semibold shadow-2xs"
+                  isLoading={actions.isSaving}
+                  leftIcon={<Save className="size-4" />}
+                >
+                  {data.currentConfig?.status === 'Draft' ? 'Lưu bản nháp' : 'Lưu cấu hình'}
+                </Button>
 
-            {data.currentConfig?.status === 'Draft' && form.isDirty && form.isValid && (
-              <p className="text-[11px] text-ink-muted text-center font-medium">
-                Thay đổi chưa lưu sẽ được tự động cập nhật vào bản nháp trước khi công bố.
-              </p>
-            )}
+                {data.currentConfig?.status === 'Draft' && (
+                  <Button
+                    type="button"
+                    variant="success"
+                    className="w-full h-10 rounded-xl font-semibold shadow-2xs"
+                    onClick={actions.handlePublish}
+                    disabled={
+                      !form.isValid ||
+                      actions.isSaving ||
+                      actions.isDeletingComponent ||
+                      actions.isPublishing ||
+                      isLoading
+                    }
+                    isLoading={actions.isPublishing}
+                    leftIcon={<Send className="size-4" />}
+                  >
+                    {form.isDirty ? 'Lưu và Công bố' : 'Công bố'}
+                  </Button>
+                )}
 
-            {data.currentConfig?.status === 'Draft' && !form.isValid && (
-              <p className="text-[11px] text-tone-warning-icon text-center font-medium">
-                Cần đạt tổng {form.calculationMethod === 'Percentage' ? '100%' : 'hệ số > 0'} để
-                công bố
-              </p>
+                {data.currentConfig?.status === 'Draft' && form.isDirty && form.isValid && (
+                  <p className="text-[11px] text-ink-muted text-center font-medium">
+                    Thay đổi chưa lưu sẽ được tự động cập nhật vào bản nháp trước khi công bố.
+                  </p>
+                )}
+
+                {data.currentConfig?.status === 'Draft' && !form.isValid && (
+                  <p className="text-[11px] text-tone-warning-icon text-center font-medium">
+                    Cần đạt tổng {form.calculationMethod === 'Percentage' ? '100%' : 'hệ số > 0'} để
+                    công bố
+                  </p>
+                )}
+              </>
             )}
           </div>
         </aside>
@@ -161,31 +197,39 @@ export const ScoreConfigPage: React.FC = () => {
 
       <ScoreComponentAddDialog
         open={modals.isAddModalOpen}
-        onClose={() => modals.setIsAddModalOpen(false)}
+        onClose={actions.handleCloseComponentDialog}
         calculationMethod={form.calculationMethod}
         existingCodes={form.components.map((c) => c.componentCode)}
         nextOrderIndex={form.components.length + 1}
-        onAdd={(newComp) => {
-          form.setComponents((prev) => [...prev, newComp]);
-          modals.setNotice(`Đã thêm đầu điểm "${newComp.componentName}".`);
-        }}
+        initialComponent={modals.editingComponentTarget?.component ?? null}
+        onSave={actions.handleSaveComponentFromDialog}
       />
 
       <ScoreConfigHistoryDialog
         open={modals.isHistoryModalOpen}
         onClose={() => modals.setIsHistoryModalOpen(false)}
         history={data.historyConfigs}
-        onSelectVersion={actions.handleSelectHistoryVersion}
+        onSelectVersion={!data.isConfigLocked ? actions.handleSelectHistoryVersion : undefined}
       />
 
-      <ScoreConfigCloneReasonDialog
-        open={modals.isCloneReasonModalOpen}
-        onClose={() => modals.setIsCloneReasonModalOpen(false)}
-        isSubmitting={actions.isSaving}
-        onConfirm={(reason) => {
-          modals.setIsCloneReasonModalOpen(false);
-          actions.executeSaveDraft(reason);
+      <ConfirmDialog
+        open={Boolean(modals.deletingComponentTarget)}
+        onClose={() => {
+          if (!actions.isDeletingComponent) {
+            modals.setDeletingComponentTarget(null);
+          }
         }}
+        onConfirm={actions.handleConfirmDeleteComponent}
+        type="error"
+        isConfirming={actions.isDeletingComponent}
+        title="Xóa đầu điểm khỏi bản nháp?"
+        description={
+          modals.deletingComponentTarget
+            ? `Bạn có chắc chắn muốn xóa đầu điểm "${modals.deletingComponentTarget.component.componentName}" (${modals.deletingComponentTarget.component.componentCode})? Bảng điểm bản nháp sẽ được cập nhật ngay trên hệ thống.`
+            : ''
+        }
+        confirmText="Xóa đầu điểm"
+        cancelText="Hủy"
       />
 
       <ConfirmDialog

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, ShieldAlert, Plus, Minus, Calculator } from 'lucide-react';
+import { Pencil, Trash2, ShieldAlert, Plus, Minus, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -10,7 +10,11 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import './score-config.css';
-import type { ScoreComponentInput, ScoreCalculationMethod } from '../../types/scoreConfig.types';
+import type {
+  ScoreComponentInput,
+  ScoreCalculationMethod,
+  ScoreConfigurationStatus,
+} from '../../types/scoreConfig.types';
 import { Badge } from '@/components/ui/badge';
 
 export interface ScoreComponentTableProps {
@@ -18,7 +22,12 @@ export interface ScoreComponentTableProps {
   calculationMethod: ScoreCalculationMethod;
   onChangeComponents: (components: ScoreComponentInput[]) => void;
   isReadOnly?: boolean;
+  isLoading?: boolean;
+  isDeleting?: boolean;
+  configStatus?: ScoreConfigurationStatus | null;
   onAddComponent?: () => void;
+  onEditComponent?: (component: ScoreComponentInput, index: number) => void;
+  onDeleteComponent?: (component: ScoreComponentInput, index: number) => void;
   isDirty?: boolean;
   hasSavedConfig?: boolean;
   isValid?: boolean;
@@ -29,7 +38,12 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
   calculationMethod,
   onChangeComponents,
   isReadOnly = false,
+  isLoading = false,
+  isDeleting = false,
+  configStatus = null,
   onAddComponent,
+  onEditComponent,
+  onDeleteComponent,
   isDirty = false,
   hasSavedConfig = false,
   isValid = true,
@@ -147,31 +161,41 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
             <span
               role="status"
               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                isDirty
-                  ? 'bg-tone-warning-bg text-tone-warning-strong ring-1 ring-inset ring-amber-200/80'
-                  : 'bg-surface-muted text-ink-body'
+                isLoading
+                  ? 'bg-surface-muted text-ink-body'
+                  : configStatus === 'Active'
+                    ? 'bg-tone-success-bg text-tone-success-text ring-1 ring-inset ring-emerald-200/80'
+                    : configStatus === 'Retired'
+                      ? 'bg-surface-muted text-ink-body'
+                      : isDirty
+                        ? 'bg-tone-warning-bg text-tone-warning-strong ring-1 ring-inset ring-amber-200/80'
+                        : 'bg-surface-muted text-ink-body'
               }`}
             >
-              {isReadOnly
+              {isLoading
                 ? 'Đang tải cấu hình'
-                : isDirty
-                  ? 'Có thay đổi chưa lưu'
-                  : hasSavedConfig
-                    ? 'Đã lưu'
-                    : 'Chưa có cấu hình đã lưu'}
+                : configStatus === 'Active'
+                  ? 'Đã công bố (chỉ đọc)'
+                  : configStatus === 'Retired'
+                    ? 'Đã lưu trữ (chỉ đọc)'
+                    : isDirty
+                      ? 'Có thay đổi chưa lưu'
+                      : hasSavedConfig
+                        ? 'Đã lưu'
+                        : 'Chưa có cấu hình đã lưu'}
             </span>
           </div>
           <p className="text-xs text-ink-muted mt-1">
             Danh sách các thành phần điểm và điều kiện áp dụng cho từng nguồn chấm.
           </p>
         </div>
-        {onAddComponent && (
+        {onAddComponent && !isReadOnly && (
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={onAddComponent}
-            disabled={isReadOnly}
+            disabled={isReadOnly || isDeleting}
             leftIcon={<Plus className="size-4" />}
             className="h-9 rounded-xl px-3.5 text-xs font-semibold"
           >
@@ -197,11 +221,11 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
         <Table>
           <TableHeader>
             <tr>
-              <TableHead className="w-[24%] px-5 py-3.5">Nguồn / thành viên</TableHead>
-              <TableHead className="w-[36%] px-5 py-3.5">Điểm / trọng số</TableHead>
-              <TableHead className="w-[24%] px-5 py-3.5">Điều kiện</TableHead>
-              <TableHead align="right" className="w-[16%] px-5 py-3.5 whitespace-nowrap">
-                Phân loại
+              <TableHead className="w-[22%] px-5 py-3.5">Nguồn / thành viên</TableHead>
+              <TableHead className="w-[33%] px-5 py-3.5">Điểm / trọng số</TableHead>
+              <TableHead className="w-[23%] px-5 py-3.5">Điều kiện</TableHead>
+              <TableHead align="right" className="w-[22%] px-5 py-3.5 whitespace-nowrap">
+                {isReadOnly ? 'Phân loại' : 'Phân loại & thao tác'}
               </TableHead>
             </tr>
           </TableHeader>
@@ -215,8 +239,8 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
               </tr>
             ) : (
               components.map((item, index) => {
-                const isCustom =
-                  item.source === 'Custom' || item.componentCode.startsWith('CUSTOM');
+                const isLastSavedDraftComponent =
+                  configStatus === 'Draft' && components.length <= 1;
 
                 // Tính tỷ lệ phần trăm quy đổi động
                 const percentEquiv =
@@ -325,19 +349,42 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
 
                     {/* Cột 4: Phân loại và thao tác */}
                     <TableCell align="right" className="px-5 py-4 whitespace-nowrap">
-                      <div className="inline-flex items-center justify-end gap-2 shrink-0">
+                      <div className="inline-flex items-center justify-end gap-1.5 shrink-0">
                         {getCategoryBadge(item)}
 
-                        {isCustom && !isReadOnly && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveComponent(index)}
-                            title="Xóa đầu điểm tùy biến"
-                            aria-label={`Xóa ${item.componentName}`}
-                            className="p-2 rounded-lg text-ink-muted hover:text-tone-danger-icon hover:bg-tone-danger-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
+                        {!isReadOnly && (
+                          <div className="inline-flex items-center gap-0.5 ml-1">
+                            {onEditComponent && (
+                              <button
+                                type="button"
+                                onClick={() => onEditComponent(item, index)}
+                                disabled={isDeleting}
+                                title="Chỉnh sửa đầu điểm"
+                                aria-label={`Chỉnh sửa ${item.componentName}`}
+                                className="p-2 rounded-lg text-ink-muted hover:text-primary hover:bg-tone-info-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <Pencil className="size-4" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onDeleteComponent
+                                  ? onDeleteComponent(item, index)
+                                  : handleRemoveComponent(index)
+                              }
+                              disabled={isDeleting || isLastSavedDraftComponent}
+                              title={
+                                isLastSavedDraftComponent
+                                  ? 'Bản nháp phải có ít nhất 1 đầu điểm'
+                                  : 'Xóa đầu điểm'
+                              }
+                              aria-label={`Xóa ${item.componentName}`}
+                              className="p-2 rounded-lg text-ink-muted hover:text-tone-danger-icon hover:bg-tone-danger-bg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </TableCell>
