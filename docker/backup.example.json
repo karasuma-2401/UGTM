@@ -1,0 +1,24 @@
+{
+  "restic": {
+    "RESTIC_REPOSITORY": "s3:https://YOUR-EXTERNAL-S3-ENDPOINT/YOUR-DEDICATED-BACKUP-BUCKET/ugtm",
+    "RESTIC_PASSWORD": "replace-with-a-long-independent-encryption-password",
+    "AWS_ACCESS_KEY_ID": "replace-with-backup-storage-access-key",
+    "AWS_SECRET_ACCESS_KEY": "replace-with-backup-storage-secret-key",
+    "AWS_DEFAULT_REGION": "us-east-1",
+    "GOMEMLIMIT": "256MiB",
+    "GOMAXPROCS": "2"
+  },
+  "ugtm_direct_dsn": "postgresql://backup-user:replace-me@UGTM-DIRECT-HOST/neondb?sslmode=require",
+  "ai_direct_dsn": "postgresql://backup-user:replace-me@AI-DIRECT-HOST/neondb?sslmode=require",
+  "minio_read_user": "ugtm-backup-reader",
+  "minio_read_password": "replace-with-a-read-only-service-user-secret",
+  "buckets": ["ugtm-thesis-submissions", "ugtm-ai-r2-copy-91058ffde61c"],
+  "key_volumes": {
+    "keys": "ugtm_data_protection_keys",
+    "caddy-data": "ugtm_caddy_data",
+    "caddy-config": "ugtm_caddy_config"
+  },
+  "postgres_image": "pgvector/pgvector@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782",
+  "minio_image": "cgr.dev/chainguard/minio@sha256:dc455cdd4db6e390b1b26514f15ff37681a777bf8dab41aac445a0259f751e56",
+  "drill_min_free_mib": 1800
+}

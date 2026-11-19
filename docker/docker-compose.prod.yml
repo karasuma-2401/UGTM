@@ -1,5 +1,5 @@
 x-ai: &ai
-  image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-ai:${IMAGE_TAG:?Set IMAGE_TAG to an immutable release tag}
+  image: ${AI_IMAGE:?Set AI_IMAGE to a scanned release digest}
   restart: unless-stopped
   init: true
   environment:
@@ -40,7 +40,7 @@ x-ai: &ai
 
 services:
   backend:
-    image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-api:${IMAGE_TAG:?Set IMAGE_TAG}
+    image: ${API_IMAGE:?Set API_IMAGE to a scanned release digest}
     container_name: ugtm-production-backend
     restart: unless-stopped
     environment:
@@ -88,14 +88,6 @@ services:
       ai-api:
         condition: service_healthy
 
-  # Retained as a fallback during the Vercel cutover.
-  frontend:
-    image: ghcr.io/${IMAGE_OWNER:-karasuma-2401}/ugtm-frontend:${IMAGE_TAG:?Set IMAGE_TAG}
-    container_name: ugtm-production-frontend
-    restart: unless-stopped
-    expose:
-      - "80"
-
   ai-api:
     <<: *ai
     command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, "8000"]
@@ -118,7 +110,7 @@ services:
     command: [python, -m, scripts.run_reconciler]
 
   ai-redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
     restart: unless-stopped
     command: [redis-server, --appendonly, "yes", --maxmemory-policy, noeviction]
     volumes:
@@ -159,16 +151,16 @@ services:
       - ./initialize-minio.sh:/tools/initialize-minio.sh:ro
 
   gateway:
-    image: caddy:2.11.7-alpine
+    image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
     container_name: ugtm-production-gateway
     restart: unless-stopped
     depends_on:
       - backend
-      - frontend
       - minio
     environment:
       API_HOST: ${API_HOST:?Set the Azure DNS hostname}
       ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+      APP_URL: ${APP_URL:?Set APP_URL}
     ports:
       - "80:80"
       - "443:443"

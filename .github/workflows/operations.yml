@@ -1,0 +1,79 @@
+name: Production Operations
+on:
+  schedule:
+    - cron: '13,43 * * * *'
+    - cron: '23 19 * * *'
+    - cron: '37 20 1 * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        type: choice
+        default: monitor
+        options: [monitor, backup, restore-drill, smoke-auth, smoke-gpu, rollback, recover, cleanup]
+      attempt:
+        description: Unfinished deployment attempt ID (recover only)
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: ${{ contains(fromJSON('["rollback", "recover"]'), inputs.action) && 'deploy-production' || 'production-operations' }}
+  cancel-in-progress: false
+jobs:
+  operate:
+    if: github.event_name == 'workflow_dispatch' || vars.OPS_ENABLED == 'true'
+    environment: production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USERNAME: ${{ secrets.VPS_USERNAME || 'ubuntu' }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+      API_HOST: ${{ vars.API_HOST }}
+      APP_URL: ${{ secrets.APP_URL }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      SMOKE_USER: ${{ secrets.SMOKE_USER }}
+      SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
+      SMOKE_GROUP_ID: ${{ vars.SMOKE_GROUP_ID }}
+      SMOKE_FILE_ID: ${{ vars.SMOKE_FILE_ID }}
+      SMOKE_FILE_SHA256: ${{ vars.SMOKE_FILE_SHA256 }}
+      SMOKE_DENIED_PATH: ${{ vars.SMOKE_DENIED_PATH }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        if: contains(fromJSON('["rollback", "recover"]'), inputs.action)
+        with:
+          node-version: '24'
+      - if: contains(fromJSON('["rollback", "recover"]'), inputs.action)
+        run: npm install --global vercel@66.2.0
+      - name: Run operation
+        env:
+          ACTION: ${{ inputs.action }}
+          ATTEMPT: ${{ inputs.attempt }}
+          SCHEDULE: ${{ github.event.schedule }}
+          BACKUP_ENABLED: ${{ vars.BACKUP_ENABLED || 'false' }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$ACTION" ]]; then
+            case "$SCHEDULE" in
+              '23 19 * * *') ACTION=backup ;;
+              '37 20 1 * *') ACTION=restore-drill ;;
+              *) ACTION=monitor ;;
+            esac
+            if [[ "$ACTION" != monitor && "$BACKUP_ENABLED" != true ]]; then
+              echo 'Backup storage is not configured; scheduled backup/restore is disabled.' >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          fi
+          args=()
+          [[ -z "$ATTEMPT" ]] || args+=(--attempt "$ATTEMPT")
+          python scripts/production_operations.py "$ACTION" "${args[@]}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: operation-status-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ugtm-operations/monitor.json
+          retention-days: 30

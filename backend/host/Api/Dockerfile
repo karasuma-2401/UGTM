@@ -9,26 +9,29 @@ USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
 
+# Keep only project metadata in this stage. Its output stays identical on source-only edits.
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS project-files
+WORKDIR /src
+COPY . .
+RUN find . -type f ! -name '*.csproj' ! -name '*.props' ! -name '*.targets' ! -iname 'nuget.config' ! -name 'packages.lock.json' -delete
+
 # Stage 2: SDK build
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-# Copy entire backend source
-COPY . .
+COPY --from=project-files /src/ .
 
 WORKDIR "/src/host/Api"
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet restore "UGTM.Api.csproj"
+# Keep packages in the exported layer: GHA cache does not export cache-mount contents.
+RUN dotnet restore "UGTM.Api.csproj" -p:Configuration=$BUILD_CONFIGURATION
 
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet build "UGTM.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build --no-restore
+COPY . /src/
 
 # Stage 3: Publish
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages \
-    dotnet publish "UGTM.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "UGTM.Api.csproj" -c $BUILD_CONFIGURATION --no-restore -o /app/publish /p:UseAppHost=false
 
 # Stage 4: Production runner
 FROM base AS final

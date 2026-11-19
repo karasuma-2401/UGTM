@@ -1,22 +1,12 @@
 name: Frontend CI
 
 on:
-  pull_request:
-    branches:
-      - dev
-      - production
-    paths:
-      - "frontend/**"
-      - ".github/workflows/frontend-ci.yml"
-  push:
-    branches:
-      - dev
-      - production
+  workflow_call:
+    inputs:
+      verify_image:
+        type: boolean
+        default: true
   workflow_dispatch:
-
-concurrency:
-  group: frontend-ci-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -31,10 +21,10 @@ jobs:
         working-directory: frontend
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: "npm"
@@ -61,10 +51,10 @@ jobs:
         working-directory: frontend
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node.js 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: "npm"
@@ -75,14 +65,3 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
-
-  docker-verify:
-    name: Docker Build Verification
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build Frontend Docker image
-        run: docker build -f frontend/Dockerfile frontend

@@ -6,6 +6,12 @@ using UGTM.Api.Campus;
 using UGTM.Api.OpenApi;
 using UGTM.BuildingBlocks.Infrastructure.Middlewares;
 
+if (args is ["--check-schema"])
+{
+    var configuration = WebApplication.CreateBuilder(Array.Empty<string>()).Configuration;
+    return await UGTM.Api.SchemaPreflight.RunAsync(configuration);
+}
+
 var isBootstrapCommand = args.Length > 0
     && (string.Equals(args[0], "bootstrap-admin", StringComparison.OrdinalIgnoreCase)
         || args.Contains("--bootstrap-admin"));
