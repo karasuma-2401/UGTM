@@ -207,6 +207,8 @@ test('shared query scopes cache by user and only fetches with read permission', 
   assert.deepEqual(options.queryKey, ['academic-batches', 'user-1']);
   assert.equal(options.enabled, true);
   assert.equal(options.refetchInterval, 60_000);
+  assert.equal(options.refetchOnWindowFocus, 'always');
+  assert.equal(options.refetchOnReconnect, 'always');
   const signal = new AbortController().signal;
   await options.queryFn({ signal });
   assert.equal(forwarded, signal);
@@ -224,6 +226,7 @@ test('shared query scopes cache by user and only fetches with read permission', 
 function renderCurrentBatch(query = {}, canRead = true) {
   let retry;
   const { CurrentAcademicBatch } = loadModule('shared/layout/CurrentAcademicBatch.tsx', {
+    react: React,
     'react/jsx-runtime': jsxRuntime,
     'lucide-react': icons,
     '@/components/ui/button': {
@@ -279,4 +282,83 @@ test('sidebar uses API names/year/semester and displays every current batch with
   assert.match(html, /HK1/);
   assert.match(html, /2026-2027/);
   assert.doesNotMatch(html, /2025-2026/);
+});
+
+test('usePeriod invalidates shared academic-batches query when opening or saving a batch', async () => {
+  const invalidatedKeys = [];
+  const { usePeriod } = loadModule('features/academic/hooks/periods/usePeriod.ts', {
+    react: {
+      useEffect: () => {},
+      useCallback: (fn) => fn,
+    },
+    '@tanstack/react-query': {
+      useQueryClient: () => ({
+        invalidateQueries: async ({ queryKey }) => {
+          invalidatedKeys.push(queryKey);
+        },
+      }),
+    },
+    '@/shared/auth': {
+      useAuth: () => ({ hasPermission: () => true }),
+    },
+    './usePeriodModals': {
+      usePeriodModals: () => ({
+        setNotice: () => {},
+        setErrorMessage: () => {},
+        setIsChangeReasonOpen: () => {},
+      }),
+    },
+    './usePeriodData': {
+      usePeriodData: () => ({
+        selectedBatchId: 'batch-1',
+        setSelectedBatchId: () => {},
+        currentBatch: { id: 'batch-1', status: 'Draft' },
+        setCurrentBatch: () => {},
+        isLoadingDetail: false,
+        fetchBatches: async () => [],
+        loadBatchDetail: async () => null,
+      }),
+    },
+    './usePeriodSchedule': {
+      usePeriodSchedule: () => ({
+        resetForm: () => {},
+        populateFromDetail: () => {},
+        startDate: '2026-10-01',
+        batchName: 'Đợt 1',
+        academicYear: '2026-2027',
+        semester: 1,
+        computedStages: [],
+        syllabusDeadline: '',
+        midtermDeadline: '',
+        finalEvaluationDeadline: '',
+        defenseDeadline: '',
+        syllabusGateDraft: {},
+        midtermGateDraft: {},
+        setGateDrafts: () => {},
+      }),
+    },
+    './usePeriodActions': {
+      usePeriodActions: () => ({
+        isSaving: false,
+        isOpenLoading: false,
+        failedGateUpdates: [],
+        clearFailedGateUpdates: () => {},
+        executeSave: async ({ onSuccess }) => {
+          await onSuccess('batch-1', 'ok', false);
+        },
+        retryFailedGates: async () => {},
+        handleOpenBatch: async ({ onSuccess }) => {
+          await onSuccess({ id: 'batch-1', status: 'Open' });
+        },
+      }),
+    },
+  });
+
+  const period = usePeriod();
+  await period.actions.handleOpenBatch();
+  assert.deepEqual(invalidatedKeys, [['academic-batches'], ['academic-batch-timeline']]);
+
+  invalidatedKeys.length = 0;
+  await period.actions.executeSave();
+  assert.deepEqual(invalidatedKeys, [['academic-batches'], ['academic-batch-timeline']]);
 });

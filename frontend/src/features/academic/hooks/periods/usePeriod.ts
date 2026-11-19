@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
 import { usePeriodModals } from './usePeriodModals';
 import { usePeriodData } from './usePeriodData';
@@ -7,6 +8,7 @@ import { usePeriodActions } from './usePeriodActions';
 import type { GateTimeInput } from '../../utils/periodDates';
 
 export function usePeriod() {
+  const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
   const canManageBatch = hasPermission('academic.batches.manage');
   const canManageReviewGate = hasPermission('thesis.review-gate-config.manage');
@@ -27,6 +29,13 @@ export function usePeriod() {
   const { resetForm, populateFromDetail } = form;
   const { clearFailedGateUpdates } = actions;
   const { setErrorMessage } = modals;
+
+  const invalidateAcademicBatches = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['academic-batches'] }),
+      queryClient.invalidateQueries({ queryKey: ['academic-batch-timeline'] }),
+    ]);
+  }, [queryClient]);
 
   const setSelectedBatchId = useCallback(
     (nextId: string) => {
@@ -62,8 +71,9 @@ export function usePeriod() {
       if (result?.detail && result.detail.id === selectedBatchId) {
         populateFromDetail(result.detail, result.gates);
       }
+      await invalidateAcademicBatches();
     }
-  }, [selectedBatchId, setErrorMessage, loadBatchDetail, populateFromDetail]);
+  }, [selectedBatchId, setErrorMessage, loadBatchDetail, populateFromDetail, invalidateAcademicBatches]);
 
   const executeSave = async (reason?: string) => {
     modals.setNotice(null);
@@ -89,6 +99,7 @@ export function usePeriod() {
       changeReason: reason,
       onBatchCreated: async (createdBatchId) => {
         await fetchBatches(createdBatchId);
+        await invalidateAcademicBatches();
       },
       onSuccess: async (targetBatchId, message) => {
         modals.setNotice(message);
@@ -97,6 +108,7 @@ export function usePeriod() {
         if (result?.detail && result.detail.id === targetBatchId) {
           populateFromDetail(result.detail, result.gates);
         }
+        await invalidateAcademicBatches();
       },
       onError: modals.setErrorMessage,
     });
@@ -156,6 +168,7 @@ export function usePeriod() {
         data.setCurrentBatch(opened);
         modals.setNotice('Đợt KLTN đã được mở vận hành thành công!');
         await fetchBatches(opened.id);
+        await invalidateAcademicBatches();
       },
       onError: modals.setErrorMessage,
     });
