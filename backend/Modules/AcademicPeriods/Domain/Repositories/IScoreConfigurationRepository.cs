@@ -8,5 +8,7 @@ public interface IScoreConfigurationRepository
     Task<ScoreWeightConfig?> GetActiveByBatchAsync(Guid batchId, CancellationToken cancellationToken = default);
     Task<ScoreWeightConfig?> GetDraftByBatchAsync(Guid batchId, CancellationToken cancellationToken = default);
     Task<int> GetLatestVersionNoAsync(Guid batchId, CancellationToken cancellationToken = default);
+    Task ReloadAsync(ScoreWeightConfig configuration, CancellationToken cancellationToken = default);
     void Add(ScoreWeightConfig configuration);
+    void AddComponents(IEnumerable<ScoreComponentConfig> components);
 }

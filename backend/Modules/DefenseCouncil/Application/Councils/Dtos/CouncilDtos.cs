@@ -42,6 +42,25 @@ public sealed record CouncilMemberResponseDto(
     string? Email = null,
     string? UserCode = null);
 
+public sealed record UpdateCouncilMembersInputDto(
+    IReadOnlyList<CouncilMemberInputDto>? Members = null,
+    Guid? UserId = null,
+    CouncilMemberRole? Role = null);
+
+public sealed record CouncilMemberCandidateDto(
+    Guid UserId,
+    string FullName,
+    string Email,
+    string? UserCode,
+    bool IsAlreadyInCouncil,
+    string? CurrentRoleInCouncil,
+    bool IsScheduleConflict,
+    bool IsAdvisorConflict,
+    bool IsReviewerForCouncilGroups,
+    bool IsEligible,
+    IReadOnlyList<string> AllowedRoles,
+    string? ConflictReason);
+
 public sealed record CouncilAssignmentInputDto(
     Guid GroupId,
     int OrderNumber);

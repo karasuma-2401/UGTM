@@ -5,6 +5,7 @@ using UGTM.Modules.AcademicPeriods.Application.Persistence;
 using UGTM.Modules.AcademicPeriods.Application.ScoreConfigurations.CreateDraft;
 using UGTM.Modules.AcademicPeriods.Application.ScoreConfigurations.Dtos;
 using UGTM.Modules.AcademicPeriods.Domain.Enums;
+using UGTM.Modules.AcademicPeriods.Domain.Grading;
 using UGTM.Modules.AcademicPeriods.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
@@ -47,6 +48,25 @@ public sealed class PublishScoreConfigurationHandler(
                 if (configuration.Status != ConfigurationVersionStatus.Draft)
                 {
                     return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.InvalidStatusTransition);
+                }
+
+                if (configuration.Components.Count == 0)
+                {
+                    return Result.Failure<ScoreConfigurationDto>(ScoreConfigurationErrors.EmptyComponents);
+                }
+
+                try
+                {
+                    ScoreWeightRules.Validate(
+                        configuration.CalculationMethod,
+                        configuration.Components.Select(component => component.Weight));
+                }
+                catch (ArgumentException)
+                {
+                    var weightError = configuration.CalculationMethod == ScoreCalculationMethod.Percentage
+                        ? ScoreConfigurationErrors.InvalidPercentageTotal
+                        : ScoreConfigurationErrors.InvalidCoefficient;
+                    return Result.Failure<ScoreConfigurationDto>(weightError);
                 }
 
                 var previousActive = await configurationRepository.GetActiveByBatchAsync(

@@ -62,6 +62,18 @@ public interface ICouncilRepository
 
     Task AddMembersAsync(IEnumerable<CouncilMember> members, CancellationToken ct = default);
 
+    Task RemoveMemberAsync(CouncilMember member, CancellationToken ct = default);
+
+    Task ReplaceMembersAsync(
+        IEnumerable<CouncilMember> existingMembers,
+        IEnumerable<CouncilMember> newMembers,
+        CancellationToken ct = default);
+
+    Task<IReadOnlySet<Guid>> GetUserIdsWithAnyCouncilMembershipAsync(
+        IEnumerable<Guid> userIds,
+        Guid? excludeCouncilId = null,
+        CancellationToken ct = default);
+
     Task AddAssignmentsAsync(IEnumerable<CouncilAssignment> assignments, CancellationToken ct = default);
 
     Task<CouncilAssignment?> GetAssignmentWithCouncilAndMembersAsync(Guid assignmentId, CancellationToken ct = default);
