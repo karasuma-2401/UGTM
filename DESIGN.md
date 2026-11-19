@@ -7,10 +7,15 @@ Tệp này ghi nhận nền tảng giao diện từ source hiện tại, không 
 - React 19, TypeScript, Vite 8 và Tailwind CSS 3.
 - Component dùng chung: `frontend/src/components/ui/`.
 - Layout/điều hướng: `frontend/src/shared/layout/`.
-- Token CSS: `frontend/src/styles/theme.css`; font chính đang khai báo là Inter với system fallback.
-- Token HSL của Tailwind/shadcn nằm ở `frontend/src/index.css`, ánh xạ tại `frontend/tailwind.config.js`.
-- Màu primary hiện tại là xanh `#2563eb`. Ant Design vẫn được sử dụng ở một số nơi; kiểm tra component đang dùng trước khi thay đổi.
-- Phong cách chủ đạo: **Modern Clean SaaS** — giữ bố cục tối giản, thoáng đãng kết hợp lớp nền phân tầng tinh tế (`#f8fafc` canvas + thẻ `bg-white` viền `border-slate-200/80` bóng đổ nhẹ), thanh tiêu đề kính mờ (`bg-white/80 backdrop-blur-md`), điều hướng nhanh `Ctrl+K` và bảng tổng quan dạng Bento Grid dùng dữ liệu thật từ API.
+- Token CSS: `frontend/src/styles/theme.css` (auth & biến nền chung); font chính đang khai báo là Inter với system fallback.
+- Token ngữ nghĩa & HSL của Tailwind/shadcn nằm tập trung ở `frontend/src/index.css` (`:root` cho Light và `.dark` cho Dark), ánh xạ tại `frontend/tailwind.config.js` thành các namespace `surface-*`, `ink-*`, `line-*`, `brand-*` và `tone-*` (để đổi bảng màu trung tâm không cần lặp lại hàng loạt lớp `dark:` trên từng trang/component).
+- **Bảng màu & Chế độ Sáng / Tối (`ugtm:theme`)**:
+  - Hỗ trợ 3 chế độ `'light' | 'dark' | 'system'` (mặc định `'system'`, lưu `localStorage['ugtm:theme']`, kích hoạt sớm trước React qua inline script trong `frontend/index.html` để tránh FOUC, đồng bộ `.dark` / `data-theme` / `colorScheme` trên `<html>` qua `ThemeProvider` tại `frontend/src/shared/theme/ThemeContext.tsx` và đồng bộ `ConfigProvider` của Ant Design trong `frontend/src/App.tsx`).
+  - **Light Mode**: Giữ nguyên bảng màu sáng chuẩn (`--surface-canvas` `#f8fafc`, `--surface-card` `#ffffff`, `--surface-subtle` `#f8fafc`, `--line-default` `#e2e8f0`, `--brand-ink` `#2054a5`, primary `#2563eb`).
+  - **Dark Mode (Cool Slate Layered + Fluent 2 elevation)**: Phân tầng độ sâu theo sắc độ tối lạnh (`--surface-canvas` `#090d16`, `--surface-sidebar` `#0c1220`, `--surface-card` `#0f172a`, `--surface-elevated` `#162033`, `--surface-subtle` `#0b1120`, `--surface-muted` `#1e293b`, `--line-subtle` `#1e293b`, `--line-input` `#334155`, `--ink-primary` `#f1f5f9`, `--ink-muted` `#94a3b8`, `--ink-subtle` `#8c9ab0`, `--brand-ink` `#60a5fa`, `--brand-solid` `#2563eb`).
+  - **Ngoại lệ tài liệu in & PDF**: `CouncilMinutePrintDocument.tsx`, khung xem trước giấy PDF và `@media print` luôn giữ giấy trắng / chữ đen bất kể chế độ giao diện.
+- Màu primary hiện tại là xanh `#2563eb` (tối: `#3b82f6` cho Ant Design / `#60a5fa` `--brand-ink`). Ant Design vẫn được sử dụng ở một số nơi; kiểm tra component đang dùng trước khi thay đổi.
+- Phong cách chủ đạo: **Modern Clean SaaS** — giữ bố cục tối giản, thoáng đãng kết hợp lớp nền phân tầng tinh tế (`bg-surface-canvas` + thẻ `bg-surface-card` viền `border-line/80` bóng đổ nhẹ), thanh tiêu đề kính mờ (`bg-surface-card/85 backdrop-blur-md`), nút chuyển giao diện `ThemeToggle` cạnh điều hướng nhanh `Ctrl+K` (đồng thời có lựa chọn giao diện bên trong `Ctrl+K` và trên `AuthLayout`), cùng bảng tổng quan dạng Bento Grid dùng dữ liệu thật từ API.
 - Không sử dụng chữ chuyển sắc (`gradient-text`) cho tiêu đề hoặc số liệu; nhấn mạnh bằng độ đậm (`font-semibold`/`font-bold`) và tỷ lệ kích thước chữ.
 
 ## Cách mở rộng giao diện
@@ -132,7 +137,7 @@ Cập nhật 13/11/2026 theo lựa chọn sản phẩm: giữ luồng đăng ký
 
 Khi thiết kế màn hình mới hoặc nâng cấp giao diện hiện có trong UGTM, áp dụng thống nhất các nguyên tắc sau:
 
-- **Ngôn ngữ thị giác & phân cấp**: Kết hợp **Modern Clean SaaS** và **Fluent Design** — nền canvas `#f8fafc`, thẻ trắng `rounded-2xl border border-slate-200/80 shadow-xs`, hạn chế thẻ lồng thẻ rườm rà và không lặp icon trang trí thừa.
+- **Ngôn ngữ thị giác & phân cấp**: Kết hợp **Modern Clean SaaS** và **Fluent Design** — dùng semantic color tokens (`bg-surface-canvas`, thẻ `bg-surface-card rounded-2xl border border-line/80 shadow-xs`, chữ `text-ink-*`, trạng thái `tone-*`), hạn chế thẻ lồng thẻ rườm rà và không lặp icon trang trí thừa.
 - **Dùng Gradient để nhấn đúng chỗ**: Giữ gradient làm điểm nhấn tinh tế (thanh accent trên `PageHeader`, vạch chọn tab, dải nhấn hoặc chip tóm tắt công thức ở khu vực xem trước/tổng hợp); không dùng `gradient-text` cho chữ tiêu đề/số liệu và không đổ nền gradient lên từng hàng dữ liệu.
 - **Bảng dữ liệu thống nhất (`DataTable`)**:
   - Sử dụng `DataTable` (`frontend/src/components/ui/data-table.tsx`), cột sắp xếp qua `TableHead sortable` (sort phía server khi có phân trang), hiệu ứng chọn dòng `SelectionIndicator`, `TableFloatingBar` nổi ở đáy giữa màn hình khi chọn bản ghi, và `TablePagination` chuẩn (`10 / 20 / 50`).
@@ -170,3 +175,36 @@ Khi thiết kế màn hình mới hoặc nâng cấp giao diện hiện có tron
   - **Cột trái (`CouncilMinuteSheet`)**: Tờ biên bản điện tử nền trắng (`rounded-2xl border-slate-200/80`) với dải gradient thương hiệu `4px` trên đầu, khối tiêu đề hành chính, thẻ tóm tắt đề tài/sinh viên/Hội đồng, bảng tổng hợp đầu điểm đáp ứng đa màn hình (bảng 6 cột gọn cho `>=md` với căn giữa Avatar trên hàng không có phụ chú, thẻ xếp chồng cho `<md`), khối đối soát sai biệt & quyết định 3 trạng thái của Thư ký (`Chưa quyết định` / `Giữ nguyên tất cả` / `Loại một đầu điểm`), `RichTextEditor` cho góp ý sinh viên (`maxLength={2000}`), và khối chữ ký chính thức khi in.
   - **Cột phải (`CouncilMinuteAuditDock`)**: Thanh kiểm toán ghim cố định `340px` gồm 2 ô đối chiếu điểm **Trước điều chỉnh / Sau điều chỉnh** (`tabular-nums`, badge biến động `±0.xx`), khối **Diễn giải phép tính dạng Ledger** liệt kê từng thành phần (`GVHD`, `GVPB`, `Chủ tịch`, `Thư ký`, `Ủy viên` × trọng số, gạch ngang nhãn `Loại` khi loại trừ, tách dòng `Tổng tử số / Mẫu số` và `Làm tròn AwayFromZero`), danh sách điều kiện khóa biên bản, cùng nút Lưu nháp / Xác thực khóa / Mở khóa đặc biệt và chế độ **Xem bản in A4** (`window.print()`).
 - Thanh chuyển nhanh nhóm bảo vệ cùng hội đồng + ngăn kéo `CouncilMinuteGroupDrawer` (`Dialog variant="drawer"`) hỗ trợ lọc theo 5 nhóm trạng thái và bảo vệ dữ liệu nháp qua `ConfirmDialog`. Liên kết nhanh `"Biên bản hội đồng"` đặt cạnh badge trạng thái trên `CouncilGradingPage` dẫn trực tiếp tới `?assignmentId=...`.
+
+## Xin đổi tên đề tài (`/topics/rename`)
+
+- `StudentRenameRequestPage` sử dụng bố cục `Fluent Clean Sheet` (`lg:grid-cols-[minmax(0,1fr)_340px]`):
+  - `PageHeader` dùng `accent`, giữ tiêu đề tối giản không gắn icon trang trí, kèm badge trạng thái gửi đơn và nút `Làm mới`.
+  - **Cột trái theo trạng thái (`State-Driven Sheet`)**:
+    - Khi có đơn đang chờ duyệt: hiển thị trực tiếp phiếu theo dõi đơn đang xử lý (đối chiếu `TitleDiffText`, `RichTextContent` lý do và nút `Xem chi tiết`), không hiển thị form trống bị khóa.
+    - Khi chưa đủ điều kiện giai đoạn hoặc ngoài hạn Tuần 3–10: hiển thị `InlineAlert` cảnh báo cùng tên đề tài hiện tại gọn gàng.
+    - Khi đủ điều kiện soạn đơn: hiển thị `InlineAlert` khôi phục lý do từ chối gần nhất (nếu có, kèm nút `"Điền lại để sửa"`) hoặc thông báo mở khóa nộp lại Đề cương (`/thesis/proposal` khi có đơn `Completed`); phiếu soạn gồm tên hiện tại dạng tham chiếu phẳng, nút `"Lấy từ tên hiện tại"` ở tên tiếng Việt, `"Khôi phục tên EN gốc"`, khối **Xem trước thay đổi** chỉ mở khi có khác biệt thật (`TitleDiffText`), `RichTextEditor` cho lý do điều chỉnh, `FormErrorSummary` và chân nút gửi gắn liền trong cùng `Card`.
+    - Bảo vệ nội dung đang soạn bằng `useBlocker` + `beforeunload` và `ConfirmDialog`.
+  - **Lịch sử đơn của nhóm**: Dùng chung `DataTable` 4 cột gọn (`Tên đề xuất`, `Trạng thái`, `Ngày gửi`, `Thao tác` với nút `"Xem"`), hỗ trợ card xếp chồng trên `<lg` và mở `StudentRenameDetailDialog` (`Chế độ chỉ đọc`, hỗ trợ `"Dùng lại nội dung"` trên đơn bị từ chối).
+  - **Cột phải (`StudentRenamePipelineDock`)**: Gom thành một thẻ Dock duy nhất `340px` phân chia bằng `divide-y divide-line-subtle`, gồm `ProgressBar` thời hạn Tuần 3–10, `RenameApprovalTimeline` dạng danh sách phẳng (`flat`, dùng chung với `RenameReviewDialog`) với khoảng cách các mốc cân đối, và thông tin nhóm/GVHD dạng key-value cô đọng.
+
+## Hồ sơ lưu chiểu (/thesis/archival)
+
+- `StudentArchivalPage` áp dụng bố cục **State-Driven Archival Dossier + Sticky 340px Readiness Rail** (`lg:grid-cols-[minmax(0,1fr)_340px]`):
+  - `PageHeader` dùng `accent`, **không gắn icon** (`icon` bỏ trống đồng bộ với `AdvisorArchivalPage` và `ArchivalReviewPage`), kèm `StatusBadge`, badge phiên bản `v{n}` và nút `Làm mới`.
+  - **Thanh tiến trình 3 bước (`ArchivalPipelineStrip`)**: Thay 3 thẻ hộp độc lập bằng dải tiến trình hairline 3 cột chia `divide-x`/`divide-y` (`Sinh viên nộp hồ sơ` -> `GVHD xác nhận` -> `Khoa nghiệm thu`) phản ánh trực tiếp trạng thái đang xử lý, cần bổ sung hoặc đã hoàn tất kèm mốc thời gian.
+  - **Cột trái thích ứng theo trạng thái**:
+    - *Chưa mở cổng (`Blocked`)*: Hiển thị `InlineAlert` nguyên nhân chặn, bảng key-value 3 điều kiện (`Đợt khóa luận`, `Cổng lưu chiểu GĐ 7`, `Biên bản Hội đồng`), tên đề tài và liên kết nhanh (`/thesis/final-report`, `/thesis/results`), không render form tải tệp bị vô hiệu hóa.
+    - *Được phép nộp/cập nhật (`NotSubmitted`, `NeedRevision`, hoặc `Submitted` đang chờ duyệt)*: Hiển thị `InlineAlert` phản hồi yêu cầu bổ sung (nếu `NeedRevision`) hoặc lưu ý cập nhật trước khi GVHD duyệt (nếu `Submitted`); hợp nhất toàn bộ form trong một `Card` chia `divide-y divide-line-subtle` gồm hai ô kéo-thả `ArchivalFileDropSlot` (đồng bộ `ThesisFileTypeIcon`, nút `<Eye />` xem trước `PdfPreviewDialog` cho cả tệp chọn cục bộ qua Object URL lẫn bản đang lưu trên máy chủ), hai cột `Tóm tắt & Từ khóa song ngữ` VI/EN kèm bộ đếm từ/ký tự (`tabular-nums`) và xem trước thẻ từ khóa (`parseArchivalKeywords`), cùng chân action bar tích hợp (`Hoàn tác bản nháp` + nút nộp mở `ConfirmDialog`). Bảo vệ dữ liệu chưa nộp qua `useBlocker` và `beforeunload`.
+    - *Đã khóa / Đã nghiệm thu (`AdvisorConfirmed`, `ArchiveConfirmed`)*: Chuyển sang chế độ hồ sơ đã lưu chỉ đọc với `InlineAlert` xác nhận, cặp thẻ tệp dùng `ThesisFileTypeIcon` + `PdfPreviewDialog` (`Xem trước`) + `Tải xuống`, và bản tóm tắt + thẻ từ khóa song ngữ có thu gọn/mở rộng.
+  - **Cột phải (`ArchivalDossierSidebar`)**: Dock ghim cố định `340px` chia `divide-y divide-line-subtle` gom kiểm tra điều kiện (`x/4`), hạn nộp GĐ 7, góp ý sau bảo vệ, GVHD + `AvatarGroup` thành viên nhóm, và nút mở `ArchivalHistoryDialog` (đã kích hoạt `onPreviewPdf` đồng bộ với GVHD/Khoa).
+
+## Kết quả khóa luận (`/councils/results`)
+
+- `StudentResultsPage` áp dụng bố cục **Official Score Transcript + Adaptive Gate Tracker** (`lg:grid-cols-[minmax(0,1fr)_340px]`):
+  - `PageHeader` dùng `accent`, **không gắn icon** (đồng bộ với `AcademicResultsPage`, `StudentArchivalPage`, `StudentRenameRequestPage`), kèm `StatusBadge`, nút `In phiếu điểm` (khi đã công bố) và nút `Làm mới`.
+  - **Cột trái thích ứng theo trạng thái**:
+    - *Chưa mở điểm (`Locked`)*: Thay bảng 4 cột chứa cột `"Tiếp theo"` trống và thẻ khóa tách rời bằng một `Card` chia `divide-y divide-line-subtle` gồm `InlineAlert` lý do khóa, trình theo dõi **2 điều kiện mở bảng điểm** (`Khoa xác nhận lưu chiểu` -> liên kết `/thesis/archival`, `Khoa công bố kết quả` -> liên kết `/thesis/final-report`) và góp ý sau bảo vệ (nếu có).
+    - *Đã công bố (`PublishedToStudent`)*: Hiển thị **Phiếu kết quả chính thức** thống nhất (`Card divide-y`) gồm băng tổng hợp 3 chỉ số (`Điểm tổng kết · Thang 10`, `Quy đổi · Thang 4`, `Xếp loại học lực tham khảo`) + công thức tổng hợp; bảng phân rã nguồn điểm có thanh tỷ trọng % (`computeWeightSharePercent`) cho desktop (`>=md`) và danh sách thẻ xếp chồng (`<md`); góp ý sau bảo vệ; và chân nút `In phiếu kết quả (A4)` (`window.print()`).
+  - **Cột phải (`StudentResultsSidebar`)**: Dock ghim cố định `340px` chia `divide-y divide-line-subtle` hiển thị thông tin đề tài/đợt/mốc công bố/nghiệm thu, `AvatarGroup` thành viên & GVHD, điều kiện/căn cứ và liên kết `/thesis/archival` + `/thesis/final-report`.
+  - **Bản in A4 (`StudentTranscriptPrintDocument`)**: Mẫu đơn sắc chuẩn A4 (`hidden print:block`) phối hợp với `print:hidden` trên khung ứng dụng và `@media print` trong `index.css`.

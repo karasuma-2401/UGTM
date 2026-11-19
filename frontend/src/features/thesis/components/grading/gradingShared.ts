@@ -27,25 +27,25 @@ export interface StudentAccentStyle {
 
 const STUDENT_ACCENTS: readonly StudentAccentStyle[] = [
   {
-    dotClass: 'bg-blue-600',
-    badgeClass: 'border-blue-200 bg-blue-50 text-blue-700',
-    barClass: 'bg-blue-600',
-    ringFocusClass: 'focus:border-blue-600 focus:ring-blue-100',
-    headerTintClass: 'border-blue-200/80 bg-blue-50/70',
+    dotClass: 'bg-blue-600 dark:bg-blue-500',
+    badgeClass: 'border-tone-info-border bg-tone-info-bg text-tone-info-text',
+    barClass: 'bg-blue-600 dark:bg-blue-500',
+    ringFocusClass: 'focus:border-blue-600 focus:ring-blue-100 dark:focus:border-blue-400 dark:focus:ring-blue-900/50',
+    headerTintClass: 'border-tone-info-border bg-tone-info-bg',
   },
   {
-    dotClass: 'bg-violet-600',
-    badgeClass: 'border-violet-200 bg-violet-50 text-violet-700',
-    barClass: 'bg-violet-600',
-    ringFocusClass: 'focus:border-violet-600 focus:ring-violet-100',
-    headerTintClass: 'border-violet-200/80 bg-violet-50/70',
+    dotClass: 'bg-violet-600 dark:bg-violet-500',
+    badgeClass: 'border-tone-violet-border bg-tone-violet-bg text-tone-violet-text',
+    barClass: 'bg-violet-600 dark:bg-violet-500',
+    ringFocusClass: 'focus:border-violet-600 focus:ring-violet-100 dark:focus:border-violet-400 dark:focus:ring-violet-900/50',
+    headerTintClass: 'border-tone-violet-border bg-tone-violet-bg',
   },
   {
-    dotClass: 'bg-emerald-600',
-    badgeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    barClass: 'bg-emerald-600',
-    ringFocusClass: 'focus:border-emerald-600 focus:ring-emerald-100',
-    headerTintClass: 'border-emerald-200/80 bg-emerald-50/70',
+    dotClass: 'bg-emerald-600 dark:bg-emerald-500',
+    badgeClass: 'border-tone-success-border bg-tone-success-bg text-tone-success-text',
+    barClass: 'bg-emerald-600 dark:bg-emerald-500',
+    ringFocusClass: 'focus:border-emerald-600 focus:ring-emerald-100 dark:focus:border-emerald-400 dark:focus:ring-emerald-900/50',
+    headerTintClass: 'border-tone-success-border bg-tone-success-bg',
   },
 ];
 

@@ -238,7 +238,7 @@ export function BlockComposer<
       onDrop={handleCanvasDrop}
       className={cn(
         'space-y-3 rounded-xl transition-colors',
-        isExternalFileDrag && 'bg-blue-50/40 ring-2 ring-[#2054a5]/35 p-2 -m-2',
+        isExternalFileDrag && 'bg-tone-info-bg ring-2 ring-[#2054a5]/35 p-2 -m-2',
         className,
       )}
     >
@@ -246,11 +246,11 @@ export function BlockComposer<
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              {title && <h4 className="text-xs font-semibold text-slate-800">{title}</h4>}
+              {title && <h4 className="text-xs font-semibold text-ink-heading">{title}</h4>}
               {headerMeta}
             </div>
             {subtitle && (
-              <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">{subtitle}</p>
+              <p className="text-[11px] text-ink-muted mt-0.5 leading-relaxed">{subtitle}</p>
             )}
           </div>
 
@@ -263,7 +263,7 @@ export function BlockComposer<
               aria-haspopup="menu"
               aria-expanded={Boolean(addMenu)}
               onClick={(event) => toggleAddMenuAt(event.currentTarget, blocks.length)}
-              className="h-8 gap-1.5 bg-white text-xs shrink-0"
+              className="h-8 gap-1.5 bg-surface-card text-xs shrink-0"
             >
               <Plus className="size-3.5" />
               <span>{addButtonLabel}</span>
@@ -278,23 +278,23 @@ export function BlockComposer<
           type="button"
           disabled={disabled || allOptionsDisabled}
           onClick={(event) => toggleAddMenuAt(event.currentTarget, 0)}
-          className="w-full rounded-xl border border-dashed border-slate-200/90 bg-slate-50/45 px-4 py-3 text-left text-xs text-slate-600 transition-colors hover:border-[#2054a5]/50 hover:bg-blue-50/20 flex flex-wrap items-center justify-between gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+          className="w-full rounded-xl border border-dashed border-line-input/90 bg-surface-subtle/45 px-4 py-3 text-left text-xs text-ink-body transition-colors hover:border-[#2054a5]/50 hover:bg-tone-info-bg flex flex-wrap items-center justify-between gap-2 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           <span className="inline-flex items-center gap-2.5 min-w-0">
             {emptyStateIcon && (
-              <span className="size-8 rounded-lg bg-white border border-slate-200/80 flex items-center justify-center text-slate-500 shrink-0 shadow-2xs">
+              <span className="size-8 rounded-lg bg-surface-elevated border border-line-input/80 flex items-center justify-center text-ink-muted shrink-0 shadow-2xs">
                 {emptyStateIcon}
               </span>
             )}
             <span className="min-w-0">
-              <span className="font-medium text-slate-700 block">{emptyStateLabel}</span>
+              <span className="font-medium text-ink-secondary block">{emptyStateLabel}</span>
               {emptyStateHint && (
-                <span className="text-[11px] text-slate-500 block mt-0.5">{emptyStateHint}</span>
+                <span className="text-[11px] text-ink-muted block mt-0.5">{emptyStateHint}</span>
               )}
             </span>
           </span>
           {!disabled && (
-            <span className="text-xs font-medium text-[#2054a5] shrink-0">+ Thêm</span>
+            <span className="text-xs font-medium text-brand-ink shrink-0">+ Thêm</span>
           )}
         </button>
       ) : (
@@ -349,22 +349,22 @@ export function BlockComposer<
                   setDropTarget(null);
                 }}
                 className={cn(
-                  'group/block relative flex items-start gap-2 rounded-xl border bg-slate-50/55 px-2.5 py-2.5 transition-[border-color,box-shadow,opacity,background-color] duration-150',
+                  'group/block relative flex items-start gap-2 rounded-xl border bg-surface-subtle/55 px-2.5 py-2.5 transition-[border-color,box-shadow,opacity,background-color] duration-150',
                   isDragging
-                    ? 'opacity-45 border-[#2054a5]/60 bg-blue-50/30'
-                    : 'border-slate-200/80 hover:border-slate-300/90 focus-within:border-[#2054a5]/60 focus-within:bg-white',
+                    ? 'opacity-45 border-[#2054a5]/60 bg-tone-info-bg'
+                    : 'border-line/80 hover:border-line-strong/90 focus-within:border-[#2054a5]/60 focus-within:bg-surface-card',
                 )}
               >
                 {isDropBefore && (
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-2 -top-[5px] h-0.5 rounded-full bg-[#2054a5]"
+                    className="pointer-events-none absolute inset-x-2 -top-[5px] h-0.5 rounded-full bg-brand-solid"
                   />
                 )}
                 {isDropAfter && (
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-x-2 -bottom-[5px] h-0.5 rounded-full bg-[#2054a5]"
+                    className="pointer-events-none absolute inset-x-2 -bottom-[5px] h-0.5 rounded-full bg-brand-solid"
                   />
                 )}
 
@@ -400,9 +400,9 @@ export function BlockComposer<
                       }
                     }}
                     className={cn(
-                      'mt-1.5 size-6 rounded-md inline-flex items-center justify-center text-slate-300 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      'mt-1.5 size-6 rounded-md inline-flex items-center justify-center text-ink-faint transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       canDragBlocks
-                        ? 'group-hover/block:text-slate-500 hover:bg-slate-200/60 hover:text-slate-700 cursor-grab active:cursor-grabbing'
+                        ? 'group-hover/block:text-ink-muted hover:bg-surface-strong/60 hover:text-ink-secondary cursor-grab active:cursor-grabbing'
                         : 'opacity-35 cursor-default',
                     )}
                   >
@@ -432,7 +432,7 @@ export function BlockComposer<
                           onClick={moveUp}
                           aria-label="Di chuyển lên"
                           title="Di chuyển lên"
-                          className="size-7 rounded-lg inline-flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                          className="size-7 rounded-lg inline-flex items-center justify-center text-ink-subtle hover:bg-surface-strong/60 hover:text-ink-secondary disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
                         >
                           <ArrowUp className="size-3.5" />
                         </button>
@@ -442,7 +442,7 @@ export function BlockComposer<
                           onClick={moveDown}
                           aria-label="Di chuyển xuống"
                           title="Di chuyển xuống"
-                          className="size-7 rounded-lg inline-flex items-center justify-center text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
+                          className="size-7 rounded-lg inline-flex items-center justify-center text-ink-subtle hover:bg-surface-strong/60 hover:text-ink-secondary disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
                         >
                           <ArrowDown className="size-3.5" />
                         </button>
@@ -455,7 +455,7 @@ export function BlockComposer<
                         onClick={remove}
                         aria-label="Xóa mục"
                         title="Xóa mục"
-                        className="size-8 rounded-lg inline-flex items-center justify-center text-slate-400 hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors cursor-pointer"
+                        className="size-8 rounded-lg inline-flex items-center justify-center text-ink-subtle hover:bg-tone-danger-bg hover:text-tone-danger-icon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors cursor-pointer"
                       >
                         <Trash2 className="size-3.5" />
                       </button>
@@ -484,7 +484,7 @@ export function BlockComposer<
               transform: menuCoords.placement === 'top' ? 'translateY(-100%)' : undefined,
               zIndex: 80,
             }}
-            className="rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-lg animate-in fade-in duration-150"
+            className="rounded-xl border border-line-input/90 bg-surface-card p-1.5 shadow-lg animate-in fade-in duration-150 dark:shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
           >
             <div className="space-y-0.5">
               {blockTypes.map((opt) => (
@@ -498,15 +498,15 @@ export function BlockComposer<
                     'w-full flex items-center justify-between gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors',
                     opt.disabled
                       ? 'opacity-50 cursor-not-allowed'
-                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 cursor-pointer',
+                      : 'text-ink-secondary hover:bg-surface-hover hover:text-ink-primary cursor-pointer',
                   )}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-slate-500 shrink-0">{opt.icon}</span>
+                    <span className="text-ink-muted shrink-0">{opt.icon}</span>
                     <div className="min-w-0">
                       <span className="text-xs font-medium block truncate">{opt.label}</span>
                       {(opt.disabled ? opt.disabledReason : opt.description) && (
-                        <p className="text-[11px] text-slate-500 truncate">
+                        <p className="text-[11px] text-ink-muted truncate">
                           {opt.disabled ? opt.disabledReason : opt.description}
                         </p>
                       )}
@@ -514,7 +514,7 @@ export function BlockComposer<
                   </div>
 
                   {opt.badgeText && (
-                    <span className="text-[11px] font-medium text-slate-400 tabular-nums shrink-0">
+                    <span className="text-[11px] font-medium text-ink-subtle tabular-nums shrink-0">
                       {opt.badgeText}
                     </span>
                   )}

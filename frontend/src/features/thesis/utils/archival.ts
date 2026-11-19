@@ -385,12 +385,34 @@ export function formatReviewActionLabel(action: string, stage: string): string {
   return action;
 }
 
-export function triggerBrowserDownload(url: string, filename: string): void {
+export type DownloadUrlOptions = {
+  inline?: boolean;
+  signal?: AbortSignal;
+};
+
+export function buildDownloadRequestConfig(optionsOrSignal?: DownloadUrlOptions | AbortSignal): {
+  params?: { inline: true };
+  signal?: AbortSignal;
+} {
+  if (!optionsOrSignal) return {};
+  if (typeof AbortSignal !== 'undefined' && optionsOrSignal instanceof AbortSignal) {
+    return { signal: optionsOrSignal };
+  }
+  const options = optionsOrSignal as DownloadUrlOptions;
+  return {
+    ...(options.inline ? { params: { inline: true as const } } : {}),
+    ...(options.signal ? { signal: options.signal } : {}),
+  };
+}
+
+export function triggerBrowserDownload(url: string, filename?: string): void {
   const link = document.createElement('a');
   link.href = url;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
-  link.download = filename;
+  if (filename) {
+    link.download = filename;
+  }
   document.body.appendChild(link);
   link.click();
   link.remove();

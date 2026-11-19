@@ -216,30 +216,48 @@ export const AuditLogPage: React.FC = () => {
     return () => controller.abort();
   }, [eventId]);
   const update = (change: (next: URLSearchParams) => void) => {
-    const next = new URLSearchParams(params);
-    change(next);
-    setParams(next);
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      change(next);
+      return next;
+    });
   };
-  const apply = () => {
+  const commitFilter = (nextFilter: AuditLogFilterState) => {
     if (
-      (filter.fromUtc && !validDate(filter.fromUtc)) ||
-      (filter.toUtc && !validDate(filter.toUtc)) ||
-      (filter.fromUtc && filter.toUtc && filter.fromUtc > filter.toUtc)
+      (nextFilter.fromUtc && !validDate(nextFilter.fromUtc)) ||
+      (nextFilter.toUtc && !validDate(nextFilter.toUtc)) ||
+      (nextFilter.fromUtc && nextFilter.toUtc && nextFilter.fromUtc > nextFilter.toUtc)
     ) {
       setError('Khoảng ngày không hợp lệ.');
       return;
     }
-    if (filter.actorSessionId && !validGuid(filter.actorSessionId.trim())) {
+    if (nextFilter.actorSessionId && !validGuid(nextFilter.actorSessionId.trim())) {
       setError('Session ID phải là GUID hợp lệ.');
       return;
     }
     setError(null);
     update((next) => {
-      writeFilter(next, filter);
+      writeFilter(next, nextFilter);
       next.delete('page');
       next.delete('event');
     });
   };
+
+  const handleFilterChange = (nextFilter: AuditLogFilterState, immediate = false) => {
+    setFilter(nextFilter);
+    if (immediate) {
+      commitFilter(nextFilter);
+    }
+  };
+
+  useEffect(() => {
+    if (JSON.stringify(filter) === filterKey) return;
+    const timer = window.setTimeout(() => {
+      commitFilter(filter);
+    }, 250);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, filterKey]);
   const setEvent = (id?: number) =>
     update((next) => {
       if (id) next.set('event', String(id));
@@ -334,10 +352,9 @@ export const AuditLogPage: React.FC = () => {
           </button>
         </InlineAlert>
       )}
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-xs">
+      <Card className="min-w-0 overflow-hidden rounded-2xl border-line/80 shadow-xs">
         <ListCardHeader
           title="Sự kiện hệ thống"
-          icon={<ScrollText />}
           description={
             listError
               ? 'Không tải được số lượng'
@@ -365,8 +382,7 @@ export const AuditLogPage: React.FC = () => {
         </ListCardHeader>
         <AuditLogFilterBar
           filter={filter}
-          onFilterChange={setFilter}
-          onApply={apply}
+          onFilterChange={handleFilterChange}
           onReset={() => {
             setFilter(INITIAL_FILTER);
             setSelectedId(null);

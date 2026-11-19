@@ -65,11 +65,11 @@ interface VersionHistoryTimelineProps {
 }
 
 const reviewToneClasses: Record<TimelineReviewInfo['tone'], string> = {
-  success: 'border-slate-200/80 bg-slate-50/70 text-slate-800',
-  warning: 'border-amber-200/80 bg-amber-50/55 text-amber-950',
-  error: 'border-rose-200/80 bg-rose-50/55 text-rose-950',
-  info: 'border-slate-200/80 bg-slate-50/70 text-slate-800',
-  neutral: 'border-slate-200/80 bg-slate-50/70 text-slate-800',
+  success: 'border-line/80 bg-surface-subtle/70 text-ink-heading',
+  warning: 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong',
+  error: 'border-tone-danger-border bg-tone-danger-bg text-tone-danger-strong',
+  info: 'border-line/80 bg-surface-subtle/70 text-ink-heading',
+  neutral: 'border-line/80 bg-surface-subtle/70 text-ink-heading',
 };
 
 export function VersionHistoryTimeline({
@@ -90,11 +90,11 @@ export function VersionHistoryTimeline({
   const olderCount = Math.max(0, sortedItems.length - 1);
 
   return (
-    <Card className="bg-white border-slate-200/80 shadow-xs rounded-2xl overflow-hidden">
-      <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+    <Card className="bg-surface-card border-line/80 shadow-xs rounded-2xl overflow-hidden">
+      <div className="px-5 sm:px-6 py-4 border-b border-line-subtle flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
-          <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 tabular-nums">
+          <h3 className="text-base font-semibold text-ink-primary">{title}</h3>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-surface-muted text-ink-body tabular-nums">
             {items.length} phiên bản
           </span>
         </div>
@@ -103,7 +103,7 @@ export function VersionHistoryTimeline({
             <button
               type="button"
               onClick={() => setShowOlderVersions((prev) => !prev)}
-              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-ink-body hover:bg-surface-muted transition-colors cursor-pointer"
             >
               <ChevronDown
                 className={cn(
@@ -119,14 +119,14 @@ export function VersionHistoryTimeline({
       </div>
 
       {isLoading ? (
-        <div className="p-8 text-center text-sm text-slate-500">Đang tải lịch sử nộp…</div>
+        <div className="p-8 text-center text-sm text-ink-muted">Đang tải lịch sử nộp…</div>
       ) : sortedItems.length === 0 ? (
         <div className="px-6 py-10 text-center space-y-1.5">
-          <div className="size-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+          <div className="size-10 rounded-full bg-surface-muted text-ink-subtle flex items-center justify-center mx-auto mb-2">
             <FileText className="size-5" />
           </div>
-          <p className="text-sm font-semibold text-slate-800">{emptyTitle}</p>
-          <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+          <p className="text-sm font-semibold text-ink-heading">{emptyTitle}</p>
+          <p className="text-xs text-ink-muted max-w-md mx-auto leading-relaxed">
             {emptyDescription}
           </p>
         </div>
@@ -159,8 +159,8 @@ export function VersionHistoryTimeline({
                     className={cn(
                       'relative z-10 inline-flex items-center justify-center h-6 min-w-7 px-1.5 rounded-md text-[11px] font-semibold tabular-nums border',
                       isLatest
-                        ? 'bg-blue-50 text-[#2054a5] border-blue-200/80'
-                        : 'bg-slate-50 text-slate-600 border-slate-200/80',
+                        ? 'bg-tone-info-bg text-brand-ink border-tone-info-border'
+                        : 'bg-surface-subtle text-ink-body border-line/80',
                     )}
                   >
                     v{item.versionNo}
@@ -168,7 +168,7 @@ export function VersionHistoryTimeline({
                   {hasNextVisible && (
                     <span
                       aria-hidden="true"
-                      className="w-px flex-1 bg-slate-200 mt-1.5 -mb-2"
+                      className="w-px flex-1 bg-surface-strong mt-1.5 -mb-2"
                     />
                   )}
                 </div>
@@ -176,14 +176,14 @@ export function VersionHistoryTimeline({
                 <div
                   className={cn(
                     'min-w-0 flex-1 space-y-2 pb-1',
-                    hasNextVisible && 'border-b border-slate-100 pb-4',
+                    hasNextVisible && 'border-b border-line-subtle pb-4',
                   )}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p
-                          className="text-sm font-semibold text-slate-900 break-words [overflow-wrap:anywhere]"
+                          className="text-sm font-semibold text-ink-primary break-words [overflow-wrap:anywhere]"
                           title={item.fileName}
                         >
                           {item.fileName}
@@ -191,21 +191,21 @@ export function VersionHistoryTimeline({
                         {item.statusBadge}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
                         {isLatest && (
-                          <span className="font-medium text-slate-700">Bản hiện hành</span>
+                          <span className="font-medium text-ink-secondary">Bản hiện hành</span>
                         )}
                         {item.fileSize != null && (
                           <span className="tabular-nums">
                             {formatFileSize(item.fileSize)}
                             {sizeDelta && (
-                              <span className="text-slate-400 ml-1">({sizeDelta})</span>
+                              <span className="text-ink-subtle ml-1">({sizeDelta})</span>
                             )}
                           </span>
                         )}
                         {item.timestampUtc && (
                           <span className="inline-flex items-center gap-1">
-                            <Clock className="size-3.5 text-slate-400" />
+                            <Clock className="size-3.5 text-ink-subtle" />
                             {formatMilestoneDateTime(item.timestampUtc)}
                           </span>
                         )}
@@ -214,7 +214,7 @@ export function VersionHistoryTimeline({
                           <span
                             className={cn(
                               'font-medium',
-                              item.isLate || delta?.isLate ? 'text-rose-600' : 'text-slate-600',
+                              item.isLate || delta?.isLate ? 'text-tone-danger-icon' : 'text-ink-body',
                             )}
                           >
                             {delta ? delta.label : 'Nộp trễ hạn'}
@@ -254,8 +254,8 @@ export function VersionHistoryTimeline({
                         />
                       )}
                       {item.studentNote && (
-                        <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 px-3.5 py-2 text-xs text-slate-700">
-                          <span className="font-semibold text-slate-800 block mb-0.5">
+                        <div className="rounded-xl border border-line/80 bg-surface-subtle/80 px-3.5 py-2 text-xs text-ink-secondary">
+                          <span className="font-semibold text-ink-heading block mb-0.5">
                             Ghi chú của sinh viên
                           </span>
                           <RichTextContent content={item.studentNote} className="text-xs" />

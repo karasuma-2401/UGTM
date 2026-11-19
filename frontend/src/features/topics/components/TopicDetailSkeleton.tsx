@@ -10,7 +10,7 @@ export function TopicDetailSkeleton() {
           <Skeleton className="h-7 w-4/5" />
           <Skeleton className="h-4 w-3/5" />
         </div>
-        <div className="grid gap-6 rounded-xl bg-slate-50 p-4 sm:grid-cols-2">
+        <div className="grid gap-6 rounded-xl bg-surface-subtle p-4 sm:grid-cols-2">
           {[0, 1].map((index) => (
             <div key={index} className="space-y-2">
               <Skeleton className="h-3 w-24" />

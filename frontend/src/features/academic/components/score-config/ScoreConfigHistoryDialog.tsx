@@ -100,7 +100,7 @@ export const ScoreConfigHistoryDialog: React.FC<ScoreConfigHistoryDialogProps> =
           : 'Lịch sử các phiên bản cấu hình điểm'
       }
       className="max-w-2xl"
-      headerClassName="border-b border-slate-200/80 bg-white px-5 py-4 sm:px-6"
+      headerClassName="border-b border-line/80 bg-surface-card px-5 py-4 sm:px-6"
     >
       <div className="p-5 sm:p-6 space-y-4">
         {activeConfig ? (
@@ -125,56 +125,56 @@ export const ScoreConfigHistoryDialog: React.FC<ScoreConfigHistoryDialogProps> =
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 rounded-xl border border-line/80 bg-surface-subtle/70 p-4 sm:grid-cols-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
                   Phương thức tính
                 </p>
-                <p className="mt-1 text-sm font-semibold text-slate-900">
+                <p className="mt-1 text-sm font-semibold text-ink-primary">
                   {CALCULATION_METHOD_LABELS[activeConfig.calculationMethod]}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
                   Tổng trọng số
                 </p>
-                <p className="mt-1 text-sm font-semibold text-blue-700 tabular-nums">
+                <p className="mt-1 text-sm font-semibold text-tone-info-text tabular-nums">
                   {totalWeight}
                   {activeConfig.calculationMethod === 'Percentage' ? '%' : ' hệ số'}
                 </p>
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
                   Ghi nhận lúc
                 </p>
-                <p className="mt-1 text-sm font-medium text-slate-800 tabular-nums">
+                <p className="mt-1 text-sm font-medium text-ink-heading tabular-nums">
                   {formatDateTime(activeConfig.publishedAt || activeConfig.createdAt)}
                 </p>
               </div>
               {activeConfig.changeReason && (
-                <div className="sm:col-span-3 border-t border-slate-200/70 pt-2.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <div className="sm:col-span-3 border-t border-line/70 pt-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">
                     Lý do thay đổi
                   </p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-700 break-words">
+                  <p className="mt-1 text-xs leading-relaxed text-ink-secondary break-words">
                     {activeConfig.changeReason}
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white">
+            <div className="overflow-hidden rounded-xl border border-line/80 bg-surface-card">
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200/80 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    <tr className="border-b border-line/80 bg-surface-subtle/80 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
                       <th className="px-4 py-2.5">Thành phần</th>
                       <th className="px-4 py-2.5">Nguồn</th>
                       <th className="px-4 py-2.5 text-right">Trọng số</th>
                       <th className="px-4 py-2.5">Điều kiện</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-line-subtle">
                     {sortedComponents.map((item, idx) => {
                       const percentEquiv =
                         totalWeight > 0
@@ -182,21 +182,21 @@ export const ScoreConfigHistoryDialog: React.FC<ScoreConfigHistoryDialogProps> =
                           : 0;
 
                       return (
-                        <tr key={item.componentCode || idx} className="hover:bg-slate-50/60">
-                          <td className="px-4 py-3 font-semibold text-slate-900">
+                        <tr key={item.componentCode || idx} className="hover:bg-surface-hover/60">
+                          <td className="px-4 py-3 font-semibold text-ink-primary">
                             {item.componentName}
                           </td>
                           <td className="px-4 py-3">{getSourceBadge(item.source)}</td>
-                          <td className="px-4 py-3 text-right font-semibold text-slate-800 tabular-nums whitespace-nowrap">
+                          <td className="px-4 py-3 text-right font-semibold text-ink-heading tabular-nums whitespace-nowrap">
                             {item.weight}
                             {activeConfig.calculationMethod === 'Percentage' ? '%' : ' hệ số'}
                             {activeConfig.calculationMethod === 'IntegerCoefficient' && (
-                              <span className="ml-1 text-xs font-normal text-slate-400">
+                              <span className="ml-1 text-xs font-normal text-ink-subtle">
                                 ({percentEquiv}%)
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-600">
+                          <td className="px-4 py-3 text-xs text-ink-body">
                             {getConditionSummary(item)}
                           </td>
                         </tr>
@@ -208,7 +208,7 @@ export const ScoreConfigHistoryDialog: React.FC<ScoreConfigHistoryDialogProps> =
             </div>
           </>
         ) : history.length === 0 ? (
-          <p className="rounded-xl border border-slate-200/80 bg-slate-50/70 py-10 text-center text-sm text-slate-500">
+          <p className="rounded-xl border border-line/80 bg-surface-subtle/70 py-10 text-center text-sm text-ink-muted">
             Đợt khóa luận này chưa có lịch sử cấu hình điểm nào.
           </p>
         ) : (
@@ -220,28 +220,28 @@ export const ScoreConfigHistoryDialog: React.FC<ScoreConfigHistoryDialogProps> =
               return (
                 <div
                   key={config.id}
-                  className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 transition-colors hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 rounded-xl border border-line/80 bg-surface-subtle/60 p-4 transition-colors hover:bg-surface-hover sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="space-y-1.5 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-bold text-slate-900 text-sm">
+                      <span className="font-bold text-ink-primary text-sm">
                         Phiên bản {config.versionNo}
                       </span>
                       <StatusBadge tone={statusToneMap[config.status]}>
                         {statusInfo.label}
                       </StatusBadge>
-                      <span className="text-xs text-slate-600 font-medium">
+                      <span className="text-xs text-ink-body font-medium">
                         {CALCULATION_METHOD_LABELS[config.calculationMethod]}
                       </span>
                     </div>
 
                     {config.changeReason && (
-                      <p className="text-xs text-slate-600 italic break-words">
+                      <p className="text-xs text-ink-body italic break-words">
                         Lý do: "{config.changeReason}"
                       </p>
                     )}
 
-                    <div className="text-xs text-slate-500 tabular-nums">
+                    <div className="text-xs text-ink-muted tabular-nums">
                       Ghi nhận lúc: {formattedDate} · {config.components.length} đầu điểm
                     </div>
                   </div>
@@ -251,7 +251,7 @@ export const ScoreConfigHistoryDialog: React.FC<ScoreConfigHistoryDialogProps> =
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-md border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                      className="h-8 rounded-md border-line-input bg-surface-elevated px-3 text-xs font-medium text-ink-secondary shadow-sm hover:border-line-strong hover:bg-surface-hover hover:text-ink-primary"
                       onClick={() => setViewingConfig(config)}
                       aria-label={`Xem phiên bản ${config.versionNo}`}
                     >
@@ -265,7 +265,7 @@ export const ScoreConfigHistoryDialog: React.FC<ScoreConfigHistoryDialogProps> =
         )}
       </div>
 
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 border-t border-line/80 bg-surface-card/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
         {activeConfig && onSelectVersion && (
           <Button
             type="button"

@@ -49,7 +49,7 @@ public sealed class GetFinalReportAttachmentDownloadHandler(
             return Result.Failure<SubmissionFileDownloadDto>(FinalReportSubmissionErrors.FileNotFound);
         }
 
-        if (!await accessChecker.CanReadAsync(group, cancellationToken))
+        if (!await accessChecker.CanReadAsync(group, cancellationToken, report.VersionType))
         {
             var versionFiles = await submissionFileRepository.GetByEntityAsync(
                 SubmissionEntityType.FinalReport,
@@ -71,7 +71,14 @@ public sealed class GetFinalReportAttachmentDownloadHandler(
         }
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
-        var uri = await objectStorage.CreateDownloadUriAsync(attachment.ObjectKey, DownloadUriLifetime, cancellationToken);
+        var uri = await ThesisDownloadUriHelper.CreateSignedUriAsync(
+            objectStorage,
+            attachment.ObjectKey,
+            attachment.FileName,
+            attachment.FileExtension,
+            DownloadUriLifetime,
+            query.Inline,
+            cancellationToken);
         return Result.Success(new SubmissionFileDownloadDto(attachment.Id, uri.AbsoluteUri, nowUtc.Add(DownloadUriLifetime)));
     }
 }

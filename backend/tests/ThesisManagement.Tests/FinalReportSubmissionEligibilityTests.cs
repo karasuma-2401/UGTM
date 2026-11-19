@@ -1,5 +1,6 @@
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.DefenseCouncil.Contracts.ReviewerEvaluations;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
@@ -194,6 +195,76 @@ public sealed class FinalReportSubmissionEligibilityTests
         Assert.Equal(FinalReportSubmissionErrors.OutsideAllowedWindow, result.Error);
     }
 
+    [Fact]
+    public async Task Revised_report_is_allowed_only_after_advisor_handoff_and_does_not_change_group_state()
+    {
+        var fixtures = new Fixtures(CreateGroup(StudentGroupStatus.ReadyForReviewerAssignment));
+
+        var result = await fixtures.Checker().CheckAsync(fixtures.Group.Id, revisedAfterReviewer: true);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(StudentGroupStatus.ReadyForReviewerAssignment, fixtures.Group.Status);
+        Assert.Equal(StudentId, result.Value.StudentId);
+    }
+
+    [Theory]
+    [InlineData(StudentGroupStatus.InProgress)]
+    [InlineData(StudentGroupStatus.FinalReportSubmitted)]
+    [InlineData(StudentGroupStatus.Stopped)]
+    public async Task Revised_report_is_blocked_before_handoff_or_after_group_stops(StudentGroupStatus status)
+    {
+        var fixtures = new Fixtures(CreateGroup(status));
+
+        var result = await fixtures.Checker().CheckAsync(fixtures.Group.Id, revisedAfterReviewer: true);
+
+        Assert.Equal(FinalReportSubmissionErrors.InvalidGroupState, result.Error);
+    }
+
+    [Fact]
+    public async Task Revised_report_still_respects_the_submission_window()
+    {
+        var fixtures = new Fixtures(CreateGroup(StudentGroupStatus.ReadyForReviewerAssignment));
+        fixtures.Batches.Window = fixtures.Batches.Window! with { IsSubmissionWindowOpen = false };
+
+        var result = await fixtures.Checker().CheckAsync(fixtures.Group.Id, revisedAfterReviewer: true);
+
+        Assert.Equal(FinalReportSubmissionErrors.OutsideAllowedWindow, result.Error);
+    }
+
+    [Theory]
+    [InlineData(true, null, true)]
+    [InlineData(false, ReviewerDefenseEligibilityReason.DefenseRejected, false)]
+    [InlineData(false, ReviewerDefenseEligibilityReason.ScoreBelowMinimum, false)]
+    public async Task Revised_report_gate_uses_reviewer_defense_eligibility_without_disclosing_private_reason(
+        bool canProceed, ReviewerDefenseEligibilityReason? reviewerReason, bool expectedCanSubmit)
+    {
+        var fixtures = new Fixtures(CreateGroup(StudentGroupStatus.ReadyForReviewerAssignment));
+        var handler = new GetRevisedFinalReportEligibilityHandler(fixtures.Checker(),
+            new ReviewerEligibility(fixtures.Group.Id, canProceed, reviewerReason));
+
+        var result = await handler.HandleAsync(fixtures.Group.Id);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(expectedCanSubmit, result.Value.CanSubmit);
+        Assert.Equal(expectedCanSubmit ? null : "NotAvailable", result.Value.ReasonCode);
+    }
+
+    [Fact]
+    public async Task Revised_report_gate_reports_expired_window_without_querying_reviewer()
+    {
+        var fixtures = new Fixtures(CreateGroup(StudentGroupStatus.ReadyForReviewerAssignment));
+        fixtures.Batches.Window = fixtures.Batches.Window! with { IsSubmissionWindowOpen = false };
+        var reviewer = new ReviewerEligibility(fixtures.Group.Id, true, null);
+
+        var result = await new GetRevisedFinalReportEligibilityHandler(fixtures.Checker(), reviewer)
+            .HandleAsync(fixtures.Group.Id);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value.CanSubmit);
+        Assert.Equal("OutsideAllowedWindow", result.Value.ReasonCode);
+        Assert.Equal(0, reviewer.ReadCount);
+    }
+
     private static StudentGroup CreateGroup(
         StudentGroupStatus status = StudentGroupStatus.InProgress, bool pendingPartner = false)
     {
@@ -222,6 +293,11 @@ public sealed class FinalReportSubmissionEligibilityTests
         Assert.True(group.TryApproveMidtermReport());
         if (status == StudentGroupStatus.Stopped) Assert.True(group.TryStop());
         if (status == StudentGroupStatus.FinalReportSubmitted) Assert.True(group.TrySubmitFinalReport());
+        if (status == StudentGroupStatus.ReadyForReviewerAssignment)
+        {
+            Assert.True(group.TrySubmitFinalReport());
+            Assert.True(group.TryMakeReadyForReviewerAssignment());
+        }
         return group;
     }
 
@@ -256,6 +332,25 @@ public sealed class FinalReportSubmissionEligibilityTests
     private sealed class FixedTimeProvider : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(Now);
+    }
+
+    private sealed class ReviewerEligibility(Guid groupId, bool canProceed,
+        ReviewerDefenseEligibilityReason? reason) : IReviewerDefenseEligibilityContract
+    {
+        public int ReadCount { get; private set; }
+        public Task<ReviewerDefenseEligibilityContractDto?> GetAsync(Guid requestedGroupId,
+            CancellationToken cancellationToken = default)
+        {
+            ReadCount++;
+            ReviewerDefenseEligibilityContractDto? result = requestedGroupId == groupId
+                ? new(groupId, BatchId, "Open", Guid.NewGuid(), Guid.NewGuid(), 1,
+                    Guid.NewGuid(), 1, 5, canProceed, reason)
+                : null;
+            return Task.FromResult(result);
+        }
+
+        public Task<ReviewerDefenseEligibilityContractDto?> LockForSchedulingAsync(Guid requestedGroupId,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class GroupRepository(StudentGroup group) : IStudentGroupRepository

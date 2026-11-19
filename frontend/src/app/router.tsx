@@ -41,11 +41,24 @@ import { CouncilGradingPage } from '../features/councils/pages/CouncilGradingPag
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
+import { PublicLayout } from '../features/landing/PublicLayout';
+import { HomeEntry, LandingPage } from '../features/landing/LandingPage';
+import { LibraryPage } from '../features/library/LibraryPage';
+import { ThesisDetailPage } from '../features/library/ThesisDetailPage';
 import { RolePermissionPage } from '../features/identity';
 import { AuditLogPage } from '../features/audit';
 import { ScoreConfigPage, PeriodPage, SchoolRosterPage } from '../features/academic';
 
 export const router = createBrowserRouter([
+  {
+    element: <PublicLayout />,
+    children: [
+      { path: '/', element: <HomeEntry /> },
+      { path: '/welcome', element: <LandingPage /> },
+      { path: '/library', element: <LibraryPage /> },
+      { path: '/library/:slug', element: <ThesisDetailPage /> },
+    ],
+  },
   {
     element: <AuthLayout />,
     children: [
@@ -64,7 +77,7 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
+      { path: 'dashboard', element: <DashboardPage /> },
       { path: 'ui-test', element: <UiTestPage /> },
       {
         path: 'topics/catalog',
@@ -277,7 +290,7 @@ export const router = createBrowserRouter([
       {
         path: 'admin/periods',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
             <PeriodPage />
           </ProtectedRoute>
         ),
@@ -285,7 +298,7 @@ export const router = createBrowserRouter([
       {
         path: 'academic/periods',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
             <PeriodPage />
           </ProtectedRoute>
         ),
@@ -293,7 +306,7 @@ export const router = createBrowserRouter([
       {
         path: 'academic/roster',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={['Admin', 'AcademicAffairs']}>
             <SchoolRosterPage />
           </ProtectedRoute>
         ),

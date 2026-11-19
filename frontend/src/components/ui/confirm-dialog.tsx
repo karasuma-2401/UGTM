@@ -26,7 +26,7 @@ interface ThemeItem {
 const THEME_CONFIG: Record<ConfirmDialogType, ThemeItem> = {
   brand: {
     confirmBtn:
-      'bg-[#2054A5] hover:bg-[#1a458a] text-white shadow-xs focus-visible:ring-[#2054A5]/30',
+      'bg-brand-solid hover:bg-brand-solid-hover text-white shadow-xs focus-visible:ring-primary/30',
   },
   warning: {
     confirmBtn:
@@ -40,7 +40,7 @@ const THEME_CONFIG: Record<ConfirmDialogType, ThemeItem> = {
       'bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs focus-visible:ring-emerald-600/30',
   },
   info: {
-    confirmBtn: 'bg-primary hover:bg-primary/92 text-white shadow-xs focus-visible:ring-primary/30',
+    confirmBtn: 'bg-brand-solid text-white shadow-xs focus-visible:ring-primary/30 hover:bg-brand-solid-hover',
   },
 };
 
@@ -67,20 +67,20 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       busy={isConfirming}
       hideHeader
       className={cn(
-        'w-[calc(100%-2rem)] max-w-[420px] overflow-hidden rounded-2xl border border-slate-200/90 bg-white p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]',
+        'w-[calc(100%-2rem)] max-w-[420px] overflow-hidden rounded-2xl border border-line-input/90 bg-surface-card p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)] dark:shadow-[0_24px_60px_-15px_rgba(0,0,0,0.65)]',
         className,
       )}
     >
       <div className="flex flex-col">
         {/* Header with centered title and clean divider */}
-        <div className="border-b border-slate-300 px-6 py-4 text-center">
-          <h3 className="text-base font-semibold text-slate-800 leading-snug">{title}</h3>
+        <div className="border-b border-line-strong px-6 py-4 text-center">
+          <h3 className="text-base font-semibold text-ink-heading leading-snug">{title}</h3>
         </div>
 
         {/* Content area: left-aligned text and right-aligned buttons */}
         <div className="px-6 pt-5 pb-6">
           {description && (
-            <div className="text-sm leading-relaxed text-slate-600 [overflow-wrap:anywhere]">
+            <div className="text-sm leading-relaxed text-ink-body [overflow-wrap:anywhere]">
               {description}
             </div>
           )}
@@ -91,7 +91,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               variant="outline"
               disabled={isConfirming}
               onClick={onClose}
-              className="h-9 w-full rounded-lg border-slate-200/90 px-4 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:w-auto"
+              className="h-9 w-full rounded-lg border-line-input/90 px-4 text-sm font-medium text-ink-secondary hover:bg-surface-hover sm:w-auto"
             >
               {cancelText}
             </Button>

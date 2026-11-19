@@ -35,6 +35,7 @@ using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Infrastructure;
 using UGTM.Modules.ThesisManagement.Infrastructure.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
+using UGTM.Modules.DefenseCouncil.Contracts.ReviewerEvaluations;
 using UGTM.Modules.DefenseCouncil.Infrastructure;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
@@ -42,7 +43,7 @@ using IdentityUser = UGTM.Modules.Identity.Domain.Entities.User;
 
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
-[Collection(PostgreSqlCollection.Name)]
+[Collection(FinalReportSubmissionPostgreSqlCollection.Name)]
 public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSqlFixture fixture) : IAsyncLifetime
 {
     private static readonly DateTime Now = new(2026, 11, 16, 0, 0, 0, DateTimeKind.Utc);
@@ -78,6 +79,8 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         // This SCRUM-102/103 component fixture has only two modules and stubbed advisor contracts.
         // Reviewer authorization is exercised separately with production AddUgtmModules in SCRUM-104.
         builder.Services.RemoveAll<UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments.IReviewerAssignmentWorkflowContract>();
+        builder.Services.RemoveAll<IReviewerDefenseEligibilityContract>();
+        builder.Services.AddSingleton<IReviewerDefenseEligibilityContract, UnavailableReviewerDefenseEligibility>();
         builder.Services.RemoveAll<IHostedService>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -107,6 +110,15 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
     {
         _client?.Dispose();
         if (_app is not null) await _app.DisposeAsync();
+    }
+
+    private sealed class UnavailableReviewerDefenseEligibility : IReviewerDefenseEligibilityContract
+    {
+        public Task<ReviewerDefenseEligibilityContractDto?> GetAsync(Guid groupId, CancellationToken cancellationToken = default)
+            => Task.FromResult<ReviewerDefenseEligibilityContractDto?>(null);
+
+        public Task<ReviewerDefenseEligibilityContractDto?> LockForSchedulingAsync(Guid groupId, CancellationToken cancellationToken = default)
+            => Task.FromResult<ReviewerDefenseEligibilityContractDto?>(null);
     }
 
     [Theory]
@@ -303,10 +315,13 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
         await AssertNoSubmissionAsync();
     }
 
-    [Fact]
-    public async Task A_closed_submission_window_returns_409_before_upload()
+    [Theory]
+    [InlineData("Closed", true)]
+    [InlineData("Open", false)]
+    public async Task A_closed_batch_or_submission_window_returns_409_before_upload(string batchStatus, bool isOpen)
     {
-        _batchReader.IsOpen = false;
+        _batchReader.BatchStatus = batchStatus;
+        _batchReader.IsOpen = isOpen;
         using var form = Form();
         using var response = await _client.PostAsync("/api/thesis/final-reports", form);
 
@@ -617,6 +632,12 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
             Downloads.Enqueue((objectKey, validFor));
             return Task.FromResult(new Uri($"https://storage.test/download/{Guid.NewGuid():N}?signature=test"));
         }
+        public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Downloads.Enqueue((objectKey, validFor));
+            return Task.FromResult(new Uri($"https://storage.test/download/{Guid.NewGuid():N}?signature=test&filename={Uri.EscapeDataString(downloadFileName)}"));
+        }
     }
 
     private sealed class TestAdvisorAssignments : ITopicAdvisorAssignmentContract
@@ -629,11 +650,12 @@ public sealed partial class FinalReportSubmissionHttpIntegrationTests(PostgreSql
 
     private sealed class TestBatchReader : IKltnBatchReader
     {
+        public string BatchStatus { get; set; } = "Open";
         public bool IsOpen { get; set; } = true;
         public DateTime OpensAtUtc { get; set; } = Now.AddDays(-1);
         public DateTime DeadlineAtUtc { get; set; } = Now.AddDays(1);
         public Task<BatchFinalReportSubmissionWindowContractDto?> GetFinalReportSubmissionWindowAsync(Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default)
-            => Task.FromResult<BatchFinalReportSubmissionWindowContractDto?>(new(batchId, "Open",
+            => Task.FromResult<BatchFinalReportSubmissionWindowContractDto?>(new(batchId, BatchStatus,
                 IsOpen && nowUtc >= OpensAtUtc && nowUtc <= DeadlineAtUtc, OpensAtUtc, DeadlineAtUtc));
         public Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<BatchRegistrationWindowContractDto?> GetRegistrationWindowAsync(Guid batchId, DateTime nowUtc, CancellationToken cancellationToken = default) => throw new NotSupportedException();

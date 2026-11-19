@@ -6,6 +6,7 @@ import { syllabusApi } from '../services/syllabusApi';
 import { midtermApi } from '../services/midtermApi';
 import { finalReportApi } from '../services/finalReportApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
+import { triggerBrowserDownload } from '../utils/archival';
 import {
   validateProductLinksDraft,
   type ProductLinkDraft,
@@ -17,10 +18,10 @@ export function useFinalReportSubmission() {
   const batchesQuery = useAcademicBatches();
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedRevisedFile, setSelectedRevisedFile] = useState<File | null>(null);
   const [productLinks, setProductLinks] = useState<ProductLinkDraft[]>([]);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [isFeedbackOpen, setIsFeedbackOpen] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
@@ -79,6 +80,20 @@ export function useFinalReportSubmission() {
     retry: false,
   });
 
+  const revisedEligibilityQuery = useQuery({
+    queryKey: ['revised-final-report-eligibility', user?.id, groupId],
+    queryFn: ({ signal }) => finalReportApi.getRevisedFinalReportEligibility(groupId!, signal),
+    enabled: Boolean(user?.id && groupId),
+    retry: false,
+  });
+
+  const revisedHistoryQuery = useQuery({
+    queryKey: ['revised-final-report-history', user?.id, groupId],
+    queryFn: ({ signal }) => finalReportApi.getRevisedFinalReportHistory(groupId!, signal),
+    enabled: Boolean(user?.id && groupId),
+    retry: false,
+  });
+
   const currentStatus = historyQuery.data?.currentStatus || 'Draft';
   const versions = useMemo(
     () => historyQuery.data?.versions || [],
@@ -98,12 +113,38 @@ export function useFinalReportSubmission() {
       return 'Báo cáo giữa kỳ (Cổng 2) chưa được GVHD phê duyệt hoặc đang chờ đánh giá. Sinh viên chỉ được nộp báo cáo cuối kỳ sau khi GVHD cho phép tiếp tục ở Cổng 2.';
     }
     if (currentStatus === 'UnderEvaluation') {
-      return 'Báo cáo cuối kỳ đang được GVHD chấm điểm và khóa chỉnh sửa.';
+      return 'Báo cáo cuối kỳ đang trong quá trình đánh giá và đã khóa chỉnh sửa.';
+    }
+    if (currentStatus === 'Approved' || currentStatus === 'Rejected') {
+      return 'Báo cáo đã chuyển sang giai đoạn đánh giá và không thể nộp lại qua cổng báo cáo cuối kỳ.';
     }
     return null;
   }, [midtermHistoryQuery.isLoading, midtermHistoryQuery.isError, midtermApproved, currentStatus]);
 
-  const canSubmit = Boolean(groupId && midtermApproved && currentStatus !== 'UnderEvaluation');
+  const canSubmit = Boolean(groupId && midtermApproved && historyQuery.isSuccess &&
+    (currentStatus === 'Draft' || currentStatus === 'Submitted'));
+  const canSubmitRevision = Boolean(groupId && feedbackQuery.data?.comment &&
+    revisedEligibilityQuery.data?.canSubmit && revisedHistoryQuery.isSuccess);
+
+  const submitRevisedMutation = useMutation({
+    mutationFn: async (file: File) => {
+      setActionError(null);
+      setActionSuccess(null);
+      if (!groupId || !canSubmitRevision) {
+        throw new Error('Nhóm chưa được mở quyền nộp bản chỉnh sửa sau phản biện. Vui lòng tải lại trạng thái.');
+      }
+      const fileError = validateReportFile(file);
+      if (fileError) throw new Error(fileError);
+      return finalReportApi.submitRevisedFinalReport(groupId, file);
+    },
+    onSuccess: (data) => {
+      setSelectedRevisedFile(null);
+      setActionSuccess(`Đã nộp bản chỉnh sửa sau phản biện v${data.versionNo}.`);
+      void queryClient.invalidateQueries({ queryKey: ['revised-final-report-history', user?.id, groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['revised-final-report-eligibility', user?.id, groupId] });
+    },
+    onError: (err: Error) => setActionError(err.message || 'Không thể nộp bản chỉnh sửa.'),
+  });
 
   const submitMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -116,6 +157,10 @@ export function useFinalReportSubmission() {
 
       if (!midtermApproved) {
         throw new Error('Bạn cần được GVHD duyệt đạt báo cáo giữa kỳ trước khi nộp báo cáo cuối kỳ.');
+      }
+
+      if (!canSubmit) {
+        throw new Error('Phiên bản báo cáo hiện tại không còn cho phép nộp lại. Vui lòng tải lại trang để kiểm tra trạng thái.');
       }
 
       const fileError = validateReportFile(file);
@@ -155,7 +200,7 @@ export function useFinalReportSubmission() {
       setActionError(null);
       const downloadInfo = await finalReportApi.getDownloadUrl(fileId);
       if (downloadInfo?.downloadUrl) {
-        window.open(downloadInfo.downloadUrl, '_blank', 'noopener,noreferrer');
+        triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
       const errorMsg =
@@ -186,14 +231,18 @@ export function useFinalReportSubmission() {
     midtermHistoryQuery,
     historyQuery,
     feedbackQuery,
+    revisedEligibilityQuery,
+    revisedHistoryQuery,
+    selectedRevisedFile,
+    setSelectedRevisedFile,
+    canSubmitRevision,
+    submitRevisedMutation,
     selectedFile,
     productLinks,
     setProductLinks,
     selectedImages,
     setSelectedImages,
     uploadProgress,
-    isFeedbackOpen,
-    setIsFeedbackOpen,
     actionError,
     setActionError,
     actionSuccess,

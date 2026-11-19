@@ -85,18 +85,22 @@ public sealed class S3ThesisSubmissionObjectStorage : IThesisSubmissionObjectSto
         string objectKey,
         TimeSpan validFor,
         CancellationToken cancellationToken = default)
-        => CreateDownloadUriCoreAsync(objectKey, validFor, null, cancellationToken);
+        => CreateDownloadUriCoreAsync(objectKey, validFor, null, false, cancellationToken);
 
     public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor,
+        CancellationToken cancellationToken = default)
+        => CreateDownloadUriAsync(objectKey, downloadFileName, validFor, false, cancellationToken);
+
+    public Task<Uri> CreateDownloadUriAsync(string objectKey, string downloadFileName, TimeSpan validFor, bool inline,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(downloadFileName) || downloadFileName.Length > 255
             || downloadFileName.Any(char.IsControl) || downloadFileName.IndexOfAny(['/', '\\']) >= 0)
             throw new ArgumentException("Invalid download filename.", nameof(downloadFileName));
-        return CreateDownloadUriCoreAsync(objectKey, validFor, downloadFileName, cancellationToken);
+        return CreateDownloadUriCoreAsync(objectKey, validFor, downloadFileName, inline, cancellationToken);
     }
 
-    private Task<Uri> CreateDownloadUriCoreAsync(string objectKey, TimeSpan validFor, string? fileName, CancellationToken cancellationToken)
+    private Task<Uri> CreateDownloadUriCoreAsync(string objectKey, TimeSpan validFor, string? fileName, bool inline, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ValidateObjectKey(objectKey);
@@ -120,7 +124,7 @@ public sealed class S3ThesisSubmissionObjectStorage : IThesisSubmissionObjectSto
         };
         if (fileName is not null)
         {
-            var disposition = new System.Net.Http.Headers.ContentDispositionHeaderValue("attachment")
+            var disposition = new System.Net.Http.Headers.ContentDispositionHeaderValue(inline ? "inline" : "attachment")
             {
                 FileName = fileName.All(c => c <= 127) ? fileName : "download" + Path.GetExtension(fileName),
                 FileNameStar = fileName

@@ -1,0 +1,37 @@
+{
+  "model_version": "candidate-lr-v1",
+  "feature_schema": "candidate-features-v1",
+  "feature_names": [
+    "semantic_cosine",
+    "reranker_score",
+    "char_trigram_dice",
+    "token_jaccard",
+    "length_ratio"
+  ],
+  "embedding_model": "BAAI/bge-m3",
+  "reranker_model": "BAAI/bge-reranker-v2-m3",
+  "threshold": 0.25,
+  "created_at": "2026-10-29T13:05:32.572539+00:00",
+  "dataset_size": 24,
+  "group_counts": {
+    "train": 6,
+    "validation": 3,
+    "test": 3
+  },
+  "test_metrics": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "confusion_matrix": [
+      [
+        3,
+        0
+      ],
+      [
+        0,
+        3
+      ]
+    ]
+  },
+  "meaning": "candidate content reuse score; not a plagiarism verdict"
+}

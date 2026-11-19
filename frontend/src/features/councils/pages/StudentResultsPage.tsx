@@ -2,17 +2,15 @@ import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle,
-  BarChart3,
   BookOpen,
-  FileText,
-  Lock,
+  Check,
+  ExternalLink,
   Printer,
   RefreshCw,
   ShieldAlert,
 } from 'lucide-react';
-import { AvatarGroup } from '@/components/ui/avatar-group';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -25,17 +23,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { classifyThesisError, getThesisErrorMessage } from '@/features/thesis/utils/thesisErrors';
+import { cn } from '@/lib/utils';
 import {
-  formatDateTimeVi,
-  formatScoreDecimal,
-} from '../utils/scoreSummaryFormatting';
+  StudentResultsSidebar,
+  StudentTranscriptPrintDocument,
+} from '../components/results';
 import { useStudentResults } from '../hooks/useStudentResults';
+import { formatDateTimeVi, formatScoreDecimal } from '../utils/scoreSummaryFormatting';
 import {
   buildStudentConditionRows,
+  computeWeightSharePercent,
   formatScale4Score,
+  getScoreClassificationMeta,
   replaceInterpunctWithHyphen,
 } from '../utils/studentResults';
-import { classifyThesisError, getThesisErrorMessage } from '@/features/thesis/utils/thesisErrors';
 
 export const StudentResultsPage: React.FC = () => {
   const {
@@ -52,6 +54,8 @@ export const StudentResultsPage: React.FC = () => {
   const isPublished = scoreResult?.kind === 'published';
   const summary = scoreResult?.kind === 'published' ? scoreResult.data : null;
   const groupDetail = groupDetailQuery.data;
+  const finalSubmission = finalSubmissionQuery.data;
+
   const isFetching =
     statusQuery.isFetching ||
     groupDetailQuery.isFetching ||
@@ -59,27 +63,37 @@ export const StudentResultsPage: React.FC = () => {
     finalSubmissionQuery.isFetching;
 
   const conditionRows = useMemo(
-    () => buildStudentConditionRows(scoreResult, finalSubmissionQuery.data),
-    [scoreResult, finalSubmissionQuery.data],
+    () => buildStudentConditionRows(scoreResult, finalSubmission),
+    [scoreResult, finalSubmission],
+  );
+  const readyConditionCount = useMemo(
+    () => conditionRows.filter((row) => row.done).length,
+    [conditionRows],
   );
 
   const feedbackComment = feedbackQuery.data?.comment?.trim() || '';
+  const totalWeight = useMemo(
+    () => (summary ? summary.components.reduce((acc, item) => acc + Number(item.weight || 0), 0) : 0),
+    [summary],
+  );
+  const rankMeta = useMemo(
+    () => getScoreClassificationMeta(summary?.finalScore),
+    [summary?.finalScore],
+  );
 
-  const handleOpenArchival = () => undefined;
-  const handlePrintTranscript = () => undefined;
+  const handlePrintTranscript = () => {
+    window.print();
+  };
 
   if (statusQuery.isLoading || (isConfirmedMember && scoreQuery.isLoading && !scoreQuery.data)) {
     return (
       <div className="max-w-[1440px] mx-auto py-6 px-4 sm:px-6 space-y-5">
-        <Skeleton className="h-28 w-full rounded-2xl" />
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          <div className="lg:col-span-8 space-y-5">
-            <Skeleton className="h-56 w-full rounded-2xl" />
-            <Skeleton className="h-44 w-full rounded-2xl" />
+        <Skeleton className="h-24 w-full rounded-2xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+          <div className="space-y-5">
+            <Skeleton className="h-80 w-full rounded-2xl" />
           </div>
-          <div className="lg:col-span-4 space-y-5">
-            <Skeleton className="h-72 w-full rounded-2xl" />
-          </div>
+          <Skeleton className="h-72 w-full rounded-2xl" />
         </div>
       </div>
     );
@@ -95,19 +109,19 @@ export const StudentResultsPage: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto py-10 px-4">
         <Card className="p-8 text-center space-y-4">
-          <div className="size-12 mx-auto rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+          <div className="size-12 mx-auto rounded-full bg-tone-danger-bg text-tone-danger-icon flex items-center justify-center">
             {errorKind === 'forbidden' ? (
-              <ShieldAlert className="size-6 text-amber-600" />
+              <ShieldAlert className="size-6 text-tone-warning-icon" />
             ) : (
               <AlertCircle className="size-6" />
             )}
           </div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-ink-primary">
             {errorKind === 'forbidden'
               ? 'Không có quyền tra cứu kết quả'
               : 'Không tải được thông tin đề tài KLTN'}
           </h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">{message}</p>
+          <p className="text-sm text-ink-muted max-w-md mx-auto">{message}</p>
           {errorKind !== 'forbidden' && (
             <Button
               type="button"
@@ -131,15 +145,15 @@ export const StudentResultsPage: React.FC = () => {
     return (
       <div className="max-w-4xl mx-auto py-10 px-4">
         <Card className="p-8 text-center space-y-4">
-          <div className="size-12 mx-auto rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
+          <div className="size-12 mx-auto rounded-full bg-tone-warning-bg text-tone-warning-icon flex items-center justify-center">
             <AlertCircle className="size-6" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-ink-primary">
             {isPendingConfirmation
               ? 'Bạn chưa xác nhận tham gia nhóm đề tài'
               : 'Chưa có thông tin nhóm đề tài KLTN'}
           </h2>
-          <p className="text-sm text-slate-500 max-w-md mx-auto">
+          <p className="text-sm text-ink-muted max-w-md mx-auto">
             {isPendingConfirmation
               ? 'Vui lòng hoàn tất xác nhận tham gia nhóm đề tài trước khi tra cứu điều kiện và kết quả khóa luận.'
               : 'Bạn chưa đăng ký đề tài nào trong đợt KLTN này. Vui lòng tra cứu và đăng ký đề tài để theo dõi tiến độ và kết quả.'}
@@ -163,11 +177,12 @@ export const StudentResultsPage: React.FC = () => {
     return (
       <div className="max-w-[1440px] mx-auto py-6 px-4 sm:px-6 space-y-5">
         <PageHeader
+          accent
           title="Kết quả khóa luận"
           description="Tra cứu điều kiện mở điểm và bảng điểm chính thức theo nhóm."
-          icon={<BarChart3 />}
         />
         <InlineAlert
+          tone="error"
           title="Không tải được kết quả"
           action={
             <Button
@@ -206,7 +221,6 @@ export const StudentResultsPage: React.FC = () => {
     .map((member) => ({
       id: member.studentId,
       name: member.fullName,
-      code: member.userCode,
       userCode: member.userCode,
     }));
 
@@ -222,293 +236,417 @@ export const StudentResultsPage: React.FC = () => {
 
   return (
     <div className="max-w-[1440px] mx-auto py-6 px-4 sm:px-6 space-y-5">
-      <PageHeader
-        title={isPublished ? 'Kết quả chính thức' : 'Kết quả chưa được mở'}
-        description={
-          isPublished && summary
-            ? `${groupCode} - Công bố lúc ${formatDateTimeVi(summary.publishedAt)}`
-            : `${groupCode} - Điều kiện tra cứu theo hồ sơ.`
-        }
-        icon={<BarChart3 />}
-      >
-        <StatusBadge tone={isPublished ? 'success' : 'neutral'}>
-          {isPublished ? 'Đã công bố' : 'Chưa mở điểm'}
-        </StatusBadge>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          aria-label="Làm mới kết quả"
-          title="Làm mới"
-          disabled={isFetching}
-          onClick={() => void refresh()}
-          className="size-9 rounded-xl border-slate-200 bg-white text-slate-600 hover:text-slate-900"
+      {/* Screen Workspace (hidden when printing A4 transcript) */}
+      <div className="space-y-5 print:hidden">
+        <PageHeader
+          accent
+          title={isPublished ? 'Kết quả khóa luận chính thức' : 'Kết quả khóa luận'}
+          description={
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span className="font-medium text-ink-secondary">{groupCode}</span>
+              <span aria-hidden="true" className="text-ink-faint">
+                ·
+              </span>
+              <span className="tabular-nums">{topicCode}</span>
+              <span aria-hidden="true" className="text-ink-faint">
+                ·
+              </span>
+              <span>
+                {isPublished && summary
+                  ? `Công bố lúc ${formatDateTimeVi(summary.publishedAt)}`
+                  : 'Theo dõi điều kiện mở bảng điểm chính thức'}
+              </span>
+            </span>
+          }
         >
-          <RefreshCw className={`size-4 ${isFetching ? 'animate-spin' : ''}`} />
-        </Button>
-      </PageHeader>
+          <StatusBadge tone={isPublished ? 'success' : 'neutral'}>
+            {isPublished ? 'Đã công bố' : 'Chưa mở điểm'}
+          </StatusBadge>
+          {isPublished && summary && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="bg-surface-card"
+              leftIcon={<Printer className="size-3.5" />}
+              onClick={handlePrintTranscript}
+            >
+              In phiếu điểm
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="bg-surface-card"
+            isLoading={isFetching}
+            leftIcon={!isFetching ? <RefreshCw className="size-3.5" /> : undefined}
+            onClick={() => void refresh()}
+          >
+            Làm mới
+          </Button>
+        </PageHeader>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        <div className="lg:col-span-8 space-y-5">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-bold text-slate-900">Điều kiện</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="overflow-x-auto rounded-xl border border-slate-200/80">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50/90">
-                      <TableHead>Bước / yêu cầu</TableHead>
-                      <TableHead>Thông tin hồ sơ</TableHead>
-                      <TableHead className="whitespace-nowrap">Trạng thái</TableHead>
-                      <TableHead className="whitespace-nowrap">Tiếp theo</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {conditionRows.map((row) => (
-                      <TableRow key={row.key}>
-                        <TableCell className="font-semibold text-slate-900">
-                          {row.stepLabel}
-                        </TableCell>
-                        <TableCell className="text-slate-600">{row.detailLabel}</TableCell>
-                        <TableCell>
-                          <StatusBadge tone={row.statusTone}>{row.statusLabel}</StatusBadge>
-                        </TableCell>
-                        <TableCell className="text-slate-500">{row.nextLabel}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <p className="text-xs text-slate-500">{conditionRows.length} mục trong danh sách</p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+          {/* Left Main State-Driven Dossier */}
+          <div className="min-w-0 space-y-5">
+            {!isPublished ? (
+              /* STATE A: Locked / Gate Readiness Dossier */
+              <Card className="overflow-hidden border-line/80 shadow-[0_1px_2px_rgba(15,23,42,0.03)] divide-y divide-line-subtle">
+                <section className="p-5 sm:p-6 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-base font-semibold text-ink-primary">
+                        Điều kiện mở bảng điểm chính thức
+                      </h2>
+                      <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
+                        Kết quả của sinh viên chỉ được mở khi hồ sơ lưu chiểu đã nghiệm thu và Khoa hoàn tất công bố điểm đợt.
+                      </p>
+                    </div>
+                    <StatusBadge
+                      tone={readyConditionCount === conditionRows.length ? 'success' : 'neutral'}
+                      className="shrink-0 tabular-nums"
+                    >
+                      {readyConditionCount}/{conditionRows.length} đạt
+                    </StatusBadge>
+                  </div>
 
-          {!isPublished && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold text-slate-900">
-                  Điểm đang khóa
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-4 py-3.5 text-sm text-slate-700">
-                  <Lock className="size-4 shrink-0 text-slate-500 mt-0.5" />
-                  <span className="leading-relaxed">
+                  <InlineAlert tone="warning" title="Điểm hiện đang khóa">
                     {scoreResult?.kind === 'locked'
                       ? scoreResult.message
-                      : 'Chưa hoàn thành lưu chiểu hoặc Khoa chưa công bố kết quả, chưa xem điểm hoặc bảng điểm.'}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                      : 'Nhóm chưa hoàn tất lưu chiểu hoặc Khoa chưa công bố kết quả chính thức.'}
+                  </InlineAlert>
+                </section>
 
-          {isPublished && summary && (
-            <Card>
-              <CardHeader className="pb-3 flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
-                <CardTitle className="text-base font-bold text-slate-900">Nguồn điểm</CardTitle>
-                {summary.calculationFormula && (
-                  <span className="text-xs text-slate-500 tabular-nums">
-                    Công thức:{' '}
-                    <strong className="font-semibold text-slate-700">
-                      {summary.calculationFormula}
-                    </strong>
-                  </span>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="overflow-x-auto rounded-xl border border-slate-200/80">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-slate-50/90">
-                        <TableHead>Nguồn / thành viên</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">Điểm</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">Hệ số</TableHead>
-                        <TableHead className="whitespace-nowrap">Trạng thái</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {summary.components.map((component, index) => (
-                        <TableRow key={`${component.componentName}-${index}`}>
-                          <TableCell className="font-semibold text-slate-900">
-                            {component.componentName}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold text-slate-900 tabular-nums">
-                            {formatScoreDecimal(component.score, 2)}
-                          </TableCell>
-                          <TableCell className="text-right text-slate-600 tabular-nums">
-                            Hệ số {component.weight}
-                          </TableCell>
-                          <TableCell>
-                            <StatusBadge tone="success">Đã chấm</StatusBadge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                <p className="text-xs text-slate-500">
-                  {summary.components.length} mục trong danh sách
-                </p>
-              </CardContent>
-            </Card>
-          )}
+                {/* 2-Gate Readiness Stepper */}
+                <section aria-label="Tiến độ 2 điều kiện mở điểm">
+                  <ol className="divide-y divide-line-subtle">
+                    {conditionRows.map((row, index) => (
+                      <li
+                        key={row.key}
+                        className="p-5 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                      >
+                        <div className="flex items-start gap-3.5 min-w-0">
+                          <span
+                            aria-hidden="true"
+                            className={cn(
+                              'mt-0.5 size-6 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 tabular-nums border',
+                              row.done
+                                ? 'border-tone-success-border bg-tone-success-bg text-tone-success-strong'
+                                : 'border-line-input bg-surface-subtle text-ink-muted',
+                            )}
+                          >
+                            {row.done ? (
+                              <Check className="size-3.5 stroke-[2.5]" />
+                            ) : (
+                              index + 1
+                            )}
+                          </span>
 
-          {feedbackComment && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold text-slate-900">
-                  Góp ý sau bảo vệ
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 px-4 py-3.5 text-sm text-slate-700">
-                  <FileText className="size-4 shrink-0 text-slate-500 mt-0.5" />
-                  <p className="leading-relaxed whitespace-pre-line">{feedbackComment}</p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {isPublished && (
-            <Card>
-              <CardContent className="p-4 sm:p-5 flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  leftIcon={<Printer className="size-4" />}
-                  onClick={handlePrintTranscript}
-                >
-                  In bảng điểm
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <div className="lg:col-span-4 space-y-5">
-          {isPublished && summary && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-bold text-slate-900">
-                  Kết quả công bố
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 px-3.5 py-3 space-y-1">
-                    <p className="text-xs text-slate-500">Điểm tổng kết - Thang 10</p>
-                    <p className="text-3xl font-bold tracking-tight text-slate-900 tabular-nums">
-                      {formatScoreDecimal(summary.finalScore, 2)}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-blue-200/70 bg-blue-50/60 px-3.5 py-3 space-y-1">
-                    <p className="text-xs text-slate-600">Quy đổi - Thang 4</p>
-                    <p className="text-3xl font-bold tracking-tight text-primary tabular-nums">
-                      {formatScale4Score(summary.finalScore)}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-500 pt-1 border-t border-slate-100">
-                  Bảng điểm do Khoa công bố
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-bold text-slate-900">
-                {isPublished ? 'Thông tin công bố' : 'Điều kiện xem điểm'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-slate-500">Hồ sơ</p>
-                <p className="text-xs font-semibold text-primary tabular-nums">
-                  {topicCode} - {groupCode}
-                </p>
-                <p className="text-sm font-semibold text-slate-900 leading-snug">{topicTitle}</p>
-                {topicTitleEn && (
-                  <p className="text-xs text-slate-500 leading-snug">{topicTitleEn}</p>
-                )}
-              </div>
-
-              <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-500">Sinh viên</p>
-                {studentItems.length > 0 ? (
-                  <div className="flex items-start gap-2.5">
-                    <AvatarGroup items={studentItems} max={3} size="sm" ariaLabel="Sinh viên" />
-                    <div className="min-w-0 space-y-1 text-xs text-slate-700 leading-relaxed">
-                      {studentItems.map((student) => (
-                        <div key={student.id} className="truncate">
-                          <span className="font-medium text-slate-800">{student.name}</span>
-                          {student.code ? (
-                            <span className="text-slate-500 tabular-nums"> - {student.code}</span>
-                          ) : null}
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-ink-primary">
+                                {row.stepLabel}
+                              </p>
+                              <StatusBadge tone={row.statusTone}>{row.statusLabel}</StatusBadge>
+                            </div>
+                            <p className="text-xs text-ink-muted leading-relaxed">
+                              {row.detailLabel}
+                            </p>
+                          </div>
                         </div>
-                      ))}
+
+                        {row.actionTo && !row.done && row.actionLabel && (
+                          <Button
+                            asChild
+                            variant={row.key === 'archive' ? 'outline' : 'ghost'}
+                            size="sm"
+                            className="shrink-0 self-start sm:self-center bg-surface-card"
+                          >
+                            <Link to={row.actionTo}>
+                              {row.actionLabel}
+                              <ExternalLink className="size-3.5" />
+                            </Link>
+                          </Button>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+
+                {feedbackComment && (
+                  <section className="p-5 sm:p-6 space-y-2.5">
+                    <h2 className="text-sm font-semibold text-ink-primary">
+                      Góp ý sau bảo vệ
+                    </h2>
+                    <div className="rounded-xl border border-line/75 bg-surface-subtle/60 px-4 py-3 text-sm text-ink-heading leading-relaxed whitespace-pre-line">
+                      {feedbackComment}
                     </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500">Đang cập nhật thành viên</p>
+                  </section>
                 )}
-              </div>
+              </Card>
+            ) : (
+              /* STATE B: Published Official Transcript Sheet */
+              summary && (
+                <Card className="overflow-hidden border-line/80 shadow-[0_1px_2px_rgba(15,23,42,0.03)] divide-y divide-line-subtle">
+                  {/* Headline Score Band */}
+                  <section className="p-5 sm:p-6 space-y-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-base font-semibold text-ink-primary">
+                          Bảng điểm tổng kết chính thức
+                        </h2>
+                        <p className="text-xs text-ink-muted mt-0.5 tabular-nums">
+                          Công bố lúc {formatDateTimeVi(summary.publishedAt)}
+                        </p>
+                      </div>
+                      <StatusBadge tone={rankMeta.tone} className="shrink-0">
+                        {rankMeta.label}
+                      </StatusBadge>
+                    </div>
 
-              <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-500">GVHD</p>
-                {advisorItems.length > 0 ? (
-                  <div className="flex items-center gap-2.5">
-                    <AvatarGroup
-                      items={advisorItems}
-                      max={1}
-                      size="sm"
-                      ariaLabel="Giảng viên hướng dẫn"
-                    />
-                    <span className="min-w-0 truncate text-xs font-medium text-slate-800">
-                      {advisorName}
-                    </span>
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500">{advisorName}</p>
-                )}
-              </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                      <div className="rounded-xl border border-line/80 bg-surface-subtle/60 px-4 py-3.5 space-y-1">
+                        <p className="text-xs text-ink-muted">Điểm tổng kết · Thang 10</p>
+                        <p className="text-3xl sm:text-4xl font-bold tracking-tight text-ink-primary tabular-nums">
+                          {formatScoreDecimal(summary.finalScore, 2)}
+                        </p>
+                      </div>
 
-              <div className="space-y-1 pt-2 border-t border-slate-100">
-                <p className="text-xs font-medium text-slate-500">Đợt</p>
-                <p className="text-xs font-medium text-slate-800">{batchName}</p>
-              </div>
+                      <div className="rounded-xl border border-tone-info-border bg-tone-info-bg/70 px-4 py-3.5 space-y-1">
+                        <p className="text-xs text-ink-body">Quy đổi · Thang 4</p>
+                        <p className="text-3xl sm:text-4xl font-bold tracking-tight text-primary tabular-nums">
+                          {formatScale4Score(summary.finalScore)}
+                        </p>
+                      </div>
 
-              <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                <p className="text-xs font-semibold text-slate-800">Lưu ý xử lý</p>
-                <ul className="space-y-1 text-xs text-slate-600 list-disc pl-4">
-                  {isPublished ? (
-                    <>
-                      <li>Kết quả thuộc hồ sơ của bạn</li>
-                      <li>Hồ sơ lưu chiểu đã được nghiệm thu</li>
-                      <li>Bảng điểm theo cấu hình chính thức của đợt</li>
-                    </>
-                  ) : (
-                    <>
-                      <li>Khoa công bố kết quả</li>
-                      <li>Khoa nghiệm thu hồ sơ lưu chiểu</li>
-                    </>
+                      <div className="rounded-xl border border-line/80 bg-surface-subtle/40 px-4 py-3.5 flex flex-col justify-between gap-1">
+                        <p className="text-xs text-ink-muted">Xếp loại học lực (tham khảo)</p>
+                        <div>
+                          <p className="text-lg font-bold text-ink-primary leading-tight">
+                            {rankMeta.label}
+                          </p>
+                          <p className="text-[11px] text-ink-muted mt-0.5 tabular-nums">
+                            {summary.components.length} thành phần đánh giá
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {summary.calculationFormula && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line/70 bg-surface-subtle/45 px-3.5 py-2.5 text-xs">
+                        <span className="text-ink-muted">Công thức tính điểm</span>
+                        <span className="font-semibold text-ink-primary tabular-nums">
+                          {summary.calculationFormula}
+                        </span>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Component Breakdown Table with Weight Proportion Bars */}
+                  <section className="p-5 sm:p-6 space-y-3.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <h2 className="text-sm font-semibold text-ink-primary">
+                        Chi tiết các nguồn điểm
+                      </h2>
+                      <span className="text-xs text-ink-muted tabular-nums">
+                        Tổng hệ số: {totalWeight}
+                      </span>
+                    </div>
+
+                    {/* Mobile Stacked Breakdown (<md) */}
+                    <ul className="md:hidden divide-y divide-line-subtle rounded-xl border border-line/80 bg-surface-card overflow-hidden">
+                      {summary.components.map((component, index) => {
+                        const sharePercent = computeWeightSharePercent(
+                          component.weight,
+                          totalWeight,
+                        );
+                        return (
+                          <li key={`m-${component.componentName}-${index}`} className="p-3.5 space-y-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-ink-primary leading-snug">
+                                  {component.componentName}
+                                </p>
+                                <p className="text-xs text-ink-muted tabular-nums mt-0.5">
+                                  Hệ số {component.weight} · {sharePercent}%
+                                </p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-base font-bold text-ink-primary tabular-nums">
+                                  {formatScoreDecimal(component.score, 2)}
+                                </p>
+                                <span className="text-[11px] font-medium text-tone-success-strong">
+                                  Đã chấm
+                                </span>
+                              </div>
+                            </div>
+                            <div
+                              aria-hidden="true"
+                              className="h-1.5 w-full rounded-full bg-surface-muted overflow-hidden"
+                            >
+                              <div
+                                className="h-full rounded-full bg-primary"
+                                style={{ width: `${Math.min(100, Math.max(0, sharePercent))}%` }}
+                              />
+                            </div>
+                          </li>
+                        );
+                      })}
+                      <li className="p-3.5 bg-surface-subtle/60 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-ink-primary">
+                            Điểm tổng kết (làm tròn)
+                          </p>
+                          <p className="text-xs text-ink-muted tabular-nums">
+                            Tổng hệ số {totalWeight} · 100%
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-lg font-bold text-primary tabular-nums">
+                            {formatScoreDecimal(summary.finalScore, 2)}
+                          </p>
+                          <StatusBadge tone="success">Chính thức</StatusBadge>
+                        </div>
+                      </li>
+                    </ul>
+
+                    {/* Desktop Table (>=md) */}
+                    <div className="hidden md:block overflow-x-auto rounded-xl border border-line/80">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-surface-subtle/90">
+                            <TableHead>Nguồn / thành phần</TableHead>
+                            <TableHead className="text-right whitespace-nowrap">Điểm</TableHead>
+                            <TableHead className="text-right whitespace-nowrap">Hệ số</TableHead>
+                            <TableHead className="whitespace-nowrap min-w-[140px]">
+                              Tỷ trọng
+                            </TableHead>
+                            <TableHead className="whitespace-nowrap">Trạng thái</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {summary.components.map((component, index) => {
+                            const sharePercent = computeWeightSharePercent(
+                              component.weight,
+                              totalWeight,
+                            );
+                            return (
+                              <TableRow key={`${component.componentName}-${index}`}>
+                                <TableCell className="font-semibold text-ink-primary">
+                                  {component.componentName}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold text-ink-primary tabular-nums">
+                                  {formatScoreDecimal(component.score, 2)}
+                                </TableCell>
+                                <TableCell className="text-right text-ink-body tabular-nums">
+                                  {component.weight}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2.5">
+                                    <div
+                                      aria-hidden="true"
+                                      className="h-1.5 flex-1 rounded-full bg-surface-muted overflow-hidden min-w-[64px]"
+                                    >
+                                      <div
+                                        className="h-full rounded-full bg-primary"
+                                        style={{ width: `${Math.min(100, Math.max(0, sharePercent))}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs font-medium text-ink-secondary tabular-nums w-11 text-right shrink-0">
+                                      {sharePercent}%
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <StatusBadge tone="success">Đã chấm</StatusBadge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                          <TableRow className="bg-surface-subtle/60 font-semibold">
+                            <TableCell className="text-ink-primary">
+                              Điểm tổng kết (làm tròn)
+                            </TableCell>
+                            <TableCell className="text-right text-primary tabular-nums">
+                              {formatScoreDecimal(summary.finalScore, 2)}
+                            </TableCell>
+                            <TableCell className="text-right text-ink-secondary tabular-nums">
+                              {totalWeight}
+                            </TableCell>
+                            <TableCell className="text-xs text-ink-muted tabular-nums text-right">
+                              100%
+                            </TableCell>
+                            <TableCell>
+                              <StatusBadge tone="success">Chính thức</StatusBadge>
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </section>
+
+                  {/* Post-defense feedback */}
+                  {feedbackComment && (
+                    <section className="p-5 sm:p-6 space-y-2.5">
+                      <h2 className="text-sm font-semibold text-ink-primary">
+                        Góp ý sau bảo vệ
+                      </h2>
+                      <div className="rounded-xl border border-line/75 bg-surface-subtle/60 px-4 py-3 text-sm text-ink-heading leading-relaxed whitespace-pre-line">
+                        {feedbackComment}
+                      </div>
+                    </section>
                   )}
-                </ul>
-              </div>
 
-              {!isPublished && (
-                <div className="pt-2">
-                  <Button type="button" className="w-full" onClick={handleOpenArchival}>
-                    Xem hồ sơ lưu chiểu
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  {/* Integrated Print Footer */}
+                  <div className="bg-surface-subtle/50 px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <p className="text-xs text-ink-muted">
+                      Bảng điểm do Khoa công bố chính thức cho hồ sơ cá nhân của bạn.
+                    </p>
+                    <Button
+                      type="button"
+                      leftIcon={<Printer className="size-4" />}
+                      onClick={handlePrintTranscript}
+                    >
+                      In phiếu kết quả (A4)
+                    </Button>
+                  </div>
+                </Card>
+              )
+            )}
+          </div>
+
+          {/* Right Sticky Context Dock */}
+          <StudentResultsSidebar
+            isPublished={isPublished}
+            topicCode={topicCode}
+            groupCode={groupCode}
+            topicTitle={topicTitle}
+            topicTitleEn={topicTitleEn}
+            batchName={batchName}
+            publishedAt={summary?.publishedAt ?? null}
+            archivedConfirmedAt={finalSubmission?.archivedConfirmedAt ?? null}
+            studentItems={studentItems}
+            advisorName={advisorName}
+            advisorItems={advisorItems}
+          />
         </div>
       </div>
+
+      {/* Monochrome A4 Printable Official Transcript (shown only in @media print) */}
+      {isPublished && summary && (
+        <StudentTranscriptPrintDocument
+          summary={summary}
+          topicCode={topicCode}
+          groupCode={groupCode}
+          topicTitle={topicTitle}
+          topicTitleEn={topicTitleEn}
+          batchName={batchName}
+          advisorName={advisorName}
+          studentItems={studentItems}
+          feedbackComment={feedbackComment}
+        />
+      )}
     </div>
   );
 };

@@ -1,0 +1,22 @@
+{
+  "baseline_id": "B2",
+  "name": "Dense-Only Baseline (BAAI/bge-m3 Cosine Similarity)",
+  "description": "Dense semantic embedding retrieval and cosine thresholding without lexical matching or cross-encoder reranking.",
+  "research_question": "RQ2",
+  "pipeline": {
+    "preprocessing": "block_cleaned",
+    "retrieval": {
+      "branch": "dense_only",
+      "model": "BAAI/bge-m3",
+      "dimension": 1024,
+      "metric": "cosine_similarity",
+      "top_k": 50
+    },
+    "classification": {
+      "mode": "semantic_cosine_threshold",
+      "threshold": 0.68
+    }
+  },
+  "hardware_budget": "GPU or CPU embedding inference, 0 cross-encoder FLOPs"
+}
+

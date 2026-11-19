@@ -44,7 +44,7 @@ export const TableHeader = forwardRef<HTMLTableSectionElement, TableHeaderProps>
     <thead
       ref={ref}
       className={cn(
-        'border-b border-slate-200/80 bg-slate-50/90 text-xs text-slate-600 backdrop-blur-xs',
+        'border-b border-line/80 bg-surface-subtle/90 text-xs text-ink-body backdrop-blur-xs',
         sticky && 'sticky top-0 z-10',
         className,
       )}
@@ -63,7 +63,7 @@ export const TableBody = forwardRef<
 >(({ className, ...props }, ref) => (
   <tbody
     ref={ref}
-    className={cn('divide-y divide-slate-100 [&_tr:last-child]:border-0', className)}
+    className={cn('divide-y divide-line-subtle [&_tr:last-child]:border-0', className)}
     {...props}
   />
 ));
@@ -79,7 +79,7 @@ export const TableFooter = forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      'border-t border-slate-200/80 bg-slate-50/50 font-medium text-slate-600 [&>tr]:last:border-b-0',
+      'border-t border-line/80 bg-surface-subtle/50 font-medium text-ink-body [&>tr]:last:border-b-0',
       className,
     )}
     {...props}
@@ -141,7 +141,7 @@ export const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
           sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none'
         }
         className={cn(
-          'h-11 px-4 py-3 align-middle text-xs font-semibold tracking-tight text-slate-700 select-none',
+          'h-11 px-4 py-3 align-middle text-xs font-semibold tracking-tight text-ink-secondary select-none',
           alignClass,
           className,
         )}
@@ -153,7 +153,7 @@ export const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
             disabled={sortDisabled}
             onClick={onSort}
             className={cn(
-              'group inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 -mx-1.5 -my-1 font-semibold transition-colors hover:bg-slate-200/60 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-primary cursor-pointer disabled:cursor-wait disabled:opacity-50',
+              'group inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 -mx-1.5 -my-1 font-semibold transition-colors hover:bg-surface-strong/60 hover:text-ink-primary focus-visible:outline-2 focus-visible:outline-primary cursor-pointer disabled:cursor-wait disabled:opacity-50',
               sortDirection && 'text-primary font-bold',
             )}
             title={
@@ -165,7 +165,7 @@ export const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
             }
           >
             <span>{children}</span>
-            <span className="shrink-0 text-slate-400 group-hover:text-slate-600 transition-colors">
+            <span className="shrink-0 text-ink-subtle group-hover:text-ink-body transition-colors">
               {sortDirection === 'asc' ? (
                 <ArrowUp className="size-3.5 text-primary stroke-[2.5]" />
               ) : sortDirection === 'desc' ? (
@@ -200,7 +200,7 @@ export const TableCell = forwardRef<HTMLTableCellElement, TableCellProps>(
       <td
         ref={ref}
         className={cn(
-          'px-4 py-3.5 sm:px-5 sm:py-4 align-middle text-slate-700',
+          'px-4 py-3.5 sm:px-5 sm:py-4 align-middle text-ink-secondary',
           alignClass,
           className,
         )}
@@ -218,7 +218,7 @@ export const TableCaption = forwardRef<
   HTMLTableCaptionElement,
   HTMLAttributes<HTMLTableCaptionElement>
 >(({ className, ...props }, ref) => (
-  <caption ref={ref} className={cn('mt-4 text-xs text-slate-500', className)} {...props} />
+  <caption ref={ref} className={cn('mt-4 text-xs text-ink-muted', className)} {...props} />
 ));
 TableCaption.displayName = 'TableCaption';
 
@@ -249,13 +249,13 @@ export function TableEmpty({
       {...props}
     >
       {icon && (
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-100/80 text-slate-400">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-surface-muted/80 text-ink-subtle">
           {icon}
         </div>
       )}
       <div className="space-y-1">
-        <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
-        {description && <p className="text-xs text-slate-500 max-w-sm">{description}</p>}
+        <h4 className="text-sm font-semibold text-ink-primary">{title}</h4>
+        {description && <p className="text-xs text-ink-muted max-w-sm">{description}</p>}
       </div>
       {action && <div className="mt-2">{action}</div>}
     </div>
@@ -276,17 +276,17 @@ export function TableFilterChip({ label, value, onRemove, className }: TableFilt
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-lg border border-slate-200/90 bg-slate-50/80 px-2.5 py-1 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-100/80',
+        'inline-flex items-center gap-1.5 rounded-lg border border-line-input/90 bg-surface-muted/80 px-2.5 py-1 text-xs font-medium text-ink-secondary transition-colors hover:border-line-strong hover:bg-surface-muted/80',
         className,
       )}
     >
-      <span className="text-slate-500">{label}:</span>
-      <span className="font-semibold text-slate-900">{value}</span>
+      <span className="text-ink-muted">{label}:</span>
+      <span className="font-semibold text-ink-primary">{value}</span>
       <button
         type="button"
         onClick={onRemove}
         aria-label={`Bỏ lọc ${label}`}
-        className="rounded p-0.5 text-slate-400 hover:bg-slate-200/60 hover:text-slate-700 transition-colors cursor-pointer"
+        className="rounded p-0.5 text-ink-subtle hover:bg-surface-strong/60 hover:text-ink-secondary transition-colors cursor-pointer"
       >
         <X className="size-3" />
       </button>
@@ -306,11 +306,11 @@ export function TableActiveFilters({ chips, onClearAll, className }: TableActive
   return (
     <div
       className={cn(
-        'flex flex-wrap items-center gap-2 border-b border-slate-100 bg-slate-50/40 px-5 py-2.5',
+        'flex flex-wrap items-center gap-2 border-b border-line-subtle bg-surface-subtle/40 px-5 py-2.5',
         className,
       )}
     >
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mr-1">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle mr-1">
         Bộ lọc đang bật:
       </span>
       {chips.map((chip) => (
@@ -327,7 +327,7 @@ export function TableActiveFilters({ chips, onClearAll, className }: TableActive
           variant="ghost"
           size="sm"
           onClick={onClearAll}
-          className="h-7 text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
+          className="h-7 text-xs text-ink-muted hover:text-ink-heading cursor-pointer"
         >
           Xóa tất cả
         </Button>

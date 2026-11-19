@@ -328,7 +328,18 @@ public sealed record CouncilOverviewItemDto(
     Guid? AssignmentId,
     CouncilOverviewMemberDto? Chairman,
     CouncilOverviewMemberDto? Secretary,
-    IReadOnlyList<CouncilOverviewMemberDto> Members);
+    IReadOnlyList<CouncilOverviewMemberDto> Members,
+    bool IsSubmittedToAcademicAffairs = false,
+    DateTime? SubmittedAt = null,
+    string? SubmissionNotes = null,
+    string? DecisionNumber = null,
+    DateOnly? SignedDate = null,
+    string? DecisionFileUrl = null,
+    DateTime? ApprovedAt = null,
+    bool HasRoomConflict = false,
+    IReadOnlyList<string>? ConflictingMemberNames = null,
+    bool HasIneligibleGroups = false,
+    bool HasReviewerRoleConflict = false);
 
 public sealed record CouncilOverviewQueryFilterDto(
     Guid? BatchId = null,

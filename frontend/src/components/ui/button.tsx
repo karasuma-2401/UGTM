@@ -10,19 +10,21 @@ const buttonVariants = cva(
     variants: {
       variant: {
         success:
-          'bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 focus-visible:ring-emerald-600/30',
-        soft: 'border border-primary/20 bg-primary/8 text-primary shadow-2xs hover:bg-primary/14 hover:border-primary/30',
+          'bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 focus-visible:ring-emerald-600/30 dark:bg-emerald-600 dark:hover:bg-emerald-500',
+        soft: 'border border-primary/20 bg-primary/8 text-primary shadow-2xs hover:bg-primary/14 hover:border-primary/30 dark:border-primary/30 dark:bg-primary/15 dark:hover:bg-primary/25',
         dangerOutline:
-          'border border-rose-200/90 bg-rose-50/80 text-rose-700 shadow-2xs hover:border-rose-300 hover:bg-rose-100/80',
+          'border border-tone-danger-border bg-tone-danger-bg text-tone-danger-text shadow-2xs hover:border-tone-danger-border hover:bg-tone-danger-bg',
         successOutline:
-          'border border-emerald-200/90 bg-emerald-50/80 text-emerald-700 shadow-2xs hover:border-emerald-300 hover:bg-emerald-100/80',
+          'border border-tone-success-border bg-tone-success-bg text-tone-success-text shadow-2xs hover:border-tone-success-border hover:bg-tone-success-bg',
         default:
-          'bg-primary text-primary-foreground shadow-[0_1px_2px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.16)] hover:bg-blue-700 hover:shadow-[0_6px_16px_-4px_rgba(37,99,235,0.42),0_2px_4px_rgba(15,23,42,0.1),inset_0_1px_0_rgba(255,255,255,0.22)] motion-safe:hover:-translate-y-px active:bg-blue-800 active:shadow-[0_1px_2px_rgba(15,23,42,0.12)]',
+          'bg-brand-solid text-white shadow-[0_1px_2px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.16)] hover:bg-brand-solid-hover hover:shadow-[0_6px_16px_-4px_rgba(37,99,235,0.42),0_2px_4px_rgba(15,23,42,0.1),inset_0_1px_0_rgba(255,255,255,0.22)] motion-safe:hover:-translate-y-px active:bg-brand-solid active:shadow-[0_1px_2px_rgba(15,23,42,0.12)]',
         destructive: 'bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90',
         outline:
-          'border border-slate-200/90 bg-white text-slate-700 shadow-2xs hover:border-slate-300 hover:bg-slate-50/90 hover:text-slate-900',
-        secondary: 'bg-slate-100/90 text-slate-800 shadow-2xs hover:bg-slate-200/75',
-        ghost: 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900',
+          'border border-line-input/90 bg-surface-card text-ink-secondary shadow-2xs hover:border-line-strong hover:bg-surface-hover/90 hover:text-ink-primary',
+        secondary:
+          'bg-surface-muted/90 text-ink-heading shadow-2xs hover:bg-surface-strong/75',
+        ghost:
+          'text-ink-body hover:bg-surface-muted/80 hover:text-ink-primary',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {

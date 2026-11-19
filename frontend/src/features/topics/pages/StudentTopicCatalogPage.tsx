@@ -9,7 +9,6 @@ import {
   Search,
   Send,
   ShieldAlert,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { PageHeader } from '@/components/ui/page-header';
@@ -73,8 +72,11 @@ export function StudentTopicCatalogContent() {
   const canBrowse = student || hasRole('Admin');
   const canReadBatches = hasPermission('academic.batches.read');
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState<CatalogFilters>(EMPTY_FILTERS);
-  const [filters, setFilters] = useState<CatalogFilters>(EMPTY_FILTERS);
+  const [filterState, setFilterState] = useState<{
+    draft: CatalogFilters;
+    filters: CatalogFilters;
+  }>({ draft: EMPTY_FILTERS, filters: EMPTY_FILTERS });
+  const { draft, filters } = filterState;
   const [sortBy, setSortBy] = useState<CatalogSortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
@@ -171,20 +173,28 @@ export function StudentTopicCatalogContent() {
     }
   }
 
-  function applyFilters(next: CatalogFilters) {
-    const normalized: CatalogFilters = {
-      ...next,
-      keyword: next.keyword.trim(),
-    };
-    setDraft(normalized);
-    setFilters(normalized);
+  function updateFilters(updater: (prev: CatalogFilters) => CatalogFilters) {
+    setFilterState((prev) => {
+      const nextDraft = updater(prev.draft);
+      return {
+        draft: nextDraft,
+        filters: {
+          ...nextDraft,
+          keyword: nextDraft.keyword.trim(),
+        },
+      };
+    });
     setPage(1);
     setSelectedRowId(null);
   }
 
+  function applyFilters(next: CatalogFilters) {
+    updateFilters(() => next);
+  }
+
   function apply(event: FormEvent) {
     event.preventDefault();
-    applyFilters(draft);
+    updateFilters((prev) => prev);
   }
 
   function reset() {
@@ -239,11 +249,11 @@ export function StudentTopicCatalogContent() {
           />
         }
         title={
-          <span className="truncate text-xs font-medium text-slate-800">{advisorDisplay}</span>
+          <span className="truncate text-xs font-medium text-ink-heading">{advisorDisplay}</span>
         }
         description={
           !topic.advisorName ? (
-            <span className="truncate font-mono text-[10px] text-slate-400" title={topic.advisorId}>
+            <span className="truncate font-mono text-[10px] text-ink-subtle" title={topic.advisorId}>
               {topic.advisorId}
             </span>
           ) : undefined
@@ -255,13 +265,13 @@ export function StudentTopicCatalogContent() {
   const renderBatchCell = (topic: PublishedTopic) => {
     const resolvedName = batchName(topic.batchId);
     if (resolvedName) {
-      return <span className="text-xs text-slate-600">{resolvedName}</span>;
+      return <span className="text-xs text-ink-body">{resolvedName}</span>;
     }
     if (canReadBatches && batchesQuery.isPending) {
       return <Skeleton className="h-4 w-28 max-w-full" />;
     }
     return (
-      <span className="text-xs text-slate-500" title={topic.batchId}>
+      <span className="text-xs text-ink-muted" title={topic.batchId}>
         Mã đợt: {topic.batchId}
       </span>
     );
@@ -272,7 +282,7 @@ export function StudentTopicCatalogContent() {
       type="button"
       variant="outline"
       size="sm"
-      className="h-8 rounded-md border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+      className="h-8 rounded-md border-line-input bg-surface-card px-3 text-xs font-medium text-ink-secondary shadow-sm hover:border-line-strong hover:bg-surface-hover hover:text-ink-primary"
       disabled={refreshing}
       aria-label={`Xem đề tài ${topic.titleVi}`}
       onClick={(event) => {
@@ -294,7 +304,7 @@ export function StudentTopicCatalogContent() {
       cellClassName: 'px-3 py-4',
       skeleton: { variant: 'number' },
       cell: (_, index) => (
-        <span className="text-xs font-medium tabular-nums text-slate-400">
+        <span className="text-xs font-medium tabular-nums text-ink-subtle">
           {((data?.pageNumber ?? page) - 1) * (data?.pageSize ?? pageSize) + index + 1}
         </span>
       ),
@@ -310,20 +320,20 @@ export function StudentTopicCatalogContent() {
       cell: (topic) => (
         <div className="min-w-0 space-y-1">
           <span
-            className="line-clamp-2 block text-sm font-semibold leading-snug text-slate-900"
+            className="line-clamp-2 block text-sm font-semibold leading-snug text-ink-primary"
             title={topic.titleVi}
           >
             {topic.titleVi}
           </span>
           {topic.titleEn ? (
             <span
-              className="block truncate text-[11px] font-normal text-slate-500"
+              className="block truncate text-[11px] font-normal text-ink-muted"
               title={topic.titleEn}
             >
               {topic.titleEn}
             </span>
           ) : (
-            <span className="block text-[11px] italic text-slate-400">
+            <span className="block text-[11px] italic text-ink-subtle">
               Chưa có tên tiếng Anh
             </span>
           )}
@@ -386,7 +396,7 @@ export function StudentTopicCatalogContent() {
             variant="outline"
             leftIcon={<MailCheck />}
             onClick={openInvitation}
-            className="h-10 rounded-xl border-slate-200 bg-white shadow-2xs hover:border-slate-300"
+            className="h-10 rounded-xl border-line-input bg-surface-card shadow-2xs hover:border-line-strong"
           >
             Xác nhận lời mời
           </Button>
@@ -410,7 +420,7 @@ export function StudentTopicCatalogContent() {
 
       <Card
         ref={catalogRef}
-        className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]"
+        className="min-w-0 overflow-hidden rounded-2xl border-line/80 shadow-[0_1px_3px_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.02)]"
       >
         <ListCardHeader
           title="Danh mục đề tài đã công bố"
@@ -463,7 +473,7 @@ export function StudentTopicCatalogContent() {
 
         <form
           onSubmit={apply}
-          className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/40 px-4 py-3.5 sm:px-6"
+          className="flex flex-wrap items-center gap-3 border-b border-line-subtle bg-surface-subtle/40 px-4 py-3.5 sm:px-6"
         >
           <div className="min-w-60 flex-1">
             <Input
@@ -472,7 +482,7 @@ export function StudentTopicCatalogContent() {
               placeholder="Tìm tên đề tài tiếng Việt hoặc tiếng Anh"
               leftIcon={<Search />}
               onChange={(event) =>
-                setDraft((prev) => ({ ...prev, keyword: event.target.value }))
+                updateFilters((prev) => ({ ...prev, keyword: event.target.value }))
               }
               className="h-10 rounded-xl shadow-none"
             />
@@ -489,7 +499,7 @@ export function StudentTopicCatalogContent() {
               { value: '', label: 'Tất cả đợt KLTN' },
               ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
             ]}
-            onChange={(batchId) => setDraft((prev) => ({ ...prev, batchId }))}
+            onChange={(batchId) => updateFilters((prev) => ({ ...prev, batchId }))}
           />
           <Select<CatalogAvailabilityFilter>
             aria-label="Lọc theo tình trạng chỗ trống"
@@ -502,12 +512,9 @@ export function StudentTopicCatalogContent() {
               { value: 'available', label: 'Chỉ đề tài còn chỗ' },
               { value: 'full', label: 'Đã đủ / tạm hết chỗ' },
             ]}
-            onChange={(availability) => setDraft((prev) => ({ ...prev, availability }))}
+            onChange={(availability) => updateFilters((prev) => ({ ...prev, availability }))}
           />
           <div className="flex items-center gap-2">
-            <Button type="submit" leftIcon={<SlidersHorizontal />} className="h-10 rounded-xl">
-              Áp dụng
-            </Button>
             <Button
               type="button"
               variant="outline"
@@ -523,7 +530,7 @@ export function StudentTopicCatalogContent() {
         {batchesQuery.isError && (
           <p
             role="alert"
-            className="border-b border-amber-100 bg-amber-50/70 px-5 py-2.5 text-xs text-amber-800 sm:px-6"
+            className="border-b border-tone-warning-border bg-tone-warning-bg px-5 py-2.5 text-xs text-tone-warning-strong sm:px-6"
           >
             Chưa tải được danh sách đợt KLTN.{' '}
             <Button
@@ -645,13 +652,13 @@ export function StudentTopicCatalogContent() {
             <div className="space-y-3">
               <TopicCapacityStatus topic={topic} />
               <div className="space-y-1">
-                <p className="text-sm font-semibold leading-snug text-slate-900">{topic.titleVi}</p>
-                {topic.titleEn && <p className="text-xs text-slate-500">{topic.titleEn}</p>}
+                <p className="text-sm font-semibold leading-snug text-ink-primary">{topic.titleVi}</p>
+                {topic.titleEn && <p className="text-xs text-ink-muted">{topic.titleEn}</p>}
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                 <div className="min-w-0 space-y-1">
                   {renderAdvisorCell(topic)}
-                  <p className="text-xs text-slate-500">{renderBatchCell(topic)}</p>
+                  <p className="text-xs text-ink-muted">{renderBatchCell(topic)}</p>
                 </div>
                 {renderViewButton(topic)}
               </div>
@@ -668,7 +675,7 @@ export function StudentTopicCatalogContent() {
         {selectedTopic && (
           <>
             <span
-              className="hidden max-w-60 truncate text-xs font-medium text-slate-600 md:inline-block"
+              className="hidden max-w-60 truncate text-xs font-medium text-ink-body md:inline-block"
               title={selectedTopic.titleVi}
             >
               {selectedTopic.titleVi}
@@ -746,9 +753,9 @@ export function StudentTopicCatalogContent() {
           onClose={() => setWarningsOpen(false)}
           className="max-w-md"
         >
-          <div className="space-y-4 p-5 text-sm leading-6 text-slate-700 sm:p-6">
+          <div className="space-y-4 p-5 text-sm leading-6 text-ink-secondary sm:p-6">
             <p>Số lần cảnh báo do quá hạn xác nhận lời mời tham gia đề tài.</p>
-            <p className="font-semibold text-slate-900">
+            <p className="font-semibold text-ink-primary">
               {status?.violationCount === 0
                 ? 'Bạn chưa có lần cảnh báo nào.'
                 : status
@@ -756,7 +763,7 @@ export function StudentTopicCatalogContent() {
                   : 'Chưa tải được số lần cảnh báo.'}
             </p>
             {status?.isRegistrationBlocked && (
-              <p className="rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-rose-700">
+              <p className="rounded-xl border border-tone-danger-border bg-tone-danger-bg px-3.5 py-2.5 text-tone-danger-text">
                 Quyền đăng ký đang bị khóa. Vui lòng liên hệ Khoa để được hỗ trợ.
               </p>
             )}

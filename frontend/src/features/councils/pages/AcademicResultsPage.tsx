@@ -179,8 +179,10 @@ export const AcademicResultsPage: React.FC = () => {
         sortKey: 'topicTitleVi',
         cell: (row) => (
           <div className="min-w-0 space-y-0.5">
-            <p className="font-semibold text-slate-900 line-clamp-1">{row.topicTitleVi}</p>
-            <p className="text-xs text-slate-500 line-clamp-1">
+            <p className="font-semibold text-ink-primary line-clamp-1">
+              {row.topicTitleVi}
+            </p>
+            <p className="text-xs text-ink-muted line-clamp-1">
               {row.studentNames.length > 0
                 ? row.studentNames
                     .map((name, index) =>
@@ -201,7 +203,7 @@ export const AcademicResultsPage: React.FC = () => {
         widthClassName: 'w-24',
         headerClassName: 'whitespace-nowrap',
         cell: (row) => (
-          <span className="font-semibold text-slate-900 tabular-nums">
+          <span className="font-semibold text-ink-primary tabular-nums">
             {formatScoreDecimal(row.finalScore)}
           </span>
         ),
@@ -213,7 +215,9 @@ export const AcademicResultsPage: React.FC = () => {
         widthClassName: 'w-48 xl:w-60',
         headerClassName: 'whitespace-nowrap',
         cell: (row) => (
-          <span className="text-xs text-slate-600 line-clamp-2">{row.conditionSummary}</span>
+          <span className="text-xs text-ink-body line-clamp-2">
+            {row.conditionSummary}
+          </span>
         ),
         skeleton: { variant: 'text' },
       },
@@ -277,7 +281,7 @@ export const AcademicResultsPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 pb-20 selection:bg-blue-100 selection:text-blue-950">
+    <div className="space-y-6 pb-20 selection:bg-tone-info-bg selection:text-tone-info-strong">
       <PageHeader
         accent
         title="Tổng hợp kết quả"
@@ -292,9 +296,9 @@ export const AcademicResultsPage: React.FC = () => {
             disabled={isLoadingBatches || batchOptions.length === 0}
             placeholder="Chọn đợt khóa luận..."
             size="lg"
-            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300"
-            contentClassName="w-max min-w-full sm:min-w-[420px] max-w-[90vw] left-0 right-auto p-1.5 rounded-xl border-slate-200/90 shadow-lg"
-            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
+            triggerClassName="h-10 rounded-xl border-line-input/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong"
+            contentClassName="w-max min-w-full sm:min-w-[420px] max-w-[90vw] left-0 right-auto p-1.5 rounded-xl border-line-input/90 shadow-lg"
+            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover"
           />
         </div>
 
@@ -306,7 +310,7 @@ export const AcademicResultsPage: React.FC = () => {
             aria-label="Làm mới danh sách kết quả"
             disabled={!selectedBatchId || isFetchingList}
             onClick={() => actions.refreshList()}
-            className="size-10 rounded-xl border-slate-200 bg-white text-slate-600 hover:text-slate-900 shadow-2xs"
+            className="size-10 rounded-xl border-line-input bg-surface-card text-ink-body hover:text-ink-primary shadow-2xs"
             title="Làm mới"
           >
             <RefreshCw className={`size-4 ${isFetchingList ? 'animate-spin' : ''}`} />
@@ -385,12 +389,14 @@ export const AcademicResultsPage: React.FC = () => {
 
       <section
         aria-label="Hồ sơ trong đợt"
-        className="w-full min-w-0 rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden"
+        className="w-full min-w-0 rounded-2xl border border-line/80 bg-surface-card shadow-xs overflow-hidden"
       >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-subtle px-5 py-4">
             <div>
-              <h2 className="text-base font-semibold text-slate-900">Hồ sơ trong đợt</h2>
-              <p className="text-xs text-slate-500 mt-0.5 tabular-nums">
+              <h2 className="text-base font-semibold text-ink-primary">
+                Hồ sơ trong đợt
+              </h2>
+              <p className="text-xs text-ink-muted mt-0.5 tabular-nums">
                 {stats.all} nhóm - {stats.readyToPublish} đủ điều kiện công bố - {stats.published}{' '}
                 đã công bố
               </p>
@@ -404,14 +410,14 @@ export const AcademicResultsPage: React.FC = () => {
                   onChange={(event) => actions.handleKeywordChange(event.target.value)}
                   placeholder="Tìm mã nhóm, tên đề tài, MSSV..."
                   aria-label="Tìm kiếm hồ sơ kết quả"
-                  leftIcon={<Search className="size-4 text-slate-400" />}
+                  leftIcon={<Search className="size-4 text-ink-subtle" />}
                   rightIcon={
                     keyword ? (
                       <button
                         type="button"
                         aria-label="Xóa từ khóa tìm kiếm"
                         onClick={() => actions.handleKeywordChange('')}
-                        className="text-slate-400 hover:text-slate-700"
+                        className="text-ink-subtle hover:text-ink-secondary"
                       >
                         <X className="size-3.5" />
                       </button>
@@ -492,8 +498,10 @@ export const AcademicResultsPage: React.FC = () => {
               <div
                 key={row.groupId}
                 onClick={() => actions.setInspectedGroupId(row.groupId)}
-                className={`p-4 space-y-2.5 border-b border-slate-100 last:border-b-0 ${
-                  inspectedGroupId === row.groupId ? 'bg-blue-50/40' : 'bg-white'
+                className={`p-4 space-y-2.5 border-b border-line-subtle last:border-b-0 ${
+                  inspectedGroupId === row.groupId
+                    ? 'bg-tone-info-bg'
+                    : 'bg-surface-card'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -512,15 +520,15 @@ export const AcademicResultsPage: React.FC = () => {
                     <span className="font-semibold text-primary tabular-nums">{row.groupCode}</span>
                     <StatusBadge tone={row.displayStatusTone}>{row.displayStatusLabel}</StatusBadge>
                   </div>
-                  <span className="text-sm font-bold text-slate-900 tabular-nums">
+                  <span className="text-sm font-bold text-ink-primary tabular-nums">
                     {formatScoreDecimal(row.finalScore)}
                   </span>
                 </div>
 
-                <p className="text-sm font-semibold text-slate-900 line-clamp-2">
+                <p className="text-sm font-semibold text-ink-primary line-clamp-2">
                   {row.topicTitleVi}
                 </p>
-                <p className="text-xs text-slate-500">{row.conditionSummary}</p>
+                <p className="text-xs text-ink-muted">{row.conditionSummary}</p>
 
                 <div className="flex items-center justify-end gap-2 pt-1">
                   <Button

@@ -77,11 +77,11 @@ export function SubmissionProductLinksList({
             className={cn(
               'inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors',
               meta.isLocalPortalUrl
-                ? 'border-slate-200/80 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                : 'border-slate-200/80 bg-slate-50/75 text-[#2054a5] font-medium hover:border-blue-200 hover:bg-blue-50/50',
+                ? 'border-line-input/80 bg-surface-muted text-ink-body hover:bg-surface-muted'
+                : 'border-line-input/80 bg-surface-muted/75 text-brand-ink font-medium hover:border-tone-info-border hover:bg-tone-info-bg',
             )}
           >
-            <Icon className="size-3.5 shrink-0 text-slate-500" aria-hidden="true" />
+            <Icon className="size-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
             <span className="truncate">{text}</span>
             <ExternalLink className="size-3 shrink-0 opacity-75" aria-hidden="true" />
           </a>
@@ -139,8 +139,8 @@ export function SubmissionAttachmentGallery({
 
   return (
     <div className="space-y-1.5">
-      <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
-        <ImageIcon className="size-3.5 text-slate-400" aria-hidden="true" />
+      <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink-body">
+        <ImageIcon className="size-3.5 text-ink-subtle" aria-hidden="true" />
         <span>Ảnh minh chứng ({attachments.length})</span>
       </p>
 
@@ -154,10 +154,10 @@ export function SubmissionAttachmentGallery({
               key={attachment.id}
               type="button"
               onClick={() => setLightboxIndex(idx)}
-              className="group relative overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
+              className="group relative overflow-hidden rounded-xl border border-line-input/80 bg-surface-muted text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
               title={`${attachment.fileName} (${formatFileSize(attachment.fileSize)})`}
             >
-              <div className="aspect-4/3 w-full bg-slate-100 flex items-center justify-center overflow-hidden">
+              <div className="aspect-4/3 w-full bg-surface-muted flex items-center justify-center overflow-hidden">
                 {signedUrl ? (
                   <img
                     src={signedUrl}
@@ -168,14 +168,14 @@ export function SubmissionAttachmentGallery({
                   <ImageIcon
                     className={cn(
                       'size-5',
-                      isFailed ? 'text-slate-300' : 'text-slate-400 animate-pulse',
+                      isFailed ? 'text-ink-faint' : 'text-ink-subtle animate-pulse',
                     )}
                   />
                 )}
               </div>
-              <div className="flex items-center justify-between gap-1 px-2 py-1 bg-white border-t border-slate-100">
-                <span className="truncate text-[11px] text-slate-700">{attachment.fileName}</span>
-                <Maximize2 className="size-3 shrink-0 text-slate-400 group-hover:text-[#2054a5]" />
+              <div className="flex items-center justify-between gap-1 px-2 py-1 bg-surface-card border-t border-line-subtle">
+                <span className="truncate text-[11px] text-ink-secondary">{attachment.fileName}</span>
+                <Maximize2 className="size-3 shrink-0 text-ink-subtle group-hover:text-brand-ink" />
               </div>
             </button>
           );
@@ -187,7 +187,7 @@ export function SubmissionAttachmentGallery({
           open
           onClose={() => setLightboxIndex(null)}
           title={
-            <span className="text-sm font-semibold text-slate-900 truncate block">
+            <span className="text-sm font-semibold text-ink-primary truncate block">
               {activeItem.fileName} · {formatFileSize(activeItem.fileSize)}
             </span>
           }
@@ -202,12 +202,12 @@ export function SubmissionAttachmentGallery({
                   className="max-h-[64vh] max-w-full rounded-lg object-contain"
                 />
               ) : (
-                <p className="text-xs text-slate-300">Đang tải ảnh minh chứng…</p>
+                <p className="text-xs text-ink-faint">Đang tải ảnh minh chứng…</p>
               )}
             </div>
 
             <div className="flex flex-wrap items-center justify-between w-full gap-3">
-              <div className="flex items-center gap-2 text-xs text-slate-300">
+              <div className="flex items-center gap-2 text-xs text-ink-faint">
                 {attachments.length > 1 && (
                   <>
                     <Button
@@ -219,7 +219,7 @@ export function SubmissionAttachmentGallery({
                           (lightboxIndex - 1 + attachments.length) % attachments.length,
                         )
                       }
-                      className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+                      className="bg-surface-card/10 border-white/20 text-white hover:bg-surface-hover/20 hover:text-white"
                     >
                       <ChevronLeft className="size-4 mr-1" />
                       Trước
@@ -232,7 +232,7 @@ export function SubmissionAttachmentGallery({
                       variant="outline"
                       size="sm"
                       onClick={() => setLightboxIndex((lightboxIndex + 1) % attachments.length)}
-                      className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+                      className="bg-surface-card/10 border-white/20 text-white hover:bg-surface-hover/20 hover:text-white"
                     >
                       Sau
                       <ChevronRight className="size-4 ml-1" />
@@ -247,7 +247,7 @@ export function SubmissionAttachmentGallery({
                   variant="outline"
                   size="sm"
                   onClick={() => window.open(activeUrl, '_blank', 'noopener,noreferrer')}
-                  className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white"
+                  className="bg-surface-card/10 border-white/20 text-white hover:bg-surface-hover/20 hover:text-white"
                 >
                   <Download className="size-3.5 mr-1.5" />
                   Mở ảnh gốc

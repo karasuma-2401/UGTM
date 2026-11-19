@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
@@ -27,6 +27,23 @@ export function useStudentArchival() {
   const [draftMetadata, setDraftMetadata] = useState<ArchivalMetadataInput | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+  const [previewingKey, setPreviewingKey] = useState<string | null>(null);
+  const localPdfUrlRef = useRef<string | null>(null);
+  const [pdfPreviewState, setPdfPreviewState] = useState<{
+    open: boolean;
+    url: string;
+    fileName?: string;
+    fileSize?: number;
+  }>({ open: false, url: '' });
+
+  useEffect(() => {
+    return () => {
+      if (localPdfUrlRef.current) {
+        URL.revokeObjectURL(localPdfUrlRef.current);
+        localPdfUrlRef.current = null;
+      }
+    };
+  }, []);
 
   const statusQuery = useQuery({
     queryKey: ['student-registration-status', user?.id],
@@ -95,11 +112,17 @@ export function useStudentArchival() {
   });
 
   const submissionId = submissionQuery.data?.submissionId ?? null;
+  const rawSubmissionStatus =
+    submissionQuery.data?.status ??
+    eligibilityQuery.data?.currentSubmissionStatus ??
+    'NotSubmitted';
 
   const packagesQuery = useQuery({
     queryKey: ['student-archival-packages', submissionId],
     queryFn: ({ signal }) => archivalApi.getPackages(submissionId!, signal),
-    enabled: Boolean(isHistoryOpen && submissionId),
+    enabled: Boolean(
+      submissionId && (isHistoryOpen || rawSubmissionStatus === 'NeedRevision'),
+    ),
     staleTime: STALE_TIME_MS,
     refetchOnWindowFocus: false,
   });
@@ -117,16 +140,36 @@ export function useStudentArchival() {
   const metadata = draftMetadata ?? serverMetadata;
   const metadataValidation = useMemo(() => validateArchivalMetadata(metadata), [metadata]);
 
-  const submissionStatus =
-    submissionQuery.data?.status ??
-    eligibilityQuery.data?.currentSubmissionStatus ??
-    'NotSubmitted';
+  const submissionStatus = rawSubmissionStatus;
 
   const isLockedStatus =
     submissionStatus === 'AdvisorConfirmed' || submissionStatus === 'ArchiveConfirmed';
   const canEdit = Boolean(eligibilityQuery.data?.canSubmit) && !isLockedStatus;
   const canSubmit =
     canEdit && Boolean(pdfFile) && Boolean(docxFile) && metadataValidation.valid;
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (!canEdit) return false;
+    if (pdfFile || docxFile) return true;
+    if (!draftMetadata) return false;
+    return (
+      draftMetadata.abstractVi !== serverMetadata.abstractVi ||
+      draftMetadata.abstractEn !== serverMetadata.abstractEn ||
+      draftMetadata.keywordsVi !== serverMetadata.keywordsVi ||
+      draftMetadata.keywordsEn !== serverMetadata.keywordsEn
+    );
+  }, [canEdit, docxFile, draftMetadata, pdfFile, serverMetadata]);
+
+  const latestRevisionReview = useMemo(() => {
+    const packages = packagesQuery.data ?? [];
+    if (packages.length === 0) return null;
+    const latestPkg = [...packages].sort((a, b) => b.versionNo - a.versionNo)[0];
+    return (
+      [...(latestPkg.reviews ?? [])]
+        .sort((a, b) => Date.parse(b.decidedAtUtc) - Date.parse(a.decidedAtUtc))
+        .find((review) => review.action === 'RequestRevision') ?? null
+    );
+  }, [packagesQuery.data]);
 
   const updateMetadataField = (field: keyof ArchivalMetadataInput, value: string) => {
     setDraftMetadata((prev) => ({
@@ -215,6 +258,56 @@ export function useStudentArchival() {
     }
   };
 
+  const handlePreviewLocalPdf = () => {
+    if (!pdfFile) return;
+    if (localPdfUrlRef.current) {
+      URL.revokeObjectURL(localPdfUrlRef.current);
+    }
+    const objectUrl = URL.createObjectURL(pdfFile);
+    localPdfUrlRef.current = objectUrl;
+    setPdfPreviewState({
+      open: true,
+      url: objectUrl,
+      fileName: pdfFile.name,
+      fileSize: pdfFile.size,
+    });
+  };
+
+  const handlePreviewPackagePdf = async (
+    packageVersion: number,
+    fileName: string,
+    fileSize?: number,
+  ) => {
+    if (!submissionId) return;
+    const key = `${packageVersion}-ThesisPdf`;
+    setPreviewingKey(key);
+    try {
+      const download = await archivalApi.getDownloadUrl(
+        submissionId,
+        packageVersion,
+        'ThesisPdf',
+        { inline: true },
+      );
+      setPdfPreviewState({
+        open: true,
+        url: download.downloadUrl,
+        fileName: download.fileName || fileName,
+        fileSize: download.fileSize ?? fileSize,
+      });
+    } catch (error) {
+      notify.error(getThesisErrorMessage(error, 'Không tạo được liên kết xem trước tệp PDF.'));
+    } finally {
+      setPreviewingKey(null);
+    }
+  };
+
+  const resetDraft = () => {
+    setPdfFile(null);
+    setDocxFile(null);
+    setDraftMetadata(null);
+    setFileError(null);
+  };
+
   const refresh = async () => {
     if (!isConfirmedMember) {
       await statusQuery.refetch();
@@ -240,6 +333,8 @@ export function useStudentArchival() {
     isLockedStatus,
     canEdit,
     canSubmit,
+    hasUnsavedChanges,
+    latestRevisionReview,
     pdfFile,
     docxFile,
     fileError,
@@ -248,14 +343,20 @@ export function useStudentArchival() {
     isHistoryOpen,
     setIsHistoryOpen,
     downloadingKey,
+    previewingKey,
+    pdfPreviewState,
+    closePdfPreview: () => setPdfPreviewState((prev) => ({ ...prev, open: false })),
     selectPdfFile,
     selectDocxFile,
     removePdfFile: () => setPdfFile(null),
     removeDocxFile: () => setDocxFile(null),
     updateMetadataField,
-    submitArchival: () => submitMutation.mutate(),
+    resetDraft,
+    submitArchival: () => submitMutation.mutateAsync(),
     isSubmitting: submitMutation.isPending,
     handleDownloadFile,
+    handlePreviewLocalPdf,
+    handlePreviewPackagePdf,
     refresh,
   };
 }

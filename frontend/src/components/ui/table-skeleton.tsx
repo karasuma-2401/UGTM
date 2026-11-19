@@ -61,7 +61,7 @@ export function TableSkeleton({ columns, rows = 6, className }: TableSkeletonPro
             <col key={index} className={column.width} />
           ))}
         </colgroup>
-        <thead className="sticky top-0 z-10 h-14 border-b border-slate-100 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-600">
+        <thead className="sticky top-0 z-10 h-14 border-b border-line-subtle bg-surface-subtle text-[11px] uppercase tracking-wider text-ink-body">
           <tr>
             {columns.map((column, index) => (
               <th
@@ -82,7 +82,7 @@ export function TableSkeleton({ columns, rows = 6, className }: TableSkeletonPro
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-line-subtle">
           {Array.from({ length: rows }, (_, rowIndex) => (
             <tr key={rowIndex} className="h-[88px]">
               {columns.map((column, columnIndex) => (

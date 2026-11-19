@@ -148,10 +148,10 @@ export const AdvisorArchivalPage: React.FC = () => {
         sortKey: 'topicTitle',
         cell: (row) => (
           <div className="min-w-0 space-y-0.5">
-            <p className="truncate font-semibold text-slate-900" title={row.topicTitleVi}>
+            <p className="truncate font-semibold text-ink-primary" title={row.topicTitleVi}>
               {row.topicTitleVi}
             </p>
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-ink-muted">
               {row.studentNames.length > 0
                 ? row.studentNames
                     .map((name, idx) =>
@@ -172,7 +172,7 @@ export const AdvisorArchivalPage: React.FC = () => {
         headerClassName: 'whitespace-nowrap',
         cell: (row) => (
           <div className="flex items-center gap-1.5 whitespace-nowrap">
-            <span className="text-xs font-semibold text-slate-800 tabular-nums">
+            <span className="text-xs font-semibold text-ink-heading tabular-nums">
               v{row.currentVersionNo}
             </span>
             {row.currentVersionNo > 1 && (
@@ -191,7 +191,7 @@ export const AdvisorArchivalPage: React.FC = () => {
         widthClassName: 'w-40',
         headerClassName: 'whitespace-nowrap',
         cell: (row) => (
-          <span className="text-xs text-slate-600 tabular-nums whitespace-nowrap">
+          <span className="text-xs text-ink-body tabular-nums whitespace-nowrap">
             {row.submittedAt ? formatDateTimeVi(row.submittedAt) : '—'}
           </span>
         ),
@@ -218,7 +218,7 @@ export const AdvisorArchivalPage: React.FC = () => {
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 rounded-md px-3 text-xs font-medium bg-white"
+              className="h-8 rounded-md px-3 text-xs font-medium bg-surface-card"
               onClick={() => actions.openInspection(row.submissionId)}
             >
               Xem
@@ -259,9 +259,9 @@ export const AdvisorArchivalPage: React.FC = () => {
             placeholder={isLoadingBatches ? 'Đang tải đợt KLTN...' : 'Chọn đợt KLTN'}
             options={batchOptions}
             onChange={(value) => actions.selectBatch(value)}
-            triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300"
-            contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-slate-200/90 shadow-lg"
-            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
+            triggerClassName="h-10 rounded-xl border-line/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong"
+            contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-line/90 shadow-lg"
+            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover"
           />
         </div>
 
@@ -273,7 +273,7 @@ export const AdvisorArchivalPage: React.FC = () => {
           title="Làm mới"
           disabled={!selectedBatchId || isFetchingList}
           onClick={() => actions.refresh()}
-          className="size-10 shrink-0 rounded-xl border-slate-200 bg-white text-slate-600 hover:text-slate-900 shadow-2xs"
+          className="size-10 shrink-0 rounded-xl border-line bg-surface-card text-ink-body hover:text-ink-primary shadow-2xs"
         >
           <RefreshCw className={cn('size-4', isFetchingList && 'animate-spin')} />
         </Button>
@@ -285,24 +285,24 @@ export const AdvisorArchivalPage: React.FC = () => {
         className="grid-flow-row grid-cols-2 sm:grid-cols-3 lg:grid-flow-col lg:auto-cols-fr [&>div:first-of-type]:col-span-2 sm:[&>div:first-of-type]:col-span-1"
       />
 
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 bg-white shadow-xs">
-        <div className="border-b border-slate-100 bg-slate-50/45 px-5 py-3.5">
+      <Card className="min-w-0 overflow-hidden rounded-2xl border-line/80 bg-surface-card shadow-xs">
+        <div className="border-b border-line-subtle bg-surface-subtle/45 px-5 py-3.5">
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative flex-1 min-w-[220px]">
               <Input
                 value={keyword}
                 onChange={(event) => actions.changeKeyword(event.target.value)}
-                leftIcon={<Search className="size-4 text-slate-400" />}
+                leftIcon={<Search className="size-4 text-ink-subtle" />}
                 placeholder="Tìm mã nhóm, tên đề tài hoặc tên/MSSV sinh viên..."
                 aria-label="Tìm kiếm hồ sơ lưu chiểu"
-                className="h-9 rounded-lg border-slate-200 bg-white pr-9 shadow-2xs"
+                className="h-9 rounded-lg border-line bg-surface-card pr-9 shadow-2xs"
               />
               {keyword && (
                 <button
                   type="button"
                   aria-label="Xóa từ khóa tìm kiếm"
                   onClick={() => actions.changeKeyword('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-ink-subtle hover:bg-surface-muted hover:text-ink-secondary cursor-pointer"
                 >
                   <X className="size-3.5" />
                 </button>
@@ -314,7 +314,7 @@ export const AdvisorArchivalPage: React.FC = () => {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-lg bg-white shadow-2xs"
+                className="h-9 rounded-lg bg-surface-card shadow-2xs"
                 onClick={actions.resetFilters}
               >
                 Đặt lại mặc định
@@ -324,7 +324,7 @@ export const AdvisorArchivalPage: React.FC = () => {
         </div>
 
         {listError && (
-          <div className="p-4 border-b border-slate-100">
+          <div className="p-4 border-b border-line-subtle">
             <InlineAlert
               tone="error"
               title="Không tải được danh sách hồ sơ"
@@ -361,7 +361,7 @@ export const AdvisorArchivalPage: React.FC = () => {
                 onClick={() => actions.openInspection(row.submissionId)}
                 className={cn(
                   'rounded-xl p-1 transition-colors cursor-pointer space-y-2.5',
-                  isSelected ? 'bg-blue-50/50' : 'bg-white',
+                  isSelected ? 'bg-tone-info-bg' : 'bg-surface-card',
                 )}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -369,7 +369,7 @@ export const AdvisorArchivalPage: React.FC = () => {
                     <span className="text-sm font-bold text-primary tabular-nums">
                       {row.groupCode}
                     </span>
-                    <span className="text-xs font-semibold text-slate-600 tabular-nums">
+                    <span className="text-xs font-semibold text-ink-body tabular-nums">
                       v{row.currentVersionNo}
                     </span>
                     {row.currentVersionNo > 1 && (
@@ -381,11 +381,11 @@ export const AdvisorArchivalPage: React.FC = () => {
                   <StatusBadge tone={row.statusTone}>{row.statusLabel}</StatusBadge>
                 </div>
 
-                <p className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">
+                <p className="text-sm font-semibold text-ink-primary leading-snug line-clamp-2">
                   {row.topicTitleVi}
                 </p>
 
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <p className="text-xs text-ink-muted leading-relaxed">
                   {row.studentNames.length > 0
                     ? row.studentNames
                         .map((name, idx) =>
@@ -396,14 +396,14 @@ export const AdvisorArchivalPage: React.FC = () => {
                 </p>
 
                 <div className="flex items-center justify-between gap-2 pt-1">
-                  <span className="text-[11px] text-slate-500 tabular-nums">
+                  <span className="text-[11px] text-ink-muted tabular-nums">
                     {row.submittedAt ? `Nộp: ${formatDateTimeVi(row.submittedAt)}` : '—'}
                   </span>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-md px-3 text-xs font-medium bg-white"
+                    className="h-8 rounded-md px-3 text-xs font-medium bg-surface-card"
                     onClick={(event) => {
                       event.stopPropagation();
                       actions.openInspection(row.submissionId);
@@ -475,7 +475,7 @@ export const AdvisorArchivalPage: React.FC = () => {
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 rounded-xl text-xs font-semibold bg-white"
+              className="h-8 rounded-xl text-xs font-semibold bg-surface-card"
               leftIcon={<History className="size-3.5" />}
               onClick={actions.openHistory}
             >
@@ -563,22 +563,22 @@ export const AdvisorArchivalPage: React.FC = () => {
         cancelText="Hủy"
         description={
           pendingAction === 'AdvisorConfirm' ? (
-            <div className="space-y-2 text-sm text-slate-600">
+            <div className="space-y-2 text-sm text-ink-body">
               <p>
                 Xác nhận phiên bản <strong>v{activeVersion}</strong> (PDF, DOCX và Metadata
                 Việt/Anh) của nhóm <strong>{inspectedRow?.groupCode}</strong> đã đạt yêu cầu.
               </p>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              <div className="rounded-xl border border-line bg-surface-subtle px-3 py-2 text-xs text-ink-body">
                 Sau khi xác nhận, hồ sơ sẽ được chuyển sang Văn phòng Khoa nghiệm thu lưu chiểu.
               </div>
             </div>
           ) : (
-            <div className="space-y-2 text-sm text-slate-600">
+            <div className="space-y-2 text-sm text-ink-body">
               <p>
                 Hồ sơ nhóm <strong>{inspectedRow?.groupCode}</strong> sẽ chuyển về trạng thái{' '}
                 <strong>Cần bổ sung</strong> để sinh viên chỉnh sửa và nộp lại.
               </p>
-              <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-900 whitespace-pre-wrap">
+              <div className="rounded-xl border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-xs text-tone-warning-strong whitespace-pre-wrap">
                 Lý do: {revisionReason.trim()}
               </div>
             </div>

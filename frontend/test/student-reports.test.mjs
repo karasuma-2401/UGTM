@@ -149,9 +149,10 @@ test('ThesisSubmissionNavigation uses NavigationTabs with thesis-submission-tabs
   const html = renderToStaticMarkup(React.createElement(ThesisSubmissionNavigation, { gates }));
   assert.match(html, /data-continuity-key="thesis-submission-tabs"/);
   assert.match(html, /data-active-id="proposal"/);
-  assert.match(html, /2\/4/);
   assert.match(html, /Đạt/);
-  assert.match(html, /Chờ duyệt/);
+  assert.doesNotMatch(html, /2\/4/);
+  assert.doesNotMatch(html, /Chờ duyệt/);
+  assert.doesNotMatch(html, /Chờ Cổng 2/);
 });
 
 test('ThesisGroupDossierCard and FinalReportSummaryCard render Avatar member rows without fake mock fallbacks', () => {
@@ -265,7 +266,6 @@ test('FinalReportVersionCard renders full multi-version history timeline without
       currentStatus: 'Submitted',
       currentVersionNo: 2,
       onDownload() {},
-      onOpenFeedback() {},
       versions: [
         {
           versionNo: 1,
@@ -300,7 +300,7 @@ test('FinalReportVersionCard renders full multi-version history timeline without
   assert.match(html, /2 phiên bản/);
   assert.match(html, /Bao-cao-cuoi-ky-v1\.docx/);
   assert.match(html, /Bao-cao-cuoi-ky-v2-final\.pdf/);
-  assert.match(html, /Xem góp ý GVPB/);
+  assert.doesNotMatch(html, /Xem góp ý GVPB/);
 });
 
 test('MidtermSubmissionPage renders Hồ sơ giữa kỳ instead of Hồ sơ đề cương copy-paste bug', () => {

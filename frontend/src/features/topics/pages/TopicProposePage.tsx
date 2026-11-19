@@ -555,13 +555,17 @@ export function TopicProposePage({
     setSelectedRowId(null);
     onFiltersChange?.(next);
   }
-  function handleApplyFilters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const next = { ...draftFilters, keyword: draftFilters.keyword.trim() };
+  function applyFiltersNow(nextDraft: TopicFilters) {
+    const next = { ...nextDraft, keyword: nextDraft.keyword.trim() };
+    setDraftFilters(nextDraft);
     setFilters(next);
     setPageNumber(1);
     setSelectedRowId(null);
     onFiltersChange?.(next);
+  }
+  function handleApplyFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    applyFiltersNow(draftFilters);
   }
   function clearFilters() {
     setDraftFilters({ ...INITIAL_FILTERS });
@@ -647,11 +651,11 @@ export function TopicProposePage({
       {availableLocalDraft && !isFormOpen && (
         <div
           role="status"
-          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-tone-warning-border bg-tone-warning-bg p-4 text-sm text-tone-warning-strong"
         >
           <div>
             <p className="font-medium">Có đề xuất đang soạn được lưu trên thiết bị</p>
-            <p className="mt-1 text-xs text-amber-800">
+            <p className="mt-1 text-xs text-tone-warning-strong">
               Lưu lúc {new Date(availableLocalDraft.savedAt).toLocaleString('vi-VN')}. Nội dung này
               chưa được lưu lên hệ thống.
             </p>
@@ -674,7 +678,7 @@ export function TopicProposePage({
       {localError && !isFormOpen && <InlineAlert tone="error">{localError}</InlineAlert>}
       {notice && <InlineAlert tone="info">{notice}</InlineAlert>}
       {detailMutation.isPending && (
-        <p role="status" className="text-sm text-slate-500">
+        <p role="status" className="text-sm text-ink-muted">
           Đang tải nội dung đề tài...
         </p>
       )}
@@ -696,7 +700,7 @@ export function TopicProposePage({
           busy={busy}
           onClose={closeForm}
           className={isPreviewOpen ? 'max-w-4xl' : 'max-w-5xl'}
-          headerClassName="border-b border-slate-200/80 px-5 py-3.5 sm:px-6"
+          headerClassName="border-b border-line/80 px-5 py-3.5 sm:px-6"
         >
           {isPreviewOpen ? (
             <>
@@ -710,13 +714,13 @@ export function TopicProposePage({
                 }
                 batchLoading={Boolean(values.batchId) && !selectedBatch && batchesLoading}
               />
-              <div className="sticky bottom-0 z-10 flex justify-end border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+              <div className="sticky bottom-0 z-10 flex justify-end border-t border-line/80 bg-surface-card/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
                 <Button
                   type="button"
                   variant="outline"
                   leftIcon={<ArrowLeft />}
                   onClick={() => setIsPreviewOpen(false)}
-                  className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold"
+                  className="h-9 rounded-xl border-line-input px-4 text-xs font-semibold"
                 >
                   {editable ? 'Quay lại chỉnh sửa' : 'Quay lại chi tiết'}
                 </Button>
@@ -725,16 +729,16 @@ export function TopicProposePage({
           ) : (
             <form onSubmit={handleSubmit} noValidate>
               <div className="grid grid-cols-1 lg:grid-cols-12">
-                <div className="space-y-5 bg-white p-5 sm:p-6 lg:col-span-8">
+                <div className="space-y-5 bg-surface-card p-5 sm:p-6 lg:col-span-8">
                   {selectedTopic?.reviewNote && <TopicReviewNote note={selectedTopic.reviewNote} />}
 
                   {recovery && (
                     <div
                       role="status"
-                      className="space-y-3 rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-sm text-amber-900"
+                      className="space-y-3 rounded-xl border border-tone-warning-border bg-tone-warning-bg p-3.5 text-sm text-tone-warning-strong"
                     >
                       <p className="font-semibold">Có nội dung chưa lưu lên hệ thống</p>
-                      <p className="text-xs leading-relaxed text-amber-800">
+                      <p className="text-xs leading-relaxed text-tone-warning-strong">
                         Bản lưu trên thiết bị lúc{' '}
                         {new Date(recovery.savedAt).toLocaleString('vi-VN')}. Chọn khôi phục hoặc bỏ
                         bản lưu tạm để tiếp tục.
@@ -751,7 +755,7 @@ export function TopicProposePage({
                           size="sm"
                           variant="outline"
                           onClick={restoreRecovery}
-                          className="h-8 rounded-lg border-amber-300 bg-white text-xs font-semibold text-amber-900 hover:bg-amber-100/70"
+                          className="h-8 rounded-lg border-tone-warning-border bg-surface-card text-xs font-semibold text-tone-warning-strong hover:bg-tone-warning-bg"
                         >
                           Khôi phục nội dung
                         </Button>
@@ -760,7 +764,7 @@ export function TopicProposePage({
                           size="sm"
                           variant="ghost"
                           onClick={discardRecovery}
-                          className="h-8 rounded-lg text-xs font-medium text-amber-900 hover:bg-amber-100/70"
+                          className="h-8 rounded-lg text-xs font-medium text-tone-warning-strong hover:bg-tone-warning-bg"
                         >
                           Bỏ bản lưu tạm
                         </Button>
@@ -771,13 +775,13 @@ export function TopicProposePage({
                   <div
                     className={`flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs leading-relaxed ${
                       selectedTopic?.status === 'NeedRevision'
-                        ? 'border-amber-200 bg-amber-50/70 text-amber-900'
-                        : 'border-slate-200 bg-slate-50/80 text-slate-600'
+                        ? 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong'
+                        : 'border-line bg-surface-subtle/80 text-ink-body'
                     }`}
                   >
                     <Info
                       className={`mt-0.5 size-4 shrink-0 ${
-                        selectedTopic?.status === 'NeedRevision' ? 'text-amber-600' : 'text-primary'
+                        selectedTopic?.status === 'NeedRevision' ? 'text-tone-warning-icon' : 'text-primary'
                       }`}
                       aria-hidden="true"
                     />
@@ -787,7 +791,7 @@ export function TopicProposePage({
                   {localError && (
                     <p
                       role="alert"
-                      className="rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 text-xs font-medium text-amber-800"
+                      className="rounded-xl border border-tone-warning-border bg-tone-warning-bg px-3.5 py-2.5 text-xs font-medium text-tone-warning-strong"
                     >
                       {localError}
                     </p>
@@ -801,14 +805,14 @@ export function TopicProposePage({
                       <div className="space-y-1.5">
                         <label
                           id="topic-batch-label"
-                          className="block text-xs font-semibold text-slate-700"
+                          className="block text-xs font-semibold text-ink-secondary"
                         >
-                          Đợt khóa luận <span className="text-rose-600">*</span>
+                          Đợt khóa luận <span className="text-tone-danger-icon">*</span>
                         </label>
                         <Select<string>
                           id="topic-batch-field"
                           error={fieldErrors.batchId}
-                          triggerClassName="h-10 rounded-xl bg-slate-50/60 shadow-none focus-visible:bg-white"
+                          triggerClassName="h-10 rounded-xl bg-surface-subtle/60 shadow-none focus-visible:bg-surface-card"
                           aria-labelledby="topic-batch-label"
                           value={values.batchId}
                           options={batches.map((batch) => ({
@@ -836,13 +840,13 @@ export function TopicProposePage({
                           }
                         />
                         {!canReadBatches && (
-                          <p role="alert" className="text-xs text-amber-700">
+                          <p role="alert" className="text-xs text-tone-warning-text">
                             Bạn chưa có quyền xem danh sách đợt KLTN. Liên hệ quản trị viên để được
                             cấp quyền.
                           </p>
                         )}
                         {selectedTopic && (
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-ink-muted">
                             Đợt KLTN được giữ nguyên sau khi tạo đề tài.
                           </p>
                         )}
@@ -851,17 +855,17 @@ export function TopicProposePage({
                       <div className="space-y-1.5">
                         <label
                           htmlFor="topic-title-vi"
-                          className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-700"
+                          className="flex items-center justify-between gap-2 text-xs font-semibold text-ink-secondary"
                         >
                           <span>
-                            Tên đề tài tiếng Việt <span className="text-rose-600">*</span>
+                            Tên đề tài tiếng Việt <span className="text-tone-danger-icon">*</span>
                           </span>
-                          <span className="text-[11px] font-medium tabular-nums text-slate-400">
+                          <span className="text-[11px] font-medium tabular-nums text-ink-subtle">
                             {values.titleVi.length}/300
                           </span>
                         </label>
                         <Input
-                          className="h-10 rounded-xl bg-slate-50/60 shadow-none focus-visible:bg-white"
+                          className="h-10 rounded-xl bg-surface-subtle/60 shadow-none focus-visible:bg-surface-card"
                           id="topic-title-vi"
                           error={fieldErrors.titleVi}
                           value={values.titleVi}
@@ -875,18 +879,18 @@ export function TopicProposePage({
                       <div className="space-y-1.5">
                         <label
                           htmlFor="topic-title-en"
-                          className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-700"
+                          className="flex items-center justify-between gap-2 text-xs font-semibold text-ink-secondary"
                         >
                           <span>
                             Tên đề tài tiếng Anh{' '}
-                            <span className="font-normal text-slate-400">(cần khi gửi)</span>
+                            <span className="font-normal text-ink-subtle">(cần khi gửi)</span>
                           </span>
-                          <span className="text-[11px] font-medium tabular-nums text-slate-400">
+                          <span className="text-[11px] font-medium tabular-nums text-ink-subtle">
                             {values.titleEn.length}/350
                           </span>
                         </label>
                         <Input
-                          className="h-10 rounded-xl bg-slate-50/60 shadow-none focus-visible:bg-white"
+                          className="h-10 rounded-xl bg-surface-subtle/60 shadow-none focus-visible:bg-surface-card"
                           id="topic-title-en"
                           error={fieldErrors.titleEn}
                           value={values.titleEn}
@@ -899,10 +903,10 @@ export function TopicProposePage({
                       <div className="space-y-1.5">
                         <label
                           id="topic-description-label"
-                          className="block text-xs font-semibold text-slate-700"
+                          className="block text-xs font-semibold text-ink-secondary"
                         >
                           Mục tiêu và mô tả{' '}
-                          <span className="font-normal text-slate-400">(cần khi gửi)</span>
+                          <span className="font-normal text-ink-subtle">(cần khi gửi)</span>
                         </label>
                         <RichTextEditor
                           id="topic-description"
@@ -924,7 +928,7 @@ export function TopicProposePage({
                           <p
                             id="topic-description-error"
                             role="alert"
-                            className="text-xs text-rose-600"
+                            className="text-xs text-tone-danger-icon"
                           >
                             {fieldErrors.description}
                           </p>
@@ -934,10 +938,10 @@ export function TopicProposePage({
                       <div className="space-y-1.5">
                         <label
                           id="topic-requirements-label"
-                          className="block text-xs font-semibold text-slate-700"
+                          className="block text-xs font-semibold text-ink-secondary"
                         >
                           Yêu cầu công nghệ và kiến thức{' '}
-                          <span className="font-normal text-slate-400">(cần khi gửi)</span>
+                          <span className="font-normal text-ink-subtle">(cần khi gửi)</span>
                         </label>
                         <RichTextEditor
                           id="topic-requirements"
@@ -959,7 +963,7 @@ export function TopicProposePage({
                           <p
                             id="topic-requirements-error"
                             role="alert"
-                            className="text-xs text-rose-600"
+                            className="text-xs text-tone-danger-icon"
                           >
                             {fieldErrors.requirements}
                           </p>
@@ -967,18 +971,18 @@ export function TopicProposePage({
                       </div>
                     </div>
 
-                    <div className="space-y-4 border-t border-slate-100 pt-5">
+                    <div className="space-y-4 border-t border-line-subtle pt-5">
                       <div className="space-y-1.5">
                         <label
                           id="topic-capacity-label"
-                          className="block text-xs font-semibold text-slate-700"
+                          className="block text-xs font-semibold text-ink-secondary"
                         >
                           Số sinh viên tối đa
                         </label>
                         <Select<number>
                           id="topic-capacity-field"
                           error={fieldErrors.studentNumber}
-                          triggerClassName="h-10 rounded-xl bg-slate-50/60 shadow-none focus-visible:bg-white"
+                          triggerClassName="h-10 rounded-xl bg-surface-subtle/60 shadow-none focus-visible:bg-surface-card"
                           aria-labelledby="topic-capacity-label"
                           value={values.studentNumber}
                           options={[
@@ -1007,16 +1011,16 @@ export function TopicProposePage({
                   {(formError || saveMutation.isError) && (
                     <p
                       role="alert"
-                      className="rounded-xl border border-rose-200 bg-rose-50/80 px-3.5 py-2.5 text-xs font-medium text-rose-700"
+                      className="rounded-xl border border-tone-danger-border bg-tone-danger-bg px-3.5 py-2.5 text-xs font-medium text-tone-danger-text"
                     >
                       {formError || getTopicErrorMessage(saveMutation.error)}
                     </p>
                   )}
                 </div>
 
-                <aside className="space-y-4 border-t border-slate-200/80 bg-slate-50/70 p-5 sm:p-6 lg:col-span-4 lg:border-l lg:border-t-0">
+                <aside className="space-y-4 border-t border-line/80 bg-surface-subtle/70 p-5 sm:p-6 lg:col-span-4 lg:border-l lg:border-t-0">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-bold tracking-tight text-slate-900">
+                    <h3 className="text-sm font-bold tracking-tight text-ink-primary">
                       {editable ? 'Tóm tắt đề xuất' : 'Thông tin đề tài'}
                     </h3>
                     <TopicStatusBadge status={selectedTopic?.status ?? 'Draft'} />
@@ -1024,37 +1028,37 @@ export function TopicProposePage({
 
                   {/* KPI Mini-Tiles matching PeriodSummaryCard & RosterGuideCard */}
                   <div className="grid grid-cols-2 gap-2.5">
-                    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
-                      <span className="mb-0.5 block text-[11px] font-medium text-slate-500">
+                    <div className="rounded-xl border border-line bg-surface-card p-3 shadow-2xs">
+                      <span className="mb-0.5 block text-[11px] font-medium text-ink-muted">
                         Chỉ tiêu nhóm
                       </span>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-lg font-bold tabular-nums text-slate-900">
+                        <span className="text-lg font-bold tabular-nums text-ink-primary">
                           {values.studentNumber}
                         </span>
-                        <span className="text-xs text-slate-500">sinh viên</span>
+                        <span className="text-xs text-ink-muted">sinh viên</span>
                       </div>
-                      <span className="mt-1 inline-block text-[10px] text-slate-400">
+                      <span className="mt-1 inline-block text-[10px] text-ink-subtle">
                         Tối đa cho đề tài
                       </span>
                     </div>
 
                     {editable ? (
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
-                        <span className="mb-0.5 block text-[11px] font-medium text-slate-500">
+                      <div className="rounded-xl border border-line bg-surface-card p-3 shadow-2xs">
+                        <span className="mb-0.5 block text-[11px] font-medium text-ink-muted">
                           Mức hoàn thiện
                         </span>
                         <div className="flex items-baseline gap-1">
                           <span
                             className={`text-lg font-bold tabular-nums ${
-                              isChecklistComplete ? 'text-emerald-700' : 'text-slate-900'
+                              isChecklistComplete ? 'text-tone-success-text' : 'text-ink-primary'
                             }`}
                           >
                             {completedChecklistCount}/{checklist.length}
                           </span>
-                          <span className="text-xs text-slate-500">tiêu chí</span>
+                          <span className="text-xs text-ink-muted">tiêu chí</span>
                         </div>
-                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
                           <div
                             className={`h-full rounded-full transition-all duration-300 ${
                               isChecklistComplete ? 'bg-emerald-500' : 'bg-primary'
@@ -1066,17 +1070,17 @@ export function TopicProposePage({
                         </div>
                       </div>
                     ) : (
-                      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-2xs">
-                        <span className="mb-0.5 block text-[11px] font-medium text-slate-500">
+                      <div className="rounded-xl border border-line bg-surface-card p-3 shadow-2xs">
+                        <span className="mb-0.5 block text-[11px] font-medium text-ink-muted">
                           Sinh viên ghi nhận
                         </span>
                         <div className="flex items-baseline gap-1">
-                          <span className="text-lg font-bold tabular-nums text-slate-900">
+                          <span className="text-lg font-bold tabular-nums text-ink-primary">
                             {assignedStudentCount}
                           </span>
-                          <span className="text-xs text-slate-500">sinh viên</span>
+                          <span className="text-xs text-ink-muted">sinh viên</span>
                         </div>
-                        <span className="mt-1 inline-block text-[10px] text-slate-400">
+                        <span className="mt-1 inline-block text-[10px] text-ink-subtle">
                           Theo phân công hiện tại
                         </span>
                       </div>
@@ -1084,17 +1088,17 @@ export function TopicProposePage({
                   </div>
 
                   {/* Key-Value Metadata Panel matching PeriodSummaryCard & RosterGuideCard */}
-                  <dl className="space-y-2.5 rounded-xl border border-slate-200 bg-white p-3.5 text-xs shadow-2xs">
+                  <dl className="space-y-2.5 rounded-xl border border-line bg-surface-card p-3.5 text-xs shadow-2xs">
                     <div className="flex items-center justify-between gap-3">
-                      <dt className="shrink-0 font-medium text-slate-500">Người đề xuất:</dt>
-                      <dd className="truncate font-semibold text-slate-900" title={user?.fullName}>
+                      <dt className="shrink-0 font-medium text-ink-muted">Người đề xuất:</dt>
+                      <dd className="truncate font-semibold text-ink-primary" title={user?.fullName}>
                         {user?.fullName}
                       </dd>
                     </div>
-                    <div className="flex items-center justify-between gap-3 border-t border-slate-100 pt-2.5">
-                      <dt className="shrink-0 font-medium text-slate-500">Đợt khóa luận:</dt>
+                    <div className="flex items-center justify-between gap-3 border-t border-line-subtle pt-2.5">
+                      <dt className="shrink-0 font-medium text-ink-muted">Đợt khóa luận:</dt>
                       <dd
-                        className="truncate text-right font-semibold text-slate-900"
+                        className="truncate text-right font-semibold text-ink-primary"
                         title={
                           selectedBatch?.batchName ||
                           (values.batchId ? `Mã đợt: ${values.batchId}` : 'Chưa chọn đợt')
@@ -1106,7 +1110,7 @@ export function TopicProposePage({
                           ) : values.batchId ? (
                             `Mã đợt: ${values.batchId}`
                           ) : (
-                            <span className="font-medium text-slate-400">Chưa chọn đợt</span>
+                            <span className="font-medium text-ink-subtle">Chưa chọn đợt</span>
                           ))}
                       </dd>
                     </div>
@@ -1118,7 +1122,7 @@ export function TopicProposePage({
                     type="button"
                     variant="outline"
                     leftIcon={<Eye />}
-                    className="h-9 w-full rounded-xl border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-300 hover:bg-slate-50"
+                    className="h-9 w-full rounded-xl border-line-input bg-surface-card text-xs font-semibold text-ink-secondary shadow-2xs hover:border-line-strong hover:bg-surface-hover"
                     disabled={busy || Boolean(recovery)}
                     onClick={() => setIsPreviewOpen(true)}
                   >
@@ -1126,16 +1130,16 @@ export function TopicProposePage({
                   </Button>
 
                   {editable && (
-                    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
+                    <div className="space-y-3 rounded-xl border border-line bg-surface-card p-3.5 shadow-2xs">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-bold text-slate-800">
+                        <p className="text-xs font-bold text-ink-heading">
                           Cần hoàn thành trước khi gửi
                         </p>
                         <span
                           className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums ${
                             isChecklistComplete
-                              ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                              : 'border-slate-200 bg-slate-50 text-slate-700'
+                              ? 'border-tone-success-border bg-tone-success-bg text-tone-success-strong'
+                              : 'border-line-input bg-surface-muted text-ink-secondary'
                           }`}
                         >
                           {completedChecklistCount}/{checklist.length} mục
@@ -1146,17 +1150,17 @@ export function TopicProposePage({
                           <li
                             key={item.label}
                             className={`flex items-start gap-2 ${
-                              item.complete ? 'font-medium text-emerald-700' : 'text-slate-600'
+                              item.complete ? 'font-medium text-tone-success-text' : 'text-ink-body'
                             }`}
                           >
                             {item.complete ? (
                               <CheckCircle2
-                                className="mt-0.5 size-4 shrink-0 text-emerald-600"
+                                className="mt-0.5 size-4 shrink-0 text-tone-success-icon"
                                 aria-hidden="true"
                               />
                             ) : (
                               <Circle
-                                className="mt-0.5 size-4 shrink-0 text-slate-300"
+                                className="mt-0.5 size-4 shrink-0 text-ink-faint"
                                 aria-hidden="true"
                               />
                             )}
@@ -1169,7 +1173,7 @@ export function TopicProposePage({
                           </li>
                         ))}
                       </ul>
-                      <p className="border-t border-slate-100 pt-2.5 text-[11px] leading-relaxed text-slate-400">
+                      <p className="border-t border-line-subtle pt-2.5 text-[11px] leading-relaxed text-ink-subtle">
                         Lưu nháp chỉ cần đợt khóa luận, tên tiếng Việt và chỉ tiêu. Hoàn thành đủ 6
                         mục trước khi gửi Khoa thẩm định.
                       </p>
@@ -1202,18 +1206,18 @@ export function TopicProposePage({
                 </aside>
               </div>
 
-              <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+              <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-line/80 bg-surface-card/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
                 <div className="min-w-0 text-xs">
                   {hasUnsavedChanges ? (
                     <span
                       role="status"
-                      className="inline-flex items-center gap-1.5 font-medium text-amber-700"
+                      className="inline-flex items-center gap-1.5 font-medium text-tone-warning-text"
                     >
                       <span className="size-1.5 rounded-full bg-amber-500" aria-hidden="true" />
                       Có thay đổi chưa lưu trên hệ thống
                     </span>
                   ) : editable && localSavedAt ? (
-                    <span role="status" className="text-slate-500">
+                    <span role="status" className="text-ink-muted">
                       Đã lưu trên thiết bị lúc {new Date(localSavedAt).toLocaleTimeString('vi-VN')}.
                       Dùng Lưu nháp để lưu lên hệ thống.
                     </span>
@@ -1227,7 +1231,7 @@ export function TopicProposePage({
                       variant="outline"
                       disabled={busy}
                       onClick={closeForm}
-                      className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold hover:bg-slate-50"
+                      className="h-9 rounded-xl border-line-input px-4 text-xs font-semibold hover:bg-surface-hover"
                     >
                       Đóng
                     </Button>
@@ -1237,7 +1241,7 @@ export function TopicProposePage({
                       value="draft"
                       variant="outline"
                       leftIcon={<Save />}
-                      className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold hover:bg-slate-50"
+                      className="h-9 rounded-xl border-line-input px-4 text-xs font-semibold hover:bg-surface-hover"
                       disabled={busy || Boolean(recovery)}
                       isLoading={
                         saveMutation.isPending && !saveMutation.variables?.submitImmediately
@@ -1267,7 +1271,7 @@ export function TopicProposePage({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-9 rounded-xl border-slate-200 px-4 text-xs font-semibold hover:bg-slate-50"
+                      className="h-9 rounded-xl border-line-input px-4 text-xs font-semibold hover:bg-surface-hover"
                       onClick={closeForm}
                     >
                       Đóng
@@ -1313,7 +1317,7 @@ export function TopicProposePage({
       />
 
       <section aria-label="Thống kê đề tài" className="space-y-2">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-ink-body">
           {filters.batchId ? (filterBatch?.batchName ?? 'Đợt đã chọn') : 'Tất cả đợt khóa luận'}
         </p>
         <StatisticsBar
@@ -1350,7 +1354,7 @@ export function TopicProposePage({
           ]}
         />
         {statisticsQuery.isError && (
-          <div role="alert" className="text-sm text-rose-700">
+          <div role="alert" className="text-sm text-tone-danger-text">
             Không tải được thống kê đề tài.{' '}
             <Button variant="link" size="sm" onClick={() => void statisticsQuery.refetch()}>
               Thử lại thống kê
@@ -1358,23 +1362,25 @@ export function TopicProposePage({
           </div>
         )}
       </section>
-      <Card className="rounded-2xl border-slate-200/80 p-4 shadow-xs sm:p-5">
+      <Card className="rounded-2xl border-line/80 p-4 shadow-xs sm:p-5">
         <form
           onSubmit={handleApplyFilters}
           aria-label="Bộ lọc đề tài"
           className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
         >
         <label className="block space-y-1.5 sm:col-span-2">
-          <span className="text-xs font-medium text-slate-700">Tìm kiếm đề tài</span>
+          <span className="text-xs font-medium text-ink-secondary">Tìm kiếm đề tài</span>
           <Input
             leftIcon={<Search className="size-4" />}
             placeholder="Tên đề tài tiếng Việt hoặc tiếng Anh"
             value={draftFilters.keyword}
-            onChange={(event) => setDraftFilters({ ...draftFilters, keyword: event.target.value })}
+            onChange={(event) =>
+              applyFiltersNow({ ...draftFilters, keyword: event.target.value })
+            }
           />
         </label>
         <div className="space-y-1.5">
-          <span className="text-xs font-medium text-slate-700">Đợt khóa luận</span>
+          <span className="text-xs font-medium text-ink-secondary">Đợt khóa luận</span>
           <Select<string>
             aria-label="Lọc theo đợt KLTN"
             placeholder="Tất cả đợt khóa luận"
@@ -1383,13 +1389,13 @@ export function TopicProposePage({
               { value: '', label: 'Tất cả đợt khóa luận' },
               ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
             ]}
-            onChange={(batchId) => setDraftFilters({ ...draftFilters, batchId })}
+            onChange={(batchId) => applyFiltersNow({ ...draftFilters, batchId })}
             searchable
             disabled={!canReadBatches || batchesQuery.isPending || batchesQuery.isError}
           />
         </div>
         <div className="space-y-1.5">
-          <span className="text-xs font-medium text-slate-700">Trạng thái thẩm định</span>
+          <span className="text-xs font-medium text-ink-secondary">Trạng thái thẩm định</span>
           <Select<TopicStatus | ''>
             aria-label="Lọc theo trạng thái đề tài"
             placeholder="Tất cả trạng thái"
@@ -1401,15 +1407,14 @@ export function TopicProposePage({
                 label,
               })),
             ]}
-            onChange={(status) => setDraftFilters({ ...draftFilters, status })}
+            onChange={(status) => applyFiltersNow({ ...draftFilters, status })}
           />
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-4">
-          <Button type="submit">Áp dụng bộ lọc</Button>
           <Button type="button" variant="outline" disabled={!hasFilters} onClick={clearFilters}>
             Bỏ lọc
           </Button>
-          <details className="text-xs text-slate-600 sm:ml-auto">
+          <details className="text-xs text-ink-body sm:ml-auto">
             <summary className="cursor-pointer py-2">Quy định đề xuất</summary>
             <p className="max-w-xl py-2 leading-5">
               Mỗi đề tài tối đa 2 sinh viên. Khoa thẩm định trước khi công bố. Giảng viên chỉ sửa đề
@@ -1447,20 +1452,20 @@ export function TopicProposePage({
       )}
 
       {/* Row 2: Table Card */}
-      <Card className="overflow-hidden rounded-2xl border-slate-200/80 shadow-xs transition-all hover:border-slate-300">
-        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b border-slate-100/90 bg-gradient-to-r from-slate-50/80 via-white to-white px-5 py-4 sm:px-6">
+      <Card className="overflow-hidden rounded-2xl border-line/80 shadow-xs transition-all hover:border-line-strong">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b border-line-subtle/90 bg-gradient-to-r from-surface-subtle/80 via-surface-card to-surface-card px-5 py-4 sm:px-6">
           <div className="space-y-0.5">
-            <CardTitle className="text-base font-semibold tracking-tight text-slate-900">
+            <CardTitle className="text-base font-semibold tracking-tight text-ink-primary">
               Danh sách đề tài đã đề xuất
             </CardTitle>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink-muted">
               {filters.batchId
                 ? 'Đang lọc theo đợt khóa luận đã chọn'
                 : 'Theo dõi tiến trình thẩm định và kết quả duyệt đề tài'}
             </p>
           </div>
 
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold tabular-nums text-slate-700 shadow-2xs">
+          <span className="rounded-full border border-line-input bg-surface-muted px-2.5 py-1 text-xs font-semibold tabular-nums text-ink-secondary shadow-2xs">
             {topicsQuery.isError ? '—' : (topicsQuery.data?.totalCount ?? '—')} đề tài
           </span>
         </CardHeader>

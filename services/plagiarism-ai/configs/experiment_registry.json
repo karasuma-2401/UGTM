@@ -1,0 +1,315 @@
+{
+  "registry_version": "1.0.0",
+  "updated_at": "2026-10-30",
+  "change_protocol": {
+    "rule_1": "Every change to parser, section filter, chunker, retrieval K/prefilter, alignment, citation detector, classifier, or threshold MUST assign a new run/experiment ID and record rationale before claiming improvement.",
+    "rule_2": "Hold-out test split (locked at CP-03.3) MUST NOT be read or evaluated for model/threshold selection prior to CP-06.1.",
+    "rule_3": "Raw thesis text, student identifiers, and predictions containing private thesis excerpts MUST remain inside git-ignored directories (data/, training_data/, training_runs/) or authorized private storage."
+  },
+  "freeze_milestones": [
+    {
+      "freeze_id": "FREEZE-B0",
+      "checkpoint": "CP-00.1",
+      "status": "locked",
+      "locked_at": "2026-10-30",
+      "config_path": "configs/baseline_b0.json",
+      "git_commit": "78e4a94f173a32f178bab70568d397625227533d",
+      "notes": "Initial MVP v2 code & config frozen prior to CP-01 infrastructure and CP-02 parser changes."
+    },
+    {
+      "freeze_id": "FREEZE-SCHEMA-V3",
+      "checkpoint": "CP-02.4",
+      "status": "locked",
+      "locked_at": "2026-10-30",
+      "config_path": "docs/report-schema-v3-specification.md",
+      "git_commit": null,
+      "notes": "Lock block-level parser, section filter config, corpus provenance manifest, and report schema v3."
+    },
+    {
+      "freeze_id": "FREEZE-BENCHMARK-SPLIT",
+      "checkpoint": "CP-03.3",
+      "status": "locked",
+      "locked_at": "2026-10-30",
+      "config_path": "data/benchmark_v1/split_manifest.json",
+      "git_commit": null,
+      "notes": "Lock family-level train (560)/val (120)/test (120) split manifest hash and zero-leakage audit."
+    },
+    {
+      "freeze_id": "FREEZE-AI-RC1",
+      "checkpoint": "CP-04.6",
+      "status": "locked",
+      "locked_at": "2026-10-30",
+      "config_path": "artifacts/ai_release_candidate_rc1.manifest.json",
+      "git_commit": "85ea786e257b0b11a5601edfc5bc9a4ff575413d",
+      "notes": "Locked primary AI pipeline (RC1): Block parser v2, paragraph chunking, K=30 no_prefilter, BGE-M3 + BGE-Reranker-v2-M3, constrained sentence/span alignment, citation context, calibrated Platt 3-band review policy, and corpus snapshot."
+    },
+    {
+      "freeze_id": "FREEZE-RELEASE-V1.0.0",
+      "checkpoint": "CP-06.2",
+      "status": "locked",
+      "locked_at": "2026-10-31",
+      "config_path": "artifacts/release_manifest_v1.0.0.json",
+      "git_commit": null,
+      "notes": "Full release candidate package frozen: reproducibility guide, model card, sample shareable corpus, reproduced benchmark tables, and verified bit-for-bit parity."
+    }
+  ],
+  "experiments": [
+    {
+      "id": "B0",
+      "category": "baseline",
+      "checkpoint": "CP-00.1 / CP-03.5",
+      "status": "completed",
+      "config_ref": "configs/baseline_b0.json",
+      "report_ref": "reports/baseline_reports/report_b0.json",
+      "metrics": {
+        "f1": 0.8571,
+        "recall_at_50": 0.8148,
+        "precision": 0.9041,
+        "recall": 0.8148,
+        "false_alarms_per_doc": 0.1795
+      },
+      "description": "Original v2 pipeline (unfiltered 90/20 chunks online, BGE-M3 dense top_k=6 + pg_trgm top_k=6, RRF fused_k=5, prefilter dense>=0.48|lex>=0.25, bge-reranker-v2-m3, heuristic decision, adjacent chunk grouping).",
+      "research_question": "RQ1, RQ2, RQ3 reference baseline"
+    },
+    {
+      "id": "B1",
+      "category": "baseline",
+      "checkpoint": "CP-03.5",
+      "status": "completed",
+      "config_ref": "configs/baseline_b1.json",
+      "report_ref": "reports/baseline_reports/report_b1.json",
+      "metrics": {
+        "f1": 0.7442,
+        "recall_at_50": 0.8148,
+        "precision": 1.0000,
+        "recall": 0.5926,
+        "false_alarms_per_doc": 0.0000
+      },
+      "description": "Lexical-only baseline (pg_trgm / Char Trigram Dice + Jaccard) on block-cleaned corpus without dense retrieval or cross-encoder.",
+      "research_question": "RQ2"
+    },
+    {
+      "id": "B2",
+      "category": "baseline",
+      "checkpoint": "CP-03.5",
+      "status": "completed",
+      "config_ref": "configs/baseline_b2.json",
+      "report_ref": "reports/baseline_reports/report_b2.json",
+      "metrics": {
+        "f1": 0.8571,
+        "recall_at_50": 1.0000,
+        "precision": 0.7500,
+        "recall": 1.0000,
+        "false_alarms_per_doc": 0.6923
+      },
+      "description": "Dense-only baseline (BAAI/bge-m3 exact cosine) without lexical branch or cross-encoder.",
+      "research_question": "RQ2"
+    },
+    {
+      "id": "B3",
+      "category": "baseline",
+      "checkpoint": "CP-03.5",
+      "status": "completed",
+      "config_ref": "configs/baseline_b3.json",
+      "report_ref": "reports/baseline_reports/report_b3.json",
+      "metrics": {
+        "f1": 0.8571,
+        "recall_at_50": 1.0000,
+        "precision": 0.7500,
+        "recall": 1.0000,
+        "false_alarms_per_doc": 0.6923
+      },
+      "description": "Hybrid RRF baseline (lexical + BAAI/bge-m3 dense) without cross-encoder reranking.",
+      "research_question": "RQ2"
+    },
+    {
+      "id": "B4",
+      "category": "baseline",
+      "checkpoint": "CP-03.5",
+      "status": "completed",
+      "config_ref": "configs/baseline_b4.json",
+      "report_ref": "reports/baseline_reports/report_b4.json",
+      "metrics": {
+        "f1": 1.0000,
+        "recall_at_50": 1.0000,
+        "precision": 1.0000,
+        "recall": 1.0000,
+        "false_alarms_per_doc": 0.0000
+      },
+      "description": "Hybrid RRF + BAAI/bge-reranker-v2-m3 on block-filtered corpus prior to CP-04 K-sweep and sentence/span alignment.",
+      "research_question": "RQ1, RQ2"
+    },
+    {
+      "id": "EXP-04.1-RETRIEVAL",
+      "category": "core_upgrade",
+      "checkpoint": "CP-04.1",
+      "status": "completed",
+      "config_ref": "configs/retrieval_config.json",
+      "report_ref": "docs/candidate-retrieval-optimization-report.md",
+      "data_ref": "data/retrieval_sweep_results.json",
+      "metrics": {
+        "top_k_per_branch": 30,
+        "fused_k": 25,
+        "overall_source_recall": 1.0000,
+        "prefilter": "no_prefilter",
+        "estimated_pipeline_time_50_chunks_sec": 1.48
+      },
+      "description": "Sweep top_k, fused_k, prefilter removal/tuning, and sentence/paragraph chunking trade-offs against Recall@K and rerank latency.",
+      "research_question": "RQ2"
+    },
+    {
+      "id": "EXP-04.2-ALIGNMENT",
+      "category": "core_upgrade",
+      "checkpoint": "CP-04.2",
+      "status": "completed",
+      "config_ref": "app/alignment.py",
+      "report_ref": "docs/sentence-span-alignment-specification.md",
+      "metrics": {
+        "mean_iou": 0.7413,
+        "mean_precision": 0.8148,
+        "mean_recall": 0.7413,
+        "mean_f1": 0.7652,
+        "match_rate": 0.8025,
+        "monolingual_precision": 1.0000,
+        "evaluated_positive_pairs": 81,
+        "regression_test_count": 13
+      },
+      "description": "Constrained local sentence/span alignment (one-to-many, many-to-one, overlap deduplication, multi-source separation) vs B0 adjacent chunk grouping.",
+      "research_question": "RQ2"
+    },
+    {
+      "id": "EXP-04.3-CITATION",
+      "category": "core_upgrade",
+      "checkpoint": "CP-04.3",
+      "status": "completed",
+      "config_ref": "app/citation.py",
+      "report_ref": "docs/citation-aware-context-specification.md",
+      "metrics": {
+        "regression_test_count": 12,
+        "evidence_preservation_rate": 1.0000,
+        "citation_styles_supported": [
+          "numeric",
+          "author_year",
+          "narrative",
+          "direct_quote"
+        ],
+        "misattribution_detection": "enabled",
+        "evaluated_val_pairs": 120
+      },
+      "description": "Citation marker & reference-link context annotation (present/absent/uncertain) kept orthogonal to text reuse label.",
+      "research_question": "RQ3"
+    },
+    {
+      "id": "EXP-04.4-CLASSIFIER",
+      "category": "core_upgrade",
+      "checkpoint": "CP-04.4",
+      "status": "completed",
+      "config_ref": "artifacts/suspicious_passage_classifier.manifest.json",
+      "report_ref": "docs/classifier-calibration-and-review-policy.md",
+      "data_ref": "data/classifier_evaluation_results.json",
+      "model_artifact": "artifacts/suspicious_passage_classifier.joblib",
+      "metrics": {
+        "calibrated_brier_score": 0.0024,
+        "calibrated_ece": 0.0372,
+        "heuristic_brier_score": 0.0423,
+        "reranker_brier_score": 0.0423,
+        "brier_improvement_factor": 17.625,
+        "f1": 1.0000,
+        "precision": 1.0000,
+        "recall": 1.0000,
+        "review_policy_tau_low": 0.3,
+        "review_policy_tau_high": 0.7,
+        "evaluated_val_pairs": 120
+      },
+      "description": "Heuristic vs Reranker-only vs Calibrated Logistic Regression + needs-human-review decision policy on shared dev candidates.",
+      "research_question": "RQ3"
+    },
+    {
+      "id": "EXP-04.5-ABLATION",
+      "category": "ablation",
+      "checkpoint": "CP-04.5",
+      "status": "completed",
+      "config_ref": "scripts/run_ablation_study.py",
+      "report_ref": "docs/ablation-and-robustness-report.md",
+      "data_ref": "data/ablation_results.json",
+      "metrics": {
+        "configurations_evaluated": 8,
+        "m0_pair_f1": 1.0,
+        "m0_span_mean_iou": 0.7413,
+        "m0_false_alarms_per_doc": 0.0,
+        "m1_section_filter_fp_surge": 6,
+        "m2_naive_chunking_iou_drop": 0.6311,
+        "m3_naive_alignment_precision_drop": 0.5259,
+        "m4_prefilter_xling_recall_drop": 0.0,
+        "m5_no_reranker_fa_surge": 1.0385,
+        "m6_citation_review_workload_surge_pct": 100.0,
+        "m6_vs_m0_review_saved_pct": 11.1,
+        "m7_uncalibrated_brier_loss": 0.0419,
+        "evaluated_val_pairs": 120
+      },
+      "description": "Systematic leave-one-out ablation (section filter, chunk/alignment, citation context, K/prefilter) across VI-VI, VI-EN/EN-VI, paraphrase, multi-source, boilerplate, and out-of-corpus slices.",
+      "research_question": "RQ1, RQ2, RQ3"
+    },
+    {
+      "id": "EXT-01-MODEL-COMP",
+      "category": "conditional_extension",
+      "checkpoint": "EXT-01",
+      "status": "deferred_appendix",
+      "config_ref": null,
+      "decision_ref": "docs/experiment-decision-log.md#31-ext-01-so-sánh-đối-chứng-với-qwen3-embedding-06b-hoặc-bge-sparse",
+      "decision": "DEFERRED",
+      "decision_date": "2026-10-30",
+      "estimated_hours": 12,
+      "description": "Controlled comparison against Qwen3-Embedding-0.6B or BGE-M3 sparse branch on identical split/evaluator deferred to thesis appendix after CP-05/CP-06.",
+      "research_question": "RQ2 (extension)"
+    },
+    {
+      "id": "EXT-02-OCR",
+      "category": "conditional_extension",
+      "checkpoint": "EXT-02",
+      "status": "deferred_roadmap",
+      "config_ref": null,
+      "decision_ref": "docs/experiment-decision-log.md#32-ext-02-định-tuyến-ocr-chọn-lọc-cho-trang-pdf-scan-thiếu-text-layer",
+      "decision": "DEFERRED",
+      "decision_date": "2026-10-30",
+      "estimated_hours": 16,
+      "description": "Selective OCR routing deferred: corpus and benchmark are 100% digital text. Clean error handling via EMPTY_TEXT without crash.",
+      "research_question": "RQ1 (extension)"
+    },
+    {
+      "id": "EXT-03-FINETUNE",
+      "category": "conditional_extension",
+      "checkpoint": "EXT-03",
+      "status": "rejected_out_of_scope",
+      "config_ref": null,
+      "decision_ref": "docs/experiment-decision-log.md#33-ext-03-fine-tune-mô-hình-có-kiểm-soát-lora--hard-negatives",
+      "decision": "REJECTED",
+      "decision_date": "2026-10-30",
+      "estimated_hours": 26,
+      "description": "Fine-tuning rejected for 6-week core scope: off-the-shelf BGE-Reranker achieves 0 false alarms on hard negatives; fine-tuning on solo annotations risks severe overfitting.",
+      "research_question": "RQ2 (extension)"
+    },
+    {
+      "id": "FINAL-TEST-RC1",
+      "category": "final_evaluation",
+      "checkpoint": "CP-06.1",
+      "status": "completed",
+      "config_ref": "artifacts/ai_release_candidate_rc1.manifest.json",
+      "report_ref": "docs/final-test-benchmark-report.md",
+      "metrics": {
+        "source_recall_at_50": 1.0,
+        "span_iou": 0.9031,
+        "span_f1": 0.9255,
+        "precision": 1.0,
+        "recall": 0.9753,
+        "f1": 0.9875,
+        "f1_ci_95": [0.9689, 1.0],
+        "pr_auc": 1.0,
+        "false_alarms_per_doc": 0.0
+      },
+      "description": "Blind independent evaluation of proposed RC1 pipeline on locked holdout test.csv (120 pairs, 19 families) using real Tesla T4 GPU worker.",
+      "research_question": "RQ1, RQ2, RQ3 definitive proof"
+    }
+  ]
+}
+

@@ -75,20 +75,20 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
 
   return (
     <Dialog
-      headerClassName="border-b border-slate-200/80 bg-white px-5 py-4 sm:px-6"
+      headerClassName="border-b border-line/80 bg-surface-card px-5 py-4 sm:px-6"
       title={
         <span className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-success-bg text-tone-success-text ring-1 ring-inset ring-emerald-100"
           >
             <FileSpreadsheet className="size-5" />
           </span>
           <span className="min-w-0">
-            <span className="block text-base font-semibold text-slate-900">
+            <span className="block text-base font-semibold text-ink-primary">
               Nhập danh sách sinh viên
             </span>
-            <span className="mt-0.5 block text-xs font-normal text-slate-500">
+            <span className="mt-0.5 block text-xs font-normal text-ink-muted">
               Tạo nhiều tài khoản từ file Excel
             </span>
           </span>
@@ -103,19 +103,21 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
             <div className="mb-3 flex items-center gap-2.5">
               <span
                 aria-hidden="true"
-                className="flex size-6 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600"
+                className="flex size-6 items-center justify-center rounded-full bg-surface-muted text-xs font-semibold text-ink-body"
               >
                 1
               </span>
-              <h3 id={`${id}-template`} className="text-sm font-semibold text-slate-900">
+              <h3 id={`${id}-template`} className="text-sm font-semibold text-ink-primary">
                 Chuẩn bị danh sách
               </h3>
             </div>
-            <div className="flex flex-col gap-3 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm leading-6 text-slate-600">
+            <div className="flex flex-col gap-3 rounded-xl border border-line/80 bg-surface-subtle/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm leading-6 text-ink-body">
                 Dùng file mẫu để điền đúng cấu trúc.
                 <br />
-                <span className="text-xs">MSSV bắt buộc; email và MSSV không được trùng.</span>
+                <span className="text-xs text-ink-muted">
+                  MSSV bắt buộc; email và MSSV không được trùng.
+                </span>
               </p>
               <Button
                 type="button"
@@ -131,7 +133,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
               </Button>
             </div>
             {downloadError && (
-              <p role="alert" className="mt-2 text-sm text-rose-700">
+              <p role="alert" className="mt-2 text-sm text-tone-danger-text">
                 {downloadError}
               </p>
             )}
@@ -142,11 +144,11 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
               <div className="flex items-center gap-2.5">
                 <span
                   aria-hidden="true"
-                  className="flex size-6 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600"
+                  className="flex size-6 items-center justify-center rounded-full bg-surface-muted text-xs font-semibold text-ink-body"
                 >
                   2
                 </span>
-                <h3 id={`${id}-upload`} className="text-sm font-semibold text-slate-900">
+                <h3 id={`${id}-upload`} className="text-sm font-semibold text-ink-primary">
                   Chọn file danh sách
                 </h3>
               </div>
@@ -162,7 +164,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
                     setFileError('');
                     mutation.reset();
                   }}
-                  className="h-7 px-2 text-slate-500"
+                  className="h-7 px-2 text-ink-muted"
                   leftIcon={<X />}
                 >
                   Xóa file
@@ -191,10 +193,10 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
                 selectFile(event.dataTransfer.files[0] ?? null);
               }}
               className={cn(
-                'group flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-emerald-200 bg-emerald-50/30 px-4 py-5 text-center transition-colors duration-200 hover:border-emerald-500 hover:bg-emerald-50 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-600/15',
-                dragging && 'border-emerald-600 bg-emerald-100/60',
-                file && 'border-solid border-emerald-200 bg-emerald-50/50',
-                fileError && 'border-rose-300 bg-rose-50/50 hover:border-rose-400 hover:bg-rose-50',
+                'group flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-tone-success-border bg-tone-success-bg px-4 py-5 text-center transition-colors duration-200 hover:border-emerald-500 hover:bg-tone-success-bg focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-600/15',
+                dragging && 'border-emerald-600 bg-emerald-100/60 dark:bg-emerald-950/60',
+                file && 'border-solid border-tone-success-border bg-tone-success-bg',
+                fileError && 'border-tone-danger-border bg-tone-danger-bg hover:border-rose-400 hover:bg-tone-danger-bg',
                 mutation.isPending && 'pointer-events-none cursor-wait opacity-60',
               )}
             >
@@ -211,11 +213,11 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
               />
               <span
                 aria-hidden="true"
-                className="mb-3 flex size-11 items-center justify-center rounded-xl bg-white text-emerald-700 shadow-sm"
+                className="mb-3 flex size-11 items-center justify-center rounded-xl bg-surface-elevated text-tone-success-text shadow-sm"
               >
                 {file ? <FileSpreadsheet className="size-6" /> : <Upload className="size-5" />}
               </span>
-              <span className="max-w-full break-all text-sm font-semibold text-slate-900">
+              <span className="max-w-full break-all text-sm font-semibold text-ink-primary">
                 {file
                   ? file.name
                   : dragging
@@ -223,7 +225,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
                     : 'Kéo thả file Excel vào đây'}
               </span>
               {file ? (
-                <span className="mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-emerald-700">
+                <span className="mt-1.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-tone-success-text">
                   <span className="inline-flex items-center gap-1">
                     <Check className="size-3.5" />
                     Đã chọn ·{' '}
@@ -232,14 +234,14 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
                   <span className="font-medium underline underline-offset-4">Bấm để đổi file</span>
                 </span>
               ) : (
-                <span className="mt-1.5 text-sm text-emerald-700">
+                <span className="mt-1.5 text-sm text-tone-success-text">
                   hoặc{' '}
                   <span className="font-semibold underline underline-offset-4">
                     bấm để chọn file
                   </span>
                 </span>
               )}
-              <span id={`${id}-limits`} className="mt-3 text-xs leading-5 text-slate-500">
+              <span id={`${id}-limits`} className="mt-3 text-xs leading-5 text-ink-muted">
                 Định dạng .xlsx · Tối đa 5 MB · 5.000 sinh viên / lần
               </span>
             </label>
@@ -247,7 +249,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
               <div
                 id={`${id}-error`}
                 role="alert"
-                className="mt-3 space-y-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
+                className="mt-3 space-y-2 rounded-lg border border-tone-danger-border bg-tone-danger-bg p-3 text-sm text-tone-danger-text"
               >
                 <p className="font-medium">{fileError || getUserErrorMessage(mutation.error)}</p>
                 {fieldErrors && (
@@ -263,17 +265,17 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
             )}
           </section>
 
-          <div className="flex gap-2.5 text-xs leading-5 text-slate-600">
-            <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-slate-400" />
+          <div className="flex gap-2.5 text-xs leading-5 text-ink-body">
+            <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-ink-subtle" />
             <p>
               Tài khoản được gán vai trò{' '}
-              <strong className="font-medium text-slate-800">Sinh viên</strong> và ở trạng thái{' '}
-              <strong className="font-medium text-slate-800">Chờ kích hoạt</strong>. Hệ thống không
+              <strong className="font-medium text-ink-heading">Sinh viên</strong> và ở trạng thái{' '}
+              <strong className="font-medium text-ink-heading">Chờ kích hoạt</strong>. Hệ thống không
               gửi email hàng loạt; sinh viên chủ động yêu cầu link tại trang Kích hoạt tài khoản.
             </p>
           </div>
         </div>
-        <div className="sticky bottom-0 z-10 flex justify-end gap-2.5 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+        <div className="sticky bottom-0 z-10 flex justify-end gap-2.5 border-t border-line/80 bg-surface-card/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
           <Button
             type="button"
             variant="outline"

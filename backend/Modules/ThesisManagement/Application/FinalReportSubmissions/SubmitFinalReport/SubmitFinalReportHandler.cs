@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using UGTM.Modules.DefenseCouncil.Contracts.ReviewerEvaluations;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
@@ -29,7 +30,8 @@ public sealed class SubmitFinalReportHandler(
     IOptions<PlagiarismAiOptions>? plagiarismOptions = null,
     ISubmissionProductLinkRepository? productLinkRepository = null,
     ISubmissionAttachmentRepository? attachmentRepository = null,
-    IThesisSubmissionImageValidator? imageValidator = null)
+    IThesisSubmissionImageValidator? imageValidator = null,
+    IReviewerDefenseEligibilityContract? reviewerEligibility = null)
 {
     public async Task<Result<FinalReportSubmissionDto>> HandleAsync(
         SubmitFinalReportCommand command,
@@ -44,22 +46,34 @@ public sealed class SubmitFinalReportHandler(
             return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.InvalidRequest);
         }
 
-        var eligibility = await eligibilityChecker.CheckAsync(command.GroupId, cancellationToken);
+        if (!Enum.IsDefined(command.VersionType))
+        {
+            return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.InvalidRequest);
+        }
+        var isReviewerRevision = command.VersionType == FinalReportVersionType.RevisedAfterReviewer;
+        var eligibility = await eligibilityChecker.CheckAsync(command.GroupId, cancellationToken,
+            revisedAfterReviewer: isReviewerRevision);
         if (eligibility.IsFailure)
         {
             return Result.Failure<FinalReportSubmissionDto>(eligibility.Error);
         }
 
         var context = eligibility.Value;
+        if (isReviewerRevision && await reviewerEligibility!.GetAsync(context.Group.Id, cancellationToken) is not { CanProceed: true })
+        {
+            return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.ReviewerRevisionNotEligible);
+        }
         var existingReport = await finalReportRepository.GetByGroupAndVersionTypeAsync(
-            context.Group.Id, FinalReportVersionType.InitialFinal, cancellationToken);
+            context.Group.Id, command.VersionType, cancellationToken);
         var isFirstSubmission = existingReport is null;
         if (existingReport is not null && existingReport.Status != FinalReportStatus.Submitted)
         {
             return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.EvaluationStarted);
         }
 
-        var requiredGroupStatus = isFirstSubmission
+        var requiredGroupStatus = isReviewerRevision
+            ? StudentGroupStatus.ReadyForReviewerAssignment
+            : isFirstSubmission
             ? StudentGroupStatus.InProgress
             : StudentGroupStatus.FinalReportSubmitted;
         if (context.Group.Status != requiredGroupStatus)
@@ -83,7 +97,7 @@ public sealed class SubmitFinalReportHandler(
         }
 
         var report = existingReport ?? FinalReport.CreateSubmitted(
-            Guid.NewGuid(), context.Group.Id, FinalReportVersionType.InitialFinal, context.SubmittedAtUtc);
+            Guid.NewGuid(), context.Group.Id, command.VersionType, context.SubmittedAtUtc);
         var versionNo = isFirstSubmission ? 1 : checked(report.CurrentVersionNo + 1);
 
         IReadOnlyList<SubmissionEvidenceHelper.PreparedAttachment> preparedAttachments;
@@ -153,8 +167,14 @@ public sealed class SubmitFinalReportHandler(
             uploadedKeys.Add(objectKey);
             await SubmissionEvidenceHelper.UploadAllAsync(preparedAttachments, objectStorage, uploadedKeys, cancellationToken);
 
+            if (isReviewerRevision && await reviewerEligibility!.GetAsync(context.Group.Id, cancellationToken) is not { CanProceed: true })
+            {
+                await TryDeleteObjectsAsync(uploadedKeys);
+                return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.ReviewerRevisionNotEligible);
+            }
+
             if (context.Group.Status != requiredGroupStatus
-                || (isFirstSubmission && !context.Group.TrySubmitFinalReport()))
+                || (isFirstSubmission && !isReviewerRevision && !context.Group.TrySubmitFinalReport()))
             {
                 await TryDeleteObjectsAsync(uploadedKeys);
                 return Result.Failure<FinalReportSubmissionDto>(FinalReportSubmissionErrors.InvalidGroupState);
@@ -163,6 +183,10 @@ public sealed class SubmitFinalReportHandler(
             if (isFirstSubmission)
             {
                 finalReportRepository.Add(report);
+                if (isReviewerRevision)
+                {
+                    finalReportRepository.TrackGroupConcurrency(report, context.Group);
+                }
             }
             else
             {

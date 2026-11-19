@@ -91,12 +91,15 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
 
   const headerContent = (
     <div className="flex min-w-0 items-start gap-3 pr-2">
-      <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-primary ring-1 ring-inset ring-blue-100">
+      <span
+        aria-hidden="true"
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-info-bg text-primary ring-1 ring-inset ring-blue-100"
+      >
         <ScrollText className="size-5" />
       </span>
       <div className="space-y-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="text-base font-bold text-slate-900 tracking-tight">
+          <h3 className="text-base font-bold text-ink-primary tracking-tight">
             {actionTitle}
           </h3>
           {log.outcome === 'Success' ? (
@@ -109,7 +112,7 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
             <StatusBadge tone="warning">{log.outcome || 'Chưa xác định'}</StatusBadge>
           )}
         </div>
-        <p className="break-words text-xs text-slate-500 font-mono">
+        <p className="break-words text-xs text-ink-muted font-mono">
           ID sự kiện #{log.id} · {log.action}
         </p>
       </div>
@@ -122,21 +125,21 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
       onClose={onClose}
       variant="drawer"
       title={headerContent}
-      className="max-w-[560px] bg-white"
-      headerClassName="border-b border-slate-200/80 bg-white px-5 py-4 sm:px-6"
+      className="max-w-[560px] bg-surface-card"
+      headerClassName="border-b border-line/80 bg-surface-card px-5 py-4 sm:px-6"
     >
       <div className="flex min-h-[calc(100dvh-5.5rem)] flex-col">
         <div className="flex-1 space-y-5 p-5 sm:p-6">
           {/* Khối 1: Tác nhân và Ngữ cảnh */}
           <section className="space-y-2.5">
-            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-ink-primary">
               <User className="size-4 text-primary" />
               Tác nhân thực hiện
             </h4>
 
-            <div className="flex items-start gap-3.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4">
+            <div className="flex items-start gap-3.5 rounded-xl border border-line/80 bg-surface-subtle/70 p-4">
               {isSystemActor ? (
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-slate-200/80 bg-slate-100 text-slate-500 ring-2 ring-white">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-line-input/80 bg-surface-muted text-ink-muted ring-2 ring-surface-card">
                   <Server className="size-4" />
                 </span>
               ) : (
@@ -145,25 +148,32 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
 
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-slate-900">{actorName}</span>
+                  <span className="text-sm font-semibold text-ink-primary">
+                    {actorName}
+                  </span>
                 </div>
 
                 {log.actorEmail && (
-                  <div className="text-xs text-slate-600">{log.actorEmail}</div>
+                  <div className="text-xs text-ink-body">{log.actorEmail}</div>
                 )}
 
                 {(log.actorFullName || log.actorEmail) && (
-                  <div className="text-xs text-slate-500">Tên và email theo hồ sơ tài khoản hiện tại.</div>
+                  <div className="text-xs text-ink-muted">
+                    Tên và email theo hồ sơ tài khoản hiện tại.
+                  </div>
                 )}
 
                 {log.actorUserId && (
-                  <div className="break-all font-mono text-xs text-slate-500">
+                  <div className="break-all font-mono text-xs text-ink-muted">
                     User ID: {log.actorUserId}
                   </div>
                 )}
 
                 {log.actorSessionId && (
-                  <div className="break-all font-mono text-xs text-slate-500" title={log.actorSessionId}>
+                  <div
+                    className="break-all font-mono text-xs text-ink-muted"
+                    title={log.actorSessionId}
+                  >
                     Session: {log.actorSessionId}
                   </div>
                 )}
@@ -173,25 +183,30 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
 
           {/* Khối 2: Thời điểm và Đối tượng tác động */}
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                <Clock className="size-3.5 text-slate-400" />
+            <div className="space-y-1.5 rounded-xl border border-line/80 bg-surface-subtle/70 p-3.5">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                <Clock className="size-3.5 text-ink-subtle" />
                 Thời điểm ghi nhận
               </div>
-              <div className="text-xs font-semibold tabular-nums text-slate-900">
+              <div className="text-xs font-semibold tabular-nums text-ink-primary">
                 {formatAuditFullTime(log.timestamp)}
               </div>
             </div>
 
-            <div className="space-y-1.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                <Layers className="size-3.5 text-slate-400" />
+            <div className="space-y-1.5 rounded-xl border border-line/80 bg-surface-subtle/70 p-3.5">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                <Layers className="size-3.5 text-ink-subtle" />
                 Đối tượng tác động
               </div>
               <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-900">{targetLabel}</span>
+                <span className="text-xs font-semibold text-ink-primary">
+                  {targetLabel}
+                </span>
                 {log.targetId && (
-                  <span className="break-all font-mono text-xs text-slate-600" title={log.targetId}>
+                  <span
+                    className="break-all font-mono text-xs text-ink-body"
+                    title={log.targetId}
+                  >
                     #{log.targetId}
                   </span>
                 )}
@@ -201,61 +216,79 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
 
           {/* Khối 3: So sánh thay đổi (Visual Diff) */}
           <section className="space-y-2.5">
-            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+            <h4 className="flex items-center gap-1.5 text-sm font-semibold text-ink-primary">
               <Shield className="size-4 text-primary" />
               Chi tiết biến động dữ liệu
             </h4>
 
             {(Array.isArray(added) || Array.isArray(removed)) && (
               <div className="flex flex-wrap gap-1.5">
-                {Array.isArray(added) && added.map((item: unknown) => <span key={`added-${String(item)}`} className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800">Cấp thêm: {changeLabel(item)}</span>)}
-                {Array.isArray(removed) && removed.map((item: unknown) => <span key={`removed-${String(item)}`} className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-800">Thu hồi: <span className="line-through">{changeLabel(item)}</span></span>)}
+                {Array.isArray(added) &&
+                  added.map((item: unknown) => (
+                    <span
+                      key={`added-${String(item)}`}
+                      className="rounded-full border border-tone-success-border bg-tone-success-bg px-2.5 py-1 text-xs font-medium text-tone-success-strong"
+                    >
+                      Cấp thêm: {changeLabel(item)}
+                    </span>
+                  ))}
+                {Array.isArray(removed) &&
+                  removed.map((item: unknown) => (
+                    <span
+                      key={`removed-${String(item)}`}
+                      className="rounded-full border border-tone-danger-border bg-tone-danger-bg px-2.5 py-1 text-xs font-medium text-tone-danger-strong"
+                    >
+                      Thu hồi: <span className="line-through">{changeLabel(item)}</span>
+                    </span>
+                  ))}
               </div>
             )}
 
             {diff.hasDiff ? (
-              <div className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-4">
-                <div className="text-xs font-semibold text-slate-700">
+              <div className="space-y-3 rounded-xl border border-line/80 bg-surface-subtle/60 p-4">
+                <div className="text-xs font-semibold text-ink-secondary">
                   {diff.fieldTitle}
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {/* Trước */}
-                  <div className="space-y-1 rounded-lg border border-rose-200/70 bg-rose-50/70 p-3">
-                    <div className="flex items-center gap-1 text-xs font-semibold text-rose-700">
+                  <div className="space-y-1 rounded-lg border border-tone-danger-border bg-tone-danger-bg p-3">
+                    <div className="flex items-center gap-1 text-xs font-semibold text-tone-danger-text">
                       <XCircle className="size-3.5" />
                       {isChangeSet ? 'Thu hồi' : 'Trước thay đổi'}
                     </div>
-                    <div className="break-words text-xs font-medium text-rose-950">
+                    <div className="break-words text-xs font-medium text-tone-danger-strong">
                       {diff.beforeValue}
                     </div>
                   </div>
 
                   {/* Sau */}
-                  <div className="space-y-1 rounded-lg border border-emerald-200/70 bg-emerald-50/70 p-3">
-                    <div className="flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                  <div className="space-y-1 rounded-lg border border-tone-success-border bg-tone-success-bg p-3">
+                    <div className="flex items-center gap-1 text-xs font-semibold text-tone-success-text">
                       <CheckCircle2 className="size-3.5" />
                       {isChangeSet ? 'Cấp thêm' : 'Sau thay đổi'}
                     </div>
-                    <div className="break-words text-xs font-semibold text-emerald-950">
+                    <div className="break-words text-xs font-semibold text-tone-success-strong">
                       {diff.afterValue}
                     </div>
                   </div>
                 </div>
 
                 {diff.reason && (
-                  <div className="border-t border-slate-200/70 pt-2.5 text-xs leading-relaxed text-slate-600">
-                    <span className="font-semibold text-slate-700">Lý do ghi nhận: </span>
+                  <div className="border-t border-line/70 pt-2.5 text-xs leading-relaxed text-ink-body">
+                    <span className="font-semibold text-ink-secondary">
+                      Lý do ghi nhận:{' '}
+                    </span>
                     <span>{diff.reason}</span>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="space-y-1.5 rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 text-xs">
-                <div className="font-medium text-slate-700">
+              <div className="space-y-1.5 rounded-xl border border-line/80 bg-surface-subtle/70 p-4 text-xs">
+                <div className="font-medium text-ink-secondary">
                   Không có dữ liệu trước và sau để so sánh.
                 </div>
-                <div className="text-slate-500">
+                <div className="text-ink-muted">
                   {diff.reason || (Array.isArray(log.metadata?.ChangedFields) ? `Trường đã thay đổi: ${log.metadata.ChangedFields.join(', ')}` : 'Thông tin chi tiết nằm trong metadata nếu được ghi nhận.')}
                 </div>
               </div>
@@ -265,7 +298,7 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
           {/* Khối 4: Mã truy vết (Request ID) */}
           <section className="space-y-2">
             <div className="flex items-center justify-between">
-              <h4 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+              <h4 className="flex items-center gap-1.5 text-sm font-semibold text-ink-primary">
                 <Hash className="size-4 text-primary" />
                 Mã truy vết hệ thống (Request ID)
               </h4>
@@ -274,14 +307,20 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleCopy(log.requestId, 'request')}
-                leftIcon={copiedRequestId ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-                className="h-7 text-xs text-primary hover:bg-blue-50"
+                leftIcon={
+                  copiedRequestId ? (
+                    <Check className="size-3.5 text-tone-success-icon" />
+                  ) : (
+                    <Copy className="size-3.5" />
+                  )
+                }
+                className="h-7 text-xs text-primary hover:bg-tone-info-bg"
               >
                 {copiedRequestId ? 'Đã sao chép' : 'Sao chép ID'}
               </Button>
             </div>
 
-            <div className="break-all select-all rounded-xl border border-blue-200/80 bg-blue-50/70 p-3 font-mono text-xs text-blue-950">
+            <div className="break-all select-all rounded-xl border border-tone-info-border bg-tone-info-bg p-3 font-mono text-xs text-tone-info-strong">
               {log.requestId}
             </div>
             {onViewRequest && (
@@ -301,7 +340,7 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
           {log.metadata && Object.keys(log.metadata).length > 0 && (
             <section className="space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+                <h4 className="flex items-center gap-1.5 text-sm font-semibold text-ink-primary">
                   <FileCode className="size-4 text-primary" />
                   Dữ liệu kỹ thuật (Metadata JSON)
                 </h4>
@@ -310,14 +349,20 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => handleCopy(JSON.stringify(log.metadata, null, 2), 'json')}
-                  leftIcon={copiedJson ? <Check className="size-3.5 text-emerald-600" /> : <Copy className="size-3.5" />}
-                  className="h-7 text-xs text-slate-600 hover:text-slate-900"
+                  leftIcon={
+                    copiedJson ? (
+                      <Check className="size-3.5 text-tone-success-icon" />
+                    ) : (
+                      <Copy className="size-3.5" />
+                    )
+                  }
+                  className="h-7 text-xs text-ink-body hover:text-ink-primary"
                 >
                   {copiedJson ? 'Đã sao chép' : 'Sao chép JSON'}
                 </Button>
               </div>
 
-              <pre className="max-h-64 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900 p-4 font-mono text-xs leading-relaxed text-slate-100">
+              <pre className="max-h-64 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900 dark:bg-slate-950 p-4 font-mono text-xs leading-relaxed text-slate-100">
                 <HighlightedJson value={log.metadata} />
               </pre>
             </section>
@@ -325,7 +370,7 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
         </div>
 
         {/* Nút đóng */}
-        <div className="sticky bottom-0 z-10 mt-auto flex justify-end border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
+        <div className="sticky bottom-0 z-10 mt-auto flex justify-end border-t border-line/80 bg-surface-card/95 px-5 py-3.5 backdrop-blur-md sm:px-6">
           <Button
             type="button"
             variant="outline"

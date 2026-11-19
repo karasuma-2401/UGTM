@@ -10,9 +10,12 @@ import { archivalApi } from '../services/archivalApi';
 import type { ArchivalFilterKey, FinalSubmissionReviewAction } from '../types/archival.types';
 import {
   ARCHIVAL_REASON_MAX_LENGTH,
+  type ArchivalSortField,
+  type ArchivalSortState,
   computeArchivalStats,
   filterArchivalRows,
   mergeArchivalSummaryRows,
+  sortArchivalRows,
   triggerBrowserDownload,
 } from '../utils/archival';
 import { getThesisErrorMessage } from '../utils/thesisErrors';
@@ -41,6 +44,7 @@ export function useArchivalReview() {
 
   const [filterKey, setFilterKey] = useState<ArchivalFilterKey>('AdvisorConfirmed');
   const [keyword, setKeyword] = useState('');
+  const [sort, setSort] = useState<ArchivalSortState>({ field: 'submittedAt', direction: 'desc' });
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [manualSelectedId, setManualSelectedId] = useState<string | null>(null);
@@ -49,6 +53,13 @@ export function useArchivalReview() {
   const [commentError, setCommentError] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [downloadingKey, setDownloadingKey] = useState<string | null>(null);
+  const [previewingKey, setPreviewingKey] = useState<string | null>(null);
+  const [pdfPreviewState, setPdfPreviewState] = useState<{
+    open: boolean;
+    url: string;
+    fileName?: string;
+    fileSize?: number;
+  }>({ open: false, url: '' });
 
   const listQuery = useQuery({
     queryKey: ['archival-review-list', user?.id, selectedBatchId],
@@ -73,10 +84,10 @@ export function useArchivalReview() {
     const submissions = listQuery.data?.submissions ?? [];
     const academicItems = listQuery.data?.academicItems ?? [];
     const baseMerged = mergeArchivalSummaryRows(submissions, academicItems, {});
-    const filtered = filterArchivalRows(baseMerged, filterKey, keyword);
+    const filtered = sortArchivalRows(filterArchivalRows(baseMerged, filterKey, keyword), sort);
     const start = (pageNumber - 1) * pageSize;
     return filtered.slice(start, start + pageSize).map((item) => item.groupId);
-  }, [listQuery.data, filterKey, keyword, pageNumber, pageSize]);
+  }, [listQuery.data, filterKey, keyword, sort, pageNumber, pageSize]);
 
   const groupDetailQueries = useQueries({
     queries: visibleGroupIds.map((groupId) => ({
@@ -108,8 +119,8 @@ export function useArchivalReview() {
   }, [listQuery.data, detailByGroupId]);
 
   const filteredRows = useMemo(
-    () => filterArchivalRows(allMergedRows, filterKey, keyword),
-    [allMergedRows, filterKey, keyword],
+    () => sortArchivalRows(filterArchivalRows(allMergedRows, filterKey, keyword), sort),
+    [allMergedRows, filterKey, keyword, sort],
   );
 
   const totalCount = filteredRows.length;
@@ -201,6 +212,10 @@ export function useArchivalReview() {
           queryKey: ['archival-submission-detail', result.submissionId],
         }),
         queryClient.invalidateQueries({ queryKey: ['archival-packages', result.submissionId] }),
+        queryClient.invalidateQueries({ queryKey: ['advisor-archival-list'] }),
+        queryClient.invalidateQueries({
+          queryKey: ['advisor-archival-detail', result.submissionId],
+        }),
       ]);
     },
     onError: (error) => {
@@ -246,6 +261,34 @@ export function useArchivalReview() {
     }
   };
 
+  const handlePreviewPdf = async (
+    packageVersion: number,
+    fileName: string,
+    fileSize?: number,
+  ) => {
+    if (!selectedSubmissionId) return;
+    const key = `${packageVersion}-ThesisPdf`;
+    setPreviewingKey(key);
+    try {
+      const download = await archivalApi.getDownloadUrl(
+        selectedSubmissionId,
+        packageVersion,
+        'ThesisPdf',
+        { inline: true },
+      );
+      setPdfPreviewState({
+        open: true,
+        url: download.downloadUrl,
+        fileName: download.fileName || fileName,
+        fileSize: download.fileSize ?? fileSize,
+      });
+    } catch (error) {
+      notify.error(getThesisErrorMessage(error, 'Không tạo được liên kết xem trước tệp PDF.'));
+    } finally {
+      setPreviewingKey(null);
+    }
+  };
+
   return {
     permissions: { canRead, canManage },
     batches,
@@ -253,6 +296,7 @@ export function useArchivalReview() {
     isLoadingBatches: batchesQuery.isLoading,
     filterKey,
     keyword,
+    sort,
     pageNumber: safePageNumber,
     pageSize,
     totalCount,
@@ -278,6 +322,8 @@ export function useArchivalReview() {
     isConfirming: confirmMutation.isPending,
     isHistoryOpen,
     downloadingKey,
+    previewingKey,
+    pdfPreviewState,
     actions: {
       selectBatch: (batchId: string) => {
         setExplicitBatchId(batchId);
@@ -292,9 +338,20 @@ export function useArchivalReview() {
         setKeyword(nextKeyword);
         setPageNumber(1);
       },
+      changeSort: (field: ArchivalSortField) => {
+        setSort((prev) => {
+          if (prev.field === field) {
+            return { field, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+          }
+          const defaultDirection = field === 'submittedAt' || field === 'version' ? 'desc' : 'asc';
+          return { field, direction: defaultDirection };
+        });
+        setPageNumber(1);
+      },
       resetFilters: () => {
         setFilterKey('AdvisorConfirmed');
         setKeyword('');
+        setSort({ field: 'submittedAt', direction: 'desc' });
         setPageNumber(1);
       },
       changePage: (nextPage: number) => setPageNumber(nextPage),
@@ -317,6 +374,8 @@ export function useArchivalReview() {
       openHistory: () => setIsHistoryOpen(true),
       closeHistory: () => setIsHistoryOpen(false),
       downloadFile: handleDownloadFile,
+      previewPdf: handlePreviewPdf,
+      closePdfPreview: () => setPdfPreviewState((prev) => ({ ...prev, open: false })),
       refresh: () => void listQuery.refetch(),
       refetchDetail: () => void submissionDetailQuery.refetch(),
     },

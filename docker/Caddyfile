@@ -2,6 +2,12 @@
 	email {$ACME_EMAIL}
 }
 
+# Preserve Host, path and query for S3 signatures; do not log presigned URLs.
+https://{$API_HOST}:8443 {
+	reverse_proxy minio:9000
+	header -Server
+}
+
 {$API_HOST} {
 	encode zstd gzip
 

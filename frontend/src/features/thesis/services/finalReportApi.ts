@@ -1,10 +1,12 @@
 import { httpClient } from '@/shared/api';
 import type { ApiResponse } from '@/shared/api/types';
+import { buildDownloadRequestConfig, type DownloadUrlOptions } from '../utils/archival';
 import { buildUploadProgressHandler } from './submissionUploadHelper';
 import type {
   FinalReportSubmissionDto,
   FinalReportHistoryDto,
   ReviewerFeedbackDto,
+  RevisedFinalReportEligibilityDto,
   SubmissionFileDownloadDto,
 } from '../types/finalReport.types';
 import type { SubmissionProductLinkInput } from '../types/syllabus.types';
@@ -17,6 +19,45 @@ function unwrap<T>(response: ApiResponse<T>): T {
 }
 
 export const finalReportApi = {
+  async getRevisedFinalReportEligibility(
+    groupId: string,
+    signal?: AbortSignal,
+  ): Promise<RevisedFinalReportEligibilityDto> {
+    const response = await httpClient.get<ApiResponse<RevisedFinalReportEligibilityDto>>(
+      `/api/thesis/groups/${groupId}/revised-final-report/eligibility`,
+      { signal },
+    );
+    return unwrap(response.data);
+  },
+
+  async getRevisedFinalReportHistory(
+    groupId: string,
+    signal?: AbortSignal,
+  ): Promise<FinalReportHistoryDto | null> {
+    try {
+      const response = await httpClient.get<ApiResponse<FinalReportHistoryDto>>(
+        `/api/thesis/groups/${groupId}/revised-final-report`,
+        { signal },
+      );
+      return unwrap(response.data);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError?.response?.status === 404) return null;
+      throw error;
+    }
+  },
+
+  async submitRevisedFinalReport(groupId: string, file: File): Promise<FinalReportSubmissionDto> {
+    const formData = new FormData();
+    formData.append('groupId', groupId);
+    formData.append('file', file);
+    const response = await httpClient.post<ApiResponse<FinalReportSubmissionDto>>(
+      '/api/thesis/revised-final-reports',
+      formData,
+    );
+    return unwrap(response.data);
+  },
+
   async submitFinalReport(
     groupId: string,
     file: File,
@@ -85,22 +126,22 @@ export const finalReportApi = {
 
   async getDownloadUrl(
     fileId: string,
-    signal?: AbortSignal,
+    optionsOrSignal?: DownloadUrlOptions | AbortSignal,
   ): Promise<SubmissionFileDownloadDto> {
     const response = await httpClient.get<ApiResponse<SubmissionFileDownloadDto>>(
       `/api/thesis/final-report-files/${fileId}/download`,
-      { signal },
+      buildDownloadRequestConfig(optionsOrSignal),
     );
     return unwrap(response.data);
   },
 
   async getAttachmentUrl(
     attachmentId: string,
-    signal?: AbortSignal,
+    optionsOrSignal?: DownloadUrlOptions | AbortSignal,
   ): Promise<SubmissionFileDownloadDto> {
     const response = await httpClient.get<ApiResponse<SubmissionFileDownloadDto>>(
       `/api/thesis/final-report-attachments/${attachmentId}/download`,
-      { signal },
+      buildDownloadRequestConfig(optionsOrSignal),
     );
     return unwrap(response.data);
   },

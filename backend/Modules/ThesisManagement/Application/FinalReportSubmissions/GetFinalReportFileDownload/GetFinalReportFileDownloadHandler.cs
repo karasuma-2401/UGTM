@@ -44,7 +44,7 @@ public sealed class GetFinalReportFileDownloadHandler(
         {
             return Result.Failure<SubmissionFileDownloadDto>(FinalReportSubmissionErrors.FileNotFound);
         }
-        if (!await accessChecker.CanReadAsync(group, cancellationToken))
+        if (!await accessChecker.CanReadAsync(group, cancellationToken, report.VersionType))
         {
             var access = reviewerWorkflow is null ? null : await reviewerWorkflow.GetActiveReportAccessAsync(currentUser.UserId.Value, file.Id, cancellationToken);
             if (access is null || access.Binding.GroupId != group.Id || access.Binding.FinalReportId != report.Id
@@ -54,7 +54,14 @@ public sealed class GetFinalReportFileDownloadHandler(
         }
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
-        var uri = await objectStorage.CreateDownloadUriAsync(file.ObjectKey, DownloadUriLifetime, cancellationToken);
+        var uri = await ThesisDownloadUriHelper.CreateSignedUriAsync(
+            objectStorage,
+            file.ObjectKey,
+            file.FileName,
+            file.FileExtension,
+            DownloadUriLifetime,
+            query.Inline,
+            cancellationToken);
         return Result.Success(new SubmissionFileDownloadDto(file.Id, uri.AbsoluteUri, nowUtc.Add(DownloadUriLifetime)));
     }
 }

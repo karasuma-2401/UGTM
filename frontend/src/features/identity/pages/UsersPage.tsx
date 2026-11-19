@@ -122,17 +122,20 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         description={
           actions.pendingStatusUser && (
             <div className="space-y-2">
-              <p className="text-sm text-slate-800">
+              <p className="text-sm text-ink-heading">
                 Bạn sắp {actions.pendingStatusUser.status === 'Active' ? 'vô hiệu hóa' : 'khôi phục'} tài khoản{' '}
-                <strong className="font-semibold text-slate-950">
+                <strong className="font-semibold text-ink-primary">
                   {actions.pendingStatusUser.fullName}
                 </strong>
                 {actions.pendingStatusUser.userCode ? (
-                  <span className="text-slate-500"> ({actions.pendingStatusUser.userCode})</span>
+                  <span className="text-ink-muted">
+                    {' '}
+                    ({actions.pendingStatusUser.userCode})
+                  </span>
                 ) : null}
                 .
               </p>
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <p className="text-xs text-ink-muted leading-relaxed">
                 {actions.pendingStatusUser.status === 'Active'
                   ? 'Tài khoản này sẽ bị thu hồi phiên đăng nhập và tạm ngưng quyền truy cập hệ thống.'
                   : 'Tài khoản sẽ được mở khóa và người dùng có thể đăng nhập lại vào hệ thống.'}
@@ -144,7 +147,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         isConfirming={actions.statusMutation.isPending}
       />
 
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 shadow-xs">
+      <Card className="min-w-0 overflow-hidden rounded-2xl border-line/80 shadow-xs">
         <ListCardHeader
           title="Danh sách tài khoản"
           icon={isStudent ? <GraduationCap /> : <UsersRound />}
@@ -206,7 +209,9 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             )}
             {data.statisticsQuery.isError && (
               <div role="alert" className="mt-2 flex flex-wrap items-center gap-2">
-                <p className="text-xs text-rose-700">Không thể tải thống kê tài khoản.</p>
+                <p className="text-xs text-tone-danger-text">
+                  Không thể tải thống kê tài khoản.
+                </p>
                 <Button
                   type="button"
                   variant="outline"
@@ -220,7 +225,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             )}
           </section>
         </ListCardHeader>
-        <div className="border-b border-slate-100 bg-slate-50/40 p-4 sm:px-5">
+        <div className="border-b border-line-subtle bg-surface-subtle/40 p-4 sm:px-5">
           <UserFilterBar
             isStudent={isStudent}
             draftFilters={filters.draftFilters}
@@ -257,7 +262,9 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               role="alert"
               className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center"
             >
-              <p className="text-sm text-rose-600">{getUserErrorMessage(data.usersQuery.error)}</p>
+              <p className="text-sm text-tone-danger-icon">
+                {getUserErrorMessage(data.usersQuery.error)}
+              </p>
               <Button
                 type="button"
                 variant="outline"
@@ -287,7 +294,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
               onResendActivation={actions.handleResendActivation}
             />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-sm text-slate-500">
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center text-sm text-ink-muted">
               <p>Không có tài khoản phù hợp.</p>
               {filters.hasFilters && (
                 <Button

@@ -3,52 +3,29 @@ import { AlertCircle, Sparkles, CheckCircle2 } from 'lucide-react';
 import { DatePicker } from '@/components/ui/calendar';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { addDaysToDateString } from '../../utils/periodDates';
-import type { ReviewGateConfigurationDto } from '../../types/period.types';
+import {
+  type GateTimeInput,
+  addDaysToDateString,
+  computeDefaultGateSchedule,
+} from '../../utils/periodDates';
 
 interface PeriodReviewGateDialogProps {
   open: boolean;
   onClose: () => void;
   canEdit: boolean;
-  syllabusGate?: ReviewGateConfigurationDto | null;
-  midtermGate?: ReviewGateConfigurationDto | null;
+  syllabusGateDraft?: GateTimeInput;
+  midtermGateDraft?: GateTimeInput;
   defaultSyllabusDeadline?: string;
   defaultMidtermDeadline?: string;
-  onSaveGates: (
-    syllabus: {
-      initial: string;
-      faculty: string;
-      final: string;
-    },
-    midterm: {
-      initial: string;
-      faculty: string;
-      final: string;
-    },
-  ) => Promise<void>;
-}
-
-function toLocalDateInput(utcStr?: string): string {
-  if (!utcStr) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(utcStr)) {
-    return utcStr;
-  }
-  try {
-    const d = new Date(utcStr);
-    if (isNaN(d.getTime())) return '';
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  } catch {
-    return '';
-  }
+  onSaveGates: (syllabus: GateTimeInput, midterm: GateTimeInput) => void;
 }
 
 export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
   open,
   onClose,
   canEdit,
-  syllabusGate,
-  midtermGate,
+  syllabusGateDraft,
+  midtermGateDraft,
   defaultSyllabusDeadline,
   defaultMidtermDeadline,
   onSaveGates,
@@ -63,7 +40,6 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
   const [mFaculty, setMFaculty] = useState('');
   const [mFinal, setMFinal] = useState('');
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fluent animation và feedback states
@@ -72,47 +48,35 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
 
   useEffect(() => {
     if (open) {
-      const savedSInitial = toLocalDateInput(syllabusGate?.initialSubmissionDeadlineUtc);
-      const savedSFaculty = toLocalDateInput(syllabusGate?.facultyResponseDeadlineUtc);
-      const savedSFinal = toLocalDateInput(syllabusGate?.finalClosureDeadlineUtc);
+      const nextSyllabus =
+        syllabusGateDraft &&
+        (syllabusGateDraft.initial || syllabusGateDraft.faculty || syllabusGateDraft.final)
+          ? syllabusGateDraft
+          : computeDefaultGateSchedule(defaultSyllabusDeadline);
+      setSInitial(nextSyllabus.initial);
+      setSFaculty(nextSyllabus.faculty);
+      setSFinal(nextSyllabus.final);
 
-      if (savedSInitial || savedSFaculty || savedSFinal) {
-        setSInitial(savedSInitial);
-        setSFaculty(savedSFaculty);
-        setSFinal(savedSFinal);
-      } else if (defaultSyllabusDeadline) {
-        setSFinal(defaultSyllabusDeadline);
-        setSFaculty(addDaysToDateString(defaultSyllabusDeadline, -2));
-        setSInitial(addDaysToDateString(defaultSyllabusDeadline, -5));
-      } else {
-        setSInitial('');
-        setSFaculty('');
-        setSFinal('');
-      }
-
-      const savedMInitial = toLocalDateInput(midtermGate?.initialSubmissionDeadlineUtc);
-      const savedMFaculty = toLocalDateInput(midtermGate?.facultyResponseDeadlineUtc);
-      const savedMFinal = toLocalDateInput(midtermGate?.finalClosureDeadlineUtc);
-
-      if (savedMInitial || savedMFaculty || savedMFinal) {
-        setMInitial(savedMInitial);
-        setMFaculty(savedMFaculty);
-        setMFinal(savedMFinal);
-      } else if (defaultMidtermDeadline) {
-        setMFinal(defaultMidtermDeadline);
-        setMFaculty(addDaysToDateString(defaultMidtermDeadline, -2));
-        setMInitial(addDaysToDateString(defaultMidtermDeadline, -5));
-      } else {
-        setMInitial('');
-        setMFaculty('');
-        setMFinal('');
-      }
+      const nextMidterm =
+        midtermGateDraft &&
+        (midtermGateDraft.initial || midtermGateDraft.faculty || midtermGateDraft.final)
+          ? midtermGateDraft
+          : computeDefaultGateSchedule(defaultMidtermDeadline);
+      setMInitial(nextMidterm.initial);
+      setMFaculty(nextMidterm.faculty);
+      setMFinal(nextMidterm.final);
 
       setError(null);
       setJustApplied(false);
       setIsFlashing(false);
     }
-  }, [open, syllabusGate, midtermGate, defaultSyllabusDeadline, defaultMidtermDeadline]);
+  }, [
+    open,
+    syllabusGateDraft,
+    midtermGateDraft,
+    defaultSyllabusDeadline,
+    defaultMidtermDeadline,
+  ]);
 
   const handleApplyDefaults = () => {
     if (activeTab === 'Syllabus' && defaultSyllabusDeadline) {
@@ -136,36 +100,38 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     setError(null);
 
-    if (sInitial && sFaculty && sFinal) {
+    const hasAnySyllabus = Boolean(sInitial || sFaculty || sFinal);
+    if (hasAnySyllabus) {
+      if (!sInitial || !sFaculty || !sFinal) {
+        setError('Cổng Đề cương: Vui lòng nhập đầy đủ cả 3 mốc ngày.');
+        return;
+      }
       if (sInitial >= sFaculty || sFaculty >= sFinal) {
         setError('Cổng Đề cương: Hạn sinh viên nộp < Hạn Khoa phản hồi < Hạn chót đóng cổng.');
         return;
       }
     }
 
-    if (mInitial && mFaculty && mFinal) {
+    const hasAnyMidterm = Boolean(mInitial || mFaculty || mFinal);
+    if (hasAnyMidterm) {
+      if (!mInitial || !mFaculty || !mFinal) {
+        setError('Cổng Giữa kỳ: Vui lòng nhập đầy đủ cả 3 mốc ngày.');
+        return;
+      }
       if (mInitial >= mFaculty || mFaculty >= mFinal) {
         setError('Cổng Giữa kỳ: Hạn sinh viên nộp < Hạn Khoa phản hồi < Hạn chót đóng cổng.');
         return;
       }
     }
 
-    setIsSubmitting(true);
-    try {
-      await onSaveGates(
-        { initial: sInitial, faculty: sFaculty, final: sFinal },
-        { initial: mInitial, faculty: mFaculty, final: mFinal },
-      );
-      onClose();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Có lỗi khi lưu cổng thẩm định.';
-      setError(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
+    onSaveGates(
+      { initial: sInitial, faculty: sFaculty, final: sFinal },
+      { initial: mInitial, faculty: mFaculty, final: mFinal },
+    );
+    onClose();
   };
 
   return (
@@ -177,7 +143,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
     >
       <div className="space-y-4 p-5">
         {/* Segmented Tab Controls with Fluent styling */}
-        <div className="flex rounded-xl border border-slate-200 bg-slate-100/80 p-1 select-none">
+        <div className="flex rounded-xl border border-line bg-surface-muted/80 p-1 select-none">
           <button
             type="button"
             onClick={() => {
@@ -186,8 +152,8 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
             }}
             className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold select-none transition-all duration-200 ${
               activeTab === 'Syllabus'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-surface-elevated text-ink-primary shadow-2xs'
+                : 'text-ink-body hover:text-ink-primary'
             }`}
           >
             <span
@@ -205,8 +171,8 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
             }}
             className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2 text-xs font-semibold select-none transition-all duration-200 ${
               activeTab === 'Midterm'
-                ? 'bg-white text-slate-900 shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-surface-elevated text-ink-primary shadow-2xs'
+                : 'text-ink-body hover:text-ink-primary'
             }`}
           >
             <span
@@ -219,9 +185,9 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
         </div>
 
         {/* 3-Step Process Stepper Card with Action Button */}
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-3">
+        <div className="rounded-xl border border-line bg-surface-subtle p-3.5 space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-slate-900">
+            <span className="text-xs font-bold text-ink-primary">
               Quy trình thẩm định 3 bước
             </span>
 
@@ -233,14 +199,14 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                 onClick={handleApplyDefaults}
                 className={`h-7 px-2.5 gap-1.5 rounded-lg text-xs font-semibold transition-all duration-200 active:scale-95 shadow-2xs select-none ${
                   justApplied
-                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
-                    : 'border-blue-200 bg-blue-50/90 text-primary hover:bg-blue-100 hover:border-blue-300'
+                    ? 'border-tone-success-border bg-tone-success-bg text-tone-success-strong'
+                    : 'border-tone-info-border bg-tone-info-bg text-primary hover:bg-tone-info-bg hover:border-tone-info-border'
                 }`}
                 title="Tự động tính: Hạn chót, Khoa phản hồi (-2 ngày), SV nộp (-5 ngày)"
               >
                 {justApplied ? (
                   <>
-                    <CheckCircle2 className="size-3 text-emerald-600" />
+                    <CheckCircle2 className="size-3 text-tone-success-icon" />
                     Đã áp dụng mốc chuẩn!
                   </>
                 ) : (
@@ -255,35 +221,35 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
 
           {/* Stepper Rail Cards */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="flex flex-col items-center text-center p-2 rounded-lg bg-white border border-slate-200 shadow-2xs">
-              <span className="size-5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold flex items-center justify-center mb-1">
+            <div className="flex flex-col items-center text-center p-2 rounded-lg bg-surface-card border border-line shadow-2xs">
+              <span className="size-5 rounded-full bg-surface-muted text-ink-secondary text-[10px] font-bold flex items-center justify-center mb-1">
                 1
               </span>
-              <span className="text-[11px] font-semibold text-slate-800 leading-tight">
+              <span className="text-[11px] font-semibold text-ink-heading leading-tight">
                 SV nộp ban đầu
               </span>
-              <span className="text-[10px] text-slate-400 mt-0.5">
+              <span className="text-[10px] text-ink-subtle mt-0.5">
                 Mốc -5 ngày
               </span>
             </div>
 
-            <div className="flex flex-col items-center text-center p-2 rounded-lg bg-white border border-slate-200 shadow-2xs">
-              <span className="size-5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold flex items-center justify-center mb-1">
+            <div className="flex flex-col items-center text-center p-2 rounded-lg bg-surface-card border border-line shadow-2xs">
+              <span className="size-5 rounded-full bg-surface-muted text-ink-secondary text-[10px] font-bold flex items-center justify-center mb-1">
                 2
               </span>
-              <span className="text-[11px] font-semibold text-slate-800 leading-tight">
+              <span className="text-[11px] font-semibold text-ink-heading leading-tight">
                 Khoa/GV phản hồi
               </span>
-              <span className="text-[10px] text-slate-400 mt-0.5">
+              <span className="text-[10px] text-ink-subtle mt-0.5">
                 Mốc -2 ngày
               </span>
             </div>
 
-            <div className="flex flex-col items-center text-center p-2 rounded-lg bg-white border border-slate-200 shadow-2xs">
-              <span className="size-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center mb-1">
+            <div className="flex flex-col items-center text-center p-2 rounded-lg bg-surface-card border border-line shadow-2xs">
+              <span className="size-5 rounded-full bg-brand-solid text-white text-[10px] font-bold flex items-center justify-center mb-1">
                 3
               </span>
-              <span className="text-[11px] font-semibold text-slate-900 leading-tight">
+              <span className="text-[11px] font-semibold text-ink-primary leading-tight">
                 Chốt đóng cổng
               </span>
               <span className="text-[10px] text-primary font-medium mt-0.5">
@@ -294,8 +260,8 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
 
           {/* Feedback notice when defaults applied */}
           {justApplied && (
-            <div className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-200/90 px-3 py-1.5 text-xs text-emerald-800 animate-in fade-in slide-in-from-top-1 duration-200">
-              <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-2 rounded-lg bg-tone-success-bg border border-tone-success-border px-3 py-1.5 text-xs text-tone-success-strong animate-in fade-in slide-in-from-top-1 duration-200">
+              <CheckCircle2 className="size-3.5 text-tone-success-icon shrink-0" />
               <span>
                 Đã điền 3 mốc chuẩn theo đợt: Hạn chót đợt, GV phản hồi (-2 ngày), SV nộp (-5 ngày).
               </span>
@@ -304,7 +270,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
         </div>
 
         {error && (
-          <div className="flex items-start gap-2 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-medium text-rose-700">
+          <div className="flex items-start gap-2 rounded-xl bg-tone-danger-bg border border-tone-danger-border p-3 text-xs font-medium text-tone-danger-text">
             <AlertCircle className="size-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
@@ -317,9 +283,9 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
             className="space-y-3.5 animate-in fade-in slide-in-from-right-2 duration-250 ease-out"
           >
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
+              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-ink-secondary">
                 <span>1. Hạn sinh viên nộp đề cương ban đầu</span>
-                <span className="text-[11px] font-normal text-slate-400">Trước phản hồi 3 ngày</span>
+                <span className="text-[11px] font-normal text-ink-subtle">Trước phản hồi 3 ngày</span>
               </label>
               <DatePicker
                 aria-label="Hạn sinh viên nộp đề cương ban đầu"
@@ -329,16 +295,16 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                   setSInitial(value);
                   setError(null);
                 }}
-                className={`h-9 text-sm rounded-lg border-slate-200 bg-white transition-all ${
+                className={`h-9 text-sm rounded-lg border-line-input bg-surface-card transition-all ${
                   isFlashing ? 'ring-2 ring-primary/40 border-primary' : ''
                 }`}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
+              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-ink-secondary">
                 <span>2. Hạn Khoa / GV phản hồi và thẩm định</span>
-                <span className="text-[11px] font-normal text-slate-400">Trước hạn chót 2 ngày</span>
+                <span className="text-[11px] font-normal text-ink-subtle">Trước hạn chót 2 ngày</span>
               </label>
               <DatePicker
                 aria-label="Hạn Khoa / GV phản hồi đề cương"
@@ -348,14 +314,14 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                   setSFaculty(value);
                   setError(null);
                 }}
-                className={`h-9 text-sm rounded-lg border-slate-200 bg-white transition-all ${
+                className={`h-9 text-sm rounded-lg border-line-input bg-surface-card transition-all ${
                   isFlashing ? 'ring-2 ring-primary/40 border-primary' : ''
                 }`}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
+              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-ink-secondary">
                 <span>3. Hạn chót đóng cổng và nộp hoàn thiện</span>
                 <span className="text-[11px] font-normal text-primary">Mốc deadline đợt</span>
               </label>
@@ -367,7 +333,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                   setSFinal(value);
                   setError(null);
                 }}
-                className={`h-9 text-sm rounded-lg border-slate-200 bg-white transition-all ${
+                className={`h-9 text-sm rounded-lg border-line-input bg-surface-card transition-all ${
                   isFlashing ? 'ring-2 ring-primary/40 border-primary' : ''
                 }`}
               />
@@ -382,9 +348,9 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
             className="space-y-3.5 animate-in fade-in slide-in-from-right-2 duration-250 ease-out"
           >
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
+              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-ink-secondary">
                 <span>1. Hạn sinh viên nộp báo cáo giữa kỳ</span>
-                <span className="text-[11px] font-normal text-slate-400">Trước đánh giá 3 ngày</span>
+                <span className="text-[11px] font-normal text-ink-subtle">Trước đánh giá 3 ngày</span>
               </label>
               <DatePicker
                 aria-label="Hạn sinh viên nộp báo cáo giữa kỳ"
@@ -394,16 +360,16 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                   setMInitial(value);
                   setError(null);
                 }}
-                className={`h-9 text-sm rounded-lg border-slate-200 bg-white transition-all ${
+                className={`h-9 text-sm rounded-lg border-line-input bg-surface-card transition-all ${
                   isFlashing ? 'ring-2 ring-primary/40 border-primary' : ''
                 }`}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
+              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-ink-secondary">
                 <span>2. Hạn GVHD / Khoa đánh giá giữa kỳ</span>
-                <span className="text-[11px] font-normal text-slate-400">Trước kết luận 2 ngày</span>
+                <span className="text-[11px] font-normal text-ink-subtle">Trước kết luận 2 ngày</span>
               </label>
               <DatePicker
                 aria-label="Hạn GVHD / Khoa đánh giá giữa kỳ"
@@ -413,14 +379,14 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                   setMFaculty(value);
                   setError(null);
                 }}
-                className={`h-9 text-sm rounded-lg border-slate-200 bg-white transition-all ${
+                className={`h-9 text-sm rounded-lg border-line-input bg-surface-card transition-all ${
                   isFlashing ? 'ring-2 ring-primary/40 border-primary' : ''
                 }`}
               />
             </div>
 
             <div>
-              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-slate-700">
+              <label className="mb-1.5 flex items-center justify-between text-xs font-semibold text-ink-secondary">
                 <span>3. Hạn chót kết luận đánh giá giữa kỳ</span>
                 <span className="text-[11px] font-normal text-primary">Mốc deadline đợt</span>
               </label>
@@ -432,7 +398,7 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
                   setMFinal(value);
                   setError(null);
                 }}
-                className={`h-9 text-sm rounded-lg border-slate-200 bg-white transition-all ${
+                className={`h-9 text-sm rounded-lg border-line-input bg-surface-card transition-all ${
                   isFlashing ? 'ring-2 ring-primary/40 border-primary' : ''
                 }`}
               />
@@ -441,13 +407,13 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
         )}
 
         {/* Action Buttons Footer */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-line">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={onClose}
-            className="rounded-xl border-slate-200 text-xs font-semibold h-9 px-4 hover:bg-slate-50"
+            className="rounded-xl border-line-input text-xs font-semibold h-9 px-4 hover:bg-surface-hover"
           >
             Đóng
           </Button>
@@ -455,11 +421,10 @@ export const PeriodReviewGateDialog: React.FC<PeriodReviewGateDialogProps> = ({
             <Button
               type="button"
               size="sm"
-              disabled={isSubmitting}
               onClick={handleSave}
-              className="rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-xs h-9 px-5 shadow-sm active:scale-[0.98] transition-all"
+              className="rounded-xl bg-brand-solid text-white font-semibold text-xs h-9 px-5 shadow-sm active:scale-[0.98] transition-all hover:bg-brand-solid-hover"
             >
-              {isSubmitting ? 'Đang lưu...' : 'Lưu cổng thẩm định'}
+              Lưu cổng thẩm định
             </Button>
           )}
         </div>

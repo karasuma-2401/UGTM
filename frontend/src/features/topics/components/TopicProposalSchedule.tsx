@@ -31,22 +31,22 @@ export function TopicProposalSchedule({ batchId }: { batchId: string }) {
   }
   return (
     <section
-      className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 text-xs leading-5"
+      className="rounded-xl border border-tone-info-border bg-tone-info-bg p-3 text-xs leading-5"
       aria-label="Lịch chuẩn bị đề tài"
     >
-      <h3 className="mb-2 flex items-center gap-2 font-semibold text-blue-800">
+      <h3 className="mb-2 flex items-center gap-2 font-semibold text-tone-info-strong">
         <CalendarDays className="size-4 shrink-0" />
         Lịch chuẩn bị đề tài
       </h3>
       {!canRead ? (
-        <p className="text-slate-500">Bạn chưa có quyền xem lịch của đợt.</p>
+        <p className="text-ink-muted">Bạn chưa có quyền xem lịch của đợt.</p>
       ) : query.isPending ? (
-        <p role="status" className="text-slate-500">
+        <p role="status" className="text-ink-muted">
           Đang tải lịch...
         </p>
       ) : query.isError ? (
         <div role="alert">
-          <p className="text-rose-700">Chưa tải được lịch của đợt.</p>
+          <p className="text-tone-danger-text">Chưa tải được lịch của đợt.</p>
           <Button
             type="button"
             size="sm"
@@ -58,15 +58,15 @@ export function TopicProposalSchedule({ batchId }: { batchId: string }) {
           </Button>
         </div>
       ) : stage && timeline ? (
-        <div className="space-y-1 text-slate-600">
-          <p className="font-medium text-slate-800">{stage.stageName}</p>
+        <div className="space-y-1 text-ink-body">
+          <p className="font-medium text-ink-heading">{stage.stageName}</p>
           <p>
             {formatDate(stage.startDate)} – {formatDate(stage.endDate)}
           </p>
           <p>
             Mốc hạn: <strong className="font-semibold">{deadline}</strong>
           </p>
-          <p className="font-medium text-blue-700">
+          <p className="font-medium text-tone-info-text">
             {timeline.currentLocalDate < stage.startDate
               ? 'Chưa đến giai đoạn'
               : timeline.currentLocalDate > stage.endDate
@@ -75,7 +75,7 @@ export function TopicProposalSchedule({ batchId }: { batchId: string }) {
           </p>
         </div>
       ) : (
-        <p className="text-slate-500">Đợt này chưa có lịch chuẩn bị đề tài.</p>
+        <p className="text-ink-muted">Đợt này chưa có lịch chuẩn bị đề tài.</p>
       )}
     </section>
   );

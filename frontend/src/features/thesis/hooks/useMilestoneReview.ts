@@ -5,6 +5,7 @@ import { useAuth } from '@/shared/auth';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { milestoneApi } from '../services/milestoneApi';
 import { syllabusApi } from '../services/syllabusApi';
+import { triggerBrowserDownload } from '../utils/archival';
 import type { ProgressReportStatus } from '../types/milestone.types';
 
 export function useMilestoneReview() {
@@ -135,7 +136,7 @@ export function useMilestoneReview() {
       setActionError(null);
       const downloadInfo = await milestoneApi.getDownloadUrl(fileId);
       if (downloadInfo?.downloadUrl) {
-        window.open(downloadInfo.downloadUrl, '_blank', 'noopener,noreferrer');
+        triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
       const errorMsg =

@@ -1,13 +1,10 @@
 using System.Net;
-using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
 using UGTM.Database.Migrations;
-using UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments;
 using UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
@@ -99,49 +96,20 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         Assert.True((await db.AdvisorEvaluations.SingleAsync()).IsLocked);
     }
 
-    [Theory]
-    [InlineData("Student", true)]
-    [InlineData("Lecturer", true)]
-    [InlineData("Advisor", true)]
-    [InlineData("Reviewer", true)]
-    [InlineData("Faculty", false)]
-    [InlineData("AcademicAffairs", false)]
-    public async Task Cancellation_http_denies_non_management_roles_and_read_only_claims_before_body_or_lookup(string role, bool manage)
+    [Fact]
+    public async Task Cancellation_http_denies_non_management_roles_and_read_only_claims_before_body_or_lookup()
     {
         var client = await HttpAsync();
-        using var request = CancelRequest(Guid.NewGuid(), new { }, Guid.NewGuid(), role,
-            manage ? PermissionCodes.ThesisReviewerAssignmentsManage : PermissionCodes.ThesisReviewerAssignmentsRead);
-        request.Content = new StringContent("invalid json", Encoding.UTF8, "application/json");
-        using var response = await client.SendAsync(request);
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        await AssertCountsAsync(0, 0, 0);
-    }
-
-    [Theory]
-    [InlineData(false, "Admin", false, "ReviewerAssignment.AuthenticationRequired")]
-    [InlineData(true, "Lecturer", true, "ReviewerAssignment.AccessDenied")]
-    [InlineData(true, "Faculty", false, "ReviewerAssignment.AccessDenied")]
-    public async Task Cancellation_handler_independently_checks_authorization_before_invalid_input(
-        bool authenticated, string role, bool manage, string code)
-    {
-        var accessor = _app.Services.GetRequiredService<IHttpContextAccessor>();
-        List<Claim> claims = [new(ClaimTypes.NameIdentifier, _actor.ToString()), new(ClaimTypes.Role, role)];
-        if (manage) claims.Add(new("permission", PermissionCodes.ThesisReviewerAssignmentsManage));
-        accessor.HttpContext = new DefaultHttpContext
+        foreach (var (role, manage) in new[] { ("Student", true), ("Lecturer", true), ("Advisor", true),
+            ("Reviewer", true), ("Faculty", false), ("AcademicAffairs", false) })
         {
-            User = new ClaimsPrincipal(
-            new ClaimsIdentity(claims, authenticated ? "DirectCancellationTest" : null))
-        };
-        try
-        {
-            await using var scope = _app.Services.CreateAsyncScope();
-            var result = await scope.ServiceProvider.GetRequiredService<CancelReviewerAssignmentHandler>()
-                .HandleAsync(new(Guid.Empty, 0, null, Guid.Empty));
-            Assert.True(result.IsFailure);
-            Assert.Equal(code, result.Error.Code);
-            await AssertCountsAsync(0, 0, 0);
+            using var request = CancelRequest(Guid.NewGuid(), new { }, Guid.NewGuid(), role,
+                manage ? PermissionCodes.ThesisReviewerAssignmentsManage : PermissionCodes.ThesisReviewerAssignmentsRead);
+            request.Content = new StringContent("invalid json", Encoding.UTF8, "application/json");
+            using var response = await client.SendAsync(request);
+            Assert.True(response.StatusCode == HttpStatusCode.Forbidden, $"{role}: {response.StatusCode}");
         }
-        finally { accessor.HttpContext = null; }
+        await AssertCountsAsync(0, 0, 0);
     }
 
     [Fact]

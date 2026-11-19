@@ -62,16 +62,23 @@ export interface MidtermReportReviewItemDto {
 }
 
 export interface ReviewMidtermGroupItemDto {
+  submissionId?: string;
   groupId: string;
   groupCode: string;
   topicCode: string;
   topicTitleVi: string;
+  topicTitleEn?: string | null;
+  batchId?: string;
   studentNames: string;
+  students?: MidtermReportReviewStudentDto[];
+  advisorId?: string;
   advisorName: string;
   batchName: string;
   currentStatus: MidtermReportStatus;
   latestVersionNo: number;
   latestFileName: string;
   fileId?: string | null;
+  fileSize?: number | null;
+  fileExtension?: string | null;
   submittedAtUtc?: string | null;
 }

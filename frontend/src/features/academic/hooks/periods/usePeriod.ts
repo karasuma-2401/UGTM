@@ -1,11 +1,14 @@
 import { useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
 import { usePeriodModals } from './usePeriodModals';
 import { usePeriodData } from './usePeriodData';
 import { usePeriodSchedule } from './usePeriodSchedule';
 import { usePeriodActions } from './usePeriodActions';
+import type { GateTimeInput } from '../../utils/periodDates';
 
 export function usePeriod() {
+  const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
   const canManageBatch = hasPermission('academic.batches.manage');
   const canManageReviewGate = hasPermission('thesis.review-gate-config.manage');
@@ -27,6 +30,13 @@ export function usePeriod() {
   const { clearFailedGateUpdates } = actions;
   const { setErrorMessage } = modals;
 
+  const invalidateAcademicBatches = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['academic-batches'] }),
+      queryClient.invalidateQueries({ queryKey: ['academic-batch-timeline'] }),
+    ]);
+  }, [queryClient]);
+
   const setSelectedBatchId = useCallback(
     (nextId: string) => {
       setErrorMessage(null);
@@ -38,14 +48,13 @@ export function usePeriod() {
 
   useEffect(() => {
     let cancelled = false;
-    clearFailedGateUpdates();
 
     if (selectedBatchId === 'new') {
       resetForm();
     } else if (selectedBatchId) {
       void loadBatchDetail(selectedBatchId).then((result) => {
         if (!cancelled && result?.detail && result.detail.id === selectedBatchId) {
-          populateFromDetail(result.detail);
+          populateFromDetail(result.detail, result.gates);
         }
       });
     }
@@ -53,17 +62,18 @@ export function usePeriod() {
     return () => {
       cancelled = true;
     };
-  }, [selectedBatchId, loadBatchDetail, resetForm, populateFromDetail, clearFailedGateUpdates]);
+  }, [selectedBatchId, loadBatchDetail, resetForm, populateFromDetail]);
 
   const reloadCurrentBatch = useCallback(async () => {
     if (selectedBatchId !== 'new') {
       setErrorMessage(null);
       const result = await loadBatchDetail(selectedBatchId);
       if (result?.detail && result.detail.id === selectedBatchId) {
-        populateFromDetail(result.detail);
+        populateFromDetail(result.detail, result.gates);
       }
+      await invalidateAcademicBatches();
     }
-  }, [selectedBatchId, setErrorMessage, loadBatchDetail, populateFromDetail]);
+  }, [selectedBatchId, setErrorMessage, loadBatchDetail, populateFromDetail, invalidateAcademicBatches]);
 
   const executeSave = async (reason?: string) => {
     modals.setNotice(null);
@@ -73,6 +83,8 @@ export function usePeriod() {
       selectedBatchId: data.selectedBatchId,
       currentBatch: data.currentBatch,
       isLoadingDetail: data.isLoadingDetail,
+      canManageBatch: permissions.canManageBatch,
+      canManageReviewGate: permissions.canManageReviewGate,
       startDate: form.startDate,
       batchName: form.batchName,
       academicYear: form.academicYear,
@@ -82,19 +94,21 @@ export function usePeriod() {
       midtermDeadline: form.midtermDeadline,
       finalEvaluationDeadline: form.finalEvaluationDeadline,
       defenseDeadline: form.defenseDeadline,
+      syllabusGate: form.syllabusGateDraft,
+      midtermGate: form.midtermGateDraft,
       changeReason: reason,
       onBatchCreated: async (createdBatchId) => {
         await fetchBatches(createdBatchId);
+        await invalidateAcademicBatches();
       },
-      onSuccess: async (targetBatchId, message, isNew) => {
+      onSuccess: async (targetBatchId, message) => {
         modals.setNotice(message);
         await fetchBatches(targetBatchId);
-        if (!isNew) {
-          const result = await loadBatchDetail(targetBatchId);
-          if (result?.detail && result.detail.id === targetBatchId) {
-            populateFromDetail(result.detail);
-          }
+        const result = await loadBatchDetail(targetBatchId);
+        if (result?.detail && result.detail.id === targetBatchId) {
+          populateFromDetail(result.detail, result.gates);
         }
+        await invalidateAcademicBatches();
       },
       onError: modals.setErrorMessage,
     });
@@ -110,7 +124,7 @@ export function usePeriod() {
         modals.setNotice(message);
         const result = await loadBatchDetail(targetBatchId);
         if (result?.detail && result.detail.id === targetBatchId) {
-          populateFromDetail(result.detail);
+          populateFromDetail(result.detail, result.gates);
         }
       },
       onError: modals.setErrorMessage,
@@ -154,31 +168,15 @@ export function usePeriod() {
         data.setCurrentBatch(opened);
         modals.setNotice('Đợt KLTN đã được mở vận hành thành công!');
         await fetchBatches(opened.id);
+        await invalidateAcademicBatches();
       },
       onError: modals.setErrorMessage,
     });
   };
 
-  const handleSaveGates = async (
-    syllabus: { initial: string; faculty: string; final: string },
-    midterm: { initial: string; faculty: string; final: string },
-  ) => {
-    modals.setNotice(null);
+  const handleSaveGates = (syllabus: GateTimeInput, midterm: GateTimeInput) => {
     modals.setErrorMessage(null);
-    await actions.handleSaveGates({
-      selectedBatchId: data.selectedBatchId,
-      currentBatch: data.currentBatch,
-      isLoadingDetail: data.isLoadingDetail,
-      syllabus,
-      midterm,
-      onSyllabusDeadlineChange: form.handleSyllabusDeadlineChange,
-      onMidtermDeadlineChange: form.handleMidtermDeadlineChange,
-      onSuccess: (updatedGates) => {
-        data.setReviewGates(updatedGates);
-        modals.setNotice('Cập nhật chi tiết cổng thẩm định thành công!');
-      },
-      onError: modals.setErrorMessage,
-    });
+    form.setGateDrafts(syllabus, midterm);
   };
 
   return {

@@ -375,15 +375,13 @@ test('sort requests reset to page one and leave sorting of the full dataset to t
   );
 });
 
-test('filter edits wait for apply and chip removal retains the other applied filters', () => {
+test('filter edits apply immediately without submit and chip removal retains the other applied filters', () => {
   const ui = fixture();
   let tree = ui.render();
   component(tree, 'Input').props.onChange({ target: { value: '  nguyen  ' } });
   tree = ui.render();
-  assert.equal(ui.queries()[0].queryKey[2].keyword, '');
+  assert.equal(ui.queries()[0].queryKey[2].keyword, 'nguyen');
   find(tree, (node) => node.props['aria-label'] === 'Đợt khóa luận').props.onChange('batch');
-  tree = ui.render();
-  component(tree, 'form').props.onSubmit({ preventDefault() {} });
   tree = ui.render();
   assert.equal(ui.queries()[0].queryKey[2].keyword, 'nguyen');
   assert.equal(ui.queries()[0].queryKey[2].batchId, 'batch');

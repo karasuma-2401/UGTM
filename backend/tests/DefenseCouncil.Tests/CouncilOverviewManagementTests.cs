@@ -371,6 +371,45 @@ public sealed class CouncilOverviewManagementTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetCouncils_ReturnsApprovalReadinessConflictsAndDecisionMetadata()
+    {
+        var (draftCouncil, chId, _, _) = CreateBaseCouncil("HĐ-DRAFT-CHECK", RoomB1401, TimeSlotMorning);
+        var (draftAssign, draftGrp, _, _) = AssignGroupToCouncil(draftCouncil, 1);
+        draftCouncil.SubmitToAcademicAffairs(Guid.NewGuid(), "Khoa đã rà soát đủ điều kiện", DateTime.UtcNow);
+        _councilRepo.IneligibleDefenseGroupIds.Add(draftGrp);
+        _councilRepo.ActiveReviewers[draftGrp] = chId;
+
+        // Second council on same date/slot/room with same chairman -> triggers room + member conflict on draftCouncil
+        var activeCouncil = Council.Create(_batchId, "HĐ-ACTIVE-DECISION", _defenseDate, TimeSlotMorning, RoomB1401);
+        activeCouncil.Approve("123/QĐ-ĐHCNTT", new DateOnly(2026, 12, 1), "https://storage.example/qd-123.pdf", Guid.NewGuid(), DateTime.UtcNow);
+        _councilRepo.Councils.Add(activeCouncil);
+        var chDuplicate = new CouncilMember { Id = Guid.NewGuid(), CouncilId = activeCouncil.Id, UserId = chId, RoleInCouncil = CouncilMemberRole.Chairman };
+        activeCouncil.Members.Add(chDuplicate);
+        _councilRepo.Members.Add(chDuplicate);
+
+        Authenticate(Guid.NewGuid(), "AcademicAffairs");
+        var response = await _client.GetAsync($"/api/councils?batchId={_batchId}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var data = await ReadDataAsync(response);
+        var draftItem = data.EnumerateArray().First(x => x.GetProperty("assignmentId").GetString() == draftAssign.Id.ToString());
+        Assert.True(draftItem.GetProperty("isSubmittedToAcademicAffairs").GetBoolean());
+        Assert.Equal("Khoa đã rà soát đủ điều kiện", draftItem.GetProperty("submissionNotes").GetString());
+        Assert.True(draftItem.GetProperty("hasRoomConflict").GetBoolean());
+        Assert.True(draftItem.GetProperty("hasIneligibleGroups").GetBoolean());
+        Assert.True(draftItem.GetProperty("hasReviewerRoleConflict").GetBoolean());
+        var conflicts = draftItem.GetProperty("conflictingMemberNames").EnumerateArray().Select(e => e.GetString()).ToList();
+        Assert.Contains("TS. Lê Minh", conflicts);
+
+        var activeItem = data.EnumerateArray().First(x => x.GetProperty("id").GetString() == activeCouncil.Id.ToString());
+        Assert.Equal("123/QĐ-ĐHCNTT", activeItem.GetProperty("decisionNumber").GetString());
+        Assert.Equal("2026-12-01", activeItem.GetProperty("signedDate").GetString());
+        Assert.Equal("https://storage.example/qd-123.pdf", activeItem.GetProperty("decisionFileUrl").GetString());
+        Assert.NotEqual(JsonValueKind.Null, activeItem.GetProperty("approvedAt").ValueKind);
+        Assert.False(activeItem.GetProperty("hasRoomConflict").GetBoolean());
+    }
+
+    [Fact]
     public async Task GetCouncils_FilterByKeyword_MatchesCodeOrTopicOrLecturer()
     {
         var (c1, _, _, _) = CreateBaseCouncil("HĐ-ALPHA", room: "B1.401");

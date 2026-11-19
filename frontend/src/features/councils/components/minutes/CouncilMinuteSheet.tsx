@@ -204,7 +204,7 @@ export function CouncilMinuteSheet({
 
   return (
     <>
-      <article className="relative overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_4px_20px_-4px_rgba(15,23,42,0.05)] print:hidden">
+      <article className="relative overflow-hidden rounded-2xl border border-line/90 bg-surface-card shadow-[0_4px_20px_-4px_rgba(15,23,42,0.05)] print:hidden">
       {/* Brand top accent rule matching DESIGN.md */}
       <div
         aria-hidden="true"
@@ -213,42 +213,45 @@ export function CouncilMinuteSheet({
 
       <div className="p-5 sm:p-7 space-y-6">
         {/* Administrative Minute Header */}
-        <header className="border-b border-slate-200/80 pb-5">
+        <header className="border-b border-line/80 pb-5">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-medium text-slate-500">
+              <p className="text-xs font-medium text-ink-muted">
                 Trường Đại học Công nghệ Thông tin · ĐHQG-HCM — {overviewRow?.facultyName ?? 'Khoa CNTT'}
               </p>
               {isLocked && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-medium text-slate-600 print:hidden">
+                <span className="inline-flex items-center gap-1 rounded-full border border-line-input bg-surface-muted px-2.5 py-0.5 text-[11px] font-medium text-ink-body print:hidden">
                   <Lock className="size-3" aria-hidden="true" />
                   Chế độ chỉ đọc
                 </span>
               )}
             </div>
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-ink-primary">
               Biên bản chấm điểm hội đồng bảo vệ khóa luận
             </h2>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 text-xs text-slate-600">
-              <span className="font-semibold text-slate-800">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1 text-xs text-ink-body">
+              <span className="font-semibold text-ink-heading">
                 Hội đồng: {assignmentInfo.councilCode} · Nhóm {assignmentInfo.groupCode}
               </span>
               {decisionNumber && (
                 <span>
-                  QĐ: <strong className="font-semibold text-slate-800">{decisionNumber}</strong>
+                  QĐ:{' '}
+                  <strong className="font-semibold text-ink-heading">
+                    {decisionNumber}
+                  </strong>
                   {signedDate !== '—' ? ` (${signedDate})` : ''}
                 </span>
               )}
               <span className="inline-flex items-center gap-1">
-                <Calendar className="size-3.5 text-slate-400" aria-hidden="true" />
+                <Calendar className="size-3.5 text-ink-subtle" aria-hidden="true" />
                 {defenseDate}
               </span>
               <span className="inline-flex items-center gap-1">
-                <Clock className="size-3.5 text-slate-400" aria-hidden="true" />
+                <Clock className="size-3.5 text-ink-subtle" aria-hidden="true" />
                 {timeSlot}
               </span>
               <span className="inline-flex items-center gap-1">
-                <MapPin className="size-3.5 text-slate-400" aria-hidden="true" />
+                <MapPin className="size-3.5 text-ink-subtle" aria-hidden="true" />
                 Phòng {room}
               </span>
             </div>
@@ -258,49 +261,58 @@ export function CouncilMinuteSheet({
         {/* Topic, Students và Council Composition Metadata */}
         <section
           aria-label="Thông tin đề tài và thành phần hội đồng"
-          className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-4 sm:p-5 space-y-4"
+          className="rounded-xl border border-line/80 bg-surface-subtle/70 p-4 sm:p-5 space-y-4"
         >
           <div>
-            <h3 className="text-sm sm:text-base font-semibold text-slate-900 leading-snug">
+            <h3 className="text-sm sm:text-base font-semibold text-ink-primary leading-snug">
               {topicTitleVi}
             </h3>
             {topicTitleEn && (
-              <p className="mt-0.5 text-xs italic text-slate-500">{topicTitleEn}</p>
+              <p className="mt-0.5 text-xs italic text-ink-muted">
+                {topicTitleEn}
+              </p>
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-4 border-t border-slate-200/70 pt-3.5 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] gap-4 border-t border-line/70 pt-3.5 text-xs">
             <div className="space-y-2">
-              <p className="font-semibold text-slate-600 flex items-center gap-1.5">
-                <Users className="size-3.5 text-slate-400" aria-hidden="true" />
+              <p className="font-semibold text-ink-body flex items-center gap-1.5">
+                <Users className="size-3.5 text-ink-subtle" aria-hidden="true" />
                 Sinh viên thực hiện ({students.length > 0 ? students.length : assignmentInfo.groupCode})
               </p>
               {students.length > 0 ? (
                 <ul className="space-y-1.5">
                   {students.map((st) => (
-                    <li key={st.studentId} className="flex items-center gap-2 text-slate-700">
+                    <li
+                      key={st.studentId}
+                      className="flex items-center gap-2 text-ink-secondary"
+                    >
                       <Avatar name={st.fullName} className="size-6 shrink-0 text-[10px]" />
-                      <span className="font-medium text-slate-800">{st.fullName}</span>
+                      <span className="font-medium text-ink-heading">
+                        {st.fullName}
+                      </span>
                       {st.userCode && (
-                        <span className="tabular-nums text-slate-500">({st.userCode})</span>
+                        <span className="tabular-nums text-ink-muted">
+                          ({st.userCode})
+                        </span>
                       )}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-slate-600">
+                <p className="text-ink-body">
                   Nhóm {assignmentInfo.groupCode} (mã nhóm #{assignmentInfo.groupId.slice(0, 8)})
                 </p>
               )}
             </div>
 
-            <div className="space-y-1.5 text-slate-600">
+            <div className="space-y-1.5 text-ink-body">
               {councilMetaRows.map((row) => (
                 <div
                   key={row.key}
                   className="grid grid-cols-[136px_minmax(0,1fr)] items-center gap-x-2"
                 >
-                  <span className="text-slate-500">{row.roleLabel}</span>
+                  <span className="text-ink-muted">{row.roleLabel}</span>
                   <div className="flex items-center gap-2 min-w-0">
                     {row.name && (
                       <Avatar name={row.name} className="size-6 shrink-0 text-[10px]" />
@@ -308,7 +320,9 @@ export function CouncilMinuteSheet({
                     <span
                       className={cn(
                         'leading-snug',
-                        row.emphasize ? 'font-semibold text-slate-900' : 'font-medium text-slate-800',
+                        row.emphasize
+                          ? 'font-semibold text-ink-primary'
+                          : 'font-medium text-ink-heading',
                       )}
                     >
                       {row.name || '—'}
@@ -324,11 +338,11 @@ export function CouncilMinuteSheet({
         {/* Score Breakdown Table */}
         <section aria-label="Bảng tổng hợp các đầu điểm thành phần" className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">
+            <h3 className="text-sm font-semibold text-ink-primary">
               Bảng tổng hợp đầu điểm &amp; Trọng số áp dụng
             </h3>
             {calculationPreview.configurationVersion && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200/80 bg-blue-50/70 px-2.5 py-0.5 text-xs font-medium text-blue-700 tabular-nums">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-tone-info-border bg-tone-info-bg px-2.5 py-0.5 text-xs font-medium text-tone-info-text tabular-nums">
                 <FileCheck2 className="size-3.5" aria-hidden="true" />
                 Cấu hình điểm v{calculationPreview.configurationVersion}
               </span>
@@ -336,7 +350,7 @@ export function CouncilMinuteSheet({
           </div>
 
           {/* Mobile (<md) clean stacked score cards so zero horizontal clipping */}
-          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 bg-white md:hidden print:hidden">
+          <div className="divide-y divide-line-subtle rounded-xl border border-line/80 bg-surface-card md:hidden print:hidden">
             {scoreItems.map((item, idx) => {
               const isAttendOnly = item.isDualRoleReviewer && item.componentCode === 'COUNCIL_MEMBER';
               const isExcluded = item.isIgnoredInCalculation;
@@ -351,14 +365,14 @@ export function CouncilMinuteSheet({
               return (
                 <div
                   key={`mobile-${item.componentCode}-${idx}`}
-                  className={cn('p-3.5 space-y-2', isExcluded && 'bg-rose-50/45')}
+                  className={cn('p-3.5 space-y-2', isExcluded && 'bg-tone-danger-bg')}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-900">
+                      <p className="text-xs font-semibold text-ink-primary">
                         {getComponentFullLabel(item.componentCode, item.roleLabel)}
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-ink-muted">
                         {item.lecturerName}
                         {item.isDualRoleReviewer && item.componentCode === 'REVIEWER'
                           ? ' · GVPB trong HĐ'
@@ -370,22 +384,24 @@ export function CouncilMinuteSheet({
                         className={cn(
                           'text-sm font-bold tabular-nums',
                           isExcluded
-                            ? 'line-through text-slate-400'
+                            ? 'line-through text-ink-subtle'
                             : item.score !== null
-                              ? 'text-slate-900'
-                              : 'text-slate-400',
+                              ? 'text-ink-primary'
+                              : 'text-ink-subtle',
                         )}
                       >
                         {item.score !== null ? formatScoreDecimal(item.score, 2) : '—'}
                       </div>
-                      <div className="text-[11px] text-slate-500 tabular-nums">
+                      <div className="text-[11px] text-ink-muted tabular-nums">
                         TS: {isAttendOnly ? '0' : item.weight}
                       </div>
                     </div>
                   </div>
 
                   {memberMeta?.feedback && (
-                    <p className="text-xs text-slate-500 line-clamp-2">“{memberMeta.feedback}”</p>
+                    <p className="text-xs text-ink-muted line-clamp-2">
+                      “{memberMeta.feedback}”
+                    </p>
                   )}
 
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
@@ -407,7 +423,7 @@ export function CouncilMinuteSheet({
                           size="sm"
                           onClick={() => onChangeMarking('AcceptedAsPerMinute')}
                           disabled={isPreviewing}
-                          className="h-7 rounded-lg px-2 text-xs border-slate-200 text-slate-700"
+                          className="h-7 rounded-lg px-2 text-xs border-line-input text-ink-secondary"
                           leftIcon={<RotateCcw className="size-3" />}
                         >
                           Khôi phục
@@ -419,7 +435,7 @@ export function CouncilMinuteSheet({
                           size="sm"
                           onClick={() => onChangeTargetComponent(item.componentCode)}
                           disabled={isPreviewing}
-                          className="h-7 rounded-lg px-2 text-xs border-rose-200 text-rose-700"
+                          className="h-7 rounded-lg px-2 text-xs border-tone-danger-border text-tone-danger-text"
                           leftIcon={<Ban className="size-3" />}
                         >
                           Loại điểm
@@ -433,10 +449,10 @@ export function CouncilMinuteSheet({
           </div>
 
           {/* Desktop (>=md) compact 6-column table fitted cleanly inside left sheet */}
-          <div className="hidden md:block print:block overflow-x-auto rounded-xl border border-slate-200/80">
+          <div className="hidden md:block print:block overflow-x-auto rounded-xl border border-line/80">
             <table className="w-full border-collapse text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-200/80 bg-slate-50/90 text-[11px] font-semibold text-slate-600">
+                <tr className="border-b border-line/80 bg-surface-subtle/90 text-[11px] font-semibold text-ink-body">
                   <th className="px-3 py-2.5 whitespace-nowrap">Thành phần</th>
                   <th className="px-3.5 py-2.5">Giảng viên</th>
                   <th className="w-20 px-3 py-2.5 whitespace-nowrap text-center">Trọng số</th>
@@ -449,7 +465,7 @@ export function CouncilMinuteSheet({
                   )}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 bg-white">
+              <tbody className="divide-y divide-line-subtle bg-surface-card">
                 {scoreItems.map((item, idx) => {
                   const isAttendOnly = item.isDualRoleReviewer && item.componentCode === 'COUNCIL_MEMBER';
                   const isExcluded = item.isIgnoredInCalculation;
@@ -467,14 +483,16 @@ export function CouncilMinuteSheet({
                       key={`${item.componentCode}-${idx}`}
                       className={cn(
                         'transition-colors',
-                        isExcluded ? 'bg-rose-50/45' : 'hover:bg-slate-50/70',
+                        isExcluded
+                          ? 'bg-tone-danger-bg'
+                          : 'hover:bg-surface-hover/70',
                       )}
                     >
                       <td className="px-3 py-2.5 align-top">
-                        <div className="font-semibold text-slate-900 leading-snug">
+                        <div className="font-semibold text-ink-primary leading-snug">
                           {getComponentFullLabel(item.componentCode, item.roleLabel)}
                         </div>
-                        <div className="mt-0.5 text-[11px] text-slate-500">
+                        <div className="mt-0.5 text-[11px] text-ink-muted">
                           {item.category}
                           {item.isDualRoleReviewer && item.componentCode === 'REVIEWER'
                             ? ' · GVPB trong HĐ'
@@ -496,16 +514,16 @@ export function CouncilMinuteSheet({
                         >
                           <Avatar name={item.lecturerName} className="size-6 text-[10px] shrink-0" />
                           <div className="min-w-0">
-                            <div className="font-medium text-slate-800 leading-6">
+                            <div className="font-medium text-ink-heading leading-6">
                               {item.lecturerName}
                             </div>
                             {memberMeta?.feedback && (
-                              <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-2 max-w-[280px]">
+                              <p className="mt-0.5 text-[11px] text-ink-muted line-clamp-2 max-w-[280px]">
                                 “{memberMeta.feedback}”
                               </p>
                             )}
                             {memberMeta?.evaluatedAt && (
-                              <p className="mt-0.5 text-[10px] text-slate-400">
+                              <p className="mt-0.5 text-[10px] text-ink-subtle">
                                 Chấm lúc {formatDateTimeVi(memberMeta.evaluatedAt)}
                               </p>
                             )}
@@ -516,7 +534,7 @@ export function CouncilMinuteSheet({
                       <td
                         className={cn(
                           'px-3 py-2.5 align-top text-center tabular-nums font-medium leading-6',
-                          isExcluded ? 'line-through text-slate-400' : 'text-slate-700',
+                          isExcluded ? 'line-through text-ink-subtle' : 'text-ink-secondary',
                         )}
                       >
                         {isAttendOnly ? '0' : item.weight}
@@ -526,10 +544,10 @@ export function CouncilMinuteSheet({
                         className={cn(
                           'px-3.5 py-2.5 align-top text-right tabular-nums text-sm font-bold leading-6',
                           isExcluded
-                            ? 'line-through text-slate-400'
+                            ? 'line-through text-ink-subtle'
                             : item.score !== null
-                              ? 'text-slate-900'
-                              : 'text-slate-400',
+                              ? 'text-ink-primary'
+                              : 'text-ink-subtle',
                         )}
                       >
                         {item.score !== null ? formatScoreDecimal(item.score, 2) : '—'}
@@ -557,7 +575,7 @@ export function CouncilMinuteSheet({
                                 size="sm"
                                 onClick={() => onChangeMarking('AcceptedAsPerMinute')}
                                 disabled={isPreviewing}
-                                className="h-7 rounded-lg px-2 text-[11px] border-slate-200 text-slate-700 hover:bg-slate-100"
+                                className="h-7 rounded-lg px-2 text-[11px] border-line-input text-ink-secondary hover:bg-surface-muted"
                                 leftIcon={<RotateCcw className="size-3" />}
                               >
                                 Khôi phục
@@ -569,14 +587,14 @@ export function CouncilMinuteSheet({
                                 size="sm"
                                 onClick={() => onChangeTargetComponent(item.componentCode)}
                                 disabled={isPreviewing}
-                                className="h-7 rounded-lg px-2 text-[11px] border-rose-200 text-rose-700 hover:bg-rose-50"
+                                className="h-7 rounded-lg px-2 text-[11px] border-tone-danger-border text-tone-danger-text hover:bg-tone-danger-bg"
                                 leftIcon={<Ban className="size-3" />}
                               >
                                 Loại điểm
                               </Button>
                             )
                           ) : (
-                            <span className="text-xs text-slate-400">—</span>
+                            <span className="text-xs text-ink-subtle">—</span>
                           )}
                         </td>
                       )}
@@ -591,27 +609,31 @@ export function CouncilMinuteSheet({
         {/* Discrepancy Analysis và Secretary Decision */}
         <section
           aria-label="Phân tích sai biệt điểm và kết luận hội đồng"
-          className="border-t border-slate-200/80 pt-5 space-y-3.5"
+          className="border-t border-line/80 pt-5 space-y-3.5"
         >
-          <h3 className="text-sm font-semibold text-slate-900">
+          <h3 className="text-sm font-semibold text-ink-primary">
             Đối soát sai biệt điểm &amp; Kết luận của Hội đồng
           </h3>
 
-          <div className="divide-y divide-slate-200/75 rounded-xl border border-slate-200/80 bg-slate-50/55 text-xs">
+          <div className="divide-y divide-line/75 rounded-xl border border-line/80 bg-surface-subtle/55 text-xs">
             <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5">
-              <span className="font-medium text-slate-500">Độ lệch điểm tối đa</span>
+              <span className="font-medium text-ink-muted">
+                Độ lệch điểm tối đa
+              </span>
               {discrepancySummary.scoreDifference !== null ? (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <strong className="font-semibold tabular-nums text-slate-900">
+                  <strong className="font-semibold tabular-nums text-ink-primary">
                     {formatScoreDecimal(discrepancySummary.scoreDifference, 2)} điểm
                   </strong>
-                  <span className="text-slate-300" aria-hidden="true">
+                  <span className="text-ink-faint" aria-hidden="true">
                     ·
                   </span>
                   <span
                     className={cn(
                       'font-semibold',
-                      discrepancySummary.hasDiscrepancy ? 'text-amber-700' : 'text-emerald-700',
+                      discrepancySummary.hasDiscrepancy
+                        ? 'text-tone-warning-text'
+                        : 'text-tone-success-text',
                     )}
                   >
                     {discrepancySummary.hasDiscrepancy
@@ -620,13 +642,15 @@ export function CouncilMinuteSheet({
                   </span>
                 </div>
               ) : (
-                <span className="text-slate-400">Chưa đủ đầu điểm để đối soát</span>
+                <span className="text-ink-subtle">Chưa đủ đầu điểm để đối soát</span>
               )}
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1.5 sm:gap-4 px-3.5 py-2.5">
-              <span className="font-medium text-slate-500 shrink-0">Kết luận áp dụng</span>
-              <span className="font-medium text-slate-800 sm:text-right leading-relaxed">
+              <span className="font-medium text-ink-muted shrink-0">
+                Kết luận áp dụng
+              </span>
+              <span className="font-medium text-ink-heading sm:text-right leading-relaxed">
                 {(discrepancySummary.chairmanConclusion ?? '')
                   .replace(/>=/g, '≥')
                   .replace(/<=/g, '≤')
@@ -652,8 +676,8 @@ export function CouncilMinuteSheet({
                       className={cn(
                         'rounded-xl border px-3.5 py-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
                         selected
-                          ? 'border-blue-500 bg-blue-50/80 text-blue-950 shadow-2xs'
-                          : 'border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/70',
+                          ? 'border-blue-500 bg-tone-info-bg text-tone-info-strong shadow-2xs'
+                          : 'border-line-input/90 bg-surface-card text-ink-secondary hover:border-line-strong hover:bg-surface-hover/70',
                       )}
                     >
                       <div className="text-xs font-semibold flex items-center justify-between gap-2">
@@ -661,26 +685,29 @@ export function CouncilMinuteSheet({
                         <span
                           className={cn(
                             'size-3.5 rounded-full border flex items-center justify-center',
-                            selected ? 'border-blue-600 bg-blue-600' : 'border-slate-300',
+                            selected ? 'border-blue-600 bg-blue-600' : 'border-line-strong',
                           )}
                           aria-hidden="true"
                         >
-                          {selected && <span className="size-1.5 rounded-full bg-white" />}
+                          {selected && <span className="size-1.5 rounded-full bg-surface-card" />}
                         </span>
                       </div>
-                      <p className="mt-1 text-[11px] text-slate-500 leading-snug">{option.hint}</p>
+                      <p className="mt-1 text-[11px] text-ink-muted leading-snug">
+                        {option.hint}
+                      </p>
                     </button>
                   );
                 })}
               </div>
 
               {secretaryMarking === 'RejectedAsPerMinute' && (
-                <div className="rounded-xl border border-rose-200/80 bg-rose-50/40 p-3.5 space-y-2.5">
+                <div className="rounded-xl border border-tone-danger-border bg-tone-danger-bg p-3.5 space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <label className="text-xs font-semibold text-rose-900">
-                      Chọn đầu điểm không công nhận theo biên bản <span className="text-rose-600">*</span>
+                    <label className="text-xs font-semibold text-tone-danger-strong">
+                      Chọn đầu điểm không công nhận theo biên bản{' '}
+                      <span className="text-tone-danger-icon">*</span>
                     </label>
-                    <span className="text-[11px] text-rose-700">
+                    <span className="text-[11px] text-tone-danger-text">
                       Chỉ chọn đầu điểm đã chấm hợp lệ
                     </span>
                   </div>
@@ -696,7 +723,7 @@ export function CouncilMinuteSheet({
                             'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors',
                             active
                               ? 'border-rose-600 bg-rose-600 text-white shadow-2xs'
-                              : 'border-rose-200 bg-white text-rose-800 hover:bg-rose-50',
+                              : 'border-tone-danger-border bg-surface-card text-tone-danger-strong hover:bg-tone-danger-bg',
                           )}
                         >
                           <span>{item.roleLabel}</span>
@@ -715,15 +742,17 @@ export function CouncilMinuteSheet({
                   <div className="flex items-center justify-between gap-2">
                     <label
                       htmlFor="minute-exclusion-reason"
-                      className="text-xs font-semibold text-slate-800"
+                      className="text-xs font-semibold text-ink-heading"
                     >
                       Lý do nội bộ (lưu kiểm toán &amp; nguồn điểm bị loại){' '}
-                      <span className="text-rose-600">*</span>
+                      <span className="text-tone-danger-icon">*</span>
                     </label>
                     <span
                       className={cn(
                         'text-[11px] tabular-nums font-medium',
-                        isReasonLengthValid ? 'text-emerald-700' : 'text-amber-700',
+                        isReasonLengthValid
+                          ? 'text-tone-success-text'
+                          : 'text-tone-warning-text',
                       )}
                     >
                       {trimmedReasonLen}/1000 ký tự (tối thiểu 10)
@@ -735,10 +764,10 @@ export function CouncilMinuteSheet({
                     value={exclusionReason}
                     onChange={(e) => onChangeExclusionReason(e.target.value)}
                     placeholder="Ví dụ: Hội đồng thống nhất không công nhận điểm Ủy viên do đánh giá lệch tiêu chí thực nghiệm của nhóm..."
-                    className="w-full rounded-xl border border-slate-200/90 bg-white px-3.5 py-2.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+                    className="w-full rounded-xl border border-line-input/90 bg-surface-card px-3.5 py-2.5 text-xs sm:text-sm text-ink-heading placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
                   />
-                  <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                    <ShieldAlert className="size-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                  <p className="text-[11px] text-ink-muted flex items-center gap-1">
+                    <ShieldAlert className="size-3.5 text-ink-subtle shrink-0" aria-hidden="true" />
                     Lý do này được ghi vào AuditLog và nguồn điểm bị loại; không hiển thị thay thế góp ý sinh viên.
                   </p>
                 </div>
@@ -750,17 +779,17 @@ export function CouncilMinuteSheet({
         {/* Student Feedback và Required Revisions */}
         <section
           aria-label="Góp ý chỉnh sửa gửi sinh viên"
-          className="border-t border-slate-200/80 pt-5 space-y-2.5"
+          className="border-t border-line/80 pt-5 space-y-2.5"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label
               id="minute-student-feedback-label"
               htmlFor="minute-student-feedback"
-              className="text-sm font-semibold text-slate-900"
+              className="text-sm font-semibold text-ink-primary"
             >
               Yêu cầu chỉnh sửa &amp; Góp ý cho sinh viên sau bảo vệ
             </label>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-ink-muted">
               Sinh viên căn cứ mục này để hoàn thiện báo cáo nộp lưu chiểu
             </span>
           </div>
@@ -777,11 +806,11 @@ export function CouncilMinuteSheet({
               expandedSubtitle={topicTitleVi}
             />
           ) : (
-            <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 text-sm text-slate-800">
+            <div className="rounded-xl border border-line/80 bg-surface-subtle/50 p-4 text-sm text-ink-heading">
               {studentFeedback.trim() ? (
                 <RichTextContent content={studentFeedback} />
               ) : (
-                <p className="text-xs italic text-slate-500">
+                <p className="text-xs italic text-ink-muted">
                   Chưa ghi nhận yêu cầu chỉnh sửa hoặc góp ý bổ sung cho sinh viên.
                 </p>
               )}

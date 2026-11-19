@@ -4,6 +4,8 @@ import type { ApiResponse } from '@/shared/api/types';
 import type {
   CouncilDraftItemDto,
   CouncilOverviewApiItemDto,
+  CouncilOverviewMemberDto,
+  CouncilScheduleResponseDto,
   ApproveCouncilRequest,
   CouncilApprovalResponseDto,
 } from '../types/councilApproval.types';
@@ -85,6 +87,37 @@ function formatMemberDisplayNames(row: CouncilOverviewApiItemDto): string[] {
   return names;
 }
 
+function hasRowAdvisorConflict(row: CouncilOverviewApiItemDto): boolean {
+  return Boolean(
+    row.chairman?.isAdvisorConflict ||
+      row.secretary?.isAdvisorConflict ||
+      row.members.some((m) => m.isAdvisorConflict),
+  );
+}
+
+function mergeMembers(
+  existing: CouncilOverviewMemberDto[],
+  incoming: CouncilOverviewMemberDto[],
+): CouncilOverviewMemberDto[] {
+  const byUserId = new Map<string, CouncilOverviewMemberDto>();
+  for (const member of existing) {
+    byUserId.set(member.userId, { ...member });
+  }
+  for (const member of incoming) {
+    const current = byUserId.get(member.userId);
+    if (!current) {
+      byUserId.set(member.userId, { ...member });
+    } else {
+      current.isReviewer = current.isReviewer || member.isReviewer;
+      current.isAdvisorConflict = current.isAdvisorConflict || member.isAdvisorConflict;
+      if (member.isReviewer && member.note) {
+        current.note = member.note;
+      }
+    }
+  }
+  return Array.from(byUserId.values());
+}
+
 function groupCouncilsById(rows: CouncilOverviewApiItemDto[]): CouncilDraftItemDto[] {
   const grouped = new Map<string, CouncilDraftItemDto>();
 
@@ -96,6 +129,15 @@ function groupCouncilsById(rows: CouncilOverviewApiItemDto[]): CouncilDraftItemD
       const groupCodes = row.groupCode ? [row.groupCode] : [];
       const topicTitles = row.topicTitle ? [row.topicTitle] : [];
       const memberNames = formatMemberDisplayNames(row);
+      const assignments = row.groupCode
+        ? [
+            {
+              assignmentId: row.assignmentId ?? null,
+              groupCode: row.groupCode,
+              topicTitle: row.topicTitle ?? null,
+            },
+          ]
+        : [];
 
       grouped.set(row.id, {
         id: row.id,
@@ -105,19 +147,34 @@ function groupCouncilsById(rows: CouncilOverviewApiItemDto[]): CouncilDraftItemD
         groupCode: groupCodes.length > 0 ? groupCodes.join(', ') : 'Chưa gán nhóm',
         groupCodes,
         topicTitles,
+        assignments,
         room: row.room,
         timeSlot: row.timeSlot,
         defenseDate: row.defenseDate,
         status: normalizedStatus,
         statusLabel: row.statusLabel || STATUS_LABEL_MAP[normalizedStatus],
+        rosterModel: row.rosterModel,
+        rosterModelLabel: row.rosterModelLabel,
         groupConditionLabel: groupCodes.length > 0 ? 'Đủ điều kiện bảo vệ' : 'Chưa gán nhóm',
         membersSummary: buildMembersSummary(row),
+        chairman: row.chairman ?? null,
+        secretary: row.secretary ?? null,
+        members: row.members.map((m) => ({ ...m })),
         chairmanName: row.chairman?.fullName,
         secretaryName: row.secretary?.fullName,
         memberNames,
-        decisionNumber: null,
-        decisionFileUrl: null,
-        feedback: '',
+        isSubmittedToAcademicAffairs: Boolean(row.isSubmittedToAcademicAffairs),
+        submittedAt: row.submittedAt ?? null,
+        submissionNotes: row.submissionNotes ?? null,
+        decisionNumber: row.decisionNumber ?? null,
+        signedDate: row.signedDate ?? null,
+        decisionFileUrl: row.decisionFileUrl ?? null,
+        approvedAt: row.approvedAt ?? null,
+        hasRoomConflict: Boolean(row.hasRoomConflict),
+        conflictingMemberNames: row.conflictingMemberNames ? [...row.conflictingMemberNames] : [],
+        hasIneligibleGroups: Boolean(row.hasIneligibleGroups),
+        hasReviewerRoleConflict: Boolean(row.hasReviewerRoleConflict),
+        hasAdvisorConflict: hasRowAdvisorConflict(row),
       });
       continue;
     }
@@ -126,16 +183,41 @@ function groupCouncilsById(rows: CouncilOverviewApiItemDto[]): CouncilDraftItemD
       existing.groupCodes.push(row.groupCode);
       existing.groupCode = existing.groupCodes.join(', ');
       existing.groupConditionLabel = 'Đủ điều kiện bảo vệ';
+      existing.assignments.push({
+        assignmentId: row.assignmentId ?? null,
+        groupCode: row.groupCode,
+        topicTitle: row.topicTitle ?? null,
+      });
     }
 
     if (row.topicTitle && !existing.topicTitles.includes(row.topicTitle)) {
       existing.topicTitles.push(row.topicTitle);
     }
 
+    existing.members = mergeMembers(existing.members, row.members);
+    if (existing.chairman && row.chairman) {
+      existing.chairman.isReviewer = existing.chairman.isReviewer || row.chairman.isReviewer;
+      existing.chairman.isAdvisorConflict =
+        existing.chairman.isAdvisorConflict || row.chairman.isAdvisorConflict;
+    }
+    if (existing.secretary && row.secretary) {
+      existing.secretary.isReviewer = existing.secretary.isReviewer || row.secretary.isReviewer;
+      existing.secretary.isAdvisorConflict =
+        existing.secretary.isAdvisorConflict || row.secretary.isAdvisorConflict;
+    }
+
     for (const label of formatMemberDisplayNames(row)) {
       if (existing.memberNames && !existing.memberNames.includes(label)) {
         existing.memberNames.push(label);
       }
+    }
+
+    existing.hasIneligibleGroups = existing.hasIneligibleGroups || Boolean(row.hasIneligibleGroups);
+    existing.hasReviewerRoleConflict =
+      existing.hasReviewerRoleConflict || Boolean(row.hasReviewerRoleConflict);
+    existing.hasAdvisorConflict = existing.hasAdvisorConflict || hasRowAdvisorConflict(row);
+    if (existing.hasIneligibleGroups) {
+      existing.groupConditionLabel = 'Có nhóm chưa đủ điều kiện';
     }
   }
 
@@ -181,6 +263,21 @@ export const councilApprovalApi = {
       return groupCouncilsById(allRows);
     } catch (error) {
       throw toApiError(error, 'Không thể tải danh sách Hội đồng.');
+    }
+  },
+
+  async getCouncilSchedule(
+    councilId: string,
+    signal?: AbortSignal,
+  ): Promise<CouncilScheduleResponseDto> {
+    try {
+      const response = await httpClient.get<ApiResponse<CouncilScheduleResponseDto>>(
+        `/api/councils/schedule/${councilId}`,
+        { signal },
+      );
+      return unwrap(response.data);
+    } catch (error) {
+      throw toApiError(error, 'Không thể tải chi tiết lịch và nhóm của Hội đồng.');
     }
   },
 

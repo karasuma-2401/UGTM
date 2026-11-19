@@ -81,7 +81,7 @@ export function DataTable<T, SortKey extends string = string>({
     <div className={className} aria-busy={disabled}>
       <div className={cn('transition-opacity', busy && !loading && 'opacity-60')}>
         {error ? (
-          <div role="alert" className="space-y-3 p-6 text-sm text-rose-700">
+          <div role="alert" className="space-y-3 p-6 text-sm text-tone-danger-text">
             <p>{error.message}</p>
             {error.onRetry && (
               <Button variant="outline" onClick={error.onRetry}>
@@ -192,7 +192,7 @@ export function DataTable<T, SortKey extends string = string>({
               </Table>
             </div>
             {renderMobileItem && (
-              <ul className="divide-y divide-slate-200 lg:hidden" aria-label={ariaLabel}>
+              <ul className="divide-y divide-line lg:hidden" aria-label={ariaLabel}>
                 {data.map((row, index) => (
                   <li key={getRowId(row)} className="space-y-3 p-4">
                     {renderMobileItem(row, index)}

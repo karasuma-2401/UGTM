@@ -11,12 +11,16 @@ import {
   ArrowUpRight,
   CornerDownLeft,
   ChevronLeft,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/shared/auth';
 import { getIdentityAccess } from '@/shared/auth/identityAccess';
+import { ThemeToggle, useTheme } from '@/shared/theme';
 import { navigationSections, type NavItemConfig } from './navigationConfig';
 import { CurrentAcademicBatch } from './CurrentAcademicBatch';
 import { SidebarNavigation } from './SidebarNavigation';
@@ -105,6 +109,7 @@ export function AppLayout() {
     return () => animation.cancel();
   }, [location.pathname]);
   const { user, logout, isLoggingOut, hasPermission, hasRole } = useAuth();
+  const { preference: themePreference, setPreference: setThemePreference } = useTheme();
 
   const toggleSidebarCollapse = () => {
     setSidebarCollapsed((prev) => {
@@ -243,12 +248,12 @@ export function AppLayout() {
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex text-slate-900">
+    <div className="min-h-screen bg-surface-canvas flex text-ink-primary">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           aria-hidden="true"
-          className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/40 dark:bg-black/60 backdrop-blur-xs lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -261,7 +266,7 @@ export function AppLayout() {
         role={sidebarOpen ? 'dialog' : undefined}
         aria-modal={sidebarOpen ? true : undefined}
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-72 max-w-[calc(100vw-2rem)] shrink-0 flex-col border-r border-slate-200 bg-slate-50 transition-[width,transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0 lg:visible print:hidden',
+          'fixed inset-y-0 left-0 z-50 flex w-72 max-w-[calc(100vw-2rem)] shrink-0 flex-col border-r border-line bg-surface-subtle dark:bg-[#0c1220] transition-[width,transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0 lg:visible print:hidden',
           sidebarOpen ? 'visible translate-x-0' : 'invisible -translate-x-full',
           sidebarCollapsed ? 'lg:w-[72px]' : 'lg:w-72',
         )}
@@ -273,7 +278,7 @@ export function AppLayout() {
           aria-expanded={!sidebarCollapsed}
           aria-controls="app-sidebar"
           title={sidebarCollapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
-          className="absolute -right-3.5 top-16 z-10 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200/70 bg-white text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:flex"
+          className="absolute -right-3.5 top-16 z-10 hidden size-7 -translate-y-1/2 items-center justify-center rounded-full border border-line-input/70 bg-surface-card text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink-heading focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary lg:flex"
         >
           {sidebarCollapsed ? (
             <ChevronRight className="size-4 stroke-[1.75]" />
@@ -284,32 +289,40 @@ export function AppLayout() {
         {/* Sidebar Header / Brand */}
         <div
           className={cn(
-            'flex min-h-20 shrink-0 items-center justify-between gap-2 px-5 py-4',
-            sidebarCollapsed && 'lg:min-h-16 lg:justify-center lg:px-2 lg:py-0',
+            'flex h-16 shrink-0 items-center justify-between gap-2 px-5',
+            sidebarCollapsed && 'lg:justify-center lg:px-2',
           )}
         >
           <Link
             to="/"
-            title="UGTM - Quản lý Khóa luận ĐH"
+            title="UGTM - Quản lý Khóa luận UIT"
             className={cn(
-              'flex min-w-0 flex-col items-start gap-1.5 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary',
+              'flex min-w-0 flex-col items-start gap-1 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary',
               sidebarCollapsed && 'lg:items-center',
             )}
           >
             <img
               src={ugtmLogo}
               alt="UGTM"
-              className={cn('h-5 w-auto shrink-0 object-contain', sidebarCollapsed && 'lg:h-3.5')}
+              className={cn(
+                'h-[18px] w-auto shrink-0 object-contain dark:brightness-125 dark:saturate-110',
+                sidebarCollapsed && 'lg:h-3.5',
+              )}
             />
-            <span className={cn('text-xs text-slate-600', sidebarCollapsed && 'lg:hidden')}>
-              Quản lý Khóa luận ĐH
+            <span
+              className={cn(
+                'text-[11px] font-medium leading-none tracking-wide text-ink-muted',
+                sidebarCollapsed && 'lg:hidden',
+              )}
+            >
+              Quản lý Khóa luận UIT
             </span>
           </Link>
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
             aria-label="Đóng menu điều hướng"
-            className="flex size-11 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary lg:hidden"
+            className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-surface-muted hover:text-ink-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary lg:hidden"
           >
             <X className="size-5" />
           </button>
@@ -334,7 +347,7 @@ export function AppLayout() {
         {/* Sidebar Footer User profile */}
         <div
           className={cn(
-            'shrink-0 border-t border-slate-200 px-4 py-3',
+            'shrink-0 border-t border-line px-4 py-3',
             sidebarCollapsed && 'lg:p-2',
           )}
         >
@@ -343,7 +356,7 @@ export function AppLayout() {
           >
             <div
               title={sidebarCollapsed ? user?.fullName || 'Người dùng' : undefined}
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-strong text-xs font-semibold text-ink-secondary"
             >
               {userInitial}
             </div>
@@ -354,10 +367,10 @@ export function AppLayout() {
               )}
             >
               <div className={cn('min-w-0 flex-1', sidebarCollapsed && 'lg:hidden')}>
-                <div className="truncate text-[length:var(--font-size-md)] font-medium text-slate-800">
+                <div className="truncate text-[length:var(--font-size-md)] font-medium text-ink-heading">
                   {user?.fullName || 'Người dùng'}
                 </div>
-                <div className="truncate text-xs text-slate-600" title={primaryRoleLabel}>
+                <div className="truncate text-xs text-ink-body" title={primaryRoleLabel}>
                   {primaryRoleLabel}
                 </div>
               </div>
@@ -367,7 +380,7 @@ export function AppLayout() {
                 disabled={isLoggingOut}
                 title="Đăng xuất khỏi hệ thống"
                 aria-label="Đăng xuất khỏi hệ thống"
-                className="flex size-11 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50 lg:size-8"
+                className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-tone-danger-bg hover:text-tone-danger-icon focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50 lg:size-8"
               >
                 <LogOut className="size-4" />
               </button>
@@ -379,7 +392,7 @@ export function AppLayout() {
       {/* Main Content Area */}
       <div inert={sidebarOpen ? true : undefined} className="flex-1 flex flex-col min-w-0">
         {/* Top Translucent Header */}
-        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/75 px-4 lg:px-8 flex items-center justify-between gap-4 sticky top-0 z-30 print:hidden">
+        <header className="h-16 bg-surface-card/80 backdrop-blur-md border-b border-line/75 px-4 lg:px-8 flex items-center justify-between gap-4 sticky top-0 z-30 print:hidden">
           <div className="flex items-center gap-3 min-w-0">
             <button
               ref={menuTrigger}
@@ -388,7 +401,7 @@ export function AppLayout() {
               aria-label="Mở menu điều hướng"
               aria-expanded={sidebarOpen}
               aria-controls="app-sidebar"
-              className="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100"
+              className="lg:hidden p-2 rounded-lg text-ink-muted hover:bg-surface-muted"
             >
               <Menu className="size-5" />
             </button>
@@ -413,8 +426,8 @@ export function AppLayout() {
                           className={cn(
                             'inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium transition-colors select-none cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
                             sectionMenuOpen
-                              ? 'bg-slate-100 text-slate-900'
-                              : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-900',
+                              ? 'bg-surface-muted text-ink-primary'
+                              : 'text-ink-muted hover:bg-surface-muted/80 hover:text-ink-primary',
                           )}
                         >
                           <span className="truncate">{activeNavEntry.sectionTitle}</span>
@@ -424,7 +437,7 @@ export function AppLayout() {
                             id="header-section-menu"
                             role="menu"
                             aria-label={activeNavEntry.sectionTitle}
-                            className="absolute left-0 top-full z-50 mt-1.5 min-w-64 w-max max-w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-slate-200/90 bg-white p-1.5 shadow-lg animate-in fade-in-0 zoom-in-95 duration-150"
+                            className="absolute left-0 top-full z-50 mt-1.5 min-w-64 w-max max-w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-line-input/90 bg-surface-card p-1.5 shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 dark:shadow-[0_16px_40px_rgba(0,0,0,0.55)]"
                           >
                             {activeSectionItems.map((item) => {
                               const Icon = item.icon;
@@ -439,8 +452,8 @@ export function AppLayout() {
                                   className={cn(
                                     'flex items-center justify-between gap-2.5 rounded-lg px-3 py-2 text-[length:var(--font-size-md)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary',
                                     isCurrent
-                                      ? 'bg-primary/10 font-semibold text-primary'
-                                      : 'font-normal text-slate-700 hover:bg-slate-50 hover:text-slate-950',
+                                      ? 'bg-primary/10 font-semibold text-primary dark:bg-primary/15'
+                                      : 'font-normal text-ink-secondary hover:bg-surface-hover hover:text-ink-primary',
                                   )}
                                 >
                                   <span className="flex min-w-0 items-center gap-2.5">
@@ -448,7 +461,7 @@ export function AppLayout() {
                                       aria-hidden="true"
                                       className={cn(
                                         'size-4 shrink-0 stroke-[1.75]',
-                                        isCurrent ? 'text-primary' : 'text-slate-400',
+                                        isCurrent ? 'text-primary' : 'text-ink-subtle',
                                       )}
                                     />
                                     <span className="truncate">{item.label}</span>
@@ -465,12 +478,12 @@ export function AppLayout() {
                           </div>
                         )}
                       </div>
-                      <ChevronRight className="size-4 text-slate-300 shrink-0 hidden md:inline" />
+                      <ChevronRight className="size-4 text-ink-faint shrink-0 hidden md:inline" />
                     </>
                   )}
                   <Link
                     to={activeNavEntry.path}
-                    className="min-w-0 truncate rounded-md px-1.5 py-1 -mx-1.5 font-semibold text-slate-900 transition-colors hover:bg-slate-100 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    className="min-w-0 truncate rounded-md px-1.5 py-1 -mx-1.5 font-semibold text-ink-primary transition-colors hover:bg-surface-muted hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                   >
                     {activeNavEntry.label}
                   </Link>
@@ -479,8 +492,8 @@ export function AppLayout() {
             </nav>
           </div>
 
-          {/* Header Right Actions: Quick Jump (Ctrl+K) & Mobile Logout */}
-          <div className="flex items-center gap-2.5">
+          {/* Header Right Actions: Quick Jump (Ctrl+K), Theme Switcher & Mobile Logout */}
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -488,24 +501,26 @@ export function AppLayout() {
                 setCommandQuery('');
                 setCommandOpen(true);
               }}
-              className="flex items-center justify-between gap-3 h-9 px-3 sm:w-64 lg:w-72 rounded-xl border border-slate-200/90 bg-slate-50/70 hover:bg-white hover:border-slate-300 text-xs text-slate-500 shadow-2xs transition-all cursor-pointer"
+              className="flex items-center justify-between gap-3 h-9 px-3 sm:w-56 lg:w-64 rounded-xl border border-line-input/90 bg-surface-muted/70 hover:bg-surface-hover hover:border-line-strong text-xs text-ink-muted shadow-2xs transition-all cursor-pointer"
               aria-label="Mở tìm kiếm nhanh phân hệ (Ctrl+K)"
             >
               <span className="flex items-center gap-2 truncate">
-                <Search className="size-3.5 text-slate-400 shrink-0" />
+                <Search className="size-3.5 text-ink-subtle shrink-0" />
                 <span className="truncate">Đi tới phân hệ nhanh...</span>
               </span>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-500">
+              <kbd className="hidden sm:inline-flex shrink-0 whitespace-nowrap items-center gap-0.5 rounded-md border border-line-input bg-surface-card px-1.5 py-0.5 font-mono text-[10px] font-medium text-ink-muted">
                 Ctrl K
               </kbd>
             </button>
+
+            <ThemeToggle />
 
             <Button
               variant="ghost"
               size="sm"
               onClick={() => void logout()}
               disabled={isLoggingOut}
-              className="lg:hidden text-slate-500 hover:text-rose-600 hover:bg-rose-50 gap-1.5 text-xs font-medium"
+              className="lg:hidden text-ink-muted hover:text-tone-danger-icon hover:bg-tone-danger-bg gap-1.5 text-xs font-medium"
               title="Đăng xuất"
             >
               <LogOut className="size-3.5" />
@@ -529,37 +544,37 @@ export function AppLayout() {
           role="dialog"
           aria-modal="true"
           aria-label="Điều hướng nhanh"
-          className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/45 pt-20 px-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/45 dark:bg-black/65 pt-20 px-4 backdrop-blur-xs"
           onClick={() => setCommandOpen(false)}
         >
           <div
-            className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_24px_64px_-12px_rgba(15,23,42,0.22)]"
+            className="w-full max-w-lg overflow-hidden rounded-2xl border border-line-input/80 bg-surface-card shadow-[0_24px_64px_-12px_rgba(15,23,42,0.22)] dark:shadow-[0_24px_64px_-12px_rgba(0,0,0,0.65)]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-              <span className="text-sm font-semibold text-slate-900">Điều hướng nhanh</span>
+            <div className="flex items-center justify-between border-b border-line-subtle px-4 py-3">
+              <span className="text-sm font-semibold text-ink-primary">Điều hướng nhanh</span>
               <button
                 type="button"
                 onClick={() => setCommandOpen(false)}
                 aria-label="Đóng điều hướng nhanh"
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                className="rounded-lg p-1 text-ink-subtle hover:bg-surface-muted hover:text-ink-secondary"
               >
                 <X className="size-4" />
               </button>
             </div>
-            <div className="p-3 border-b border-slate-100">
+            <div className="p-3 border-b border-line-subtle">
               <Input
                 type="text"
                 autoFocus
                 value={commandQuery}
                 onChange={(event) => setCommandQuery(event.target.value)}
-                leftIcon={<Search className="size-4 text-slate-400" />}
-                placeholder="Nhập tên trang hoặc phân hệ cần mở..."
+                leftIcon={<Search className="size-4 text-ink-subtle" />}
+                placeholder="Nhập tên trang, phân hệ hoặc giao diện..."
               />
             </div>
             <div className="max-h-80 overflow-y-auto p-2 space-y-1">
               {filteredCommandItems.length === 0 ? (
-                <p className="py-8 text-center text-sm text-slate-500">
+                <p className="py-8 text-center text-sm text-ink-muted">
                   Không tìm thấy phân hệ phù hợp với từ khóa.
                 </p>
               ) : (
@@ -574,8 +589,8 @@ export function AppLayout() {
                       className={cn(
                         'w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-left text-sm transition-colors group',
                         isCurrent
-                          ? 'bg-blue-50/80 text-primary font-semibold'
-                          : 'text-slate-700 hover:bg-slate-100/90 hover:text-slate-900',
+                          ? 'bg-tone-info-bg text-primary font-semibold'
+                          : 'text-ink-secondary hover:bg-surface-muted/90 hover:text-ink-primary',
                       )}
                     >
                       <div className="flex items-center gap-3 min-w-0">
@@ -583,18 +598,18 @@ export function AppLayout() {
                           className={cn(
                             'flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors',
                             isCurrent
-                              ? 'border-blue-200 bg-white text-primary'
-                              : 'border-slate-200/80 bg-white text-slate-500 group-hover:text-slate-800',
+                              ? 'border-tone-info-border bg-surface-card text-primary'
+                              : 'border-line-input/80 bg-surface-elevated text-ink-muted group-hover:text-ink-heading',
                           )}
                         >
                           <Icon className="size-4" />
                         </span>
                         <div className="min-w-0">
                           <div className="truncate font-medium">{item.label}</div>
-                          <div className="text-xs text-slate-400 truncate">{item.sectionTitle}</div>
+                          <div className="text-xs text-ink-subtle truncate">{item.sectionTitle}</div>
                         </div>
                       </div>
-                      <span className="flex items-center gap-1 text-xs text-slate-400 group-hover:text-primary shrink-0">
+                      <span className="flex items-center gap-1 text-xs text-ink-subtle group-hover:text-primary shrink-0">
                         {isCurrent ? (
                           <span>Đang mở</span>
                         ) : (
@@ -608,6 +623,43 @@ export function AppLayout() {
                   );
                 })
               )}
+
+              {/* Quick Theme Actions */}
+              <div className="mt-2 border-t border-line-subtle pt-2">
+                <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
+                  Giao diện hiển thị
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 px-1 pt-1">
+                  {(
+                    [
+                      { value: 'light', label: 'Sáng', Icon: Sun },
+                      { value: 'dark', label: 'Tối', Icon: Moon },
+                      { value: 'system', label: 'Hệ thống', Icon: Monitor },
+                    ] as const
+                  ).map(({ value, label, Icon }) => {
+                    const active = themePreference === value;
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          setThemePreference(value);
+                          setCommandOpen(false);
+                        }}
+                        className={cn(
+                          'flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors cursor-pointer',
+                          active
+                            ? 'border-primary/40 bg-primary/10 text-primary dark:bg-primary/15'
+                            : 'border-line-input/80 bg-surface-muted/70 text-ink-body hover:bg-surface-muted hover:text-ink-primary',
+                        )}
+                      >
+                        <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                        <span>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         </div>

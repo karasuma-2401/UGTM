@@ -11,6 +11,8 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
 {
     private const string TemplateDatabase = "ugtm_migrated_template";
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:17-alpine")
+        // These disposable databases are cloned hundreds of times; keep their files in RAM.
+        .WithTmpfsMount("/var/lib/postgresql/data")
         .Build();
     private bool _templateCreated;
     private string? _databaseName;
@@ -24,7 +26,7 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
 
     public Task InitializeAsync() => _container.StartAsync();
 
-    // Call before creating contexts/hosts. The PostgreSQL collection serializes callers.
+    // Call before creating contexts/hosts. Each collection serializes its callers.
     // A fresh clone preserves migration seeds, sequences, functions and triggers, even
     // when the preceding test changed the schema or rolled migrations back.
     // It also owns database cleanup: the next reset drops the previous clone,
@@ -84,8 +86,28 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
     }
 }
 
-[CollectionDefinition(Name, DisableParallelization = true)]
+[CollectionDefinition(Name)]
 public sealed class PostgreSqlCollection : ICollectionFixture<PostgreSqlFixture>
 {
     public const string Name = "ThesisManagement PostgreSQL integration";
+}
+
+// The largest suites own separate containers so their resets cannot affect one another.
+// Tests within each suite remain serialized, including migration and concurrency cases.
+[CollectionDefinition(Name)]
+public sealed class FinalReportWorkflowPostgreSqlCollection : ICollectionFixture<PostgreSqlFixture>
+{
+    public const string Name = "Final report workflow PostgreSQL integration";
+}
+
+[CollectionDefinition(Name)]
+public sealed class ReviewerAssignmentPostgreSqlCollection : ICollectionFixture<PostgreSqlFixture>
+{
+    public const string Name = "Reviewer assignment PostgreSQL integration";
+}
+
+[CollectionDefinition(Name)]
+public sealed class FinalReportSubmissionPostgreSqlCollection : ICollectionFixture<PostgreSqlFixture>
+{
+    public const string Name = "Final report submission PostgreSQL integration";
 }

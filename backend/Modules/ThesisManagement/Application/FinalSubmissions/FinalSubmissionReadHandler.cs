@@ -30,7 +30,7 @@ public sealed class FinalSubmissionReadHandler(IFinalSubmissionStore store, Fina
         return row.IsFailure ? Result.Failure<IReadOnlyList<FinalSubmissionPackageDto>>(row.Error)
             : Result.Success(FinalSubmissionMapping.Packages(await store.GetPackagesAsync(id, token)));
     }
-    public async Task<Result<FinalSubmissionDownloadDto>> DownloadAsync(Guid id, int version, string role, CancellationToken token)
+    public async Task<Result<FinalSubmissionDownloadDto>> DownloadAsync(Guid id, int version, string role, CancellationToken token, bool inline = false)
     {
         if (version < 1 || role is not ("ThesisPdf" or "ThesisDocx")) return Result.Failure<FinalSubmissionDownloadDto>(FinalSubmissionErrors.InvalidRequest);
         var row = await AuthorizedAsync(id, token);
@@ -42,7 +42,14 @@ public sealed class FinalSubmissionReadHandler(IFinalSubmissionStore store, Fina
             && f.EntityId == id && f.VersionNo == version);
         if (file is null) return Result.Failure<FinalSubmissionDownloadDto>(FinalSubmissionErrors.NotFound);
         // Authorization is checked for this request; no URL is cached in a package or receipt.
-        var uri = await storage.CreateDownloadUriAsync(file.ObjectKey, file.FileName, TimeSpan.FromSeconds(300), token);
+        var uri = await Common.ThesisDownloadUriHelper.CreateSignedUriAsync(
+            storage,
+            file.ObjectKey,
+            file.FileName,
+            file.FileExtension,
+            TimeSpan.FromSeconds(300),
+            inline,
+            token);
         return Result.Success(new FinalSubmissionDownloadDto(file.Id, file.FileName, role, file.FileSize, uri.AbsoluteUri, clock.GetUtcNow().UtcDateTime.AddSeconds(300)));
     }
     public async Task<Result<FinalSubmissionEligibilityDto>> EligibilityAsync(Guid groupId, CancellationToken token)

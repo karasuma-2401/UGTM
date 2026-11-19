@@ -57,19 +57,24 @@ export function StudentParticipationDialog({
       }}
     >
       <form onSubmit={submit} className="space-y-5 p-5 sm:p-6" noValidate>
-        <div className="flex items-start gap-3.5 rounded-xl border border-blue-100/80 bg-gradient-to-r from-blue-50/70 via-white to-slate-50/70 p-4">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-100/70 text-primary">
+        <div className="flex items-start gap-3.5 rounded-xl border border-tone-info-border bg-gradient-to-r from-tone-info-bg/75 via-surface-card to-surface-subtle/70 p-4">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-info-bg text-primary">
             <MailCheck className="size-5" />
           </span>
           <div>
-            <h2 className="font-semibold text-slate-900">Xác nhận lời mời của bạn</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
+            <h2 className="font-semibold text-ink-primary">
+              Xác nhận lời mời của bạn
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-ink-body">
               Nhập mã trong email mời tham gia nhóm. Mã có hiệu lực 24 giờ.
             </p>
           </div>
         </div>
         <div className="space-y-2">
-          <label htmlFor="participation-token" className="text-sm font-medium text-slate-800">
+          <label
+            htmlFor="participation-token"
+            className="text-sm font-medium text-ink-heading"
+          >
             Mã xác nhận
           </label>
           <Input
@@ -90,11 +95,14 @@ export function StudentParticipationDialog({
           />
         </div>
         {mutation.error && (
-          <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50/90 px-3.5 py-2.5 text-sm text-rose-700">
+          <p
+            role="alert"
+            className="rounded-xl border border-tone-danger-border bg-tone-danger-bg px-3.5 py-2.5 text-sm text-tone-danger-text"
+          >
             {getTopicErrorMessage(mutation.error)}
           </p>
         )}
-        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-4">
+        <div className="flex flex-wrap justify-end gap-2 border-t border-line-subtle pt-4">
           <Button
             type="button"
             variant="outline"

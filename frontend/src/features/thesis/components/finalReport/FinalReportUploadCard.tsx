@@ -18,7 +18,6 @@ interface FinalReportUploadCardProps {
   onImagesChange: (files: File[]) => void;
   onFileSelect: (file: File | null) => void;
   onSubmit: () => void;
-  onOpenFeedback?: () => void;
   isSubmitting?: boolean;
   canSubmit?: boolean;
   midtermApproved?: boolean;
@@ -46,7 +45,6 @@ export function FinalReportUploadCard({
   onImagesChange,
   onFileSelect,
   onSubmit,
-  onOpenFeedback: _onOpenFeedback,
   isSubmitting = false,
   canSubmit = true,
   midtermApproved = true,
@@ -63,13 +61,13 @@ export function FinalReportUploadCard({
   const lockedTitle = !midtermApproved
     ? 'Chưa mở khóa nộp Báo cáo cuối kỳ'
     : currentStatus === 'UnderEvaluation'
-      ? 'Báo cáo cuối kỳ đang được GVHD chấm điểm'
+      ? 'Báo cáo cuối kỳ đang trong quá trình đánh giá'
       : 'Khu vực nộp báo cáo cuối kỳ tạm khóa';
 
   return (
     <SubmissionDropzoneCard
-      title={`Nộp báo cáo toàn văn · Phiên bản v${nextVersionNo}`}
-      subtitle="1 tệp toàn văn chính (PDF, DOC, DOCX · ≤ 20 MB), tối đa 5 liên kết và 5 ảnh minh chứng"
+      title={`Nộp báo cáo toàn văn - Phiên bản v${nextVersionNo}`}
+      subtitle="1 tệp toàn văn chính (PDF, DOC, DOCX ≤ 20 MB), tối đa 5 liên kết và 5 ảnh minh chứng"
       headerBadge={<StatusBadge tone={statusTone}>{statusLabel}</StatusBadge>}
       selectedFile={selectedFile}
       onFileSelect={onFileSelect}
@@ -103,7 +101,7 @@ export function FinalReportUploadCard({
           linksRequired={false}
           disabled={disabled}
           title="Liên kết sản phẩm và ảnh minh chứng (tuỳ chọn)"
-          subtitle="Tối đa 5 liên kết và 5 ảnh minh chứng · Hỗ trợ kéo thả hoặc dán ảnh trực tiếp bằng Ctrl+V."
+          subtitle="Tối đa 5 liên kết và 5 ảnh minh chứng; Hỗ trợ kéo thả hoặc dán ảnh trực tiếp bằng Ctrl+V."
         />
       }
     />

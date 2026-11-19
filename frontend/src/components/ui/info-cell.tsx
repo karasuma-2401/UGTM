@@ -26,7 +26,7 @@ export function InfoCell({
       <div className="min-w-0 flex-1 text-left">
         <div
           className={cn(
-            'flex flex-wrap items-center gap-2 font-semibold text-slate-800',
+            'flex flex-wrap items-center gap-2 font-semibold text-ink-heading',
             titleClassName,
           )}
         >
@@ -34,7 +34,7 @@ export function InfoCell({
           {trailing}
         </div>
         {description != null && (
-          <div className={cn('mt-1 break-words text-xs text-slate-500', descriptionClassName)}>
+          <div className={cn('mt-1 break-words text-xs text-ink-muted', descriptionClassName)}>
             {description}
           </div>
         )}

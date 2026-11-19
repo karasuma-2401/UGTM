@@ -5,6 +5,7 @@ import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches
 import { syllabusApi } from '../services/syllabusApi';
 import { milestoneApi } from '../services/milestoneApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
+import { triggerBrowserDownload } from '../utils/archival';
 import {
   validateProductLinksDraft,
   type ProductLinkDraft,
@@ -151,7 +152,7 @@ export function useStudentMilestones() {
       setActionError(null);
       const downloadInfo = await milestoneApi.getDownloadUrl(fileId);
       if (downloadInfo?.downloadUrl) {
-        window.open(downloadInfo.downloadUrl, '_blank', 'noopener,noreferrer');
+        triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
       const errorMsg =

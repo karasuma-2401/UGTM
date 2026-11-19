@@ -74,10 +74,10 @@ function ToolbarButton({
       }}
       onClick={onClick}
       className={cn(
-        'inline-flex size-7 items-center justify-center rounded-md text-slate-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40',
+        'inline-flex size-7 items-center justify-center rounded-md text-ink-body transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40',
         active
-          ? 'bg-blue-50 text-primary ring-1 ring-inset ring-blue-200/80'
-          : 'hover:bg-slate-100 hover:text-slate-900',
+          ? 'bg-tone-info-bg text-primary ring-1 ring-inset ring-blue-200/80'
+          : 'hover:bg-surface-muted hover:text-ink-primary',
       )}
     >
       {children}
@@ -183,6 +183,7 @@ export function RichTextEditor({
       },
       onUpdate: ({ editor: currentEditor }) => {
         const next = normalizeRichTextMarkdown(currentEditor.getMarkdown(), currentEditor.isEmpty);
+        if (next === lastSerializedRef.current) return;
         lastSerializedRef.current = next;
         onChangeRef.current(next);
       },
@@ -192,7 +193,7 @@ export function RichTextEditor({
 
   useEffect(() => {
     if (!editor) return;
-    editor.setEditable(!isLocked);
+    editor.setEditable(!isLocked, false);
   }, [editor, isLocked]);
 
   useEffect(() => {
@@ -308,19 +309,19 @@ export function RichTextEditor({
     return (
       <div
         className={cn(
-          'flex min-h-0 flex-col overflow-hidden rounded-xl border bg-white shadow-2xs transition-colors',
+          'flex min-h-0 flex-col overflow-hidden rounded-xl border bg-surface-card shadow-2xs transition-colors',
           !isExpandedView && 'focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20',
           invalid || isOverLimit
-            ? 'border-rose-400 focus-within:border-rose-500 focus-within:ring-rose-500/20'
-            : 'border-slate-200',
-          disabled && 'bg-slate-100/80 opacity-70',
+            ? 'border-rose-400 focus-within:border-rose-500 focus-within:ring-rose-500/20 dark:border-rose-500/80'
+            : 'border-line-input',
+          disabled && 'bg-surface-muted/80 opacity-70',
           isExpandedView ? 'min-h-0 flex-1' : cn(minHeightClassName, className),
         )}
       >
         <div
           role="toolbar"
           aria-label="Thanh công cụ định dạng"
-          className="flex shrink-0 flex-wrap items-center gap-1 border-b border-slate-100 bg-slate-50/80 px-2.5 py-1.5"
+          className="flex shrink-0 flex-wrap items-center gap-1 border-b border-line-subtle bg-surface-subtle/80 px-2.5 py-1.5"
         >
           <div className="flex items-center gap-0.5">
             <ToolbarButton
@@ -352,7 +353,7 @@ export function RichTextEditor({
             </ToolbarButton>
           </div>
 
-          <span className="mx-1 h-4 w-px bg-slate-200" aria-hidden="true" />
+          <span className="mx-1 h-4 w-px bg-surface-strong" aria-hidden="true" />
 
           <div className="flex items-center gap-0.5">
             <ToolbarButton
@@ -384,7 +385,7 @@ export function RichTextEditor({
             </ToolbarButton>
           </div>
 
-          <span className="mx-1 h-4 w-px bg-slate-200" aria-hidden="true" />
+          <span className="mx-1 h-4 w-px bg-surface-strong" aria-hidden="true" />
 
           <div className="flex items-center gap-0.5">
             <ToolbarButton
@@ -406,7 +407,7 @@ export function RichTextEditor({
             </ToolbarButton>
           </div>
 
-          <span className="mx-1 hidden h-4 w-px bg-slate-200 xl:inline-block" aria-hidden="true" />
+          <span className="mx-1 hidden h-4 w-px bg-surface-strong xl:inline-block" aria-hidden="true" />
 
           <div className="hidden items-center gap-0.5 xl:flex">
             <ToolbarButton
@@ -445,7 +446,7 @@ export function RichTextEditor({
         </div>
 
         {linkBarOpen && (
-          <div className="shrink-0 space-y-1.5 border-b border-slate-100 bg-blue-50/40 px-3 py-2">
+          <div className="shrink-0 space-y-1.5 border-b border-line-subtle bg-tone-info-bg px-3 py-2">
             <div className="flex flex-wrap items-center gap-2">
               <input
                 type="url"
@@ -467,7 +468,7 @@ export function RichTextEditor({
                     editor?.commands.focus();
                   }
                 }}
-                className="h-7 min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                className="h-7 min-w-0 flex-1 rounded-lg border border-line-input bg-surface-card px-2.5 text-xs text-ink-heading placeholder:text-ink-muted focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
               />
               <Button
                 type="button"
@@ -487,7 +488,7 @@ export function RichTextEditor({
                     editor?.chain().focus().extendMarkRange('link').unsetLink().run();
                     setLinkBarOpen(false);
                   }}
-                  className="h-7 rounded-lg px-2 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                  className="h-7 rounded-lg px-2 text-xs text-tone-danger-icon hover:bg-tone-danger-bg hover:text-tone-danger-text"
                 >
                   <Unlink className="size-3.5" />
                 </Button>
@@ -500,12 +501,12 @@ export function RichTextEditor({
                   setLinkBarOpen(false);
                   editor?.commands.focus();
                 }}
-                className="h-7 rounded-lg px-2 text-xs text-slate-500"
+                className="h-7 rounded-lg px-2 text-xs text-ink-muted"
               >
                 Hủy
               </Button>
             </div>
-            {linkError && <p className="text-[11px] font-medium text-rose-700">{linkError}</p>}
+            {linkError && <p className="text-[11px] font-medium text-tone-danger-text">{linkError}</p>}
           </div>
         )}
 
@@ -523,7 +524,7 @@ export function RichTextEditor({
           <EditorContent editor={editor} className="h-full min-h-full" />
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/50 px-3 py-1.5 text-[11px] text-slate-400">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-line-subtle bg-surface-subtle/50 px-3 py-1.5 text-[11px] text-ink-subtle">
           <span className="truncate">
             {isExpandedView
               ? 'Chế độ soạn thảo mở rộng · Hỗ trợ Ctrl+B, Ctrl+I, Ctrl+U'
@@ -533,10 +534,10 @@ export function RichTextEditor({
             className={cn(
               'shrink-0 font-medium tabular-nums',
               isOverLimit
-                ? 'text-rose-600'
+                ? 'text-tone-danger-icon'
                 : isNearLimit
-                  ? 'text-amber-600'
-                  : 'text-slate-500',
+                  ? 'text-tone-warning-icon'
+                  : 'text-ink-muted',
             )}
           >
             {typeof maxLength === 'number'
@@ -557,13 +558,13 @@ export function RichTextEditor({
           title={expandedTitle}
           hideHeader
           onClose={() => setExpanded(false)}
-          className="flex h-[84dvh] max-h-[84dvh] w-[calc(100%-2rem)] max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200/90 p-0 shadow-[0_24px_64px_-12px_rgba(15,23,42,0.22)]"
+          className="flex h-[84dvh] max-h-[84dvh] w-[calc(100%-2rem)] max-w-4xl flex-col overflow-hidden rounded-2xl border border-line-input/90 p-0 shadow-[0_24px_64px_-12px_rgba(15,23,42,0.22)]"
         >
-          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-100 bg-white px-5 py-3.5 sm:px-6">
+          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-line-subtle bg-surface-card px-5 py-3.5 sm:px-6">
             <div className="min-w-0 space-y-0.5">
-              <h3 className="text-sm font-semibold text-slate-900">{expandedTitle}</h3>
+              <h3 className="text-sm font-semibold text-ink-primary">{expandedTitle}</h3>
               {expandedSubtitle && (
-                <p className="truncate text-xs text-slate-500" title={expandedSubtitle}>
+                <p className="truncate text-xs text-ink-muted" title={expandedSubtitle}>
                   {expandedSubtitle}
                 </p>
               )}
@@ -574,12 +575,12 @@ export function RichTextEditor({
               size="sm"
               leftIcon={<Minimize2 className="size-3.5" />}
               onClick={() => setExpanded(false)}
-              className="h-8 shrink-0 rounded-xl border-slate-200 bg-white text-xs"
+              className="h-8 shrink-0 rounded-xl border-line-input bg-surface-elevated text-xs"
             >
               Thu gọn
             </Button>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col bg-slate-50/40 p-4 sm:p-5">
+          <div className="flex min-h-0 flex-1 flex-col bg-surface-subtle/40 p-4 sm:p-5">
             {renderSurface(true)}
           </div>
         </Dialog>

@@ -59,8 +59,9 @@ const DECISION_OPTIONS: readonly DecisionOptionConfig[] = [
     label: 'Duyệt đề tài',
     hint: 'Đạt yêu cầu, chuyển sang chờ công bố cho sinh viên.',
     icon: CheckCircle2,
-    activeClass: 'border-emerald-300 bg-emerald-50/75 text-emerald-950 ring-1 ring-emerald-200',
-    iconClass: 'text-emerald-600',
+    activeClass:
+      'border-tone-success-border bg-tone-success-bg text-tone-success-strong ring-1 ring-emerald-200',
+    iconClass: 'text-tone-success-icon',
     confirmType: 'success',
   },
   {
@@ -68,8 +69,9 @@ const DECISION_OPTIONS: readonly DecisionOptionConfig[] = [
     label: 'Yêu cầu chỉnh sửa',
     hint: 'Trả lại giảng viên bổ sung nội dung và gửi duyệt lại.',
     icon: RotateCcw,
-    activeClass: 'border-amber-300 bg-amber-50/80 text-amber-950 ring-1 ring-amber-200',
-    iconClass: 'text-amber-600',
+    activeClass:
+      'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong ring-1 ring-amber-200',
+    iconClass: 'text-tone-warning-icon',
     confirmType: 'warning',
   },
   {
@@ -77,8 +79,9 @@ const DECISION_OPTIONS: readonly DecisionOptionConfig[] = [
     label: 'Từ chối đề tài',
     hint: 'Không phù hợp định hướng hoặc trùng lặp, dừng quy trình.',
     icon: XCircle,
-    activeClass: 'border-rose-300 bg-rose-50/80 text-rose-950 ring-1 ring-rose-200',
-    iconClass: 'text-rose-600',
+    activeClass:
+      'border-tone-danger-border bg-tone-danger-bg text-tone-danger-strong ring-1 ring-rose-200',
+    iconClass: 'text-tone-danger-icon',
     confirmType: 'error',
   },
 ];
@@ -140,6 +143,7 @@ export function TopicReviewDialog({
     queryKey: ['topic-review', user?.id, 'detail', topicId],
     queryFn: ({ signal }) => topicReviewApi.getDetail(topicId, signal),
     staleTime: 0,
+    refetchOnWindowFocus: false,
   });
 
   const topic = detail.data;
@@ -249,24 +253,26 @@ export function TopicReviewDialog({
         hideHeader
         onClose={handleClose}
         busy={busy}
-        className="flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200/90 p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]"
+        className="flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-6xl flex-col overflow-hidden rounded-2xl border border-line-input/90 p-0 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.18)]"
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-line-subtle bg-surface-card px-5 py-4 sm:px-6">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h2 className="text-base font-semibold tracking-tight text-slate-900">
+              <h2 className="text-base font-semibold tracking-tight text-ink-primary">
                 Chi tiết và thẩm định đề tài
               </h2>
               {topic && topic.status !== 'Draft' && <TopicStatusBadge status={topic.status} />}
             </div>
             {topic && topic.status !== 'Draft' && (
-              <p className="flex items-center gap-1.5 text-xs text-slate-500">
-                <CalendarClock className="size-3.5 text-slate-400" aria-hidden="true" />
+              <p className="flex items-center gap-1.5 text-xs text-ink-muted">
+                <CalendarClock className="size-3.5 text-ink-subtle" aria-hidden="true" />
                 <span>Đề xuất ngày {formatTopicDate(topic.createdAt)}</span>
                 {batchName && (
                   <>
                     <span aria-hidden="true">·</span>
-                    <span className="truncate font-medium text-slate-600">{batchName}</span>
+                    <span className="truncate font-medium text-ink-body">
+                      {batchName}
+                    </span>
                   </>
                 )}
               </p>
@@ -279,7 +285,7 @@ export function TopicReviewDialog({
             aria-label="Đóng hộp thoại"
             disabled={busy}
             onClick={handleClose}
-            className="size-8 shrink-0 rounded-lg p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="size-8 shrink-0 rounded-lg p-0 text-ink-subtle hover:bg-surface-muted hover:text-ink-secondary"
           >
             <X className="size-4" />
           </Button>
@@ -303,7 +309,7 @@ export function TopicReviewDialog({
           </div>
         ) : topic?.status === 'Draft' ? (
           <div className="space-y-4 p-6">
-            <p role="status" className="text-sm text-slate-600">
+            <p role="status" className="text-sm text-ink-body">
               Đề tài là bản nháp của giảng viên, chưa được gửi thẩm định.
             </p>
             <div className="flex justify-end">
@@ -314,8 +320,8 @@ export function TopicReviewDialog({
           </div>
         ) : (
           topic && (
-            <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.1fr)_minmax(430px,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-slate-100 lg:overflow-hidden">
-              <div className="min-h-0 bg-white lg:overflow-y-auto">
+            <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1.1fr)_minmax(430px,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:divide-x lg:divide-line-subtle lg:overflow-hidden">
+              <div className="bg-surface-card lg:min-h-0 lg:overflow-y-auto">
                 <TopicPreview
                   reviewNote={topic.reviewNote}
                   values={{
@@ -336,12 +342,12 @@ export function TopicReviewDialog({
                 />
               </div>
 
-              <aside className="flex min-h-0 flex-col border-t border-slate-100 bg-slate-50/60 lg:border-t-0">
+              <aside className="flex min-h-0 flex-col border-t border-line-subtle bg-surface-subtle/60 lg:border-t-0">
                 <div className="flex min-h-0 flex-1 flex-col gap-4 p-5 sm:p-6 lg:overflow-y-auto">
                   {canReview ? (
                     <>
                       <div className="shrink-0 space-y-2">
-                        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
                           Kết luận thẩm định
                         </h3>
                         <div
@@ -371,19 +377,19 @@ export function TopicReviewDialog({
                                   'flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50',
                                   isSelected
                                     ? option.activeClass
-                                    : 'border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50/70',
+                                    : 'border-line-input/90 bg-surface-card text-ink-secondary hover:border-line-strong hover:bg-surface-hover/70',
                                 )}
                               >
                                 <Icon
                                   className={cn(
                                     'mt-0.5 size-4 shrink-0',
-                                    isSelected ? option.iconClass : 'text-slate-400',
+                                    isSelected ? option.iconClass : 'text-ink-subtle',
                                   )}
                                   aria-hidden="true"
                                 />
                                 <span className="min-w-0 flex-1 space-y-0.5">
                                   <span className="block text-xs font-semibold">{option.label}</span>
-                                  <span className="block text-[11px] leading-snug text-slate-500">
+                                  <span className="block text-[11px] leading-snug text-ink-muted">
                                     {option.hint}
                                   </span>
                                 </span>
@@ -397,13 +403,13 @@ export function TopicReviewDialog({
                         <div className="flex shrink-0 items-center justify-between gap-2">
                           <span
                             id="topic-review-note-label"
-                            className="text-xs font-semibold uppercase tracking-wider text-slate-600"
+                            className="text-xs font-semibold uppercase tracking-wider text-ink-body"
                           >
                             Góp ý thẩm định
                             {noteRequired ? (
-                              <span className="ml-1 text-rose-600">*</span>
+                              <span className="ml-1 text-tone-danger-icon">*</span>
                             ) : (
-                              <span className="ml-1 font-normal normal-case text-slate-400">
+                              <span className="ml-1 font-normal normal-case text-ink-subtle">
                                 (không bắt buộc)
                               </span>
                             )}
@@ -441,8 +447,8 @@ export function TopicReviewDialog({
                                     className={cn(
                                       'inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50',
                                       insertedCount > 0
-                                        ? 'border-blue-200 bg-blue-50/80 text-primary hover:bg-blue-100/70'
-                                        : 'border-slate-200 bg-white text-slate-600 shadow-2xs hover:border-blue-200 hover:bg-blue-50/50 hover:text-primary',
+                                        ? 'border-tone-info-border bg-tone-info-bg text-primary hover:bg-tone-info-bg'
+                                        : 'border-line-input bg-surface-card text-ink-body shadow-2xs hover:border-tone-info-border hover:bg-tone-info-bg hover:text-primary',
                                     )}
                                   >
                                     <Sparkles
@@ -453,7 +459,7 @@ export function TopicReviewDialog({
                                       Mẫu{insertedCount > 0 ? ` (${insertedCount})` : ''}
                                     </span>
                                     <ChevronDown
-                                      className="size-3 text-slate-400"
+                                      className="size-3 text-ink-subtle"
                                       aria-hidden="true"
                                     />
                                   </button>
@@ -462,6 +468,7 @@ export function TopicReviewDialog({
                             ) : undefined
                           }
                           onChange={(nextValue) => {
+                            if (nextValue === reviewNote) return;
                             setReviewNote(nextValue);
                             setNoteError('');
                             setConfirmation(null);
@@ -474,7 +481,7 @@ export function TopicReviewDialog({
                             id={presetPopoverId}
                             popover="auto"
                             aria-label="Mẫu góp ý thẩm định"
-                            className="fixed inset-auto m-0 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-slate-200/90 bg-white p-1.5 text-left shadow-xl"
+                            className="fixed inset-auto m-0 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-line-input/90 bg-surface-elevated p-1.5 text-left shadow-xl"
                             onToggle={(event) => {
                               if ((event as unknown as { newState?: string }).newState !== 'open')
                                 return;
@@ -493,12 +500,12 @@ export function TopicReviewDialog({
                               el.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
                             }}
                           >
-                            <div className="flex items-center justify-between border-b border-slate-100 px-2.5 py-1.5">
-                              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+                            <div className="flex items-center justify-between border-b border-line-subtle px-2.5 py-1.5">
+                              <span className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-secondary">
                                 <Sparkles className="size-3 text-amber-500" aria-hidden="true" />
                                 Gợi ý nhận xét nhanh
                               </span>
-                              <span className="text-[11px] text-slate-400">Nhấn để chèn / bỏ</span>
+                              <span className="text-[11px] text-ink-subtle">Nhấn để chèn / bỏ</span>
                             </div>
                             <div className="mt-1 max-h-60 space-y-0.5 overflow-y-auto">
                               {quickPresets.map((preset) => {
@@ -512,8 +519,8 @@ export function TopicReviewDialog({
                                     className={cn(
                                       'flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left text-xs leading-relaxed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50',
                                       inserted
-                                        ? 'bg-blue-50/80 font-medium text-primary'
-                                        : 'text-slate-700 hover:bg-slate-50',
+                                        ? 'bg-tone-info-bg font-medium text-primary'
+                                        : 'text-ink-secondary hover:bg-surface-hover',
                                     )}
                                   >
                                     {inserted ? (
@@ -523,7 +530,7 @@ export function TopicReviewDialog({
                                       />
                                     ) : (
                                       <Plus
-                                        className="mt-0.5 size-3.5 shrink-0 text-slate-400"
+                                        className="mt-0.5 size-3.5 shrink-0 text-ink-subtle"
                                         aria-hidden="true"
                                       />
                                     )}
@@ -539,7 +546,7 @@ export function TopicReviewDialog({
                           <p
                             id="topic-review-note-error"
                             role="alert"
-                            className="shrink-0 text-xs font-medium text-rose-700"
+                            className="shrink-0 text-xs font-medium text-tone-danger-text"
                           >
                             {noteError}
                           </p>
@@ -547,23 +554,23 @@ export function TopicReviewDialog({
                       </div>
                     </>
                   ) : canPublish ? (
-                    <div className="space-y-2.5 rounded-xl border border-emerald-200/80 bg-emerald-50/70 p-4">
-                      <div className="flex items-center gap-2 text-emerald-900">
-                        <Megaphone className="size-4 text-emerald-600" aria-hidden="true" />
+                    <div className="space-y-2.5 rounded-xl border border-tone-success-border bg-tone-success-bg p-4">
+                      <div className="flex items-center gap-2 text-tone-success-strong">
+                        <Megaphone className="size-4 text-tone-success-icon" aria-hidden="true" />
                         <h3 className="text-sm font-semibold">Sẵn sàng công bố</h3>
                       </div>
-                      <p className="text-xs leading-relaxed text-emerald-800/90">
+                      <p className="text-xs leading-relaxed text-tone-success-strong/90">
                         Đề tài đã qua thẩm định đạt chuẩn. Nhấn công bố để đưa đề tài vào danh mục
                         chính thức cho sinh viên đăng ký trong đợt.
                       </p>
                     </div>
                   ) : (
-                    <div className="space-y-2 rounded-xl border border-slate-200/80 bg-white p-4">
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <Info className="size-4 text-slate-400" aria-hidden="true" />
+                    <div className="space-y-2 rounded-xl border border-line/80 bg-surface-card p-4">
+                      <div className="flex items-center gap-2 text-ink-secondary">
+                        <Info className="size-4 text-ink-subtle" aria-hidden="true" />
                         <h3 className="text-sm font-semibold">Trạng thái xử lý</h3>
                       </div>
-                      <p className="text-xs leading-relaxed text-slate-600">
+                      <p className="text-xs leading-relaxed text-ink-body">
                         {REVIEW_STATUS_HINTS[topic.status]}
                       </p>
                     </div>
@@ -572,26 +579,26 @@ export function TopicReviewDialog({
                   {error && (
                     <p
                       role="alert"
-                      className="shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-medium text-rose-700"
+                      className="shrink-0 rounded-xl border border-tone-danger-border bg-tone-danger-bg px-3.5 py-2.5 text-xs font-medium text-tone-danger-text"
                     >
                       {error}
                     </p>
                   )}
 
                   {detail.isFetching && (
-                    <p role="status" className="shrink-0 text-xs text-slate-500">
+                    <p role="status" className="shrink-0 text-xs text-ink-muted">
                       Đang cập nhật trạng thái...
                     </p>
                   )}
                 </div>
 
-                <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center justify-end gap-2.5 border-t border-slate-200/80 bg-white/95 px-5 py-3.5 backdrop-blur-xs sm:px-6 lg:static">
+                <div className="sticky bottom-0 z-10 flex shrink-0 flex-wrap items-center justify-end gap-2.5 border-t border-line/80 bg-surface-card/95 px-5 py-3.5 backdrop-blur-xs sm:px-6 lg:static">
                   <Button
                     type="button"
                     variant="outline"
                     disabled={busy}
                     onClick={handleClose}
-                    className="rounded-xl border-slate-200 bg-white"
+                    className="rounded-xl border-line-input bg-surface-card"
                   >
                     Đóng
                   </Button>
@@ -632,16 +639,18 @@ export function TopicReviewDialog({
         title={`Xác nhận ${confirmLabel}`}
         description={
           <>
-            <p className="break-words font-medium text-slate-700">{topic?.titleVi}</p>
+            <p className="break-words font-medium text-ink-secondary">
+              {topic?.titleVi}
+            </p>
             {confirmation?.kind === 'review' && confirmation.reviewNote && (
-              <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-slate-200/80 bg-slate-50 p-2.5 text-xs text-slate-600">
+              <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-line-input/80 bg-surface-subtle p-2.5 text-xs text-ink-body">
                 <RichTextContent
                   content={confirmation.reviewNote}
-                  className="text-xs leading-relaxed text-slate-600"
+                  className="text-xs leading-relaxed text-ink-body"
                 />
               </div>
             )}
-            <p className="mt-2 text-slate-600">
+            <p className="mt-2 text-ink-body">
               {canPublish
                 ? 'Đề tài sẽ được công bố để sinh viên tra cứu.'
                 : decision === 'Approved'
