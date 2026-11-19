@@ -1,5 +1,39 @@
 import type { UserSummary } from '@/features/identity/types/user.types';
 
+export const EXCEL_XLSX_MIME =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+export const INVALID_EXCEL_FILE_MESSAGE =
+  'Tệp không đúng định dạng Excel. Vui lòng chọn hoặc kéo thả tệp có phần mở rộng .xlsx.';
+
+export type RosterDragStatus = 'idle' | 'valid' | 'invalid';
+
+export function isExcelXlsxFile(file: Pick<File, 'name'>): boolean {
+  return file.name.trim().toLowerCase().endsWith('.xlsx');
+}
+
+export function inspectDraggedExcelTransfer(
+  dataTransfer: Pick<DataTransfer, 'items' | 'types'> | null | undefined,
+): RosterDragStatus {
+  if (!dataTransfer) return 'idle';
+
+  const items = Array.from(dataTransfer.items ?? []);
+  if (items.length > 0) {
+    const fileItems = items.filter((item) => item.kind === 'file');
+    if (fileItems.length === 0) return 'invalid';
+    const first = fileItems[0];
+    // On some Windows Explorer setups, item.type may be empty during dragover;
+    // allow hovering and validate the actual .xlsx extension on drop.
+    if (!first.type || first.type.toLowerCase() === EXCEL_XLSX_MIME) {
+      return 'valid';
+    }
+    return 'invalid';
+  }
+
+  const types = Array.from(dataTransfer.types ?? []);
+  return types.includes('Files') ? 'valid' : 'idle';
+}
+
 export interface RawParsedRow {
   rowNumber: number;
   email: string;

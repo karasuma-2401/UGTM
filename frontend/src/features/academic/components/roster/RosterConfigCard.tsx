@@ -1,8 +1,23 @@
-import React, { useRef, useMemo } from 'react';
-import { Upload, FileSpreadsheet, Download, UserPlus, GraduationCap, Briefcase } from 'lucide-react';
+import React, { useRef, useMemo, useState } from 'react';
+import {
+  Upload,
+  FileSpreadsheet,
+  Download,
+  UserPlus,
+  GraduationCap,
+  Briefcase,
+  Ban,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { notify } from '@/shared/notifications';
 import type { KltnBatchSummaryDto } from '../../types/period.types';
+import {
+  INVALID_EXCEL_FILE_MESSAGE,
+  inspectDraggedExcelTransfer,
+  isExcelXlsxFile,
+  type RosterDragStatus,
+} from '../../utils/rosterExcel';
 
 interface RosterConfigCardProps {
   activeRole: 'Student' | 'Lecturer';
@@ -32,6 +47,8 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
   onOpenSingleAdd,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragDepthRef = useRef(0);
+  const [dragStatus, setDragStatus] = useState<RosterDragStatus>('idle');
 
   const batchOptions = useMemo(
     () =>
@@ -58,6 +75,65 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const resetDragState = () => {
+    dragDepthRef.current = 0;
+    setDragStatus('idle');
+  };
+
+  const handleDragEnter = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepthRef.current += 1;
+    const status = inspectDraggedExcelTransfer(e.dataTransfer);
+    setDragStatus(status);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const status = inspectDraggedExcelTransfer(e.dataTransfer);
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = status === 'invalid' ? 'none' : 'copy';
+    }
+    if (status !== dragStatus) {
+      setDragStatus(status);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setDragStatus('idle');
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resetDragState();
+
+    const droppedFile = e.dataTransfer?.files?.[0];
+    if (!droppedFile) {
+      notify.error(INVALID_EXCEL_FILE_MESSAGE, {
+        title: 'Định dạng tệp không hợp lệ',
+        duration: 5000,
+      });
+      return;
+    }
+
+    if (!isExcelXlsxFile(droppedFile)) {
+      notify.error(INVALID_EXCEL_FILE_MESSAGE, {
+        title: 'Định dạng tệp không hợp lệ',
+        duration: 5000,
+      });
+      return;
+    }
+
+    onSelectFile(droppedFile);
   };
 
   return (
@@ -160,17 +236,56 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
 
       {/* Drag và Drop Upload Zone */}
       {fileInfo ? (
-        <div className="rounded-2xl border border-tone-success-border bg-tone-success-bg p-4 sm:p-5 flex items-center justify-between gap-4">
+        <div
+          data-drag-status={dragStatus}
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`rounded-2xl border-2 p-4 sm:p-5 flex items-center justify-between gap-4 transition-all ${
+            dragStatus === 'valid'
+              ? 'border-dashed border-emerald-600 dark:border-emerald-400 bg-emerald-500/15 dark:bg-emerald-500/20 ring-2 ring-emerald-500/35 shadow-sm'
+              : dragStatus === 'invalid'
+                ? 'border-dashed border-rose-500 dark:border-rose-400 bg-tone-danger-bg ring-2 ring-rose-500/30 cursor-not-allowed'
+                : 'border-tone-success-border bg-tone-success-bg'
+          }`}
+        >
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="size-11 rounded-xl bg-tone-success-bg/90 border border-tone-success-border flex items-center justify-center shrink-0 text-tone-success-text shadow-2xs">
-              <FileSpreadsheet className="size-5" />
+            <div
+              className={`size-11 rounded-xl border flex items-center justify-center shrink-0 transition-all shadow-2xs ${
+                dragStatus === 'valid'
+                  ? 'bg-emerald-600 border-emerald-600 text-white scale-105'
+                  : dragStatus === 'invalid'
+                    ? 'bg-rose-600 border-rose-600 text-white'
+                    : 'bg-tone-success-bg/90 border-tone-success-border text-tone-success-text'
+              }`}
+            >
+              {dragStatus === 'invalid' ? (
+                <Ban className="size-5" />
+              ) : (
+                <FileSpreadsheet className="size-5" />
+              )}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-ink-primary truncate">
-                {fileInfo.name}
+              <p
+                className={`text-sm font-bold truncate ${
+                  dragStatus === 'valid'
+                    ? 'text-emerald-800 dark:text-emerald-200'
+                    : dragStatus === 'invalid'
+                      ? 'text-tone-danger-strong'
+                      : 'text-ink-primary'
+                }`}
+              >
+                {dragStatus === 'valid'
+                  ? 'Thả tệp Excel (.xlsx) mới để thay thế'
+                  : dragStatus === 'invalid'
+                    ? 'Định dạng không hỗ trợ — chỉ chấp nhận tệp Excel (.xlsx)'
+                    : fileInfo.name}
               </p>
               <p className="text-xs text-ink-muted mt-0.5">
-                Bảng tính Excel (.xlsx) • Dung lượng: {fileInfo.sizeLabel} • {fileInfo.statusText}
+                {dragStatus === 'invalid'
+                  ? 'Tệp hiện tại sẽ được giữ nguyên.'
+                  : `Bảng tính Excel (.xlsx) • Dung lượng: ${fileInfo.sizeLabel} • ${fileInfo.statusText}`}
               </p>
             </div>
           </div>
@@ -188,18 +303,51 @@ export const RosterConfigCard: React.FC<RosterConfigCardProps> = ({
       ) : (
         <button
           type="button"
+          data-drag-status={dragStatus}
           onClick={() => fileInputRef.current?.click()}
-          className="w-full rounded-2xl border-2 border-dashed border-line-strong hover:border-emerald-500 hover:bg-tone-success-bg p-8 flex flex-col items-center justify-center gap-3 text-center transition-all cursor-pointer group focus-visible:outline-emerald-600 bg-surface-subtle/40"
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`w-full rounded-2xl border-2 border-dashed p-8 flex flex-col items-center justify-center gap-3 text-center transition-all group focus-visible:outline-emerald-600 ${
+            dragStatus === 'valid'
+              ? 'border-emerald-600 dark:border-emerald-400 bg-emerald-500/15 dark:bg-emerald-500/20 ring-2 ring-emerald-500/35 shadow-sm scale-[1.005] cursor-copy'
+              : dragStatus === 'invalid'
+                ? 'border-rose-500 dark:border-rose-400 bg-tone-danger-bg ring-2 ring-rose-500/30 cursor-not-allowed'
+                : 'border-line-strong hover:border-emerald-500 hover:bg-tone-success-bg bg-surface-subtle/40 cursor-pointer'
+          }`}
         >
-          <div className="size-12 rounded-2xl bg-tone-success-bg border border-tone-success-border group-hover:scale-105 group-hover:bg-tone-success-bg flex items-center justify-center text-tone-success-icon transition-all shadow-2xs">
-            <Upload className="size-5" />
+          <div
+            className={`size-12 rounded-2xl border flex items-center justify-center transition-all shadow-2xs ${
+              dragStatus === 'valid'
+                ? 'bg-emerald-600 border-emerald-600 text-white scale-110 shadow-sm'
+                : dragStatus === 'invalid'
+                  ? 'bg-rose-600 border-rose-600 text-white'
+                  : 'bg-tone-success-bg border-tone-success-border group-hover:scale-105 text-tone-success-icon'
+            }`}
+          >
+            {dragStatus === 'invalid' ? <Ban className="size-5" /> : <Upload className="size-5" />}
           </div>
           <div className="space-y-1">
-            <span className="text-sm font-bold text-ink-heading block">
-              Nhấn để tải lên tệp bảng tính Excel (.xlsx)
+            <span
+              className={`text-sm font-bold block ${
+                dragStatus === 'valid'
+                  ? 'text-emerald-800 dark:text-emerald-200'
+                  : dragStatus === 'invalid'
+                    ? 'text-tone-danger-strong'
+                    : 'text-ink-heading'
+              }`}
+            >
+              {dragStatus === 'valid'
+                ? 'Thả tệp Excel (.xlsx) vào đây để tải lên'
+                : dragStatus === 'invalid'
+                  ? 'Định dạng không hỗ trợ — chỉ chấp nhận tệp Excel (.xlsx)'
+                  : 'Kéo thả hoặc nhấn để tải lên tệp bảng tính Excel (.xlsx)'}
             </span>
             <p className="text-xs text-ink-muted max-w-md mx-auto">
-              Hệ thống sẽ tự động đọc dữ liệu, kiểm tra cấu trúc cột và đối chiếu điều kiện hợp lệ trước khi nhập
+              {dragStatus === 'invalid'
+                ? 'Vui lòng chọn tệp bảng tính Microsoft Excel có phần mở rộng .xlsx'
+                : 'Hệ thống sẽ tự động đọc dữ liệu, kiểm tra cấu trúc cột và đối chiếu điều kiện hợp lệ trước khi nhập'}
             </p>
           </div>
         </button>
