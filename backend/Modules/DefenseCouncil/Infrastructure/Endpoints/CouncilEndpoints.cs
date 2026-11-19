@@ -10,14 +10,18 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.CheckCouncilDiscrepancy;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMemberCandidates;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.RemoveCouncilMember;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
 using UGTM.Modules.DefenseCouncil.Application.Councils.LockCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.UnlockCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilsOverview;
+using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilMembers;
 using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilSchedule;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilToAcademicAffairs;
+using UGTM.Modules.DefenseCouncil.Domain.Enums;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
 
@@ -780,6 +784,71 @@ public static class CouncilEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
             .WithName("DefenseCouncil.Councils.SubmitToAcademicAffairs");
 
+        // 15. GET /api/councils/{id:guid}/member-candidates
+        group.MapGet("/{id:guid}/member-candidates", GetCouncilMemberCandidatesAsync)
+            .RequireAuthorization()
+            .WithSummary("Tra cứu danh sách Giảng viên/Cán bộ ứng viên cho Hội đồng bảo vệ kèm cờ xung đột")
+            .WithDescription("""
+                Trả về danh sách các Giảng viên đang hoạt động (`Active` và có vai trò `Lecturer`) kèm trạng thái khả dụng cho một Hội đồng bảo vệ cụ thể, giúp Văn phòng Khoa nhận diện trực quan trước khi phân công Chủ tịch, Thư ký hoặc Ủy viên.
+                
+                ### Tham số URL & Query:
+                - `id`: GUID định danh của hội đồng bảo vệ.
+                - `keyword`: Từ khóa tìm kiếm theo họ tên, email hoặc mã giảng viên (tùy chọn).
+                
+                ### Cờ trạng thái trả về (`CouncilMemberCandidateDto`):
+                - `isAlreadyInCouncil`, `currentRoleInCouncil`: Đánh dấu giảng viên đã có trong hội đồng hiện tại hay chưa và vai trò đang giữ.
+                - `isAdvisorConflict`: `true` nếu giảng viên là GVHD của một nhóm đề tài trong hội đồng (bị cấm chọn, `isEligible = false`).
+                - `isScheduleConflict`: `true` nếu giảng viên đã tham gia một hội đồng khác cùng ngày và ca bảo vệ (bị cấm chọn, `isEligible = false`).
+                - `isReviewerForCouncilGroups`: `true` nếu giảng viên là GVPB của một nhóm đề tài trong hội đồng (`allowedRoles = ["Member"]` — chỉ được làm Ủy viên).
+                - `isEligible` & `allowedRoles`: Khả năng chọn và danh sách vai trò hợp lệ (`Chairman`, `Secretary`, `Member`).
+                
+                ### Phân quyền truy cập (RBAC):
+                Yêu cầu Bearer token có vai trò `Faculty`, `AcademicAffairs`, hoặc `Admin`.
+                """)
+            .Produces<ApiResponse<IReadOnlyList<CouncilMemberCandidateDto>>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .WithName("DefenseCouncil.Councils.GetMemberCandidates");
+
+        // 16. PUT /api/councils/{id:guid}/members
+        group.MapPut("/{id:guid}/members", UpdateCouncilMembersAsync)
+            .RequireAuthorization()
+            .Accepts<UpdateCouncilMembersInputDto>("application/json")
+            .WithSummary("Cập nhật / Thay thế trọn bộ cơ cấu thành viên Hội đồng bảo vệ (Draft)")
+            .WithDescription("""
+                Thay thế toàn bộ danh sách thành viên (Chủ tịch, Thư ký, Ủy viên) của một Hội đồng bảo vệ khi đang ở trạng thái dự thảo (`Draft`).
+                Hệ thống kiểm tra đầy đủ ràng buộc (vai trò `Lecturer`, tối đa 01 Chủ tịch, tối đa 01 Thư ký, chống xung đột GVHD, hạn chế GVPB chỉ làm Ủy viên, chống trùng lịch ca thi), đồng thời tự động đồng bộ vai trò hệ thống `CouncilMember` cho các tài khoản được gán và thu hồi đối với giảng viên bị gỡ khỏi toàn bộ hội đồng.
+                
+                ### Phân quyền truy cập (RBAC):
+                Yêu cầu Bearer token có vai trò `Faculty`, `AcademicAffairs`, hoặc `Admin`.
+                """)
+            .Produces<ApiResponse<IReadOnlyList<CouncilMemberResponseDto>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .WithName("DefenseCouncil.Councils.UpdateMembers");
+
+        // 17. DELETE /api/councils/{id:guid}/members/{userId:guid}
+        group.MapDelete("/{id:guid}/members/{userId:guid}", RemoveCouncilMemberAsync)
+            .RequireAuthorization()
+            .WithSummary("Gỡ một thành viên khỏi Hội đồng bảo vệ đang ở trạng thái dự thảo (Draft)")
+            .WithDescription("""
+                Gỡ lẻ một giảng viên đã phân công khỏi Hội đồng bảo vệ khi hội đồng đang ở trạng thái dự thảo (`Draft`).
+                Nếu giảng viên bị gỡ không còn tham gia bất kỳ hội đồng nào khác trong hệ thống, quyền hệ thống `CouncilMember` trên tài khoản sẽ được tự động thu hồi về `Lecturer`.
+                
+                ### Phân quyền truy cập (RBAC):
+                Yêu cầu Bearer token có vai trò `Faculty`, `AcademicAffairs`, hoặc `Admin`.
+                """)
+            .Produces<ApiResponse<IReadOnlyList<CouncilMemberResponseDto>>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .WithName("DefenseCouncil.Councils.RemoveMember");
+
         return endpoints;
     }
 
@@ -801,20 +870,11 @@ public static class CouncilEndpoints
 
     private static async Task<IResult> AddCouncilMembersAsync(
         [FromRoute] Guid id,
-        [FromBody] AddCouncilMembersInputDto body,
+        [FromBody] AddCouncilMembersInputDto? body,
         [FromServices] AddCouncilMembersHandler handler,
         CancellationToken cancellationToken)
     {
-        var members = new List<CouncilMemberInputDto>();
-        if (body.Members != null && body.Members.Count > 0)
-        {
-            members.AddRange(body.Members);
-        }
-        else if (body.UserId.HasValue && body.Role.HasValue)
-        {
-            members.Add(new CouncilMemberInputDto(body.UserId.Value, body.Role.Value));
-        }
-
+        var members = NormalizeMemberInputs(body?.Members, body?.UserId, body?.Role);
         var command = new AddCouncilMembersCommand(id, members);
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
@@ -999,6 +1059,58 @@ public static class CouncilEndpoints
             id,
             body?.Notes);
 
+        var result = await handler.HandleAsync(command, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> GetCouncilMemberCandidatesAsync(
+        [FromRoute] Guid id,
+        [FromQuery] string? keyword,
+        [FromServices] GetCouncilMemberCandidatesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetCouncilMemberCandidatesQuery(id, keyword);
+        var result = await handler.HandleAsync(query, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> UpdateCouncilMembersAsync(
+        [FromRoute] Guid id,
+        [FromBody] UpdateCouncilMembersInputDto? body,
+        [FromServices] UpdateCouncilMembersHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var members = NormalizeMemberInputs(body?.Members, body?.UserId, body?.Role);
+        var command = new UpdateCouncilMembersCommand(id, members);
+        var result = await handler.HandleAsync(command, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static List<CouncilMemberInputDto> NormalizeMemberInputs(
+        IReadOnlyList<CouncilMemberInputDto>? members,
+        Guid? userId,
+        CouncilMemberRole? role)
+    {
+        var normalized = new List<CouncilMemberInputDto>();
+        if (members != null && members.Count > 0)
+        {
+            normalized.AddRange(members);
+        }
+        else if (userId.HasValue && role.HasValue)
+        {
+            normalized.Add(new CouncilMemberInputDto(userId.Value, role.Value));
+        }
+
+        return normalized;
+    }
+
+    private static async Task<IResult> RemoveCouncilMemberAsync(
+        [FromRoute] Guid id,
+        [FromRoute] Guid userId,
+        [FromServices] RemoveCouncilMemberHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var command = new RemoveCouncilMemberCommand(id, userId);
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
     }

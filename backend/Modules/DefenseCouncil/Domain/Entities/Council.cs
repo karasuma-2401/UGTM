@@ -58,15 +58,20 @@ public class Council
         ApprovedAt = approvedAt;
     }
 
+    public void ResetSubmission()
+    {
+        IsSubmittedToAcademicAffairs = false;
+        SubmittedAt = null;
+        SubmittedBy = null;
+        SubmissionNotes = null;
+    }
+
     public void UpdateSchedule(DateOnly defenseDate, string timeSlot, string room)
     {
         DefenseDate = defenseDate;
         TimeSlot = timeSlot.Trim();
         Room = room.Trim();
-        IsSubmittedToAcademicAffairs = false;
-        SubmittedAt = null;
-        SubmittedBy = null;
-        SubmissionNotes = null;
+        ResetSubmission();
     }
 
     public void SubmitToAcademicAffairs(Guid actorId, string? notes, DateTime atUtc)
