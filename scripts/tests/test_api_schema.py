@@ -50,25 +50,18 @@ class ApiSchemaTests(unittest.TestCase):
                 ["docker", "rm", "-fv", cls.container], capture_output=True
             )
         )
-        for _ in range(45):
-            ready = subprocess.run(
-                [
-                    "docker",
-                    "exec",
-                    cls.container,
-                    "pg_isready",
-                    "-U",
-                    "postgres",
-                    "-d",
-                    "schema_test",
-                ],
-                capture_output=True,
-            )
+        # The image starts a socket-only server during initdb. Wait for the
+        # final TCP listener and verify authentication to the test database.
+        deadline = time.monotonic() + 60
+        while True:
+            ready = cls.psql("-c", "SELECT 1")
             if ready.returncode == 0:
                 break
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"Disposable schema-test database did not become ready: {ready.stderr.strip()}"
+                )
             time.sleep(1)
-        else:
-            raise RuntimeError("Disposable schema-test database did not start")
         port = (
             subprocess.check_output(
                 ["docker", "port", cls.container, "5432"], text=True
@@ -84,29 +77,42 @@ class ApiSchemaTests(unittest.TestCase):
             )
         assert cls.expected
 
-    def history(self, migrations):
-        sql = "DROP TABLE IF EXISTS public.__ef_migrations_history; CREATE TABLE public.__ef_migrations_history (migration_id varchar(150) PRIMARY KEY,product_version varchar(32) NOT NULL);"
-        for migration in migrations:
-            sql += f"INSERT INTO public.__ef_migrations_history VALUES ('{migration}','10.0.12');"
-        subprocess.run(
+    @classmethod
+    def psql(cls, *args, sql=None):
+        return subprocess.run(
             [
                 "docker",
                 "exec",
                 "-i",
-                self.container,
+                "-e",
+                f"PGPASSWORD={cls.password}",
+                "-e",
+                "PGCONNECT_TIMEOUT=3",
+                cls.container,
                 "psql",
+                "-XAtw",
+                "-h",
+                "127.0.0.1",
                 "-U",
                 "postgres",
                 "-d",
                 "schema_test",
                 "-v",
                 "ON_ERROR_STOP=1",
+                *args,
             ],
             input=sql,
             text=True,
             capture_output=True,
-            check=True,
+            timeout=15,
         )
+
+    def history(self, migrations):
+        sql = "DROP TABLE IF EXISTS public.__ef_migrations_history; CREATE TABLE public.__ef_migrations_history (migration_id varchar(150) PRIMARY KEY,product_version varchar(32) NOT NULL);"
+        for migration in migrations:
+            sql += f"INSERT INTO public.__ef_migrations_history VALUES ('{migration}','10.0.12');"
+        result = self.psql(sql=sql)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def check(self):
         result = subprocess.run(
@@ -130,31 +136,27 @@ class ApiSchemaTests(unittest.TestCase):
 
     def test_pending_migration_is_rejected(self):
         self.history(self.expected[:-1])
-        self.assertNotEqual(self.check().returncode, 0)
+        result = self.check()
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(f"Pending migrations: {self.expected[-1]}", result.stderr)
 
     def test_future_migration_is_rejected(self):
         self.history([*self.expected, "99999999999999_FutureMigration"])
-        self.assertNotEqual(self.check().returncode, 0)
+        result = self.check()
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn(
+            "Migrations outside this release: 99999999999999_FutureMigration",
+            result.stderr,
+        )
 
     def test_history_is_not_created_or_modified(self):
         self.history([])
-        self.assertNotEqual(self.check().returncode, 0)
-        count = subprocess.check_output(
-            [
-                "docker",
-                "exec",
-                self.container,
-                "psql",
-                "-U",
-                "postgres",
-                "-d",
-                "schema_test",
-                "-Atc",
-                "SELECT count(*) FROM public.__ef_migrations_history",
-            ],
-            text=True,
-        ).strip()
-        self.assertEqual(count, "0")
+        result = self.check()
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertIn("UGTM schema does not match this release", result.stderr)
+        count = self.psql("-c", "SELECT count(*) FROM public.__ef_migrations_history")
+        self.assertEqual(count.returncode, 0, count.stderr)
+        self.assertEqual(count.stdout.strip(), "0")
 
 
 if __name__ == "__main__":
