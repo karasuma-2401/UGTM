@@ -61,10 +61,6 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       </div>
     );
 
-    if (!error && !helperText) {
-      return inputElement;
-    }
-
     return (
       <div className="w-full">
         {inputElement}
@@ -73,7 +69,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {error}
           </p>
         ) : helperText ? (
-          <p id={descriptionId} className="text-xs text-muted-foreground mt-1.5">{helperText}</p>
+          <p id={descriptionId} className="text-xs text-muted-foreground mt-1.5">
+            {helperText}
+          </p>
         ) : null}
       </div>
     );

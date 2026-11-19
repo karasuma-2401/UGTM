@@ -70,6 +70,7 @@ export const PasswordField = React.forwardRef<HTMLInputElement, PasswordFieldPro
           'auth-eye text-ink-subtle hover:text-ink-body focus:outline-none transition-colors cursor-pointer',
           disabled && 'opacity-50 cursor-not-allowed hover:text-ink-subtle',
         )}
+        onMouseDown={(event) => event.preventDefault()}
         onClick={() => setIsVisible((visible) => !visible)}
         aria-label={isVisible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
         aria-pressed={isVisible}
