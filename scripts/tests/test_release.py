@@ -69,7 +69,7 @@ class ReleaseTests(unittest.TestCase):
 
     def test_adding_a_platform_forces_native_builds_for_both(self):
         jobs = self.plan(manifest(), "--amd64")
-        self.assertEqual(len(jobs), 4)
+        self.assertEqual(len(jobs), 6)
         self.assertFalse(any(job["reuse"] for job in jobs))
         self.assertEqual(
             {job["runner"] for job in jobs}, {"ubuntu-24.04", "ubuntu-24.04-arm"}
@@ -83,6 +83,31 @@ class ReleaseTests(unittest.TestCase):
         ]:
             with self.assertRaises(ValueError):
                 validate(manifest(), repository, sha)
+
+    def test_legacy_manifest_can_plan_an_upgrade_without_reusing_an_unscanned_gateway(
+        self,
+    ):
+        legacy = manifest()
+        legacy["version"] = 1
+        del legacy["images"]["gateway"]
+        validate(legacy)
+        jobs = self.plan(legacy)
+        self.assertTrue(next(job for job in jobs if job["component"] == "api")["reuse"])
+        self.assertTrue(next(job for job in jobs if job["component"] == "ai")["reuse"])
+        self.assertFalse(
+            next(job for job in jobs if job["component"] == "gateway")["reuse"]
+        )
+        self.assertFalse(compatible(legacy, manifest()))
+
+    def test_new_manifest_requires_a_scanned_gateway_and_sealed_image_setting(self):
+        missing = manifest()
+        del missing["images"]["gateway"]
+        with self.assertRaises(ValueError):
+            validate(missing)
+        unscanned = manifest()
+        unscanned["images"]["gateway"]["platforms"] = {"amd64": "sha256:" + "c" * 64}
+        with self.assertRaises(ValueError):
+            validate(unscanned)
 
     def test_rejects_floating_foreign_and_missing_platform_images(self):
         for change in ("tag", "registry", "arm"):
@@ -133,6 +158,7 @@ class ReleaseTests(unittest.TestCase):
             (directory / "release.json").write_text(json.dumps(manifest()))
             values = settings()
             values["API_IMAGE"] = "malicious:tag"
+            values["GATEWAY_IMAGE"] = "malicious:tag"
             (directory / "settings.json").write_text(json.dumps(values))
             initialize(directory)
             self.assertFalse((directory / "settings.json").exists())
@@ -141,6 +167,10 @@ class ReleaseTests(unittest.TestCase):
                 (directory / "runtime.env").read_text(),
             )
             self.assertNotIn("malicious:tag", (directory / "runtime.env").read_text())
+            self.assertIn(
+                "ghcr.io/example/ugtm-gateway@sha256:",
+                (directory / "runtime.env").read_text(),
+            )
             self.assertNotIn("SMTP_PASSWORD", (directory / "public.json").read_text())
             with self.assertRaises(ValueError):
                 initialize(directory)

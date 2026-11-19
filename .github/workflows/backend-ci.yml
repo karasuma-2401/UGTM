@@ -85,7 +85,44 @@ jobs:
       - name: Build solution
         run: dotnet build UGTM.sln -c Release --no-restore /nr:false
 
+      - name: Build and validate the patched gateway
+        if: ${{ inputs.verify_image }}
+        run: |
+          docker build -t ugtm-gateway-ci docker/gateway
+          docker run --rm --network none \
+            -e API_HOST=api.example.test \
+            -e APP_URL=https://frontend.example.test \
+            -e ACME_EMAIL=ops@example.test \
+            -v "$GITHUB_WORKSPACE/docker/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            ugtm-gateway-ci caddy validate --config /etc/caddy/Caddyfile
+
+      - name: Scan the patched gateway before merge
+        if: ${{ inputs.verify_image }}
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
+        env:
+          TRIVY_PLATFORM: linux/amd64
+          TRIVY_IMAGE_SRC: docker
+        with:
+          version: v0.76.2
+          image-ref: ugtm-gateway-ci
+          format: sarif
+          output: gateway.sarif
+          severity: CRITICAL,HIGH
+          limit-severities-for-sarif: true
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Upload gateway scan report
+        if: always() && hashFiles('gateway.sarif') != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gateway-pr-scan
+          path: gateway.sarif
+          retention-days: 30
+
       - name: Execute tests (Architecture, Unit & Integration)
+        env:
+          UGTM_GATEWAY_TEST_IMAGE: ${{ inputs.verify_image && 'ugtm-gateway-ci' || '' }}
         run: dotnet test UGTM.sln -c Release --no-build --logger "trx;LogFileName=results.trx"
 
       - name: Verify read-only schema gate against a disposable database
@@ -123,6 +160,7 @@ jobs:
           SMTP_FROM_ADDRESS: no-reply@example.test
           API_IMAGE: ghcr.io/example/ugtm-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
           AI_IMAGE: ghcr.io/example/ugtm-ai@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          GATEWAY_IMAGE: ghcr.io/example/ugtm-gateway@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
           AI_POSTGRES_DSN: postgresql://ai:ci-only@database/ai
           AI_POSTGRES_DIRECT_DSN: postgresql://ai:ci-only@database/ai
           PLAGIARISM_AI_API_KEY: ci-only-internal-key-at-least-32-characters
@@ -139,11 +177,34 @@ jobs:
           AI_S3_SECRET_KEY: ci-only-ai-secret
         run: docker compose -f docker/docker-compose.prod.yml config --quiet
 
-      - name: Validate Caddy gateway configuration
-        run: >-
-          docker run --rm
-          -e API_HOST=api.example.test
-          -e APP_URL=https://frontend.example.test
-          -e ACME_EMAIL=ops@example.test
-          -v "${{ github.workspace }}/docker/Caddyfile:/etc/caddy/Caddyfile:ro"
-          caddy:2.11.7-alpine caddy validate --config /etc/caddy/Caddyfile
+      - name: Resolve the reviewed MinIO image
+        if: ${{ inputs.verify_image }}
+        id: minio
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          print('image='+json.load(open('docker/release-policy.json'))['infrastructure']['minio'])
+          PY
+
+      - name: Scan MinIO before merge
+        if: ${{ inputs.verify_image }}
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
+        env:
+          TRIVY_PLATFORM: linux/amd64
+        with:
+          version: v0.76.2
+          image-ref: ${{ steps.minio.outputs.image }}
+          format: sarif
+          output: minio.sarif
+          severity: CRITICAL,HIGH
+          limit-severities-for-sarif: true
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Upload image scan reports
+        if: always() && hashFiles('minio.sarif') != ''
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: minio-pr-scan
+          path: minio.sarif
+          retention-days: 30

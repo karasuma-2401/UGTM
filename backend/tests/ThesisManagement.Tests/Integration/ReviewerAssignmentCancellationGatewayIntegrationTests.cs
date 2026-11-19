@@ -19,9 +19,14 @@ public sealed partial class ReviewerAssignmentTransactionIntegrationTests
         var caddyfile = await File.ReadAllTextAsync(Path.Combine(root.FullName, "docker", "Caddyfile"));
         Assert.Contains("@backend path /api/*", caddyfile);
         Assert.Contains("reverse_proxy backend:8080", caddyfile);
-        var compose = await File.ReadAllLinesAsync(Path.Combine(root.FullName, "docker", "docker-compose.prod.yml"));
-        var image = compose.Single(value => value.Trim().StartsWith("image: caddy:", StringComparison.Ordinal))
-            .Trim()["image: ".Length..];
+        var image = Environment.GetEnvironmentVariable("UGTM_GATEWAY_TEST_IMAGE");
+        if (string.IsNullOrWhiteSpace(image))
+        {
+            // Local tests use the pinned upstream runtime; PR CI supplies the rebuilt gateway image.
+            var dockerfile = await File.ReadAllLinesAsync(Path.Combine(root.FullName, "docker", "gateway", "Dockerfile"));
+            image = dockerfile.Last(value => value.StartsWith("FROM ", StringComparison.Ordinal))
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)[1];
+        }
         var port = checked((ushort)client.BaseAddress!.Port);
         // Keep the production routing/header/encoding rules. Only replace the upstream address and use HTTP on a test port.
         caddyfile = caddyfile.Replace("backend:8080", $"host.testcontainers.internal:{port}", StringComparison.Ordinal);

@@ -68,6 +68,13 @@ def initialize(directory):
     settings.update(
         API_IMAGE=manifest["images"]["api"]["reference"],
         AI_IMAGE=manifest["images"]["ai"]["reference"],
+        GATEWAY_IMAGE=(
+            manifest["images"]["gateway"]["reference"]
+            if "gateway" in manifest["images"]
+            else manifest.get("rollback_policy", {})
+            .get("infrastructure", {})
+            .get("gateway", "")
+        ),
         JWT_PRIVATE_KEY_FILE=str(directory / "secrets/jwt.pem"),
         AI_ARTIFACTS_DIR=str(directory.parent.parent / "ai-artifacts"),
     )
@@ -116,7 +123,8 @@ def initialize(directory):
 def compatible(before, after):
     # Conservative: schema-changing releases need a reviewed/manual rollback.
     return (
-        before.get("version") == after.get("version") == 1
+        before.get("version") == after.get("version")
+        and after.get("version") in (1, 2)
         and before.get("schemas") == after.get("schemas")
         and before.get("rollback_policy", {}).get("auto_rollback") is True
         and after.get("rollback_policy", {}).get("auto_rollback") is True
