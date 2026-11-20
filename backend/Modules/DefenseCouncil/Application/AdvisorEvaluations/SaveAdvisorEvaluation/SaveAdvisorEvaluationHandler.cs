@@ -310,10 +310,10 @@ public sealed class SaveAdvisorEvaluationHandler(
 
             await evaluationRepository.SaveEvaluationDetailsAsync(evaluation.Id, detailsList, cancellationToken);
 
-            detailDtos = detailsToSave.Select(d =>
+            detailDtos = detailsList.Select(d =>
             {
                 var crit = criteriaMap![d.CriteriaId];
-                return new EvaluationDetailResponseDto(Guid.Empty, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore, d.StudentId);
+                return new EvaluationDetailResponseDto(d.Id, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore, d.StudentId);
             }).ToList();
         }
 

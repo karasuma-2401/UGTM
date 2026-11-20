@@ -74,12 +74,16 @@ public sealed class AdvisorAndReviewerGradingCriteriaTests
         Assert.Equal(9.0m, result.Value.Score);
         Assert.NotNull(result.Value.Details);
         Assert.Equal(2, result.Value.Details.Count);
+        Assert.All(result.Value.Details, d => Assert.NotEqual(Guid.Empty, d.Id));
         Assert.Equal(5.5m, result.Value.Details.First(d => d.CriteriaId == _crit1Id).Score);
         Assert.Equal(3.5m, result.Value.Details.First(d => d.CriteriaId == _crit2Id).Score);
 
-        // Verify persisted details
+        // Verify persisted details and matching IDs
         var savedDetails = await repo.GetEvaluationDetailsByEvaluationIdAsync(result.Value.Id);
         Assert.Equal(2, savedDetails.Count);
+        Assert.Equal(
+            savedDetails.Select(d => d.Id).OrderBy(id => id),
+            result.Value.Details.Select(d => d.Id).OrderBy(id => id));
     }
 
     [Fact]
@@ -288,6 +292,7 @@ public sealed class AdvisorAndReviewerGradingCriteriaTests
         Assert.Equal("Draft", result.Value.Evaluation.Status);
         Assert.NotNull(result.Value.Evaluation.Details);
         Assert.Single(result.Value.Evaluation.Details);
+        Assert.All(result.Value.Evaluation.Details, d => Assert.NotEqual(Guid.Empty, d.Id));
     }
 
     [Fact]
@@ -345,10 +350,14 @@ public sealed class AdvisorAndReviewerGradingCriteriaTests
         Assert.Equal("Submitted", result.Value.Evaluation.Status);
         Assert.NotNull(result.Value.Evaluation.Details);
         Assert.Equal(2, result.Value.Evaluation.Details.Count);
+        Assert.All(result.Value.Evaluation.Details, d => Assert.NotEqual(Guid.Empty, d.Id));
         Assert.True(result.Value.Evaluation.IsLocked);
 
         var savedDetails = await repo.GetEvaluationDetailsByEvaluationIdAsync(result.Value.Evaluation.Id);
         Assert.Equal(2, savedDetails.Count);
+        Assert.Equal(
+            savedDetails.Select(d => d.Id).OrderBy(id => id),
+            result.Value.Evaluation.Details.Select(d => d.Id).OrderBy(id => id));
     }
 
     [Fact]

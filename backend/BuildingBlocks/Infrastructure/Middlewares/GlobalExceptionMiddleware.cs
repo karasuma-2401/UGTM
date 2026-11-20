@@ -30,6 +30,14 @@ public sealed class GlobalExceptionMiddleware(
                 context.TraceIdentifier);
             await HandleExceptionAsync(context, exception);
         }
+        catch (BadHttpRequestException exception)
+        {
+            logger.LogWarning(
+                "Rejected invalid HTTP request ({StatusCode}). RequestId: {RequestId}",
+                exception.StatusCode,
+                context.TraceIdentifier);
+            await HandleExceptionAsync(context, exception);
+        }
         catch (Exception exception)
         {
             if (context.Response.HasStarted)
@@ -53,6 +61,8 @@ public sealed class GlobalExceptionMiddleware(
         {
             AntiforgeryValidationException =>
                 (HttpStatusCode.BadRequest, "Invalid CSRF Token"),
+            BadHttpRequestException badRequest =>
+                ((HttpStatusCode)badRequest.StatusCode, "Bad Request"),
             _ => (HttpStatusCode.InternalServerError, "Server Error")
         };
 
