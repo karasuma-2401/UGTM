@@ -5,6 +5,7 @@ using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
+using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 
 namespace UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusSubmissionFileDownload;
 
@@ -12,6 +13,7 @@ public sealed class GetSyllabusSubmissionFileDownloadHandler(
     ISubmissionFileRepository submissionFileRepository,
     ISyllabusRepository syllabusRepository,
     IStudentGroupRepository groupRepository,
+    ITopicAdvisorAssignmentContract advisorAssignmentContract,
     IThesisSubmissionObjectStorage objectStorage,
     ICurrentUser currentUser,
     TimeProvider timeProvider)
@@ -22,7 +24,7 @@ public sealed class GetSyllabusSubmissionFileDownloadHandler(
         GetSyllabusSubmissionFileDownloadQuery query,
         CancellationToken cancellationToken = default)
     {
-        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue)
+        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue || currentUser.UserId.Value == Guid.Empty)
         {
             return Result.Failure<SubmissionFileDownloadDto>(SyllabusSubmissionErrors.AccessDenied);
         }
@@ -51,7 +53,14 @@ public sealed class GetSyllabusSubmissionFileDownloadHandler(
         }
 
         var isMember = ThesisAuthorization.IsConfirmedMember(group, currentUser.UserId.Value);
-        if (!isMember && !ThesisAuthorization.CanReviewGates(currentUser))
+        var canAccess = isMember || ThesisAuthorization.CanReviewGates(currentUser);
+        if (!canAccess)
+        {
+            var assignment = await advisorAssignmentContract.GetByTopicIdAsync(group.TopicId, cancellationToken);
+            canAccess = assignment is not null && assignment.AdvisorId == currentUser.UserId.Value;
+        }
+
+        if (!canAccess)
         {
             return Result.Failure<SubmissionFileDownloadDto>(SyllabusSubmissionErrors.AccessDenied);
         }

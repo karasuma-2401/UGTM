@@ -5,6 +5,7 @@ using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
+using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 
 namespace UGTM.Modules.ThesisManagement.Application.ReviewGateSubmissions.GetReviewGateSubmissionFileDownload;
 
@@ -13,6 +14,7 @@ public sealed class GetReviewGateSubmissionFileDownloadHandler(
     ISyllabusRepository syllabusRepository,
     IMidtermReportRepository midtermReportRepository,
     IStudentGroupRepository groupRepository,
+    ITopicAdvisorAssignmentContract advisorAssignmentContract,
     IThesisSubmissionObjectStorage objectStorage,
     ICurrentUser currentUser,
     TimeProvider timeProvider)
@@ -23,7 +25,7 @@ public sealed class GetReviewGateSubmissionFileDownloadHandler(
         GetReviewGateSubmissionFileDownloadQuery query,
         CancellationToken cancellationToken = default)
     {
-        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue)
+        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue || currentUser.UserId.Value == Guid.Empty)
         {
             return Result.Failure<SubmissionFileDownloadDto>(ReviewGateSubmissionFileErrors.AccessDenied);
         }
@@ -61,7 +63,14 @@ public sealed class GetReviewGateSubmissionFileDownloadHandler(
         }
 
         var isMember = ThesisAuthorization.IsConfirmedMember(group, currentUser.UserId.Value);
-        if (!isMember && !ThesisAuthorization.CanReviewGates(currentUser))
+        var canAccess = isMember || ThesisAuthorization.CanReviewGates(currentUser);
+        if (!canAccess)
+        {
+            var assignment = await advisorAssignmentContract.GetByTopicIdAsync(group.TopicId, cancellationToken);
+            canAccess = assignment is not null && assignment.AdvisorId == currentUser.UserId.Value;
+        }
+
+        if (!canAccess)
         {
             return Result.Failure<SubmissionFileDownloadDto>(ReviewGateSubmissionFileErrors.AccessDenied);
         }

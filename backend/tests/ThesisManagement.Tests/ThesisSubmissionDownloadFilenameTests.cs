@@ -97,10 +97,11 @@ public sealed class ThesisSubmissionDownloadFilenameTests
         var reviewer = new TestCurrentUser(Guid.NewGuid(), [PermissionCodes.ThesisReviewGatesReview]);
         var clock = new FixedClock(NowUtc);
 
+        var advisorContract = new NullAdvisorAssignmentContract();
         var gateHandler = new GetReviewGateSubmissionFileDownloadHandler(
-            fileRepo, syllabusRepo, midtermRepo, groupRepo, storage, reviewer, clock);
+            fileRepo, syllabusRepo, midtermRepo, groupRepo, advisorContract, storage, reviewer, clock);
         var syllabusHandler = new GetSyllabusSubmissionFileDownloadHandler(
-            fileRepo, syllabusRepo, groupRepo, storage, reviewer, clock);
+            fileRepo, syllabusRepo, groupRepo, advisorContract, storage, reviewer, clock);
 
         var gateDownload = await gateHandler.HandleAsync(new GetReviewGateSubmissionFileDownloadQuery(fileId));
         var gatePreview = await gateHandler.HandleAsync(new GetReviewGateSubmissionFileDownloadQuery(fileId, Inline: true));

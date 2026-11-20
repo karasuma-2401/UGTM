@@ -4,6 +4,7 @@ using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
+using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 
 namespace UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.GetSyllabusSubmissionHistory;
 
@@ -12,13 +13,14 @@ public sealed class GetSyllabusSubmissionHistoryHandler(
     ISyllabusRepository syllabusRepository,
     ISubmissionFileRepository submissionFileRepository,
     ISubmissionReviewRepository submissionReviewRepository,
+    ITopicAdvisorAssignmentContract advisorAssignmentContract,
     ICurrentUser currentUser)
 {
     public async Task<Result<SyllabusSubmissionHistoryDto>> HandleAsync(
         GetSyllabusSubmissionHistoryQuery query,
         CancellationToken cancellationToken = default)
     {
-        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue)
+        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue || currentUser.UserId.Value == Guid.Empty)
         {
             return Result.Failure<SyllabusSubmissionHistoryDto>(SyllabusSubmissionErrors.AccessDenied);
         }
@@ -35,7 +37,14 @@ public sealed class GetSyllabusSubmissionHistoryHandler(
         }
 
         var isMember = ThesisAuthorization.IsConfirmedMember(group, currentUser.UserId.Value);
-        if (!isMember && !ThesisAuthorization.CanReviewGates(currentUser))
+        var canAccess = isMember || ThesisAuthorization.CanReviewGates(currentUser);
+        if (!canAccess)
+        {
+            var assignment = await advisorAssignmentContract.GetByTopicIdAsync(group.TopicId, cancellationToken);
+            canAccess = assignment is not null && assignment.AdvisorId == currentUser.UserId.Value;
+        }
+
+        if (!canAccess)
         {
             return Result.Failure<SyllabusSubmissionHistoryDto>(SyllabusSubmissionErrors.AccessDenied);
         }
