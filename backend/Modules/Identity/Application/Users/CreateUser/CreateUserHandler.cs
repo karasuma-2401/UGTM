@@ -52,29 +52,15 @@ public sealed class CreateUserHandler(
                 return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
             }
 
-            var systemRoles = new List<SystemRoleName>();
-            foreach (var roleStr in command.Roles)
+            var resolvedRolesResult = await UserRoleResolver.ResolveAsync(users, command.Roles, existingRoleNames: null, ct);
+            if (resolvedRolesResult.IsFailure)
             {
-                if (string.IsNullOrWhiteSpace(roleStr))
-                {
-                    return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
-                }
-
-                var trimmedRole = roleStr.Trim();
-                if (int.TryParse(trimmedRole, out _)
-                    || !Enum.TryParse<SystemRoleName>(trimmedRole, ignoreCase: true, out var role)
-                    || !Enum.IsDefined(role))
-                {
-                    return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
-                }
-
-                if (!systemRoles.Contains(role))
-                {
-                    systemRoles.Add(role);
-                }
+                return Result.Failure<UserSummaryDto>(resolvedRolesResult.Error);
             }
 
-            if (systemRoles.Contains(SystemRoleName.Student) && systemRoles.Count > 1)
+            var resolvedRoleNames = resolvedRolesResult.Value;
+            if (resolvedRoleNames.Contains(nameof(SystemRoleName.Student), StringComparer.OrdinalIgnoreCase)
+                && resolvedRoleNames.Count > 1)
             {
                 return Result.Failure<UserSummaryDto>(IdentityErrors.StudentRoleConflict);
             }
@@ -145,10 +131,7 @@ public sealed class CreateUserHandler(
             }
 
             users.Add(user);
-            foreach (var role in systemRoles)
-            {
-                await users.AddToRoleAsync(user, role, now, ct);
-            }
+            await users.AddToRolesByNameAsync(user, resolvedRoleNames, now, ct);
 
             auditLogs.Add(new AuditEntry(
                 TargetType: "User",
@@ -159,7 +142,7 @@ public sealed class CreateUserHandler(
                 Metadata: new
                 {
                     Status = user.Status.ToString(),
-                    Roles = systemRoles.Select(role => role.ToString()).Order().ToArray(),
+                    Roles = resolvedRoleNames.Order().ToArray(),
                     ActivationEmailRequested = string.IsNullOrWhiteSpace(command.InitialPassword)
                                                && command.SendActivationEmail
                 }));
@@ -173,7 +156,7 @@ public sealed class CreateUserHandler(
                 user.UserCode,
                 user.PhoneNumber,
                 user.Status.ToString(),
-                systemRoles.Select(r => r.ToString()).ToList(),
+                resolvedRoleNames,
                 user.CreatedAt,
                 user.LastLoginAt));
         }, cancellationToken);

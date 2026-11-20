@@ -27,10 +27,15 @@ public sealed class GetRolePermissionsHandler(IRolePermissionRepository reposito
             .ThenBy(p => p.PermissionCode)
             .ToList();
 
+        var userCount = await repository.GetRoleUserCountAsync(role.Id, cancellationToken);
+
         return Result.Success(new RolePermissionsDto(
             role.Id,
             role.RoleName,
             role.Description,
-            permissions));
+            permissions,
+            role.IsSystemRole(),
+            role.IsHidden,
+            userCount));
     }
 }

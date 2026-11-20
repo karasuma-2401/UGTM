@@ -44,7 +44,9 @@ public sealed class GetRenameRequestsHandler(
         RenameRequestStatus? statusFilter = null;
         if (!string.IsNullOrWhiteSpace(query.Status))
         {
-            if (!Enum.TryParse<RenameRequestStatus>(query.Status.Trim(), ignoreCase: true, out var parsed)
+            var trimmedStatus = query.Status.Trim();
+            if (int.TryParse(trimmedStatus, out _)
+                || !Enum.TryParse<RenameRequestStatus>(trimmedStatus, ignoreCase: true, out var parsed)
                 || !Enum.IsDefined(parsed))
             {
                 return Result.Failure<IReadOnlyList<RenameRequestDto>>(RenameRequestErrors.InvalidRequest);

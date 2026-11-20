@@ -118,6 +118,26 @@ public static class IdentityErrors
         "Identity.InvalidPermission",
         "Một hoặc nhiều quyền được chọn không tồn tại hoặc không hợp lệ.");
 
+    public static readonly Error CannotHideSystemRole = Error.Validation(
+        "Identity.CannotHideSystemRole",
+        "Không thể ẩn vai trò mặc định của hệ thống.");
+
+    public static readonly Error RoleInUse = Error.Conflict(
+        "Identity.RoleInUse",
+        "Không thể ẩn vai trò đang được gán cho người dùng.");
+
+    public static readonly Error RoleAlreadyHidden = Error.Conflict(
+        "Identity.RoleAlreadyHidden",
+        "Vai trò này đã ở trạng thái ẩn.");
+
+    public static readonly Error RoleNotHidden = Error.Conflict(
+        "Identity.RoleNotHidden",
+        "Vai trò này đang hiển thị, không ở trạng thái ẩn.");
+
+    public static readonly Error RoleIsHidden = Error.Validation(
+        "Identity.RoleIsHidden",
+        "Vai trò đang bị ẩn. Vui lòng hiển thị lại vai trò trước khi thao tác.");
+
     public static readonly Error CannotRevokeAllAdminPermissions = Error.Validation(
         "Identity.CannotRevokeAllAdminPermissions",
         "Không thể gỡ bỏ toàn bộ quyền của vai trò Quản trị viên (Admin).");

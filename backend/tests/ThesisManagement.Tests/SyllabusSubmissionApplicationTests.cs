@@ -11,6 +11,7 @@ using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.SubmitSyllab
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
+using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 
 namespace UGTM.Modules.ThesisManagement.Tests;
 
@@ -19,6 +20,7 @@ public sealed class SyllabusSubmissionApplicationTests
     private static readonly DateTime Now = new(2026, 10, 22, 8, 0, 0, DateTimeKind.Utc);
     private static readonly Guid BatchId = Guid.NewGuid();
     private static readonly Guid StudentId = Guid.NewGuid();
+    private static readonly Guid AdvisorId = Guid.NewGuid();
     private static readonly Guid ReviewerId = Guid.NewGuid();
 
     [Fact]
@@ -203,6 +205,38 @@ public sealed class SyllabusSubmissionApplicationTests
         Assert.Empty(fixtures.ObjectStorage.UploadedObjectKeys);
     }
 
+    [Fact]
+    public async Task Assigned_advisor_can_read_and_download_syllabus_while_unassigned_lecturer_is_denied()
+    {
+        var group = CreateGroup();
+        var fixtures = new WorkflowFixtures(group);
+        var submitted = await fixtures.CreateSubmitHandler(StudentUser()).HandleAsync(SubmitCommand(group.Id));
+        Assert.True(submitted.IsSuccess);
+
+        var advisorUser = new FakeCurrentUser(AdvisorId, roles: ["Lecturer"]);
+        var otherLecturer = new FakeCurrentUser(Guid.NewGuid(), roles: ["Lecturer"]);
+
+        var advisorHistory = await fixtures.CreateHistoryHandler(advisorUser)
+            .HandleAsync(new GetSyllabusSubmissionHistoryQuery(group.Id));
+        var advisorDownload = await fixtures.CreateDownloadHandler(advisorUser)
+            .HandleAsync(new GetSyllabusSubmissionFileDownloadQuery(submitted.Value.File.Id));
+
+        Assert.True(advisorHistory.IsSuccess);
+        Assert.Single(advisorHistory.Value.Versions);
+        Assert.True(advisorDownload.IsSuccess);
+        Assert.Equal(submitted.Value.File.Id, advisorDownload.Value.FileId);
+
+        var deniedHistory = await fixtures.CreateHistoryHandler(otherLecturer)
+            .HandleAsync(new GetSyllabusSubmissionHistoryQuery(group.Id));
+        var deniedDownload = await fixtures.CreateDownloadHandler(otherLecturer)
+            .HandleAsync(new GetSyllabusSubmissionFileDownloadQuery(submitted.Value.File.Id));
+
+        Assert.True(deniedHistory.IsFailure);
+        Assert.Equal(SyllabusSubmissionErrors.AccessDenied.Code, deniedHistory.Error.Code);
+        Assert.True(deniedDownload.IsFailure);
+        Assert.Equal(SyllabusSubmissionErrors.AccessDenied.Code, deniedDownload.Error.Code);
+    }
+
     private static StudentGroup CreateGroup()
     {
         var group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Now.AddDays(-1));
@@ -227,12 +261,14 @@ public sealed class SyllabusSubmissionApplicationTests
         private readonly FakeReviewGateConfigurationRepository _configurations;
         private readonly FakeSubmissionFileRepository _files = new();
         private readonly FakeSubmissionReviewRepository _reviews = new();
+        private readonly FakeAdvisorAssignmentContract _advisorAssignments;
         private readonly FakeUnitOfWork _unitOfWork = new();
 
         public WorkflowFixtures(StudentGroup group, DateTime? now = null)
         {
             _groups = new FakeStudentGroupRepository(group);
             _configurations = new FakeReviewGateConfigurationRepository(CreateConfiguration());
+            _advisorAssignments = new FakeAdvisorAssignmentContract(group.TopicId, AdvisorId, BatchId);
             NowProvider = new FixedTimeProvider(now ?? Now);
         }
 
@@ -269,10 +305,10 @@ public sealed class SyllabusSubmissionApplicationTests
                 NowProvider);
 
         public GetSyllabusSubmissionHistoryHandler CreateHistoryHandler(ICurrentUser currentUser)
-            => new(_groups, _syllabuses, _files, _reviews, currentUser);
+            => new(_groups, _syllabuses, _files, _reviews, _advisorAssignments, currentUser);
 
         public GetSyllabusSubmissionFileDownloadHandler CreateDownloadHandler(ICurrentUser currentUser)
-            => new(_files, _syllabuses, _groups, ObjectStorage, currentUser, NowProvider);
+            => new(_files, _syllabuses, _groups, _advisorAssignments, ObjectStorage, currentUser, NowProvider);
 
         private static ReviewGateConfiguration CreateConfiguration()
             => new(
@@ -414,6 +450,16 @@ public sealed class SyllabusSubmissionApplicationTests
         public bool FailSave { get; set; }
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
             => FailSave ? Task.FromException<int>(new IOException("Save outcome unknown")) : Task.FromResult(1);
+    }
+
+    private sealed class FakeAdvisorAssignmentContract(Guid topicId, Guid advisorId, Guid batchId) : ITopicAdvisorAssignmentContract
+    {
+        public Task<TopicAdvisorAssignmentContractDto?> GetByTopicIdAsync(
+            Guid requestedTopicId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(requestedTopicId == topicId
+                ? new TopicAdvisorAssignmentContractDto(topicId, advisorId, batchId)
+                : null);
     }
 
     private sealed class FixedTimeProvider(DateTime now) : TimeProvider

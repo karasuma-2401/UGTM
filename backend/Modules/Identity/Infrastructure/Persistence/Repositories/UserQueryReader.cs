@@ -36,13 +36,10 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
             usersQuery = usersQuery.Where(u => u.Status == statusEnum);
         }
 
-        if (!string.IsNullOrWhiteSpace(query.Role)
-            && !int.TryParse(query.Role.Trim(), out _)
-            && Enum.TryParse<SystemRoleName>(query.Role.Trim(), ignoreCase: true, out var roleEnum)
-            && Enum.IsDefined(roleEnum))
+        if (!string.IsNullOrWhiteSpace(query.Role))
         {
-            var roleName = roleEnum.ToString();
-            usersQuery = usersQuery.Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == roleName));
+            var normalizedRole = query.Role.Trim().ToUpperInvariant();
+            usersQuery = usersQuery.Where(u => u.UserRoles.Any(ur => ur.Role.RoleName.ToUpper() == normalizedRole));
         }
 
         var totalCount = await usersQuery.CountAsync(cancellationToken);
@@ -96,5 +93,22 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
             u.LastLoginAt)).ToList();
 
         return new PagedResult<UserSummaryDto>(items, totalCount, query.PageNumber, query.PageSize);
+    }
+
+    public async Task<string?> ResolveRoleNameAsync(
+        string roleName,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(roleName))
+        {
+            return null;
+        }
+
+        var normalized = roleName.Trim().ToUpperInvariant();
+        return await db.Roles
+            .AsNoTracking()
+            .Where(r => r.RoleName.ToUpper() == normalized)
+            .Select(r => r.RoleName)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

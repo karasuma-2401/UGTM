@@ -78,38 +78,26 @@ public sealed class UpdateUserHandler(
             List<string> resultRoles;
             if (command.Roles != null)
             {
-                var systemRoles = new List<SystemRoleName>();
-                foreach (var roleStr in command.Roles)
-                {
-                    if (string.IsNullOrWhiteSpace(roleStr))
-                    {
-                        return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
-                    }
-
-                    var trimmedRole = roleStr.Trim();
-                    if (int.TryParse(trimmedRole, out _)
-                        || !Enum.TryParse<SystemRoleName>(trimmedRole, ignoreCase: true, out var role)
-                        || !Enum.IsDefined(role))
-                    {
-                        return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
-                    }
-
-                    if (!systemRoles.Contains(role))
-                    {
-                        systemRoles.Add(role);
-                    }
-                }
-
-                if (systemRoles.Count == 0)
+                if (command.Roles.Count == 0)
                 {
                     return Result.Failure<UserSummaryDto>(IdentityErrors.InvalidRole);
                 }
 
-                var currentRoles = user.UserRoles.Select(ur => ur.Role.RoleName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                var studentRoleName = nameof(SystemRoleName.Student);
-                if (systemRoles.Contains(SystemRoleName.Student))
+                var currentRoles = user.UserRoles
+                    .Select(ur => ur.Role.RoleName)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                var resolvedRolesResult = await UserRoleResolver.ResolveAsync(users, command.Roles, currentRoles, ct);
+                if (resolvedRolesResult.IsFailure)
                 {
-                    if (systemRoles.Count > 1)
+                    return Result.Failure<UserSummaryDto>(resolvedRolesResult.Error);
+                }
+
+                var resolvedRoleNames = resolvedRolesResult.Value;
+                var studentRoleName = nameof(SystemRoleName.Student);
+                if (resolvedRoleNames.Contains(studentRoleName, StringComparer.OrdinalIgnoreCase))
+                {
+                    if (resolvedRoleNames.Count > 1)
                     {
                         return Result.Failure<UserSummaryDto>(IdentityErrors.StudentRoleConflict);
                     }
@@ -120,7 +108,7 @@ public sealed class UpdateUserHandler(
                     }
                 }
 
-                var targetRoleNames = systemRoles.Select(r => r.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var targetRoleNames = resolvedRoleNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
                 var rolesChanged = !currentRoles.SetEquals(targetRoleNames);
                 if (rolesChanged)
                 {
@@ -135,7 +123,7 @@ public sealed class UpdateUserHandler(
                         }
                     }
 
-                    await users.UpdateRolesAsync(user, systemRoles, now, ct);
+                    await users.UpdateRolesByNameAsync(user, resolvedRoleNames, now, ct);
                     user.RotateSecurityStamp();
 
                     auditLogs.Add(new AuditEntry(
@@ -147,11 +135,11 @@ public sealed class UpdateUserHandler(
                         Metadata: new
                         {
                             AddedRoles = targetRoleNames
-                                .Except(currentRoles)
+                                .Except(currentRoles, StringComparer.OrdinalIgnoreCase)
                                 .Order()
                                 .ToArray(),
                             RemovedRoles = currentRoles
-                                .Except(targetRoleNames)
+                                .Except(targetRoleNames, StringComparer.OrdinalIgnoreCase)
                                 .Order()
                                 .ToArray(),
                             CurrentRoles = targetRoleNames
@@ -160,7 +148,7 @@ public sealed class UpdateUserHandler(
                         }));
                 }
 
-                resultRoles = systemRoles.Select(r => r.ToString()).ToList();
+                resultRoles = resolvedRoleNames;
             }
             else
             {
