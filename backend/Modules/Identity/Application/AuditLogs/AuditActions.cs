@@ -8,6 +8,8 @@ public static class AuditActions
     public const string UserRolesChanged = "Identity.User.RolesChanged";
     public const string UsersImported = "Identity.Users.Imported";
     public const string RoleCreated = "Identity.Role.Created";
+    public const string RoleHidden = "Identity.Role.Hidden";
+    public const string RoleUnhidden = "Identity.Role.Unhidden";
     public const string RolePermissionsChanged = "Identity.Role.PermissionsChanged";
     public const string SessionRevoked = "Identity.Session.Revoked";
     public const string UserSessionsRevoked = "Identity.User.SessionsRevoked";

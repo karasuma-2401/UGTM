@@ -1,6 +1,6 @@
 # Role & Permission Management API (RBAC/PBAC)
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 20/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 19/11/2026
 **Base path:** `/api/permissions`, `/api/roles`
 
 Tài liệu này đặc tả chi tiết các endpoint quản lý danh mục quyền và phân quyền cho vai trò (Role-Based & Permission-Based Access Control) trong module Identity.
@@ -13,9 +13,13 @@ Tài liệu này đặc tả chi tiết các endpoint quản lý danh mục quy�
 - Tất cả endpoint đều yêu cầu xác thực bằng header: `Authorization: Bearer <access-token>`.
 - Quyền truy cập được kiểm soát thông qua Permission Policies kết hợp **Admin Role Bypass**:
   - `GET /api/permissions`: yêu cầu quyền `identity.permissions.read` hoặc vai trò `Admin`.
+  - `GET /api/roles`: yêu cầu quyền `identity.roles.manage` hoặc vai trò `Admin`.
   - `POST /api/roles`: yêu cầu quyền `identity.roles.manage` hoặc vai trò `Admin`.
   - `GET /api/roles/{id}/permissions`: yêu cầu quyền `identity.roles.manage` hoặc vai trò `Admin`.
   - `PUT /api/roles/{id}/permissions`: yêu cầu quyền `identity.roles.manage` hoặc vai trò `Admin`.
+  - `PATCH /api/roles/{id}/hide`: yêu cầu quyền `identity.roles.manage` hoặc vai trò `Admin`.
+  - `PATCH /api/roles/{id}/unhide`: yêu cầu quyền `identity.roles.manage` hoặc vai trò `Admin`.
+  - `PATCH /api/roles/{id}/visibility`: yêu cầu quyền `identity.roles.manage` hoặc vai trò `Admin`.
   > [!NOTE]
   > **Cơ chế Admin Role Bypass:** Người dùng sở hữu vai trò `Admin` (Role claim: `Admin`) được tự động cấp quyền thực thi tất cả các API phân quyền mà không phụ thuộc vào claim `permission` được gán trong DB.
 
@@ -58,9 +62,13 @@ Các phản hồi từ tầng pipeline ASP.NET Core & OpenApi/Scalar:
 | Phương thức | Đường dẫn | Quyền yêu cầu | Mô tả |
 | :--- | :--- | :--- | :--- |
 | **GET** | `/api/permissions` | `identity.permissions.read` hoặc vai trò `Admin` | Lấy danh mục tất cả quyền trong hệ thống, nhóm theo Module |
+| **GET** | `/api/roles` | `identity.roles.manage` hoặc vai trò `Admin` | Lấy danh sách vai trò (mặc định lọc bỏ vai trò đã ẩn; hỗ trợ `?includeHidden=true`) |
 | **POST** | `/api/roles` | `identity.roles.manage` hoặc vai trò `Admin` | Tạo vai trò người dùng mới trong hệ thống kèm quyền ban đầu (tùy chọn) |
 | **GET** | `/api/roles/{id}/permissions` | `identity.roles.manage` hoặc vai trò `Admin` | Lấy thông tin vai trò và danh sách quyền đang được cấp |
-| **PUT** | `/api/roles/{id}/permissions` | `identity.roles.manage` hoặc vai trò `Admin` | Cập nhật lại toàn bộ danh sách quyền cho vai trò |
+| **PUT** | `/api/roles/{id}/permissions` | `identity.roles.manage` hoặc vai trò `Admin` | Cập nhật lại toàn bộ danh sách quyền cho vai trò (chặn nếu vai trò đang bị ẩn) |
+| **PATCH** | `/api/roles/{id}/hide` | `identity.roles.manage` hoặc vai trò `Admin` | Ẩn mềm một Custom Role không có người dùng sử dụng |
+| **PATCH** | `/api/roles/{id}/unhide` | `identity.roles.manage` hoặc vai trò `Admin` | Hiển thị lại một Custom Role đã bị ẩn trước đó |
+| **PATCH** | `/api/roles/{id}/visibility` | `identity.roles.manage` hoặc vai trò `Admin` | Cập nhật trạng thái ẩn/hiện (`isHidden: true/false`) cho vai trò |
 
 ---
 
@@ -298,6 +306,71 @@ Lấy thông tin vai trò cùng danh sách chi tiết các quyền hiện tại 
 | :--- | :--- | :--- |
 | 400 | `Identity.InvalidPermission` | Thiếu trường `permissionIds` (`null`) hoặc một/nhiều `permissionId` trong danh sách không tồn tại trong hệ thống |
 | 400 | `Identity.CannotRevokeAllAdminPermissions` | Cố tình xóa sạch toàn bộ quyền của vai trò Admin |
+| 400 | `Identity.RoleIsHidden` | Vai trò hiện đang ở trạng thái ẩn, cần hiển thị lại trước khi chỉnh sửa phân quyền |
 | 401 | — | Thiếu token hoặc token không hợp lệ |
 | 403 | — | Người dùng không có quyền `identity.roles.manage` và không phải Admin |
 | 404 | `Identity.RoleNotFound` | Không tìm thấy vai trò với `id` cung cấp |
+
+---
+
+### 5. `GET /api/roles` — Lấy danh sách vai trò trong hệ thống
+
+Trả về danh sách các vai trò kèm thống kê số lượng người dùng đang giữ vai trò (`userCount`), số lượng quyền (`permissionCount`), cờ nhận biết vai trò mặc định (`isSystemRole`), trạng thái ẩn (`isHidden`) và khả năng ẩn (`canHide`).
+
+#### Query Parameters
+- `includeHidden` (`boolean`, tùy chọn, mặc định `false`): Đặt `true` để bao gồm cả các vai trò đã bị ẩn.
+
+#### Phản hồi thành công (200 OK)
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "roleId": 1,
+      "roleName": "Admin",
+      "description": "Quản trị viên",
+      "isSystemRole": true,
+      "isHidden": false,
+      "userCount": 2,
+      "permissionCount": 18,
+      "canHide": false
+    },
+    {
+      "roleId": 7,
+      "roleName": "DepartmentHead",
+      "description": "Trưởng Bộ môn",
+      "isSystemRole": false,
+      "isHidden": false,
+      "userCount": 0,
+      "permissionCount": 3,
+      "canHide": true
+    }
+  ],
+  "error": null
+}
+```
+
+---
+
+### 6. `PATCH /api/roles/{id}/hide` & `PATCH /api/roles/{id}/unhide` & `PATCH /api/roles/{id}/visibility`
+
+Quản lý trạng thái hiển thị của các Custom Role. Riêng `PATCH /api/roles/{id}/visibility` nhận Request Body `{ "isHidden": true | false }`.
+
+#### Quy tắc ẩn vai trò
+- 6 vai trò mặc định (`Admin`, `Faculty`, `AcademicAffairs`, `Lecturer`, `Student`, `CouncilMember`) không thể bị ẩn.
+- Custom Role chỉ được ẩn khi số lượng bản ghi trong `identity.user_role` bằng `0` (`userCount == 0`).
+- Khi đã ẩn, vai trò không thể được gán cho tài khoản mới qua `POST /api/users` hoặc `PUT /api/users/{id}`, và không thể chỉnh sửa quyền qua `PUT /api/roles/{id}/permissions`.
+
+#### Bảng mã lỗi
+
+| HTTP Status | Mã lỗi | Nguyên nhân |
+| :--- | :--- | :--- |
+| 400 | `Identity.CannotHideSystemRole` | Cố tình ẩn một trong 6 vai trò mặc định của hệ thống |
+| 400 | `Identity.InvalidInput` | Thiếu trường `isHidden` trong body của `/visibility` |
+| 401 | — | Thiếu token hoặc token không hợp lệ |
+| 403 | — | Người dùng không có quyền `identity.roles.manage` và không phải Admin |
+| 404 | `Identity.RoleNotFound` | Không tìm thấy vai trò với `id` cung cấp |
+| 409 | `Identity.RoleInUse` | Vai trò đang có người dùng sử dụng (`userCount > 0`) |
+| 409 | `Identity.RoleAlreadyHidden` | Vai trò đã ở trạng thái ẩn trước đó |
+| 409 | `Identity.RoleNotHidden` | Vai trò đang hiển thị sẵn khi gọi `unhide` |

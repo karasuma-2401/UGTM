@@ -27,6 +27,10 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(x => x.Description)
             .HasMaxLength(255);
 
+        builder.Property(x => x.IsHidden)
+            .HasDefaultValue(false)
+            .IsRequired();
+
         builder.HasData(Enum.GetValues<SystemRoleName>().Select(role => new Role
         {
             Id = (int)role + 1,

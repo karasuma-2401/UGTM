@@ -1,6 +1,6 @@
 # Role & Permission Management Backend (RBAC / PBAC)
 
-**Trạng thái:** đã triển khai · **Cập nhật:** 20/10/2026
+**Trạng thái:** đã triển khai · **Cập nhật:** 19/11/2026
 
 Tài liệu này giải thích phân hệ Quản lý Quyền và Phân quyền Vai trò (Role & Permission Management) trong module Identity: kiến trúc, luồng xử lý, cơ chế bảo mật và thu hồi phiên tức thời. Hợp đồng request/response công khai được đặc tả chi tiết tại [Role & Permission API Contract](../../../docs/ApiContract/RolePermissionApiContract.md).
 
@@ -10,9 +10,12 @@ Tài liệu này giải thích phân hệ Quản lý Quyền và Phân quyền V
 
 Backend phân hệ Role & Permission Management hỗ trợ:
 - **Tra cứu danh mục quyền theo Module (`GET /api/permissions`):** Trả về toàn bộ quyền trong hệ thống được gom nhóm theo từng phân hệ (`Identity`, `ThesisManagement`, v.v.), phục vụ giao diện ma trận phân quyền;
+- **Lấy danh sách vai trò (`GET /api/roles`):** Trả về toàn bộ vai trò kèm `userCount`, `permissionCount`, `isSystemRole`, `isHidden`, `canHide` (mặc định lọc bỏ vai trò đã ẩn, hỗ trợ `?includeHidden=true`);
 - **Tạo vai trò mới (`POST /api/roles`):** Khởi tạo vai trò mới trong hệ thống với tên vai trò, mô tả và danh sách quyền ban đầu (tùy chọn). Tự động xác thực tính duy nhất của tên vai trò (case-insensitive) và kiểm tra tính hợp lệ của `permissionIds`;
 - **Tra cứu quyền của vai trò (`GET /api/roles/{id}/permissions`):** Lấy chi tiết thông tin vai trò và danh sách các quyền hiện tại đang được cấp;
-- **Cập nhật phân quyền vai trò (`PUT /api/roles/{id}/permissions`):** Đồng bộ lại toàn bộ danh sách quyền được cấp cho một vai trò;
+- **Cập nhật phân quyền vai trò (`PUT /api/roles/{id}/permissions`):** Đồng bộ lại toàn bộ danh sách quyền được cấp cho một vai trò (chặn chỉnh sửa nếu vai trò đang ở trạng thái ẩn `Identity.RoleIsHidden`);
+- **Ẩn / Hiển thị lại vai trò không sử dụng (`PATCH /api/roles/{id}/hide`, `/unhide`, `/visibility`):** Cho phép ẩn mềm các Custom Role chưa có user nào giữ (`userCount == 0`) và bảo vệ 6 vai trò mặc định của hệ thống;
+- **Gán & lọc Custom Role cho người dùng (`POST /api/users`, `PUT /api/users/{id}`, `GET /api/users`):** Hỗ trợ gán và lọc các Custom Role đang hiển thị ngoài 6 vai trò hệ thống, đồng thời chặn gán vai trò đang bị ẩn;
 - **Kiểm soát tính hợp lệ dữ liệu:** Kiểm tra nghiêm ngặt sự tồn tại của tất cả `permissionIds` trước khi gán; trả lỗi `Identity.InvalidPermission` (400) nếu phát hiện bất kỳ ID nào không có trong hệ thống;
 - **Bảo vệ vai trò Quản trị viên (`CannotRevokeAllAdminPermissions`):** Không cho phép gỡ bỏ toàn bộ quyền của vai trò `Admin`, phòng tránh rủi ro khóa chết hệ thống (lockout);
 - **Cơ chế thu hồi phiên và cập nhật quyền thời gian thực:** Mọi thao tác thay đổi quyền của một vai trò đều tự động kích hoạt xoay `SecurityStamp` cho tất cả người dùng thuộc vai trò đó trong cùng một Database Transaction. Các token JWT cũ sẽ bị `SessionValidator` từ chối, buộc người dùng phải refresh token để nhận Access Token mới chứa các claims quyền cập nhật;
@@ -29,22 +32,24 @@ backend/
       PermissionCodes.cs          # Hằng số mã quyền: IdentityPermissionsRead, IdentityRolesManage
     Domain/
       Entities/
-        Role.cs                   # Entity vai trò (Id: int, RoleName: string, Description)
+        Role.cs                   # Entity vai trò (Id, RoleName, Description, IsHidden)
         Permission.cs             # Entity quyền (Id: int, PermissionCode, PermissionName, Module)
         RolePermission.cs         # Quan hệ N-N (RoleId, PermissionId, AssignedAt)
       Repositories/
         IRolePermissionRepository.cs # Cổng persistence quản lý quyền và phân quyền vai trò
     Application/
       Common/
-        IdentityErrors.cs         # Mã lỗi: RoleNotFound, InvalidPermission, RoleAlreadyExists, InvalidRoleName
+        IdentityErrors.cs         # Mã lỗi: RoleNotFound, InvalidPermission, RoleAlreadyExists, InvalidRoleName, CannotHideSystemRole, RoleInUse, RoleAlreadyHidden, RoleNotHidden, RoleIsHidden
       Permissions/
         Dtos/PermissionDto.cs     # DTO thông tin quyền và nhóm quyền theo Module
         GetPermissions/           # Query và Handler lấy danh mục quyền gom nhóm theo Module
       Roles/
-        Dtos/RolePermissionsDto.cs # DTO thông tin vai trò kèm danh sách quyền hiện tại
+        Dtos/RolePermissionsDto.cs # RoleSummaryDto và RolePermissionsDto
+        GetRoles/                 # Query và Handler lấy danh sách vai trò kèm thống kê
         CreateRole/               # Command và Handler tạo vai trò mới & gán quyền ban đầu
-        GetRolePermissions/      # Query và Handler lấy quyền của một vai trò
-        UpdateRolePermissions/   # Command và Handler cập nhật quyền & xoay Security Stamp
+        GetRolePermissions/       # Query và Handler lấy quyền của một vai trò
+        UpdateRolePermissions/    # Command và Handler cập nhật quyền & xoay Security Stamp
+        UpdateRoleVisibility/     # Command và Handler ẩn/hiện vai trò không sử dụng
     Infrastructure/
       Endpoints/
         RolePermissionEndpoints.cs # Minimal API tại /api/permissions và /api/roles
@@ -74,7 +79,8 @@ backend/
 | :--- | :--- | :--- |
 | `id` | `integer` (PK) | Mã vai trò tự tăng |
 | `role_name` | `varchar(50)` | Tên vai trò (chuỗi duy nhất, ví dụ: `Admin`, `Faculty`, `Lecturer`, `DepartmentHead`, ...) |
-| `description` | `text` | Mô tả trách nhiệm của vai trò |
+| `description` | `varchar(255)` | Mô tả trách nhiệm của vai trò |
+| `is_hidden` | `boolean` (default `false`) | Cờ ẩn mềm cho Custom Role không còn sử dụng |
 
 ### 3. Bảng `identity.role_permission`
 Bảng trung gian thiết lập quan hệ Nhiều - Nhiều (Many-to-Many):

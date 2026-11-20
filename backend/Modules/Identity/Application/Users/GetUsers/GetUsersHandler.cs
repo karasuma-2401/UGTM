@@ -24,12 +24,17 @@ public sealed class GetUsersHandler(IUserQueryReader queryReader)
             accountGroup = parsedGroup.ToString();
         }
 
+        string? resolvedRole = null;
         if (!string.IsNullOrWhiteSpace(query.Role))
         {
             var trimmedRole = query.Role.Trim();
-            if (int.TryParse(trimmedRole, out _)
-                || !Enum.TryParse<SystemRoleName>(trimmedRole, ignoreCase: true, out var roleEnum)
-                || !Enum.IsDefined(roleEnum))
+            if (long.TryParse(trimmedRole, out _))
+            {
+                return Result.Failure<PagedResult<UserSummaryDto>>(IdentityErrors.InvalidRole);
+            }
+
+            resolvedRole = await queryReader.ResolveRoleNameAsync(trimmedRole, cancellationToken);
+            if (resolvedRole is null)
             {
                 return Result.Failure<PagedResult<UserSummaryDto>>(IdentityErrors.InvalidRole);
             }
@@ -68,6 +73,7 @@ public sealed class GetUsersHandler(IUserQueryReader queryReader)
 
         var sanitizedQuery = query with
         {
+            Role = resolvedRole,
             PageNumber = pageNumber,
             PageSize = pageSize,
             AccountGroup = accountGroup,
