@@ -82,6 +82,8 @@ resume_old_worker() {
 }
 rollback() {
   local old
+  # A failed predecessor has no confirmed frontend/backend release pair to restore.
+  [[ ! -f "$RELEASE_DIR/recovery-from" ]] || { state unfinished_baseline_requires_operator; return 1; }
   old=$(cat "$RELEASE_DIR/previous-path" 2>/dev/null || true)
   validate_path "$old" || { state rollback_unavailable; return 1; }
   [[ -f "$old/release.json" ]] || { state legacy_rollback_requires_operator; return 1; }
@@ -214,6 +216,7 @@ case "$MODE" in
     rollback || { state recovery_required; exit 1; }
     ;;
   check-rollback|check-candidate-rollback|rollback-current)
+    [[ ! -f "$RELEASE_DIR/recovery-from" ]] || { echo 'Forward recovery has no completed rollback baseline.' >&2; exit 1; }
     [[ "$MODE" == check-candidate-rollback || "$current" == "$RELEASE_DIR" ]]
     if [[ "$MODE" == check-candidate-rollback ]]; then
       [[ -f "$RELEASE_DIR/mutated" || "$(meta get deployment_status)" == rolled_back ]]

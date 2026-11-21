@@ -219,6 +219,22 @@ if os.environ.get('FAIL_HEALTH') and not marker.exists():
             calls,
         )
 
+    def test_forward_recovery_never_rolls_back_to_an_unfinished_pair_even_if_schemas_match(
+        self,
+    ):
+        self.recovery()
+        replacement = json.loads((self.new / "release.json").read_text())
+        replacement["schemas"] = json.loads((self.old / "release.json").read_text())[
+            "schemas"
+        ]
+        write(self.new / "release.json", replacement)
+        with patch("sys.argv", ["release.py", "seal", str(self.new)]):
+            release_main()
+        self.assertNotEqual(self.invoke("candidate", FAIL_UP="1").returncode, 0)
+        self.assertEqual((self.app / "pending").read_text().strip(), str(self.new))
+        self.assert_status("recovery_required")
+        self.assertNotEqual(self.invoke("check-candidate-rollback").returncode, 0)
+
     def test_prepare_never_contacts_database_or_changes_services(self):
         result = self.invoke("prepare")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
