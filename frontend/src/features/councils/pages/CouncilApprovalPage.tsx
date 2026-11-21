@@ -91,7 +91,7 @@ export function CouncilApprovalPage() {
       },
       {
         key: 'needs_action',
-        label: 'Chờ Khoa / Cần xử lý',
+        label: 'Cần bổ sung',
         value: stats.needsAction,
         tone: 'warning',
         active: readinessFilter === 'needs_action',

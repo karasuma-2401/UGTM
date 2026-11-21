@@ -439,6 +439,18 @@ public sealed class FakeCouncilRepository : ICouncilRepository
         return Task.CompletedTask;
     }
 
+    public Task ReorderAssignmentsAsync(IReadOnlyList<CouncilAssignment> assignments, IReadOnlyDictionary<Guid, int> orders, CancellationToken ct = default)
+    {
+        foreach (var assignment in assignments) assignment.OrderNumber = orders[assignment.Id];
+        return Task.CompletedTask;
+    }
+
+    public Task RemoveAssignmentAsync(CouncilAssignment assignment, CancellationToken ct = default)
+    {
+        Assignments.Remove(assignment);
+        return Task.CompletedTask;
+    }
+
     public Task<CouncilAssignment?> GetAssignmentWithCouncilAndMembersAsync(Guid assignmentId, CancellationToken ct = default)
     {
         var assignment = Assignments.FirstOrDefault(a => a.Id == assignmentId);

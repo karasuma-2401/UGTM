@@ -76,6 +76,10 @@ public interface ICouncilRepository
 
     Task AddAssignmentsAsync(IEnumerable<CouncilAssignment> assignments, CancellationToken ct = default);
 
+    Task ReorderAssignmentsAsync(IReadOnlyList<CouncilAssignment> assignments, IReadOnlyDictionary<Guid, int> orders, CancellationToken ct = default);
+
+    Task RemoveAssignmentAsync(CouncilAssignment assignment, CancellationToken ct = default);
+
     Task<CouncilAssignment?> GetAssignmentWithCouncilAndMembersAsync(Guid assignmentId, CancellationToken ct = default);
 
     Task<IReadOnlyList<GradingCriteria>> GetGradingCriteriaByBatchIdAsync(Guid batchId, CancellationToken ct = default);

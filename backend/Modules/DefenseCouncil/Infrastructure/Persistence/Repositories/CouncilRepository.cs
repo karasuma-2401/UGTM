@@ -255,6 +255,21 @@ public sealed class CouncilRepository(
     public async Task AddAssignmentsAsync(IEnumerable<CouncilAssignment> assignments, CancellationToken ct = default)
         => await db.CouncilAssignments.AddRangeAsync(assignments, ct);
 
+    public async Task ReorderAssignmentsAsync(IReadOnlyList<CouncilAssignment> assignments, IReadOnlyDictionary<Guid, int> orders, CancellationToken ct = default)
+    {
+        // The unique (CouncilId, OrderNumber) index requires a temporary, disjoint range for swaps.
+        for (var index = 0; index < assignments.Count; index++) assignments[index].OrderNumber = -(index + 1);
+        await db.SaveChangesAsync(ct);
+        foreach (var assignment in assignments) assignment.OrderNumber = orders[assignment.Id];
+        await db.SaveChangesAsync(ct);
+    }
+
+    public Task RemoveAssignmentAsync(CouncilAssignment assignment, CancellationToken ct = default)
+    {
+        db.CouncilAssignments.Remove(assignment);
+        return Task.CompletedTask;
+    }
+
     public Task<CouncilAssignment?> GetAssignmentWithCouncilAndMembersAsync(Guid assignmentId, CancellationToken ct = default)
         => db.CouncilAssignments
             .Include(a => a.Council)

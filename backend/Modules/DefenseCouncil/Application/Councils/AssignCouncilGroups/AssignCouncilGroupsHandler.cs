@@ -186,6 +186,8 @@ public sealed class AssignCouncilGroupsHandler(
         }).ToList();
 
         await councilRepository.AddAssignmentsAsync(newAssignments, cancellationToken);
+        // A changed group list changes the dossier PĐT reviews, just like a roster or schedule change.
+        council.ResetSubmission();
         try
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);

@@ -739,6 +739,10 @@ public sealed class DefenseCouncilRedisCachingTests
         public Task<IReadOnlySet<Guid>> GetUserIdsWithAnyCouncilMembershipAsync(IEnumerable<Guid> userIds, Guid? excludeCouncilId = null, CancellationToken ct = default)
             => inner.GetUserIdsWithAnyCouncilMembershipAsync(userIds, excludeCouncilId, ct);
         public Task AddAssignmentsAsync(IEnumerable<CouncilAssignment> assignments, CancellationToken ct = default) => inner.AddAssignmentsAsync(assignments, ct);
+        public Task ReorderAssignmentsAsync(IReadOnlyList<CouncilAssignment> assignments, IReadOnlyDictionary<Guid, int> orders, CancellationToken ct = default)
+            => inner.ReorderAssignmentsAsync(assignments, orders, ct);
+        public Task RemoveAssignmentAsync(CouncilAssignment assignment, CancellationToken ct = default)
+            => inner.RemoveAssignmentAsync(assignment, ct);
         public Task<CouncilAssignment?> GetAssignmentWithCouncilAndMembersAsync(Guid assignmentId, CancellationToken ct = default)
             => inner.GetAssignmentWithCouncilAndMembersAsync(assignmentId, ct);
         public Task<IReadOnlyList<GradingCriteria>> GetGradingCriteriaByBatchIdAsync(Guid batchId, CancellationToken ct = default)

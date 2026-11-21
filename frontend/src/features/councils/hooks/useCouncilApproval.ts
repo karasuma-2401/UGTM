@@ -6,6 +6,7 @@ import { notify } from '@/shared/notifications';
 import { councilApprovalApi } from '../services/councilApprovalApi';
 import {
   evaluateCouncilReadiness,
+  isCouncilVisibleForApproval,
   type CouncilReadinessResult,
 } from '../utils/councilApprovalReadiness';
 import type {
@@ -60,7 +61,10 @@ export function useCouncilApproval() {
     enabled: Boolean(user?.id),
   });
 
-  const allDrafts = useMemo(() => draftsQuery.data || [], [draftsQuery.data]);
+  const allDrafts = useMemo(
+    () => (draftsQuery.data || []).filter(isCouncilVisibleForApproval),
+    [draftsQuery.data],
+  );
 
   const readinessMap = useMemo(() => {
     const map = new Map<string, CouncilReadinessResult>();
