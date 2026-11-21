@@ -8,163 +8,210 @@ using UGTM.BuildingBlocks.Application.Caching;
 namespace UGTM.BuildingBlocks.Infrastructure.Caching;
 
 /// <summary>
-/// Triển khai <see cref="ICacheService"/> dựa trên <see cref="IDistributedCache"/> (Redis hoặc In-Memory fallback).
-/// Thiết kế theo nguyên tắc Fail-Open: mọi lỗi kết nối Redis đều được ghi nhận log cảnh báo và bỏ qua
-/// để API luôn đọc/ghi trực tiếp từ Database bình thường, không làm gián đoạn hệ thống.
+/// Cache-aside with committed database revisions and a shared outage backoff.
+/// Database revisions, rather than best-effort Redis writes, protect production reads.
 /// </summary>
 public sealed class DistributedCacheService : ICacheService
 {
+    public const string DataKeyPrefix = "cache:v2:";
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
-
     private readonly IDistributedCache _cache;
     private readonly ILogger<DistributedCacheService> _logger;
+    private readonly ICacheRevisionProvider? _revisions;
+    private readonly CacheAvailability _availability;
     private readonly TimeSpan _defaultTtl;
+    private readonly TimeSpan _maximumTtl;
     private readonly TimeSpan _versionTtl;
+    private readonly TimeSpan _failureBackoff;
+    private bool _revisionFailed;
 
     public DistributedCacheService(
         IDistributedCache cache,
         ILogger<DistributedCacheService>? logger = null,
-        IOptions<RedisCacheOptions>? options = null)
+        IOptions<RedisCacheOptions>? options = null,
+        ICacheRevisionProvider? revisions = null,
+        CacheAvailability? availability = null)
     {
         ArgumentNullException.ThrowIfNull(cache);
         _cache = cache;
         _logger = logger ?? NullLogger<DistributedCacheService>.Instance;
-
+        _revisions = revisions;
+        _availability = availability ?? new CacheAvailability();
         var opts = options?.Value ?? new RedisCacheOptions();
         _defaultTtl = TimeSpan.FromMinutes(Math.Clamp(opts.DefaultTtlMinutes, 1, 1440));
+        _maximumTtl = TimeSpan.FromMinutes(Math.Clamp(opts.MaxEntryTtlMinutes, 1, 1440));
         _versionTtl = TimeSpan.FromHours(Math.Clamp(opts.VersionTtlHours, 1, 720));
+        _failureBackoff = TimeSpan.FromSeconds(Math.Clamp(opts.FailureBackoffSeconds, 1, 60));
+    }
+
+    private bool CanUseCache => !_revisionFailed && _availability.IsAvailable;
+
+    public async Task<T> GetOrCreateAsync<T>(string key, Func<CancellationToken, Task<T>> factory,
+        TimeSpan expiration, CancellationToken cancellationToken = default) where T : class
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        var cached = await GetAsync<T>(key, cancellationToken);
+        if (cached is not null) return cached;
+        if (!CanUseCache) return await factory(cancellationToken);
+
+        // Bounded locks coalesce fills within this API process without retaining arbitrary keys.
+        var gate = _availability.FillLock(key);
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            cached = await GetAsync<T>(key, cancellationToken);
+            if (cached is not null) return cached;
+            var value = await factory(cancellationToken);
+            await SetAsync(key, value, expiration, cancellationToken);
+            return value;
+        }
+        finally { gate.Release(); }
     }
 
     public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key))
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(key)) return default;
+        if (!CanUseCache)
         {
+            CacheAvailability.Bypasses.Add(1);
             return default;
         }
-
         try
         {
-            var payload = await _cache.GetStringAsync(key, cancellationToken);
+            var payload = await _cache.GetStringAsync(DataKeyPrefix + key, cancellationToken);
             if (string.IsNullOrEmpty(payload))
             {
+                CacheAvailability.Misses.Add(1);
                 return default;
             }
-
-            return JsonSerializer.Deserialize<T>(payload, SerializerOptions);
+            var value = JsonSerializer.Deserialize<T>(payload, SerializerOptions);
+            CacheAvailability.Hits.Add(1);
+            return value;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "DistributedCache GET failed for key '{CacheKey}'. Falling back to database.", key);
+            Failed(ex, "GET", key);
             return default;
         }
     }
 
     public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key) || value is null)
-        {
-            return;
-        }
-
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(key) || value is null || !CanUseCache) return;
         try
         {
-            var payload = JsonSerializer.Serialize(value, SerializerOptions);
-            var entryOptions = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = expiration ?? _defaultTtl
-            };
-
-            await _cache.SetStringAsync(key, payload, entryOptions, cancellationToken);
+            var ttl = expiration ?? _defaultTtl;
+            if (ttl <= TimeSpan.Zero) return;
+            if (ttl > _maximumTtl) ttl = _maximumTtl;
+            // Only shorten TTLs: the configured maximum also bounds unsafe-cache backoff.
+            ttl = TimeSpan.FromTicks(Math.Max(1L, (long)(ttl.Ticks * (0.9 + Random.Shared.NextDouble() * 0.1))));
+            await _cache.SetStringAsync(DataKeyPrefix + key, JsonSerializer.Serialize(value, SerializerOptions),
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = ttl }, cancellationToken);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "DistributedCache SET failed for key '{CacheKey}'. Continuing without caching.", key);
-        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception ex) { Failed(ex, "SET", key); }
     }
 
     public async Task RemoveAsync(string key, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            return;
-        }
-
-        try
-        {
-            await _cache.RemoveAsync(key, cancellationToken);
-        }
+        if (cancellationToken.IsCancellationRequested) _availability.BackOff(_maximumTtl);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(key)) return;
+        try { await _cache.RemoveAsync(DataKeyPrefix + key, cancellationToken); }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            _availability.BackOff(_maximumTtl);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "DistributedCache REMOVE failed for key '{CacheKey}'.", key);
+            _availability.BackOff(_maximumTtl);
+            Failed(ex, "REMOVE", key);
         }
     }
 
     public async Task<string> GetVersionAsync(string scopeKey, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(scopeKey))
+        cancellationToken.ThrowIfCancellationRequested();
+        if (_revisions is not null)
         {
-            return "v0";
+            try { return await _revisions.GetAsync(cancellationToken); }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                _revisionFailed = true;
+                _logger.LogWarning(ex, "Database cache revision unavailable. Bypassing cache for this request.");
+                CacheAvailability.Failures.Add(1);
+                return Guid.NewGuid().ToString("N");
+            }
         }
+        if (string.IsNullOrWhiteSpace(scopeKey) || !CanUseCache) return Guid.NewGuid().ToString("N");
 
+        // Local/test mode only. Production uses a transactional database revision.
         var versionKey = BuildVersionKey(scopeKey);
+        await _availability.VersionLock.WaitAsync(cancellationToken);
         try
         {
             var version = await _cache.GetStringAsync(versionKey, cancellationToken);
-            return string.IsNullOrWhiteSpace(version) ? "v0" : version;
+            if (!string.IsNullOrWhiteSpace(version)) return version;
+            version = Guid.NewGuid().ToString("N");
+            await _cache.SetStringAsync(versionKey, version,
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = _versionTtl }, cancellationToken);
+            return version;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch (Exception ex)
         {
-            _logger.LogWarning(
-                ex,
-                "DistributedCache GET VERSION failed for scope '{ScopeKey}'. Returning transient version to bypass stale cache.",
-                scopeKey);
+            Failed(ex, "GET VERSION", scopeKey);
             return Guid.NewGuid().ToString("N");
         }
+        finally { _availability.VersionLock.Release(); }
     }
 
     public async Task BumpVersionAsync(string scopeKey, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(scopeKey))
+        if (_revisions is not null)
         {
+            // Reset even after client cancellation: a committed mutation must remain visible.
+            _revisions.Reset();
             return;
         }
-
-        var versionKey = BuildVersionKey(scopeKey);
+        if (string.IsNullOrWhiteSpace(scopeKey)) return;
+        if (cancellationToken.IsCancellationRequested || !CanUseCache)
+        {
+            _availability.BackOff(_maximumTtl);
+            cancellationToken.ThrowIfCancellationRequested();
+            return;
+        }
+        await _availability.VersionLock.WaitAsync(cancellationToken);
         try
         {
-            var newVersion = Guid.NewGuid().ToString("N");
-            var entryOptions = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = _versionTtl
-            };
-
-            await _cache.SetStringAsync(versionKey, newVersion, entryOptions, cancellationToken);
+            await _cache.SetStringAsync(BuildVersionKey(scopeKey), Guid.NewGuid().ToString("N"),
+                new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = _versionTtl }, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            _availability.BackOff(_maximumTtl);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "DistributedCache BUMP VERSION failed for scope '{ScopeKey}'.", scopeKey);
+            _availability.BackOff(_maximumTtl);
+            Failed(ex, "BUMP VERSION", scopeKey);
         }
+        finally { _availability.VersionLock.Release(); }
     }
 
-    private static string BuildVersionKey(string scopeKey) => $"ver:{scopeKey.Trim()}";
+    private void Failed(Exception exception, string operation, string key)
+    {
+        _availability.BackOff(_failureBackoff);
+        CacheAvailability.Failures.Add(1);
+        _logger.LogWarning(exception, "Distributed cache {Operation} failed for '{CacheKey}'. Bypassing cache.", operation, key);
+    }
+
+    private static string BuildVersionKey(string scopeKey) => $"{DataKeyPrefix}ver:{scopeKey.Trim()}";
 }

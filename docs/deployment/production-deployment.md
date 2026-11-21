@@ -83,6 +83,26 @@ Vercel dùng Root Directory `frontend`, Node 24, `npm run build`, output `dist` 
 
 `OPS_ENABLED` bật các lịch vận hành; `BACKUP_ENABLED` chỉ bật sau khi cấu hình kho ngoài VM, backup và restore drill thành công. `SMOKE_AUTH_ENABLED` chỉ bật sau khi chuẩn bị tài khoản kiểm thử và chạy smoke thành công. Backup cần kho S3 tương thích ngoài VM; cấu hình mẫu ở [backup.example.json](../docker/backup.example.json).
 
+## Redis cache của backend
+
+Backend dùng `cache-redis` riêng, có password, healthcheck và không publish port ra host. `ai-redis` tiếp tục làm Celery broker với AOF và `noeviction`; không dùng broker để chứa cache ứng dụng. Cache có thể bị eviction hoặc mất hoàn toàn mà không mất dữ liệu nghiệp vụ.
+
+Trước khi triển khai thay đổi cache này:
+
+1. Tạo GitHub production secret `REDIS_CACHE_PASSWORD`: 32–128 ký tự ngẫu nhiên trong `A-Z`, `a-z`, `0-9`, `_`, `-` (ví dụ 64 ký tự hex). Giá trị mẫu không dùng cho production.
+2. Backup và review/apply migration `20261121120000_AddTransactionalCacheRevision` bằng quy trình migration riêng. Nếu role migration khác role ứng dụng, cấp `SELECT, UPDATE` trên `public.cache_revision` cho role ứng dụng để đọc revision và thực thi trigger. Deploy thông thường không chạy migration và sẽ dừng nếu schema chưa khớp.
+3. Kiểm tra ngân sách RAM của VM. Mặc định cache dùng `maxmemory=128mb`, container `192m`; broker dùng `256mb` và container `384m`. Có thể chỉnh qua variables `CACHE_REDIS_MAXMEMORY`, `CACHE_REDIS_MEMORY_LIMIT`, `AI_REDIS_MAXMEMORY`, `AI_REDIS_MEMORY_LIMIT`; luôn chừa RAM cho overhead Redis, AOF và các dịch vụ khác.
+
+Revision `public.cache_revision` thay đổi cùng transaction khi dữ liệu nguồn của read model hội đồng thay đổi. Trigger được deferred đến commit, cập nhật revision một lần mỗi transaction; rollback không đổi revision. Các module nguồn được liệt kê trong migration, gồm điểm/biên bản, phân công phản biện, cấu hình điểm, giữa kỳ, lưu chiểu, đề tài và thông tin người dùng. Khi bổ sung bảng nguồn mới, phải bổ sung trigger bằng migration mới.
+
+Mỗi request chụp revision một lần từ PostgreSQL primary trước khi nạp dữ liệu để cache. Request bắt đầu đọc sau khi mutation commit sử dụng revision mới, kể cả khi Redis đang lỗi hoặc đã phục hồi. Request đang xử lý có thể hoàn tất với revision đã chụp; cache của nó không được request có revision mới sử dụng lại. Production bắt buộc cấu hình Redis và bật database revisions. Scope DI cho `ICacheService` phải giới hạn trong một request/job; không giữ service này trong singleton hay job sống lâu.
+
+Đổi revision hiện vô hiệu hóa toàn bộ read model hội đồng. Đây là lựa chọn ưu tiên tính chính xác; có thêm một truy vấn revision nhỏ mỗi request và một cập nhật row revision ở cuối transaction ghi. Cần đo tải trước khi phân nhỏ revision theo batch/module. Không thêm L1 cache cho revision vì sẽ làm mất bảo đảm cập nhật ngay giữa các API instance.
+
+Payload dùng namespace `cache:v2:`, TTL tối đa 30 phút và jitter giảm tối đa 10%. Nạp lại workspace kết quả học tập và overview hội đồng được gộp giữa các request cùng key trên từng API process; cơ chế này không phải distributed lock giữa các replica. Redis lỗi sẽ được bỏ qua 5 giây trên từng API process. Không đọc được revision thì request bỏ qua cache. Meter `.NET` `UGTM.Cache` cung cấp counters `ugtm.cache.hits`, `misses`, `failures`, `bypasses` cho collector; collector/exporter cần được cấu hình theo hệ thống quan sát đang dùng. Theo dõi RAM, eviction, lỗi và latency Redis khi kiểm thử tải.
+
+Rollback ứng dụng và migration là hai thao tác riêng. Migration Down chỉ bỏ trigger/table revision, không xóa dữ liệu nghiệp vụ; chỉ thực hiện sau khi dừng các API mới đang dùng revision và kiểm tra schema gate. Không xóa volume broker AI khi dọn cache.
+
 ## Migration, rollback và recovery
 
 Migration UGTM/AI là thao tác riêng sau backup và review. Deploy chỉ **đọc và kiểm tra** migration history/checksum. Schema không khớp thì dừng; không sửa history hoặc checksum để vượt gate.

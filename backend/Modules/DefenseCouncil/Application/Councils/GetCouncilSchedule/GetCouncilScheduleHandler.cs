@@ -32,6 +32,8 @@ public sealed class GetCouncilScheduleHandler(
             return Result.Failure<CouncilScheduleResponseDto>(CouncilErrors.Forbidden);
         }
 
+        var globalVer = cache is null ? "" : await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, cancellationToken);
+
         // 1. Resolve Council by GroupId, StudentId, or CouncilId
         Council? council = null;
 
@@ -70,7 +72,6 @@ public sealed class GetCouncilScheduleHandler(
         {
             var councilVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.CouncilScope(council.Id), cancellationToken);
             var batchVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(council.BatchId), cancellationToken);
-            var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, cancellationToken);
             cacheKey = DefenseCouncilCacheKeys.CouncilSchedule(council.Id, councilVer, batchVer, globalVer);
 
             var cached = await cache.GetAsync<CouncilScheduleResponseDto>(cacheKey, cancellationToken);

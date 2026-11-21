@@ -46,6 +46,7 @@ def settings():
         AI_POSTGRES_DIRECT_DSN="postgresql://test:ci-only@database/ai",
         IDENTITY_IP_HASH_KEY="a" * 32,
         PLAGIARISM_AI_API_KEY="b" * 32,
+        REDIS_CACHE_PASSWORD="c" * 64,
         JWT_PRIVATE_KEY_PEM_BASE64=base64.b64encode(b"synthetic-test-key").decode(),
         SMTP_PASSWORD="literal$Dollar#Hash'Quote\\Backslash\"DoubleQuote and spaces\tTab",
         S3_SECRET_KEY="trailing-backslash\\",

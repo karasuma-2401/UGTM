@@ -81,6 +81,7 @@ def collect(root):
         "ai-worker",
         "ai-reconciler",
         "ai-redis",
+        "cache-redis",
         "minio",
         "gateway",
     }

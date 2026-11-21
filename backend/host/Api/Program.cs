@@ -5,6 +5,7 @@ using UGTM.Api.Modules;
 using UGTM.Api.Campus;
 using UGTM.Api.OpenApi;
 using UGTM.BuildingBlocks.Infrastructure.Middlewares;
+using UGTM.BuildingBlocks.Infrastructure.Caching;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
 
 if (args is ["--check-schema"])
@@ -77,6 +78,10 @@ builder.Services.AddUgtmModules(builder.Configuration);
 builder.Services.AddCampusPresence(builder.Configuration);
 
 var app = builder.Build();
+
+app.Logger.LogInformation("Cache storage: {Provider}; transactional database revisions: {DatabaseRevisions}",
+    RedisCacheOptions.ResolveConnectionString(builder.Configuration) is null ? "InMemory" : "Redis",
+    builder.Configuration.GetValue("Redis:UseDatabaseRevisions", true));
 
 if (isBootstrapCommand)
 {

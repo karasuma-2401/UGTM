@@ -65,6 +65,9 @@ with tempfile.TemporaryDirectory(prefix="ugtm-compose-test-") as temporary:
     ]
     assert services["gateway"]["image"] == manifest()["images"]["gateway"]["reference"]
     assert services["ai-redis"]["image"] == infrastructure["redis"]
+    assert services["cache-redis"]["image"] == infrastructure["redis"]
+    assert "ports" not in services["cache-redis"]
+    assert backend["Redis__ConnectionString"] == "cache-redis:6379,password=" + values["REDIS_CACHE_PASSWORD"]
     assert services["minio"]["image"] == infrastructure["minio"]
     probe = directory / "probe.json"
     probe.write_text(

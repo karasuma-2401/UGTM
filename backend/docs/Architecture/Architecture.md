@@ -73,7 +73,7 @@ Frontend React 19/TypeScript/Vite 8 có dashboard `/` và trang ping `/modules/:
 
 Backend dùng JWT RSA có session validation, refresh rotation, CSRF, lockout, activation/recovery, rate limit và permission policy động. Chi tiết tại [Authentication.md](../Technical/Authentication.md), contract HTTP tại [IdentityApiContract.md](../../../docs/ApiContract/IdentityApiContract.md). Policy theo phân công, deadline, trạng thái, quyền sửa điểm, khóa/mở biên bản và điều kiện công bố/lưu chiểu vẫn phải được xây tại module nghiệp vụ tương ứng.
 
-CORS đọc `Cors:AllowedOrigins`, fallback origin 5173; Compose cấu hình 5173/3000. Identity gửi email qua SMTP/Mailpit bằng transactional outbox. Redis, RabbitMQ và MinIO chưa có client tích hợp. HTTPS production, backup, SMTP production và SLA cần được cấu hình theo môi trường triển khai.
+CORS đọc `Cors:AllowedOrigins`, fallback origin 5173; Compose cấu hình 5173/3000. Identity gửi email qua SMTP/Mailpit bằng transactional outbox. Redis cache đã tích hợp qua `ICacheService`, dùng revision PostgreSQL theo transaction để làm mới read model hội đồng giữa các API instance. Production dùng `cache-redis` riêng với Celery broker; xem [hướng dẫn triển khai](../../../docs/deployment/production-deployment.md#redis-cache-của-backend) về migration và cấu hình. HTTPS production, backup, SMTP production và SLA cần được cấu hình theo môi trường triển khai.
 
 ## 6. Migrations và Neon
 

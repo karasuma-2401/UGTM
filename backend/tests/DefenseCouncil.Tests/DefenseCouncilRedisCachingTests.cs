@@ -169,11 +169,12 @@ public sealed class DefenseCouncilRedisCachingTests
         Assert.Null(await service.GetAsync<CouncilOverviewItemDto>("test:overview"));
 
         var initialVer = await service.GetVersionAsync("dc:batch:1");
-        Assert.Equal("v0", initialVer);
+        Assert.False(string.IsNullOrWhiteSpace(initialVer));
+        Assert.Equal(initialVer, await service.GetVersionAsync("dc:batch:1"));
 
         await service.BumpVersionAsync("dc:batch:1");
         var bumpedVer = await service.GetVersionAsync("dc:batch:1");
-        Assert.NotEqual("v0", bumpedVer);
+        Assert.NotEqual(initialVer, bumpedVer);
 
         await service.BumpVersionAsync("dc:batch:1");
         var bumpedVer2 = await service.GetVersionAsync("dc:batch:1");
