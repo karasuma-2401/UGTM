@@ -19,7 +19,6 @@ using UGTM.Modules.ThesisManagement.Infrastructure.Persistence;
 using UGTM.Modules.TopicCatalog.Domain.Entities;
 using UGTM.Modules.TopicCatalog.Domain.Enums;
 using UGTM.Modules.TopicCatalog.Infrastructure.Persistence;
-using IdentityUser = UGTM.Modules.Identity.Domain.Entities.User;
 
 namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 
@@ -373,12 +372,26 @@ public sealed partial class ReviewerAssignmentWorkflowPersistenceIntegrationTest
 
     private async Task SeedReferencesAsync()
     {
-        await using (var identity = Db<IdentityDbContext>())
+        await using (var db = Db<UGTMDbContext>())
         {
-            identity.Users.AddRange(new[] { _actorId, _reviewerId, _advisorId }.Select((id, index) => IdentityUser.Create(
-                id, $"reviewer{index}@test.example", $"REVIEWER{index}@TEST.EXAMPLE", $"Reviewer {index}",
-                $"RA{index}", null, null, AccountStatus.Active, Now)));
-            await identity.SaveChangesAsync();
+            var users = new[] { _actorId, _reviewerId, _advisorId };
+            for (var index = 0; index < users.Length; index++)
+            {
+                var id = users[index];
+                var email = $"reviewer{index}@test.example";
+                var normalizedEmail = $"REVIEWER{index}@TEST.EXAMPLE";
+                var fullName = $"Reviewer {index}";
+                var userCode = $"RA{index}";
+                var stamp = Guid.NewGuid();
+                await db.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO identity."user"
+                        (id, email, normalized_email, full_name, user_code, status,
+                         access_failed_count, security_stamp, concurrency_stamp, created_at)
+                    VALUES
+                        ({id}, {email}, {normalizedEmail}, {fullName}, {userCode}, {nameof(AccountStatus.Active)},
+                         0, {stamp}, {stamp}, {Now})
+                    """);
+            }
         }
         StageTemplateInput Stage(int order, string code, int from, int to)
             => new(order, code, code, from, to, new TimeOnly(23, 59));

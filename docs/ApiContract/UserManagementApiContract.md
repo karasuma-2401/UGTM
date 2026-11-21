@@ -411,7 +411,7 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 
 Cho phép Quản trị viên đặt mật khẩu mới (`Custom`) hoặc sinh mật khẩu tạm ngẫu nhiên mạnh (`Generated`, 16 ký tự bằng CSPRNG) cho tài khoản khác. Response luôn trả kèm `Cache-Control: no-store`, `Pragma: no-cache`, `Expires: 0`.
 
-- **Chế độ `Custom`:** Bắt buộc truyền `newPassword` đạt chính sách bảo mật ($\ge 12$ ký tự, đủ chữ hoa, chữ thường, chữ số, ký tự đặc biệt). Trường `temporaryPassword` trả về luôn là `null`.
+- **Chế độ `Custom`:** Bắt buộc truyền `newPassword` đạt chính sách bảo mật (12–128 ký tự, đủ chữ hoa, chữ thường, chữ số, ký tự đặc biệt không tính khoảng trắng). Trường `temporaryPassword` trả về luôn là `null`.
 - **Chế độ `Generated`:** Không truyền `newPassword`. Hệ thống sinh mật khẩu tạm mạnh và trả về **duy nhất 1 lần** trong `data.temporaryPassword`.
 - **Xác thực lại (`adminPassword`):** Bắt buộc truyền mật khẩu hiện tại của người quản trị để xác nhận thao tác nhạy cảm (`IReauthenticationVerifier`). Nếu nhập sai vượt ngưỡng cho phép sẽ khóa tạm tài khoản người thao tác (`429 Identity.AccountLocked`).
 - **Bảo vệ trạng thái & phân quyền:** Chặn tự thao tác trên chính mình (`400 Identity.CannotResetOwnPassword`), chặn tài khoản `PendingActivation` (`400 Identity.CannotResetPasswordForPendingAccount`), giữ nguyên trạng thái `Active`/`Suspended`/`Disabled`, và chặn người có `identity.users.manage` nhưng không mang vai trò `Admin` đặt lại mật khẩu của tài khoản `Admin` (`403 Identity.CannotManageAdminPassword`).
