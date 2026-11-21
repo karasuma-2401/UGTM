@@ -158,7 +158,8 @@ public sealed class CreateUserHandler(
                 user.Status.ToString(),
                 resolvedRoleNames,
                 user.CreatedAt,
-                user.LastLoginAt));
+                user.LastLoginAt,
+                user.MustChangePassword));
         }, cancellationToken);
     }
 }

@@ -17,6 +17,7 @@ public sealed class IdentityEmailTemplateRenderer(IOptions<IdentityEmailOptions>
         {
             "activation" => RenderActivation(payload),
             "recovery-otp" => RenderRecoveryOtp(payload),
+            "admin-password-reset" => RenderAdminPasswordReset(payload),
             _ => throw new InvalidOperationException("Unknown email template.")
         };
     }
@@ -80,6 +81,37 @@ public sealed class IdentityEmailTemplateRenderer(IOptions<IdentityEmailOptions>
             + $"Mã xác thực khôi phục mật khẩu UGTM của bạn là: {payload.Secret}\n\n"
             + "Mã có thời hạn và chỉ dùng được một lần. Không chia sẻ mã này với bất kỳ ai. "
             + "Nếu bạn không yêu cầu khôi phục mật khẩu, hãy bỏ qua email này.");
+    }
+
+    private EmailMessage RenderAdminPasswordReset(IdentityEmailPayload payload)
+    {
+        var fullName = Html(payload.FullName);
+        var mustChange = string.Equals(payload.Secret, "must-change", StringComparison.Ordinal);
+        var nextStepHtml = mustChange
+            ? "Khi đăng nhập lại với mật khẩu được cấp, hệ thống sẽ <strong>yêu cầu bạn đổi sang mật khẩu cá nhân mới ngay lập tức</strong> trước khi sử dụng các chức năng khác."
+            : "Vui lòng liên hệ quản trị viên qua kênh hỗ trợ nội bộ để nhận thông tin đăng nhập mới và đổi mật khẩu cá nhân nếu cần.";
+        var nextStepText = mustChange
+            ? "Khi đăng nhập lại với mật khẩu được cấp, hệ thống sẽ yêu cầu bạn đổi sang mật khẩu cá nhân mới ngay lập tức."
+            : "Vui lòng liên hệ quản trị viên qua kênh hỗ trợ nội bộ để nhận thông tin đăng nhập mới và đổi mật khẩu cá nhân nếu cần.";
+
+        var content = $$"""
+            <p style="margin:0 0 10px;color:#697E9F;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Cảnh báo bảo mật tài khoản</p>
+            <h1 style="margin:0 0 18px;color:#10182C;font-size:28px;line-height:1.25;font-weight:750;">Mật khẩu tài khoản đã được đặt lại</h1>
+            <p style="margin:0 0 14px;color:#1B2940;font-size:16px;line-height:1.7;">Xin chào <strong>{{fullName}}</strong>,</p>
+            <p style="margin:0 0 16px;color:#1B2940;font-size:16px;line-height:1.7;">Quản trị viên hệ thống UGTM vừa thực hiện đặt lại mật khẩu cho tài khoản của bạn. Toàn bộ các phiên đăng nhập trước đó đã bị đăng xuất tự động để đảm bảo an toàn.</p>
+            <p style="margin:0 0 24px;color:#1B2940;font-size:16px;line-height:1.7;">{{nextStepHtml}}</p>
+            {{SecurityNotice("Email này không chứa mật khẩu để đảm bảo an toàn. Nếu bạn không yêu cầu hoặc không nhận ra thao tác này, hãy liên hệ ngay với Quản trị viên hệ thống.")}}
+            """;
+
+        return new EmailMessage(
+            payload.To,
+            "Thông báo đặt lại mật khẩu tài khoản UGTM",
+            Layout("Quản trị viên vừa đặt lại mật khẩu cho tài khoản UGTM của bạn.", content),
+            $"Xin chào {payload.FullName},\n\n"
+            + "Quản trị viên hệ thống UGTM vừa thực hiện đặt lại mật khẩu cho tài khoản của bạn. "
+            + "Toàn bộ phiên đăng nhập trước đó đã bị thu hồi tự động.\n\n"
+            + $"{nextStepText}\n\n"
+            + "Email này không chứa mật khẩu. Nếu bạn không yêu cầu thao tác này, hãy liên hệ ngay với Quản trị viên.");
     }
 
     private string Layout(string preheader, string content)

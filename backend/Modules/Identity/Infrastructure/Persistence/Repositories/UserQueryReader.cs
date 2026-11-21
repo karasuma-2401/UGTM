@@ -77,7 +77,8 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
                 Status = u.Status.ToString(),
                 Roles = u.UserRoles.Select(ur => ur.Role.RoleName).ToList(),
                 u.CreatedAt,
-                u.LastLoginAt
+                u.LastLoginAt,
+                u.MustChangePassword
             })
             .ToListAsync(cancellationToken);
 
@@ -90,7 +91,8 @@ public sealed class UserQueryReader(IdentityDbContext db) : IUserQueryReader
             u.Status,
             u.Roles,
             u.CreatedAt,
-            u.LastLoginAt)).ToList();
+            u.LastLoginAt,
+            u.MustChangePassword)).ToList();
 
         return new PagedResult<UserSummaryDto>(items, totalCount, query.PageNumber, query.PageSize);
     }

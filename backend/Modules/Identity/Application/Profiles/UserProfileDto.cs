@@ -6,4 +6,5 @@ public sealed record UserProfileDto(
     string FullName,
     string? UserCode,
     IReadOnlyList<string> Roles,
-    IReadOnlyList<string> Permissions);
+    IReadOnlyList<string> Permissions,
+    bool MustChangePassword = false);

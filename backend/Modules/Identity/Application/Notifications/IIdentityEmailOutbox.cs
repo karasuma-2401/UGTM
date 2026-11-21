@@ -15,4 +15,11 @@ public interface IIdentityEmailOutbox
         string fullName,
         string code,
         DateTime createdAt);
+
+    void EnqueueAdminPasswordResetAlertEmail(
+        Guid userId,
+        string email,
+        string fullName,
+        bool mustChangePassword,
+        DateTime createdAt);
 }

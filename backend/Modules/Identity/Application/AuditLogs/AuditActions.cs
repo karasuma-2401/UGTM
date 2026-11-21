@@ -6,6 +6,7 @@ public static class AuditActions
     public const string UserUpdated = "Identity.User.Updated";
     public const string UserStatusChanged = "Identity.User.StatusChanged";
     public const string UserRolesChanged = "Identity.User.RolesChanged";
+    public const string UserPasswordResetByAdmin = "Identity.User.PasswordResetByAdmin";
     public const string UsersImported = "Identity.Users.Imported";
     public const string RoleCreated = "Identity.Role.Created";
     public const string RoleHidden = "Identity.Role.Hidden";

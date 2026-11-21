@@ -12,6 +12,7 @@ Backend phân hệ User Management hỗ trợ:
 - Import Excel tối đa 5.000 Sinh viên hoặc Giảng viên theo cơ chế all-or-nothing; tài khoản chờ người dùng chủ động yêu cầu magic link;
 - Cập nhật thông tin hồ sơ (Họ tên, Số điện thoại, Mã người dùng) và đồng bộ danh sách vai trò hệ thống;
 - Cập nhật trạng thái tài khoản: Khóa (`Disabled`), Tạm ngưng (`Suspended`) hoặc Mở khóa (`Active`);
+- Đặt lại mật khẩu cho người dùng khác (`POST /api/users/{id}/reset-password`) hỗ trợ 2 chế độ (`Custom` và `Generated` CSPRNG), bắt buộc re-authentication của Admin, thu hồi phiên tức thời, vô hiệu hóa recovery challenges, gửi email cảnh báo bảo mật (không chứa mật khẩu) và áp đặt Hard Gate `must_change_password`;
 - Cơ chế thu hồi phiên tức thời: Mọi thao tác khóa tài khoản hoặc thay đổi vai trò đều kích hoạt xoay `SecurityStamp`, khiến các token JWT đang lưu hành bị `SessionValidator` từ chối ngay lập tức;
 - Quản trị phiên của từng tài khoản: xem, thu hồi một phiên hoặc toàn bộ phiên bằng `identity.sessions.revoke`, kèm Audit Log;
 - Phân quyền theo Policy động `Permission:identity.users.read` và `Permission:identity.users.manage`.
@@ -34,10 +35,11 @@ backend/
       GetUsers/               # Query, Handler và Read Model Interface (IUserQueryReader)
       CreateUser/             # Command và Handler tạo người dùng (gán vai trò, hash password hoặc outbox)
       ImportUsers/            # Đọc model trung gian, validation toàn file và import atomically
+      ResetPassword/          # Command, DTO và Handler Admin đặt lại mật khẩu (Custom / Generated)
       UpdateUser/             # Command và Handler cập nhật hồ sơ và vai trò
       UpdateUserStatus/       # Command và Handler đổi trạng thái tài khoản
     Infrastructure/
-      Authorization/          # PermissionPolicyProvider và PermissionAuthorizationHandler
+      Authorization/          # PermissionPolicyProvider, PermissionAuthorizationHandler và PasswordChangeRequiredMiddleware
       Endpoints/UserEndpoints.cs # Minimal API tại /api/users
       Importing/ClosedXmlUserImportFileReader.cs # Đọc worksheet .xlsx và ánh xạ header
       Persistence/Repositories/
@@ -117,6 +119,14 @@ Tài khoản người dùng được đại diện bởi Aggregate Root [`User`]
 3. Commit transaction. Mọi phiên đăng nhập của tài khoản này ngay lập tức bị vô hiệu hóa.
 
 Nếu tài khoản mục tiêu là Admin đang hoạt động, thao tác chuyển sang `Suspended` hoặc `Disabled` lấy PostgreSQL transaction advisory lock trước khi đếm các Admin còn lại. Cùng khóa này được dùng khi gỡ vai trò Admin và khi bootstrap Admin đầu tiên, nên các request hoặc replica chạy đồng thời không thể cùng vượt qua kiểm tra “Admin cuối cùng”.
+
+### 6. Luồng Admin đặt lại mật khẩu tài khoản (`POST /api/users/{id}/reset-password`)
+1. Chặn tự thao tác (`TargetUserId == CurrentUser.UserId` $\rightarrow$ `400 Identity.CannotResetOwnPassword`) và kiểm tra chế độ `Custom` / `Generated` (chặn chuỗi số $\rightarrow$ `400 Identity.InvalidPasswordResetMode`).
+2. Xác thực lại mật khẩu hiện tại của người quản trị qua `IReauthenticationVerifier` **trước** transaction ghi chính để bảo toàn cơ chế đếm số lần nhập sai và lockout (`400 Identity.ReauthenticationFailed` / `429 Identity.AccountLocked`).
+3. Trong transaction: tải user mục tiêu kèm roles, chặn tài khoản không mang vai trò `Admin` đặt lại mật khẩu của tài khoản `Admin` (`403 Identity.CannotManageAdminPassword`), và chặn tài khoản `PendingActivation` (`400 Identity.CannotResetPasswordForPendingAccount`).
+4. Với `Custom`, kiểm tra `IPasswordPolicy` ($\ge 12$ ký tự); với `Generated`, sinh mật khẩu tạm 16 ký tự bằng `CryptoTemporaryPasswordGenerator` (CSPRNG `RandomNumberGenerator`), trả về duy nhất 1 lần trong response kèm header `Cache-Control: no-store`.
+5. Gọi `user.SetPasswordByAdmin(...)` giữ nguyên `Status`, xóa lockout, đặt `MustChangePassword` (mặc định `true`) và xoay `SecurityStamp`; gọi `RevokeAllAsync(..., SessionRevocationReason.AdminPasswordReset)` thu hồi toàn bộ phiên cũ; vô hiệu hóa `PasswordResetOtp` và `PasswordResetGrant` đang chờ; gửi email cảnh báo bảo mật (không chứa mật khẩu) qua `IdentityEmailOutbox`; ghi Audit Log `Identity.User.PasswordResetByAdmin`.
+6. Khi `MustChangePassword = true`, `JwtAccessTokenService` gắn claim `pwd_change_required = "true"`, đồng thời `SessionValidator` đồng bộ trực tiếp `session.User.MustChangePassword` từ DB vào `HttpContext.Items`. `PasswordChangeRequiredMiddleware` chặn mọi API yêu cầu đăng nhập bằng `403 Identity.PasswordChangeRequired`, chỉ cho phép `[AllowAnonymous]`, `GET /api/identity/auth/me` và `POST /api/identity/auth/change-password` (sau khi đổi mật khẩu thành công, `MustChangePassword` tự đặt lại về `false`).
 
 ---
 

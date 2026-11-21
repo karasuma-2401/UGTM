@@ -187,7 +187,8 @@ Mỗi lần gọi có thể thay token đang giữ. Client nên gọi lại sau 
       "fullName": "Nguyễn Văn A",
       "userCode": "24521186",
       "roles": ["Student"],
-      "permissions": []
+      "permissions": [],
+      "mustChangePassword": false
     }
   },
   "error": null
@@ -276,7 +277,11 @@ Các lỗi riêng của luồng kích hoạt:
 
 Header: `Authorization: Bearer <access-token>`
 
-**200 OK:** `ApiResponse<UserProfile>` với cùng cấu trúc `user` của login. Dữ liệu roles và permissions được đọc lại từ database. Backend cũng kiểm tra phiên, trạng thái tài khoản và security stamp trước khi chạy endpoint.
+**200 OK:** `ApiResponse<UserProfile>` với cùng cấu trúc `user` của login (bao gồm `mustChangePassword`). Dữ liệu roles, permissions và `mustChangePassword` được đọc lại từ database. Backend cũng kiểm tra phiên, trạng thái tài khoản và security stamp trước khi chạy endpoint. Endpoint này luôn được phép gọi kể cả khi `mustChangePassword = true`.
+
+> [!IMPORTANT]
+> **Cơ chế ép đổi mật khẩu (`mustChangePassword = true`):**
+> Sau khi Quản trị viên đặt lại mật khẩu (`POST /api/users/{id}/reset-password`), nếu `mustChangePassword = true`, người dùng vẫn có thể đăng nhập bằng mật khẩu tạm/mật khẩu mới nhưng mọi API yêu cầu xác thực khác sẽ trả `403 Forbidden` (`Identity.PasswordChangeRequired`) cho tới khi người dùng hoàn tất `POST /api/identity/auth/change-password` (hoặc `/recovery/reset`). Các endpoint công khai và `GET /api/identity/auth/me`, `POST /api/identity/auth/change-password` luôn được phép truy cập.
 
 ### `GET /sessions`
 
@@ -332,7 +337,7 @@ Logout có tính idempotent: cookie thiếu, sai hoặc phiên đã thu hồi v�
 
 ## Mật khẩu
 
-Chính sách dùng chung cho kích hoạt, đổi và đặt lại mật khẩu: ít nhất 12 ký tự, có chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
+Chính sách dùng chung cho kích hoạt, đổi và đặt lại mật khẩu: từ 12 đến 128 ký tự, có chữ hoa, chữ thường, chữ số và ký tự đặc biệt (không tính khoảng trắng).
 
 ### `POST /change-password`
 
@@ -345,12 +350,13 @@ Header: `Authorization: Bearer <access-token>`
 }
 ```
 
-**200 OK** với `data: null`. Backend đổi security stamp, thu hồi mọi phiên của người dùng và xóa refresh cookie hiện tại. Client phải đăng nhập lại.
+**200 OK** với `data: null`. Backend đổi security stamp, xóa cờ `mustChangePassword` (nếu đang bật), thu hồi mọi phiên của người dùng và xóa refresh cookie hiện tại. Client phải đăng nhập lại. Endpoint này luôn được phép gọi ngay cả khi tài khoản đang ở trạng thái bắt buộc đổi mật khẩu (`mustChangePassword = true`).
 
 | Status | Code | Khi nào xảy ra |
 | --- | --- | --- |
 | 400 | `Identity.CurrentPasswordIncorrect` | Mật khẩu hiện tại sai hoặc rỗng |
 | 400 | `Identity.WeakPassword` | Mật khẩu mới không đạt chính sách |
+| 400 | `Identity.PasswordMustDifferFromCurrent` | Mật khẩu mới trùng với mật khẩu hiện tại |
 | 401 | body rỗng | Bearer token thiếu hoặc không hợp lệ |
 
 ## Khôi phục mật khẩu
@@ -431,6 +437,8 @@ OTP cho phép tối đa 5 lần thử. Verify thành công tiêu thụ OTP và c
 | `Identity.InvalidResetGrant` | 400 | Reset grant không dùng được |
 | `Identity.WeakPassword` | 400 | Mật khẩu không đạt chính sách |
 | `Identity.CurrentPasswordIncorrect` | 400 | Mật khẩu hiện tại sai |
+| `Identity.PasswordMustDifferFromCurrent` | 400 | Mật khẩu mới trùng với mật khẩu hiện tại |
+| `Identity.PasswordChangeRequired` | 403 | Tài khoản bắt buộc phải đổi mật khẩu trước khi gọi các API khác |
 | `Identity.InvalidSession` | 401 | Phiên không còn hợp lệ |
 | `Identity.SessionNotFound` | 404 | Phiên không tồn tại, không còn hoạt động hoặc không thuộc người dùng được phép thao tác |
 | `Identity.RateLimitExceeded` | 429 | Quá nhiều request từ cùng IP |
