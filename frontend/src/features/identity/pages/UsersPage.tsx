@@ -1,7 +1,7 @@
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { OperationToast } from '@/shared/notifications';
 import { useQueryClient } from '@tanstack/react-query';
-import { UsersRound, GraduationCap, UserPlus, Upload, X, Clock3, Ban } from 'lucide-react';
+import { UsersRound, UserPlus, Upload, X, Clock3, Ban } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
