@@ -60,7 +60,7 @@ const DECISION_OPTIONS: readonly DecisionOptionConfig[] = [
     hint: 'Đạt yêu cầu, chuyển sang chờ công bố cho sinh viên.',
     icon: CheckCircle2,
     activeClass:
-      'border-tone-success-border bg-tone-success-bg text-tone-success-strong ring-1 ring-emerald-200',
+      'border-tone-success-border bg-tone-success-bg text-tone-success-strong ring-1 ring-tone-success-border',
     iconClass: 'text-tone-success-icon',
     confirmType: 'success',
   },
@@ -70,7 +70,7 @@ const DECISION_OPTIONS: readonly DecisionOptionConfig[] = [
     hint: 'Trả lại giảng viên bổ sung nội dung và gửi duyệt lại.',
     icon: RotateCcw,
     activeClass:
-      'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong ring-1 ring-amber-200',
+      'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong ring-1 ring-tone-warning-border',
     iconClass: 'text-tone-warning-icon',
     confirmType: 'warning',
   },
@@ -80,7 +80,7 @@ const DECISION_OPTIONS: readonly DecisionOptionConfig[] = [
     hint: 'Không phù hợp định hướng hoặc trùng lặp, dừng quy trình.',
     icon: XCircle,
     activeClass:
-      'border-tone-danger-border bg-tone-danger-bg text-tone-danger-strong ring-1 ring-rose-200',
+      'border-tone-danger-border bg-tone-danger-bg text-tone-danger-strong ring-1 ring-tone-danger-border',
     iconClass: 'text-tone-danger-icon',
     confirmType: 'error',
   },

@@ -16,7 +16,6 @@ import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useAuth } from '@/shared/auth';
-import { getIdentityAccess } from '@/shared/auth/identityAccess';
 import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { navigationSections } from '@/shared/layout/navigationConfig';
@@ -32,7 +31,8 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const WORKFLOW_DESCRIPTIONS: Record<string, string> = {
-  '/modules/identity': 'Quản lý danh sách tài khoản sinh viên, giảng viên và phân quyền vai trò.',
+  '/modules/identity/students': 'Quản lý danh sách tài khoản sinh viên, giảng viên và cán bộ.',
+  '/modules/identity/permissions': 'Thiết lập và phân quyền truy cập theo từng vai trò hệ thống.',
   '/admin/grade-config': 'Thiết lập tỷ trọng điểm hướng dẫn, phản biện, hội đồng theo từng đợt.',
   '/admin/audit-logs': 'Tra cứu lịch sử thao tác và truy vết bảo mật trên toàn hệ thống.',
   '/academic/periods': 'Khởi tạo đợt khóa luận, cấu hình mốc thời gian và cổng nộp hồ sơ.',
@@ -69,9 +69,6 @@ export function DashboardPage() {
         return section.items
           .filter((item) => {
             if (item.path === '/') return false;
-            if (item.path === '/modules/identity') {
-              return getIdentityAccess(hasPermission).canAccess;
-            }
             const requiredPerms = item.permissions || item.permission;
             if (requiredPerms) {
               const perms = Array.isArray(requiredPerms) ? requiredPerms : [requiredPerms];

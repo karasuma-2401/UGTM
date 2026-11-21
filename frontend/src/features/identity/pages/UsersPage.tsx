@@ -1,7 +1,7 @@
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { OperationToast } from '@/shared/notifications';
 import { useQueryClient } from '@tanstack/react-query';
-import { UsersRound, GraduationCap, UserPlus, Upload, X, Clock3, Ban } from 'lucide-react';
+import { UsersRound, UserPlus, Upload, X, Clock3, Ban } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -42,7 +42,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
       <PageHeader
         compact
         accent
-        title="Tài khoản và phân quyền"
+        title="Tài khoản"
         icon={<UsersRound />}
         navigation={<IdentityNavigation />}
       >
@@ -58,7 +58,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             {isStudent ? 'Thêm sinh viên' : 'Thêm giảng viên / cán bộ'}
           </Button>
         )}
-        {isStudent && canImport && (
+        {canImport && (
           <Button
             type="button"
             variant="success"
@@ -74,7 +74,9 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
 
       <OperationToast message={modals.notice} onConsumed={() => modals.setNotice('')} />
 
-      {actions.mutationError && <InlineAlert tone="error">{getUserErrorMessage(actions.mutationError)}</InlineAlert>}
+      {actions.mutationError && (
+        <InlineAlert tone="error">{getUserErrorMessage(actions.mutationError)}</InlineAlert>
+      )}
 
       {modals.isFormOpen && canManage && (
         <UserFormDialog
@@ -95,12 +97,15 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
         />
       )}
 
-      {modals.isImportOpen && isStudent && canImport && (
+      {modals.isImportOpen && canImport && (
         <StudentImportDialog
+          role={isStudent ? 'Student' : 'Lecturer'}
           onClose={() => modals.setIsImportOpen(false)}
           onImported={async (count) => {
             modals.setNotice(
-              `Đã tạo ${count.toLocaleString('vi-VN')} tài khoản sinh viên chờ kích hoạt. Sinh viên có thể yêu cầu link tại trang kích hoạt.`,
+              isStudent
+                ? `Đã tạo ${count.toLocaleString('vi-VN')} tài khoản sinh viên chờ kích hoạt. Sinh viên có thể yêu cầu link tại trang kích hoạt.`
+                : `Đã tạo ${count.toLocaleString('vi-VN')} tài khoản giảng viên chờ kích hoạt. Giảng viên có thể yêu cầu link tại trang kích hoạt.`,
             );
             filters.setPageNumber(1);
             await queryClient.invalidateQueries({ queryKey: ['admin-users'] });
@@ -123,15 +128,14 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
           actions.pendingStatusUser && (
             <div className="space-y-2">
               <p className="text-sm text-ink-heading">
-                Bạn sắp {actions.pendingStatusUser.status === 'Active' ? 'vô hiệu hóa' : 'khôi phục'} tài khoản{' '}
+                Bạn sắp{' '}
+                {actions.pendingStatusUser.status === 'Active' ? 'vô hiệu hóa' : 'khôi phục'} tài
+                khoản{' '}
                 <strong className="font-semibold text-ink-primary">
                   {actions.pendingStatusUser.fullName}
                 </strong>
                 {actions.pendingStatusUser.userCode ? (
-                  <span className="text-ink-muted">
-                    {' '}
-                    ({actions.pendingStatusUser.userCode})
-                  </span>
+                  <span className="text-ink-muted"> ({actions.pendingStatusUser.userCode})</span>
                 ) : null}
                 .
               </p>
@@ -150,7 +154,6 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
       <Card className="min-w-0 overflow-hidden rounded-2xl border-line/80 shadow-xs">
         <ListCardHeader
           title="Danh sách tài khoản"
-          icon={isStudent ? <GraduationCap /> : <UsersRound />}
           description={`${data.formatCount(users?.totalCount)} ${isStudent ? 'sinh viên' : 'giảng viên / cán bộ'}`}
           className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
         >
@@ -209,9 +212,7 @@ export function UsersPage({ accountGroup }: UsersPageProps) {
             )}
             {data.statisticsQuery.isError && (
               <div role="alert" className="mt-2 flex flex-wrap items-center gap-2">
-                <p className="text-xs text-tone-danger-text">
-                  Không thể tải thống kê tài khoản.
-                </p>
+                <p className="text-xs text-tone-danger-text">Không thể tải thống kê tài khoản.</p>
                 <Button
                   type="button"
                   variant="outline"

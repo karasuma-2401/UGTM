@@ -69,7 +69,7 @@ export function UserFormDialog({
             <span className="flex items-center gap-3">
               <span
                 aria-hidden="true"
-                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-info-bg text-primary ring-1 ring-inset ring-blue-100"
+                className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-info-bg text-primary ring-1 ring-inset ring-tone-info-border/70"
               >
                 <UserPlus className="size-5" />
               </span>

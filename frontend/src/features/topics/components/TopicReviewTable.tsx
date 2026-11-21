@@ -260,7 +260,7 @@ export function TopicReviewTable({
               {topic.reviewNote?.trim() && (
                 <span
                   title={stripRichText(topic.reviewNote)}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-md bg-tone-warning-bg px-1.5 py-0.5 text-[10px] font-medium text-tone-warning-text ring-1 ring-inset ring-amber-200/80"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md bg-tone-warning-bg px-1.5 py-0.5 text-[10px] font-medium text-tone-warning-text ring-1 ring-inset ring-tone-warning-border/80"
                 >
                   <MessageSquareText className="size-3" aria-hidden="true" />
                   Có góp ý

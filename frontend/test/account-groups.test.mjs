@@ -164,6 +164,28 @@ test('student import uploads multipart data with a fixed Student role', async ()
   assert.equal((await api.importStudents(file)).importedCount, 25);
 });
 
+test('lecturer import and template requests send Lecturer role to the backend', async () => {
+  const file = new File(['test'], 'lecturers.xlsx');
+  const api = apiFixture({
+    post: async (path, body, config) => {
+      assert.equal(path, '/api/users/import');
+      assert.equal(body.get('role'), 'Lecturer');
+      assert.equal(body.get('file').name, 'lecturers.xlsx');
+      assert.equal(config.headers['Content-Type'], undefined);
+      return { data: { success: true, data: { importedCount: 12 } } };
+    },
+    get: async (path, config) => {
+      assert.equal(path, '/api/users/import-template');
+      assert.equal(config.params.role, 'Lecturer');
+      assert.equal(config.responseType, 'blob');
+      return { data: new Blob(['xlsx']) };
+    },
+  });
+  assert.equal((await api.importUsers(file, 'Lecturer')).importedCount, 12);
+  const blob = await api.downloadUserTemplate('Lecturer');
+  assert.ok(blob instanceof Blob);
+});
+
 function usersPageFixture(accountGroup, queryState = {}) {
   const state = [];
   let cursor = 0;
@@ -463,6 +485,19 @@ test('Users supports server-side column sorting and renders TableFloatingBar for
   const floatingBars = page.find((node) => node.type === 'TableFloatingBar');
   assert.equal(floatingBars.length, 1);
   assert.equal(floatingBars[0].props.selectedCount, 1);
+});
+
+test('Staff tab renders Nhập Excel button and opens Lecturer import dialog', () => {
+  const page = usersPageFixture('Staff');
+  const importBtn = page.find(
+    (node) => node.type === 'Button' && String(node.props.children) === 'Nhập Excel',
+  );
+  assert.equal(importBtn.length, 1);
+  importBtn[0].props.onClick();
+  page.render();
+  const dialogs = page.find((node) => node.type === 'StudentImportDialog');
+  assert.equal(dialogs.length, 1);
+  assert.equal(dialogs[0].props.role, 'Lecturer');
 });
 
 test("editing only enables save for actual changes and restores clean state when reverted", () => {

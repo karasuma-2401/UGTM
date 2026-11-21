@@ -13,13 +13,11 @@ import {
   ChevronLeft,
   Sun,
   Moon,
-  Monitor,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/shared/auth';
-import { getIdentityAccess } from '@/shared/auth/identityAccess';
 import { ThemeToggle, useTheme } from '@/shared/theme';
 import { navigationSections, type NavItemConfig } from './navigationConfig';
 import { CurrentAcademicBatch } from './CurrentAcademicBatch';
@@ -109,7 +107,7 @@ export function AppLayout() {
     return () => animation.cancel();
   }, [location.pathname]);
   const { user, logout, isLoggingOut, hasPermission, hasRole } = useAuth();
-  const { preference: themePreference, setPreference: setThemePreference } = useTheme();
+  const { theme, setTheme } = useTheme();
 
   const toggleSidebarCollapse = () => {
     setSidebarCollapsed((prev) => {
@@ -130,9 +128,6 @@ export function AppLayout() {
         if (section.permissions && !hasPermission(section.permissions)) return null;
 
         const visibleItems = section.items.filter((item) => {
-          if (item.path === '/modules/identity') {
-            return getIdentityAccess(hasPermission).canAccess;
-          }
           const requiredPerms = item.permissions || item.permission;
           if (requiredPerms) {
             const perms = Array.isArray(requiredPerms) ? requiredPerms : [requiredPerms];
@@ -629,22 +624,24 @@ export function AppLayout() {
                 <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
                   Giao diện hiển thị
                 </div>
-                <div className="grid grid-cols-3 gap-1.5 px-1 pt-1">
+                <div className="grid grid-cols-2 gap-1.5 px-1 pt-1">
                   {(
                     [
                       { value: 'light', label: 'Sáng', Icon: Sun },
                       { value: 'dark', label: 'Tối', Icon: Moon },
-                      { value: 'system', label: 'Hệ thống', Icon: Monitor },
                     ] as const
                   ).map(({ value, label, Icon }) => {
-                    const active = themePreference === value;
+                    const active = theme === value;
                     return (
                       <button
                         key={value}
                         type="button"
-                        onClick={() => {
-                          setThemePreference(value);
-                          setCommandOpen(false);
+                        aria-pressed={active}
+                        onClick={(event) => {
+                          setTheme(value, {
+                            sourceElement: event.currentTarget,
+                            onBeforeCommit: () => setCommandOpen(false),
+                          });
                         }}
                         className={cn(
                           'flex items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs font-medium transition-colors cursor-pointer',

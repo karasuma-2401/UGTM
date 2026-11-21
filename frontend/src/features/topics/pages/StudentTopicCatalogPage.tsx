@@ -424,7 +424,6 @@ export function StudentTopicCatalogContent() {
       >
         <ListCardHeader
           title="Danh mục đề tài đã công bố"
-          icon={<BookOpen />}
           className="min-h-0 lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
           description={
             filters.batchId

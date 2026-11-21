@@ -9,12 +9,7 @@
     <script>
       (function () {
         try {
-          var pref = localStorage.getItem('ugtm:theme') || 'system';
-          var isDark =
-            pref === 'dark' ||
-            (pref === 'system' &&
-              window.matchMedia &&
-              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var isDark = localStorage.getItem('ugtm:theme') === 'dark';
           var root = document.documentElement;
           root.classList.toggle('dark', isDark);
           root.dataset.theme = isDark ? 'dark' : 'light';
