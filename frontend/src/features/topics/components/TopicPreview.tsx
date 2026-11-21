@@ -72,7 +72,7 @@ export function TopicPreview({
               <>
                 <Avatar
                   name={advisorName || '?'}
-                  className="size-7 text-[11px] ring-1 ring-slate-200/80"
+                  className="size-7 text-[11px] ring-1 ring-line/80"
                 />
                 <div className="min-w-0 leading-tight">
                   <span className="block text-[11px] text-ink-muted">Giảng viên hướng dẫn</span>
@@ -156,7 +156,7 @@ export function TopicPreview({
             <span>Yêu cầu công nghệ và kiến thức</span>
           </h3>
           {requirementItems && (
-            <span className="rounded-full bg-surface-card px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink-body ring-1 ring-inset ring-slate-200/80">
+            <span className="rounded-full bg-surface-card px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink-body ring-1 ring-inset ring-line/80">
               {`${requirementItems.length} tiêu chí`}
             </span>
           )}

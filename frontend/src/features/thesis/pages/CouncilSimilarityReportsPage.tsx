@@ -295,7 +295,7 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
         className="grid-cols-2 sm:grid-cols-3 grid-flow-row lg:grid-flow-col"
       />
 
-      <Card className="rounded-2xl border-slate-200/80 shadow-xs overflow-hidden bg-white">
+      <Card className="rounded-2xl border-line/80 shadow-xs overflow-hidden bg-surface-card">
         <div className="flex flex-col gap-3 border-b border-line-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-ink-subtle" />

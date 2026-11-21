@@ -164,11 +164,11 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                 isLoading
                   ? 'bg-surface-muted text-ink-body'
                   : configStatus === 'Active'
-                    ? 'bg-tone-success-bg text-tone-success-text ring-1 ring-inset ring-emerald-200/80'
+                    ? 'bg-tone-success-bg text-tone-success-text ring-1 ring-inset ring-tone-success-border/80'
                     : configStatus === 'Retired'
                       ? 'bg-surface-muted text-ink-body'
                       : isDirty
-                        ? 'bg-tone-warning-bg text-tone-warning-strong ring-1 ring-inset ring-amber-200/80'
+                        ? 'bg-tone-warning-bg text-tone-warning-strong ring-1 ring-inset ring-tone-warning-border/80'
                         : 'bg-surface-muted text-ink-body'
               }`}
             >
@@ -288,7 +288,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                                   title={`Giảm ${weightStep}`}
                                   disabled={item.weight <= 0}
                                   onClick={() => handleStepWeight(index, -1)}
-                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-l-xl bg-surface-subtle/80 text-ink-body transition-colors hover:bg-tone-info-bg hover:text-primary active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-surface-hover"
+                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-l-xl bg-surface-subtle/80 text-ink-body transition-colors hover:bg-tone-info-bg hover:text-primary active:bg-tone-info-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-surface-hover"
                                 >
                                   <Minus className="size-4" aria-hidden="true" />
                                 </button>
@@ -312,7 +312,7 @@ export const ScoreComponentTable: React.FC<ScoreComponentTableProps> = ({
                                   title={`Tăng ${weightStep}`}
                                   disabled={item.weight >= maximumWeight}
                                   onClick={() => handleStepWeight(index, 1)}
-                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-r-xl bg-surface-subtle/80 text-ink-body transition-colors hover:bg-tone-info-bg hover:text-primary active:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-surface-hover"
+                                  className="flex size-11 md:size-9 shrink-0 items-center justify-center rounded-r-xl bg-surface-subtle/80 text-ink-body transition-colors hover:bg-tone-info-bg hover:text-primary active:bg-tone-info-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-surface-hover"
                                 >
                                   <Plus className="size-4" aria-hidden="true" />
                                 </button>

@@ -164,11 +164,11 @@ function PipelineStepper({ status }: { status: string }) {
             step.state === 'done'
               ? 'bg-tone-success-bg border-tone-success-border text-tone-success-icon'
               : step.state === 'active'
-                ? 'bg-tone-info-bg border-tone-info-border text-brand-ink ring-4 ring-blue-100/70'
+                ? 'bg-tone-info-bg border-tone-info-border text-brand-ink ring-4 ring-tone-info-border/50'
                 : step.state === 'warning'
-                  ? 'bg-tone-warning-bg border-tone-warning-border text-tone-warning-text ring-4 ring-amber-100/70'
+                  ? 'bg-tone-warning-bg border-tone-warning-border text-tone-warning-text ring-4 ring-tone-warning-border/50'
                   : step.state === 'error'
-                    ? 'bg-tone-danger-bg border-tone-danger-border text-tone-danger-icon ring-4 ring-rose-100/70'
+                    ? 'bg-tone-danger-bg border-tone-danger-border text-tone-danger-icon ring-4 ring-tone-danger-border/50'
                     : 'bg-surface-card border-line-input/90 text-ink-subtle';
 
           const titleClasses =

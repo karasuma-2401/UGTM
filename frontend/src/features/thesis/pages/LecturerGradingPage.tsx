@@ -938,9 +938,9 @@ export function LecturerGradingPage() {
               placeholder={batchesQuery.isLoading ? 'Đang tải đợt KLTN...' : 'Chọn đợt KLTN'}
               options={batchOptions}
               onChange={handleBatchChange}
-              triggerClassName="h-10 rounded-xl border-slate-200/90 bg-white text-xs font-semibold text-slate-800 shadow-2xs hover:border-slate-300"
-              contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] left-0 right-auto p-1.5 rounded-xl border-slate-200/90 shadow-lg"
-              optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-slate-700 hover:bg-slate-50"
+              triggerClassName="h-10 rounded-xl border-line/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong"
+              contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] left-0 right-auto p-1.5 rounded-xl border-line/90 shadow-lg"
+              optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover"
             />
           </div>
         )}
@@ -1301,12 +1301,12 @@ export function LecturerGradingPage() {
               <span
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ${
                   isLocked
-                    ? 'bg-tone-success-bg text-tone-success-text ring-emerald-200'
+                    ? 'bg-tone-success-bg text-tone-success-text ring-tone-success-border'
                     : group.evaluationStatus === 'Submitted'
-                      ? 'bg-tone-info-bg text-tone-info-text ring-blue-200'
+                      ? 'bg-tone-info-bg text-tone-info-text ring-tone-info-border'
                       : group.evaluationStatus === 'Draft'
-                        ? 'bg-tone-warning-bg text-tone-warning-text ring-amber-200'
-                        : 'bg-surface-card text-ink-body ring-slate-200'
+                        ? 'bg-tone-warning-bg text-tone-warning-text ring-tone-warning-border'
+                        : 'bg-surface-card text-ink-body ring-line'
                 }`}
               >
                 {isLocked && <Lock className="size-3.5" aria-hidden="true" />}
@@ -1380,7 +1380,7 @@ export function LecturerGradingPage() {
                       }
                       className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition ${
                         advisorDecision === 'Approve'
-                          ? 'border-blue-600 bg-tone-info-bg ring-2 ring-blue-100'
+                          ? 'border-primary bg-tone-info-bg ring-2 ring-tone-info-border/70'
                           : 'border-line bg-surface-card hover:border-line-strong'
                       } disabled:opacity-60`}
                     >
@@ -1407,7 +1407,7 @@ export function LecturerGradingPage() {
                       }
                       className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition ${
                         advisorDecision === 'Reject'
-                          ? 'border-amber-600 bg-tone-warning-bg ring-2 ring-amber-100'
+                          ? 'border-tone-warning-icon bg-tone-warning-bg ring-2 ring-tone-warning-border/70'
                           : 'border-line bg-surface-card hover:border-line-strong'
                       } disabled:opacity-60`}
                     >
@@ -1447,7 +1447,7 @@ export function LecturerGradingPage() {
                         }
                         rows={2}
                         placeholder="Nhập nội dung cần nhóm sinh viên bổ sung hoặc hoàn thiện..."
-                        className="mt-1.5 w-full rounded-lg border border-line-strong bg-surface-card p-2.5 text-sm text-ink-primary outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                        className="mt-1.5 w-full rounded-lg border border-line-strong bg-surface-card p-2.5 text-sm text-ink-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </div>
                   )}
@@ -1476,7 +1476,7 @@ export function LecturerGradingPage() {
                       }
                       className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition ${
                         reviewerDecision === 'Approved'
-                          ? 'border-emerald-600 bg-tone-success-bg ring-2 ring-emerald-100'
+                          ? 'border-tone-success-icon bg-tone-success-bg ring-2 ring-tone-success-border/70'
                           : 'border-line bg-surface-card hover:border-line-strong'
                       } disabled:opacity-60`}
                     >
@@ -1506,7 +1506,7 @@ export function LecturerGradingPage() {
                       }
                       className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition ${
                         reviewerDecision === 'Rejected'
-                          ? 'border-red-600 bg-tone-danger-bg ring-2 ring-red-100'
+                          ? 'border-tone-danger-icon bg-tone-danger-bg ring-2 ring-tone-danger-border/70'
                           : 'border-line bg-surface-card hover:border-line-strong'
                       } disabled:opacity-60`}
                     >

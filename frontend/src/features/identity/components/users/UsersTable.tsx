@@ -33,11 +33,11 @@ import {
 const roleAppearance: Record<SystemRole, { icon: LucideIcon; tone: string }> = {
   Admin: {
     icon: ShieldCheck,
-    tone: 'bg-tone-violet-bg text-tone-violet-icon ring-violet-100',
+    tone: 'bg-tone-violet-bg text-tone-violet-icon ring-tone-violet-border/70',
   },
   Student: {
     icon: GraduationCap,
-    tone: 'bg-tone-info-bg text-tone-info-icon ring-blue-100',
+    tone: 'bg-tone-info-bg text-tone-info-icon ring-tone-info-border/70',
   },
   Lecturer: {
     icon: BookOpen,
@@ -45,7 +45,7 @@ const roleAppearance: Record<SystemRole, { icon: LucideIcon; tone: string }> = {
   },
   Faculty: {
     icon: Building2,
-    tone: 'bg-tone-warning-bg text-tone-warning-icon ring-amber-100',
+    tone: 'bg-tone-warning-bg text-tone-warning-icon ring-tone-warning-border/70',
   },
   AcademicAffairs: {
     icon: Landmark,
@@ -53,7 +53,7 @@ const roleAppearance: Record<SystemRole, { icon: LucideIcon; tone: string }> = {
   },
   CouncilMember: {
     icon: UsersRound,
-    tone: 'bg-tone-danger-bg text-tone-danger-icon ring-rose-100',
+    tone: 'bg-tone-danger-bg text-tone-danger-icon ring-tone-danger-border/70',
   },
 };
 

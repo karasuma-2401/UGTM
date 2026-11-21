@@ -15,7 +15,7 @@ export function GradingBackLink({
       <button
         type="button"
         onClick={onClick}
-        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-ink-body transition hover:bg-surface-hover hover:text-ink-primary hover:shadow-2xs hover:ring-1 hover:ring-slate-200/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-ink-body transition hover:bg-surface-hover hover:text-ink-primary hover:shadow-2xs hover:ring-1 hover:ring-line/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
         <span>{label}</span>

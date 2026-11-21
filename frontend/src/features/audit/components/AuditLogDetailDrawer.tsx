@@ -93,7 +93,7 @@ export const AuditLogDetailDrawer: React.FC<AuditLogDetailDrawerProps> = ({
     <div className="flex min-w-0 items-start gap-3 pr-2">
       <span
         aria-hidden="true"
-        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-info-bg text-primary ring-1 ring-inset ring-blue-100"
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-info-bg text-primary ring-1 ring-inset ring-tone-info-border/70"
       >
         <ScrollText className="size-5" />
       </span>

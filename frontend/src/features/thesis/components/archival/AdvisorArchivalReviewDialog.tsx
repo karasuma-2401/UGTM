@@ -625,7 +625,7 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                     className={cn(
                       'flex w-full items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-60',
                       decision === 'AdvisorConfirm'
-                        ? 'border-primary bg-tone-info-bg shadow-2xs ring-1 ring-blue-200'
+                        ? 'border-primary bg-tone-info-bg shadow-2xs ring-1 ring-tone-info-border'
                         : 'border-line/90 bg-surface-card hover:border-line-strong hover:bg-surface-hover/70',
                     )}
                   >
@@ -658,7 +658,7 @@ export const AdvisorArchivalReviewDialog: React.FC<AdvisorArchivalReviewDialogPr
                     className={cn(
                       'flex w-full items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/30 disabled:opacity-60',
                       decision === 'RequestRevision'
-                        ? 'border-rose-400 bg-tone-danger-bg shadow-2xs ring-1 ring-rose-200'
+                        ? 'border-tone-danger-icon bg-tone-danger-bg shadow-2xs ring-1 ring-tone-danger-border'
                         : 'border-line/90 bg-surface-card hover:border-line-strong hover:bg-surface-hover/70',
                     )}
                   >

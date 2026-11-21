@@ -182,7 +182,7 @@ export function CouncilMinuteAuditDock({
             <div className="flex items-center justify-between text-ink-muted">
               <span className="font-medium text-ink-secondary">Diễn giải phép tính</span>
               {calculationPreview.configurationVersion && (
-                <span className="rounded-md bg-surface-card px-1.5 py-0.5 text-[11px] font-semibold text-ink-secondary ring-1 ring-slate-200/80 tabular-nums">
+                <span className="rounded-md bg-surface-card px-1.5 py-0.5 text-[11px] font-semibold text-ink-secondary ring-1 ring-line/80 tabular-nums">
                   Cấu hình v{calculationPreview.configurationVersion}
                 </span>
               )}
@@ -225,7 +225,7 @@ export function CouncilMinuteAuditDock({
                             <span className="line-through">
                               {formatScoreDecimal(item.score, 2)} × {item.weight}
                             </span>
-                            <span className="rounded bg-tone-danger-bg px-1 py-0.5 text-[10px] font-semibold text-tone-danger-icon ring-1 ring-rose-200/70">
+                            <span className="rounded bg-tone-danger-bg px-1 py-0.5 text-[10px] font-semibold text-tone-danger-icon ring-1 ring-tone-danger-border/70">
                               Loại
                             </span>
                           </span>
