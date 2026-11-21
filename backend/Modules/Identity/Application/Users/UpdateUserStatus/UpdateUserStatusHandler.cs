@@ -105,7 +105,8 @@ public sealed class UpdateUserStatusHandler(
                 user.Status.ToString(),
                 roles,
                 user.CreatedAt,
-                user.LastLoginAt));
+                user.LastLoginAt,
+                user.MustChangePassword));
         }, cancellationToken);
     }
 }

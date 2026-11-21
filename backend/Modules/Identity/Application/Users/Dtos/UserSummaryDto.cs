@@ -9,4 +9,5 @@ public sealed record UserSummaryDto(
     string Status,
     IReadOnlyList<string> Roles,
     DateTime CreatedAt,
-    DateTime? LastLoginAt);
+    DateTime? LastLoginAt,
+    bool MustChangePassword = false);

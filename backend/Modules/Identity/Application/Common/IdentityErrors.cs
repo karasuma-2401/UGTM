@@ -161,4 +161,32 @@ public static class IdentityErrors
     public static readonly Error InvalidSort = Error.Validation(
         "Identity.InvalidSort",
         "Tham số sắp xếp không hợp lệ.");
+
+    public static readonly Error CannotResetOwnPassword = Error.Validation(
+        "Identity.CannotResetOwnPassword",
+        "Không thể dùng chức năng quản trị để tự đặt lại mật khẩu của chính mình. Vui lòng sử dụng chức năng đổi mật khẩu cá nhân.");
+
+    public static readonly Error CannotManageAdminPassword = Error.Forbidden(
+        "Identity.CannotManageAdminPassword",
+        "Chỉ tài khoản mang vai trò Quản trị viên (Admin) mới được đặt lại mật khẩu của tài khoản Admin khác.");
+
+    public static readonly Error CannotResetPasswordForPendingAccount = Error.Validation(
+        "Identity.CannotResetPasswordForPendingAccount",
+        "Không thể đặt lại mật khẩu cho tài khoản đang ở trạng thái chờ kích hoạt (PendingActivation).");
+
+    public static readonly Error InvalidPasswordResetMode = Error.Validation(
+        "Identity.InvalidPasswordResetMode",
+        "Chế độ đặt lại mật khẩu không hợp lệ (chỉ chấp nhận 'Custom' hoặc 'Generated').");
+
+    public static readonly Error ReauthenticationFailed = Error.Validation(
+        "Identity.ReauthenticationFailed",
+        "Mật khẩu xác nhận của quản trị viên không đúng.");
+
+    public static readonly Error PasswordChangeRequired = Error.Forbidden(
+        "Identity.PasswordChangeRequired",
+        "Tài khoản của bạn được yêu cầu đổi mật khẩu trước khi tiếp tục sử dụng hệ thống.");
+
+    public static readonly Error PasswordMustDifferFromCurrent = Error.Validation(
+        "Identity.PasswordMustDifferFromCurrent",
+        "Mật khẩu mới không được trùng với mật khẩu hiện tại.");
 }

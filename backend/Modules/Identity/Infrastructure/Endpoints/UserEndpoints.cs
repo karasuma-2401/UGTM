@@ -8,6 +8,7 @@ using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.Dtos;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
 using UGTM.Modules.Identity.Application.Users.ImportUsers;
+using UGTM.Modules.Identity.Application.Users.ResetPassword;
 using UGTM.Modules.Identity.Application.Users.UpdateUser;
 using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 using UGTM.Modules.Identity.Contracts.Authorization;
@@ -35,6 +36,13 @@ public static class UserEndpoints
         IReadOnlyList<string>? Roles);
 
     public sealed record UpdateUserStatusRequest(string Status);
+
+    public sealed record AdminResetPasswordRequest(
+        string? Mode = null,
+        string? NewPassword = null,
+        bool RequirePasswordChange = true,
+        string? AdminPassword = null,
+        string? Reason = null);
 
     public static IEndpointRouteBuilder MapIdentityUserEndpoints(
         this IEndpointRouteBuilder endpoints)
@@ -197,6 +205,35 @@ public static class UserEndpoints
             .Produces(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
+        group.MapPost("/{id:guid}/reset-password", ResetPasswordAsync)
+            .WithSummary("Quản trị viên đổi hoặc đặt lại mật khẩu tạm cho tài khoản")
+            .WithDescription("""
+                Cho phép Quản trị viên đặt mật khẩu mới (`Custom`) hoặc cấp mật khẩu tạm ngẫu nhiên mạnh (`Generated`) cho tài khoản người dùng khác.
+                - Chế độ `Custom`: quản trị viên cung cấp `newPassword` đáp ứng chính sách bảo mật (12–128 ký tự, đủ chữ hoa, chữ thường, chữ số, ký tự đặc biệt không phải khoảng trắng). Trường `temporaryPassword` trả về luôn là `null`.
+                - Chế độ `Generated`: không truyền `newPassword`; hệ thống sinh ngẫu nhiên 1 mật khẩu tạm mạnh 16 ký tự bằng CSPRNG và trả về duy nhất 1 lần tại `data.temporaryPassword` kèm header `Cache-Control: no-store`.
+                - Mặc định `requirePasswordChange = true`: gắn cờ `must_change_password` để người dùng bắt buộc đổi mật khẩu ở lần đăng nhập kế tiếp (các API nghiệp vụ khác sẽ bị chặn với 403 `Identity.PasswordChangeRequired` cho tới khi đổi mật khẩu thành công).
+                - Bắt buộc nhập lại mật khẩu hiện tại của người quản trị (`adminPassword`) để xác nhận thao tác nhạy cảm (`IReauthenticationVerifier`).
+                - Sau khi đặt lại mật khẩu thành công: giữ nguyên trạng thái tài khoản (`Active`/`Suspended`/`Disabled`), xóa lockout đếm sai mật khẩu, xoay `SecurityStamp`, thu hồi toàn bộ phiên đăng nhập cũ, vô hiệu hóa các OTP/ResetGrant khôi phục mật khẩu đang chờ, ghi Audit Log (không lưu mật khẩu) và đưa email cảnh báo bảo mật (không chứa mật khẩu) vào Transactional Outbox.
+                - Không cho phép tự đặt lại mật khẩu của chính mình (`400 Identity.CannotResetOwnPassword`) hoặc thao tác trên tài khoản chưa kích hoạt `PendingActivation` (`400 Identity.CannotResetPasswordForPendingAccount`).
+                - Tài khoản có quyền `identity.users.manage` nhưng không mang vai trò `Admin` bị chặn đặt lại mật khẩu của tài khoản `Admin` (`403 Identity.CannotManageAdminPassword`).
+
+                Yêu cầu Bearer token có quyền `identity.users.manage` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm `AdminResetPasswordResultDto`.
+                - Dữ liệu không hợp lệ, chế độ sai, mật khẩu yếu, tự đổi bản thân, tài khoản PendingActivation hoặc sai `adminPassword`: 400 Bad Request.
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền hoặc cố đặt lại mật khẩu cho tài khoản `Admin` khi không có role `Admin`: 403 Forbidden (`Identity.CannotManageAdminPassword`).
+                - Không tìm thấy user mục tiêu: 404 Not Found (`Identity.UserNotFound`).
+                - Tài khoản người thao tác bị khóa tạm do nhập sai `adminPassword` nhiều lần: 429 Too Many Requests (`Identity.AccountLocked`).
+                """)
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityUsersManage}")
+            .AddEndpointFilter<SensitiveResponseHeadersFilter>()
+            .Produces<ApiResponse<AdminResetPasswordResultDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status429TooManyRequests);
+
         return endpoints;
     }
 
@@ -330,6 +367,24 @@ public static class UserEndpoints
         CancellationToken cancellationToken)
     {
         var command = new UpdateUserStatusCommand(id, request?.Status ?? string.Empty);
+        var result = await handler.HandleAsync(command, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> ResetPasswordAsync(
+        Guid id,
+        [FromBody] AdminResetPasswordRequest? request,
+        AdminResetPasswordHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var command = new AdminResetPasswordCommand(
+            id,
+            request?.Mode ?? string.Empty,
+            request?.NewPassword,
+            request?.RequirePasswordChange ?? true,
+            request?.AdminPassword ?? string.Empty,
+            request?.Reason);
+
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
     }

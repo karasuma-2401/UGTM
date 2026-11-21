@@ -1552,6 +1552,8 @@ public sealed class UsersHandlerTests
         }
 
         public void EnqueuePasswordRecoveryEmail(Guid userId, string email, string fullName, string code, DateTime createdAt) { }
+
+        public void EnqueueAdminPasswordResetAlertEmail(Guid userId, string email, string fullName, bool mustChangePassword, DateTime createdAt) { }
     }
 
     private sealed class FakeTokenService : IOpaqueTokenService

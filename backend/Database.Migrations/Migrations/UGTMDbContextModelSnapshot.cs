@@ -2473,6 +2473,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("lockout_end_at");
 
+                    b.Property<bool>("MustChangePassword")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("must_change_password");
+
                     b.Property<string>("NormalizedEmail")
                         .IsRequired()
                         .HasMaxLength(150)

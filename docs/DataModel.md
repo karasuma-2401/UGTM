@@ -705,6 +705,7 @@ Navigation: `Permission` → Permission; `Role` → Role.
 | FullName | full_name | `String` | `character varying(150)` | Không | — |
 | LastLoginAt | last_login_at | `DateTime?` | `timestamp with time zone` | Có | — |
 | LockoutEndAt | lockout_end_at | `DateTime?` | `timestamp with time zone` | Có | — |
+| MustChangePassword | must_change_password | `Boolean` | `boolean` | Không | false |
 | NormalizedEmail | normalized_email | `String` | `character varying(150)` | Không | — |
 | PasswordChangedAt | password_changed_at | `DateTime?` | `timestamp with time zone` | Có | — |
 | PasswordHash | password_hash | `String` | `text` | Có | — |

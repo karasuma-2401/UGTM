@@ -64,6 +64,7 @@ Các phản hồi từ tầng pipeline ASP.NET Core & OpenApi/Scalar:
 | `GET` | `/api/users/import-template?role=Student` | `identity.users.import` hoặc vai trò `Admin` | Tải file `.xlsx` mẫu theo loại tài khoản |
 | `PUT` | `/api/users/{id}` | `identity.users.manage` hoặc vai trò `Admin` | Cập nhật thông tin hồ sơ và danh sách vai trò |
 | `PATCH` | `/api/users/{id}/status` | `identity.users.manage` hoặc vai trò `Admin` | Khóa / Mở khóa / Tạm ngưng tài khoản người dùng |
+| `POST` | `/api/users/{id}/reset-password` | `identity.users.manage` hoặc vai trò `Admin` | Quản trị viên đặt mật khẩu mới (`Custom`) hoặc mật khẩu tạm (`Generated`) |
 | `GET` | `/api/users/{id}/sessions` | `identity.sessions.revoke` hoặc vai trò `Admin` | Xem các phiên còn hoạt động của người dùng |
 | `DELETE` | `/api/users/{id}/sessions/{sessionId}` | `identity.sessions.revoke` hoặc vai trò `Admin` | Thu hồi một phiên của người dùng |
 | `DELETE` | `/api/users/{id}/sessions` | `identity.sessions.revoke` hoặc vai trò `Admin` | Thu hồi toàn bộ phiên của người dùng |
@@ -406,7 +407,70 @@ Thay đổi trạng thái tài khoản người dùng (`Active`, `Suspended`, `D
 
 ---
 
-### 6. Quản lý phiên đăng nhập của người dùng
+### 6. `POST /api/users/{id}/reset-password` — Đặt lại mật khẩu bởi Quản trị viên
+
+Cho phép Quản trị viên đặt mật khẩu mới (`Custom`) hoặc sinh mật khẩu tạm ngẫu nhiên mạnh (`Generated`, 16 ký tự bằng CSPRNG) cho tài khoản khác. Response luôn trả kèm `Cache-Control: no-store`, `Pragma: no-cache`, `Expires: 0`.
+
+- **Chế độ `Custom`:** Bắt buộc truyền `newPassword` đạt chính sách bảo mật (12–128 ký tự, đủ chữ hoa, chữ thường, chữ số, ký tự đặc biệt không tính khoảng trắng). Trường `temporaryPassword` trả về luôn là `null`.
+- **Chế độ `Generated`:** Không truyền `newPassword`. Hệ thống sinh mật khẩu tạm mạnh và trả về **duy nhất 1 lần** trong `data.temporaryPassword`.
+- **Xác thực lại (`adminPassword`):** Bắt buộc truyền mật khẩu hiện tại của người quản trị để xác nhận thao tác nhạy cảm (`IReauthenticationVerifier`). Nếu nhập sai vượt ngưỡng cho phép sẽ khóa tạm tài khoản người thao tác (`429 Identity.AccountLocked`).
+- **Bảo vệ trạng thái & phân quyền:** Chặn tự thao tác trên chính mình (`400 Identity.CannotResetOwnPassword`), chặn tài khoản `PendingActivation` (`400 Identity.CannotResetPasswordForPendingAccount`), giữ nguyên trạng thái `Active`/`Suspended`/`Disabled`, và chặn người có `identity.users.manage` nhưng không mang vai trò `Admin` đặt lại mật khẩu của tài khoản `Admin` (`403 Identity.CannotManageAdminPassword`).
+- **Hiệu ứng sau đặt lại:** Xóa lockout của tài khoản mục tiêu, xoay `SecurityStamp`, thu hồi toàn bộ phiên hiện tại (`AdminPasswordReset`), vô hiệu hóa OTP/ResetGrant khôi phục đang chờ, ghi Audit Log (không chứa mật khẩu), đưa email cảnh báo bảo mật (không chứa mật khẩu) vào outbox, và áp dụng cờ `mustChangePassword` (mặc định `true`).
+
+#### Request Body
+
+```json
+{
+  "mode": "Generated",
+  "newPassword": null,
+  "requirePasswordChange": true,
+  "adminPassword": "CurrentAdminPassword!123",
+  "reason": "Sinh viên quên mật khẩu và mất quyền truy cập email cũ"
+}
+```
+
+| Trường | Kiểu | Bắt buộc | Mô tả |
+| :--- | :--- | :---: | :--- |
+| `mode` | `string` | Có | `'Custom'` hoặc `'Generated'` (không phân biệt hoa thường; chuỗi số bị từ chối) |
+| `newPassword` | `string?` | Theo mode | Bắt buộc và phải đạt chính sách mật khẩu khi `mode = 'Custom'`; phải để `null`/rỗng khi `mode = 'Generated'` |
+| `requirePasswordChange` | `boolean` | Không | Mặc định `true`. Bật/tắt ép đổi mật khẩu ở lần đăng nhập kế tiếp |
+| `adminPassword` | `string` | Có | Mật khẩu hiện tại của quản trị viên đang thao tác |
+| `reason` | `string?` | Không | Lý do thao tác (tối đa 500 ký tự, lưu vào Audit Log) |
+
+#### Phản hồi thành công (200 OK)
+
+```json
+{
+  "success": true,
+  "data": {
+    "userId": "33333333-3333-4333-8333-333333333333",
+    "mode": "Generated",
+    "temporaryPassword": "Kj9#mP4$xR7!nQ2@",
+    "mustChangePassword": true,
+    "passwordChangedAt": "2026-11-20T11:30:00Z",
+    "notificationEmailQueued": true
+  },
+  "error": null
+}
+```
+
+| HTTP Status | Mã lỗi | Nguyên nhân |
+| :--- | :--- | :--- |
+| 400 | `Identity.InvalidPasswordResetMode` | `mode` rỗng, chuỗi số hoặc khác `'Custom'` / `'Generated'` |
+| 400 | `Identity.CannotResetOwnPassword` | Cố tình dùng API quản trị để đặt lại mật khẩu của chính mình |
+| 400 | `Identity.WeakPassword` | `newPassword` trong chế độ `Custom` không đạt chính sách mật khẩu |
+| 400 | `Identity.InvalidInput` | Truyền `newPassword` ở chế độ `Generated`, `reason` vượt quá 500 ký tự hoặc `id` rỗng |
+| 400 | `Identity.ReauthenticationFailed` | Mật khẩu xác nhận `adminPassword` rỗng hoặc không chính xác |
+| 400 | `Identity.CannotResetPasswordForPendingAccount` | Tài khoản mục tiêu đang ở trạng thái `PendingActivation` |
+| 401 | — | Thiếu Access Token hoặc token không hợp lệ |
+| 403 | `Identity.CannotManageAdminPassword` | Người gọi có quyền `identity.users.manage` nhưng không có vai trò `Admin` và cố đặt lại mật khẩu của `Admin` |
+| 403 | — | Người dùng không có quyền `identity.users.manage` và không phải `Admin` |
+| 404 | `Identity.UserNotFound` | Không tìm thấy tài khoản mục tiêu |
+| 429 | `Identity.AccountLocked` | Tài khoản người thao tác bị khóa tạm do nhập sai `adminPassword` quá số lần quy định |
+
+---
+
+### 7. Quản lý phiên đăng nhập của người dùng
 
 Ba endpoint dưới đây yêu cầu `identity.sessions.revoke` hoặc vai trò `Admin`. Chúng không nhận body và không yêu cầu CSRF token vì xác thực bằng Bearer token.
 
@@ -464,6 +528,13 @@ Nếu Admin thao tác trên chính mình và thu hồi phiên đang gọi API, `
 | `Identity.CannotDisableLastAdmin` | 400 | Không thể tạm ngưng hoặc vô hiệu hóa tài khoản Quản trị viên (Admin) đang hoạt động cuối cùng |
 | `Identity.CannotRemoveLastAdminRole` | 400 | Không thể gỡ bỏ vai trò Quản trị viên (Admin) khỏi tài khoản Admin cuối cùng |
 | `Identity.AdminAlreadyExists` | 409 | Hệ thống đã có tài khoản Quản trị viên (Admin) |
+| `Identity.CannotResetOwnPassword` | 400 | Không thể dùng API quản trị để tự đặt lại mật khẩu của chính mình |
+| `Identity.CannotManageAdminPassword` | 403 | Người không mang vai trò `Admin` bị chặn đặt lại mật khẩu của tài khoản `Admin` |
+| `Identity.CannotResetPasswordForPendingAccount` | 400 | Không thể đặt lại mật khẩu cho tài khoản `PendingActivation` |
+| `Identity.InvalidPasswordResetMode` | 400 | Chế độ đặt lại mật khẩu khác `'Custom'` / `'Generated'` hoặc là chuỗi số |
+| `Identity.ReauthenticationFailed` | 400 | Mật khẩu xác nhận của quản trị viên không đúng |
+| `Identity.PasswordChangeRequired` | 403 | Tài khoản bắt buộc phải đổi mật khẩu trước khi gọi các API khác |
+| `Identity.AccountLocked` | 429 | Tài khoản bị khóa tạm thời do nhập sai mật khẩu quá số lần quy định |
 | `Identity.SessionNotFound` | 404 | Không tìm thấy phiên đang hoạt động thuộc tài khoản mục tiêu |
 
 ---
@@ -491,6 +562,24 @@ export interface UserSummary {
   roles: string[];
   createdAt: string;
   lastLoginAt: string | null;
+  mustChangePassword?: boolean;
+}
+
+export interface AdminResetPasswordRequest {
+  mode: 'Custom' | 'Generated';
+  newPassword?: string | null;
+  requirePasswordChange?: boolean;
+  adminPassword: string;
+  reason?: string | null;
+}
+
+export interface AdminResetPasswordResult {
+  userId: string;
+  mode: 'Custom' | 'Generated';
+  temporaryPassword: string | null;
+  mustChangePassword: boolean;
+  passwordChangedAt: string;
+  notificationEmailQueued: boolean;
 }
 
 export interface CreateUserRequest {

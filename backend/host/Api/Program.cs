@@ -5,6 +5,7 @@ using UGTM.Api.Modules;
 using UGTM.Api.Campus;
 using UGTM.Api.OpenApi;
 using UGTM.BuildingBlocks.Infrastructure.Middlewares;
+using UGTM.Modules.Identity.Infrastructure.Authorization;
 
 if (args is ["--check-schema"])
 {
@@ -134,6 +135,7 @@ if (!app.Environment.IsDevelopment())
 app.UseCors(FrontendCorsPolicy);
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseIdentityPasswordChangeEnforcement();
 app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
