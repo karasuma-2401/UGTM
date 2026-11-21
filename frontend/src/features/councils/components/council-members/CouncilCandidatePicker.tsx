@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Input } from '@/components/ui/input';
-import { PendingState } from '@/components/ui/pending-state';
+import { CouncilListSkeleton } from './CouncilLoadingSkeleton';
 import type { CouncilCandidate, CouncilRole } from '../../services/councilMembersApi';
 import {
   COUNCIL_ROLES,
@@ -113,7 +113,7 @@ export function CouncilCandidatePicker({
 
         {actionError && <InlineAlert title="Chưa thêm được thành viên">{actionError} Bạn có thể chọn lại giảng viên hoặc vai trò.</InlineAlert>}
         {error && <InlineAlert title="Không tải được giảng viên" action={<button type="button" className="font-medium underline" onClick={onRetry}>Thử lại</button>}>{error}</InlineAlert>}
-        {isLoading && <PendingState label="Đang tải giảng viên…" />}
+        {isLoading && <CouncilListSkeleton label="Đang tải giảng viên…" />}
         {!isLoading && !error && !hasSearch && role !== 'Member' && <p className="rounded-xl bg-surface-subtle px-3 py-4 text-sm text-ink-muted">Nhập tên hoặc mã giảng viên để tìm, sau đó bấm “Thêm”.</p>}
         {!isLoading && !error && (hasSearch || role === 'Member') && (
           <div>

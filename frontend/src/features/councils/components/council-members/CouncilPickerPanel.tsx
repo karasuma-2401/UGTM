@@ -3,13 +3,13 @@ import { ChevronDown, Search } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Input } from '@/components/ui/input';
-import { PendingState } from '@/components/ui/pending-state';
 import { Select } from '@/components/ui/select';
 import { StatusBadge, type StatusTone } from '@/components/ui/status-badge';
 import { cn } from '@/lib/utils';
 import type { CouncilDraftItemDto } from '../../types/councilApproval.types';
 import { councilPhase, phaseLabelFor, PHASE_LABEL, type CouncilPhase } from '../../utils/councilMemberWorkspace';
 import { formatViDate } from '../../utils/councilApprovalReadiness';
+import { CouncilListSkeleton } from './CouncilLoadingSkeleton';
 
 export type PhaseFilter = 'all' | CouncilPhase;
 
@@ -161,7 +161,7 @@ export function CouncilPickerPanel({
             </InlineAlert>
           </div>
         )}
-        {isLoading && <PendingState className="mt-4" label="Đang tải danh sách hội đồng…" />}
+        {isLoading && <CouncilListSkeleton label="Đang tải danh sách hội đồng…" />}
         {!isLoading && !error && councils.length === 0 && (
           <p className="mt-4 rounded-xl border border-dashed border-line-input p-4 text-sm text-ink-muted">
             {totalCount === 0
@@ -175,7 +175,7 @@ export function CouncilPickerPanel({
           className="mt-4 max-h-[min(60vh,34rem)] space-y-2 overflow-y-auto pr-1"
           aria-label="Danh sách hội đồng"
         >
-          {councils.map((item) => {
+          {!isLoading && !error && councils.map((item) => {
             const isSelected = item.id === selectedId;
             const missing = item.status === 'Draft' && !item.isSubmittedToAcademicAffairs ? missingRoles(item) : [];
             return (

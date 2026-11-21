@@ -12,6 +12,7 @@ import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
 import { useAuth } from '@/shared/auth';
 import { CouncilCandidatePicker } from '../components/council-members/CouncilCandidatePicker';
 import { CouncilCreateCard } from '../components/council-members/CouncilCreateCard';
+import { CouncilWorkspaceSkeleton } from '../components/council-members/CouncilLoadingSkeleton';
 import { CouncilPickerPanel, type PhaseFilter } from '../components/council-members/CouncilPickerPanel';
 import { CouncilRosterCard } from '../components/council-members/CouncilRosterCard';
 import { CouncilSetupCard } from '../components/council-members/CouncilSetupCard';
@@ -241,11 +242,11 @@ export function CouncilMembersPage() {
         />
 
         <div className="min-w-0 space-y-5">
-          {!selectedCouncil ? (
+          {!selectedCouncil && (draftsQuery.isLoading || batchesLoading) ? (
+            <CouncilWorkspaceSkeleton />
+          ) : !selectedCouncil ? (
             <Card className="p-8 text-center text-sm text-ink-muted">
-              {draftsQuery.isLoading || batchesLoading
-                ? 'Đang tải hội đồng…'
-                : 'Chọn một hội đồng ở danh sách bên trái để xem và phân công thành viên.'}
+              Chọn một hội đồng ở danh sách bên trái để xem và phân công thành viên.
             </Card>
           ) : (
             <>

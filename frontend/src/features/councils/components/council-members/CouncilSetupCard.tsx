@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Input } from '@/components/ui/input';
 import { PendingState } from '@/components/ui/pending-state';
+import { CouncilListSkeleton } from './CouncilLoadingSkeleton';
 import { Select } from '@/components/ui/select';
 import type { AcademicBatch } from '@/shared/academic-periods/types';
 import type { CouncilDraftItemDto, CouncilScheduleGroupDto } from '../../types/councilApproval.types';
@@ -235,14 +236,14 @@ export function CouncilSetupCard({ council, batch, onUpdated }: {
 
       <div className="mt-5 border-t border-line-subtle pt-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-ink-heading">Nhóm bảo vệ ({groups.length})</h3>
+          <h3 className="text-sm font-semibold text-ink-heading">Nhóm bảo vệ{schedule.isSuccess ? ` (${groups.length})` : ''}</h3>
           {editable && schedule.isSuccess && (
             <Button type="button" size="sm" variant="outline" aria-expanded={showGroupPicker} onClick={() => setShowGroupPicker((value) => !value)} disabled={saving || orderDirty}>
               {showGroupPicker ? 'Đóng chọn nhóm' : 'Gán thêm nhóm'}
             </Button>
           )}
         </div>
-        {schedule.isLoading && <PendingState className="mt-3" label="Đang tải nhóm bảo vệ…" />}
+        {schedule.isLoading && <CouncilListSkeleton label="Đang tải nhóm bảo vệ…" rows={2} />}
         {schedule.isError && <InlineAlert title="Không tải được nhóm bảo vệ" action={<button type="button" className="font-medium underline" onClick={() => void schedule.refetch()}>Thử lại</button>}>{memberError(schedule.error)}</InlineAlert>}
         {schedule.isSuccess && groups.length === 0 && <p className="mt-2 text-sm text-ink-muted">Chưa gán nhóm nào. Bấm “Gán thêm nhóm” để chọn nhóm bảo vệ.</p>}
         {groups.length > 0 && (
