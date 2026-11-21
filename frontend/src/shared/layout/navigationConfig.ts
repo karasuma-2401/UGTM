@@ -9,6 +9,7 @@ import {
   BookMarked,
   CalendarRange,
   UsersRound,
+  Presentation,
   FileText,
   FileSearch,
   CalendarCheck,
@@ -180,6 +181,12 @@ export const navigationSections: NavSectionConfig[] = [
         path: '/councils/minutes',
         icon: FileCheck2,
         roles: ['CouncilMember', 'Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
+      },
+      {
+        label: 'Lập hội đồng bảo vệ',
+        path: '/councils/members',
+        icon: Presentation,
+        roles: ['Faculty', 'Admin'],
       },
       {
         label: 'Phê duyệt hội đồng',

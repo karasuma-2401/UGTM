@@ -38,6 +38,7 @@ import {
 import { CouncilSimilarityReportsPage } from '../features/thesis/pages/CouncilSimilarityReportsPage';
 import { LecturerGradingPage } from '../features/thesis/pages/LecturerGradingPage';
 import { CouncilGradingPage } from '../features/councils/pages/CouncilGradingPage';
+import { CouncilMembersPage } from '../features/councils/pages/CouncilMembersPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -202,6 +203,10 @@ export const router = createBrowserRouter([
             <CouncilMinutesPage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: 'councils/members',
+        element: <ProtectedRoute allowedRoles={['Faculty', 'Admin']}><CouncilMembersPage /></ProtectedRoute>,
       },
       {
         path: 'councils/approval',

@@ -272,3 +272,14 @@ test('evaluateCouncilReadiness validates submission, structure, groups, eligibil
   assert.equal(approved.category, 'approved');
   assert.equal(approved.isReady, true);
 });
+
+test('approval list includes submitted councils and previous decisions, but hides faculty drafts', () => {
+  const { isCouncilVisibleForApproval } = loadModule(
+    'features/councils/utils/councilApprovalReadiness.ts',
+  );
+
+  assert.equal(isCouncilVisibleForApproval({ status: 'Draft', isSubmittedToAcademicAffairs: false }), false);
+  assert.equal(isCouncilVisibleForApproval({ status: 'Draft', isSubmittedToAcademicAffairs: true }), true);
+  assert.equal(isCouncilVisibleForApproval({ status: 'Active', isSubmittedToAcademicAffairs: false }), true);
+  assert.equal(isCouncilVisibleForApproval({ status: 'Completed', isSubmittedToAcademicAffairs: false }), true);
+});

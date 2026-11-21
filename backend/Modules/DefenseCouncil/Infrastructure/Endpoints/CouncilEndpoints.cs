@@ -11,11 +11,13 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMinuteWorkspace;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilMemberCandidates;
+using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilGroupCandidates;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
 using UGTM.Modules.DefenseCouncil.Application.Councils.RemoveCouncilMember;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SaveCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.SubmitCouncilScore;
 using UGTM.Modules.DefenseCouncil.Application.Councils.LockCouncilMinute;
+using UGTM.Modules.DefenseCouncil.Application.Councils.ManageCouncilGroups;
 using UGTM.Modules.DefenseCouncil.Application.Councils.UnlockCouncilMinute;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilsOverview;
 using UGTM.Modules.DefenseCouncil.Application.Councils.UpdateCouncilMembers;
@@ -31,6 +33,23 @@ public static class CouncilEndpoints
     {
         var group = endpoints.MapGroup("/api/councils")
             .WithTags("DefenseCouncil.Councils");
+
+        group.MapGet("/group-candidates", GetCouncilGroupCandidatesAsync)
+            .RequireAuthorization()
+            .WithSummary("Khoa tìm nhóm đã có giảng viên phản biện để lập lịch hội đồng")
+            .WithDescription("Trả nhóm có phân công phản biện đang hoạt động theo đợt, gồm tình trạng đủ điều kiện bảo vệ và hội đồng đã gán. Kiểm tra điều kiện lần nữa khi ghi; kết quả đọc không giữ chỗ cho nhóm.")
+            .Produces<ApiResponse<PagedResult<CouncilGroupCandidateDto>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .WithName("DefenseCouncil.Councils.GroupCandidates");
+
+        group.MapGet("/group-candidates/{groupId:guid}/eligibility", GetCouncilGroupEligibilityAsync)
+            .RequireAuthorization()
+            .WithSummary("Khoa kiểm tra điều kiện bảo vệ của nhóm trước khi gán vào hội đồng")
+            .Produces<ApiResponse<CouncilGroupEligibilityDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .WithName("DefenseCouncil.Councils.GroupEligibility");
 
         // 1. POST /api/councils
         group.MapPost("/", CreateCouncilAsync)
@@ -200,6 +219,25 @@ public static class CouncilEndpoints
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
             .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
             .WithName("DefenseCouncil.Councils.AssignGroups");
+
+        group.MapPut("/{id:guid}/assignments/order", ReorderCouncilGroupsAsync)
+            .RequireAuthorization()
+            .WithSummary("Đổi thứ tự bảo vệ của các nhóm trong hội đồng dự thảo")
+            .WithDescription("Khoa gửi toàn bộ nhóm đã gán cùng thứ tự mới. Không thêm hoặc gỡ nhóm qua thao tác này; thứ tự phải là số dương, không trùng. Nếu hồ sơ đã gửi PĐT, việc đổi thứ tự rút hồ sơ về bước chuẩn bị.")
+            .Produces<ApiResponse<IReadOnlyList<CouncilAssignmentResponseDto>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .WithName("DefenseCouncil.Councils.ReorderGroups");
+
+        group.MapDelete("/{id:guid}/assignments/{assignmentId:guid}", RemoveCouncilGroupAsync)
+            .RequireAuthorization()
+            .WithSummary("Gỡ nhóm chưa có điểm hoặc biên bản khỏi hội đồng dự thảo")
+            .WithDescription("Khoa có thể gỡ nhóm khi hội đồng còn là dự thảo và nhóm chưa có điểm hoặc biên bản. Thao tác rút hồ sơ đã gửi PĐT về bước chuẩn bị.")
+            .Produces<ApiResponse<bool>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict)
+            .WithName("DefenseCouncil.Councils.RemoveGroup");
 
         // 4. PUT /api/councils/{id}/approve
         group.MapPut("/{id:guid}/approve", ApproveCouncilAsync)
@@ -900,6 +938,35 @@ public static class CouncilEndpoints
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
     }
+
+    private static async Task<IResult> GetCouncilGroupCandidatesAsync(
+        [FromQuery] Guid batchId,
+        [FromServices] GetCouncilGroupCandidatesHandler handler,
+        string? keyword = null,
+        int pageNumber = 1,
+        int pageSize = 100,
+        CancellationToken cancellationToken = default)
+        => (await handler.HandleAsync(batchId, keyword, pageNumber, pageSize, cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> GetCouncilGroupEligibilityAsync(
+        [FromRoute] Guid groupId,
+        [FromServices] GetCouncilGroupCandidatesHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.EligibilityAsync(groupId, cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> ReorderCouncilGroupsAsync(
+        [FromRoute] Guid id,
+        [FromBody] AssignCouncilGroupsInputDto body,
+        [FromServices] ManageCouncilGroupsHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.ReorderAsync(new ReorderCouncilGroupsCommand(id, body.Assignments ?? []), cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> RemoveCouncilGroupAsync(
+        [FromRoute] Guid id,
+        [FromRoute] Guid assignmentId,
+        [FromServices] ManageCouncilGroupsHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.RemoveAsync(new RemoveCouncilGroupCommand(id, assignmentId), cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> ApproveCouncilAsync(
         [FromRoute] Guid id,

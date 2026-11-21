@@ -202,7 +202,7 @@ export function CouncilApprovalTable({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-ink-heading">
-              Danh sách dự thảo &amp; quyết định
+              Hồ sơ đã nộp &amp; quyết định
             </h2>
             <span className="inline-flex items-center rounded-full bg-surface-muted px-2 py-0.5 text-xs font-medium text-ink-secondary tabular-nums">
               {totalCount}
@@ -238,10 +238,10 @@ export function CouncilApprovalTable({
         empty={{
           title: hasActiveFilters
             ? 'Không tìm thấy hội đồng phù hợp'
-            : 'Chưa có dự thảo hội đồng nào',
+            : 'Chưa có hồ sơ hội đồng nào được gửi',
           description: hasActiveFilters
             ? 'Thử thay đổi từ khóa tìm kiếm, đợt khóa luận hoặc trạng thái thẩm định.'
-            : 'Khi Văn phòng Khoa khởi tạo dự thảo hội đồng, hồ sơ sẽ hiển thị tại đây.',
+            : 'Hội đồng sẽ hiển thị khi Khoa gửi hồ sơ lên Phòng Đào tạo.',
           action: hasActiveFilters ? (
             <Button variant="outline" size="sm" onClick={onResetFilters}>
               Đặt lại bộ lọc

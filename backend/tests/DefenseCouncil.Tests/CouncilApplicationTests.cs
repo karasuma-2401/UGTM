@@ -5,6 +5,7 @@ using UGTM.Modules.DefenseCouncil.Application.Councils.AssignCouncilGroups;
 using UGTM.Modules.DefenseCouncil.Application.Councils.CreateCouncil;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
 using UGTM.Modules.DefenseCouncil.Application.Councils.GetCouncilSchedule;
+using UGTM.Modules.DefenseCouncil.Application.Councils.ManageCouncilGroups;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.Identity.Contracts.Users;
@@ -439,6 +440,49 @@ public sealed class CouncilApplicationTests
         Assert.Single(result.Value);
         Assert.Equal(1, result.Value[0].OrderNumber);
         Assert.Equal("Tiêu đề 1", result.Value[0].TopicTitleVi);
+        Assert.False(council.IsSubmittedToAcademicAffairs);
+    }
+
+    [Fact]
+    public async Task ReorderCouncilGroups_SwapsOrderAndWithdrawsSubmittedDossier()
+    {
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
+        await _councilRepo.AddAsync(council);
+        var first = new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = council.Id, GroupId = Guid.NewGuid(), OrderNumber = 1 };
+        var second = new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = council.Id, GroupId = Guid.NewGuid(), OrderNumber = 2 };
+        await _councilRepo.AddAssignmentsAsync([first, second]);
+        var handler = new ManageCouncilGroupsHandler(_councilRepo, _uow, _currentUser, new FakeCouncilSchedulingGuard());
+
+        var result = await handler.ReorderAsync(new(council.Id, [new(first.GroupId, 2), new(second.GroupId, 1)]));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, first.OrderNumber);
+        Assert.Equal(1, second.OrderNumber);
+        Assert.False(council.IsSubmittedToAcademicAffairs);
+    }
+
+    [Fact]
+    public async Task RemoveCouncilGroup_RejectsScoredGroupAndAllowsUnscoredDraftGroup()
+    {
+        var council = Council.Create(_batchId, "HD01", _defenseDate, TimeSlotMorning, RoomA101);
+        council.IsSubmittedToAcademicAffairs = true;
+        await _councilRepo.AddAsync(council);
+        var assignment = new CouncilAssignment { Id = Guid.NewGuid(), CouncilId = council.Id, GroupId = Guid.NewGuid(), OrderNumber = 1 };
+        await _councilRepo.AddAssignmentsAsync([assignment]);
+        _councilRepo.Scores.Add(new CouncilScore { CouncilAssignmentId = assignment.Id });
+        var handler = new ManageCouncilGroupsHandler(_councilRepo, _uow, _currentUser, new FakeCouncilSchedulingGuard());
+
+        var blocked = await handler.RemoveAsync(new(council.Id, assignment.Id));
+        Assert.False(blocked.IsSuccess);
+        Assert.Single(_councilRepo.Assignments);
+        Assert.True(council.IsSubmittedToAcademicAffairs);
+
+        _councilRepo.Scores.Clear();
+        var removed = await handler.RemoveAsync(new(council.Id, assignment.Id));
+        Assert.True(removed.IsSuccess);
+        Assert.Empty(_councilRepo.Assignments);
+        Assert.False(council.IsSubmittedToAcademicAffairs);
     }
 
     [Fact]
