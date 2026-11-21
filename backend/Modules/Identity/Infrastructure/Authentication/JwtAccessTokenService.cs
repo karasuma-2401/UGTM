@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Application.Security;
+using UGTM.Modules.Identity.Contracts.Authorization;
 using JwtRegisteredClaimNames = Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames;
 
 namespace UGTM.Modules.Identity.Infrastructure.Authentication;
@@ -23,6 +24,10 @@ public sealed class JwtAccessTokenService(
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new("sid", sessionId.ToString())
         };
+        if (user.MustChangePassword)
+        {
+            claims.Add(new Claim(IdentityClaimTypes.PasswordChangeRequired, "true"));
+        }
         claims.AddRange(user.Roles.Select(x => new Claim(ClaimTypes.Role, x)));
         claims.AddRange(user.Permissions.Select(x => new Claim("permission", x)));
 

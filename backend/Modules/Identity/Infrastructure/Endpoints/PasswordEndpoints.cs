@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using UGTM.Modules.Identity.Application.Authentication.ChangePassword;
 using UGTM.Modules.Identity.Application.Recovery;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
+using UGTM.Modules.Identity.Infrastructure.Authorization;
 using UGTM.Modules.Identity.Infrastructure.RateLimiting;
 
 namespace UGTM.Modules.Identity.Infrastructure.Endpoints;
@@ -21,17 +22,20 @@ public static class PasswordEndpoints
             .WithSummary("Đổi mật khẩu của người dùng đang đăng nhập")
             .WithDescription("""
                 Thay đổi mật khẩu cho người dùng hiện đang đăng nhập bằng `currentPassword` và `newPassword`.
-                Mật khẩu mới phải có tối thiểu 12 ký tự, bao gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt.
+                Mật khẩu mới phải có từ 12 đến 128 ký tự, bao gồm chữ hoa, chữ thường, chữ số và ký tự đặc biệt (không tính khoảng trắng).
 
                 Yêu cầu Bearer access token hợp lệ; endpoint không sử dụng CSRF token.
-                Khi thành công, Security Stamp được làm mới, toàn bộ phiên đăng nhập của người dùng bị thu hồi
-                và refresh cookie hiện tại bị xóa. Người dùng phải đăng nhập lại bằng mật khẩu mới.
+                Khi thành công, Security Stamp được làm mới, toàn bộ phiên đăng nhập của người dùng bị thu hồi,
+                cờ `mustChangePassword` (nếu có) được xóa và refresh cookie hiện tại bị xóa. Người dùng phải đăng nhập lại bằng mật khẩu mới.
+                Endpoint này được phép gọi ngay cả khi tài khoản đang bị đánh dấu bắt buộc đổi mật khẩu (`mustChangePassword = true`).
                 - Thành công: 200 OK với `data: null`.
                 - Mật khẩu hiện tại không đúng: 400 Bad Request (`Identity.CurrentPasswordIncorrect`).
                 - Mật khẩu mới không đáp ứng chính sách bảo mật: 400 Bad Request (`Identity.WeakPassword`).
+                - Mật khẩu mới trùng với mật khẩu hiện tại: 400 Bad Request (`Identity.PasswordMustDifferFromCurrent`).
                 - Thiếu token, token không hợp lệ hoặc phiên đã bị thu hồi: 401 Unauthorized.
                 """)
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .AllowWhenPasswordChangeRequired();
         group.MapPost("/recovery/start", StartAsync)
             .WithSummary("Gửi OTP khôi phục mật khẩu qua email")
             .WithDescription("""

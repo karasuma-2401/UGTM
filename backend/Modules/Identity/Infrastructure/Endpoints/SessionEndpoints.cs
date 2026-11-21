@@ -10,6 +10,7 @@ using UGTM.Modules.Identity.Application.Authentication.RefreshSession;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Sessions;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
+using UGTM.Modules.Identity.Infrastructure.Authorization;
 
 namespace UGTM.Modules.Identity.Infrastructure.Endpoints;
 
@@ -24,13 +25,15 @@ public static class SessionEndpoints
                 Request không có body và không yêu cầu CSRF token.
 
                 Yêu cầu header `Authorization: Bearer <accessToken>` nhận từ endpoint login hoặc refresh.
-                Dữ liệu `roles` và `permissions` được đọc theo trạng thái hiện tại của hệ thống.
-                - Thành công: 200 OK kèm `id`, `email`, `fullName`, `userCode`, `roles` và `permissions` trong `data`.
+                Dữ liệu `roles`, `permissions` và `mustChangePassword` được đọc theo trạng thái hiện tại của hệ thống.
+                Endpoint này vẫn được phép gọi khi tài khoản đang ở trạng thái bắt buộc đổi mật khẩu (`mustChangePassword = true`).
+                - Thành công: 200 OK kèm `id`, `email`, `fullName`, `userCode`, `roles`, `permissions` và `mustChangePassword` trong `data`.
                 - Thiếu token, token sai hoặc hết hạn: 401 Unauthorized.
                 - Phiên đã bị thu hồi do logout, đổi/reset mật khẩu, đổi quyền hoặc thay đổi trạng thái tài khoản: 401 Unauthorized,
                   kể cả khi thời hạn JWT chưa kết thúc.
                 """)
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .AllowWhenPasswordChangeRequired();
         group.MapGet("/sessions", GetMySessionsAsync)
             .WithSummary("Liệt kê các phiên đăng nhập đang hoạt động")
             .WithDescription("""

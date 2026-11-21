@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Domain.Enums;
 using UGTM.Modules.Identity.Domain.Repositories;
+using UGTM.Modules.Identity.Infrastructure.Authorization;
 
 namespace UGTM.Modules.Identity.Infrastructure.Authentication;
 
@@ -33,6 +34,10 @@ public sealed class SessionValidator(
             || !session.CanRefresh(session.User.SecurityStamp, clock.UtcNow))
         {
             context.Fail("Session is no longer active.");
+            return;
         }
+
+        context.HttpContext.Items[PasswordChangeRequiredMiddleware.HttpContextItemKey] =
+            session.User.MustChangePassword;
     }
 }
