@@ -1,43 +1,22 @@
-# Phát hành và vận hành UGTM
+# Runbook vận hành production UGTM
 
-## Kiến trúc
+Xem [tổng quan CI/CD](production-deployment.md) để hiểu workflow và pipeline. Tài liệu này giữ các bước vận hành chi tiết.
 
-Azure VM ARM64 chạy .NET API, AI API, một Celery worker, reconciler, Redis AOF, MinIO và Caddy. Vercel phục vụ frontend. Không còn frontend container trên Azure; truy cập trang web qua hostname Azure được chuyển sang Vercel, giữ path/query. Hai Neon DB hiện có và Modal GPU được giữ riêng. Không build ứng dụng trên VM.
-
-API: `https://ugtm.eastasia.cloudapp.azure.com`. S3 API: cùng host qua HTTPS `:8443`. Azure NSG và host firewall cần cho phép 80/443/8443; SSH theo chính sách quản trị. MinIO console chỉ bind `127.0.0.1:9001`. Không public AI, Redis hoặc MinIO 9000.
-
-Một VM vẫn là điểm lỗi đơn. Workflow giảm thao tác thủ công và hỗ trợ khôi phục, không cung cấp high availability hoặc bảo đảm zero downtime. Deploy chờ worker rảnh; khi solo worker bận và không trả lời control, deploy dừng an toàn để thử lại sau.
-
-## Luồng release
-
-1. PR vào `dev`/`production` chạy `CI`: reusable backend/frontend/AI jobs và release contracts. Không lọc đường dẫn ở cấp required workflow để tránh check bị treo vì skip.
-2. Push `dev`/`production` chạy `Publish Images`, gọi lại cùng CI bằng `needs`; không còn job polling GitHub API. Các Docker build xác minh riêng không chạy lại trong release CI.
-3. Mỗi component API/AI/gateway build trên runner native ARM64; AMD64 cũng build native khi repository variable `BUILD_AMD64=true` (mặc định). Repo public hiện dùng được standard ARM64 hosted runner. Không cài runner trên VM production.
-4. Image mới được push bằng candidate tag duy nhất, kèm SBOM/provenance. Trivy chọn platform rõ ràng qua `TRIVY_PLATFORM=linux/<arch>` và scan đúng digest; Redis/MinIO trong policy cũng phải pass scan ARM64. Gateway dùng source Caddy upstream với Go và `x/net` đã vá trong `docker/gateway`, giữ layout runtime upstream, và phải qua `caddy validate` bằng đúng candidate image. Candidate không được coi là release khi scan chưa pass. SARIF được giữ trong artifact và gửi lên Security tab khi GitHub hỗ trợ. Chính sách giữ HIGH/CRITICAL có bản vá; `ignore-unfixed=true` được giữ từ workflow cũ.
-5. Image không thay đổi được tái sử dụng từ manifest thành công cùng branch trong tối đa 7 ngày tính từ lần build thực tế, và vẫn được scan lại. Không có manifest/artifact đã hết hạn thì build toàn bộ. `force_rebuild=true` luôn refresh base images. Lịch thứ Hai rebuild default branch; production không tự phát hành từ lịch này.
-6. Ghép manifest từ các digest đã scan, không build lần hai. Bundle `release-bundle-<run-attempt>` lưu commit, run ID/attempt, image/platform digests, source fingerprints, schema fingerprints, rollback policy, deployment scripts và checksums. Artifact giữ 90 ngày; retry tạo artifact mới, không ghi đè bằng chứng của attempt trước.
-7. Production publish từ push kích hoạt `Deploy to VPS`. Run thủ công nhận **Publish run ID**, không nhận SHA hoặc floating tag tùy ý. Driver xác minh run thành công, đúng repo/workflow/branch và commit thuộc lịch sử `production`. Auto deploy bỏ qua release đã bị commit mới thay thế.
-8. Vercel tạo production deployment với `--skip-domain`. Azure chạy candidate, kiểm tra trong VM rồi kiểm tra từ runner bên ngoài. Sau đó promote frontend, chạy HTTP/auth smoke đã cấu hình, rồi mới cập nhật `current`.
-
-Trình tự này không tạo giao dịch nguyên tử giữa Azure và Vercel. API phải tương thích với frontend trước và sau release trong khoảng chuyển đổi; breaking API changes cần kế hoạch riêng.
-
-Manifest v2 bắt buộc có gateway đã scan; `GATEWAY_IMAGE` được lấy từ manifest, không cần thêm GitHub variable. Manifest v1 vẫn đọc được để lập kế hoạch nâng cấp/khôi phục. Lần chuyển v1 sang v2 hoặc thay digest MinIO không tự rollback qua ranh giới này; giữ release cũ và backup đã kiểm tra cho phương án khôi phục thủ công. Nếu đang đặt variable `MINIO_IMAGE` trỏ digest cũ, bỏ override đó để dùng digest đã review trong release policy.
-
-## Cấu hình trước lần chuyển sang workflow mới
+## Cấu hình và bảo trì
 
 Giữ các secrets production hiện có: SSH, UGTM/AI database, JWT/HMAC, MinIO, Modal và SMTP. Workflow vẫn dùng đúng tên trong `.github/workflows/deploy.yml`. Không đưa chúng vào Vercel hoặc log.
 
-Thêm các cấu hình sau **trước khi merge vào production**, vì Vercel Git auto deployment được tắt cho mọi branch bằng `git.deploymentEnabled: false`; GitHub Actions điều phối release:
+Kiểm tra các cấu hình sau khi thiết lập môi trường hoặc thay đổi credentials. Vercel Git auto deployment được tắt cho mọi branch bằng `git.deploymentEnabled: false`; GitHub Actions điều phối release:
 
-| Loại | Tên | Nội dung |
-| --- | --- | --- |
-| Secret production | `VPS_KNOWN_HOSTS` | Dòng OpenSSH known_hosts của VM đã xác minh qua kênh tin cậy; bao gồm host/IP và port tương ứng |
-| Secret production | `VERCEL_TOKEN` | Token có quyền deploy/promote/rollback đúng project |
-| Variable production | `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | IDs từ Vercel project; không phải display name |
-| Repository variable | `BUILD_AMD64` | `true` giữ cả hai kiến trúc; `false` chỉ build ARM64 cho Azure |
-| Repository variable | `OPS_ENABLED` | Chỉ bật `true` sau một release mới deploy thành công và monitor thủ công pass |
-| Variable production | `BACKUP_ENABLED` | Chỉ bật `true` sau cấu hình kho ngoài VM, backup và restore drill thủ công thành công |
-| Variable production | `SMOKE_AUTH_ENABLED` | Bật `true` sau khi có tài khoản kiểm thử riêng và `smoke-auth` pass |
+| Loại                | Tên                                  | Nội dung                                                                                        |
+| ------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Secret production   | `VPS_KNOWN_HOSTS`                    | Dòng OpenSSH known_hosts của VM đã xác minh qua kênh tin cậy; bao gồm host/IP và port tương ứng |
+| Secret production   | `VERCEL_TOKEN`                       | Token có quyền deploy/promote/rollback đúng project                                             |
+| Variable production | `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | IDs từ Vercel project; không phải display name                                                  |
+| Repository variable | `BUILD_AMD64`                        | `true` giữ cả hai kiến trúc; `false` chỉ build ARM64 cho Azure                                  |
+| Repository variable | `OPS_ENABLED`                        | Chỉ bật `true` sau một release mới deploy thành công và monitor thủ công pass                   |
+| Variable production | `BACKUP_ENABLED`                     | Chỉ bật `true` sau cấu hình kho ngoài VM, backup và restore drill thủ công thành công           |
+| Variable production | `SMOKE_AUTH_ENABLED`                 | Bật `true` sau khi có tài khoản kiểm thử riêng và `smoke-auth` pass                             |
 
 Lấy SSH host key trên **SSH/console VM đã tin cậy**:
 
@@ -96,15 +75,15 @@ Nếu DB đã có migration mới và image của attempt cũ không còn khớp
 
 Workflow `Production Operations`:
 
-| Action | Ý nghĩa |
-| --- | --- |
-| `monitor` | Kiểm tra public HTTP/TLS, container, DB/broker, RAM/disk/queue/job age |
-| `rollback` | Kiểm tra release hiện tại có thể rollback, khôi phục Vercel và backend về baseline đã lưu |
-| `recover` | Rollback attempt chưa hoàn tất, nhập đầy đủ attempt ID; thao tác idempotent |
-| `smoke-auth` | Đăng nhập, me, refresh, logout và fixture kiểm tra quyền/download đã cấu hình |
-| `smoke-gpu` | Có chủ đích upload DOCX tổng hợp qua UGTM và đợi report; có thể phát sinh Modal credit |
-| `backup` / `restore-drill` | Backup ngoài VM / restore trong container cô lập |
-| `cleanup` | Giữ current/previous và ít nhất 5 release thành công gần nhất; chỉ xóa release hoàn tất ngoài tham chiếu, cũ hơn 30 ngày, khi có backup thành công trong 36 giờ |
+| Action                     | Ý nghĩa                                                                                                                                                         |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `monitor`                  | Kiểm tra public HTTP/TLS, container, DB/broker, RAM/disk/queue/job age                                                                                          |
+| `rollback`                 | Kiểm tra release hiện tại có thể rollback, khôi phục Vercel và backend về baseline đã lưu                                                                       |
+| `recover`                  | Rollback attempt chưa hoàn tất, nhập đầy đủ attempt ID; thao tác idempotent                                                                                     |
+| `smoke-auth`               | Đăng nhập, me, refresh, logout và fixture kiểm tra quyền/download đã cấu hình                                                                                   |
+| `smoke-gpu`                | Có chủ đích upload DOCX tổng hợp qua UGTM và đợi report; có thể phát sinh Modal credit                                                                          |
+| `backup` / `restore-drill` | Backup ngoài VM / restore trong container cô lập                                                                                                                |
+| `cleanup`                  | Giữ current/previous và ít nhất 5 release thành công gần nhất; chỉ xóa release hoàn tất ngoài tham chiếu, cũ hơn 30 ngày, khi có backup thành công trong 36 giờ |
 
 Nếu rollback Vercel hoặc backend thất bại một phần, đọc summary và trạng thái thực tế của cả hai phía trước khi tiếp tục. Mất SSH sau finalize được đối chiếu `status.json` trước khi quyết định rollback. Nếu mất kết nối không thể xác định trạng thái, xử lý như sự cố chưa xác nhận, không tự tiếp tục release mới.
 
