@@ -145,6 +145,7 @@ def main():
             "state",
             "get",
             "compatible",
+            "recoverable",
             "summary",
             "record-artifacts",
             "check-artifacts",
@@ -203,7 +204,7 @@ def main():
             write(directory / "rollback-context.json", context)
         else:
             raise SystemExit(0 if context["artifacts"] == artifacts else 1)
-    elif args.command == "compatible":
+    elif args.command in ("compatible", "recoverable"):
         previous = Path(args.values[0])
         context = directory / "rollback-context.json"
         previous_context = previous / "rollback-context.json"
@@ -224,10 +225,25 @@ def main():
             and read(context)["artifacts"] == read(previous_context)["artifacts"]
             and intact(previous)
             and intact(directory)
-            and compatible(
-                read(previous / "release.json"), read(directory / "release.json")
-            )
         )
+        before, after = read(previous / "release.json"), read(
+            directory / "release.json"
+        )
+        if args.command == "compatible":
+            safe = safe and compatible(before, after)
+        else:
+            # Forward recovery permits schema differences, never different storage,
+            # credentials, artifacts or data contracts. New images must still pass
+            # their real read-only DB gates before the VM transfers pending ownership.
+            safe = (
+                safe
+                and before.get("version") == after.get("version")
+                and after.get("version") in (1, 2)
+                and before["rollback_policy"]["data_contract"]
+                == after["rollback_policy"]["data_contract"]
+                and before["rollback_policy"].get("infrastructure")
+                == after["rollback_policy"].get("infrastructure")
+            )
         raise SystemExit(0 if safe else 1)
     else:
         print(json.dumps(read(directory / "status.json")))

@@ -15,6 +15,10 @@ on:
         default: deploy
         type: choice
         options: [prepare, deploy]
+      recovery_attempt:
+        description: Explicit forward recovery from this unfinished attempt ID (leave empty normally)
+        type: string
+        default: ''
 permissions:
   contents: read
   actions: read
@@ -62,6 +66,7 @@ jobs:
           SMOKE_FILE_SHA256: ${{ vars.SMOKE_FILE_SHA256 }}
           SMOKE_DENIED_PATH: ${{ vars.SMOKE_DENIED_PATH }}
           DEPLOY_MODE: ${{ inputs.deploy_mode || 'deploy' }}
+          RECOVERY_ATTEMPT: ${{ inputs.recovery_attempt }}
           API_HOST: ${{ vars.API_HOST }}
           ACME_EMAIL: ${{ vars.ACME_EMAIL }}
           APP_URL: ${{ secrets.APP_URL }}

@@ -49,9 +49,9 @@ class DeploymentTests(unittest.TestCase):
             for file in ("docker-compose.prod.yml", "Caddyfile", "initialize-minio.sh"):
                 shutil.copy(ROOT / "docker" / file, directory / "docker" / file)
             write(directory / "release.json", manifest())
-            write(directory / "settings.json", settings())
             with patch("sys.argv", ["release.py", "seal", str(directory)]):
                 release_main()
+            write(directory / "settings.json", settings())
         initialize(self.old)
         write(self.old / "status.json", {"status": "deployed"})
         (self.app / "current").symlink_to(self.old)
@@ -69,6 +69,7 @@ if 'drain' in args and os.environ.get('FAIL_DRAIN'): sys.exit(1)
 if 'ps' in args and args[0]=='compose': print('worker-id' if '-q' in args else '{}')
 if args[0]=='inspect' and '{{.State.Running}}' in args: print('true')
 if args[0]=='inspect' and '{{.Config.Hostname}}' in args: print('worker-host')
+if args[0]=='inspect' and 'com.docker.compose.project.config_files' in ' '.join(args): print(os.environ.get('FAKE_RECOVERY_CONFIG', 'unexpected'))
 """
         curl = """#!/usr/bin/env python3
 import os, sys
@@ -100,6 +101,122 @@ if os.environ.get('FAIL_HEALTH') and not marker.exists():
     def assert_status(self, expected):
         self.assertEqual(
             json.loads((self.new / "status.json").read_text())["status"], expected
+        )
+
+    def recovery(self):
+        legacy = self.app / "releases" / "legacy"
+        legacy.mkdir()
+        shutil.copy(self.old / "runtime.env", legacy / "runtime.env")
+        (self.app / "current").unlink()
+        (self.app / "current").symlink_to(legacy)
+        write(self.old / "status.json", {"status": "recovery_required", "events": []})
+        (self.old / "mutated").touch()
+        (self.app / "pending").write_text(str(self.old) + "\n")
+        (self.new / "recovery-from").write_text(self.old.name + "\n")
+        self.env["FAKE_RECOVERY_CONFIG"] = str(
+            self.old / "docker/docker-compose.prod.yml"
+        )
+        # The DB has an additional migration; only the replacement image owns it.
+        replacement = json.loads((self.new / "release.json").read_text())
+        replacement["schemas"]["ugtm"]["AddRoleIsHidden"] = "new-schema"
+        write(self.new / "release.json", replacement)
+        with patch("sys.argv", ["release.py", "seal", str(self.new)]):
+            release_main()
+        return legacy
+
+    def test_forward_recovery_requires_explicit_matching_attempt(self):
+        self.recovery()
+        (self.new / "recovery-from").unlink()
+        self.assertNotEqual(self.invoke("candidate").returncode, 0)
+        self.assertEqual((self.app / "pending").read_text().strip(), str(self.old))
+        self.assertFalse((self.new / "runtime.env").exists())
+
+    def test_forward_recovery_rejects_a_different_running_stack(self):
+        self.recovery()
+        result = self.invoke("candidate", FAKE_RECOVERY_CONFIG="/different/compose.yml")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((self.app / "pending").read_text().strip(), str(self.old))
+        self.assertNotIn(" up ", self.log.read_text())
+
+    def test_forward_recovery_schema_failure_preserves_old_pending(self):
+        legacy = self.recovery()
+        result = self.invoke("candidate", FAIL_SCHEMA="1")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.app / "pending").read_text().strip(), str(self.old))
+        self.assertEqual((self.app / "current").resolve(), legacy)
+        self.assertEqual(
+            json.loads((self.old / "status.json").read_text())["status"],
+            "recovery_required",
+        )
+        self.assertTrue((self.old / "mutated").exists())
+        self.assertNotIn(" up ", self.log.read_text())
+
+    def test_forward_recovery_does_not_change_credentials_or_storage(self):
+        self.recovery()
+        payload = json.loads((self.new / "settings.json").read_text())
+        payload["S3_SECRET_KEY"] = "rotated-test-secret"
+        write(self.new / "settings.json", payload)
+        with patch("sys.argv", ["release.py", "seal", str(self.new)]):
+            release_main()
+        self.assertNotEqual(self.invoke("candidate").returncode, 0)
+        self.assertEqual((self.app / "pending").read_text().strip(), str(self.old))
+        self.assertNotIn(" up ", self.log.read_text())
+
+    def test_forward_recovery_rejects_modified_private_configuration(self):
+        self.recovery()
+        with (self.old / "runtime.env").open("a") as output:
+            output.write('SMTP_HOST="modified-after-attempt"\n')
+        self.assertNotEqual(self.invoke("candidate").returncode, 0)
+        self.assertEqual((self.app / "pending").read_text().strip(), str(self.old))
+        self.assertNotIn(" up ", self.log.read_text())
+
+    def test_forward_recovery_rejects_changed_data_contract(self):
+        self.recovery()
+        replacement = json.loads((self.new / "release.json").read_text())
+        replacement["rollback_policy"]["data_contract"] += 1
+        write(self.new / "release.json", replacement)
+        with patch("sys.argv", ["release.py", "seal", str(self.new)]):
+            release_main()
+        self.assertNotEqual(self.invoke("candidate").returncode, 0)
+        self.assertEqual((self.app / "pending").read_text().strip(), str(self.old))
+        self.assertNotIn(" up ", self.log.read_text())
+
+    def test_forward_recovery_drains_the_running_worker_before_handover(self):
+        self.recovery()
+        self.assertNotEqual(self.invoke("candidate", FAIL_DRAIN="1").returncode, 0)
+        self.assertEqual((self.app / "pending").read_text().strip(), str(self.old))
+        self.assertFalse((self.old / "superseded-by").exists())
+        self.assertNotIn(" up ", self.log.read_text())
+
+    def test_forward_recovery_keeps_audit_and_waits_for_finalize(self):
+        legacy = self.recovery()
+        result = self.invoke("candidate")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.app / "current").resolve(), legacy)
+        self.assertEqual(
+            (self.new / "previous-path").read_text().strip(), str(self.old)
+        )
+        self.assertEqual((self.app / "pending").read_text().strip(), str(self.new))
+        self.assertEqual(
+            (self.old / "superseded-by").read_text().strip(), str(self.new)
+        )
+        self.assertEqual(
+            json.loads((self.old / "status.json").read_text())["status"], "superseded"
+        )
+        self.assertFalse((self.old / "mutated").exists())
+        self.assert_status("awaiting_external_checks")
+        self.assertEqual(self.invoke("finalize").returncode, 0)
+        self.assertEqual((self.app / "current").resolve(), self.new)
+
+    def test_forward_recovery_failure_holds_new_pending_without_schema_rollback(self):
+        self.recovery()
+        self.assertNotEqual(self.invoke("candidate", FAIL_UP="1").returncode, 0)
+        self.assertEqual((self.app / "pending").read_text().strip(), str(self.new))
+        self.assert_status("recovery_required")
+        calls = self.log.read_text()
+        self.assertNotIn(
+            f"--env-file {self.old}/runtime.env -f {self.old}/docker/docker-compose.prod.yml up",
+            calls,
         )
 
     def test_prepare_never_contacts_database_or_changes_services(self):
