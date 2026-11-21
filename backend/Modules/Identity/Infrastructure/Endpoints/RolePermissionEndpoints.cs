@@ -11,6 +11,9 @@ using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.GetRoles;
 using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.UpdateRoleVisibility;
+using UGTM.Modules.Identity.Application.Roles.UpdateRoleDescription;
+using UGTM.Modules.Identity.Application.Common;
+using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Authorization;
 
 namespace UGTM.Modules.Identity.Infrastructure.Endpoints;
@@ -25,6 +28,7 @@ public static class RolePermissionEndpoints
     public sealed record UpdateRolePermissionsRequest(IReadOnlyList<int>? PermissionIds);
 
     public sealed record UpdateRoleVisibilityRequest(bool? IsHidden);
+    public sealed record UpdateRoleDescriptionRequest(string? Description);
 
     public static IEndpointRouteBuilder MapIdentityRolePermissionEndpoints(
         this IEndpointRouteBuilder endpoints)
@@ -134,6 +138,15 @@ public static class RolePermissionEndpoints
                 """)
             .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}")
             .Produces<ApiResponse<RolePermissionsDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
+
+        rolesGroup.MapPut("/{id:int}/description", UpdateRoleDescriptionAsync)
+            .WithSummary("Cập nhật mô tả vai trò")
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}")
+            .Produces<ApiResponse<RoleSummaryDto>>(StatusCodes.Status200OK)
             .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
@@ -257,6 +270,14 @@ public static class RolePermissionEndpoints
         var command = new UpdateRolePermissionsCommand(id, request?.PermissionIds);
         var result = await handler.HandleAsync(command, cancellationToken);
         return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> UpdateRoleDescriptionAsync(
+        [FromRoute] int id, [FromBody] UpdateRoleDescriptionRequest? request,
+        UpdateRoleDescriptionHandler handler, CancellationToken cancellationToken)
+    {
+        if (request is null) return Result.Failure<RoleSummaryDto>(IdentityErrors.InvalidInput).ToHttpResult();
+        return (await handler.HandleAsync(id, request.Description, cancellationToken)).ToHttpResult();
     }
 
     private static async Task<IResult> HideRoleAsync(

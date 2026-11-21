@@ -1,5 +1,4 @@
-export type SystemRole =
-  'Admin' | 'Faculty' | 'AcademicAffairs' | 'Lecturer' | 'Student' | 'CouncilMember';
+export type SystemRole = string;
 
 export type AccountStatus = 'PendingActivation' | 'Active' | 'Suspended' | 'Disabled';
 

@@ -12,6 +12,9 @@ function loadModule(path, dependencies = {}) {
   dependencies = {
     '@/shared/notifications': { OperationToast: 'OperationToast', notify: { success() {} } },
     '@/components/ui/inline-alert': { InlineAlert: 'InlineAlert' },
+    '@/shared/auth': { useAuth: () => ({ hasPermission: () => false }) },
+    '../../hooks/useRoles': { useRoles: () => ({ data: [], isLoading: false }), roleDisplay: (role) => role },
+    '@/components/ui/skeleton': { Skeleton: 'span' },
     ...dependencies,
   };
   const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');

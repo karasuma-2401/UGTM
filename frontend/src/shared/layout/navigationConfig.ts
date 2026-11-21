@@ -228,7 +228,7 @@ export const navigationSections: NavSectionConfig[] = [
       {
         label: 'Tài khoản',
         path: '/modules/identity/students',
-        activePaths: ['/modules/identity/staff'],
+        activePaths: ['/modules/identity/staff', '/modules/identity/roles'],
         icon: UserCog,
         permission: 'identity.users.read',
       },

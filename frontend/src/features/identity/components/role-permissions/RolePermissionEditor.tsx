@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { PermissionModuleCard } from './PermissionModuleCard';
 import type { ModulePermissionsDto, SystemRoleInfo } from '../../types/rolePermission.types';
 import { permissionModuleLabel } from '../../utils/permissionLabels';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export interface RolePermissionEditorProps {
   role: SystemRoleInfo;
@@ -186,11 +187,8 @@ export function RolePermissionEditor({
 
       <CardContent className="p-4 flex-1 space-y-3.5 bg-surface-subtle/30">
         {isLoading ? (
-          <div className="py-16 flex flex-col items-center justify-center gap-3">
-            <div className="size-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs font-medium text-ink-muted">
-              Đang tải danh mục quyền...
-            </p>
+          <div className="space-y-3" aria-label="Đang tải danh mục quyền">
+            {[0, 1, 2].map((item) => <Skeleton key={item} className="h-24 w-full" />)}
           </div>
         ) : filteredModules.length === 0 ? (
           <div className="py-16 text-center text-xs text-ink-muted">

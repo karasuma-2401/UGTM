@@ -9,6 +9,7 @@ public static class AuditActions
     public const string UserPasswordResetByAdmin = "Identity.User.PasswordResetByAdmin";
     public const string UsersImported = "Identity.Users.Imported";
     public const string RoleCreated = "Identity.Role.Created";
+    public const string RoleDescriptionChanged = "Identity.Role.DescriptionChanged";
     public const string RoleHidden = "Identity.Role.Hidden";
     public const string RoleUnhidden = "Identity.Role.Unhidden";
     public const string RolePermissionsChanged = "Identity.Role.PermissionsChanged";
