@@ -126,6 +126,8 @@ function harness() {
     '../components/role-permissions/RoleListCard': components.RoleListCard,
     '../components/role-permissions/RolePermissionEditor': components.RolePermissionEditor,
     '../constants/systemRoles': { SYSTEM_ROLES },
+    '../hooks/useRoles': { useRoles: () => ({ data: SYSTEM_ROLES }), roleDisplay: (role) => role },
+    '@/components/ui/skeleton': { Skeleton: 'Skeleton' },
     '../services/rolePermissionApi': { rolePermissionApi: {} },
   };
   const { RolePermissionPage } = load(

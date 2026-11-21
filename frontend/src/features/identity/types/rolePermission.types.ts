@@ -1,4 +1,13 @@
-import type { SystemRole } from './user.types';
+export interface RoleSummaryDto {
+  roleId: number;
+  roleName: string;
+  description: string | null;
+  isSystemRole: boolean;
+  isHidden: boolean;
+  userCount: number;
+  permissionCount: number;
+  canHide: boolean;
+}
 
 /**
  * DTO đại diện cho một quyền hạn (Permission) trong hệ thống
@@ -40,7 +49,7 @@ export interface UpdateRolePermissionsRequest {
  */
 export interface SystemRoleInfo {
   id: number;
-  roleName: SystemRole;
+  roleName: string;
   title: string;
   description: string;
   badge?: string;

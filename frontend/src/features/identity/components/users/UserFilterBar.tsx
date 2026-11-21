@@ -7,6 +7,8 @@ import { SYSTEM_ROLES } from '../../constants/systemRoles';
 import { STATUS_LABELS } from '../../types/user.types';
 import type { AccountStatus, SystemRole } from '../../types/user.types';
 import type { UserFilters } from '../../hooks/useUserFilters';
+import { useRoles, roleDisplay } from '../../hooks/useRoles';
+import { useAuth } from '@/shared/auth';
 
 interface UserFilterBarProps {
   isStudent: boolean;
@@ -29,6 +31,10 @@ export function UserFilterBar({
   onClear,
   onRemoveFilter,
 }: UserFilterBarProps) {
+  const { hasPermission } = useAuth();
+  const canManageRoles = hasPermission('identity.roles.manage');
+  const roleCatalog = useRoles(false, canManageRoles && !isStudent);
+  const availableRoles = canManageRoles ? (roleCatalog.data ?? []).map(roleDisplay) : SYSTEM_ROLES;
   return (
     <div className="space-y-4">
       <form
@@ -61,7 +67,7 @@ export function UserFilterBar({
               value={draftFilters.role}
               options={[
                 { value: '', label: 'Tất cả vai trò' },
-                ...SYSTEM_ROLES.filter((role) => role.roleName !== 'Student').map((role) => ({
+                ...availableRoles.filter((role) => role.roleName !== 'Student').map((role) => ({
                   value: role.roleName,
                   label: role.title,
                 })),
@@ -129,7 +135,7 @@ export function UserFilterBar({
               onClick={() => onRemoveFilter('role')}
               aria-label="Bỏ lọc vai trò"
             >
-              {SYSTEM_ROLES.find((role) => role.roleName === filters.role)?.title ?? filters.role}
+              {availableRoles.find((role) => role.roleName === filters.role)?.title ?? filters.role}
             </Button>
           )}
           {filters.status && (
