@@ -1,5 +1,4 @@
 import { Link, Outlet } from 'react-router-dom';
-import { ThemeToggle } from '@/shared/theme';
 
 import logo from '../../../../assets/logo_UGTM.svg';
 
@@ -17,12 +16,9 @@ export function AuthLayout() {
             HỆ THỐNG QUẢN LÝ KHÓA LUẬN TỐT NGHIỆP<small>UGTM PORTAL</small>
           </span>
         </Link>
-        <div className="auth-header-actions">
-          <Link to="/library" className="auth-public">
-            Tra cứu khóa luận <span aria-hidden="true">↗</span>
-          </Link>
-          <ThemeToggle variant="auth" />
-        </div>
+        <Link to="/library" className="auth-public">
+          Tra cứu khóa luận <span aria-hidden="true">↗</span>
+        </Link>
       </header>
       <main className="auth-main">
         <Outlet />
