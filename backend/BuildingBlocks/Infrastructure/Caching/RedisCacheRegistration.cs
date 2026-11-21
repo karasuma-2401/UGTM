@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UGTM.BuildingBlocks.Application.Caching;
+using UGTM.BuildingBlocks.Infrastructure.Persistence;
 
 namespace UGTM.BuildingBlocks.Infrastructure.Caching;
 
@@ -20,7 +21,22 @@ public static class RedisCacheRegistration
 
         services.AddOptions();
         services.AddLogging();
-        services.Configure<RedisCacheOptions>(configuration.GetSection(RedisCacheOptions.SectionName));
+        services.AddOptions<RedisCacheOptions>()
+            .Bind(configuration.GetSection(RedisCacheOptions.SectionName))
+            .Validate(options => options.DefaultTtlMinutes > 0 && options.MaxEntryTtlMinutes >= options.DefaultTtlMinutes
+                && options.MaxEntryTtlMinutes <= 1440 && options.VersionTtlHours is >= 1 and <= 720
+                && options.FailureBackoffSeconds is >= 1 and <= 60, "Invalid Redis cache TTL or failure backoff.")
+            .ValidateOnStart();
+        services.TryAddSingleton<CacheAvailability>();
+
+        var cacheOptions = configuration.GetSection(RedisCacheOptions.SectionName).Get<RedisCacheOptions>() ?? new();
+        if (cacheOptions.UseDatabaseRevisions
+            && (!string.IsNullOrWhiteSpace(configuration.GetConnectionString("DefaultConnection"))
+                || !string.IsNullOrWhiteSpace(configuration["DATABASE_CONNECTION_STRING"])))
+        {
+            var databaseConnection = DatabaseOptions.ResolveConnectionString(configuration);
+            services.TryAddScoped<ICacheRevisionProvider>(_ => new PostgresCacheRevisionProvider(databaseConnection));
+        }
 
         if (!services.Any(descriptor => descriptor.ServiceType == typeof(IDistributedCache)))
         {
@@ -42,7 +58,7 @@ public static class RedisCacheRegistration
             }
         }
 
-        services.TryAddSingleton<ICacheService, DistributedCacheService>();
+        services.TryAddScoped<ICacheService, DistributedCacheService>();
         return services;
     }
 }

@@ -96,7 +96,6 @@ public sealed class GetCouncilsOverviewHandler(
         CouncilStatus? parsedStatus,
         CancellationToken ct)
     {
-        string? cacheKey = null;
         if (cache is not null)
         {
             var batchVer = batchId.HasValue && batchId.Value != Guid.Empty
@@ -104,24 +103,22 @@ public sealed class GetCouncilsOverviewHandler(
                 : "all";
             var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct);
             var statusKey = parsedStatus?.ToString() ?? "all";
-            cacheKey = DefenseCouncilCacheKeys.CouncilsOverview(batchId, statusKey, batchVer, globalVer);
+            var cacheKey = DefenseCouncilCacheKeys.CouncilsOverview(batchId, statusKey, batchVer, globalVer);
 
-            var cached = await cache.GetAsync<List<CouncilOverviewItemDto>>(cacheKey, ct);
-            if (cached is not null)
-            {
-                return cached;
-            }
+            return await cache.GetOrCreateAsync(cacheKey,
+                token => LoadUncachedOverviewAsync(batchId, parsedStatus, token), DefenseCouncilCacheKeys.OverviewTtl, ct);
         }
 
+        return await LoadUncachedOverviewAsync(batchId, parsedStatus, ct);
+    }
+
+    private async Task<List<CouncilOverviewItemDto>> LoadUncachedOverviewAsync(
+        Guid? batchId, CouncilStatus? parsedStatus, CancellationToken ct)
+    {
         // 1. Nạp danh sách hội đồng
         var councils = await councilRepository.GetCouncilsForOverviewAsync(batchId, parsedStatus, ct);
         if (councils.Count == 0)
         {
-            if (cache is not null && cacheKey is not null)
-            {
-                await cache.SetAsync(cacheKey, new List<CouncilOverviewItemDto>(), DefenseCouncilCacheKeys.OverviewTtl, ct);
-            }
-
             return [];
         }
 
@@ -440,11 +437,6 @@ public sealed class GetCouncilsOverviewHandler(
                         HasReviewerRoleConflict: hasReviewerRoleConflict));
                 }
             }
-        }
-
-        if (cache is not null && cacheKey is not null)
-        {
-            await cache.SetAsync(cacheKey, resultList, DefenseCouncilCacheKeys.OverviewTtl, ct);
         }
 
         return resultList;

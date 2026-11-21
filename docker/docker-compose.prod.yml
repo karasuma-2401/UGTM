@@ -46,6 +46,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: "8080"
+      Redis__ConnectionString: cache-redis:6379,password=${REDIS_CACHE_PASSWORD:?Configure the backend cache password}
+      Redis__InstanceName: "ugtm:production:"
       ConnectionStrings__DefaultConnection: ${DATABASE_CONNECTION_STRING:?Configure the existing UGTM Neon database}
       Cors__AllowedOrigins__0: ${APP_URL:?Set the public Vercel origin}
       Identity__Email__PublicWebBaseUrl: ${APP_URL:?Set APP_URL}
@@ -85,6 +87,8 @@ services:
         bind:
           create_host_path: false
     depends_on:
+      cache-redis:
+        condition: service_healthy
       ai-api:
         condition: service_healthy
 
@@ -109,10 +113,25 @@ services:
     <<: *ai
     command: [python, -m, scripts.run_reconciler]
 
+  cache-redis:
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_CACHE_PASSWORD:?Configure the backend cache password}
+      REDIS_MAXMEMORY: ${CACHE_REDIS_MAXMEMORY:-128mb}
+    command: [/bin/sh, -ec, 'exec redis-server --requirepass "$$REDIS_PASSWORD" --maxmemory "$$REDIS_MAXMEMORY" --maxmemory-policy allkeys-lfu --save "" --appendonly no']
+    mem_limit: ${CACHE_REDIS_MEMORY_LIMIT:-192m}
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   ai-redis:
     image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
     restart: unless-stopped
-    command: [redis-server, --appendonly, "yes", --maxmemory-policy, noeviction]
+    command: [redis-server, --appendonly, "yes", --maxmemory, "${AI_REDIS_MAXMEMORY:-256mb}", --maxmemory-policy, noeviction]
+    mem_limit: ${AI_REDIS_MEMORY_LIMIT:-384m}
     volumes:
       - ai_redis:/data
     healthcheck:

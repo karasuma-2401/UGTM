@@ -17,6 +17,17 @@ from production_pipeline import validate_run
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_cache_password_rejects_short_values_and_connection_string_delimiters(self):
+        for password in ("short", "x" * 32 + ",ssl=false", "x" * 32 + "\n"):
+            with self.subTest(password_length=len(password)), tempfile.TemporaryDirectory() as temporary:
+                directory = Path(temporary)
+                values = settings()
+                values["REDIS_CACHE_PASSWORD"] = password
+                (directory / "release.json").write_text(json.dumps(manifest()))
+                (directory / "settings.json").write_text(json.dumps(values))
+                with self.assertRaisesRegex(ValueError, "REDIS_CACHE_PASSWORD"):
+                    initialize(directory)
+
     def test_source_fingerprint_cannot_confuse_content_with_file_boundaries(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

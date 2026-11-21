@@ -28,6 +28,7 @@ public sealed class CheckCouncilDiscrepancyHandler(
         var management = ScoreSummaryAccess.Allowed(actor, ScoreSummaryAccess.Read);
         if (!management && !ScoreSummaryAccess.Role(actor, "Lecturer"))
             return Result.Failure<CouncilDiscrepancyResponseDto>(CouncilErrors.Forbidden);
+        var globalVer = cache is null ? "" : await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct);
         var assignment = await councilRepository.GetAssignmentWithCouncilAndMembersAsync(query.AssignmentId, ct);
         if (assignment == null)
         {
@@ -42,7 +43,6 @@ public sealed class CheckCouncilDiscrepancyHandler(
         {
             var assignVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.AssignmentScope(assignment.Id), ct);
             var councilVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.CouncilScope(assignment.CouncilId), ct);
-            var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct);
             cacheKey = DefenseCouncilCacheKeys.CouncilDiscrepancy(assignment.Id, assignVer, councilVer, globalVer);
 
             var cached = await cache.GetAsync<CouncilDiscrepancyResponseDto>(cacheKey, ct);

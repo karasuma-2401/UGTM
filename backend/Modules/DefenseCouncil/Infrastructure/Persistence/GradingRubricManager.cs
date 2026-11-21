@@ -48,7 +48,8 @@ public sealed class GradingRubricManager(
         if (cache is not null)
         {
             var batchVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(batchId), token);
-            cacheKey = DefenseCouncilCacheKeys.GradingRubric(batchId, batchVer);
+            var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, token);
+            cacheKey = DefenseCouncilCacheKeys.GradingRubric(batchId, batchVer, globalVer);
             var cached = await cache.GetAsync<GradingRubricDto>(cacheKey, token);
             if (cached is not null)
             {

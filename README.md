@@ -64,6 +64,8 @@ npm run dev
 
 API không tự chạy migration hoặc đọc `.env`; chạy lại `ConfigureDevelopment.ps1` sau khi đổi cấu hình. Nếu đặt `SMTP_HOST`, email sẽ gửi qua SMTP đó thay vì Mailpit. Database mới có thể tạo quản trị viên bằng [BootstrapAdmin.ps1](scripts/BootstrapAdmin.ps1). Cấu hình AI xem [hướng dẫn tích hợp](docs/ai-integration-operations.md).
 
+Redis cache dùng revision PostgreSQL theo transaction từ migration `20261121120000_AddTransactionalCacheRevision`. Cần áp dụng migration vào database phát triển trước khi kiểm tra cache; khi thiếu revision, API bỏ qua cache và ghi warning. Cấu hình Redis qua `Redis__ConnectionString` hoặc `ConnectionStrings__Redis`; Compose local chỉ publish Redis ở `127.0.0.1:6379`. Xem [cấu hình cache production](docs/deployment/production-deployment.md#redis-cache-của-backend) về secret, ngân sách RAM và quy trình triển khai.
+
 ### Dữ liệu mẫu (Seed demo)
 
 Sau khi chạy migration trên database phát triển (`psql` đã cài sẵn), có thể dùng [SeedDemo.ps1](scripts/SeedDemo.ps1) để nạp dữ liệu mẫu chuẩn cho toàn bộ luồng (mật khẩu mặc định `UgtmDemo@2026`, tự tạo đợt `Open`, lịch và bộ tiêu chí chấm điểm fallback nếu database còn trống):

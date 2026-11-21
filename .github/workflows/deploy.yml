@@ -71,6 +71,11 @@ jobs:
           ACME_EMAIL: ${{ vars.ACME_EMAIL }}
           APP_URL: ${{ secrets.APP_URL }}
           DATABASE_CONNECTION_STRING: ${{ secrets.DATABASE_CONNECTION_STRING }}
+          REDIS_CACHE_PASSWORD: ${{ secrets.REDIS_CACHE_PASSWORD }}
+          CACHE_REDIS_MAXMEMORY: ${{ vars.CACHE_REDIS_MAXMEMORY || '128mb' }}
+          CACHE_REDIS_MEMORY_LIMIT: ${{ vars.CACHE_REDIS_MEMORY_LIMIT || '192m' }}
+          AI_REDIS_MAXMEMORY: ${{ vars.AI_REDIS_MAXMEMORY || '256mb' }}
+          AI_REDIS_MEMORY_LIMIT: ${{ vars.AI_REDIS_MEMORY_LIMIT || '384m' }}
           AI_POSTGRES_DSN: ${{ secrets.AI_POSTGRES_DSN }}
           AI_POSTGRES_DIRECT_DSN: ${{ secrets.AI_POSTGRES_DIRECT_DSN }}
           PLAGIARISM_AI_API_KEY: ${{ secrets.PLAGIARISM_AI_API_KEY }}

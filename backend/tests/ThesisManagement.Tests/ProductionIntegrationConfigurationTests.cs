@@ -18,6 +18,8 @@ public sealed class ProductionIntegrationConfigurationTests
     [InlineData("PlagiarismAi:BaseUrl", "not-a-url")]
     [InlineData("S3Storage:Endpoint", "")]
     [InlineData("S3Storage:AccessKey", "")]
+    [InlineData("Redis:ConnectionString", "")]
+    [InlineData("Redis:UseDatabaseRevisions", "false")]
     public void Production_integrations_reject_incomplete_or_local_defaults(string key, string value)
         => Assert.Throws<InvalidOperationException>(() => ProductionIntegrationConfiguration.Validate(Configuration(key, value)));
 
@@ -30,6 +32,7 @@ public sealed class ProductionIntegrationConfigurationTests
     {
         var values = new Dictionary<string, string?>
         {
+            ["Redis:ConnectionString"] = "cache-redis:6379,password=synthetic-test-password",
             ["ThesisManagement:Email:PublicWebBaseUrl"] = "https://app.example.test",
             ["ThesisManagement:Email:OutboxPartition"] = "production",
             ["PlagiarismAi:BaseUrl"] = "http://ai:8000",

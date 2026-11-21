@@ -9,7 +9,7 @@ rectangle "EF CLI / UGTM.Database.Migrations\nUGTMDbContext chỉ điều phối
 package "Dịch vụ trong docker-compose.yml" {
  rectangle "Mailpit\nSMTP :1025 / Web :8025" as Mail
  rectangle "MinIO\nS3 :9000 / Console :9001\nChưa tích hợp" as Storage #FFF3E0
- rectangle "Redis :6379\nChưa tích hợp" as Cache #FFF3E0
+ rectangle "Redis :6379\nCache + PostgreSQL revision" as Cache #FFF3E0
  rectangle "RabbitMQ\nAMQP :5672 / Web :15672\nChưa tích hợp" as MQ #FFF3E0
 }
 User --> FE : Trình duyệt
