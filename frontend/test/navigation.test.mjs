@@ -130,7 +130,7 @@ test('Báo cáo và tiến độ defaults to /thesis/milestones and highlights s
   }
 });
 
-test('AcademicAffairs with identity.users.read sees Tài khoản và Phân quyền (without audit logs or permissions tab)', () => {
+test('AcademicAffairs with identity.users.read sees Tài khoản (without Phân quyền or audit logs)', () => {
   const { markup } = renderLayout('/modules/identity/students', {
     roles: ['AcademicAffairs'],
     permissions: ['identity.users.read', 'identity.users.import'],
@@ -138,10 +138,31 @@ test('AcademicAffairs with identity.users.read sees Tài khoản và Phân quy�
   const sidebarMarkup = markup.match(/<aside[\s\S]*?<\/aside>/)?.[0] ?? '';
 
   const identityAnchor =
-    sidebarMarkup.match(/<a[^>]*aria-label="Tài khoản và Phân quyền"[^>]*>/)?.[0] ?? '';
-  assert.match(identityAnchor, /href="\/modules\/identity"/);
+    sidebarMarkup.match(/<a[^>]*aria-label="Tài khoản"[^>]*>/)?.[0] ?? '';
+  assert.match(identityAnchor, /href="\/modules\/identity\/students"/);
   assert.match(identityAnchor, /aria-current="page"/);
+  assert.doesNotMatch(sidebarMarkup, /href="\/modules\/identity\/permissions"/);
   assert.doesNotMatch(sidebarMarkup, /href="\/admin\/audit-logs"/);
+
+  const adminLayout = renderLayout('/modules/identity/permissions', {
+    roles: ['Admin'],
+    permissions: ['identity.users.read', 'identity.roles.manage', 'identity.permissions.read'],
+  });
+  const adminSidebar = adminLayout.markup.match(/<aside[\s\S]*?<\/aside>/)?.[0] ?? '';
+  assert.match(adminSidebar, /<a[^>]*aria-label="Tài khoản"[^>]*href="\/modules\/identity\/students"/);
+  const permissionAnchor =
+    adminSidebar.match(/<a[^>]*aria-label="Phân quyền"[^>]*>/)?.[0] ?? '';
+  assert.match(permissionAnchor, /href="\/modules\/identity\/permissions"/);
+  assert.match(permissionAnchor, /aria-current="page"/);
+
+  const staffLayout = renderLayout('/modules/identity/staff', {
+    roles: ['Admin'],
+    permissions: ['identity.users.read', 'identity.roles.manage', 'identity.permissions.read'],
+  });
+  const staffSidebar = staffLayout.markup.match(/<aside[\s\S]*?<\/aside>/)?.[0] ?? '';
+  const staffAccountAnchor =
+    staffSidebar.match(/<a[^>]*aria-label="Tài khoản"[^>]*>/)?.[0] ?? '';
+  assert.match(staffAccountAnchor, /aria-current="page"/);
 
   const { getIdentityAccess } = loadModule('shared/auth/identityAccess.ts', {});
   const NavLink = ({ to, children, className }) =>
@@ -189,4 +210,16 @@ test('sidebar places Tiến độ sinh viên before Chấm điểm khóa luận 
   const renameIdx = facultyLayout.markup.indexOf('Duyệt đổi tên đề tài');
   assert.ok(reviewIdx > -1 && renameIdx > -1);
   assert.ok(reviewIdx < renameIdx);
+});
+
+test('every sidebar navigation item uses a distinct icon', () => {
+  const { navigationSections } = loadModule('shared/layout/navigationConfig.ts', {
+    'lucide-react': icons,
+  });
+  const items = navigationSections.flatMap((section) => section.items);
+  const seen = new Map();
+  for (const item of items) {
+    assert.ok(!seen.has(item.icon), `Duplicate icon shared between "${seen.get(item.icon)}" and "${item.label}"`);
+    seen.set(item.icon, item.label);
+  }
 });

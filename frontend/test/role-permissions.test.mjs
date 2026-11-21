@@ -122,6 +122,7 @@ function harness() {
     '@/components/ui/page-header': components.PageHeader,
     '@/components/ui/button': components.Button,
     '@/components/ui/confirm-dialog': components.ConfirmDialog,
+    'lucide-react': { ShieldCheck: 'ShieldCheck' },
     '../components/users/IdentityNavigation': components.IdentityNavigation,
     '../components/role-permissions/RoleListCard': components.RoleListCard,
     '../components/role-permissions/RolePermissionEditor': components.RolePermissionEditor,
