@@ -8,6 +8,7 @@ import {
   BookOpen,
   CalendarRange,
   UsersRound,
+  Presentation,
   FileText,
   CalendarCheck,
   UserCheck,
@@ -176,7 +177,7 @@ export const navigationSections: NavSectionConfig[] = [
       {
         label: 'Lập hội đồng bảo vệ',
         path: '/councils/members',
-        icon: UsersRound,
+        icon: Presentation,
         roles: ['Faculty', 'Admin'],
       },
       {
