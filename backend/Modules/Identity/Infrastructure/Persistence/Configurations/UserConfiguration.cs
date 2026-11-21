@@ -58,5 +58,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.AccessFailedCount)
             .HasDefaultValue(0)
             .IsRequired();
+
+        builder.Property(x => x.MustChangePassword)
+            .HasDefaultValue(false)
+            .IsRequired();
     }
 }

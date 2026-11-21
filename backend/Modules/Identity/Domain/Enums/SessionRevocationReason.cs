@@ -8,5 +8,6 @@ public enum SessionRevocationReason
     PasswordReset,
     RefreshTokenReuse,
     AccountDisabled,
-    AdministratorRevoked
+    AdministratorRevoked,
+    AdminPasswordReset
 }

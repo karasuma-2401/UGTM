@@ -62,6 +62,7 @@ public sealed class User : AggregateRoot<Guid>
 
     public DateTime? LastLoginAt { get; private set; }
     public DateTime? PasswordChangedAt { get; private set; }
+    public bool MustChangePassword { get; private set; }
 
     public Guid SecurityStamp { get; private set; }
     public Guid ConcurrencyStamp { get; private set; }
@@ -154,6 +155,7 @@ public sealed class User : AggregateRoot<Guid>
         EmailVerifiedAt = now;
         ActivatedAt = now;
         PasswordChangedAt = now;
+        MustChangePassword = false;
         AccessFailedCount = 0;
         LockoutEndAt = null;
         RotateSecurityStamp();
@@ -230,6 +232,26 @@ public sealed class User : AggregateRoot<Guid>
 
         PasswordHash = newPasswordHash;
         PasswordChangedAt = now;
+        MustChangePassword = false;
+        AccessFailedCount = 0;
+        LockoutEndAt = null;
+        RotateSecurityStamp();
+        Touch(now);
+    }
+
+    public void SetPasswordByAdmin(string newPasswordHash, bool mustChangePassword, DateTime now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(newPasswordHash);
+        EnsureUtc(now, nameof(now));
+
+        if (Status == AccountStatus.PendingActivation)
+        {
+            throw new InvalidOperationException("Cannot reset password for a pending activation account.");
+        }
+
+        PasswordHash = newPasswordHash;
+        PasswordChangedAt = now;
+        MustChangePassword = mustChangePassword;
         AccessFailedCount = 0;
         LockoutEndAt = null;
         RotateSecurityStamp();
