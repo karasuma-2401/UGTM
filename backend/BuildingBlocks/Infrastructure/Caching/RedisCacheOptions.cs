@@ -18,6 +18,12 @@ public sealed class RedisCacheOptions
 
     public int VersionTtlHours { get; set; } = 24;
 
+    public int MaxEntryTtlMinutes { get; set; } = 30;
+
+    public int FailureBackoffSeconds { get; set; } = 5;
+
+    public bool UseDatabaseRevisions { get; set; } = true;
+
     public static string? ResolveConnectionString(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);

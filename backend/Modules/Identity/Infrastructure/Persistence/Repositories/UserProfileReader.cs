@@ -17,7 +17,8 @@ public sealed class UserProfileReader(IdentityDbContext db) : IUserProfileReader
                 x.Id,
                 x.Email,
                 x.FullName,
-                x.UserCode
+                x.UserCode,
+                x.MustChangePassword
             })
             .SingleOrDefaultAsync(cancellationToken);
 
@@ -53,6 +54,7 @@ public sealed class UserProfileReader(IdentityDbContext db) : IUserProfileReader
             user.FullName,
             user.UserCode,
             roles,
-            permissions);
+            permissions,
+            user.MustChangePassword);
     }
 }

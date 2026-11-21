@@ -38,6 +38,7 @@ public sealed class GetCouncilMemberCandidatesHandler(
             return Result.Failure<IReadOnlyList<CouncilMemberCandidateDto>>(CouncilErrors.Forbidden);
         }
 
+        var globalVer = cache is null ? "" : await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, cancellationToken);
         var council = await councilRepository.GetByIdWithDetailsAsync(query.CouncilId, cancellationToken);
         if (council is null)
         {
@@ -49,7 +50,6 @@ public sealed class GetCouncilMemberCandidatesHandler(
         {
             var councilVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.CouncilScope(council.Id), cancellationToken);
             var batchVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(council.BatchId), cancellationToken);
-            var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, cancellationToken);
             var keywordKey = ComputeKeywordKey(query.Keyword);
             cacheKey = DefenseCouncilCacheKeys.CouncilMemberCandidates(council.Id, keywordKey, councilVer, batchVer, globalVer);
 

@@ -39,6 +39,7 @@ using UGTM.Modules.Identity.Application.Sessions;
 using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
 using UGTM.Modules.Identity.Application.Users.ImportUsers;
+using UGTM.Modules.Identity.Application.Users.ResetPassword;
 using UGTM.Modules.Identity.Application.Users.UpdateUser;
 using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
 using UGTM.Modules.Identity.Contracts.Authorization;
@@ -143,6 +144,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<IClock, SystemClock>();
         services.AddScoped<IPasswordService, AspNetPasswordService>();
         services.AddScoped<IPasswordPolicy, PasswordPolicy>();
+        services.AddSingleton<ITemporaryPasswordGenerator, CryptoTemporaryPasswordGenerator>();
         services.AddSingleton<IOpaqueTokenService, OpaqueTokenService>();
         services.AddScoped<IAccessTokenService, JwtAccessTokenService>();
         services.AddScoped<IIdentityUnitOfWork, IdentityUnitOfWork>();
@@ -195,6 +197,7 @@ public sealed class IdentityModule : IModule
         services.AddScoped<ImportUsersHandler>();
         services.AddScoped<UpdateUserHandler>();
         services.AddScoped<UpdateUserStatusHandler>();
+        services.AddScoped<AdminResetPasswordHandler>();
         services.AddScoped<GetPermissionsHandler>();
         services.AddScoped<GetRolesHandler>();
         services.AddScoped<GetRolePermissionsHandler>();

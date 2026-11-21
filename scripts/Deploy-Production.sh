@@ -37,8 +37,29 @@ check_artifacts() {
 }
 current=$(readlink -f "$APP_DIR/current" || true)
 validate_path() { [[ "$1" == "$APP_DIR/releases/"* && -f "$1/runtime.env" ]]; }
+recovery_from=''
 if [[ -f "$APP_DIR/pending" && "$(cat "$APP_DIR/pending")" != "$RELEASE_DIR" ]]; then
-  echo 'An unfinished deployment exists. Inspect pending/status and recover it first.' >&2; exit 1
+  if [[ "$MODE" == candidate && -f "$RELEASE_DIR/recovery-from" ]]; then
+    recovery_id=$(cat "$RELEASE_DIR/recovery-from")
+    [[ "$recovery_id" =~ ^[0-9a-f]{40}-[0-9]+-[0-9]+$ ]]
+    recovery_from="$APP_DIR/releases/$recovery_id"
+    [[ "$(cat "$APP_DIR/pending")" == "$recovery_from" && -f "$recovery_from/mutated" ]]
+    validate_path "$recovery_from"
+    [[ "$(python3 "$recovery_from/scripts/production_metadata.py" "$recovery_from" get deployment_status)" == recovery_required ]]
+    python3 "$recovery_from/scripts/release.py" verify "$recovery_from"
+    # Drain and record the stack actually running, not the legacy current symlink.
+    for service in backend gateway ai-worker; do
+      container=$(compose_at "$recovery_from" ps -q "$service")
+      [[ -n "$container" && "$(docker inspect --format '{{.State.Running}}' "$container")" == true ]]
+      config=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$container")
+      [[ "$config" == "$recovery_from/docker/docker-compose.prod.yml" ]]
+    done
+    current=$recovery_from
+  else
+    echo 'An unfinished deployment exists. Inspect pending/status and recover it first.' >&2; exit 1
+  fi
+elif [[ "$MODE" == candidate && -f "$RELEASE_DIR/recovery-from" ]]; then
+  echo 'The requested unfinished deployment is no longer pending.' >&2; exit 1
 fi
 local_health() {
   local dir=$1 host
@@ -61,6 +82,8 @@ resume_old_worker() {
 }
 rollback() {
   local old
+  # A failed predecessor has no confirmed frontend/backend release pair to restore.
+  [[ ! -f "$RELEASE_DIR/recovery-from" ]] || { state unfinished_baseline_requires_operator; return 1; }
   old=$(cat "$RELEASE_DIR/previous-path" 2>/dev/null || true)
   validate_path "$old" || { state rollback_unavailable; return 1; }
   [[ -f "$old/release.json" ]] || { state legacy_rollback_requires_operator; return 1; }
@@ -90,11 +113,11 @@ failure() {
   state failed || true
   # Status/exit codes only: application logs can contain personal data and signed URLs.
   compose ps --format json > "$RELEASE_DIR/containers.json" 2>/dev/null || true
-  if [[ -f "$RELEASE_DIR/mutated" ]]; then
+  if [[ -f "$RELEASE_DIR/mutated" && -f "$APP_DIR/pending" && "$(cat "$APP_DIR/pending")" == "$RELEASE_DIR" ]]; then
     rollback || state recovery_required
   else
     resume_old_worker || true
-    rm -f "$APP_DIR/pending"
+    if [[ -f "$APP_DIR/pending" && "$(cat "$APP_DIR/pending")" == "$RELEASE_DIR" ]]; then rm -f "$APP_DIR/pending"; fi
   fi
   exit "$code"
 }
@@ -132,24 +155,39 @@ case "$MODE" in
       compose run --rm --no-deps ai-worker python -m scripts.production_ops classifier-fingerprint | meta record-artifacts
     fi
     [[ "$MODE" != prepare ]] || { state prepared; exit 0; }
-    printf '%s\n' "$RELEASE_DIR" > "$APP_DIR/pending"
+    # Keep the failed attempt as owner until replacement schema and drain pass.
+    if [[ -z "$recovery_from" ]]; then printf '%s\n' "$RELEASE_DIR" > "$APP_DIR/pending"; fi
     state preflight
     for port in 80 443 8443; do
       foreign=$(docker ps --filter "publish=$port" --format '{{.Names}}' | grep -v '^ugtm-production-gateway$' || true)
       [[ -z "$foreign" ]] || { echo "Port $port is held by an unrelated container." >&2; exit 1; }
     done
+    state checking_ugtm_schema
     compose run --rm --no-deps backend --check-schema
+    state checking_ai_schema
     compose run --rm --no-deps ai-api python -m scripts.check_schema
     if [[ "$(meta get classifier_enabled)" == true ]]; then
       compose run --rm --no-deps ai-worker python -c 'from app.classifier import load_classifier; load_classifier()'
     fi
     check_artifacts "$RELEASE_DIR"
+    if [[ -n "$recovery_from" ]]; then
+      state checking_recovery_configuration
+      meta recoverable "$recovery_from"
+    fi
     if [[ -n "$current" ]]; then
       # Drain before replacing any service. A busy solo worker can refuse control; abort safely.
       state draining
       drain_worker "$current"
     fi
     touch "$RELEASE_DIR/mutated"
+    if [[ -n "$recovery_from" ]]; then
+      printf '%s\n' "$RELEASE_DIR" > "$APP_DIR/pending.next"
+      mv -Tf "$APP_DIR/pending.next" "$APP_DIR/pending"
+      printf '%s\n' "$RELEASE_DIR" > "$recovery_from/superseded-by"
+      python3 "$recovery_from/scripts/production_metadata.py" "$recovery_from" state superseded
+      rm -f "$recovery_from/mutated"
+      state recovering_forward
+    fi
     state starting
     compose up -d minio ai-redis
     compose run --rm --no-deps ai-api python -m scripts.check_storage
@@ -178,6 +216,7 @@ case "$MODE" in
     rollback || { state recovery_required; exit 1; }
     ;;
   check-rollback|check-candidate-rollback|rollback-current)
+    [[ ! -f "$RELEASE_DIR/recovery-from" ]] || { echo 'Forward recovery has no completed rollback baseline.' >&2; exit 1; }
     [[ "$MODE" == check-candidate-rollback || "$current" == "$RELEASE_DIR" ]]
     if [[ "$MODE" == check-candidate-rollback ]]; then
       [[ -f "$RELEASE_DIR/mutated" || "$(meta get deployment_status)" == rolled_back ]]

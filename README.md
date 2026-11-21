@@ -15,17 +15,17 @@ Các luồng nghiệp vụ đang tiếp tục được hoàn thiện và nghiệ
 
 ## Cấu trúc source
 
-| Thư mục                       | Nội dung                                 |
-| ----------------------------- | ---------------------------------------- |
-| `backend/host/Api`            | API host, cấu hình và kết nối các module |
-| `backend/Modules`             | Nghiệp vụ của 6 module                   |
-| `backend/BuildingBlocks`      | Thành phần dùng chung                    |
-| `backend/Database.Migrations` | Quản lý migration database tập trung     |
-| `backend/tests`               | Unit, integration và architecture tests  |
-| `frontend/src`                | Giao diện và kết nối API                 |
+| Thư mục                       | Nội dung                                  |
+| ----------------------------- | ----------------------------------------- |
+| `backend/host/Api`            | API host, cấu hình và kết nối các module  |
+| `backend/Modules`             | Nghiệp vụ của 6 module                    |
+| `backend/BuildingBlocks`      | Thành phần dùng chung                     |
+| `backend/Database.Migrations` | Quản lý migration database tập trung      |
+| `backend/tests`               | Unit, integration và architecture tests   |
+| `frontend/src`                | Giao diện và kết nối API                  |
 | `services/plagiarism-ai`      | FastAPI, Celery, Modal worker và tests AI |
-| `docs`, `backend/docs`        | Yêu cầu, API contract và kiến trúc       |
-| `scripts`, `docker`           | Script phát triển và cấu hình triển khai |
+| `docs`, `backend/docs`        | Yêu cầu, API contract và kiến trúc        |
+| `scripts`, `docker`           | Script phát triển và cấu hình triển khai  |
 
 ## Chạy local
 
@@ -64,6 +64,8 @@ npm run dev
 
 API không tự chạy migration hoặc đọc `.env`; chạy lại `ConfigureDevelopment.ps1` sau khi đổi cấu hình. Nếu đặt `SMTP_HOST`, email sẽ gửi qua SMTP đó thay vì Mailpit. Database mới có thể tạo quản trị viên bằng [BootstrapAdmin.ps1](scripts/BootstrapAdmin.ps1). Cấu hình AI xem [hướng dẫn tích hợp](docs/ai-integration-operations.md).
 
+Redis cache dùng revision PostgreSQL theo transaction từ migration `20261121120000_AddTransactionalCacheRevision`. Cần áp dụng migration vào database phát triển trước khi kiểm tra cache; khi thiếu revision, API bỏ qua cache và ghi warning. Cấu hình Redis qua `Redis__ConnectionString` hoặc `ConnectionStrings__Redis`; Compose local chỉ publish Redis ở `127.0.0.1:6379`. Xem [cấu hình cache production](docs/deployment/production-deployment.md#redis-cache-của-backend) về secret, ngân sách RAM và quy trình triển khai.
+
 ### Dữ liệu mẫu (Seed demo)
 
 Sau khi chạy migration trên database phát triển (`psql` đã cài sẵn), có thể dùng [SeedDemo.ps1](scripts/SeedDemo.ps1) để nạp dữ liệu mẫu chuẩn cho toàn bộ luồng (mật khẩu mặc định `UgtmDemo@2026`, tự tạo đợt `Open`, lịch và bộ tiêu chí chấm điểm fallback nếu database còn trống):
@@ -81,7 +83,7 @@ Sau khi chạy migration trên database phát triển (`psql` đã cài sẵn), 
 
 Tài khoản mẫu (mật khẩu mặc định `UgtmDemo@2026`, đổi qua `-Password`): `admin@ugtm.edu.vn` (Admin), `truongkhoa@ugtm.edu.vn` (Khoa), `pdt@ugtm.edu.vn` (Phòng Đào tạo), `lecturer@ugtm.edu.vn` (GVHD / Chủ tịch hội đồng), `council@ugtm.edu.vn` (Thư ký hội đồng), `student@ugtm.edu.vn` (Sinh viên chưa có nhóm) và `22520101..22520106@gm.uit.edu.vn` (3 nhóm ở các chặng Tiến độ/Đổi tên, Giữa kỳ/Tương đồng, và Hội đồng/Lưu chiểu).
 
-Source AI được quản lý trong monorepo nhưng vẫn chạy thành service riêng, dùng database Neon và bucket MinIO riêng. Bắt đầu tại [hướng dẫn AI trong monorepo](services/plagiarism-ai/MONOREPO.md). Triển khai toàn hệ thống từ nhánh `production` theo [runbook Azure/Vercel/Modal](docs/production-deployment.md); không dùng Compose local để thay thế cấu hình production.
+Source AI được quản lý trong monorepo nhưng vẫn chạy thành service riêng, dùng database Neon và bucket MinIO riêng. Bắt đầu tại [hướng dẫn AI trong monorepo](services/plagiarism-ai/MONOREPO.md). Xem [tổng quan CI/CD và runbook Azure/Vercel/Modal](docs/production-deployment.md) để biết luồng phát hành, cấu hình, recovery và các sự cố đã xử lý; không dùng Compose local để thay thế cấu hình production.
 
 ## Kiểm tra trước khi gửi code
 

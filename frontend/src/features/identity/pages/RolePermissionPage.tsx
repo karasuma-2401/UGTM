@@ -2,10 +2,10 @@ import { OperationToast } from '@/shared/notifications';
 import { useEffect, useState } from 'react';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBlocker } from 'react-router-dom';
+import { ShieldCheck } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { IdentityNavigation } from '../components/users/IdentityNavigation';
 import { RoleListCard } from '../components/role-permissions/RoleListCard';
 import { RolePermissionEditor } from '../components/role-permissions/RolePermissionEditor';
 import { useRoles, roleDisplay } from '../hooks/useRoles';
@@ -96,7 +96,7 @@ export function RolePermissionPage() {
 
   return (
     <div className="min-w-0 space-y-4">
-      <PageHeader compact accent title="Tài khoản và phân quyền" navigation={<IdentityNavigation />} />
+      <PageHeader compact accent title="Phân quyền" icon={<ShieldCheck />} />
       <OperationToast message={notice} onConsumed={() => setNotice('')} />
       {save.isError && (
         <p role="alert" className="rounded-lg bg-tone-danger-bg p-3 text-sm text-tone-danger-text">

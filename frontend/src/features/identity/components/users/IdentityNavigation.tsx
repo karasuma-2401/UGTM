@@ -19,7 +19,7 @@ export function IdentityNavigation() {
 
   return (
     <nav
-      aria-label="Tài khoản và phân quyền"
+      aria-label="Danh mục tài khoản"
       className="relative isolate flex overflow-x-auto"
     >
       <SelectionIndicator

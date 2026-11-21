@@ -203,23 +203,23 @@ export function FinalReportSubmissionPage() {
       )}
 
       {feedbackComment && (
-        <Card className="overflow-hidden border-slate-200/80 bg-white shadow-xs">
-          <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+        <Card className="overflow-hidden border-line/80 bg-surface-card shadow-xs">
+          <div className="flex items-start gap-3 border-b border-line-subtle px-5 py-4 sm:px-6">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-tone-info-bg text-tone-info-text">
               <MessageSquareQuote className="size-5" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <h2 className="text-base font-semibold text-slate-900">Góp ý từ Giảng viên phản biện</h2>
-              <p className="mt-0.5 text-sm text-slate-500">Nhận xét chính thức cho bản báo cáo đã nộp.</p>
+              <h2 className="text-base font-semibold text-ink-primary">Góp ý từ Giảng viên phản biện</h2>
+              <p className="mt-0.5 text-sm text-ink-muted">Nhận xét chính thức cho bản báo cáo đã nộp.</p>
             </div>
           </div>
           <div className="px-5 py-5 sm:px-6">
-            <RichTextContent content={feedbackComment} className="break-words text-sm leading-7 text-slate-800" />
+            <RichTextContent content={feedbackComment} className="break-words text-sm leading-7 text-ink-heading" />
           </div>
           {!revisedEligibilityQuery.data?.canSubmit && (
-            <div className="flex flex-wrap items-start justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
-              <div className="flex min-w-0 items-start gap-2.5 text-sm leading-6 text-slate-700">
-                <Info className="mt-1 size-4 shrink-0 text-blue-600" aria-hidden="true" />
+            <div className="flex flex-wrap items-start justify-between gap-3 border-t border-line-subtle bg-surface-subtle/70 px-5 py-4 sm:px-6">
+              <div className="flex min-w-0 items-start gap-2.5 text-sm leading-6 text-ink-secondary">
+                <Info className="mt-1 size-4 shrink-0 text-tone-info-icon" aria-hidden="true" />
                 <p>
                   {revisedEligibilityQuery.isLoading
                     ? 'Đang kiểm tra quyền nộp bản chỉnh sửa…'

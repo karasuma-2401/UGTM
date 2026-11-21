@@ -14,7 +14,8 @@ import re
 from release import dotenv, read, validate, write
 
 REQUIRED = "API_HOST ACME_EMAIL APP_URL DATABASE_CONNECTION_STRING AI_POSTGRES_DSN AI_POSTGRES_DIRECT_DSN PLAGIARISM_AI_API_KEY PLAGIARISM_AI_DEFAULT_CORPUS REMOTE_GPU_URL REMOTE_GPU_API_KEY MINIO_ROOT_USER MINIO_ROOT_PASSWORD S3_ACCESS_KEY S3_SECRET_KEY AI_S3_ACCESS_KEY AI_S3_SECRET_KEY JWT_PRIVATE_KEY_PEM_BASE64 IDENTITY_IP_HASH_KEY SMTP_HOST SMTP_FROM_ADDRESS".split()
-OPTIONAL = "S3_BUCKET_NAME AI_S3_BUCKET_NAME MINIO_IMAGE MINIO_MC_IMAGE AI_CLASSIFIER_ENABLED SMTP_PORT SMTP_FROM_NAME SMTP_USERNAME SMTP_PASSWORD SMTP_SECURITY SMTP_TIMEOUT_SECONDS DATA_PROTECTION_VOLUME CADDY_DATA_VOLUME CADDY_CONFIG_VOLUME MINIO_DATA_VOLUME".split()
+REQUIRED.append("REDIS_CACHE_PASSWORD")
+OPTIONAL = "S3_BUCKET_NAME AI_S3_BUCKET_NAME MINIO_IMAGE MINIO_MC_IMAGE AI_CLASSIFIER_ENABLED SMTP_PORT SMTP_FROM_NAME SMTP_USERNAME SMTP_PASSWORD SMTP_SECURITY SMTP_TIMEOUT_SECONDS DATA_PROTECTION_VOLUME CADDY_DATA_VOLUME CADDY_CONFIG_VOLUME MINIO_DATA_VOLUME CACHE_REDIS_MAXMEMORY CACHE_REDIS_MEMORY_LIMIT AI_REDIS_MAXMEMORY AI_REDIS_MEMORY_LIMIT".split()
 
 
 def initialize(directory):
@@ -25,6 +26,8 @@ def initialize(directory):
     for name in REQUIRED:
         if not values.get(name):
             raise ValueError(f"Missing deployment setting: {name}")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", values["REDIS_CACHE_PASSWORD"]):
+        raise ValueError("REDIS_CACHE_PASSWORD must contain 32-128 letters, digits, underscores or hyphens")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]", values["API_HOST"]):
         raise ValueError("Invalid API_HOST")
     from urllib.parse import urlsplit
@@ -145,6 +148,7 @@ def main():
             "state",
             "get",
             "compatible",
+            "recoverable",
             "summary",
             "record-artifacts",
             "check-artifacts",
@@ -203,7 +207,7 @@ def main():
             write(directory / "rollback-context.json", context)
         else:
             raise SystemExit(0 if context["artifacts"] == artifacts else 1)
-    elif args.command == "compatible":
+    elif args.command in ("compatible", "recoverable"):
         previous = Path(args.values[0])
         context = directory / "rollback-context.json"
         previous_context = previous / "rollback-context.json"
@@ -224,10 +228,25 @@ def main():
             and read(context)["artifacts"] == read(previous_context)["artifacts"]
             and intact(previous)
             and intact(directory)
-            and compatible(
-                read(previous / "release.json"), read(directory / "release.json")
-            )
         )
+        before, after = read(previous / "release.json"), read(
+            directory / "release.json"
+        )
+        if args.command == "compatible":
+            safe = safe and compatible(before, after)
+        else:
+            # Forward recovery permits schema differences, never different storage,
+            # credentials, artifacts or data contracts. New images must still pass
+            # their real read-only DB gates before the VM transfers pending ownership.
+            safe = (
+                safe
+                and before.get("version") == after.get("version")
+                and after.get("version") in (1, 2)
+                and before["rollback_policy"]["data_contract"]
+                == after["rollback_policy"]["data_contract"]
+                and before["rollback_policy"].get("infrastructure")
+                == after["rollback_policy"].get("infrastructure")
+            )
         raise SystemExit(0 if safe else 1)
     else:
         print(json.dumps(read(directory / "status.json")))

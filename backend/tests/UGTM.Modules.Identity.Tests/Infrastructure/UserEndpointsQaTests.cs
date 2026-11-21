@@ -8,6 +8,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -24,12 +25,15 @@ using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.Dtos;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
 using UGTM.Modules.Identity.Application.Users.ImportUsers;
+using UGTM.Modules.Identity.Application.Users.ResetPassword;
 using UGTM.Modules.Identity.Application.Users.UpdateUser;
 using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
+using UGTM.Modules.Identity.Contracts.Authentication;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Domain.Entities;
 using UGTM.Modules.Identity.Domain.Enums;
 using UGTM.Modules.Identity.Domain.Repositories;
+using UGTM.Modules.Identity.Infrastructure.Authentication;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
 using UGTM.Modules.Identity.Infrastructure.Endpoints;
 
@@ -63,6 +67,9 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
         builder.Services.AddSingleton<IOpaqueTokenService>(_store);
         builder.Services.AddSingleton<IPasswordPolicy>(_store);
         builder.Services.AddSingleton<IPasswordService>(_store);
+        builder.Services.AddSingleton<ITemporaryPasswordGenerator, CryptoTemporaryPasswordGenerator>();
+        builder.Services.AddSingleton<IAuthenticationSessionRepository>(_store);
+        builder.Services.AddSingleton<IReauthenticationVerifier>(_store);
         builder.Services.AddSingleton<IClock>(_store);
         builder.Services.AddSingleton(new IdentitySecurityPolicy());
         builder.Services.AddSingleton<IUserImportFileReader>(_store);
@@ -73,6 +80,7 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
         builder.Services.AddScoped<UpdateUserHandler>();
         builder.Services.AddScoped<ImportUsersHandler>();
         builder.Services.AddScoped<UpdateUserStatusHandler>();
+        builder.Services.AddScoped<AdminResetPasswordHandler>();
 
         builder.Services.AddAuthentication(QaUserAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, QaUserAuthHandler>(QaUserAuthHandler.SchemeName, _ => { });
@@ -83,8 +91,14 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
         _app = builder.Build();
         _app.UseMiddleware<GlobalExceptionMiddleware>();
         _app.UseAuthentication();
+        _app.UseIdentityPasswordChangeEnforcement();
         _app.UseAuthorization();
         _app.MapIdentityUserEndpoints();
+        _app.MapGet("/api/qa/allowed-when-must-change", () => Results.Ok(ApiResponse.Ok()))
+            .RequireAuthorization()
+            .AllowWhenPasswordChangeRequired();
+        _app.MapGet("/api/qa/anonymous", () => Results.Ok(ApiResponse.Ok()))
+            .AllowAnonymous();
 
         await _app.StartAsync();
         _client = _app.GetTestClient();
@@ -134,6 +148,7 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, (await _client.PostAsJsonAsync("/api/users", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await _client.PutAsJsonAsync($"/api/users/{Guid.NewGuid()}", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await _client.PatchAsJsonAsync($"/api/users/{Guid.NewGuid()}/status", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _client.PostAsJsonAsync($"/api/users/{Guid.NewGuid()}/reset-password", new { })).StatusCode);
     }
 
     [Fact]
@@ -144,6 +159,7 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Forbidden, (await _client.PostAsJsonAsync("/api/users", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await _client.PutAsJsonAsync($"/api/users/{Guid.NewGuid()}", new { })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await _client.PatchAsJsonAsync($"/api/users/{Guid.NewGuid()}/status", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await _client.PostAsJsonAsync($"/api/users/{Guid.NewGuid()}/reset-password", new { })).StatusCode);
 
         Authenticate(Guid.NewGuid(), ["Student"]);
         Assert.Equal(HttpStatusCode.Forbidden, (await _client.GetAsync("/api/users")).StatusCode);
@@ -279,6 +295,7 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
     [Theory]
     [InlineData("PUT", "/api/users/not-a-guid")]
     [InlineData("PATCH", "/api/users/not-a-guid/status")]
+    [InlineData("POST", "/api/users/not-a-guid/reset-password")]
     public async Task UserEndpoints_WithNonGuidRouteId_Return404NotFound(string method, string path)
     {
         AuthenticateAsAdmin();
@@ -399,6 +416,140 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
         var statusRes = await _client.PatchAsJsonAsync($"/api/users/{missingId}/status", new { status = "Active" });
         Assert.Equal(HttpStatusCode.NotFound, statusRes.StatusCode);
         Assert.Equal("Identity.UserNotFound", await ReadErrorCodeAsync(statusRes));
+
+        var resetRes = await _client.PostAsJsonAsync($"/api/users/{missingId}/reset-password", new
+        {
+            mode = "Generated",
+            adminPassword = "AdminPassword!123"
+        });
+        Assert.Equal(HttpStatusCode.NotFound, resetRes.StatusCode);
+        Assert.Equal("Identity.UserNotFound", await ReadErrorCodeAsync(resetRes));
+    }
+
+    [Fact]
+    public async Task AdminResetPassword_HttpLifecycle_GeneratedCustom_Headers_Guards_And_MustChangeEnforcement()
+    {
+        var adminId = Guid.NewGuid();
+        Authenticate(adminId, ["Admin"]);
+
+        var createTarget = await _client.PostAsJsonAsync("/api/users", new
+        {
+            email = "target.reset@ugtm.edu.vn",
+            fullName = "Target User",
+            roles = new[] { "Lecturer" },
+            initialPassword = "OldPassword!123"
+        });
+        var targetId = (await ReadDataAsync(createTarget)).GetProperty("id").GetGuid();
+
+        var createPeerAdmin = await _client.PostAsJsonAsync("/api/users", new
+        {
+            email = "peer.admin@ugtm.edu.vn",
+            fullName = "Peer Admin",
+            roles = new[] { "Admin" },
+            initialPassword = "OldPassword!123"
+        });
+        var peerAdminId = (await ReadDataAsync(createPeerAdmin)).GetProperty("id").GetGuid();
+
+        // 1. Generated mode returns 16-char temporaryPassword once and Cache-Control: no-store
+        var genRes = await _client.PostAsJsonAsync($"/api/users/{targetId}/reset-password", new
+        {
+            mode = "Generated",
+            requirePasswordChange = true,
+            adminPassword = "AdminPassword!123",
+            reason = "Hỗ trợ cấp lại mật khẩu"
+        });
+        Assert.Equal(HttpStatusCode.OK, genRes.StatusCode);
+        Assert.Contains("no-store", genRes.Headers.CacheControl!.ToString(), StringComparison.Ordinal);
+        var genData = await ReadDataAsync(genRes);
+        var tempPassword = genData.GetProperty("temporaryPassword").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(tempPassword));
+        Assert.Equal(16, tempPassword!.Length);
+        Assert.True(genData.GetProperty("mustChangePassword").GetBoolean());
+        Assert.True(genData.GetProperty("notificationEmailQueued").GetBoolean());
+        Assert.Contains(_store.RevokedUsers, id => id == targetId);
+
+        // 2. Custom mode returns temporaryPassword = null
+        var customRes = await _client.PostAsJsonAsync($"/api/users/{targetId}/reset-password", new
+        {
+            mode = "Custom",
+            newPassword = "NewStrong!Password456",
+            requirePasswordChange = false,
+            adminPassword = "AdminPassword!123"
+        });
+        Assert.Equal(HttpStatusCode.OK, customRes.StatusCode);
+        var customData = await ReadDataAsync(customRes);
+        Assert.Equal(JsonValueKind.Null, customData.GetProperty("temporaryPassword").ValueKind);
+        Assert.False(customData.GetProperty("mustChangePassword").GetBoolean());
+
+        // 3. Self reset rejected (400)
+        var selfRes = await _client.PostAsJsonAsync($"/api/users/{adminId}/reset-password", new
+        {
+            mode = "Generated",
+            adminPassword = "AdminPassword!123"
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, selfRes.StatusCode);
+        Assert.Equal("Identity.CannotResetOwnPassword", await ReadErrorCodeAsync(selfRes));
+
+        // 4. Non-Admin with identity.users.manage blocked from resetting an Admin account (403)
+        Authenticate(Guid.NewGuid(), ["Faculty"], PermissionCodes.IdentityUsersManage);
+        var escalateRes = await _client.PostAsJsonAsync($"/api/users/{peerAdminId}/reset-password", new
+        {
+            mode = "Generated",
+            adminPassword = "AdminPassword!123"
+        });
+        Assert.Equal(HttpStatusCode.Forbidden, escalateRes.StatusCode);
+        Assert.Equal("Identity.CannotManageAdminPassword", await ReadErrorCodeAsync(escalateRes));
+
+        // 5. Wrong / locked admin re-authentication
+        AuthenticateAsAdmin();
+        _store.ReauthOutcome = ReauthenticationOutcome.InvalidCredentials;
+        var badReauth = await _client.PostAsJsonAsync($"/api/users/{targetId}/reset-password", new
+        {
+            mode = "Generated",
+            adminPassword = "WrongPassword!"
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, badReauth.StatusCode);
+        Assert.Equal("Identity.ReauthenticationFailed", await ReadErrorCodeAsync(badReauth));
+
+        _store.ReauthOutcome = ReauthenticationOutcome.AccountLocked;
+        var lockedReauth = await _client.PostAsJsonAsync($"/api/users/{targetId}/reset-password", new
+        {
+            mode = "Generated",
+            adminPassword = "AdminPassword!123"
+        });
+        Assert.Equal((HttpStatusCode)429, lockedReauth.StatusCode);
+        Assert.Equal("Identity.AccountLocked", await ReadErrorCodeAsync(lockedReauth));
+        _store.ReauthOutcome = ReauthenticationOutcome.Verified;
+
+        // 6. PasswordChangeRequiredMiddleware hard gate: blocks business endpoints with 403, allows Allowed & Anonymous
+        Authenticate(targetId, ["Admin"], PermissionCodes.IdentityUsersRead);
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            QaUserAuthHandler.SchemeName,
+            $"sub={targetId};role=Admin;perm={PermissionCodes.IdentityUsersRead};pwd_change=true");
+
+        var blockedUsers = await _client.GetAsync("/api/users");
+        Assert.Equal(HttpStatusCode.Forbidden, blockedUsers.StatusCode);
+        Assert.Equal("Identity.PasswordChangeRequired", await ReadErrorCodeAsync(blockedUsers));
+        Assert.Contains("no-store", blockedUsers.Headers.CacheControl!.ToString(), StringComparison.Ordinal);
+
+        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync("/api/qa/allowed-when-must-change")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await _client.GetAsync("/api/qa/anonymous")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("""{"mode": 123, "adminPassword": "AdminPassword!123"}""")]
+    [InlineData("""{"mode": "Generated", "requirePasswordChange": "yes", "adminPassword": "AdminPassword!123"}""")]
+    [InlineData("""{"mode": "0", "adminPassword": "AdminPassword!123"}""")]
+    [InlineData("""{"mode": "Default", "adminPassword": "AdminPassword!123"}""")]
+    [InlineData("null")]
+    [InlineData("")]
+    [InlineData("{bad json")]
+    public async Task AdminResetPassword_WithInvalidTypesOrMalformedJson_Returns400BadRequestNot500(string rawJson)
+    {
+        AuthenticateAsAdmin();
+        using var content = new StringContent(rawJson, Encoding.UTF8, "application/json");
+        var response = await _client.PostAsync($"/api/users/{Guid.NewGuid()}/reset-password", content);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     #endregion
@@ -431,6 +582,7 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
                 if (key == "sub") claims.Add(new Claim("sub", val));
                 else if (key == "role") claims.Add(new Claim(ClaimTypes.Role, val));
                 else if (key == "perm") claims.Add(new Claim("permission", val));
+                else if (key == "pwd_change") claims.Add(new Claim(IdentityClaimTypes.PasswordChangeRequired, val));
             }
 
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(
@@ -448,6 +600,8 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
         IOpaqueTokenService,
         IPasswordPolicy,
         IPasswordService,
+        IAuthenticationSessionRepository,
+        IReauthenticationVerifier,
         IClock,
         IUserImportFileReader,
         IUserImportTemplateGenerator
@@ -457,6 +611,9 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
             .Select(r => new Role { Id = (int)r + 1, RoleName = r.ToString(), Description = r.ToString() })
             .ToList();
         public List<AuditEntry> Audits { get; } = [];
+        public List<Guid> RevokedUsers { get; } = [];
+        public ReauthenticationOutcome ReauthOutcome { get; set; } = ReauthenticationOutcome.Verified;
+        private readonly PasswordPolicy _realPasswordPolicy = new();
         public DateTime UtcNow { get; } = new(2026, 11, 19, 16, 0, 0, DateTimeKind.Utc);
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Task.FromResult(1);
@@ -502,7 +659,7 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
                 q = q.Where(u => !u.UserRoles.Any(ur => ur.Role.RoleName == nameof(SystemRoleName.Student)));
             if (!string.IsNullOrWhiteSpace(query.Role))
                 q = q.Where(u => u.UserRoles.Any(ur => string.Equals(ur.Role.RoleName, query.Role, StringComparison.OrdinalIgnoreCase)));
-            var items = q.Select(u => new UserSummaryDto(u.Id, u.Email, u.FullName, u.UserCode, u.PhoneNumber, u.Status.ToString(), u.UserRoles.Select(ur => ur.Role.RoleName).ToList(), u.CreatedAt, u.LastLoginAt)).ToList();
+            var items = q.Select(u => new UserSummaryDto(u.Id, u.Email, u.FullName, u.UserCode, u.PhoneNumber, u.Status.ToString(), u.UserRoles.Select(ur => ur.Role.RoleName).ToList(), u.CreatedAt, u.LastLoginAt, u.MustChangePassword)).ToList();
             return Task.FromResult(new PagedResult<UserSummaryDto>(items, items.Count, query.PageNumber, query.PageSize));
         }
         public Task<string?> ResolveRoleNameAsync(string roleName, CancellationToken ct)
@@ -514,11 +671,21 @@ public sealed class UserEndpointsQaTests : IAsyncLifetime
         public void Add(OneTimeChallenge challenge) { }
         public void EnqueueActivationEmail(Guid userId, string to, string fullName, string rawToken, DateTime now) { }
         public void EnqueuePasswordRecoveryEmail(Guid userId, string email, string fullName, string code, DateTime createdAt) { }
+        public void EnqueueAdminPasswordResetAlertEmail(Guid userId, string email, string fullName, bool mustChangePassword, DateTime createdAt) { }
+        public void AddSession(AuthenticationSession session) { }
+        public void AddRefreshToken(RefreshToken refreshToken) { }
+        public Task<AuthenticationSession?> GetSessionAsync(Guid sessionId, CancellationToken ct) => Task.FromResult<AuthenticationSession?>(null);
+        public Task<RefreshToken?> GetRefreshTokenForUpdateAsync(string selector, CancellationToken ct) => Task.FromResult<RefreshToken?>(null);
+        public Task<IReadOnlyList<AuthenticationSession>> GetActiveSessionsAsync(Guid userId, DateTime now, CancellationToken ct) => Task.FromResult<IReadOnlyList<AuthenticationSession>>([]);
+        public Task<bool> RevokeActiveSessionAsync(Guid sessionId, Guid userId, SessionRevocationReason reason, DateTime now, CancellationToken ct) => Task.FromResult(false);
+        public Task<int> RevokeActiveSessionsAsync(Guid userId, SessionRevocationReason reason, DateTime now, CancellationToken ct) => Task.FromResult(0);
+        public Task RevokeAllAsync(Guid userId, SessionRevocationReason reason, DateTime now, CancellationToken ct) { RevokedUsers.Add(userId); return Task.CompletedTask; }
+        public Task<ReauthenticationOutcome> VerifyPasswordAsync(Guid userId, string password, CancellationToken ct = default) => Task.FromResult(ReauthOutcome);
         public OpaqueToken CreateToken() => new("sel.val", "sel", [1, 2]);
         public NumericCode CreateNumericCode(int digits) => new("sel", "123456", [1, 2]);
         public bool TryParse(string rawToken, out string selector, out string validator) { selector = "sel"; validator = "val"; return true; }
         public bool Verify(string suppliedSecret, byte[] expectedHash) => true;
-        public PasswordPolicyResult Validate(string password) => new(password.Length >= 12, []);
+        public PasswordPolicyResult Validate(string password) => _realPasswordPolicy.Validate(password);
         public string Hash(User user, string password) => "hash:" + password;
         public bool Verify(User user, string passwordHash, string providedPassword) => passwordHash == "hash:" + providedPassword;
         public ImportFileReadResult Read(Stream stream) => new([], []);

@@ -32,12 +32,15 @@ using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.Dtos;
 using UGTM.Modules.Identity.Application.Users.GetUsers;
 using UGTM.Modules.Identity.Application.Users.ImportUsers;
+using UGTM.Modules.Identity.Application.Users.ResetPassword;
 using UGTM.Modules.Identity.Application.Users.UpdateUser;
 using UGTM.Modules.Identity.Application.Users.UpdateUserStatus;
+using UGTM.Modules.Identity.Contracts.Authentication;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Domain.Entities;
 using UGTM.Modules.Identity.Domain.Enums;
 using UGTM.Modules.Identity.Domain.Repositories;
+using UGTM.Modules.Identity.Infrastructure.Authentication;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
 using UGTM.Modules.Identity.Infrastructure.Endpoints;
 
@@ -68,10 +71,13 @@ public sealed class RoleManagementEndpointsQaTests : IAsyncLifetime
         builder.Services.AddSingleton<IIdentityUnitOfWork>(_store);
         builder.Services.AddSingleton<IAuditLogWriter>(_store);
         builder.Services.AddSingleton<IOneTimeChallengeRepository>(_store);
+        builder.Services.AddSingleton<IAuthenticationSessionRepository>(_store);
+        builder.Services.AddSingleton<IReauthenticationVerifier>(_store);
         builder.Services.AddSingleton<IIdentityEmailOutbox>(_store);
         builder.Services.AddSingleton<IOpaqueTokenService>(_store);
         builder.Services.AddSingleton<IPasswordPolicy>(_store);
         builder.Services.AddSingleton<IPasswordService>(_store);
+        builder.Services.AddSingleton<ITemporaryPasswordGenerator, CryptoTemporaryPasswordGenerator>();
         builder.Services.AddSingleton<IClock>(_store);
         builder.Services.AddSingleton(new IdentitySecurityPolicy());
         builder.Services.AddSingleton<IUserImportFileReader>(_store);
@@ -89,6 +95,7 @@ public sealed class RoleManagementEndpointsQaTests : IAsyncLifetime
         builder.Services.AddScoped<UpdateUserHandler>();
         builder.Services.AddScoped<ImportUsersHandler>();
         builder.Services.AddScoped<UpdateUserStatusHandler>();
+        builder.Services.AddScoped<AdminResetPasswordHandler>();
 
         builder.Services.AddAuthentication(QaAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, QaAuthHandler>(QaAuthHandler.SchemeName, _ => { });
@@ -872,6 +879,8 @@ public sealed class RoleManagementEndpointsQaTests : IAsyncLifetime
         IIdentityUnitOfWork,
         IAuditLogWriter,
         IOneTimeChallengeRepository,
+        IAuthenticationSessionRepository,
+        IReauthenticationVerifier,
         IIdentityEmailOutbox,
         IOpaqueTokenService,
         IPasswordPolicy,
@@ -1111,6 +1120,16 @@ public sealed class RoleManagementEndpointsQaTests : IAsyncLifetime
         public void Add(OneTimeChallenge challenge) { }
         public void EnqueueActivationEmail(Guid userId, string to, string fullName, string rawToken, DateTime now) { }
         public void EnqueuePasswordRecoveryEmail(Guid userId, string email, string fullName, string code, DateTime createdAt) { }
+        public void EnqueueAdminPasswordResetAlertEmail(Guid userId, string email, string fullName, bool mustChangePassword, DateTime createdAt) { }
+        public void AddSession(AuthenticationSession session) { }
+        public void AddRefreshToken(RefreshToken refreshToken) { }
+        public Task<AuthenticationSession?> GetSessionAsync(Guid sessionId, CancellationToken cancellationToken) => Task.FromResult<AuthenticationSession?>(null);
+        public Task<RefreshToken?> GetRefreshTokenForUpdateAsync(string selector, CancellationToken cancellationToken) => Task.FromResult<RefreshToken?>(null);
+        public Task<IReadOnlyList<AuthenticationSession>> GetActiveSessionsAsync(Guid userId, DateTime now, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<AuthenticationSession>>([]);
+        public Task<bool> RevokeActiveSessionAsync(Guid sessionId, Guid userId, SessionRevocationReason reason, DateTime now, CancellationToken cancellationToken) => Task.FromResult(false);
+        public Task<int> RevokeActiveSessionsAsync(Guid userId, SessionRevocationReason reason, DateTime now, CancellationToken cancellationToken) => Task.FromResult(0);
+        public Task RevokeAllAsync(Guid userId, SessionRevocationReason reason, DateTime now, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<ReauthenticationOutcome> VerifyPasswordAsync(Guid userId, string password, CancellationToken cancellationToken = default) => Task.FromResult(ReauthenticationOutcome.Verified);
         public OpaqueToken CreateToken() => new("sel.val", "sel", [1, 2]);
         public NumericCode CreateNumericCode(int digits) => new("sel", "123456", [1, 2]);
         public bool TryParse(string rawToken, out string selector, out string validator) { selector = "sel"; validator = "val"; return true; }

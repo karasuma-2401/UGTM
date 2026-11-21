@@ -99,28 +99,26 @@ public sealed class AcademicResultsWorkspaceLoader(
         string normalizedPhase,
         CancellationToken ct)
     {
-        string? cacheKey = null;
         if (cache is not null && batchId != Guid.Empty)
         {
             var batchVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(batchId), ct);
             var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct);
-            cacheKey = DefenseCouncilCacheKeys.AcademicResults(batchId, normalizedPhase, batchVer, globalVer);
+            var cacheKey = DefenseCouncilCacheKeys.AcademicResults(batchId, normalizedPhase, batchVer, globalVer);
 
-            var cached = await cache.GetAsync<List<AcademicResultComputedRow>>(cacheKey, ct);
-            if (cached is not null)
-            {
-                return cached;
-            }
+            return await cache.GetOrCreateAsync(cacheKey,
+                async token => (await LoadUncachedRowsAsync(batchId, normalizedPhase, token)).ToList(),
+                DefenseCouncilCacheKeys.ResultsTtl, ct);
         }
 
+        return await LoadUncachedRowsAsync(batchId, normalizedPhase, ct);
+    }
+
+    private async Task<IReadOnlyList<AcademicResultComputedRow>> LoadUncachedRowsAsync(
+        Guid batchId, string normalizedPhase, CancellationToken ct)
+    {
         var groups = await thesisReader.GetGroupsByBatchIdAsync(batchId, ct);
         if (groups.Count == 0)
         {
-            if (cache is not null && cacheKey is not null)
-            {
-                await cache.SetAsync(cacheKey, new List<AcademicResultComputedRow>(), DefenseCouncilCacheKeys.ResultsTtl, ct);
-            }
-
             return [];
         }
 
@@ -269,11 +267,6 @@ public sealed class AcademicResultsWorkspaceLoader(
             resultRows.Add(row);
         }
 
-        if (cache is not null && cacheKey is not null)
-        {
-            await cache.SetAsync(cacheKey, resultRows, DefenseCouncilCacheKeys.ResultsTtl, ct);
-        }
-
         return resultRows;
     }
 
@@ -284,10 +277,12 @@ public sealed class AcademicResultsWorkspaceLoader(
     {
         var normalizedPhase = NormalizePhase(phase);
         Guid? batchId = null;
+        var groupMapKey = cache is null ? null : DefenseCouncilCacheKeys.GroupBatchMap(groupId,
+            await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct));
 
         if (cache is not null && groupId != Guid.Empty)
         {
-            batchId = await cache.GetAsync<Guid?>(DefenseCouncilCacheKeys.GroupBatchMap(groupId), ct);
+            batchId = await cache.GetAsync<Guid?>(groupMapKey!, ct);
         }
 
         if (!batchId.HasValue || batchId.Value == Guid.Empty)
@@ -302,7 +297,7 @@ public sealed class AcademicResultsWorkspaceLoader(
             if (cache is not null && groupId != Guid.Empty && batchId.Value != Guid.Empty)
             {
                 await cache.SetAsync<Guid?>(
-                    DefenseCouncilCacheKeys.GroupBatchMap(groupId),
+                    groupMapKey!,
                     batchId.Value,
                     DefenseCouncilCacheKeys.GroupBatchMapTtl,
                     ct);

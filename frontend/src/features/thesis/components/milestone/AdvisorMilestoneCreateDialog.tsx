@@ -370,7 +370,7 @@ function CreateMilestoneFormBody({
                   return (
                     <li
                       key={item.milestone.id}
-                      className="flex items-start justify-between gap-2.5 rounded-lg bg-surface-card px-3 py-2 text-xs ring-1 ring-slate-200/70"
+                      className="flex items-start justify-between gap-2.5 rounded-lg bg-surface-card px-3 py-2 text-xs ring-1 ring-line/70"
                     >
                       <div className="flex min-w-0 items-start gap-2">
                         {accepted ? (

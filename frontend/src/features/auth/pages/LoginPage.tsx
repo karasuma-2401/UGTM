@@ -235,7 +235,7 @@ export function LoginPage() {
           className="my-3 p-3.5 rounded-lg border border-tone-danger-border bg-tone-danger-bg text-tone-danger-strong shadow-sm transition-all"
         >
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-red-100 rounded-full text-tone-danger-icon shrink-0 mt-0.5">
+            <div className="p-2 bg-tone-danger-border/35 rounded-full text-tone-danger-icon shrink-0 mt-0.5">
               <Lock className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
@@ -249,7 +249,7 @@ export function LoginPage() {
                 <div className="flex items-center gap-1.5 text-xs text-tone-danger-strong font-medium">
                   <Clock className="w-3.5 h-3.5 text-tone-danger-icon" />
                   <span>Tự động mở khóa sau:</span>
-                  <span className="font-mono font-bold text-xs bg-red-100 text-tone-danger-text px-2 py-0.5 rounded border border-tone-danger-border">
+                  <span className="font-mono font-bold text-xs bg-tone-danger-border/35 text-tone-danger-text px-2 py-0.5 rounded border border-tone-danger-border">
                     {formatCountdown(remainingSeconds)}
                   </span>
                 </div>

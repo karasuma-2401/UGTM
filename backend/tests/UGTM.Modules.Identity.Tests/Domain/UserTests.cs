@@ -133,6 +133,63 @@ public sealed class UserTests
         Assert.Throws<InvalidOperationException>(() => user.Reactivate(CreatedAt.AddMinutes(5)));
     }
 
+    [Theory]
+    [InlineData(AccountStatus.Active)]
+    [InlineData(AccountStatus.Suspended)]
+    [InlineData(AccountStatus.Disabled)]
+    public void SetPasswordByAdmin_updates_password_preserves_status_clears_lockout_and_rotates_stamp(
+        AccountStatus targetStatus)
+    {
+        var user = CreateActiveUser();
+        var t1 = CreatedAt.AddMinutes(5);
+        user.RecordFailedLogin(t1, 1, TimeSpan.FromMinutes(15));
+        Assert.True(user.IsLockedOut(t1.AddMinutes(1)));
+
+        if (targetStatus == AccountStatus.Suspended)
+        {
+            user.Suspend(t1.AddMinutes(2));
+        }
+        else if (targetStatus == AccountStatus.Disabled)
+        {
+            user.Disable(t1.AddMinutes(2));
+        }
+
+        var previousStamp = user.SecurityStamp;
+        var previousConcurrency = user.ConcurrencyStamp;
+        var resetTime = CreatedAt.AddHours(1);
+
+        user.SetPasswordByAdmin("admin-reset-hash", mustChangePassword: true, resetTime);
+
+        Assert.Equal(targetStatus, user.Status);
+        Assert.Equal("admin-reset-hash", user.PasswordHash);
+        Assert.Equal(resetTime, user.PasswordChangedAt);
+        Assert.True(user.MustChangePassword);
+        Assert.Equal(0, user.AccessFailedCount);
+        Assert.Null(user.LockoutEndAt);
+        Assert.NotEqual(previousStamp, user.SecurityStamp);
+        Assert.NotEqual(previousConcurrency, user.ConcurrencyStamp);
+    }
+
+    [Fact]
+    public void SetPasswordByAdmin_throws_for_pending_activation_account()
+    {
+        var pending = CreatePendingUser();
+        Assert.Throws<InvalidOperationException>(() =>
+            pending.SetPasswordByAdmin("admin-reset-hash", mustChangePassword: true, CreatedAt.AddMinutes(5)));
+    }
+
+    [Fact]
+    public void ChangePassword_clears_must_change_password_flag()
+    {
+        var user = CreateActiveUser();
+        user.SetPasswordByAdmin("admin-reset-hash", mustChangePassword: true, CreatedAt.AddMinutes(10));
+        Assert.True(user.MustChangePassword);
+
+        user.ChangePassword("user-chosen-hash", CreatedAt.AddMinutes(20));
+
+        Assert.False(user.MustChangePassword);
+    }
+
     private static User CreatePendingUser()
         => User.ProvisionStudent(
             Guid.NewGuid(),

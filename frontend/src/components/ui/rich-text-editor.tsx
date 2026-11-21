@@ -76,7 +76,7 @@ function ToolbarButton({
       className={cn(
         'inline-flex size-7 items-center justify-center rounded-md text-ink-body transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-40',
         active
-          ? 'bg-tone-info-bg text-primary ring-1 ring-inset ring-blue-200/80'
+          ? 'bg-tone-info-bg text-primary ring-1 ring-inset ring-tone-info-border/80'
           : 'hover:bg-surface-muted hover:text-ink-primary',
       )}
     >

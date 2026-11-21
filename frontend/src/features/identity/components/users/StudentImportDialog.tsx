@@ -8,12 +8,55 @@ import { cn } from '@/lib/utils';
 import type { ApiResponse } from '@/shared/api/types';
 import { getUserErrorMessage, userApi } from '../../services/userApi';
 
-interface StudentImportDialogProps {
+export type ImportUserRole = 'Student' | 'Lecturer';
+
+const IMPORT_ROLE_CONFIG: Record<
+  ImportUserRole,
+  {
+    title: string;
+    templateHint: string;
+    templateFilename: string;
+    fileInputLabel: string;
+    limitsText: string;
+    roleDisplay: string;
+    subjectLower: string;
+    submitLabel: string;
+  }
+> = {
+  Student: {
+    title: 'Nhập danh sách sinh viên',
+    templateHint: 'MSSV bắt buộc; email và MSSV không được trùng.',
+    templateFilename: 'ugtm-student-import-template.xlsx',
+    fileInputLabel: 'File danh sách sinh viên (.xlsx)',
+    limitsText: 'Định dạng .xlsx · Tối đa 5 MB · 5.000 sinh viên / lần',
+    roleDisplay: 'Sinh viên',
+    subjectLower: 'sinh viên',
+    submitLabel: 'Nhập sinh viên',
+  },
+  Lecturer: {
+    title: 'Nhập danh sách giảng viên',
+    templateHint: 'Mã giảng viên có thể để trống; email và mã (nếu có) không được trùng.',
+    templateFilename: 'ugtm-lecturer-import-template.xlsx',
+    fileInputLabel: 'File danh sách giảng viên (.xlsx)',
+    limitsText: 'Định dạng .xlsx · Tối đa 5 MB · 5.000 giảng viên / lần',
+    roleDisplay: 'Giảng viên',
+    subjectLower: 'giảng viên',
+    submitLabel: 'Nhập giảng viên',
+  },
+};
+
+export interface StudentImportDialogProps {
+  role?: ImportUserRole;
   onClose: () => void;
   onImported: (count: number) => Promise<void>;
 }
 
-export function StudentImportDialog({ onClose, onImported }: StudentImportDialogProps) {
+export function StudentImportDialog({
+  role = 'Student',
+  onClose,
+  onImported,
+}: StudentImportDialogProps) {
+  const copy = IMPORT_ROLE_CONFIG[role];
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState('');
   const [downloadError, setDownloadError] = useState('');
@@ -22,7 +65,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
   const inputRef = useRef<HTMLInputElement>(null);
   const id = useId();
   const mutation = useMutation({
-    mutationFn: (value: File) => userApi.importStudents(value),
+    mutationFn: (value: File) => userApi.importUsers(value, role),
     onSuccess: (result) => onImported(result.importedCount),
   });
   const fieldErrors = axios.isAxiosError<ApiResponse<unknown>>(mutation.error)
@@ -51,11 +94,11 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
     setDownloading(true);
     setDownloadError('');
     try {
-      const blob = await userApi.downloadStudentTemplate();
+      const blob = await userApi.downloadUserTemplate(role);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'ugtm-student-import-template.xlsx';
+      link.download = copy.templateFilename;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -80,13 +123,13 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
         <span className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-success-bg text-tone-success-text ring-1 ring-inset ring-emerald-100"
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-tone-success-bg text-tone-success-text ring-1 ring-inset ring-tone-success-border/70"
           >
             <FileSpreadsheet className="size-5" />
           </span>
           <span className="min-w-0">
             <span className="block text-base font-semibold text-ink-primary">
-              Nhập danh sách sinh viên
+              {copy.title}
             </span>
             <span className="mt-0.5 block text-xs font-normal text-ink-muted">
               Tạo nhiều tài khoản từ file Excel
@@ -115,9 +158,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
               <p className="text-sm leading-6 text-ink-body">
                 Dùng file mẫu để điền đúng cấu trúc.
                 <br />
-                <span className="text-xs text-ink-muted">
-                  MSSV bắt buộc; email và MSSV không được trùng.
-                </span>
+                <span className="text-xs text-ink-muted">{copy.templateHint}</span>
               </p>
               <Button
                 type="button"
@@ -205,7 +246,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
                 type="file"
                 accept=".xlsx"
                 disabled={mutation.isPending}
-                aria-label="File danh sách sinh viên (.xlsx)"
+                aria-label={copy.fileInputLabel}
                 aria-describedby={`${id}-limits${fileError ? ` ${id}-error` : ''}`}
                 aria-invalid={Boolean(fileError)}
                 className="sr-only"
@@ -242,7 +283,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
                 </span>
               )}
               <span id={`${id}-limits`} className="mt-3 text-xs leading-5 text-ink-muted">
-                Định dạng .xlsx · Tối đa 5 MB · 5.000 sinh viên / lần
+                {copy.limitsText}
               </span>
             </label>
             {(fileError || mutation.error) && (
@@ -269,9 +310,11 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
             <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-ink-subtle" />
             <p>
               Tài khoản được gán vai trò{' '}
-              <strong className="font-medium text-ink-heading">Sinh viên</strong> và ở trạng thái{' '}
+              <strong className="font-medium text-ink-heading">{copy.roleDisplay}</strong> và ở
+              trạng thái{' '}
               <strong className="font-medium text-ink-heading">Chờ kích hoạt</strong>. Hệ thống không
-              gửi email hàng loạt; sinh viên chủ động yêu cầu link tại trang Kích hoạt tài khoản.
+              gửi email hàng loạt; {copy.subjectLower} chủ động yêu cầu link tại trang Kích hoạt tài
+              khoản.
             </p>
           </div>
         </div>
@@ -294,7 +337,7 @@ export function StudentImportDialog({ onClose, onImported }: StudentImportDialog
             loadingText="Đang nhập danh sách…"
             className="h-9 flex-1 rounded-xl px-4 text-xs font-semibold sm:flex-none"
           >
-            Nhập sinh viên
+            {copy.submitLabel}
           </Button>
         </div>
       </form>

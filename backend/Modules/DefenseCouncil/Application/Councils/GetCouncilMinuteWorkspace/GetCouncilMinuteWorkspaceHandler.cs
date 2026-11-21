@@ -25,6 +25,8 @@ public sealed class GetCouncilMinuteWorkspaceHandler(
             return Result.Failure<CouncilMinuteWorkspaceResponseDto>(CouncilErrors.Forbidden);
         }
 
+        // Capture the revision before loading entities used to construct a cached response.
+        var globalVer = cache is null ? "" : await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct);
         var assignment = await councilRepository.GetAssignmentWithCouncilAndMembersAsync(query.AssignmentId, ct);
         if (assignment == null)
         {
@@ -41,7 +43,6 @@ public sealed class GetCouncilMinuteWorkspaceHandler(
         {
             var assignVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.AssignmentScope(assignment.Id), ct);
             var councilVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.CouncilScope(assignment.CouncilId), ct);
-            var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, ct);
             cacheKey = DefenseCouncilCacheKeys.CouncilMinuteWorkspace(assignment.Id, assignVer, councilVer, globalVer);
 
             var cached = await cache.GetAsync<CouncilMinuteWorkspaceResponseDto>(cacheKey, ct);

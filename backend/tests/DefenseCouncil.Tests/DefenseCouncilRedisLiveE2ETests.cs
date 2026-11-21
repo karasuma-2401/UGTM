@@ -4,6 +4,8 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -63,17 +65,35 @@ using UGTM.Modules.TopicCatalog.Contracts.DefenseCouncils;
 
 namespace UGTM.Modules.DefenseCouncil.Tests;
 
-public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
+[CollectionDefinition(Name)]
+public sealed class RedisCacheCollection : ICollectionFixture<RedisCacheFixture>
 {
-    private const string LiveRedisConnectionString = "127.0.0.1:6379,password=ugtm_redis_pass_123,abortConnect=false,connectTimeout=2000,syncTimeout=2000";
-    private const string LiveRedisInstancePrefix = "ugtm_live_e2e:";
+    public const string Name = "DefenseCouncil isolated Redis";
+}
+
+public sealed class RedisCacheFixture : IAsyncLifetime
+{
+    private const string Password = "redis-integration-test-only";
+    private readonly IContainer _container = new ContainerBuilder("redis:7-alpine")
+        .WithCommand("redis-server", "--requirepass", Password)
+        .WithPortBinding(6379, true)
+        .WithWaitStrategy(Wait.ForUnixContainer().UntilCommandIsCompleted("redis-cli", "-a", Password, "ping"))
+        .Build();
+
+    public string ConnectionString => $"{_container.Hostname}:{_container.GetMappedPublicPort(6379)},password={Password},abortConnect=false,connectTimeout=2000,syncTimeout=2000";
+    public Task InitializeAsync() => _container.StartAsync();
+    public Task DisposeAsync() => _container.DisposeAsync().AsTask();
+}
+
+[Collection(RedisCacheCollection.Name)]
+public sealed class DefenseCouncilRedisLiveE2ETests(RedisCacheFixture redis) : IAsyncLifetime
+{
+    private readonly string LiveRedisInstancePrefix = $"ugtm_live_e2e:{Guid.NewGuid():N}:";
 
     private WebApplication _app = null!;
     private HttpClient _client = null!;
     private IConnectionMultiplexer? _redisMultiplexer;
     private IDatabase? _redisDb;
-    private bool _redisAvailable;
-    private string _activeConnectionString = LiveRedisConnectionString;
 
     // Fakes and seeds
     private readonly FakeCouncilRepository _councilRepo = new();
@@ -105,76 +125,21 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        // 1. Probe live Redis connection (supports password and no-password modes; fails safe when unavailable)
-        try
-        {
-            var authMuxerConfig = "127.0.0.1:6379,password=ugtm_redis_pass_123,abortConnect=false,connectRetry=1,connectTimeout=1000,syncTimeout=1000";
-            _redisMultiplexer = await ConnectionMultiplexer.ConnectAsync(authMuxerConfig);
-            if (_redisMultiplexer.IsConnected)
-            {
-                var db = _redisMultiplexer.GetDatabase();
-                var ping = await db.PingAsync();
-                if (ping.TotalMilliseconds >= 0)
-                {
-                    _redisDb = db;
-                    _redisAvailable = true;
-                    _activeConnectionString = authMuxerConfig;
-                }
-            }
-        }
-        catch
-        {
-            _redisAvailable = false;
-        }
-
-        if (!_redisAvailable)
-        {
-            try
-            {
-                var noAuthMuxerConfig = "127.0.0.1:6379,abortConnect=false,connectRetry=1,connectTimeout=1000,syncTimeout=1000";
-                var fallbackMuxer = await ConnectionMultiplexer.ConnectAsync(noAuthMuxerConfig);
-                if (fallbackMuxer.IsConnected)
-                {
-                    var db = fallbackMuxer.GetDatabase();
-                    var ping = await db.PingAsync();
-                    if (ping.TotalMilliseconds >= 0)
-                    {
-                        if (_redisMultiplexer != null)
-                        {
-                            await _redisMultiplexer.DisposeAsync();
-                        }
-
-                        _redisMultiplexer = fallbackMuxer;
-                        _redisDb = db;
-                        _redisAvailable = true;
-                        _activeConnectionString = noAuthMuxerConfig;
-                    }
-                    else
-                    {
-                        await fallbackMuxer.DisposeAsync();
-                    }
-                }
-                else
-                {
-                    await fallbackMuxer.DisposeAsync();
-                }
-            }
-            catch
-            {
-                _redisAvailable = false;
-            }
-        }
+        // A disposable Redis is required. Infrastructure failures must not become passing tests.
+        _redisMultiplexer = await ConnectionMultiplexer.ConnectAsync(redis.ConnectionString);
+        _redisDb = _redisMultiplexer.GetDatabase();
+        await _redisDb.PingAsync();
 
         // 2. Seed domain entities & contract data
         SeedData();
 
-        // 3. Build TestServer with LIVE Redis Distributed Cache (or In-Memory fallback when Redis is absent)
+        // 3. Build TestServer with the isolated Redis Distributed Cache.
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
 
         var inMemoryConfig = new Dictionary<string, string?>
         {
-            ["Redis:ConnectionString"] = _redisAvailable ? _activeConnectionString : null,
+            ["Redis:ConnectionString"] = redis.ConnectionString,
             ["Redis:InstanceName"] = LiveRedisInstancePrefix
         };
         var configuration = new ConfigurationBuilder()
@@ -319,11 +284,6 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
     [Fact]
     public async Task LiveE2E_DirectRedisEngine_IsReachable_And_StoresData()
     {
-        if (!_redisAvailable)
-        {
-            return;
-        }
-
         Assert.NotNull(_redisDb);
         var ping = await _redisDb.PingAsync();
         Assert.True(ping.TotalMilliseconds >= 0);
@@ -337,11 +297,6 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
     [Fact]
     public async Task LiveE2E_GetAcademicResults_CachesInRedis_AndServesFromCacheOnSecondCall()
     {
-        if (!_redisAvailable)
-        {
-            return;
-        }
-
         Authenticate(_academicAffairsId, "AcademicAffairs");
 
         // First call: cache miss -> loads workspace from loader -> caches in live Redis
@@ -351,11 +306,12 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
         Assert.Contains("Nguyễn Văn An", content1);
 
         // Verify direct in Redis engine that key exists!
-        var cacheService = _app.Services.GetRequiredService<ICacheService>();
+        using var cacheScope = _app.Services.CreateScope();
+        var cacheService = cacheScope.ServiceProvider.GetRequiredService<ICacheService>();
         var batchVer = await cacheService.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(_batchId));
         var globalVer = await cacheService.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope);
 
-        var expectedKey = $"{LiveRedisInstancePrefix}{DefenseCouncilCacheKeys.AcademicResults(_batchId, "Final", batchVer, globalVer)}";
+        var expectedKey = $"{LiveRedisInstancePrefix}{DistributedCacheService.DataKeyPrefix}{DefenseCouncilCacheKeys.AcademicResults(_batchId, "Final", batchVer, globalVer)}";
         var keyExists = await _redisDb!.KeyExistsAsync(expectedKey);
         Assert.True(keyExists, $"Expected Redis key '{expectedKey}' was not created in live Redis!");
 
@@ -377,11 +333,6 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
     [Fact]
     public async Task LiveE2E_GetAcademicResultDetail_And_Export_ShareLiveRedisWorkspaceCache()
     {
-        if (!_redisAvailable)
-        {
-            return;
-        }
-
         Authenticate(_academicAffairsId, "AcademicAffairs");
 
         // 1. Detail endpoint with required phase parameter
@@ -398,11 +349,12 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
         Assert.True(exportBytes.Length > 0, "Export file must not be empty");
 
         // 3. Verify Redis has the cached workspace
-        var cacheService = _app.Services.GetRequiredService<ICacheService>();
+        using var cacheScope = _app.Services.CreateScope();
+        var cacheService = cacheScope.ServiceProvider.GetRequiredService<ICacheService>();
         var batchVer = await cacheService.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(_batchId));
         var globalVer = await cacheService.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope);
 
-        var expectedKey = $"{LiveRedisInstancePrefix}{DefenseCouncilCacheKeys.AcademicResults(_batchId, "Final", batchVer, globalVer)}";
+        var expectedKey = $"{LiveRedisInstancePrefix}{DistributedCacheService.DataKeyPrefix}{DefenseCouncilCacheKeys.AcademicResults(_batchId, "Final", batchVer, globalVer)}";
         var keyExists = await _redisDb!.KeyExistsAsync(expectedKey);
         Assert.True(keyExists, $"Workspace cache key '{expectedKey}' should exist in live Redis.");
     }
@@ -410,11 +362,6 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
     [Fact]
     public async Task LiveE2E_FullCouncilLifecycle_CachesInRedis_AndInvalidatesOnUpdate()
     {
-        if (!_redisAvailable)
-        {
-            return;
-        }
-
         // 1. Create council via HTTP API (POST /api/councils)
         Authenticate(_facultyId, "Faculty");
         var createPayload = new CreateCouncilInputDto(_batchId, "HD-LIVE-01", new DateOnly(2026, 12, 20), "08:00 - 11:30", "A101");
@@ -447,11 +394,12 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
         var overviewContent1 = await overviewRes1.Content.ReadAsStringAsync();
         Assert.Contains("HD-LIVE-01", overviewContent1);
 
-        var cacheService = _app.Services.GetRequiredService<ICacheService>();
+        using var cacheScope = _app.Services.CreateScope();
+        var cacheService = cacheScope.ServiceProvider.GetRequiredService<ICacheService>();
         var currentBatchVer = await cacheService.GetVersionAsync(DefenseCouncilCacheKeys.BatchScope(_batchId));
         var currentGlobalVer = await cacheService.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope);
 
-        var expectedOverviewKey = $"{LiveRedisInstancePrefix}{DefenseCouncilCacheKeys.CouncilsOverview(_batchId, "all", currentBatchVer, currentGlobalVer)}";
+        var expectedOverviewKey = $"{LiveRedisInstancePrefix}{DistributedCacheService.DataKeyPrefix}{DefenseCouncilCacheKeys.CouncilsOverview(_batchId, "all", currentBatchVer, currentGlobalVer)}";
         Assert.True(await _redisDb!.KeyExistsAsync(expectedOverviewKey), $"Overview cache key '{expectedOverviewKey}' should exist in live Redis!");
         Assert.Equal(RedisType.Hash, await _redisDb.KeyTypeAsync(expectedOverviewKey));
 
@@ -462,7 +410,7 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
         Assert.Contains("A101", schedContent1);
 
         var currentCouncilVer = await cacheService.GetVersionAsync(DefenseCouncilCacheKeys.CouncilScope(councilId));
-        var expectedSchedKey = $"{LiveRedisInstancePrefix}{DefenseCouncilCacheKeys.CouncilSchedule(councilId, currentCouncilVer, currentBatchVer, currentGlobalVer)}";
+        var expectedSchedKey = $"{LiveRedisInstancePrefix}{DistributedCacheService.DataKeyPrefix}{DefenseCouncilCacheKeys.CouncilSchedule(councilId, currentCouncilVer, currentBatchVer, currentGlobalVer)}";
         Assert.True(await _redisDb.KeyExistsAsync(expectedSchedKey), $"Schedule cache key '{expectedSchedKey}' should exist in live Redis!");
         Assert.Equal(RedisType.Hash, await _redisDb.KeyTypeAsync(expectedSchedKey));
 
@@ -479,7 +427,7 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
         var newCouncilVer = await cacheService.GetVersionAsync(DefenseCouncilCacheKeys.CouncilScope(councilId));
         Assert.NotEqual("v0", newCouncilVer);
         Assert.NotEqual(currentCouncilVer, newCouncilVer);
-        Assert.True(await _redisDb.KeyExistsAsync($"{LiveRedisInstancePrefix}ver:{DefenseCouncilCacheKeys.CouncilScope(councilId)}"));
+        Assert.True(await _redisDb.KeyExistsAsync($"{LiveRedisInstancePrefix}{DistributedCacheService.DataKeyPrefix}ver:{DefenseCouncilCacheKeys.CouncilScope(councilId)}"));
 
         // 6. Query Schedule again: returns FRESH data with Room B202, bypassing old cache!
         Authenticate(_chairmanId, "Lecturer");
@@ -513,12 +461,12 @@ public sealed class DefenseCouncilRedisLiveE2ETests : IAsyncLifetime
         var approvedCouncilVer = await cacheService.GetVersionAsync(DefenseCouncilCacheKeys.CouncilScope(councilId));
         var latestGlobalVer = await cacheService.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope);
 
-        var expectedWsKey = $"{LiveRedisInstancePrefix}{DefenseCouncilCacheKeys.CouncilMinuteWorkspace(assignmentId, currentAssignVer, approvedCouncilVer, latestGlobalVer)}";
+        var expectedWsKey = $"{LiveRedisInstancePrefix}{DistributedCacheService.DataKeyPrefix}{DefenseCouncilCacheKeys.CouncilMinuteWorkspace(assignmentId, currentAssignVer, approvedCouncilVer, latestGlobalVer)}";
         Assert.True(await _redisDb.KeyExistsAsync(expectedWsKey), $"Minute workspace key '{expectedWsKey}' should exist in Redis!");
 
         var discRes1 = await _client.GetAsync($"/api/councils/assignments/{assignmentId}/discrepancy-check");
         Assert.Equal(HttpStatusCode.OK, discRes1.StatusCode);
-        var expectedDiscKey = $"{LiveRedisInstancePrefix}{DefenseCouncilCacheKeys.CouncilDiscrepancy(assignmentId, currentAssignVer, approvedCouncilVer, latestGlobalVer)}";
+        var expectedDiscKey = $"{LiveRedisInstancePrefix}{DistributedCacheService.DataKeyPrefix}{DefenseCouncilCacheKeys.CouncilDiscrepancy(assignmentId, currentAssignVer, approvedCouncilVer, latestGlobalVer)}";
         Assert.True(await _redisDb.KeyExistsAsync(expectedDiscKey), $"Discrepancy key '{expectedDiscKey}' should exist in Redis!");
     }
 

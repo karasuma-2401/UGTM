@@ -59,7 +59,7 @@ const DECISION_OPTIONS: readonly {
     label: 'Xác nhận Đạt',
     hint: 'Báo cáo đáp ứng yêu cầu mốc, nhóm tiếp tục giai đoạn tiếp theo.',
     icon: CheckCircle2,
-    activeClass: 'border-tone-success-border bg-tone-success-bg text-tone-success-strong ring-1 ring-emerald-200',
+    activeClass: 'border-tone-success-border bg-tone-success-bg text-tone-success-strong ring-1 ring-tone-success-border',
     iconClass: 'text-tone-success-icon',
   },
   {
@@ -67,7 +67,7 @@ const DECISION_OPTIONS: readonly {
     label: 'Yêu cầu chỉnh sửa',
     hint: 'Nhóm cần bổ sung mã nguồn hoặc báo cáo và nộp lại phiên bản mới.',
     icon: RotateCcw,
-    activeClass: 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong ring-1 ring-amber-200',
+    activeClass: 'border-tone-warning-border bg-tone-warning-bg text-tone-warning-strong ring-1 ring-tone-warning-border',
     iconClass: 'text-tone-warning-icon',
   },
 ];

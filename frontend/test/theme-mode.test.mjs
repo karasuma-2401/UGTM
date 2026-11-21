@@ -19,17 +19,40 @@ function loadThemeModule(path, dependencies = {}, browser = {}) {
   });
   const exports = {};
   const defaultWindow = {
+    innerWidth: 1280,
+    innerHeight: 800,
     localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
     addEventListener() {},
     removeEventListener() {},
     ...browser.window,
   };
+  const classSet = new Set();
   const defaultDocument = {
     documentElement: {
-      classList: { toggle() {} },
+      classList: {
+        toggle(cls, force) {
+          if (force === undefined) {
+            if (classSet.has(cls)) classSet.delete(cls);
+            else classSet.add(cls);
+          } else if (force) classSet.add(cls);
+          else classSet.delete(cls);
+        },
+        add(cls) {
+          classSet.add(cls);
+        },
+        remove(cls) {
+          classSet.delete(cls);
+        },
+        contains(cls) {
+          return classSet.has(cls);
+        },
+      },
       dataset: {},
       style: {},
+      animate() {
+        return { finished: Promise.resolve() };
+      },
     },
     addEventListener() {},
     removeEventListener() {},
@@ -47,16 +70,17 @@ function loadThemeModule(path, dependencies = {}, browser = {}) {
     defaultDocument,
     class {},
   );
-  return exports;
+  return { exports, document: defaultDocument, window: defaultWindow };
 }
 
-test('ThemeProvider resolves light, dark, and system preferences from localStorage and matchMedia', () => {
-  function renderWithStorage(storedValue, systemDark) {
-    const { ThemeProvider, useTheme } = loadThemeModule(
+test('ThemeProvider defaults to light (ignoring legacy system or invalid storage) and reads light/dark', () => {
+  function renderWithStorage(storedValue, osDark) {
+    const { exports } = loadThemeModule(
       'shared/theme/ThemeContext.tsx',
       {
         react: React,
         'react/jsx-runtime': jsxRuntime,
+        'react-dom': { flushSync: (fn) => fn() },
       },
       {
         window: {
@@ -66,18 +90,19 @@ test('ThemeProvider resolves light, dark, and system preferences from localStora
             removeItem() {},
           },
           matchMedia: () => ({
-            matches: systemDark,
+            matches: osDark,
             addEventListener() {},
             removeEventListener() {},
           }),
         },
       },
     );
+    const { ThemeProvider, useTheme } = exports;
 
     function Probe() {
-      const { preference, resolvedTheme } = useTheme();
+      const { theme, resolvedTheme } = useTheme();
       return React.createElement('span', {
-        'data-pref': preference,
+        'data-theme': theme,
         'data-resolved': resolvedTheme,
       });
     }
@@ -85,43 +110,226 @@ test('ThemeProvider resolves light, dark, and system preferences from localStora
     return renderToStaticMarkup(React.createElement(ThemeProvider, null, React.createElement(Probe)));
   }
 
-  assert.match(renderWithStorage(null, false), /data-pref="system" data-resolved="light"/);
-  assert.match(renderWithStorage('invalid-theme', true), /data-pref="system" data-resolved="dark"/);
-  assert.match(renderWithStorage('dark', false), /data-pref="dark" data-resolved="dark"/);
-  assert.match(renderWithStorage('light', true), /data-pref="light" data-resolved="light"/);
+  assert.match(renderWithStorage(null, true), /data-theme="light" data-resolved="light"/);
+  assert.match(renderWithStorage('system', true), /data-theme="light" data-resolved="light"/);
+  assert.match(renderWithStorage('invalid-theme', true), /data-theme="light" data-resolved="light"/);
+  assert.match(renderWithStorage('dark', false), /data-theme="dark" data-resolved="dark"/);
+  assert.match(renderWithStorage('light', true), /data-theme="light" data-resolved="light"/);
 });
 
-test('ThemeToggle renders accessible labels and variant styles cleanly', () => {
-  function renderToggle(preference, resolvedTheme, variant) {
-    const { ThemeToggle } = loadThemeModule('shared/theme/ThemeToggle.tsx', {
+test('ThemeContext animates circular View Transition from sourceElement center and respects reduced motion', async () => {
+  let stored = 'light';
+  let flushCount = 0;
+  const animations = [];
+  let resolveReady;
+  let resolveFinished;
+  const readyPromise = new Promise((r) => {
+    resolveReady = r;
+  });
+  const finishedPromise = new Promise((r) => {
+    resolveFinished = r;
+  });
+
+  const { exports, document: doc } = loadThemeModule(
+    'shared/theme/ThemeContext.tsx',
+    {
+      react: {
+        ...React,
+        useState: (init) => [typeof init === 'function' ? init() : init, () => {}],
+        useRef: (init) => ({ current: init }),
+        useEffect: () => {},
+        useCallback: (fn) => fn,
+        useMemo: (fn) => fn(),
+      },
+      'react/jsx-runtime': jsxRuntime,
+      'react-dom': {
+        flushSync: (fn) => {
+          flushCount += 1;
+          return fn();
+        },
+      },
+    },
+    {
+      window: {
+        innerWidth: 1000,
+        innerHeight: 800,
+        localStorage: {
+          getItem: (key) => (key === 'ugtm:theme' ? stored : null),
+          setItem: (key, val) => {
+            if (key === 'ugtm:theme') stored = val;
+          },
+          removeItem() {},
+        },
+        matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+      },
+      document: {
+        startViewTransition(cb) {
+          cb();
+          return { ready: readyPromise, finished: finishedPromise };
+        },
+      },
+    },
+  );
+
+  // Preserve custom startViewTransition while ensuring documentElement methods exist
+  doc.documentElement.animate = (keyframes, options) => {
+    animations.push({ keyframes, options });
+    return { finished: Promise.resolve() };
+  };
+
+  let ctx;
+  function Capture() {
+    ctx = exports.useTheme();
+    return null;
+  }
+  renderToStaticMarkup(React.createElement(exports.ThemeProvider, null, React.createElement(Capture)));
+
+  let beforeCommitCalled = false;
+  ctx.toggleTheme({
+    sourceElement: {
+      getBoundingClientRect: () => ({ left: 900, top: 12, width: 36, height: 36 }),
+    },
+    onBeforeCommit: () => {
+      beforeCommitCalled = true;
+    },
+  });
+
+  assert.equal(stored, 'dark');
+  assert.equal(flushCount, 1);
+  assert.equal(beforeCommitCalled, true);
+  assert.equal(doc.documentElement.classList.contains('dark'), true);
+  assert.equal(doc.documentElement.classList.contains('theme-transitioning'), true);
+
+  resolveReady();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(animations.length, 1);
+  assert.deepEqual(animations[0].keyframes.clipPath, [
+    'circle(0px at 918px 30px)',
+    `circle(${Math.hypot(918, 770)}px at 918px 30px)`,
+  ]);
+  assert.equal(animations[0].options.pseudoElement, '::view-transition-new(root)');
+
+  resolveFinished();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(doc.documentElement.classList.contains('theme-transitioning'), false);
+
+  // Clicking the already active theme runs onBeforeCommit without starting a redundant transition
+  let redundantBeforeCommit = false;
+  ctx.setTheme('dark', {
+    origin: { x: 100, y: 100 },
+    onBeforeCommit: () => {
+      redundantBeforeCommit = true;
+    },
+  });
+  assert.equal(redundantBeforeCommit, true);
+  assert.equal(animations.length, 1);
+});
+
+test('ThemeContext skips startViewTransition when prefers-reduced-motion is reduce', () => {
+  let stored = 'light';
+  let viewTransitionCalled = false;
+  const { exports, document: doc } = loadThemeModule(
+    'shared/theme/ThemeContext.tsx',
+    {
+      react: {
+        ...React,
+        useState: (init) => [typeof init === 'function' ? init() : init, () => {}],
+        useRef: (init) => ({ current: init }),
+        useEffect: () => {},
+        useCallback: (fn) => fn,
+        useMemo: (fn) => fn(),
+      },
+      'react/jsx-runtime': jsxRuntime,
+      'react-dom': { flushSync: (fn) => fn() },
+    },
+    {
+      window: {
+        innerWidth: 1000,
+        innerHeight: 800,
+        localStorage: {
+          getItem: (key) => (key === 'ugtm:theme' ? stored : null),
+          setItem: (key, val) => {
+            if (key === 'ugtm:theme') stored = val;
+          },
+          removeItem() {},
+        },
+        matchMedia: (q) => ({
+          matches: q === '(prefers-reduced-motion: reduce)',
+          addEventListener() {},
+          removeEventListener() {},
+        }),
+      },
+      document: {
+        startViewTransition() {
+          viewTransitionCalled = true;
+          return { ready: Promise.resolve(), finished: Promise.resolve() };
+        },
+      },
+    },
+  );
+
+  let ctx;
+  function Capture() {
+    ctx = exports.useTheme();
+    return null;
+  }
+  renderToStaticMarkup(React.createElement(exports.ThemeProvider, null, React.createElement(Capture)));
+
+  ctx.toggleTheme({ origin: { x: 500, y: 30 } });
+  assert.equal(viewTransitionCalled, false);
+  assert.equal(stored, 'dark');
+  assert.equal(doc.documentElement.classList.contains('dark'), true);
+});
+
+test('ThemeToggle renders a circular 1-click button with accessible action labels and no dropdown', () => {
+  function renderToggle(theme) {
+    const { exports } = loadThemeModule('shared/theme/ThemeToggle.tsx', {
       react: React,
       'react/jsx-runtime': jsxRuntime,
       'lucide-react': icons,
       '@/lib/utils': { cn: (...parts) => parts.filter(Boolean).join(' ') },
       './ThemeContext': {
         useTheme: () => ({
-          preference,
-          resolvedTheme,
-          setPreference() {},
-          cycleTheme() {},
+          theme,
+          resolvedTheme: theme,
+          setTheme() {},
+          toggleTheme() {},
         }),
       },
     });
-    return renderToStaticMarkup(React.createElement(ThemeToggle, { variant }));
+    return renderToStaticMarkup(React.createElement(exports.ThemeToggle));
   }
 
-  const headerHtml = renderToggle('dark', 'dark', 'header');
-  assert.match(headerHtml, /aria-haspopup="menu"/);
-  assert.match(headerHtml, /aria-expanded="false"/);
-  assert.match(headerHtml, /Giao diện: Tối/);
-  assert.match(headerHtml, /border-line-input\/90 bg-surface-muted\/70/);
+  const lightHtml = renderToggle('light');
+  assert.match(lightHtml, /rounded-full/);
+  assert.match(lightHtml, /aria-label="Chuyển sang giao diện tối"/);
+  assert.doesNotMatch(lightHtml, /aria-haspopup="menu"/);
+  assert.doesNotMatch(lightHtml, /Theo hệ thống/);
 
-  const authHtml = renderToggle('system', 'light', 'auth');
-  assert.match(authHtml, /Giao diện: Theo hệ thống/);
-  assert.match(authHtml, /backdrop-blur-sm/);
+  const darkHtml = renderToggle('dark');
+  assert.match(darkHtml, /rounded-full/);
+  assert.match(darkHtml, /aria-label="Chuyển sang giao diện sáng"/);
 });
 
-test('semantic CSS tokens in index.css define both :root light and .dark Cool Slate palettes without breaking print surface', () => {
+test('AuthLayout omits ThemeToggle and AppLayout Ctrl+K only offers Sáng and Tối', () => {
+  const authLayoutSource = readFileSync(
+    new URL('../src/features/auth/layouts/AuthLayout.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.doesNotMatch(authLayoutSource, /ThemeToggle/);
+
+  const appLayoutSource = readFileSync(
+    new URL('../src/shared/layout/AppLayout.tsx', import.meta.url),
+    'utf8',
+  );
+  assert.doesNotMatch(appLayoutSource, /label:\s*['"]Hệ thống['"]/);
+  assert.match(appLayoutSource, /label:\s*['"]Sáng['"]/);
+  assert.match(appLayoutSource, /label:\s*['"]Tối['"]/);
+});
+
+test('semantic CSS tokens in index.css define both :root light and .dark Cool Slate palettes and View Transition rules', () => {
   const indexCss = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8');
   for (const token of [
     '--surface-canvas:',
@@ -146,6 +354,8 @@ test('semantic CSS tokens in index.css define both :root light and .dark Cool Sl
   }
   assert.match(indexCss, /--surface-canvas:\s*9 13 22;/);
   assert.match(indexCss, /--surface-card:\s*15 23 42;/);
+  assert.match(indexCss, /::view-transition-new\(root\)/);
+  assert.match(indexCss, /html\.theme-transitioning/);
 });
 
 test('semantic Tailwind color utilities merge cleanly without conflicting classes', () => {

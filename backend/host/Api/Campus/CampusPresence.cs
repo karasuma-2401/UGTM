@@ -120,6 +120,11 @@ public sealed class RedisCampusPresenceStore : ICampusPresenceStore, IDisposable
 {
     // Both keys share a Redis Cluster hash slot. Expiry, removal and heartbeat are atomic.
     private const string Script = """
+        -- Cache eviction may remove one half of the presence state. Discard its orphan
+        -- before heartbeats extend the TTL, otherwise ghost actors can survive forever.
+        if redis.call('EXISTS', KEYS[1]) == 0 or redis.call('EXISTS', KEYS[2]) == 0 then
+            redis.call('DEL', KEYS[1], KEYS[2])
+        end
         local t = redis.call('TIME')
         local now = t[1] * 1000 + math.floor(t[2] / 1000)
         local expired = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', now)

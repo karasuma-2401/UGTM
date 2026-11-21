@@ -6,18 +6,26 @@ import {
   ScrollText,
   ClipboardCheck,
   BookOpen,
+  BookMarked,
   CalendarRange,
   UsersRound,
   Presentation,
   FileText,
+  FileSearch,
   CalendarCheck,
   UserCheck,
+  UserCog,
   FilePenLine,
+  BadgeCheck,
+  ListChecks,
   BarChart3,
+  Award,
   Archive,
+  PackageCheck,
   FolderCheck,
   FileCheck2,
   Gavel,
+  Stamp,
   SquarePen,
 } from 'lucide-react';
 
@@ -64,7 +72,7 @@ export const navigationSections: NavSectionConfig[] = [
         icon: CalendarRange,
         roles: ['Admin', 'AcademicAffairs'],
       },
-      
+
       {
         label: 'Cấu hình điểm',
         path: '/admin/grade-config',
@@ -72,7 +80,7 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['Admin', 'AcademicAffairs'],
       },
       {
-        label: 'Danh sách Sinh viên và Giảng viên',
+        label: 'Sinh viên và Giảng viên',
         path: '/academic/roster',
         icon: UsersRound,
         roles: ['Admin', 'AcademicAffairs'],
@@ -92,7 +100,7 @@ export const navigationSections: NavSectionConfig[] = [
       {
         label: 'Đề tài và đăng ký',
         path: '/topics/catalog',
-        icon: BookOpen,
+        icon: BookMarked,
         roles: ['Student', 'Admin'],
       },
       {
@@ -110,7 +118,7 @@ export const navigationSections: NavSectionConfig[] = [
       {
         label: 'Duyệt đổi tên đề tài',
         path: '/topics/rename/review',
-        icon: FilePenLine,
+        icon: BadgeCheck,
         roles: ['Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
       },
     ],
@@ -134,7 +142,7 @@ export const navigationSections: NavSectionConfig[] = [
       {
         label: 'Xác nhận lưu chiểu',
         path: '/advisor/archival',
-        icon: Archive,
+        icon: PackageCheck,
         roles: ['Lecturer', 'Admin'],
       },
       {
@@ -147,7 +155,7 @@ export const navigationSections: NavSectionConfig[] = [
       {
         label: 'Thẩm định quy trình',
         path: '/thesis/review/syllabus',
-        icon: ClipboardCheck,
+        icon: ListChecks,
         roles: ['Faculty', 'Admin', 'AcademicAffairs'],
       },
       {
@@ -159,7 +167,7 @@ export const navigationSections: NavSectionConfig[] = [
       {
         label: 'Báo cáo tương đồng',
         path: '/councils/similarity-reports',
-        icon: FileText,
+        icon: FileSearch,
         roles: ['CouncilMember'],
       },
       {
@@ -183,7 +191,7 @@ export const navigationSections: NavSectionConfig[] = [
       {
         label: 'Phê duyệt hội đồng',
         path: '/councils/approval',
-        icon: ClipboardCheck,
+        icon: Stamp,
         roles: ['AcademicAffairs', 'Admin'],
       },
       {
@@ -207,7 +215,7 @@ export const navigationSections: NavSectionConfig[] = [
       {
         label: 'Kết quả',
         path: '/councils/results',
-        icon: BarChart3,
+        icon: Award,
         roles: ['Student'],
       },
     ],
@@ -218,9 +226,18 @@ export const navigationSections: NavSectionConfig[] = [
     roles: ['Admin', 'AcademicAffairs'],
     items: [
       {
-        label: 'Tài khoản và Phân quyền',
-        path: '/modules/identity',
+        label: 'Tài khoản',
+        path: '/modules/identity/students',
+        activePaths: ['/modules/identity/staff', '/modules/identity/roles'],
+        icon: UserCog,
+        permission: 'identity.users.read',
+      },
+      {
+        label: 'Phân quyền',
+        path: '/modules/identity/permissions',
         icon: ShieldCheck,
+        permissions: ['identity.roles.manage', 'identity.permissions.read'],
+        requireAllPermissions: true,
       },
       {
         label: 'Nhật ký hoạt động',

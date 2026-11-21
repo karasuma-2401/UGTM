@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using UGTM.Modules.ThesisManagement.Infrastructure.Storage;
+using UGTM.BuildingBlocks.Infrastructure.Caching;
 
 namespace UGTM.Api.Modules;
 
@@ -8,6 +9,11 @@ public static class ProductionIntegrationConfiguration
     public static void Validate(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
+
+        if (string.IsNullOrWhiteSpace(RedisCacheOptions.ResolveConnectionString(configuration)))
+            throw new InvalidOperationException("Production Redis cache must be explicitly configured.");
+        if (!configuration.GetValue("Redis:UseDatabaseRevisions", true))
+            throw new InvalidOperationException("Production cache requires transactional database revisions.");
 
         var publicUrl = configuration["ThesisManagement:Email:PublicWebBaseUrl"];
         if (!Uri.TryCreate(publicUrl, UriKind.Absolute, out var emailUrl)

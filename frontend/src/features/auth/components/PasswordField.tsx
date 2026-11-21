@@ -103,7 +103,7 @@ export const PasswordField = React.forwardRef<HTMLInputElement, PasswordFieldPro
           rightIcon={rightIcon !== undefined ? rightIcon : toggleButton}
           error={error}
           helperText={helperText}
-          className={cn('bg-surface-card border-[#cbd7e8] h-[39px]', className)}
+          className={cn('bg-surface-card border-[var(--color-border-input)] h-[39px]', className)}
           {...props}
         />
       </div>

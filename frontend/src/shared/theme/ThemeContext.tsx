@@ -4,126 +4,234 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
+import { flushSync } from 'react-dom';
 
-export type ThemePreference = 'light' | 'dark' | 'system';
-export type ResolvedTheme = 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark';
+
+export interface ThemeTransitionOrigin {
+  x: number;
+  y: number;
+}
+
+export interface ThemeTransitionOptions {
+  origin?: ThemeTransitionOrigin | null;
+  sourceElement?: HTMLElement | null;
+  onBeforeCommit?: () => void;
+}
 
 const THEME_STORAGE_KEY = 'ugtm:theme';
+const THEME_TRANSITION_CLASS = 'theme-transitioning';
+const REVEAL_DURATION_MS = 480;
+const REVEAL_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
+
+interface ViewTransitionLike {
+  ready: Promise<void>;
+  finished: Promise<void>;
+}
+
+type DocumentWithViewTransition = Document & {
+  startViewTransition?: (callback: () => void) => ViewTransitionLike;
+};
 
 interface ThemeContextValue {
-  preference: ThemePreference;
-  resolvedTheme: ResolvedTheme;
-  setPreference: (next: ThemePreference) => void;
-  cycleTheme: () => void;
+  theme: ThemeMode;
+  resolvedTheme: ThemeMode;
+  setTheme: (next: ThemeMode, options?: ThemeTransitionOptions) => void;
+  toggleTheme: (options?: ThemeTransitionOptions) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function isThemePreference(value: unknown): value is ThemePreference {
-  return value === 'light' || value === 'dark' || value === 'system';
+function isThemeMode(value: unknown): value is ThemeMode {
+  return value === 'light' || value === 'dark';
 }
 
-function readStoredPreference(): ThemePreference {
-  if (typeof window === 'undefined') return 'system';
+function readStoredTheme(): ThemeMode {
+  if (typeof window === 'undefined') return 'light';
   try {
     const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return isThemePreference(raw) ? raw : 'system';
+    return isThemeMode(raw) ? raw : 'light';
   } catch {
-    return 'system';
-  }
-}
-
-function readSystemTheme(): ResolvedTheme {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
     return 'light';
   }
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function applyDocumentTheme(resolved: ResolvedTheme) {
+function applyDocumentTheme(mode: ThemeMode) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  root.classList.toggle('dark', resolved === 'dark');
-  root.dataset.theme = resolved;
-  root.style.colorScheme = resolved;
+  root.classList.toggle('dark', mode === 'dark');
+  root.dataset.theme = mode;
+  root.style.colorScheme = mode;
+}
+
+function persistTheme(mode: ThemeMode) {
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(THEME_STORAGE_KEY, mode);
+    }
+  } catch {
+    // Ignore storage quota or private browsing errors.
+  }
+}
+
+function resolveTransitionOrigin(options?: ThemeTransitionOptions): ThemeTransitionOrigin | null {
+  if (options?.origin) {
+    return options.origin;
+  }
+  const element = options?.sourceElement;
+  if (element && typeof element.getBoundingClientRect === 'function') {
+    const rect = element.getBoundingClientRect();
+    if (rect.width > 0 || rect.height > 0) {
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
+    }
+  }
+  return null;
+}
+
+function canAnimateThemeTransition(): boolean {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return false;
+  const doc = document as DocumentWithViewTransition;
+  if (typeof doc.startViewTransition !== 'function') return false;
+  if (
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>(() => readStoredPreference());
-  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() => readSystemTheme());
-
-  const resolvedTheme: ResolvedTheme = preference === 'system' ? systemTheme : preference;
+  const [theme, setThemeState] = useState<ThemeMode>(() => readStoredTheme());
+  const themeRef = useRef<ThemeMode>(theme);
+  const transitionIdRef = useRef(0);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const update = () => setSystemTheme(media.matches ? 'dark' : 'light');
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
+    themeRef.current = theme;
+    applyDocumentTheme(theme);
+  }, [theme]);
+
+  useEffect(() => {
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.documentElement.classList.remove(THEME_TRANSITION_CLASS);
+      }
+    };
   }, []);
-
-  useEffect(() => {
-    applyDocumentTheme(resolvedTheme);
-  }, [resolvedTheme]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleStorage = (event: StorageEvent) => {
       if (event.key !== THEME_STORAGE_KEY) return;
-      setPreferenceState(isThemePreference(event.newValue) ? event.newValue : 'system');
+      const next: ThemeMode = event.newValue === 'dark' ? 'dark' : 'light';
+      themeRef.current = next;
+      setThemeState(next);
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  const setPreference = useCallback((next: ThemePreference) => {
-    setPreferenceState(next);
+  const setTheme = useCallback((next: ThemeMode, options?: ThemeTransitionOptions) => {
+    if (next === themeRef.current) {
+      options?.onBeforeCommit?.();
+      return;
+    }
+
+    const commitImmediate = () => {
+      themeRef.current = next;
+      applyDocumentTheme(next);
+      persistTheme(next);
+      setThemeState(next);
+      options?.onBeforeCommit?.();
+    };
+
+    const origin = resolveTransitionOrigin(options);
+    if (!origin || !canAnimateThemeTransition()) {
+      commitImmediate();
+      return;
+    }
+
+    const doc = document as DocumentWithViewTransition;
+    const root = document.documentElement;
+    const transitionId = ++transitionIdRef.current;
+    const endRadius = Math.hypot(
+      Math.max(origin.x, window.innerWidth - origin.x),
+      Math.max(origin.y, window.innerHeight - origin.y),
+    );
+
     try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(THEME_STORAGE_KEY, next);
-      }
+      const transition = doc.startViewTransition!(() => {
+        root.classList.add(THEME_TRANSITION_CLASS);
+        flushSync(() => {
+          commitImmediate();
+        });
+      });
+
+      transition.ready
+        .then(() => {
+          if (typeof root.animate !== 'function') return;
+          root.animate(
+            {
+              clipPath: [
+                `circle(0px at ${origin.x}px ${origin.y}px)`,
+                `circle(${endRadius}px at ${origin.x}px ${origin.y}px)`,
+              ],
+            },
+            {
+              duration: REVEAL_DURATION_MS,
+              easing: REVEAL_EASING,
+              pseudoElement: '::view-transition-new(root)',
+            },
+          );
+        })
+        .catch(() => {});
+
+      transition.finished
+        .catch(() => {})
+        .finally(() => {
+          if (transitionIdRef.current === transitionId) {
+            root.classList.remove(THEME_TRANSITION_CLASS);
+          }
+        });
     } catch {
-      // Ignore storage quota or private browsing errors.
+      root.classList.remove(THEME_TRANSITION_CLASS);
+      commitImmediate();
     }
   }, []);
 
-  const cycleTheme = useCallback(() => {
-    setPreferenceState((prev) => {
-      const order: ThemePreference[] = ['system', 'light', 'dark'];
-      const next = order[(order.indexOf(prev) + 1) % order.length];
-      try {
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem(THEME_STORAGE_KEY, next);
-        }
-      } catch {
-        // Ignore storage errors.
-      }
-      return next;
-    });
-  }, []);
+  const toggleTheme = useCallback(
+    (options?: ThemeTransitionOptions) => {
+      const next: ThemeMode = themeRef.current === 'dark' ? 'light' : 'dark';
+      setTheme(next, options);
+    },
+    [setTheme],
+  );
 
   const value = useMemo<ThemeContextValue>(
     () => ({
-      preference,
-      resolvedTheme,
-      setPreference,
-      cycleTheme,
+      theme,
+      resolvedTheme: theme,
+      setTheme,
+      toggleTheme,
     }),
-    [preference, resolvedTheme, setPreference, cycleTheme],
+    [theme, setTheme, toggleTheme],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 const FALLBACK_THEME: ThemeContextValue = {
-  preference: 'system',
+  theme: 'light',
   resolvedTheme: 'light',
-  setPreference: () => {},
-  cycleTheme: () => {},
+  setTheme: () => {},
+  toggleTheme: () => {},
 };
 
 export function useTheme(): ThemeContextValue {

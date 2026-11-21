@@ -889,17 +889,17 @@ export function CouncilGradingPage() {
             </div>
           </section>
 
-          <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-xs" aria-label="Báo cáo phục vụ Hội đồng">
+          <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-card px-5 py-4 shadow-xs" aria-label="Báo cáo phục vụ Hội đồng">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-900">Báo cáo phục vụ Hội đồng</p>
+              <p className="text-sm font-semibold text-ink-primary">Báo cáo phục vụ Hội đồng</p>
               {revisedReportQuery.isLoading ? (
-                <p className="mt-1 text-sm text-slate-500">Đang kiểm tra bản chỉnh sửa sau phản biện…</p>
+                <p className="mt-1 text-sm text-ink-muted">Đang kiểm tra bản chỉnh sửa sau phản biện…</p>
               ) : revisedReportQuery.isError ? (
-                <p className="mt-1 text-sm text-rose-700">Không thể tải thông tin báo cáo. Vui lòng thử lại.</p>
+                <p className="mt-1 text-sm text-tone-danger-text">Không thể tải thông tin báo cáo. Vui lòng thử lại.</p>
               ) : latestRevisedVersion ? (
-                <p className="mt-1 truncate text-sm text-slate-600">Bản chỉnh sửa v{latestRevisedVersion.versionNo} · {latestRevisedVersion.file.fileName}</p>
+                <p className="mt-1 truncate text-sm text-ink-body">Bản chỉnh sửa v{latestRevisedVersion.versionNo} · {latestRevisedVersion.file.fileName}</p>
               ) : (
-                <p className="mt-1 text-sm text-slate-500">Nhóm chưa nộp bản chỉnh sửa sau phản biện.</p>
+                <p className="mt-1 text-sm text-ink-muted">Nhóm chưa nộp bản chỉnh sửa sau phản biện.</p>
               )}
             </div>
             {revisedReportQuery.isError ? (

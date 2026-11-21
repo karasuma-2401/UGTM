@@ -88,7 +88,7 @@ export function ForgotPasswordPage() {
             leftIcon={<Mail size={16} />}
             value={identifier}
             onChange={(event) => setIdentifier(event.target.value)}
-            className="bg-surface-card border-[#cbd7e8] h-[39px]"
+            className="bg-surface-card border-[var(--color-border-input)] h-[39px]"
           />
           {identifier.trim() && (
             <p className="auth-hint">

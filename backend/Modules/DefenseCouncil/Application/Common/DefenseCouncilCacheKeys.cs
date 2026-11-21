@@ -28,8 +28,8 @@ public static class DefenseCouncilCacheKeys
     public static string AcademicResults(Guid batchId, string phase, string batchVer, string globalVer)
         => $"dc:academic-results:{batchId:N}:{phase}:{batchVer}:{globalVer}";
 
-    public static string GroupBatchMap(Guid groupId)
-        => $"dc:group-batch:{groupId:N}";
+    public static string GroupBatchMap(Guid groupId, string? globalVer = null)
+        => $"dc:group-batch:{groupId:N}:{globalVer}";
 
     public static string CouncilsOverview(Guid? batchId, string statusKey, string batchVer, string globalVer)
         => $"dc:councils-overview:{(batchId.HasValue ? batchId.Value.ToString("N") : "all")}:{statusKey}:{batchVer}:{globalVer}";
@@ -43,8 +43,8 @@ public static class DefenseCouncilCacheKeys
     public static string CouncilDiscrepancy(Guid assignmentId, string assignVer, string councilVer, string globalVer)
         => $"dc:discrepancy:{assignmentId:N}:{assignVer}:{councilVer}:{globalVer}";
 
-    public static string GradingRubric(Guid batchId, string batchVer)
-        => $"dc:grading-rubric:{batchId:N}:{batchVer}";
+    public static string GradingRubric(Guid batchId, string batchVer, string? globalVer = null)
+        => $"dc:grading-rubric:{batchId:N}:{batchVer}:{globalVer}";
 
     public static string CouncilMemberCandidates(Guid councilId, string keywordKey, string councilVer, string batchVer, string globalVer)
         => $"dc:member-candidates:{councilId:N}:{keywordKey}:{councilVer}:{batchVer}:{globalVer}";
