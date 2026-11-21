@@ -184,6 +184,37 @@ public sealed class AuthenticationAuditHandlerTests
         AssertAudit(Assert.Single(auditLogs.Entries), AuditActions.PasswordChanged, AuditOutcomes.Success, user.Id);
     }
 
+    [Fact]
+    public async Task Change_password_rejects_same_password_and_audits_denied()
+    {
+        var user = CreateUser(active: true);
+        user.SetPasswordByAdmin("hashed-current-password", mustChangePassword: true, Now);
+        var sessions = new FakeSessionRepository();
+        var auditLogs = new FakeAuditLogWriter();
+        var handler = new ChangePasswordHandler(
+            new FakeCurrentUser(user.Id, Guid.NewGuid()),
+            new FakeUserRepository(user),
+            sessions,
+            new FakePasswordService(),
+            new FakePasswordPolicy(),
+            new DirectUnitOfWork(),
+            auditLogs,
+            new FakeClock());
+
+        var result = await handler.HandleAsync(
+            new ChangePasswordCommand("current-password", "current-password"),
+            CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Identity.PasswordMustDifferFromCurrent", result.Error.Code);
+        Assert.True(user.MustChangePassword);
+        Assert.Null(sessions.LastReason);
+
+        var audit = Assert.Single(auditLogs.Entries);
+        AssertAudit(audit, AuditActions.PasswordChanged, AuditOutcomes.Denied, user.Id);
+        Assert.Equal("Identity.PasswordMustDifferFromCurrent", audit.ReasonCode);
+    }
+
     private static void AssertAudit(
         AuditEntry entry,
         string action,
@@ -315,6 +346,14 @@ public sealed class AuthenticationAuditHandlerTests
             string code,
             DateTime createdAt)
             => RecoveryCode = code;
+
+        public void EnqueueAdminPasswordResetAlertEmail(
+            Guid userId,
+            string email,
+            string fullName,
+            bool mustChangePassword,
+            DateTime createdAt)
+        { }
     }
 
     private sealed class FakePasswordService : IPasswordService

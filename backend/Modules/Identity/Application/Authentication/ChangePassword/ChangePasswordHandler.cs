@@ -60,6 +60,17 @@ public sealed class ChangePasswordHandler(
                 return Result.Failure(IdentityErrors.CurrentPasswordIncorrect);
             }
 
+            if (string.Equals(command.CurrentPassword, command.NewPassword, StringComparison.Ordinal))
+            {
+                auditLogs.Add(AuthenticationAudit.ForUser(
+                    user.Id,
+                    AuditActions.PasswordChanged,
+                    AuditOutcomes.Denied,
+                    IdentityErrors.PasswordMustDifferFromCurrent.Code));
+                await unitOfWork.SaveChangesAsync(ct);
+                return Result.Failure(IdentityErrors.PasswordMustDifferFromCurrent);
+            }
+
             var now = clock.UtcNow;
             user.ChangePassword(passwords.Hash(user, command.NewPassword), now);
             await sessions.RevokeAllAsync(

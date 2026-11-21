@@ -18,13 +18,17 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using UGTM.BuildingBlocks.Infrastructure.Persistence;
+using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Profiles;
 using UGTM.Modules.Identity.Application.Security;
+using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Domain.Entities;
 using UGTM.Modules.Identity.Domain.Enums;
+using UGTM.Modules.Identity.Domain.Repositories;
 using UGTM.Modules.Identity.Infrastructure;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
+using UGTM.Modules.Identity.Infrastructure.Authorization;
 using UGTM.Modules.Identity.Infrastructure.Endpoints;
 using UGTM.Modules.Identity.Infrastructure.Notifications;
 using UGTM.Modules.Identity.Infrastructure.Persistence;
@@ -159,7 +163,180 @@ public sealed class IdentityHttpLifecycleIntegrationTests(PostgreSqlFixture fixt
         Assert.Equal(HttpStatusCode.OK, newPasswordLogin.StatusCode);
     }
 
-    private async Task<WebApplication> CreateApplicationAsync()
+    [Fact]
+    public async Task Http_api_enforces_admin_reset_password_and_must_change_password_lifecycle()
+    {
+        const string adminPassword = "AdminPassword!123";
+        const string studentInitialPassword = "StudentInitial!123";
+        const string studentFinalPassword = "StudentFinal!456";
+
+        await using var app = await CreateApplicationAsync(resolveSessionAndRoles: true);
+        var (adminEmail, studentId, studentEmail) = await SeedAdminAndStudentAsync(
+            app.Services, adminPassword, studentInitialPassword);
+        await app.StartAsync();
+
+        var adminCookies = new Dictionary<string, string>(StringComparer.Ordinal);
+        using var adminClient = app.GetTestClient();
+        adminClient.BaseAddress = new Uri("http://localhost");
+        var adminCsrf = ReadString(
+            await (await SendAsync(adminClient, adminCookies, HttpMethod.Get, "/api/identity/auth/csrf"))
+                .Content.ReadAsStringAsync(),
+            "data",
+            "token");
+        var adminLoginJson = await (await SendAsync(
+            adminClient,
+            adminCookies,
+            HttpMethod.Post,
+            "/api/identity/auth/login",
+            new { identifier = adminEmail, password = adminPassword },
+            adminCsrf)).Content.ReadAsStringAsync();
+        var adminToken = ReadString(adminLoginJson, "data", "accessToken");
+
+        var studentCookies = new Dictionary<string, string>(StringComparer.Ordinal);
+        using var studentClient = app.GetTestClient();
+        studentClient.BaseAddress = new Uri("http://localhost");
+        var studentCsrf = ReadString(
+            await (await SendAsync(studentClient, studentCookies, HttpMethod.Get, "/api/identity/auth/csrf"))
+                .Content.ReadAsStringAsync(),
+            "data",
+            "token");
+        var studentLogin1Json = await (await SendAsync(
+            studentClient,
+            studentCookies,
+            HttpMethod.Post,
+            "/api/identity/auth/login",
+            new { identifier = studentEmail, password = studentInitialPassword },
+            studentCsrf)).Content.ReadAsStringAsync();
+        var studentOldToken = ReadString(studentLogin1Json, "data", "accessToken");
+        Assert.False(ReadBoolean(studentLogin1Json, "data", "user", "mustChangePassword"));
+
+        // Admin resets student password in Generated mode with requirePasswordChange = true
+        using var resetRes = await SendAsync(
+            adminClient,
+            adminCookies,
+            HttpMethod.Post,
+            $"/api/users/{studentId}/reset-password",
+            new
+            {
+                mode = "Generated",
+                requirePasswordChange = true,
+                adminPassword,
+                reason = "E2E integration reset"
+            },
+            bearerToken: adminToken);
+        Assert.Equal(HttpStatusCode.OK, resetRes.StatusCode);
+        AssertNoStore(resetRes);
+        var resetJson = await resetRes.Content.ReadAsStringAsync();
+        var tempPassword = ReadString(resetJson, "data", "temporaryPassword");
+        Assert.Equal(16, tempPassword.Length);
+        Assert.True(ReadBoolean(resetJson, "data", "mustChangePassword"));
+
+        // Old student session is revoked immediately
+        using var oldSessionMe = await SendAsync(
+            studentClient,
+            studentCookies,
+            HttpMethod.Get,
+            "/api/identity/auth/me",
+            bearerToken: studentOldToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, oldSessionMe.StatusCode);
+
+        // Alert email in outbox has no password; pending OTP invalidated; audit recorded without password
+        await using (var verifyScope = app.Services.CreateAsyncScope())
+        {
+            var db = verifyScope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var dp = verifyScope.ServiceProvider.GetRequiredService<IDataProtectionProvider>();
+            var alertMsg = await db.IdentityOutboxMessages
+                .AsNoTracking()
+                .SingleAsync(m => m.Type == "admin-password-reset");
+            var decrypted = dp.CreateProtector(alertMsg.ProtectionPurpose).Unprotect(alertMsg.ProtectedPayload);
+            var payload = JsonSerializer.Deserialize<IdentityEmailPayload>(decrypted)!;
+            Assert.Equal("must-change", payload.Secret);
+            Assert.DoesNotContain(tempPassword, decrypted);
+
+            var pendingChallenges = await db.OneTimeChallenges
+                .AsNoTracking()
+                .CountAsync(c => c.UserId == studentId && c.ConsumedAt == null && c.InvalidatedAt == null);
+            Assert.Equal(0, pendingChallenges);
+
+            var resetAudit = await db.AuditLogs
+                .AsNoTracking()
+                .SingleAsync(a => a.Action == AuditActions.UserPasswordResetByAdmin);
+            Assert.DoesNotContain(tempPassword, resetAudit.MetadataJson ?? string.Empty);
+        }
+
+        // Student logs in with temporary password -> mustChangePassword = true
+        var studentLogin2Res = await SendAsync(
+            studentClient,
+            studentCookies,
+            HttpMethod.Post,
+            "/api/identity/auth/login",
+            new { identifier = studentEmail, password = tempPassword },
+            studentCsrf);
+        Assert.Equal(HttpStatusCode.OK, studentLogin2Res.StatusCode);
+        var studentLogin2Json = await studentLogin2Res.Content.ReadAsStringAsync();
+        var studentTempToken = ReadString(studentLogin2Json, "data", "accessToken");
+        Assert.True(ReadBoolean(studentLogin2Json, "data", "user", "mustChangePassword"));
+
+        // Hard gate blocks /sessions with 403 Identity.PasswordChangeRequired, allows /me
+        using var blockedSessions = await SendAsync(
+            studentClient,
+            studentCookies,
+            HttpMethod.Get,
+            "/api/identity/auth/sessions",
+            bearerToken: studentTempToken);
+        Assert.Equal(HttpStatusCode.Forbidden, blockedSessions.StatusCode);
+        Assert.Equal("Identity.PasswordChangeRequired", ReadString(await blockedSessions.Content.ReadAsStringAsync(), "error", "code"));
+
+        using var allowedMe = await SendAsync(
+            studentClient,
+            studentCookies,
+            HttpMethod.Get,
+            "/api/identity/auth/me",
+            bearerToken: studentTempToken);
+        Assert.Equal(HttpStatusCode.OK, allowedMe.StatusCode);
+        Assert.True(ReadBoolean(await allowedMe.Content.ReadAsStringAsync(), "data", "mustChangePassword"));
+
+        // Student completes mandatory change-password -> allowed, clears flag, revokes temp session
+        using var changePassRes = await SendAsync(
+            studentClient,
+            studentCookies,
+            HttpMethod.Post,
+            "/api/identity/auth/change-password",
+            new { currentPassword = tempPassword, newPassword = studentFinalPassword },
+            bearerToken: studentTempToken);
+        Assert.Equal(HttpStatusCode.OK, changePassRes.StatusCode);
+
+        using var revokedTempToken = await SendAsync(
+            studentClient,
+            studentCookies,
+            HttpMethod.Get,
+            "/api/identity/auth/me",
+            bearerToken: studentTempToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, revokedTempToken.StatusCode);
+
+        // Student logs in with final password -> mustChangePassword = false & full API access restored
+        var studentLogin3Res = await SendAsync(
+            studentClient,
+            studentCookies,
+            HttpMethod.Post,
+            "/api/identity/auth/login",
+            new { identifier = studentEmail, password = studentFinalPassword },
+            studentCsrf);
+        Assert.Equal(HttpStatusCode.OK, studentLogin3Res.StatusCode);
+        var studentLogin3Json = await studentLogin3Res.Content.ReadAsStringAsync();
+        var studentFinalToken = ReadString(studentLogin3Json, "data", "accessToken");
+        Assert.False(ReadBoolean(studentLogin3Json, "data", "user", "mustChangePassword"));
+
+        using var allowedSessions = await SendAsync(
+            studentClient,
+            studentCookies,
+            HttpMethod.Get,
+            "/api/identity/auth/sessions",
+            bearerToken: studentFinalToken);
+        Assert.Equal(HttpStatusCode.OK, allowedSessions.StatusCode);
+    }
+
+    private async Task<WebApplication> CreateApplicationAsync(bool resolveSessionAndRoles = false)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -185,6 +362,7 @@ public sealed class IdentityHttpLifecycleIntegrationTests(PostgreSqlFixture fixt
         builder.Services.RemoveAll<IAccessTokenService>();
         builder.Services.AddSingleton<IClock>(new FixedClock(Now));
         builder.Services.AddScoped<IAccessTokenService, TestAccessTokenService>();
+        builder.Services.AddSingleton(new TestAuthOptions(resolveSessionAndRoles));
         builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = TestAuthenticationHandler.SchemeName;
@@ -197,9 +375,77 @@ public sealed class IdentityHttpLifecycleIntegrationTests(PostgreSqlFixture fixt
         var app = builder.Build();
         app.UseRateLimiter();
         app.UseAuthentication();
+        app.UseIdentityPasswordChangeEnforcement();
         app.UseAuthorization();
         app.MapIdentityAuthEndpoints();
+        app.MapIdentityUserEndpoints();
         return app;
+    }
+
+    private static async Task<(string AdminEmail, Guid StudentId, string StudentEmail)> SeedAdminAndStudentAsync(
+        IServiceProvider services,
+        string adminPassword,
+        string studentPassword)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var passwords = scope.ServiceProvider.GetRequiredService<IPasswordService>();
+        var tokens = scope.ServiceProvider.GetRequiredService<IOpaqueTokenService>();
+        var policy = scope.ServiceProvider.GetRequiredService<IdentitySecurityPolicy>();
+
+        await db.Database.ExecuteSqlRawAsync("DROP SCHEMA IF EXISTS identity CASCADE;");
+        await db.Database.EnsureCreatedAsync();
+
+        var admin = User.Create(
+            Guid.NewGuid(),
+            "admin.reset@ugtm.edu.vn",
+            "ADMIN.RESET@UGTM.EDU.VN",
+            "Admin Reset Tester",
+            "AD900",
+            null,
+            null,
+            AccountStatus.PendingActivation,
+            Now);
+        admin.Activate(passwords.Hash(admin, adminPassword), Now);
+
+        var student = User.ProvisionStudent(
+            Guid.NewGuid(),
+            "student.reset@ugtm.edu.vn",
+            "STUDENT.RESET@UGTM.EDU.VN",
+            "Student Reset Target",
+            "SV9001",
+            null,
+            Now);
+        student.Activate(passwords.Hash(student, studentPassword), Now);
+
+        var recoveryOtp = tokens.CreateNumericCode(6);
+        var pendingChallenge = OneTimeChallenge.Create(
+            student.Id,
+            ChallengePurpose.PasswordResetOtp,
+            recoveryOtp.Selector,
+            recoveryOtp.SecretHash,
+            student.Email,
+            policy.ChallengeMaxAttempts,
+            Now,
+            Now.Add(policy.RecoveryOtpLifetime));
+
+        var adminRoleId = await db.Roles
+            .Where(r => r.RoleName == nameof(SystemRoleName.Admin))
+            .Select(r => r.Id)
+            .SingleAsync();
+        var studentRoleId = await db.Roles
+            .Where(r => r.RoleName == nameof(SystemRoleName.Student))
+            .Select(r => r.Id)
+            .SingleAsync();
+
+        db.Users.AddRange(admin, student);
+        db.OneTimeChallenges.Add(pendingChallenge);
+        db.UserRoles.AddRange(
+            new UserRole { UserId = admin.Id, RoleId = adminRoleId, AssignedAt = Now },
+            new UserRole { UserId = student.Id, RoleId = studentRoleId, AssignedAt = Now });
+        await db.SaveChangesAsync();
+
+        return (admin.Email, student.Id, student.Email);
     }
 
     private static async Task<string> SeedPendingStudentAsync(IServiceProvider services)
@@ -340,6 +586,18 @@ public sealed class IdentityHttpLifecycleIntegrationTests(PostgreSqlFixture fixt
         return current.GetString()!;
     }
 
+    private static bool ReadBoolean(string json, params string[] path)
+    {
+        using var document = JsonDocument.Parse(json);
+        var current = document.RootElement;
+        foreach (var segment in path)
+        {
+            current = current.GetProperty(segment);
+        }
+
+        return current.GetBoolean();
+    }
+
     private static Guid ParseSessionId(string accessToken)
         => Guid.ParseExact(accessToken.Split('.')[2], "N");
 
@@ -362,20 +620,23 @@ public sealed class IdentityHttpLifecycleIntegrationTests(PostgreSqlFixture fixt
         public DateTime UtcNow => now;
     }
 
+    private sealed record TestAuthOptions(bool ResolveSessionAndRoles);
+
     private sealed class TestAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
-        UrlEncoder encoder)
+        UrlEncoder encoder,
+        TestAuthOptions testAuthOptions)
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
         public const string SchemeName = "IdentityHttpTest";
 
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             var value = Request.Headers.Authorization.ToString();
             if (!value.StartsWith("Bearer test.", StringComparison.Ordinal))
             {
-                return Task.FromResult(AuthenticateResult.NoResult());
+                return AuthenticateResult.NoResult();
             }
 
             var parts = value["Bearer ".Length..].Split('.');
@@ -383,16 +644,49 @@ public sealed class IdentityHttpLifecycleIntegrationTests(PostgreSqlFixture fixt
                 || !Guid.TryParseExact(parts[1], "N", out var userId)
                 || !Guid.TryParseExact(parts[2], "N", out var sessionId))
             {
-                return Task.FromResult(AuthenticateResult.Fail("Invalid test access token."));
+                return AuthenticateResult.Fail("Invalid test access token.");
             }
 
-            var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [
-                new Claim("sub", userId.ToString()),
-                new Claim("sid", sessionId.ToString())
-            ], SchemeName));
-            return Task.FromResult(AuthenticateResult.Success(
-                new AuthenticationTicket(principal, SchemeName)));
+            var claims = new List<Claim>
+            {
+                new("sub", userId.ToString()),
+                new("sid", sessionId.ToString())
+            };
+
+            if (testAuthOptions.ResolveSessionAndRoles)
+            {
+                var sessions = Context.RequestServices.GetRequiredService<IAuthenticationSessionRepository>();
+                var profiles = Context.RequestServices.GetRequiredService<IUserProfileReader>();
+                var clock = Context.RequestServices.GetRequiredService<IClock>();
+
+                var session = await sessions.GetSessionAsync(sessionId, Context.RequestAborted);
+                if (session is null
+                    || session.UserId != userId
+                    || session.User.Status != AccountStatus.Active
+                    || !session.CanRefresh(session.User.SecurityStamp, clock.UtcNow))
+                {
+                    return AuthenticateResult.Fail("Session is no longer active.");
+                }
+
+                var profile = await profiles.GetAsync(userId, Context.RequestAborted);
+                if (profile is null)
+                {
+                    return AuthenticateResult.Fail("Profile not found.");
+                }
+
+                Context.Items[PasswordChangeRequiredMiddleware.HttpContextItemKey] = session.User.MustChangePassword;
+                if (profile.MustChangePassword)
+                {
+                    claims.Add(new Claim(IdentityClaimTypes.PasswordChangeRequired, "true"));
+                }
+
+                claims.AddRange(profile.Roles.Select(r => new Claim(ClaimTypes.Role, r)));
+                claims.AddRange(profile.Permissions.Select(p => new Claim("permission", p)));
+            }
+
+            var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, SchemeName));
+            return AuthenticateResult.Success(
+                new AuthenticationTicket(principal, SchemeName));
         }
     }
 }
