@@ -116,13 +116,80 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
         }));
     }
 
-    public async Task UpdateRolesAsync(
+    public Task UpdateRolesAsync(
         User user,
         IEnumerable<SystemRoleName> roles,
         DateTime assignedAt,
         CancellationToken ct)
+        => UpdateRolesByNameAsync(user, roles.Select(r => r.ToString()).ToList(), assignedAt, ct);
+
+    public async Task<IReadOnlyList<Role>> GetRolesByNamesAsync(
+        IReadOnlyCollection<string> roleNames,
+        CancellationToken ct)
     {
-        var targetRoleNames = roles.Select(r => r.ToString()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (roleNames.Count == 0)
+        {
+            return [];
+        }
+
+        var normalizedNames = roleNames
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name.Trim().ToUpperInvariant())
+            .Distinct()
+            .ToList();
+
+        if (normalizedNames.Count == 0)
+        {
+            return [];
+        }
+
+        return await db.Roles
+            .AsNoTracking()
+            .Where(r => normalizedNames.Contains(r.RoleName.ToUpper()))
+            .ToListAsync(ct);
+    }
+
+    public async Task AddToRolesByNameAsync(
+        User user,
+        IReadOnlyCollection<string> roleNames,
+        DateTime assignedAt,
+        CancellationToken ct)
+    {
+        var normalizedNames = roleNames
+            .Select(r => r.Trim().ToUpperInvariant())
+            .Distinct()
+            .ToList();
+
+        var roleEntities = await db.Roles
+            .Where(r => normalizedNames.Contains(r.RoleName.ToUpper()))
+            .ToListAsync(ct);
+
+        if (roleEntities.Count != normalizedNames.Count)
+        {
+            throw new InvalidOperationException("Một hoặc nhiều vai trò chưa được khởi tạo trong bảng identity.role của cơ sở dữ liệu.");
+        }
+
+        foreach (var role in roleEntities)
+        {
+            db.UserRoles.Add(new UserRole
+            {
+                UserId = user.Id,
+                RoleId = role.Id,
+                AssignedAt = assignedAt
+            });
+        }
+    }
+
+    public async Task UpdateRolesByNameAsync(
+        User user,
+        IReadOnlyCollection<string> roleNames,
+        DateTime assignedAt,
+        CancellationToken ct)
+    {
+        var targetRoleNames = roleNames
+            .Select(r => r.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         var currentRoles = await db.UserRoles
             .Include(ur => ur.Role)
             .Where(ur => ur.UserId == user.Id)
@@ -141,12 +208,13 @@ public sealed class UserRepository(IdentityDbContext db) : IUserRepository
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var rolesToAdd = targetRoleNames
             .Where(r => !existingRoleNames.Contains(r))
+            .Select(r => r.ToUpperInvariant())
             .ToList();
 
         if (rolesToAdd.Count > 0)
         {
             var roleEntities = await db.Roles
-                .Where(r => rolesToAdd.Contains(r.RoleName))
+                .Where(r => rolesToAdd.Contains(r.RoleName.ToUpper()))
                 .ToListAsync(ct);
 
             if (roleEntities.Count != rolesToAdd.Count)

@@ -2334,6 +2334,12 @@ namespace UGTM.Database.Migrations.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("description");
 
+                    b.Property<bool>("IsHidden")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_hidden");
+
                     b.Property<string>("RoleName")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -2354,36 +2360,42 @@ namespace UGTM.Database.Migrations.Migrations
                         {
                             Id = 1,
                             Description = "Admin",
+                            IsHidden = false,
                             RoleName = "Admin"
                         },
                         new
                         {
                             Id = 2,
                             Description = "Faculty",
+                            IsHidden = false,
                             RoleName = "Faculty"
                         },
                         new
                         {
                             Id = 3,
                             Description = "AcademicAffairs",
+                            IsHidden = false,
                             RoleName = "AcademicAffairs"
                         },
                         new
                         {
                             Id = 4,
                             Description = "Lecturer",
+                            IsHidden = false,
                             RoleName = "Lecturer"
                         },
                         new
                         {
                             Id = 5,
                             Description = "Student",
+                            IsHidden = false,
                             RoleName = "Student"
                         },
                         new
                         {
                             Id = 6,
                             Description = "CouncilMember",
+                            IsHidden = false,
                             RoleName = "CouncilMember"
                         });
                 });

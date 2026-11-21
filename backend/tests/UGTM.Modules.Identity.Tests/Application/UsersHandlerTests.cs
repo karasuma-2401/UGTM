@@ -1208,6 +1208,116 @@ public sealed class UsersHandlerTests
         Assert.Contains("Faculty", result.Value.Roles);
     }
 
+    [Fact]
+    public async Task CreateUserHandler_allows_assigning_active_custom_role()
+    {
+        var repo = new FakeUserRepository();
+        repo.AvailableRoles.Add(new Role { Id = 7, RoleName = "DepartmentHead", Description = "Trưởng Bộ môn", IsHidden = false });
+        var handler = CreateHandler(repo);
+
+        var result = await handler.HandleAsync(
+            new CreateUserCommand("head@ugtm.edu.vn", "Trưởng BM", "GV100", null, ["Lecturer", "departmenthead"]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(["Lecturer", "DepartmentHead"], result.Value.Roles);
+    }
+
+    [Fact]
+    public async Task CreateUserHandler_fails_when_assigning_hidden_custom_role()
+    {
+        var repo = new FakeUserRepository();
+        repo.AvailableRoles.Add(new Role { Id = 7, RoleName = "LegacyRole", Description = "Vai trò cũ", IsHidden = true });
+        var handler = CreateHandler(repo);
+
+        var result = await handler.HandleAsync(
+            new CreateUserCommand("user@ugtm.edu.vn", "User", "GV101", null, ["LegacyRole"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.RoleIsHidden.Code, result.Error.Code);
+        Assert.Empty(repo.Users);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_allows_assigning_active_custom_role()
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "gv@ugtm.edu.vn",
+            "GV@UGTM.EDU.VN",
+            "Giảng viên A",
+            "GV010",
+            null,
+            null,
+            AccountStatus.Active,
+            Now);
+        user.UserRoles.Add(new UserRole
+        {
+            UserId = user.Id,
+            RoleId = 4,
+            Role = new Role { Id = 4, RoleName = nameof(SystemRoleName.Lecturer) }
+        });
+
+        var repo = new FakeUserRepository([user]);
+        repo.AvailableRoles.Add(new Role { Id = 7, RoleName = "DepartmentHead", Description = "Trưởng BM", IsHidden = false });
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Giảng viên A", "GV010", null, ["Lecturer", "departmenthead"]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(["Lecturer", "DepartmentHead"], result.Value.Roles);
+    }
+
+    [Fact]
+    public async Task UpdateUserHandler_fails_when_assigning_hidden_custom_role()
+    {
+        var user = User.Create(
+            Guid.NewGuid(),
+            "gv@ugtm.edu.vn",
+            "GV@UGTM.EDU.VN",
+            "Giảng viên A",
+            "GV010",
+            null,
+            null,
+            AccountStatus.Active,
+            Now);
+        user.UserRoles.Add(new UserRole
+        {
+            UserId = user.Id,
+            RoleId = 4,
+            Role = new Role { Id = 4, RoleName = nameof(SystemRoleName.Lecturer) }
+        });
+
+        var repo = new FakeUserRepository([user]);
+        repo.AvailableRoles.Add(new Role { Id = 7, RoleName = "HiddenRole", Description = "Ẩn", IsHidden = true });
+        var handler = new UpdateUserHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(
+            new UpdateUserCommand(user.Id, "Giảng viên A", "GV010", null, ["HiddenRole"]),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.RoleIsHidden.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task GetUsersHandler_allows_filtering_by_custom_role()
+    {
+        var stubReader = new StubUserQueryReader(["DepartmentHead"]);
+        var handler = new GetUsersHandler(stubReader);
+
+        var result = await handler.HandleAsync(
+            new GetUsersQuery(Role: " departmenthead "),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(stubReader.LastQuery);
+        Assert.Equal("DepartmentHead", stubReader.LastQuery.Role);
+    }
+
     private static CreateUserHandler CreateHandler(
         FakeUserRepository repo,
         FakeEmailOutbox? outbox = null,
@@ -1242,9 +1352,24 @@ public sealed class UsersHandlerTests
         public ImportFileReadResult Read(Stream stream) => result;
     }
 
-    private sealed class StubUserQueryReader : IUserQueryReader
+    private sealed class StubUserQueryReader(IEnumerable<string>? customRoles = null) : IUserQueryReader
     {
+        private readonly Dictionary<string, string> _roles = BuildRoles(customRoles);
         public GetUsersQuery? LastQuery { get; private set; }
+
+        private static Dictionary<string, string> BuildRoles(IEnumerable<string>? customRoles)
+        {
+            var dict = Enum.GetValues<SystemRoleName>()
+                .ToDictionary(r => r.ToString(), r => r.ToString(), StringComparer.OrdinalIgnoreCase);
+            if (customRoles != null)
+            {
+                foreach (var role in customRoles)
+                {
+                    dict[role] = role;
+                }
+            }
+            return dict;
+        }
 
         public Task<PagedResult<UserSummaryDto>> GetUsersAsync(
             GetUsersQuery query,
@@ -1253,11 +1378,24 @@ public sealed class UsersHandlerTests
             LastQuery = query;
             return Task.FromResult(new PagedResult<UserSummaryDto>([], 0, query.PageNumber, query.PageSize));
         }
+
+        public Task<string?> ResolveRoleNameAsync(string roleName, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(roleName) || long.TryParse(roleName.Trim(), out _))
+            {
+                return Task.FromResult<string?>(null);
+            }
+
+            return Task.FromResult(_roles.TryGetValue(roleName.Trim(), out var canonical) ? canonical : null);
+        }
     }
 
     private sealed class FakeUserRepository(IEnumerable<User>? initialUsers = null) : IUserRepository
     {
         public List<User> Users { get; } = [.. initialUsers ?? []];
+        public List<Role> AvailableRoles { get; } = Enum.GetValues<SystemRoleName>()
+            .Select(r => new Role { Id = (int)r + 1, RoleName = r.ToString(), Description = r.ToString(), IsHidden = false })
+            .ToList();
         public int AdminMutationLockCount { get; private set; }
 
         public Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
@@ -1319,15 +1457,43 @@ public sealed class UsersHandlerTests
         }
 
         public Task UpdateRolesAsync(User user, IEnumerable<SystemRoleName> roles, DateTime assignedAt, CancellationToken cancellationToken)
+            => UpdateRolesByNameAsync(user, roles.Select(r => r.ToString()).ToList(), assignedAt, cancellationToken);
+
+        public Task<IReadOnlyList<Role>> GetRolesByNamesAsync(IReadOnlyCollection<string> roleNames, CancellationToken cancellationToken)
         {
-            user.UserRoles.Clear();
-            foreach (var role in roles)
+            var requested = roleNames.Select(n => n.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var matched = AvailableRoles.Where(r => requested.Contains(r.RoleName)).ToList();
+            return Task.FromResult<IReadOnlyList<Role>>(matched);
+        }
+
+        public Task AddToRolesByNameAsync(User user, IReadOnlyCollection<string> roleNames, DateTime assignedAt, CancellationToken cancellationToken)
+        {
+            foreach (var name in roleNames)
             {
+                var role = AvailableRoles.First(r => string.Equals(r.RoleName, name, StringComparison.OrdinalIgnoreCase));
                 user.UserRoles.Add(new UserRole
                 {
                     UserId = user.Id,
-                    RoleId = (int)role + 1,
-                    Role = new Role { Id = (int)role + 1, RoleName = role.ToString() },
+                    RoleId = role.Id,
+                    Role = role,
+                    AssignedAt = assignedAt,
+                    User = user
+                });
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task UpdateRolesByNameAsync(User user, IReadOnlyCollection<string> roleNames, DateTime assignedAt, CancellationToken cancellationToken)
+        {
+            user.UserRoles.Clear();
+            foreach (var name in roleNames)
+            {
+                var role = AvailableRoles.First(r => string.Equals(r.RoleName, name, StringComparison.OrdinalIgnoreCase));
+                user.UserRoles.Add(new UserRole
+                {
+                    UserId = user.Id,
+                    RoleId = role.Id,
+                    Role = role,
                     AssignedAt = assignedAt,
                     User = user
                 });

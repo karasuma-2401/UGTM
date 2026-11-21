@@ -31,6 +31,11 @@ public sealed class UpdateRolePermissionsHandler(
                 return Result.Failure<RolePermissionsDto>(IdentityErrors.RoleNotFound);
             }
 
+            if (role.IsHidden)
+            {
+                return Result.Failure<RolePermissionsDto>(IdentityErrors.RoleIsHidden);
+            }
+
             var targetPermissionIds = command.PermissionIds
                 .Distinct()
                 .ToList();
@@ -101,11 +106,16 @@ public sealed class UpdateRolePermissionsHandler(
                 .ThenBy(p => p.PermissionCode)
                 .ToList();
 
+            var userCount = await repository.GetRoleUserCountAsync(role.Id, ct);
+
             return Result.Success(new RolePermissionsDto(
                 role.Id,
                 role.RoleName,
                 role.Description,
-                permissions));
+                permissions,
+                role.IsSystemRole(),
+                role.IsHidden,
+                userCount));
         }, cancellationToken);
     }
 }

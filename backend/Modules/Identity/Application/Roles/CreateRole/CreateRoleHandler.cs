@@ -16,7 +16,7 @@ public sealed class CreateRoleHandler(
     IAuditLogWriter auditLogs)
 {
     private static readonly Regex RoleNameRegex = new(
-        @"^[\p{L}\p{N}_\-\s]+$",
+        @"^[\p{L}\p{N}_\- ]+$",
         RegexOptions.Compiled);
 
     public Task<Result<RolePermissionsDto>> HandleAsync(
@@ -113,7 +113,10 @@ public sealed class CreateRoleHandler(
                 created.Id,
                 created.RoleName,
                 created.Description,
-                permissions));
+                permissions,
+                created.IsSystemRole(),
+                created.IsHidden,
+                UserCount: 0));
         }, cancellationToken);
     }
 }

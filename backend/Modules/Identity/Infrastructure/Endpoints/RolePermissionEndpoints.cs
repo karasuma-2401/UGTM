@@ -8,7 +8,9 @@ using UGTM.Modules.Identity.Application.Permissions.GetPermissions;
 using UGTM.Modules.Identity.Application.Roles.CreateRole;
 using UGTM.Modules.Identity.Application.Roles.Dtos;
 using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
+using UGTM.Modules.Identity.Application.Roles.GetRoles;
 using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
+using UGTM.Modules.Identity.Application.Roles.UpdateRoleVisibility;
 using UGTM.Modules.Identity.Contracts.Authorization;
 
 namespace UGTM.Modules.Identity.Infrastructure.Endpoints;
@@ -21,6 +23,8 @@ public static class RolePermissionEndpoints
         IReadOnlyList<int>? PermissionIds);
 
     public sealed record UpdateRolePermissionsRequest(IReadOnlyList<int>? PermissionIds);
+
+    public sealed record UpdateRoleVisibilityRequest(bool? IsHidden);
 
     public static IEndpointRouteBuilder MapIdentityRolePermissionEndpoints(
         this IEndpointRouteBuilder endpoints)
@@ -47,6 +51,23 @@ public static class RolePermissionEndpoints
         // 2. Roles group: /api/roles
         var rolesGroup = endpoints.MapGroup("/api/roles")
             .WithTags("Identity.Roles");
+
+        rolesGroup.MapGet("/", GetRolesAsync)
+            .WithSummary("Lấy danh sách các vai trò trong hệ thống")
+            .WithDescription("""
+                Trả về danh sách các vai trò (Roles) trong hệ thống kèm số lượng người dùng đang được gán, số lượng quyền,
+                cờ nhận biết vai trò mặc định của hệ thống (`isSystemRole`), trạng thái ẩn (`isHidden`) và khả năng ẩn (`canHide`).
+                Mặc định chỉ trả về các vai trò đang hiển thị (`includeHidden=false`). Truyền `includeHidden=true` để xem cả các vai trò đã ẩn.
+
+                Yêu cầu Bearer token có quyền `identity.roles.manage` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm danh sách `RoleSummaryDto`.
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
+                """)
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}")
+            .Produces<ApiResponse<IReadOnlyList<RoleSummaryDto>>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden);
 
         rolesGroup.MapPost("/", CreateRoleAsync)
             .WithSummary("Tạo vai trò người dùng mới")
@@ -105,7 +126,7 @@ public static class RolePermissionEndpoints
 
                 Yêu cầu Bearer token có quyền `identity.roles.manage` hoặc người dùng có vai trò `Admin`.
                 - Thành công: 200 OK kèm thông tin vai trò và danh sách quyền sau khi cập nhật.
-                - Danh sách quyền là `null` hoặc chứa ID không tồn tại: 400 Bad Request (`Identity.InvalidPermission`).
+                - Danh sách quyền là `null`, chứa ID không tồn tại hoặc vai trò đang bị ẩn (`Identity.RoleIsHidden`): 400 Bad Request.
                 - Cố tình gỡ sạch quyền của Admin: 400 Bad Request (`Identity.CannotRevokeAllAdminPermissions`).
                 - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
                 - Không đủ quyền: 403 Forbidden.
@@ -118,7 +139,82 @@ public static class RolePermissionEndpoints
             .Produces(StatusCodes.Status403Forbidden)
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound);
 
+        rolesGroup.MapPatch("/{id:int}/hide", HideRoleAsync)
+            .WithSummary("Ẩn vai trò không sử dụng")
+            .WithDescription("""
+                Ẩn mềm một vai trò tùy chỉnh (Custom Role) không còn sử dụng trong hệ thống.
+                Điều kiện ẩn:
+                - Vai trò không thuộc 6 vai trò mặc định của hệ thống (`Admin`, `Faculty`, `AcademicAffairs`, `Lecturer`, `Student`, `CouncilMember`).
+                - Chưa có bất kỳ người dùng nào đang được gán vai trò này (`userCount == 0`).
+                - Vai trò hiện chưa bị ẩn.
+
+                Yêu cầu Bearer token có quyền `identity.roles.manage` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm thông tin `RoleSummaryDto` sau khi ẩn.
+                - Cố tình ẩn vai trò hệ thống: 400 Bad Request (`Identity.CannotHideSystemRole`).
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
+                - Không tìm thấy vai trò: 404 Not Found (`Identity.RoleNotFound`).
+                - Vai trò đang có người dùng sử dụng (`Identity.RoleInUse`) hoặc đã ẩn sẵn (`Identity.RoleAlreadyHidden`): 409 Conflict.
+                """)
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}")
+            .Produces<ApiResponse<RoleSummaryDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
+
+        rolesGroup.MapPatch("/{id:int}/unhide", UnhideRoleAsync)
+            .WithSummary("Hiển thị lại vai trò đã ẩn")
+            .WithDescription("""
+                Khôi phục trạng thái hiển thị cho một vai trò đã bị ẩn trước đó để có thể tiếp tục gán cho người dùng và cấu hình quyền.
+
+                Yêu cầu Bearer token có quyền `identity.roles.manage` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm thông tin `RoleSummaryDto`.
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
+                - Không tìm thấy vai trò: 404 Not Found (`Identity.RoleNotFound`).
+                - Vai trò hiện đang hiển thị: 409 Conflict (`Identity.RoleNotHidden`).
+                """)
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}")
+            .Produces<ApiResponse<RoleSummaryDto>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
+
+        rolesGroup.MapPatch("/{id:int}/visibility", UpdateRoleVisibilityAsync)
+            .WithSummary("Cập nhật trạng thái ẩn/hiện của vai trò")
+            .WithDescription("""
+                Ẩn hoặc hiển thị lại vai trò thông qua trường `isHidden` trong request body (`true` = ẩn, `false` = hiển thị lại).
+                Áp dụng toàn bộ các ràng buộc tương tự hai endpoint `/hide` và `/unhide`.
+
+                Yêu cầu Bearer token có quyền `identity.roles.manage` hoặc người dùng có vai trò `Admin`.
+                - Thành công: 200 OK kèm thông tin `RoleSummaryDto`.
+                - Dữ liệu không hợp lệ hoặc cố tình ẩn vai trò hệ thống: 400 Bad Request.
+                - Thiếu token hoặc token không hợp lệ: 401 Unauthorized.
+                - Không đủ quyền: 403 Forbidden.
+                - Không tìm thấy vai trò: 404 Not Found (`Identity.RoleNotFound`).
+                - Xung đột trạng thái hoặc vai trò đang có người dùng: 409 Conflict.
+                """)
+            .RequireAuthorization($"Permission:{PermissionCodes.IdentityRolesManage}")
+            .Produces<ApiResponse<RoleSummaryDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)
+            .Produces<ApiResponse<object>>(StatusCodes.Status409Conflict);
+
         return endpoints;
+    }
+
+    private static async Task<IResult> GetRolesAsync(
+        [FromQuery] bool? includeHidden,
+        GetRolesHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new GetRolesQuery(includeHidden ?? false), cancellationToken);
+        return result.ToHttpResult();
     }
 
     private static async Task<IResult> CreateRoleAsync(
@@ -160,6 +256,34 @@ public static class RolePermissionEndpoints
     {
         var command = new UpdateRolePermissionsCommand(id, request?.PermissionIds);
         var result = await handler.HandleAsync(command, cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> HideRoleAsync(
+        [FromRoute] int id,
+        UpdateRoleVisibilityHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand(id, IsHidden: true), cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> UnhideRoleAsync(
+        [FromRoute] int id,
+        UpdateRoleVisibilityHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand(id, IsHidden: false), cancellationToken);
+        return result.ToHttpResult();
+    }
+
+    private static async Task<IResult> UpdateRoleVisibilityAsync(
+        [FromRoute] int id,
+        [FromBody] UpdateRoleVisibilityRequest? request,
+        UpdateRoleVisibilityHandler handler,
+        CancellationToken cancellationToken)
+    {
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand(id, request?.IsHidden), cancellationToken);
         return result.ToHttpResult();
     }
 }

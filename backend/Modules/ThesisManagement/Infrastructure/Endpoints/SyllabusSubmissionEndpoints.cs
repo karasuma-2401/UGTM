@@ -120,14 +120,14 @@ public static class SyllabusSubmissionEndpoints
             .WithDescription("""
                 Đặt `gateType` là `Syllabus` (Cổng 1 — đề cương chi tiết) hoặc `Midterm` (Cổng 2 — báo cáo
                 giữa kỳ). Response trả metadata tệp và kết quả thẩm định theo từng phiên bản. Thành viên của
-                nhóm chỉ xem được nhóm mình; `Faculty`/`Admin` có quyền thẩm định có thể tra cứu để xử lý hồ sơ.
+                nhóm và Giảng viên hướng dẫn của đề tài xem được nhóm mình; `Faculty`/`Admin` có quyền thẩm định có thể tra cứu để xử lý hồ sơ.
                 Response không chứa object key hoặc public URL; endpoint tải tệp có kiểm soát sẽ được cung cấp
                 riêng để giữ bucket MinIO/S3 private.
 
                 Yêu cầu Bearer token.
                 - 200 OK: lịch sử phiên bản và review.
                 - 401 Unauthorized: chưa xác thực.
-                - 403 Forbidden: không thuộc nhóm và không có quyền thẩm định.
+                - 403 Forbidden: không thuộc nhóm, không phải GVHD của đề tài và không có quyền thẩm định.
                 - 400 Bad Request: `gateType` không phải `Syllabus` hoặc `Midterm`.
                 - 404 Not Found: không tìm thấy nhóm hoặc nhóm chưa có hồ sơ tương ứng.
                 """)
@@ -144,7 +144,7 @@ public static class SyllabusSubmissionEndpoints
             .WithSummary("Lấy URL tải tạm thời cho tệp hồ sơ Cổng 1 hoặc Cổng 2")
             .WithDescription("""
                 Sau khi kiểm tra quyền trên database, trả về presigned URL chỉ có hiệu lực 5 phút cho một
-                tệp thuộc Cổng 1 hoặc Cổng 2. Thành viên của chính nhóm hoặc `Faculty`/`Admin` có quyền thẩm định mới
+                tệp thuộc Cổng 1 hoặc Cổng 2. Thành viên của chính nhóm, Giảng viên hướng dẫn của đề tài hoặc `Faculty`/`Admin` có quyền thẩm định mới
                 nhận được URL. Object key nội bộ và bucket private không bao giờ được trả về client.
 
                 Yêu cầu Bearer token.

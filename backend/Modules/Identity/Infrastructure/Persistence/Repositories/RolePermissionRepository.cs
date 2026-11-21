@@ -15,6 +15,31 @@ public sealed class RolePermissionRepository(IdentityDbContext db) : IRolePermis
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<RoleWithCounts>> GetAllRolesWithCountsAsync(
+        bool includeHidden,
+        CancellationToken cancellationToken)
+    {
+        var query = db.Roles.AsNoTracking();
+        if (!includeHidden)
+        {
+            query = query.Where(r => !r.IsHidden);
+        }
+
+        var rows = await query
+            .OrderBy(r => r.Id)
+            .Select(r => new
+            {
+                Role = r,
+                UserCount = r.UserRoles.Count(),
+                PermissionCount = r.RolePermissions.Count()
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(x => new RoleWithCounts(x.Role, x.UserCount, x.PermissionCount))
+            .ToList();
+    }
+
     public async Task<Role?> GetRoleWithPermissionsAsync(int roleId, CancellationToken cancellationToken)
     {
         return await db.Roles
@@ -23,6 +48,15 @@ public sealed class RolePermissionRepository(IdentityDbContext db) : IRolePermis
                 .ThenInclude(rp => rp.Permission)
             .FirstOrDefaultAsync(r => r.Id == roleId, cancellationToken);
     }
+
+    public Task<Role?> GetRoleByIdForUpdateAsync(int roleId, CancellationToken cancellationToken)
+        => db.Roles.FirstOrDefaultAsync(r => r.Id == roleId, cancellationToken);
+
+    public Task<int> GetRoleUserCountAsync(int roleId, CancellationToken cancellationToken)
+        => db.UserRoles.AsNoTracking().CountAsync(ur => ur.RoleId == roleId, cancellationToken);
+
+    public Task<int> GetRolePermissionCountAsync(int roleId, CancellationToken cancellationToken)
+        => db.RolePermissions.AsNoTracking().CountAsync(rp => rp.RoleId == roleId, cancellationToken);
 
     public async Task<bool> RoleExistsAsync(int roleId, CancellationToken cancellationToken)
     {

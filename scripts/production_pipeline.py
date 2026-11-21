@@ -163,6 +163,9 @@ class Remote:
 
 def vercel(*args, cwd=None):
     environment = dict(os.environ)
+    scope = os.environ["VERCEL_ORG_ID"]
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", scope):
+        raise ValueError("VERCEL_ORG_ID must be a Vercel team ID or slug")
     if args and args[0] == "deploy":
         host = os.environ["API_HOST"]
         if not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?", host):
@@ -180,11 +183,22 @@ def vercel(*args, cwd=None):
             f"API_ORIGIN={origin}",
         )
     return run(
-        ["vercel", *args, "--token", os.environ["VERCEL_TOKEN"]],
+        ["vercel", *args, "--scope", scope, "--token", os.environ["VERCEL_TOKEN"]],
         cwd=cwd,
         env=environment,
         timeout=600,
     )
+
+
+def verify_frontend_scope(url):
+    # Use the same unlinked CLI context as promote, before changing the backend.
+    info = json.loads(vercel("inspect", url, "--json"))
+    if (
+        info.get("url") != url.removeprefix("https://")
+        or info.get("readyState") != "READY"
+        or info.get("target") != "production"
+    ):
+        raise ValueError("Vercel candidate must be the ready production deployment")
 
 
 def previous_frontend():
@@ -212,6 +226,15 @@ def deploy(workspace):
     mode = os.environ.get("DEPLOY_MODE", "deploy")
     if mode not in ("prepare", "deploy"):
         raise ValueError("DEPLOY_MODE must be prepare or deploy")
+    recovery = os.environ.get("RECOVERY_ATTEMPT", "")
+    if recovery and (
+        not re.fullmatch(r"[0-9a-f]{40}-\d+-\d+", recovery)
+        or mode != "deploy"
+        or os.environ.get("AUTO_DEPLOY") == "true"
+    ):
+        raise ValueError(
+            "RECOVERY_ATTEMPT requires an explicit manual deploy and attempt ID"
+        )
     publish_id = os.environ["PUBLISH_RUN_ID"]
     if not publish_id.isdigit():
         raise ValueError("Invalid publish run ID")
@@ -271,11 +294,25 @@ def deploy(workspace):
         if not os.environ.get(key):
             raise ValueError(f"Missing setting: {key}")
     payload = {key: os.environ.get(key, "") for key in REQUIRED + OPTIONAL}
+    if recovery:
+        (bundle / "recovery-from").write_text(recovery + "\n")
     write(bundle / "settings.json", payload)
     (bundle / "settings.json").chmod(0o600)
     attempt = f"{sha}-{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}"
     remote_path = f"ugtm/production/releases/{attempt}"
     remote = Remote(workspace)
+    pending = remote.execute(
+        'if test -f "$HOME/ugtm/production/pending"; then cat "$HOME/ugtm/production/pending"; fi'
+    ).strip()
+    if pending and not recovery:
+        raise ValueError(
+            "An unfinished deployment exists; inspect it and use a manual deploy with recovery_attempt"
+        )
+    if recovery and not re.fullmatch(
+        rf"/home/[a-z_][a-z0-9_-]*/ugtm/production/releases/{re.escape(recovery)}",
+        pending,
+    ):
+        raise ValueError("The requested recovery_attempt is not the pending deployment")
     print("Stage: SSH transfer and registry authentication", flush=True)
     # Do not reuse an attempt directory: its env/config must remain immutable.
     remote.execute(
@@ -311,6 +348,7 @@ def deploy(workspace):
         "publish_run_id": publish_id,
         "publish_run_attempt": publish_attempt,
         "stages": [],
+        "recovery_from": recovery or None,
     }
 
     def stage(name, function):
@@ -330,6 +368,17 @@ def deploy(workspace):
             summary["result"] = "prepared"
             return
         previous = previous_frontend()
+        if recovery:
+            record = json.loads(remote.execute(f'cat "{pending}/deployment.json"'))
+            if (
+                record.get("attempt") != recovery
+                or record.get("source_sha") != recovery.split("-")[0]
+                or previous
+                not in (record.get("vercel_url"), record.get("previous_vercel_url"))
+            ):
+                raise ValueError(
+                    "Vercel changed since the failed attempt; inspect it before recovery"
+                )
         # Archive the approved commit, never deploy the workflow's unrelated checkout.
         source = workspace / "source"
         source.mkdir()
@@ -361,6 +410,7 @@ def deploy(workspace):
             raise ValueError("Vercel did not return a deployment URL")
         frontend = urls[-1]
         summary.update(vercel_url=frontend, previous_vercel_url=previous)
+        stage("verify_frontend_scope", lambda: verify_frontend_scope(frontend))
         write(workspace / "summary.json", summary)
         write(workspace / "deployment.json", summary)
         remote.upload(workspace / "deployment.json", f"{remote_path}/deployment.json")

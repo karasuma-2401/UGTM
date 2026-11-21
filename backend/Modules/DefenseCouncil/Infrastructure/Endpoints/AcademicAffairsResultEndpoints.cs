@@ -250,18 +250,18 @@ public static class AcademicAffairsResultEndpoints
     }
 
     private static async Task<IResult> GetAcademicResultsAsync(
-        [FromQuery] Guid batchId,
-        [FromQuery] string phase,
-        [FromQuery] string? keyword,
-        [FromQuery] string? status,
+        [FromQuery] Guid? batchId = null,
+        [FromQuery] string? phase = null,
+        [FromQuery] string? keyword = null,
+        [FromQuery] string? status = null,
         [FromQuery] int pageIndex = 1,
         [FromQuery] int pageSize = 50,
         [FromServices] GetAcademicResultsHandler handler = null!,
         CancellationToken cancellationToken = default)
     {
         var query = new GetAcademicResultsQuery(
-            batchId,
-            phase,
+            batchId ?? Guid.Empty,
+            phase ?? string.Empty,
             keyword,
             status,
             pageIndex,
@@ -273,18 +273,18 @@ public static class AcademicAffairsResultEndpoints
 
     private static async Task<IResult> GetAcademicResultDetailAsync(
         [FromRoute] Guid groupId,
-        [FromQuery] string phase,
+        [FromQuery] string? phase = null,
         [FromServices] GetAcademicResultDetailHandler handler = null!,
         CancellationToken cancellationToken = default)
     {
-        var query = new GetAcademicResultDetailQuery(groupId, phase);
+        var query = new GetAcademicResultDetailQuery(groupId, phase ?? string.Empty);
         var result = await handler.HandleAsync(query, cancellationToken);
         return result.ToHttpResult();
     }
 
     private static async Task<IResult> ExportAcademicResultsAsync(
-        [FromQuery] Guid batchId,
-        [FromQuery] string format,
+        [FromQuery] Guid? batchId = null,
+        [FromQuery] string? format = null,
         [FromQuery] string? phase = "Final",
         [FromQuery] string? keyword = null,
         [FromQuery] string? status = null,
@@ -292,8 +292,8 @@ public static class AcademicAffairsResultEndpoints
         CancellationToken cancellationToken = default)
     {
         var query = new ExportAcademicResultsQuery(
-            batchId,
-            format,
+            batchId ?? Guid.Empty,
+            format ?? string.Empty,
             phase,
             keyword,
             status);

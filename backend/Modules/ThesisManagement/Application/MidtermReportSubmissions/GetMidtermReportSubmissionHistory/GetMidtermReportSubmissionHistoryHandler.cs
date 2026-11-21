@@ -5,6 +5,7 @@ using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
+using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 
 namespace UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.GetMidtermReportSubmissionHistory;
 
@@ -13,13 +14,14 @@ public sealed class GetMidtermReportSubmissionHistoryHandler(
     IMidtermReportRepository midtermReportRepository,
     ISubmissionFileRepository submissionFileRepository,
     ISubmissionReviewRepository submissionReviewRepository,
+    ITopicAdvisorAssignmentContract advisorAssignmentContract,
     ICurrentUser currentUser)
 {
     public async Task<Result<MidtermReportSubmissionHistoryDto>> HandleAsync(
         GetMidtermReportSubmissionHistoryQuery query,
         CancellationToken cancellationToken = default)
     {
-        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue)
+        if (!currentUser.IsAuthenticated || !currentUser.UserId.HasValue || currentUser.UserId.Value == Guid.Empty)
         {
             return Result.Failure<MidtermReportSubmissionHistoryDto>(MidtermReportSubmissionErrors.AccessDenied);
         }
@@ -36,7 +38,14 @@ public sealed class GetMidtermReportSubmissionHistoryHandler(
         }
 
         var isMember = ThesisAuthorization.IsConfirmedMember(group, currentUser.UserId.Value);
-        if (!isMember && !ThesisAuthorization.CanReviewGates(currentUser))
+        var canAccess = isMember || ThesisAuthorization.CanReviewGates(currentUser);
+        if (!canAccess)
+        {
+            var assignment = await advisorAssignmentContract.GetByTopicIdAsync(group.TopicId, cancellationToken);
+            canAccess = assignment is not null && assignment.AdvisorId == currentUser.UserId.Value;
+        }
+
+        if (!canAccess)
         {
             return Result.Failure<MidtermReportSubmissionHistoryDto>(MidtermReportSubmissionErrors.AccessDenied);
         }

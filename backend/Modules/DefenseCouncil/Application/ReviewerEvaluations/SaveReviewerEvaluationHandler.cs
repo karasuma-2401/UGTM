@@ -88,12 +88,13 @@ public sealed class SaveReviewerEvaluationHandler(
 
         decimal? scoreToApply = command.Score;
         List<EvaluationDetailResponseDto>? detailDtos = null;
+        Dictionary<Guid, GradingCriteria>? criteriaMap = null;
         int totalCriteriaCount = 0;
         if (command.Details is { Count: > 0 } details)
         {
             var batchCriteria = await evaluations.GetGradingCriteriaByBatchIdAsync(access.Binding.BatchId, token);
             totalCriteriaCount = batchCriteria.Count;
-            var criteriaMap = batchCriteria.ToDictionary(c => c.Id);
+            criteriaMap = batchCriteria.ToDictionary(c => c.Id);
 
             foreach (var item in details)
             {
@@ -142,11 +143,6 @@ public sealed class SaveReviewerEvaluationHandler(
             }
 
             scoreToApply = StudentEvaluationGroupingHelper.ComputeAggregateScore(details);
-            detailDtos = details.Select(d =>
-            {
-                var crit = criteriaMap[d.CriteriaId];
-                return new EvaluationDetailResponseDto(Guid.Empty, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore, d.StudentId);
-            }).ToList();
         }
         else if (command.Action == ReviewerEvaluationAction.Submit && scoreToApply is null)
         {
@@ -176,6 +172,12 @@ public sealed class SaveReviewerEvaluationHandler(
                 Score = d.Score
             }).ToList();
             await evaluations.SaveEvaluationDetailsAsync(evaluation.Id, detailsList, token);
+
+            detailDtos = detailsList.Select(d =>
+            {
+                var crit = criteriaMap![d.CriteriaId];
+                return new EvaluationDetailResponseDto(d.Id, d.CriteriaId, crit.CriteriaCode, crit.CriteriaName, d.Score, crit.MaxScore, d.StudentId);
+            }).ToList();
         }
 
         var receipt = ReviewerEvaluationIdempotencyRecord.Create(Guid.NewGuid(), actor, Operation, command.IdempotencyKey, fingerprint, status, now);

@@ -4,7 +4,9 @@ using UGTM.Modules.Identity.Application.Persistence;
 using UGTM.Modules.Identity.Application.Permissions.GetPermissions;
 using UGTM.Modules.Identity.Application.Roles.CreateRole;
 using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
+using UGTM.Modules.Identity.Application.Roles.GetRoles;
 using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
+using UGTM.Modules.Identity.Application.Roles.UpdateRoleVisibility;
 using UGTM.Modules.Identity.Domain.Entities;
 using UGTM.Modules.Identity.Domain.Enums;
 using UGTM.Modules.Identity.Domain.Repositories;
@@ -384,16 +386,249 @@ public sealed class RolePermissionHandlerTests
         Assert.Single(result.Value.Permissions);
     }
 
+    // --- GetRolesHandler Tests ---
+
+    [Fact]
+    public async Task GetRolesHandler_returns_only_visible_roles_by_default_and_orders_system_roles_first()
+    {
+        var repo = new FakeRolePermissionRepository();
+        repo.Roles.AddRange([
+            new Role { Id = 8, RoleName = "HiddenRole", Description = "Hidden", IsHidden = true },
+            new Role { Id = 7, RoleName = "DepartmentHead", Description = "Trưởng Bộ môn", IsHidden = false },
+            new Role { Id = 4, RoleName = nameof(SystemRoleName.Lecturer), Description = "Giảng viên", IsHidden = false },
+            new Role { Id = 1, RoleName = nameof(SystemRoleName.Admin), Description = "Quản trị viên", IsHidden = false }
+        ]);
+        repo.RolePermissions.Add(new RolePermission { RoleId = 7, PermissionId = 1 });
+        repo.UserRoles.Add(new UserRole { RoleId = 4, UserId = Guid.NewGuid() });
+
+        var handler = new GetRolesHandler(repo);
+        var result = await handler.HandleAsync(new GetRolesQuery(IncludeHidden: false), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(3, result.Value.Count);
+        Assert.Equal(["Admin", "Lecturer", "DepartmentHead"], result.Value.Select(r => r.RoleName).ToArray());
+        Assert.True(result.Value[0].IsSystemRole);
+        Assert.True(result.Value[1].IsSystemRole);
+        Assert.False(result.Value[2].IsSystemRole);
+        Assert.Equal(1, result.Value[1].UserCount);
+        Assert.Equal(1, result.Value[2].PermissionCount);
+    }
+
+    [Fact]
+    public async Task GetRolesHandler_returns_all_roles_when_include_hidden_is_true()
+    {
+        var repo = new FakeRolePermissionRepository();
+        repo.Roles.AddRange([
+            new Role { Id = 1, RoleName = nameof(SystemRoleName.Admin), Description = "Admin", IsHidden = false },
+            new Role { Id = 7, RoleName = "UnusedCustom", Description = "Custom", IsHidden = true }
+        ]);
+
+        var handler = new GetRolesHandler(repo);
+        var result = await handler.HandleAsync(new GetRolesQuery(IncludeHidden: true), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Count);
+        Assert.Contains(result.Value, r => r.RoleName == "UnusedCustom" && r.IsHidden && !r.CanHide);
+    }
+
+    [Fact]
+    public async Task GetRolesHandler_computes_can_hide_correctly_based_on_system_role_user_count_and_hidden_state()
+    {
+        var repo = new FakeRolePermissionRepository();
+        repo.Roles.AddRange([
+            new Role { Id = 1, RoleName = nameof(SystemRoleName.Admin), Description = "Admin", IsHidden = false },
+            new Role { Id = 7, RoleName = "UsedCustom", Description = "Used", IsHidden = false },
+            new Role { Id = 8, RoleName = "UnusedCustom", Description = "Unused", IsHidden = false },
+            new Role { Id = 9, RoleName = "HiddenCustom", Description = "Hidden", IsHidden = true }
+        ]);
+        repo.UserRoles.Add(new UserRole { RoleId = 7, UserId = Guid.NewGuid() });
+
+        var handler = new GetRolesHandler(repo);
+        var result = await handler.HandleAsync(new GetRolesQuery(IncludeHidden: true), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var byName = result.Value.ToDictionary(r => r.RoleName);
+        Assert.False(byName["Admin"].CanHide);
+        Assert.False(byName["UsedCustom"].CanHide);
+        Assert.True(byName["UnusedCustom"].CanHide);
+        Assert.False(byName["HiddenCustom"].CanHide);
+    }
+
+    // --- UpdateRoleVisibilityHandler Tests ---
+
+    [Fact]
+    public async Task UpdateRoleVisibilityHandler_hides_unused_custom_role_and_writes_audit_log()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var customRole = new Role { Id = 7, RoleName = "DepartmentHead", Description = "Trưởng Bộ môn", IsHidden = false };
+        repo.Roles.Add(customRole);
+        repo.RolePermissions.Add(new RolePermission { RoleId = 7, PermissionId = 1 });
+
+        var auditLogs = new FakeAuditLogWriter();
+        var handler = new UpdateRoleVisibilityHandler(repo, new DirectUnitOfWork(), auditLogs);
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand(7, IsHidden: true), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value.IsHidden);
+        Assert.False(result.Value.IsSystemRole);
+        Assert.False(result.Value.CanHide);
+        Assert.Equal(0, result.Value.UserCount);
+        Assert.Equal(1, result.Value.PermissionCount);
+        Assert.True(customRole.IsHidden);
+
+        var audit = Assert.Single(auditLogs.Entries);
+        Assert.Equal(AuditActions.RoleHidden, audit.Action);
+        Assert.Equal("Role", audit.TargetType);
+        Assert.Equal("7", audit.TargetId);
+    }
+
+    [Theory]
+    [InlineData(SystemRoleName.Admin)]
+    [InlineData(SystemRoleName.Faculty)]
+    [InlineData(SystemRoleName.AcademicAffairs)]
+    [InlineData(SystemRoleName.Lecturer)]
+    [InlineData(SystemRoleName.Student)]
+    [InlineData(SystemRoleName.CouncilMember)]
+    public async Task UpdateRoleVisibilityHandler_fails_when_hiding_system_role(SystemRoleName systemRole)
+    {
+        var repo = new FakeRolePermissionRepository();
+        repo.Roles.Add(new Role { Id = (int)systemRole + 1, RoleName = systemRole.ToString(), IsHidden = false });
+
+        var handler = new UpdateRoleVisibilityHandler(repo, new DirectUnitOfWork(), new FakeAuditLogWriter());
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand((int)systemRole + 1, IsHidden: true), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.CannotHideSystemRole.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateRoleVisibilityHandler_fails_when_hiding_role_in_use_by_users()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var customRole = new Role { Id = 7, RoleName = "DepartmentHead", IsHidden = false };
+        repo.Roles.Add(customRole);
+        repo.UserRoles.Add(new UserRole { RoleId = 7, UserId = Guid.NewGuid() });
+
+        var handler = new UpdateRoleVisibilityHandler(repo, new DirectUnitOfWork(), new FakeAuditLogWriter());
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand(7, IsHidden: true), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.RoleInUse.Code, result.Error.Code);
+        Assert.False(customRole.IsHidden);
+    }
+
+    [Fact]
+    public async Task UpdateRoleVisibilityHandler_fails_when_hiding_already_hidden_role()
+    {
+        var repo = new FakeRolePermissionRepository();
+        repo.Roles.Add(new Role { Id = 7, RoleName = "DepartmentHead", IsHidden = true });
+
+        var handler = new UpdateRoleVisibilityHandler(repo, new DirectUnitOfWork(), new FakeAuditLogWriter());
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand(7, IsHidden: true), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.RoleAlreadyHidden.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateRoleVisibilityHandler_unhides_hidden_role_and_writes_audit_log()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var customRole = new Role { Id = 7, RoleName = "DepartmentHead", IsHidden = true };
+        repo.Roles.Add(customRole);
+
+        var auditLogs = new FakeAuditLogWriter();
+        var handler = new UpdateRoleVisibilityHandler(repo, new DirectUnitOfWork(), auditLogs);
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand(7, IsHidden: false), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value.IsHidden);
+        Assert.True(result.Value.CanHide);
+        Assert.False(customRole.IsHidden);
+
+        var audit = Assert.Single(auditLogs.Entries);
+        Assert.Equal(AuditActions.RoleUnhidden, audit.Action);
+        Assert.Equal("7", audit.TargetId);
+    }
+
+    [Fact]
+    public async Task UpdateRoleVisibilityHandler_fails_when_unhiding_visible_role()
+    {
+        var repo = new FakeRolePermissionRepository();
+        repo.Roles.Add(new Role { Id = 7, RoleName = "DepartmentHead", IsHidden = false });
+
+        var handler = new UpdateRoleVisibilityHandler(repo, new DirectUnitOfWork(), new FakeAuditLogWriter());
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand(7, IsHidden: false), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.RoleNotHidden.Code, result.Error.Code);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(999)]
+    public async Task UpdateRoleVisibilityHandler_fails_when_role_not_found_or_invalid_id(int roleId)
+    {
+        var repo = new FakeRolePermissionRepository();
+        var handler = new UpdateRoleVisibilityHandler(repo, new DirectUnitOfWork(), new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand(roleId, IsHidden: true), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.RoleNotFound.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateRoleVisibilityHandler_fails_when_is_hidden_is_null()
+    {
+        var repo = new FakeRolePermissionRepository();
+        var handler = new UpdateRoleVisibilityHandler(repo, new DirectUnitOfWork(), new FakeAuditLogWriter());
+
+        var result = await handler.HandleAsync(new UpdateRoleVisibilityCommand(7, IsHidden: null), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.InvalidInput.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateRolePermissionsHandler_fails_when_role_is_hidden()
+    {
+        var repo = new FakeRolePermissionRepository();
+        repo.Permissions.Add(new Permission { Id = 1, PermissionCode = "identity.users.read", Module = "Identity" });
+        repo.Roles.Add(new Role { Id = 7, RoleName = "DepartmentHead", IsHidden = true });
+
+        var handler = new UpdateRolePermissionsHandler(repo, new DirectUnitOfWork(), new FakeClock(Now), new FakeAuditLogWriter());
+        var result = await handler.HandleAsync(new UpdateRolePermissionsCommand(7, [1]), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(IdentityErrors.RoleIsHidden.Code, result.Error.Code);
+    }
+
     private sealed class FakeRolePermissionRepository : IRolePermissionRepository
     {
         public List<Permission> Permissions { get; } = [];
         public List<Role> Roles { get; } = [];
         public List<RolePermission> RolePermissions { get; } = [];
+        public List<UserRole> UserRoles { get; } = [];
         public List<User> UsersInRoles { get; } = [];
         public bool SecurityStampRotated { get; private set; }
 
         public Task<IReadOnlyList<Permission>> GetAllPermissionsAsync(CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<Permission>>(Permissions);
+
+        public Task<IReadOnlyList<RoleWithCounts>> GetAllRolesWithCountsAsync(bool includeHidden, CancellationToken cancellationToken)
+        {
+            var query = includeHidden ? Roles : Roles.Where(r => !r.IsHidden);
+            var list = query
+                .OrderBy(r => r.Id)
+                .Select(r => new RoleWithCounts(
+                    r,
+                    UserRoles.Count(ur => ur.RoleId == r.Id),
+                    RolePermissions.Count(rp => rp.RoleId == r.Id)))
+                .ToList();
+            return Task.FromResult<IReadOnlyList<RoleWithCounts>>(list);
+        }
 
         public Task<Role?> GetRoleWithPermissionsAsync(int roleId, CancellationToken cancellationToken)
         {
@@ -412,6 +647,15 @@ public sealed class RolePermissionHandlerTests
             }
             return Task.FromResult(role);
         }
+
+        public Task<Role?> GetRoleByIdForUpdateAsync(int roleId, CancellationToken cancellationToken)
+            => Task.FromResult(Roles.FirstOrDefault(r => r.Id == roleId));
+
+        public Task<int> GetRoleUserCountAsync(int roleId, CancellationToken cancellationToken)
+            => Task.FromResult(UserRoles.Count(ur => ur.RoleId == roleId));
+
+        public Task<int> GetRolePermissionCountAsync(int roleId, CancellationToken cancellationToken)
+            => Task.FromResult(RolePermissions.Count(rp => rp.RoleId == roleId));
 
         public Task<bool> RoleExistsAsync(int roleId, CancellationToken cancellationToken)
             => Task.FromResult(Roles.Any(r => r.Id == roleId));
