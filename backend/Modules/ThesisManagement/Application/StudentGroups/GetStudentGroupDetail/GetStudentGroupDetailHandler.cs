@@ -80,7 +80,8 @@ public sealed class GetStudentGroupDetailHandler(
 
         return Result.Success(new StudentGroupDetailDto(group.Id, topic.TopicId, topic.TitleVi, topic.TitleEn,
             topic.BatchId, batch?.BatchName, new StudentGroupAdvisorDto(topic.AdvisorId, advisorName), members,
-            group.Status.ToString(), topic.Description, topic.Requirements, topic.StudentNumber, group.CreatedAt));
+            group.Status.ToString(), topic.Description, topic.Requirements, topic.StudentNumber, group.CreatedAt,
+            group.AllowSyllabusResubmission));
     }
 
     private bool CanRead(StudentGroup group, Guid? advisorId)

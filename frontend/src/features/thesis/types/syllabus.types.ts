@@ -123,4 +123,5 @@ export interface StudentGroupDetailDto {
   advisor?: AdvisorDetail;
   members: StudentMemberDetail[];
   groupStatus?: string;
+  allowSyllabusResubmission?: boolean;
 }

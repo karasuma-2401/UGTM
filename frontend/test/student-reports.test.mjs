@@ -654,3 +654,159 @@ test('reusable BlockComposer and SubmissionBlockComposer render link and image b
     assert.match(pdfPreviewHtml, new RegExp(`data-resize-handle="${dir}"`));
   }
 });
+
+test('evaluateSubmissionStageWindow gates Syllabus (Stage 2), Midterm (Stage 4), and Final Report (Stage 5) windows', () => {
+  const { evaluateSubmissionStageWindow } = loadModule(
+    'features/thesis/utils/submissionStageWindow.ts',
+  );
+
+  const baseTimeline = {
+    batchId: 'b-1',
+    batchName: 'Đợt 1 2026',
+    status: 'Open',
+    currentLocalDate: '2026-10-15',
+    timeZoneId: 'Asia/Ho_Chi_Minh',
+    stages: [
+      {
+        id: 'st-2',
+        orderIndex: 2,
+        stageCode: 'REGISTRATION_AND_SYLLABUS',
+        stageName: 'Đăng ký & Nộp đề cương',
+        startDate: '2026-10-10',
+        endDate: '2026-10-20',
+        deadlineAtUtc: '2026-10-20T16:59:59Z',
+      },
+      {
+        id: 'st-4',
+        orderIndex: 4,
+        stageCode: 'MIDTERM_GATE',
+        stageName: 'Báo cáo giữa kỳ',
+        startDate: '2026-11-10',
+        endDate: '2026-11-20',
+        deadlineAtUtc: '2026-11-20T16:59:59Z',
+      },
+      {
+        id: 'st-5',
+        orderIndex: 5,
+        stageCode: 'FINAL_EVALUATION',
+        stageName: 'Đánh giá cuối kỳ',
+        startDate: '2026-12-01',
+        endDate: '2026-12-15',
+        deadlineAtUtc: '2026-12-15T16:59:59Z',
+      },
+    ],
+  };
+
+  const nowInsideStage2 = Date.parse('2026-10-15T08:00:00Z');
+  assert.equal(evaluateSubmissionStageWindow(undefined, 'syllabus', nowInsideStage2).state, 'unknown');
+
+  const syllabusOpen = evaluateSubmissionStageWindow(baseTimeline, 'syllabus', nowInsideStage2);
+  assert.equal(syllabusOpen.state, 'open');
+  assert.equal(syllabusOpen.message, null);
+
+  const midtermBefore = evaluateSubmissionStageWindow(baseTimeline, 'midterm', nowInsideStage2);
+  assert.equal(midtermBefore.state, 'closed');
+  assert.equal(midtermBefore.reason, 'before_start');
+  assert.match(midtermBefore.message, /10\/11\/2026/);
+
+  const finalBefore = evaluateSubmissionStageWindow(baseTimeline, 'final-report', nowInsideStage2);
+  assert.equal(finalBefore.state, 'closed');
+  assert.equal(finalBefore.reason, 'before_start');
+  assert.match(finalBefore.message, /01\/12\/2026/);
+
+  const nowAfterStage2 = Date.parse('2026-10-21T00:00:00Z');
+  const syllabusExpired = evaluateSubmissionStageWindow(
+    { ...baseTimeline, currentLocalDate: '2026-10-21' },
+    'syllabus',
+    nowAfterStage2,
+  );
+  assert.equal(syllabusExpired.state, 'closed');
+  assert.equal(syllabusExpired.reason, 'after_deadline');
+  assert.match(syllabusExpired.message, /Đã hết thời gian nộp Đề cương chi tiết/);
+
+  const closedBatch = evaluateSubmissionStageWindow(
+    { ...baseTimeline, status: 'Closed' },
+    'syllabus',
+    nowInsideStage2,
+  );
+  assert.equal(closedBatch.state, 'closed');
+  assert.equal(closedBatch.reason, 'batch_closed');
+});
+
+test('useSyllabusSubmission blocks submission outside Stage 2 unless allowSyllabusResubmission is true', () => {
+  const stageHelper = loadModule('features/thesis/utils/submissionStageWindow.ts');
+  const archival = loadModule('features/thesis/utils/archival.ts');
+
+  const closedStage2Timeline = {
+    batchId: 'b-1',
+    batchName: 'Đợt 1',
+    status: 'Open',
+    currentLocalDate: '2026-11-05',
+    timeZoneId: 'Asia/Ho_Chi_Minh',
+    stages: [
+      {
+        id: 'st-2',
+        orderIndex: 2,
+        stageCode: 'REGISTRATION_AND_SYLLABUS',
+        stageName: 'Đăng ký & Đề cương',
+        startDate: '2026-10-01',
+        endDate: '2026-10-15',
+        deadlineAtUtc: '2026-10-15T16:59:59Z',
+      },
+    ],
+  };
+
+  function evaluateSyllabusHook({ allowSyllabusResubmission, syllabusStatus }) {
+    const mod = loadModule('features/thesis/hooks/useSyllabusSubmission.ts', {
+      react: { useState: (v) => [v, () => {}] },
+      '@tanstack/react-query': {
+        useQueryClient: () => ({ invalidateQueries: () => {} }),
+        useQuery(opts) {
+          if (opts.queryKey[0] === 'student-registration-status') {
+            return { data: { groupId: 'grp-1', batchId: 'b-1' }, isLoading: false, isError: false };
+          }
+          if (opts.queryKey[0] === 'student-group-detail') {
+            return {
+              data: { groupId: 'grp-1', batchId: 'b-1', allowSyllabusResubmission },
+              isLoading: false,
+              isError: false,
+            };
+          }
+          if (opts.queryKey[0] === 'syllabus-history') {
+            return {
+              data: syllabusStatus ? { currentStatus: syllabusStatus, versions: [] } : null,
+              isLoading: false,
+              isError: false,
+            };
+          }
+          if (opts.queryKey[0] === 'academic-batch-timeline') {
+            return { data: closedStage2Timeline, isLoading: false, isError: false };
+          }
+          return { data: null, isLoading: false, isError: false };
+        },
+        useMutation: () => ({ mutate: () => {}, isPending: false }),
+      },
+      '@/shared/auth': { useAuth: () => ({ user: { id: 'stu-1' } }) },
+      '@/shared/academic-periods/academicBatchApi': {
+        academicBatchApi: { getTimeline: async () => closedStage2Timeline },
+      },
+      '@/shared/academic-periods/useAcademicBatches': {
+        useAcademicBatches: () => ({ data: [{ id: 'b-1', batchName: 'Đợt 1', status: 'Open' }] }),
+      },
+      '../services/syllabusApi': { syllabusApi: {} },
+      '../services/submissionUploadHelper': { validateReportFile: () => null },
+      '../utils/archival': archival,
+      '../utils/submissionStageWindow': stageHelper,
+    });
+    return mod.useSyllabusSubmission();
+  }
+
+  const normalClosed = evaluateSyllabusHook({ allowSyllabusResubmission: false, syllabusStatus: null });
+  assert.equal(normalClosed.canSubmit, false);
+  assert.match(normalClosed.stageBlockedReason, /Đã hết thời gian nộp Đề cương chi tiết/);
+
+  const renameAllowed = evaluateSyllabusHook({ allowSyllabusResubmission: true, syllabusStatus: 'Approved' });
+  assert.equal(renameAllowed.canSubmit, true);
+  assert.equal(renameAllowed.stageBlockedReason, null);
+  assert.equal(renameAllowed.isRenameResubmission, true);
+});

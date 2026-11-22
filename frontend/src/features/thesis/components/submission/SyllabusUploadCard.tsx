@@ -13,6 +13,7 @@ interface SyllabusUploadCardProps {
   nextVersionNo: number;
   existingFileName?: string | null;
   disabled?: boolean;
+  disabledReason?: string | null;
 }
 
 export function SyllabusUploadCard({
@@ -26,8 +27,15 @@ export function SyllabusUploadCard({
   nextVersionNo,
   existingFileName,
   disabled = false,
+  disabledReason = null,
 }: SyllabusUploadCardProps) {
   const lockedCopy = (() => {
+    if (!canSubmit && disabledReason && (currentStatus === 'Draft' || currentStatus === 'NeedRevision')) {
+      return {
+        title: 'Ngoài thời gian nộp Đề cương chi tiết',
+        description: disabledReason,
+      };
+    }
     switch (currentStatus) {
       case 'Approved':
         return {

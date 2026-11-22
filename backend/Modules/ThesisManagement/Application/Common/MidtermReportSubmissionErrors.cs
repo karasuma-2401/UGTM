@@ -24,6 +24,10 @@ public static class MidtermReportSubmissionErrors
         "MidtermReport.GateConfigurationNotFound",
         "Cổng thẩm định báo cáo giữa kỳ chưa được cấu hình deadline cho đợt khóa luận này.");
 
+    public static readonly Error StageWindowClosed = Error.Conflict(
+        "MidtermReport.StageWindowClosed",
+        "Hiện chưa đến hoặc đã hết giai đoạn nộp Báo cáo giữa kỳ (Giai đoạn 4) của đợt khóa luận.");
+
     public static readonly Error InitialSubmissionDeadlinePassed = Error.Conflict(
         "MidtermReport.InitialSubmissionDeadlinePassed",
         "Đã qua hạn nộp báo cáo giữa kỳ lần đầu.");

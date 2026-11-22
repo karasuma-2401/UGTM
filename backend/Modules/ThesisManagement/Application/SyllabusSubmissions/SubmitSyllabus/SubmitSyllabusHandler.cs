@@ -1,4 +1,5 @@
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
@@ -24,7 +25,8 @@ public sealed class SubmitSyllabusHandler(
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     TimeProvider timeProvider,
-    IThesisUploadLifecycle uploadLifecycle)
+    IThesisUploadLifecycle uploadLifecycle,
+    IKltnBatchReader batchReader)
 {
     public async Task<Result<SyllabusSubmissionDto>> HandleAsync(
         SubmitSyllabusCommand command,
@@ -55,15 +57,6 @@ public sealed class SubmitSyllabusHandler(
             return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.AccessDenied);
         }
 
-        var gateConfiguration = await gateConfigurationRepository.GetByBatchAndGateAsync(
-            membership.BatchId,
-            ReviewGateType.Syllabus,
-            cancellationToken);
-        if (gateConfiguration is null)
-        {
-            return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.GateConfigurationNotFound);
-        }
-
         var syllabus = await syllabusRepository.GetByGroupIdAsync(command.GroupId, cancellationToken);
         var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
         var isRenameResubmission = group.AllowSyllabusResubmission;
@@ -75,27 +68,47 @@ public sealed class SubmitSyllabusHandler(
                 return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.InvalidSubmissionState);
             }
         }
-        else if (syllabus is null)
-        {
-            if (group.Status != StudentGroupStatus.Registered)
-            {
-                return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.InvalidSubmissionState);
-            }
-
-            if (occurredAt > gateConfiguration.InitialSubmissionDeadlineUtc)
-            {
-                return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.InitialSubmissionDeadlinePassed);
-            }
-        }
         else
         {
-            if (syllabus.Status != SyllabusStatus.NeedRevision
+            if (syllabus is null)
+            {
+                if (group.Status != StudentGroupStatus.Registered)
+                {
+                    return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.InvalidSubmissionState);
+                }
+            }
+            else if (syllabus.Status != SyllabusStatus.NeedRevision
                 || group.Status != StudentGroupStatus.SyllabusRevisionRequired)
             {
                 return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.InvalidSubmissionState);
             }
 
-            if (occurredAt > gateConfiguration.FinalClosureDeadlineUtc)
+            var stageWindow = await batchReader.GetSyllabusSubmissionWindowAsync(
+                membership.BatchId,
+                occurredAt,
+                cancellationToken);
+            if (stageWindow is null || !stageWindow.IsStageWindowOpen)
+            {
+                return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.StageWindowClosed);
+            }
+
+            var gateConfiguration = await gateConfigurationRepository.GetByBatchAndGateAsync(
+                membership.BatchId,
+                ReviewGateType.Syllabus,
+                cancellationToken);
+            if (gateConfiguration is null)
+            {
+                return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.GateConfigurationNotFound);
+            }
+
+            if (syllabus is null)
+            {
+                if (occurredAt > gateConfiguration.InitialSubmissionDeadlineUtc)
+                {
+                    return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.InitialSubmissionDeadlinePassed);
+                }
+            }
+            else if (occurredAt > gateConfiguration.FinalClosureDeadlineUtc)
             {
                 return Result.Failure<SyllabusSubmissionDto>(SyllabusSubmissionErrors.FinalClosureDeadlinePassed);
             }

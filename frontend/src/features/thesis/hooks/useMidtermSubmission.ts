@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
+import { academicBatchApi } from '@/shared/academic-periods/academicBatchApi';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { syllabusApi } from '../services/syllabusApi';
 import { midtermApi } from '../services/midtermApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
 import { triggerBrowserDownload } from '../utils/archival';
+import { evaluateSubmissionStageWindow } from '../utils/submissionStageWindow';
 import type { MidtermReportStatus } from '../types/midterm.types';
 
 export function useMidtermSubmission() {
@@ -61,6 +63,62 @@ export function useMidtermSubmission() {
     retry: false,
   });
 
+  const resolvedBatchId =
+    statusQuery.data?.batchId ?? groupDetailQuery.data?.batchId ?? currentBatch?.id;
+
+  const timelineQuery = useQuery({
+    queryKey: ['academic-batch-timeline', user?.id, resolvedBatchId],
+    queryFn: ({ signal }) => academicBatchApi.getTimeline(resolvedBatchId!, signal),
+    enabled: Boolean(user?.id && resolvedBatchId),
+    retry: false,
+  });
+
+  const syllabusStatus = syllabusHistoryQuery.data?.currentStatus;
+  const isSyllabusApproved = syllabusStatus === 'Approved';
+
+  const currentStatus: MidtermReportStatus =
+    historyQuery.data?.currentStatus || 'Draft';
+
+  const stageWindow = evaluateSubmissionStageWindow(
+    timelineQuery.isError ? undefined : timelineQuery.data,
+    'midterm',
+  );
+  const isStageBlocked = stageWindow.state === 'closed';
+  const stageBlockedReason = isStageBlocked ? stageWindow.message : null;
+
+  let notEligibleReason: string | null = null;
+  if (!syllabusHistoryQuery.isLoading && !syllabusHistoryQuery.isError && !isSyllabusApproved) {
+    if (!syllabusHistoryQuery.data) {
+      notEligibleReason =
+        'Nhóm của bạn chưa nộp Đề cương chi tiết (Cổng 1). Vui lòng hoàn thành và chờ Khoa phê duyệt Đề cương trước khi nộp Báo cáo giữa kỳ.';
+    } else if (syllabusStatus === 'Submitted') {
+      notEligibleReason =
+        'Đề cương chi tiết (Cổng 1) của nhóm đang chờ Văn phòng Khoa thẩm định. Báo cáo giữa kỳ sẽ được mở ngay sau khi Đề cương được phê duyệt.';
+    } else if (syllabusStatus === 'NeedRevision') {
+      notEligibleReason =
+        'Đề cương chi tiết (Cổng 1) của nhóm đang có yêu cầu chỉnh sửa từ Khoa. Vui lòng hoàn tất nộp lại Đề cương ở Cổng 1 trước.';
+    } else if (syllabusStatus === 'Rejected') {
+      notEligibleReason =
+        'Đề cương chi tiết (Cổng 1) của nhóm không đạt yêu cầu. Nhóm đã dừng thực hiện đề tài theo quy định.';
+    } else {
+      notEligibleReason =
+        'Nhóm chưa hoàn thành Đề cương chi tiết (Cổng 1). Cần có phê duyệt Đề cương từ Khoa để mở Cổng 2.';
+    }
+  } else if (
+    isSyllabusApproved &&
+    isStageBlocked &&
+    (currentStatus === 'Draft' || currentStatus === 'NeedRevision')
+  ) {
+    notEligibleReason = stageBlockedReason;
+  }
+
+  const isEligibleForMidterm = Boolean(isSyllabusApproved);
+
+  const canSubmit =
+    isEligibleForMidterm &&
+    !isStageBlocked &&
+    (currentStatus === 'Draft' || currentStatus === 'NeedRevision');
+
   const submitMutation = useMutation({
     mutationFn: async (file: File) => {
       setActionError(null);
@@ -68,6 +126,10 @@ export function useMidtermSubmission() {
 
       if (!groupId) {
         throw new Error('Không tìm thấy thông tin nhóm của bạn.');
+      }
+
+      if (isStageBlocked && stageBlockedReason) {
+        throw new Error(stageBlockedReason);
       }
 
       const fileError = validateReportFile(file);
@@ -107,43 +169,12 @@ export function useMidtermSubmission() {
     }
   };
 
-  const syllabusStatus = syllabusHistoryQuery.data?.currentStatus;
-  const isSyllabusApproved = syllabusStatus === 'Approved';
-
-  let notEligibleReason: string | null = null;
-  if (!syllabusHistoryQuery.isLoading && !syllabusHistoryQuery.isError && !isSyllabusApproved) {
-    if (!syllabusHistoryQuery.data) {
-      notEligibleReason =
-        'Nhóm của bạn chưa nộp Đề cương chi tiết (Cổng 1). Vui lòng hoàn thành và chờ Khoa phê duyệt Đề cương trước khi nộp Báo cáo giữa kỳ.';
-    } else if (syllabusStatus === 'Submitted') {
-      notEligibleReason =
-        'Đề cương chi tiết (Cổng 1) của nhóm đang chờ Văn phòng Khoa thẩm định. Báo cáo giữa kỳ sẽ được mở ngay sau khi Đề cương được phê duyệt.';
-    } else if (syllabusStatus === 'NeedRevision') {
-      notEligibleReason =
-        'Đề cương chi tiết (Cổng 1) của nhóm đang có yêu cầu chỉnh sửa từ Khoa. Vui lòng hoàn tất nộp lại Đề cương ở Cổng 1 trước.';
-    } else if (syllabusStatus === 'Rejected') {
-      notEligibleReason =
-        'Đề cương chi tiết (Cổng 1) của nhóm không đạt yêu cầu. Nhóm đã dừng thực hiện đề tài theo quy định.';
-    } else {
-      notEligibleReason =
-        'Nhóm chưa hoàn thành Đề cương chi tiết (Cổng 1). Cần có phê duyệt Đề cương từ Khoa để mở Cổng 2.';
-    }
-  }
-
-  const isEligibleForMidterm = Boolean(isSyllabusApproved);
-
-  const currentStatus: MidtermReportStatus =
-    historyQuery.data?.currentStatus || 'Draft';
-
-  const canSubmit =
-    isEligibleForMidterm &&
-    (currentStatus === 'Draft' || currentStatus === 'NeedRevision');
-
   return {
     statusQuery,
     groupDetailQuery,
     syllabusHistoryQuery,
     historyQuery,
+    timelineQuery,
     selectedFile,
     setSelectedFile,
     uploadProgress,
@@ -157,5 +188,7 @@ export function useMidtermSubmission() {
     canSubmit,
     isEligibleForMidterm,
     notEligibleReason,
+    stageWindow,
+    stageBlockedReason,
   };
 }

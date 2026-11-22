@@ -1,3 +1,4 @@
+using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
@@ -39,11 +40,12 @@ public sealed class SyllabusSubmissionApplicationTests
         Assert.Equal(StudentGroupStatus.InProgress, group.Status);
         Assert.Equal(SyllabusStatus.Approved, fixtures.Syllabus!.Status);
 
-        // Turn on flag (e.g. after PDT approves topic rename)
+        // Turn on flag (e.g. after PDT approves topic rename) and close Stage 2 window
         group.EnableSyllabusResubmission();
+        fixtures.SetStageWindowOpen(false);
         Assert.True(group.AllowSyllabusResubmission);
 
-        // Submit updated syllabus during InProgress and after Gate 1 deadline
+        // Submit updated syllabus during InProgress and after Gate 1 / Stage 2 deadline
         var resubmission = await fixtures.CreateSubmitHandler(StudentUser())
             .HandleAsync(SubmitCommand(group.Id));
 
@@ -53,6 +55,21 @@ public sealed class SyllabusSubmissionApplicationTests
         Assert.Equal(StudentGroupStatus.InProgress, group.Status); // Preserves InProgress
         Assert.Equal(SyllabusStatus.Approved, fixtures.Syllabus!.Status);
         Assert.Equal(2, fixtures.ObjectStorage.UploadedObjectKeys.Count);
+    }
+
+    [Fact]
+    public async Task Submission_outside_stage_2_window_is_rejected_before_upload()
+    {
+        var group = CreateGroup();
+        var fixtures = new WorkflowFixtures(group, isStageWindowOpen: false);
+
+        var result = await fixtures.CreateSubmitHandler(StudentUser())
+            .HandleAsync(SubmitCommand(group.Id));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(SyllabusSubmissionErrors.StageWindowClosed.Code, result.Error.Code);
+        Assert.Empty(fixtures.ObjectStorage.UploadedObjectKeys);
+        Assert.Null(fixtures.Syllabus);
     }
 
     [Fact]
@@ -263,12 +280,14 @@ public sealed class SyllabusSubmissionApplicationTests
         private readonly FakeSubmissionReviewRepository _reviews = new();
         private readonly FakeAdvisorAssignmentContract _advisorAssignments;
         private readonly FakeUnitOfWork _unitOfWork = new();
+        private readonly FakeKltnBatchReader _batchReader;
 
-        public WorkflowFixtures(StudentGroup group, DateTime? now = null)
+        public WorkflowFixtures(StudentGroup group, DateTime? now = null, bool isStageWindowOpen = true)
         {
             _groups = new FakeStudentGroupRepository(group);
             _configurations = new FakeReviewGateConfigurationRepository(CreateConfiguration());
             _advisorAssignments = new FakeAdvisorAssignmentContract(group.TopicId, AdvisorId, BatchId);
+            _batchReader = new FakeKltnBatchReader(BatchId, isStageWindowOpen);
             NowProvider = new FixedTimeProvider(now ?? Now);
         }
 
@@ -277,6 +296,7 @@ public sealed class SyllabusSubmissionApplicationTests
         public TimeProvider NowProvider { get; }
         public bool FailSave { set => _unitOfWork.FailSave = value; }
         public Syllabus? Syllabus => _syllabuses.Syllabus;
+        public void SetStageWindowOpen(bool isOpen) => _batchReader.IsStageWindowOpen = isOpen;
 
         public SubmitSyllabusHandler CreateSubmitHandler(ICurrentUser currentUser)
             => new(
@@ -291,7 +311,8 @@ public sealed class SyllabusSubmissionApplicationTests
                 _unitOfWork,
                 currentUser,
                 NowProvider,
-                new FakeThesisUploadLifecycle());
+                new FakeThesisUploadLifecycle(),
+                _batchReader);
 
         public ReviewSyllabusHandler CreateReviewHandler(ICurrentUser currentUser)
             => new(
@@ -465,5 +486,51 @@ public sealed class SyllabusSubmissionApplicationTests
     private sealed class FixedTimeProvider(DateTime now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(now);
+    }
+
+    private sealed class FakeKltnBatchReader(Guid batchId, bool isStageWindowOpen) : IKltnBatchReader
+    {
+        public bool IsStageWindowOpen { get; set; } = isStageWindowOpen;
+
+        public Task<bool> ExistsAsync(Guid requestedBatchId, CancellationToken cancellationToken = default)
+            => Task.FromResult(requestedBatchId == batchId);
+
+        public Task<BatchRegistrationWindowContractDto?> GetRegistrationWindowAsync(
+            Guid requestedBatchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchRegistrationWindowContractDto?>(null);
+
+        public Task<BatchTopicPreparationWindowContractDto?> GetTopicPreparationWindowAsync(
+            Guid requestedBatchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchTopicPreparationWindowContractDto?>(null);
+
+        public Task<BatchRenameRequestWindowContractDto?> GetRenameRequestWindowAsync(
+            Guid requestedBatchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchRenameRequestWindowContractDto?>(null);
+
+        public Task<BatchFinalReportSubmissionWindowContractDto?> GetFinalReportSubmissionWindowAsync(
+            Guid requestedBatchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchFinalReportSubmissionWindowContractDto?>(null);
+
+        public Task<BatchReviewGateStageWindowContractDto?> GetSyllabusSubmissionWindowAsync(
+            Guid requestedBatchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchReviewGateStageWindowContractDto?>(
+                requestedBatchId == batchId
+                    ? new BatchReviewGateStageWindowContractDto(
+                        batchId,
+                        "Open",
+                        IsStageWindowOpen,
+                        DateOnly.FromDateTime(Now.AddDays(-5)),
+                        Now.AddDays(5))
+                    : null);
     }
 }

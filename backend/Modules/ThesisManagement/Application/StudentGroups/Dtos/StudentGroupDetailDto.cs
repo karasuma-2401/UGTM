@@ -13,7 +13,8 @@ public sealed record StudentGroupDetailDto(
     string? Description = null,
     string? Requirements = null,
     int? StudentNumber = null,
-    DateTime? CreatedAt = null);
+    DateTime? CreatedAt = null,
+    bool AllowSyllabusResubmission = false);
 
 public sealed record StudentGroupAdvisorDto(Guid AdvisorId, string? FullName);
 

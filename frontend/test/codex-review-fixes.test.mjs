@@ -186,6 +186,9 @@ test('[P1 #2] useSyllabusSubmission scopes query keys by user.id and disables qu
     '@/shared/auth': {
       useAuth: () => ({ user: { id: 'student-42' } }),
     },
+    '@/shared/academic-periods/academicBatchApi': {
+      academicBatchApi: { getTimeline: async () => null },
+    },
     '@/shared/academic-periods/useAcademicBatches': {
       useAcademicBatches: () => ({
         data: [{ id: 'b-1', batchName: 'Đợt 1', status: 'Open' }],
@@ -198,6 +201,7 @@ test('[P1 #2] useSyllabusSubmission scopes query keys by user.id and disables qu
       validateReportFile: () => null,
     },
     '../utils/archival': loadTsModule('features/thesis/utils/archival.ts'),
+    '../utils/submissionStageWindow': loadTsModule('features/thesis/utils/submissionStageWindow.ts'),
   });
 
   useSyllabusSubmission();

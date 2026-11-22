@@ -1,3 +1,4 @@
+using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
@@ -115,6 +116,40 @@ public sealed class MidtermReportSubmissionApplicationTests
     }
 
     [Fact]
+    public async Task Submission_outside_stage_4_window_is_rejected_before_upload()
+    {
+        var group = CreateInProgressGroup();
+        var fixtures = new WorkflowFixtures(group, isStageWindowOpen: false);
+
+        var result = await fixtures.CreateSubmitHandler(StudentUser()).HandleAsync(SubmitCommand(group.Id));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(MidtermReportSubmissionErrors.StageWindowClosed.Code, result.Error.Code);
+        Assert.Empty(fixtures.ObjectStorage.UploadedObjectKeys);
+        Assert.Null(fixtures.Report);
+    }
+
+    [Fact]
+    public async Task Revision_submission_outside_stage_4_window_is_rejected_before_upload()
+    {
+        var group = CreateInProgressGroup();
+        var fixtures = new WorkflowFixtures(group);
+
+        var first = await fixtures.CreateSubmitHandler(StudentUser()).HandleAsync(SubmitCommand(group.Id));
+        var review = await fixtures.CreateReviewHandler(ReviewerUser())
+            .HandleAsync(new ReviewMidtermReportCommand(group.Id, "NeedRevision", "Bổ sung thực nghiệm."));
+        Assert.True(first.IsSuccess);
+        Assert.True(review.IsSuccess);
+
+        fixtures.SetStageWindowOpen(false);
+        var revision = await fixtures.CreateSubmitHandler(StudentUser()).HandleAsync(SubmitCommand(group.Id));
+
+        Assert.True(revision.IsFailure);
+        Assert.Equal(MidtermReportSubmissionErrors.StageWindowClosed.Code, revision.Error.Code);
+        Assert.Single(fixtures.ObjectStorage.UploadedObjectKeys);
+    }
+
+    [Fact]
     public async Task Pending_member_cannot_submit_read_or_download_midterm_report()
     {
         var group = new StudentGroup(Guid.NewGuid(), Guid.NewGuid(), Now.AddDays(-1));
@@ -207,12 +242,14 @@ public sealed class MidtermReportSubmissionApplicationTests
         private readonly FakeSubmissionReviewRepository _reviews = new();
         private readonly FakeAdvisorAssignmentContract _advisorAssignments;
         private readonly FakeUnitOfWork _unitOfWork = new();
+        private readonly FakeKltnBatchReader _batchReader;
 
-        public WorkflowFixtures(StudentGroup group, DateTime? now = null)
+        public WorkflowFixtures(StudentGroup group, DateTime? now = null, bool isStageWindowOpen = true)
         {
             _groups = new FakeStudentGroupRepository(group);
             _configurations = new FakeReviewGateConfigurationRepository(CreateConfiguration());
             _advisorAssignments = new FakeAdvisorAssignmentContract(group.TopicId, AdvisorId, BatchId);
+            _batchReader = new FakeKltnBatchReader(BatchId, isStageWindowOpen);
             NowProvider = new FixedTimeProvider(now ?? Now);
         }
 
@@ -221,6 +258,7 @@ public sealed class MidtermReportSubmissionApplicationTests
         public TimeProvider NowProvider { get; }
         public bool FailSave { set => _unitOfWork.FailSave = value; }
         public MidtermReport? Report => _reports.Report;
+        public void SetStageWindowOpen(bool isOpen) => _batchReader.IsStageWindowOpen = isOpen;
 
         public SubmitMidtermReportHandler CreateSubmitHandler(ICurrentUser currentUser)
             => new(
@@ -235,7 +273,8 @@ public sealed class MidtermReportSubmissionApplicationTests
                 _unitOfWork,
                 currentUser,
                 NowProvider,
-                new FakeThesisUploadLifecycle());
+                new FakeThesisUploadLifecycle(),
+                _batchReader);
 
         public ReviewMidtermReportHandler CreateReviewHandler(ICurrentUser currentUser)
             => new(
@@ -420,5 +459,51 @@ public sealed class MidtermReportSubmissionApplicationTests
     private sealed class FixedTimeProvider(DateTime now) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(now);
+    }
+
+    private sealed class FakeKltnBatchReader(Guid batchId, bool isStageWindowOpen) : IKltnBatchReader
+    {
+        public bool IsStageWindowOpen { get; set; } = isStageWindowOpen;
+
+        public Task<bool> ExistsAsync(Guid requestedBatchId, CancellationToken cancellationToken = default)
+            => Task.FromResult(requestedBatchId == batchId);
+
+        public Task<BatchRegistrationWindowContractDto?> GetRegistrationWindowAsync(
+            Guid requestedBatchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchRegistrationWindowContractDto?>(null);
+
+        public Task<BatchTopicPreparationWindowContractDto?> GetTopicPreparationWindowAsync(
+            Guid requestedBatchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchTopicPreparationWindowContractDto?>(null);
+
+        public Task<BatchRenameRequestWindowContractDto?> GetRenameRequestWindowAsync(
+            Guid requestedBatchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchRenameRequestWindowContractDto?>(null);
+
+        public Task<BatchFinalReportSubmissionWindowContractDto?> GetFinalReportSubmissionWindowAsync(
+            Guid requestedBatchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchFinalReportSubmissionWindowContractDto?>(null);
+
+        public Task<BatchReviewGateStageWindowContractDto?> GetMidtermSubmissionWindowAsync(
+            Guid requestedBatchId,
+            DateTime nowUtc,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<BatchReviewGateStageWindowContractDto?>(
+                requestedBatchId == batchId
+                    ? new BatchReviewGateStageWindowContractDto(
+                        batchId,
+                        "Open",
+                        IsStageWindowOpen,
+                        DateOnly.FromDateTime(Now.AddDays(-5)),
+                        Now.AddDays(5))
+                    : null);
     }
 }

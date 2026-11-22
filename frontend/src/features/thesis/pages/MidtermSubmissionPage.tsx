@@ -30,6 +30,7 @@ export function MidtermSubmissionPage() {
     canSubmit,
     isEligibleForMidterm,
     notEligibleReason,
+    stageBlockedReason,
   } = useMidtermSubmission();
 
   const groupDetail = groupDetailQuery.data;
@@ -41,10 +42,16 @@ export function MidtermSubmissionPage() {
     .find((version) => version.review != null)?.review;
 
   const syllabusApproved = syllabusHistoryQuery.data?.currentStatus === 'Approved';
+  const showStageAlert = Boolean(
+    isEligibleForMidterm &&
+      stageBlockedReason &&
+      (currentStatus === 'Draft' || currentStatus === 'NeedRevision'),
+  );
 
   const showUploadCard =
     canSubmit ||
     !isEligibleForMidterm ||
+    showStageAlert ||
     (!historyQuery.isLoading && versions.length === 0 && currentStatus !== 'Approved');
 
   const uploadCard = showUploadCard ? (
@@ -160,6 +167,12 @@ export function MidtermSubmissionPage() {
           }
         >
           Đã xảy ra lỗi khi đồng bộ dữ liệu Cổng 2. Vui lòng thử lại sau.
+        </InlineAlert>
+      )}
+
+      {showStageAlert && (
+        <InlineAlert tone="warning" title="Ngoài giai đoạn nộp Báo cáo giữa kỳ">
+          {stageBlockedReason}
         </InlineAlert>
       )}
 

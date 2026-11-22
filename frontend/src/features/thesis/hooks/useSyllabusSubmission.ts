@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
+import { academicBatchApi } from '@/shared/academic-periods/academicBatchApi';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { syllabusApi } from '../services/syllabusApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
 import { triggerBrowserDownload } from '../utils/archival';
+import { evaluateSubmissionStageWindow } from '../utils/submissionStageWindow';
 import type { SyllabusStatus } from '../types/syllabus.types';
 
 export function useSyllabusSubmission() {
@@ -52,6 +54,31 @@ export function useSyllabusSubmission() {
     enabled: Boolean(user?.id && groupId),
   });
 
+  const resolvedBatchId =
+    statusQuery.data?.batchId ?? groupDetailQuery.data?.batchId ?? currentBatch?.id;
+
+  const timelineQuery = useQuery({
+    queryKey: ['academic-batch-timeline', user?.id, resolvedBatchId],
+    queryFn: ({ signal }) => academicBatchApi.getTimeline(resolvedBatchId!, signal),
+    enabled: Boolean(user?.id && resolvedBatchId),
+    retry: false,
+  });
+
+  const currentStatus: SyllabusStatus =
+    historyQuery.data?.currentStatus || (historyQuery.data ? 'Submitted' : 'Draft');
+
+  const isRenameResubmission = Boolean(groupDetailQuery.data?.allowSyllabusResubmission);
+  const stageWindow = evaluateSubmissionStageWindow(
+    timelineQuery.isError ? undefined : timelineQuery.data,
+    'syllabus',
+  );
+  const isStageBlocked = !isRenameResubmission && stageWindow.state === 'closed';
+  const stageBlockedReason = isStageBlocked ? stageWindow.message : null;
+
+  const canSubmit =
+    isRenameResubmission ||
+    (!isStageBlocked && (currentStatus === 'Draft' || currentStatus === 'NeedRevision'));
+
   const submitMutation = useMutation({
     mutationFn: async (file: File) => {
       setActionError(null);
@@ -59,6 +86,10 @@ export function useSyllabusSubmission() {
 
       if (!groupId) {
         throw new Error('Không tìm thấy thông tin nhóm của bạn.');
+      }
+
+      if (isStageBlocked && stageBlockedReason) {
+        throw new Error(stageBlockedReason);
       }
 
       const fileError = validateReportFile(file);
@@ -76,6 +107,7 @@ export function useSyllabusSubmission() {
       setUploadProgress(null);
       setActionSuccess(`Nộp đề cương phiên bản v${data.versionNo} thành công!`);
       void queryClient.invalidateQueries({ queryKey: ['syllabus-history', user?.id, groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['student-group-detail', user?.id, groupId] });
       void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
     },
     onError: (err: Error) => {
@@ -98,15 +130,11 @@ export function useSyllabusSubmission() {
     }
   };
 
-  const currentStatus: SyllabusStatus =
-    historyQuery.data?.currentStatus || (historyQuery.data ? 'Submitted' : 'Draft');
-
-  const canSubmit = currentStatus === 'Draft' || currentStatus === 'NeedRevision';
-
   return {
     statusQuery,
     groupDetailQuery,
     historyQuery,
+    timelineQuery,
     selectedFile,
     setSelectedFile,
     uploadProgress,
@@ -118,6 +146,9 @@ export function useSyllabusSubmission() {
     handleDownload,
     currentStatus,
     canSubmit,
+    isRenameResubmission,
+    stageWindow,
+    stageBlockedReason,
     groupId,
   };
 }
