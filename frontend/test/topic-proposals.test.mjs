@@ -461,7 +461,8 @@ test('only Draft and NeedRevision permit editing', () => {
 });
 
 test('guidance has two tabs, preserves batch scope and resolves legacy group bookmarks', () => {
-  function render(search = '') {
+  const currentBatches = loadModule('shared/academic-periods/currentBatches.ts');
+  function render(search = '', roles = ['Admin']) {
     const { TopicGuidancePage } = loadModule('features/topics/pages/TopicGuidancePage.tsx', {
       'lucide-react': icons,
       'react/jsx-runtime': jsxRuntime,
@@ -470,6 +471,13 @@ test('guidance has two tabs, preserves batch scope and resolves legacy group boo
       './TopicProposePage': { TopicProposePage: 'TopicProposePage' },
       './TopicAdvisingPage': { TopicAdvisingPage: 'TopicAdvisingPage' },
       '@/components/ui/page-header': { PageHeader: 'PageHeader' },
+      '@/shared/academic-periods/currentBatches': currentBatches,
+      '@/shared/auth': {
+        useAuth: () => ({
+          hasRole: (required) =>
+            (Array.isArray(required) ? required : [required]).some((r) => roles.includes(r)),
+        }),
+      },
       '../types/advising.types': loadModule('features/topics/types/advising.types.ts'),
       '../types/topic.types': loadModule('features/topics/types/topic.types.ts'),
     });
@@ -721,11 +729,24 @@ function proposalPageFixture(options = {}) {
       '@/shared/auth': {
         useAuth: () => ({
           user: { id: 'lecturer-1', fullName: 'Giảng viên' },
+          hasRole: (required) => {
+            const roles = options.roles ?? ['Admin'];
+            return (Array.isArray(required) ? required : [required]).some((role) =>
+              roles.includes(role),
+            );
+          },
           hasPermission: () => options.canReadBatches !== false,
         }),
       },
+      '@/shared/academic-periods/currentBatches': loadModule(
+        'shared/academic-periods/currentBatches.ts',
+      ),
       '@/shared/academic-periods/useAcademicBatches': {
-        useAcademicBatches: () => ({ data: [], isPending: false, isError: false }),
+        useAcademicBatches: () => ({
+          data: options.batches ?? [],
+          isPending: false,
+          isError: false,
+        }),
       },
       '../types/topic.types': loadModule('features/topics/types/topic.types.ts'),
       '../services/topicApi': {

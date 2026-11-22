@@ -2,6 +2,10 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { advisingApi } from '@/features/topics/services/advisingApi';
 import type { AcademicBatch } from '@/shared/academic-periods/types';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+} from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
 import { notify } from '@/shared/notifications';
@@ -111,7 +115,8 @@ export function filterMilestonesByStatus(
 }
 
 export function useAdvisorMilestones() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
   const queryClient = useQueryClient();
 
   const [userBatchId, setUserBatchId] = useState<string | null>(null);
@@ -126,11 +131,14 @@ export function useAdvisorMilestones() {
   const batches = useMemo(() => batchesQuery.data ?? [], [batchesQuery.data]);
 
   const selectedBatchId = useMemo(() => {
+    if (!canSelectBatch) {
+      return getActiveOpenBatch(batches)?.id ?? '';
+    }
     if (userBatchId && batches.some((batch) => batch.id === userBatchId)) {
       return userBatchId;
     }
     return resolveDefaultBatchId(batches);
-  }, [batches, userBatchId]);
+  }, [batches, canSelectBatch, userBatchId]);
 
   const currentBatch = useMemo(
     () => batches.find((batch) => batch.id === selectedBatchId) ?? null,
@@ -421,6 +429,7 @@ export function useAdvisorMilestones() {
       ? getThesisErrorMessage(milestonesQuery.error, 'Không tải được danh sách mốc tiến độ.')
       : null,
 
+    canSelectBatch,
     canCreateMilestones,
     ineligibleReason,
 

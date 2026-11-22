@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+} from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
 import { similarityApi } from '../services/similarityApi';
@@ -16,9 +20,11 @@ import {
 export function useCouncilSimilarityReports() {
   const { user, hasRole } = useAuth();
   const canAccess = hasRole(['CouncilMember']);
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
 
   const batchesQuery = useAcademicBatches();
   const batches = useMemo(() => batchesQuery.data ?? [], [batchesQuery.data]);
+  const openBatch = useMemo(() => getActiveOpenBatch(batches), [batches]);
 
   const [selectedBatchId, setSelectedBatchId] = useState<string>('ALL');
   const [filterKey, setFilterKey] = useState<SimilarityFilterKey>('ALL');
@@ -41,6 +47,10 @@ export function useCouncilSimilarityReports() {
     refetchOnMount: 'always',
   });
 
+  const effectiveBatchId = canSelectBatch
+    ? selectedBatchId
+    : (openBatch?.id ?? '__NO_OPEN_BATCH__');
+
   const allRows = useMemo(
     () => (listQuery.data ?? []).map(buildSimilarityRowView),
     [listQuery.data],
@@ -48,22 +58,22 @@ export function useCouncilSimilarityReports() {
 
   const batchScopedRows = useMemo(
     () =>
-      selectedBatchId === 'ALL'
+      effectiveBatchId === 'ALL'
         ? allRows
-        : allRows.filter((row) => row.batchId === selectedBatchId),
-    [allRows, selectedBatchId],
+        : allRows.filter((row) => row.batchId === effectiveBatchId),
+    [allRows, effectiveBatchId],
   );
 
   const stats = useMemo(() => computeSimilarityStats(batchScopedRows), [batchScopedRows]);
 
   const filteredRows = useMemo(() => {
     const matched = filterSimilarityRows(allRows, {
-      batchId: selectedBatchId,
+      batchId: effectiveBatchId,
       filterKey,
       keyword,
     });
     return sortSimilarityRows(matched, sort);
-  }, [allRows, selectedBatchId, filterKey, keyword, sort]);
+  }, [allRows, effectiveBatchId, filterKey, keyword, sort]);
 
   const totalCount = filteredRows.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -88,9 +98,11 @@ export function useCouncilSimilarityReports() {
 
   return {
     canAccess,
+    canSelectBatch,
+    hasOpenBatch: Boolean(openBatch),
     batches,
     isLoadingBatches: batchesQuery.isLoading,
-    selectedBatchId,
+    selectedBatchId: canSelectBatch ? selectedBatchId : (openBatch?.id ?? ''),
     filterKey,
     keyword,
     sort,

@@ -1,8 +1,20 @@
 import type { AcademicBatch } from './types';
 
-/** Open batches whose inclusive schedule contains today in their own timezone.
- * There can be more than one: no backend rule guarantees one global current batch.
- */
+export const BATCH_SELECTION_MANAGEMENT_ROLES = [
+  'Admin',
+  'AcademicAffairs',
+  'Faculty',
+] as const;
+
+/** Only management roles (Admin, AcademicAffairs, Faculty) can switch or filter across historical batches. */
+export function canSelectAcademicBatch(
+  hasRole?: (roles: string | string[]) => boolean,
+): boolean {
+  if (!hasRole) return false;
+  return BATCH_SELECTION_MANAGEMENT_ROLES.some((role) => hasRole(role));
+}
+
+/** Open batches whose inclusive schedule contains today in their own timezone. */
 export function getCurrentBatches(
   batches: readonly AcademicBatch[],
   now = new Date(),
@@ -27,4 +39,15 @@ export function getCurrentBatches(
       }
     })
     .sort((a, b) => b.startDate.localeCompare(a.startDate) || a.id.localeCompare(b.id));
+}
+
+/**
+ * Returns the single currently Open academic batch (preferring one covering today),
+ * and never falls back to a Closed, Archived, or Draft batch.
+ */
+export function getActiveOpenBatch(
+  batches: readonly AcademicBatch[],
+  now = new Date(),
+): AcademicBatch | null {
+  return getCurrentBatches(batches, now)[0] ?? batches.find((batch) => batch.status === 'Open') ?? null;
 }

@@ -96,6 +96,7 @@ function WorkspaceLoadingSkeleton() {
 
 export function CouncilMinutesPage() {
   const {
+    canSelectBatch,
     batches,
     selectedBatchId,
     setSelectedBatchId,
@@ -227,20 +228,22 @@ export function CouncilMinutesPage() {
           description="Biên bản điện tử xử lý sai biệt điểm, đối chiếu công thức tổng hợp và khóa kết quả bảo vệ khóa luận."
         >
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="w-56 sm:w-64">
-              <Select
-                size="sm"
-                aria-label="Chọn đợt khóa luận"
-                value={selectedBatchId}
-                onChange={setSelectedBatchId}
-                disabled={isLoadingBatches || batches.length === 0}
-                options={
-                  batchOptions.length > 0
-                    ? batchOptions
-                    : [{ value: '', label: 'Chưa có đợt khóa luận' }]
-                }
-              />
-            </div>
+            {canSelectBatch && (
+              <div className="w-56 sm:w-64">
+                <Select
+                  size="sm"
+                  aria-label="Chọn đợt khóa luận"
+                  value={selectedBatchId}
+                  onChange={setSelectedBatchId}
+                  disabled={isLoadingBatches || batches.length === 0}
+                  options={
+                    batchOptions.length > 0
+                      ? batchOptions
+                      : [{ value: '', label: 'Chưa có đợt khóa luận' }]
+                  }
+                />
+              </div>
+            )}
 
             <Button
               type="button"

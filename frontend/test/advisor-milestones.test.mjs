@@ -123,8 +123,11 @@ function loadHookHelpers() {
       useQueryClient: () => ({ invalidateQueries: async () => {} }),
     },
     '@/features/topics/services/advisingApi': { advisingApi: {} },
+    '@/shared/academic-periods/currentBatches': loadModule(
+      'shared/academic-periods/currentBatches.ts',
+    ),
     '@/shared/academic-periods/useAcademicBatches': { useAcademicBatches: () => ({}) },
-    '@/shared/auth': { useAuth: () => ({ user: null }) },
+    '@/shared/auth': { useAuth: () => ({ user: null, hasRole: () => false }) },
     '@/shared/notifications': { notify: { success() {}, warning() {}, error() {} } },
     '../services/milestoneApi': { milestoneApi: {} },
     '../services/syllabusApi': { syllabusApi: {} },

@@ -22,6 +22,11 @@ import { Select } from '@/components/ui/select';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { TableFloatingBar } from '@/components/ui/table-floating-bar';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+} from '@/shared/academic-periods/currentBatches';
+import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
 import { OperationToast } from '@/shared/notifications';
 import {
@@ -136,7 +141,8 @@ function RenameReviewView({
   useRouteLinks = false,
 }: RenameReviewViewProps) {
   const config = RENAME_LEVEL_CONFIGS[level];
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
   const queryClient = useQueryClient();
 
   const [scope, setScope] = useState<RenameQueueScope>('pending');
@@ -150,6 +156,12 @@ function RenameReviewView({
   const [openRequestId, setOpenRequestId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
 
+  const batchesQuery = useAcademicBatches();
+  const openBatch = useMemo(
+    () => getActiveOpenBatch(batchesQuery.data ?? []),
+    [batchesQuery.data],
+  );
+
   const query = useQuery({
     queryKey: ['rename-requests-review', user?.id],
     queryFn: ({ signal }) => renameRequestApi.list('', signal),
@@ -158,14 +170,23 @@ function RenameReviewView({
   });
 
   const allItems = useMemo(() => query.data ?? [], [query.data]);
+  const scopedItems = useMemo(
+    () =>
+      canSelectBatch
+        ? allItems
+        : openBatch
+          ? allItems.filter((item) => item.batchId === openBatch.id)
+          : [],
+    [allItems, canSelectBatch, openBatch],
+  );
   const stats = useMemo(
-    () => computeRenameQueueStats(allItems, config.status),
-    [allItems, config.status],
+    () => computeRenameQueueStats(scopedItems, config.status),
+    [scopedItems, config.status],
   );
 
   const batchOptions = useMemo(() => {
     const seen = new Map<string, string>();
-    for (const item of allItems) {
+    for (const item of scopedItems) {
       if (item.batchId && item.batchName && !seen.has(item.batchId)) {
         seen.set(item.batchId, item.batchName);
       }
@@ -174,19 +195,19 @@ function RenameReviewView({
       { value: '', label: 'Tất cả đợt KLTN' },
       ...Array.from(seen.entries()).map(([id, name]) => ({ value: id, label: name })),
     ];
-  }, [allItems]);
+  }, [scopedItems]);
 
   const filteredItems = useMemo(
     () =>
-      filterAndSortRenameRequests(allItems, {
+      filterAndSortRenameRequests(scopedItems, {
         activeStatus: config.status,
         scope,
         keyword,
-        batchId,
+        batchId: canSelectBatch ? batchId : '',
         sortBy,
         sortOrder,
       }),
-    [allItems, batchId, config.status, keyword, scope, sortBy, sortOrder],
+    [batchId, canSelectBatch, config.status, keyword, scope, scopedItems, sortBy, sortOrder],
   );
 
   const totalCount = filteredItems.length;
@@ -292,7 +313,9 @@ function RenameReviewView({
     />
   ) : undefined;
 
-  const hasCustomFilters = Boolean(keyword.trim() || batchId || scope !== 'pending');
+  const hasCustomFilters = Boolean(
+    keyword.trim() || (canSelectBatch && batchId) || scope !== 'pending',
+  );
   const scopeDescription =
     scope === 'pending'
       ? `Đơn chờ xử lý ở ${config.tabLabel} (${config.priorHint})`
@@ -563,7 +586,7 @@ function RenameReviewView({
             triggerClassName="h-10 w-max rounded-xl"
           />
 
-          {batchOptions.length > 1 && (
+          {canSelectBatch && batchOptions.length > 1 && (
             <Select<string>
               aria-label="Lọc theo đợt KLTN"
               options={batchOptions}
@@ -615,13 +638,17 @@ function RenameReviewView({
           }
           empty={{
             title:
-              scope === 'pending' && !keyword.trim() && !batchId
-                ? `Chưa có đơn chờ duyệt ở ${config.tabLabel}`
-                : 'Không tìm thấy yêu cầu phù hợp',
+              !canSelectBatch && !batchesQuery.isPending && !openBatch
+                ? 'Hiện chưa có đợt KLTN nào đang mở'
+                : scope === 'pending' && !keyword.trim() && !(canSelectBatch && batchId)
+                  ? `Chưa có đơn chờ duyệt ở ${config.tabLabel}`
+                  : 'Không tìm thấy yêu cầu phù hợp',
             description:
-              scope === 'pending' && !keyword.trim() && !batchId
-                ? 'Khi sinh viên gửi đơn mới hoặc cấp trước hoàn tất xác nhận, yêu cầu sẽ tự động xuất hiện tại đây.'
-                : 'Thử thay đổi từ khóa tìm kiếm hoặc chọn phạm vi trạng thái khác để xem thêm đơn.',
+              !canSelectBatch && !batchesQuery.isPending && !openBatch
+                ? 'Danh sách yêu cầu đổi tên chỉ hiển thị cho đợt KLTN đang mở hiện tại.'
+                : scope === 'pending' && !keyword.trim() && !(canSelectBatch && batchId)
+                  ? 'Khi sinh viên gửi đơn mới hoặc cấp trước hoàn tất xác nhận, yêu cầu sẽ tự động xuất hiện tại đây.'
+                  : 'Thử thay đổi từ khóa tìm kiếm hoặc chọn phạm vi trạng thái khác để xem thêm đơn.',
             action: hasCustomFilters ? (
               <Button type="button" variant="outline" size="sm" onClick={handleResetFilters}>
                 Xem hàng chờ cấp {config.number}

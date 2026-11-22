@@ -28,7 +28,11 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select } from '@/components/ui/select';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TableFloatingBar } from '@/components/ui/table-floating-bar';
-import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+  getCurrentBatches,
+} from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
 import { notify } from '@/shared/notifications';
@@ -120,7 +124,8 @@ function resolveSession(timeSlot: string): 'Sáng' | 'Chiều' {
 }
 
 export function CouncilGradingPage() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<GroupStatus>('all');
   const [sessionFilter, setSessionFilter] = useState<'all' | CouncilGroup['session']>('all');
@@ -146,9 +151,12 @@ export function CouncilGradingPage() {
   const batchesQuery = useAcademicBatches();
   const activeBatch = useMemo(() => {
     const batches = batchesQuery.data ?? [];
+    if (!canSelectBatch) {
+      return getActiveOpenBatch(batches);
+    }
     const current = getCurrentBatches(batches);
     return current[0] ?? batches[0] ?? null;
-  }, [batchesQuery.data]);
+  }, [batchesQuery.data, canSelectBatch]);
 
   const sections = useMemo(() => buildRubricSections(apiCriteria), [apiCriteria]);
   const criteria = useMemo(() => sections.flatMap((section) => section.criteria), [sections]);

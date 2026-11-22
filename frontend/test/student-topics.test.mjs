@@ -401,9 +401,20 @@ function uiFixture(file, exportName, props = {}, options = {}) {
         hasPermission: () => controls.canReadSchedule !== false,
       }),
     },
+    '@/shared/academic-periods/currentBatches': load('shared/academic-periods/currentBatches.ts'),
     '@/shared/academic-periods/useAcademicBatches': {
       useAcademicBatches: () => ({
-        data: [{ id: 'batch-1', batchName: 'Đợt thật' }],
+        data:
+          controls.batches ?? [
+            {
+              id: 'batch-1',
+              batchName: 'Đợt thật',
+              status: 'Open',
+              startDate: '2026-01-01',
+              endDate: '2099-12-31',
+              timeZoneId: 'Asia/Ho_Chi_Minh',
+            },
+          ],
         isPending: false,
         isError: false,
       }),
@@ -622,12 +633,16 @@ test('catalog paging, filtering, sorting and scope totals follow server data and
   assert.deepEqual(queries[0].queryKey, [
     'student-topics',
     'student-1',
-    { keyword: '', batchId: '', availability: '' },
+    { keyword: '', batchId: 'batch-1', availability: '' },
     1,
     10,
     'createdAt',
     'desc',
   ]);
+  assert.equal(
+    nodes(tree).some((n) => n.props?.['aria-label'] === 'Lọc theo đợt KLTN'),
+    false,
+  );
   const old = { items: [published] };
   assert.equal(
     queries[0].placeholderData(old, {

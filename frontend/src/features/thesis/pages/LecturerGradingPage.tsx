@@ -27,8 +27,13 @@ import { Input } from '@/components/ui/input';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select } from '@/components/ui/select';
 import { TableFloatingBar } from '@/components/ui/table-floating-bar';
-import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+  getCurrentBatches,
+} from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
+import { useAuth } from '@/shared/auth';
 import { notify } from '@/shared/notifications';
 import { advisingApi } from '@/features/topics/services/advisingApi';
 import { PdfPreviewDialog } from '../components/shared/PdfPreviewDialog';
@@ -121,6 +126,8 @@ function serializeEvaluationSnapshot(
 }
 
 export function LecturerGradingPage() {
+  const { hasRole } = useAuth();
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
   const [role, setRole] = useState<Role>('advisor');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<GroupStatus>('all');
@@ -183,16 +190,22 @@ export function LecturerGradingPage() {
   const batches = useMemo(() => batchesQuery.data ?? [], [batchesQuery.data]);
   const [explicitBatchId, setExplicitBatchId] = useState<string | null>(null);
   const defaultBatch = useMemo(() => {
+    if (!canSelectBatch) {
+      return getActiveOpenBatch(batches);
+    }
     const current = getCurrentBatches(batches);
     return current[0] ?? batches[0] ?? null;
-  }, [batches]);
+  }, [batches, canSelectBatch]);
   const activeBatch = useMemo(() => {
+    if (!canSelectBatch) {
+      return defaultBatch;
+    }
     if (explicitBatchId) {
       const matched = batches.find((batch) => batch.id === explicitBatchId);
       if (matched) return matched;
     }
     return defaultBatch;
-  }, [batches, explicitBatchId, defaultBatch]);
+  }, [batches, canSelectBatch, explicitBatchId, defaultBatch]);
   const batchOptions = useMemo(
     () =>
       batches.map((batch) => ({
@@ -929,7 +942,7 @@ export function LecturerGradingPage() {
           ) : undefined
         }
       >
-        {!activeGroupId && (
+        {!activeGroupId && canSelectBatch && (
           <div className="w-full sm:w-80 md:w-[380px]">
             <Select
               aria-label="Chọn đợt khóa luận tốt nghiệp"
@@ -966,7 +979,7 @@ export function LecturerGradingPage() {
         >
           <ListCardHeader
             title="Nhóm được phân công"
-            description={`${role === 'advisor' ? 'Hướng dẫn' : 'Phản biện'} - ${activeBatch?.batchName ?? 'Đợt KLTN hiện hành'}`}
+            description={`${role === 'advisor' ? 'Hướng dẫn' : 'Phản biện'} - ${activeBatch?.batchName ?? (!canSelectBatch && !batchesQuery.isLoading ? 'Chưa có đợt KLTN đang mở' : 'Đợt KLTN hiện hành')}`}
             className="lg:grid-cols-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_auto]"
           >
             <StatisticsBar

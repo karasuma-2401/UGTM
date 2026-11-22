@@ -194,6 +194,17 @@ function fixture({
   queryState = {},
   userId = 'me',
   canReadBatches = true,
+  roles = ['Admin'],
+  batches = [
+    {
+      id: 'batch',
+      batchName: 'Đợt thực tế',
+      status: 'Open',
+      startDate: '2026-01-01',
+      endDate: '2099-12-31',
+      timeZoneId: 'Asia/Ho_Chi_Minh',
+    },
+  ],
 } = {}) {
   const state = [];
   let cursor = 0;
@@ -243,12 +254,15 @@ function fixture({
     '@/shared/auth': {
       useAuth: () => ({
         user: userId ? { id: userId } : null,
+        hasRole: (required) =>
+          (Array.isArray(required) ? required : [required]).some((role) => roles.includes(role)),
         hasPermission: () => canReadBatches,
       }),
     },
+    '@/shared/academic-periods/currentBatches': load('../../shared/academic-periods/currentBatches.ts'),
     '@/shared/academic-periods/useAcademicBatches': {
       useAcademicBatches: () => ({
-        data: [{ id: 'batch', batchName: 'Đợt thực tế' }],
+        data: batches,
         isPending: false,
         isError: false,
       }),

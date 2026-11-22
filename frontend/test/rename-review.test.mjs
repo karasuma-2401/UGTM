@@ -341,6 +341,33 @@ test('RenameReviewPage renders Fluent PageHeader without icon, Admin NavigationT
     '@/components/ui/statistics-bar': { StatisticsBar: 'StatisticsBar' },
     '@/components/ui/status-badge': { StatusBadge: 'StatusBadge' },
     '@/components/ui/table-floating-bar': { TableFloatingBar: 'TableFloatingBar' },
+    '@/shared/academic-periods/currentBatches': loadModule(
+      'shared/academic-periods/currentBatches.ts',
+    ),
+    '@/shared/academic-periods/useAcademicBatches': {
+      useAcademicBatches: () => ({
+        data: [
+          {
+            id: 'batch-1',
+            batchName: 'Khóa luận HK2',
+            status: 'Open',
+            startDate: '2026-01-01',
+            endDate: '2099-12-31',
+            timeZoneId: 'Asia/Ho_Chi_Minh',
+          },
+          {
+            id: 'batch-2',
+            batchName: 'Khóa luận HK1',
+            status: 'Closed',
+            startDate: '2025-01-01',
+            endDate: '2025-12-31',
+            timeZoneId: 'Asia/Ho_Chi_Minh',
+          },
+        ],
+        isPending: false,
+        isError: false,
+      }),
+    },
     '@/shared/auth': {
       useAuth: () => ({
         user: { id: 'admin-1', roles: ['Admin'] },
