@@ -221,6 +221,9 @@ export function TopicProposePage({
     .filter((code): code is string => Boolean(code))
     .join('|');
 
+  const lookupBatchId = selectedTopic?.batchId ?? values.batchId;
+  const lookupExcludeTopicId = selectedTopic?.id;
+
   useEffect(() => {
     if (
       !isFormOpen ||
@@ -233,9 +236,11 @@ export function TopicProposePage({
     }
 
     const knownCodes = new Set(knownStudentCodesKey ? knownStudentCodesKey.split('|') : []);
+    const cacheKeyFor = (code: string) =>
+      `${lookupBatchId || ''}|${lookupExcludeTopicId || ''}|${code}`;
     const pendingCodes = studentCodesKey
       .split('|')
-      .filter((code) => !knownCodes.has(code) && !studentLookupCache.has(code));
+      .filter((code) => !knownCodes.has(code) && !studentLookupCache.has(cacheKeyFor(code)));
 
     if (pendingCodes.length === 0) return;
 
@@ -245,7 +250,7 @@ export function TopicProposePage({
       setStudentLookups((prev) => {
         const next = { ...prev };
         for (const code of pendingCodes) {
-          if (!studentLookupCache.has(code)) {
+          if (!studentLookupCache.has(cacheKeyFor(code))) {
             next[code] = { status: 'loading' };
           }
         }
@@ -255,12 +260,21 @@ export function TopicProposePage({
       void Promise.all(
         pendingCodes.map(async (code) => {
           try {
-            const match = await topicApi.lookupStudentByCode(code, controller?.signal);
+            const match = await topicApi.lookupStudentByCode(code, {
+              batchId: lookupBatchId || undefined,
+              excludeTopicId: lookupExcludeTopicId,
+              signal: controller?.signal,
+            });
             if (cancelled || controller?.signal.aborted) return;
             const resolved: StudentCodeLookupState = match
-              ? { status: 'found', fullName: match.fullName }
+              ? {
+                  status: 'found',
+                  fullName: match.fullName,
+                  isAlreadyRegisteredInBatch: Boolean(match.isAlreadyRegisteredInBatch),
+                  isRegistrationBlocked: Boolean(match.isRegistrationBlocked),
+                }
               : { status: 'not_found' };
-            studentLookupCache.set(code, resolved);
+            studentLookupCache.set(cacheKeyFor(code), resolved);
             setStudentLookups((prev) => ({
               ...prev,
               [code]: resolved,
@@ -281,7 +295,15 @@ export function TopicProposePage({
       controller?.abort();
       window.clearTimeout(timer);
     };
-  }, [isFormOpen, editable, recovery, studentCodesKey, knownStudentCodesKey]);
+  }, [
+    isFormOpen,
+    editable,
+    recovery,
+    studentCodesKey,
+    knownStudentCodesKey,
+    lookupBatchId,
+    lookupExcludeTopicId,
+  ]);
 
   const checklist = [
     { label: 'Đã chọn đợt khóa luận', complete: Boolean(values.batchId) },
@@ -668,6 +690,27 @@ export function TopicProposePage({
       values.studentNumber > selectedTopic.studentNumber
     ) {
       errors.studentCodes = 'Hãy lưu chỉ tiêu mới trước, sau đó chỉ định thêm sinh viên.';
+    }
+    if (!errors.studentCodes && (!selectedTopic || updateAssignedStudents)) {
+      const knownCodes = new Set(knownStudentCodesKey ? knownStudentCodesKey.split('|') : []);
+      const normalizedCodes = (values.studentCodes ?? [])
+        .map((code) => code.trim().toUpperCase())
+        .filter((code) => Boolean(code) && !knownCodes.has(code));
+      const conflictCode = normalizedCodes.find((code) => {
+        const lookup = studentLookups[code];
+        return lookup?.status === 'found' && lookup.isAlreadyRegisteredInBatch;
+      });
+      if (conflictCode) {
+        errors.studentCodes = `Sinh viên ${conflictCode} đã đăng ký hoặc được gán vào đề tài khác trong đợt KLTN này.`;
+      } else {
+        const blockedCode = normalizedCodes.find((code) => {
+          const lookup = studentLookups[code];
+          return lookup?.status === 'found' && lookup.isRegistrationBlocked;
+        });
+        if (blockedCode) {
+          errors.studentCodes = `Sinh viên ${blockedCode} đang bị khóa quyền đăng ký đề tài.`;
+        }
+      }
     }
     if (Object.keys(errors).length) {
       showValidation(errors);

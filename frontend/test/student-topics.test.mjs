@@ -256,6 +256,26 @@ test('registration window matches Open, stage start and inclusive UTC deadline; 
   assert.equal(helpers.registrationWindow(timeline, deadline + 1).state, 'closed');
   assert.equal(helpers.registrationWindow(undefined).state, 'unknown');
   assert.equal(helpers.validateStudentRegistration(published, ''), '');
+  assert.match(
+    helpers.validateStudentRegistration(published, '', 'SV01', {
+      ...emptyStatus,
+      hasRegistered: true,
+      batchId: published.batchId,
+      topicId: 'other-topic',
+      confirmationStatus: 'Pending',
+    }),
+    /lời mời chờ xác nhận/,
+  );
+  assert.match(
+    helpers.validateStudentRegistration(published, '', 'SV01', {
+      ...emptyStatus,
+      hasRegistered: true,
+      batchId: published.batchId,
+      topicId: 'other-topic',
+      confirmationStatus: 'Confirmed',
+    }),
+    /đã đăng ký đề tài khác/,
+  );
   assert.equal(
     helpers.invitationExpired(
       {

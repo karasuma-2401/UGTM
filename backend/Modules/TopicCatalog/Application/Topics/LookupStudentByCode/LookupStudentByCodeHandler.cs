@@ -1,17 +1,27 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
 
 namespace UGTM.Modules.TopicCatalog.Application.Topics.LookupStudentByCode;
 
-public sealed record TopicStudentLookupDto(string UserCode, string FullName);
+public sealed record TopicStudentLookupDto(
+    string UserCode,
+    string FullName,
+    bool IsAlreadyRegisteredInBatch = false,
+    bool IsRegistrationBlocked = false);
 
-public sealed class LookupStudentByCodeHandler(IStudentInfoReader studentInfoReader, ICurrentUser currentUser)
+public sealed class LookupStudentByCodeHandler(
+    IStudentInfoReader studentInfoReader,
+    ICurrentUser currentUser,
+    IThesisRegistrationContract? registrationContract = null)
 {
     private const int MaxUserCodeLength = 20;
 
     public async Task<Result<TopicStudentLookupDto>> HandleAsync(
         string? userCode,
+        Guid? batchId = null,
+        Guid? excludeTopicId = null,
         CancellationToken cancellationToken = default)
     {
         if (!currentUser.IsAuthenticated || currentUser.UserId is not { } userId || userId == Guid.Empty)
@@ -41,6 +51,24 @@ public sealed class LookupStudentByCodeHandler(IStudentInfoReader studentInfoRea
                 Error.NotFound("Topics.StudentNotFound", "Không tìm thấy sinh viên đang hoạt động với mã số này."));
         }
 
-        return Result.Success(new TopicStudentLookupDto(student.UserCode, student.FullName));
+        var isAlreadyRegisteredInBatch = false;
+        var isRegistrationBlocked = false;
+
+        if (batchId.HasValue && batchId.Value != Guid.Empty && registrationContract is not null)
+        {
+            var check = await registrationContract.GetStudentBatchRegistrationAsync(
+                student.Id,
+                batchId.Value,
+                excludeTopicId,
+                cancellationToken);
+            isAlreadyRegisteredInBatch = check.IsRegisteredInBatch;
+            isRegistrationBlocked = check.IsRegistrationBlocked;
+        }
+
+        return Result.Success(new TopicStudentLookupDto(
+            student.UserCode,
+            student.FullName,
+            isAlreadyRegisteredInBatch,
+            isRegistrationBlocked));
     }
 }

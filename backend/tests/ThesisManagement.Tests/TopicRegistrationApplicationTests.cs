@@ -160,6 +160,49 @@ public sealed class TopicRegistrationApplicationTests
     }
 
     [Fact]
+    public async Task Register_InvitingPartnerAlreadyRegisteredInOtherTopic_ReturnsPartnerAlreadyRegisteredInBatch()
+    {
+        // Student B registers Topic 2 first (solo, confirmed)
+        var handlerB = CreateRegisterHandler(StudentBId);
+        var resB = await handlerB.HandleAsync(new RegisterTopicCommand(TopicId2));
+        Assert.True(resB.IsSuccess);
+
+        // Student A tries to register Topic 1 and invite Student B -> must be blocked with PartnerAlreadyRegisteredInBatch
+        var handlerA = CreateRegisterHandler(StudentAId);
+        var resA = await handlerA.HandleAsync(new RegisterTopicCommand(TopicId1, PartnerStudentId: StudentBId));
+
+        Assert.False(resA.IsSuccess);
+        Assert.Equal(TopicRegistrationErrors.PartnerAlreadyRegisteredInBatch.Code, resA.Error.Code);
+    }
+
+    [Fact]
+    public async Task Register_InvitingPartnerWithPendingInvitationInOtherTopic_ReturnsPartnerAlreadyRegisteredInBatch()
+    {
+        // Seed a 3rd topic with quota 2
+        var topic3 = Guid.NewGuid();
+        _store.SeedTopic(topic3, BatchId, studentNumber: 2, status: "Published");
+
+        // Student A registers Topic 1 and invites Student B (Student B is now Pending)
+        var handlerA = CreateRegisterHandler(StudentAId);
+        var resA = await handlerA.HandleAsync(new RegisterTopicCommand(TopicId1, PartnerStudentId: StudentBId));
+        Assert.True(resA.IsSuccess);
+
+        // Student C tries to register Topic 3 and invite Student B -> must be blocked
+        var handlerC = CreateRegisterHandler(StudentCId);
+        var resC = await handlerC.HandleAsync(new RegisterTopicCommand(topic3, PartnerStudentId: StudentBId));
+
+        Assert.False(resC.IsSuccess);
+        Assert.Equal(TopicRegistrationErrors.PartnerAlreadyRegisteredInBatch.Code, resC.Error.Code);
+
+        // Student B's status also includes BatchId while Pending
+        var statusB = await _store.GetStudentRegistrationStatusAsync(StudentBId);
+        Assert.NotNull(statusB);
+        Assert.True(statusB.HasRegistered);
+        Assert.Equal(BatchId, statusB.BatchId);
+        Assert.Equal(nameof(MemberConfirmationStatus.Pending), statusB.ConfirmationStatus);
+    }
+
+    [Fact]
     public async Task Register_StudentRegistrationBlocked_ReturnsStudentRegistrationBlocked()
     {
         _store.SetPenalty(StudentAId, violationCount: 3, isBlocked: true);

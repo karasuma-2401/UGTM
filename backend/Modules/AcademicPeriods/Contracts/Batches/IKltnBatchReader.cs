@@ -49,4 +49,7 @@ public interface IKltnBatchReader
         Guid batchId,
         DateTime nowUtc,
         CancellationToken cancellationToken = default);
+
+    Task<Guid?> GetActiveOpenBatchIdAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<Guid?>(null);
 }

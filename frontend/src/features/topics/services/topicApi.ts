@@ -37,6 +37,8 @@ export function getTopicErrorMessage(error: unknown): string {
 export interface TopicStudentLookupResult {
   userCode: string;
   fullName: string;
+  isAlreadyRegisteredInBatch?: boolean;
+  isRegistrationBlocked?: boolean;
 }
 
 export const topicApi = {
@@ -95,16 +97,35 @@ export const topicApi = {
 
   async lookupStudentByCode(
     userCode: string,
-    signal?: AbortSignal,
+    signalOrOptions?:
+      | AbortSignal
+      | { batchId?: string; excludeTopicId?: string; signal?: AbortSignal },
   ): Promise<TopicStudentLookupResult | null> {
     const normalized = userCode.trim().toUpperCase();
     if (!normalized) return null;
+
+    const isSignal =
+      signalOrOptions !== undefined &&
+      typeof (signalOrOptions as AbortSignal).aborted === 'boolean';
+    const signal = isSignal
+      ? (signalOrOptions as AbortSignal)
+      : (signalOrOptions as { signal?: AbortSignal } | undefined)?.signal;
+    const batchId = isSignal
+      ? undefined
+      : (signalOrOptions as { batchId?: string } | undefined)?.batchId;
+    const excludeTopicId = isSignal
+      ? undefined
+      : (signalOrOptions as { excludeTopicId?: string } | undefined)?.excludeTopicId;
 
     try {
       const response = await httpClient.get<ApiResponse<TopicStudentLookupResult>>(
         '/api/topics/student-lookup',
         {
-          params: { userCode: normalized },
+          params: {
+            userCode: normalized,
+            ...(batchId ? { batchId } : {}),
+            ...(excludeTopicId ? { excludeTopicId } : {}),
+          },
           signal,
         },
       );

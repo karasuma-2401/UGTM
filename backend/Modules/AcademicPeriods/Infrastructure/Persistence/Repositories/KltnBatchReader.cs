@@ -66,6 +66,15 @@ public sealed class KltnBatchReader(AcademicPeriodsDbContext db) : IKltnBatchRea
             .AsNoTracking()
             .AnyAsync(b => b.Id == batchId, cancellationToken);
 
+    public Task<Guid?> GetActiveOpenBatchIdAsync(CancellationToken cancellationToken = default)
+        => db.KltnBatches
+            .AsNoTracking()
+            .Where(b => b.Status == BatchStatus.Open)
+            .OrderByDescending(b => b.StartDate)
+            .ThenBy(b => b.Id)
+            .Select(b => (Guid?)b.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<BatchRegistrationWindowContractDto?> GetRegistrationWindowAsync(
         Guid batchId,
         DateTime nowUtc,

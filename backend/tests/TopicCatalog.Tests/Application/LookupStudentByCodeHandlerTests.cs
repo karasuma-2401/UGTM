@@ -1,5 +1,6 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.ThesisManagement.Contracts.TopicRegistrations;
 using UGTM.Modules.TopicCatalog.Application.Topics.LookupStudentByCode;
 using UGTM.Modules.TopicCatalog.Tests.Fakes;
 
@@ -60,6 +61,76 @@ public sealed class LookupStudentByCodeHandlerTests
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorType.NotFound, result.Error.Type);
         Assert.Equal("Topics.StudentNotFound", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Lookup_with_batchId_reports_registration_and_blocked_status()
+    {
+        var studentId = Guid.NewGuid();
+        var batchId = Guid.NewGuid();
+        var excludeTopicId = Guid.NewGuid();
+        var reader = new FakeStudentInfoReader(new StudentInfoContractDto(
+            studentId,
+            "24521603@gm.uit.edu.vn",
+            "Nguyễn Văn A",
+            "24521603",
+            null));
+        var contract = new FakeRegistrationContract(
+            new StudentBatchRegistrationCheckDto(true, Guid.NewGuid(), "Confirmed", false));
+
+        var result = await new LookupStudentByCodeHandler(reader, FakeCurrentUser.AsLecturer(), contract)
+            .HandleAsync("24521603", batchId, excludeTopicId);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value.IsAlreadyRegisteredInBatch);
+        Assert.False(result.Value.IsRegistrationBlocked);
+        Assert.Equal(studentId, contract.LastStudentId);
+        Assert.Equal(batchId, contract.LastBatchId);
+        Assert.Equal(excludeTopicId, contract.LastExcludeTopicId);
+    }
+
+    private sealed class FakeRegistrationContract(StudentBatchRegistrationCheckDto checkResult) : IThesisRegistrationContract
+    {
+        public Guid LastStudentId { get; private set; }
+        public Guid LastBatchId { get; private set; }
+        public Guid? LastExcludeTopicId { get; private set; }
+
+        public Task<IReadOnlyDictionary<Guid, TopicRegistrationContractDto>> GetRegistrationsByTopicIdsAsync(
+            IEnumerable<Guid> topicIds,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyDictionary<Guid, TopicRegistrationContractDto>>(new Dictionary<Guid, TopicRegistrationContractDto>());
+
+        public Task<TopicRegistrationContractDto?> GetRegistrationByTopicIdAsync(
+            Guid topicId,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult<TopicRegistrationContractDto?>(null);
+
+        public Task<StudentBatchRegistrationCheckDto> GetStudentBatchRegistrationAsync(
+            Guid studentId,
+            Guid batchId,
+            Guid? excludeTopicId = null,
+            CancellationToken cancellationToken = default)
+        {
+            LastStudentId = studentId;
+            LastBatchId = batchId;
+            LastExcludeTopicId = excludeTopicId;
+            return Task.FromResult(checkResult);
+        }
+
+        public Task<AdvisorAssignStudentsContractResultDto> AssignStudentsByAdvisorAsync(
+            Guid topicId,
+            Guid actorUserId,
+            bool isAdmin,
+            IReadOnlyCollection<AdvisorStudentAssignmentInputDto> students,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(AdvisorAssignStudentsContractResultDto.Success(Guid.NewGuid(), topicId, Guid.NewGuid(), Array.Empty<Guid>()));
+
+        public Task<AdvisorUnassignStudentsContractResultDto> UnassignStudentsByAdvisorAsync(
+            Guid topicId,
+            Guid actorUserId,
+            bool isAdmin,
+            CancellationToken cancellationToken = default)
+            => Task.FromResult(AdvisorUnassignStudentsContractResultDto.Success());
     }
 
     private sealed class FakeStudentInfoReader(StudentInfoContractDto? match) : IStudentInfoReader

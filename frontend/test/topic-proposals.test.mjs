@@ -1714,4 +1714,26 @@ test('student lookup API normalizes MSSV, returns null on 404 and field renders 
   );
   assert.match(markup, /Nguyễn Văn A/);
   assert.match(markup, /Không tìm thấy sinh viên với MSSV này/);
+
+  const conflictMarkup = renderToStaticMarkup(
+    TopicStudentAssignmentField({
+      codes: ['24521605', '24521606'],
+      capacity: 2,
+      studentLookups: {
+        '24521605': {
+          status: 'found',
+          fullName: 'Trần Thị B',
+          isAlreadyRegisteredInBatch: true,
+        },
+        '24521606': {
+          status: 'found',
+          fullName: 'Lê Văn C',
+          isRegistrationBlocked: true,
+        },
+      },
+      onChange() {},
+    }),
+  );
+  assert.match(conflictMarkup, /Trần Thị B.*đã đăng ký hoặc được gán vào đề tài khác/);
+  assert.match(conflictMarkup, /Lê Văn C.*đang bị khóa quyền đăng ký/);
 });

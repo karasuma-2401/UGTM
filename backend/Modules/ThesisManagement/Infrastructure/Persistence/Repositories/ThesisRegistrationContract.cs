@@ -121,6 +121,51 @@ public sealed class ThesisRegistrationContract : IThesisRegistrationContract
             members);
     }
 
+    public async Task<StudentBatchRegistrationCheckDto> GetStudentBatchRegistrationAsync(
+        Guid studentId,
+        Guid batchId,
+        Guid? excludeTopicId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (studentId == Guid.Empty || batchId == Guid.Empty)
+        {
+            return new StudentBatchRegistrationCheckDto(false, null, null, false);
+        }
+
+        if (_inMemoryGroups is not null)
+        {
+            var inMemoryMatch = _inMemoryGroups
+                .Where(g => !excludeTopicId.HasValue || g.TopicId != excludeTopicId.Value)
+                .SelectMany(g => g.Members.Select(m => (Group: g, Member: m)))
+                .FirstOrDefault(x => x.Member.StudentId == studentId && x.Member.BatchId == batchId);
+
+            return new StudentBatchRegistrationCheckDto(
+                IsRegisteredInBatch: inMemoryMatch.Member is not null,
+                TopicId: inMemoryMatch.Group?.TopicId,
+                ConfirmationStatus: inMemoryMatch.Member?.ConfirmationStatus.ToString(),
+                IsRegistrationBlocked: false);
+        }
+
+        var existingMember = await _db!.StudentGroupMembers
+            .AsNoTracking()
+            .Include(m => m.Group)
+            .Where(m => m.StudentId == studentId
+                        && m.BatchId == batchId
+                        && (!excludeTopicId.HasValue || m.Group.TopicId != excludeTopicId.Value))
+            .Select(m => new { m.Group.TopicId, m.ConfirmationStatus })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var isBlocked = await _db.StudentRegistrationPenalties
+            .AsNoTracking()
+            .AnyAsync(p => p.StudentId == studentId && p.IsRegistrationBlocked, cancellationToken);
+
+        return new StudentBatchRegistrationCheckDto(
+            IsRegisteredInBatch: existingMember is not null,
+            TopicId: existingMember?.TopicId,
+            ConfirmationStatus: existingMember?.ConfirmationStatus.ToString(),
+            IsRegistrationBlocked: isBlocked);
+    }
+
     public async Task<AdvisorAssignStudentsContractResultDto> AssignStudentsByAdvisorAsync(
         Guid topicId,
         Guid actorUserId,

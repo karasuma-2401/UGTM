@@ -171,9 +171,12 @@ export function StudentTopicCatalogContent() {
   const data = topicsQuery.isError ? undefined : topicsQuery.data;
   const status = statusQuery.isError
     ? undefined
-    : statusQuery.data && registeredGroupQuery.data
-      ? { ...statusQuery.data, batchId: registeredGroupQuery.data.batchId }
-      : statusQuery.data;
+    : statusQuery.data
+      ? {
+          ...statusQuery.data,
+          batchId: statusQuery.data.batchId ?? registeredGroupQuery.data?.batchId,
+        }
+      : undefined;
   const total = totalQuery.isError ? undefined : totalQuery.data?.totalCount;
   const refreshing = topicsQuery.isFetching;
 

@@ -24,7 +24,8 @@ public sealed record StudentRegistrationStatusDto(
     DateTime? ConfirmationExpiresAtUtc,
     int ViolationCount,
     bool IsRegistrationBlocked,
-    DateTime? BlockedAtUtc);
+    DateTime? BlockedAtUtc,
+    Guid? BatchId = null);
 
 public sealed record ExpiredPendingMemberDto(
     Guid GroupId,
