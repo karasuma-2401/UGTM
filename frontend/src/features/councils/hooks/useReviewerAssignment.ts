@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
+import { getPreferredDefaultBatch } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { syllabusApi } from '@/features/thesis';
 import { reviewerAssignmentApi } from '../services/reviewerAssignmentApi';
@@ -26,9 +27,7 @@ export function useReviewerAssignment() {
 
   const batches = useMemo(() => batchesQuery.data || [], [batchesQuery.data]);
 
-  const defaultBatch = useMemo(() => {
-    return batches.find((b) => b.status === 'Open') || batches[0] || null;
-  }, [batches]);
+  const defaultBatch = useMemo(() => getPreferredDefaultBatch(batches), [batches]);
 
   const selectedBatchId = userSelectedBatchId || defaultBatch?.id || '';
 

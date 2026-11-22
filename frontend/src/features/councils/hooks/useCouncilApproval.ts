@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
+import { getActiveOpenBatch } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { notify } from '@/shared/notifications';
 import { councilApprovalApi } from '../services/councilApprovalApi';
@@ -28,7 +29,7 @@ export function useCouncilApproval() {
   const { user, hasRole } = useAuth();
   const batchesQuery = useAcademicBatches();
 
-  const [batchFilter, setBatchFilterState] = useState<string>('all');
+  const [batchFilterOverride, setBatchFilterOverride] = useState<string | null>(null);
   const [keyword, setKeywordState] = useState<string>('');
   const [readinessFilter, setReadinessFilterState] = useState<CouncilReadinessFilter>('all');
   const [sort, setSort] = useState<{
@@ -48,6 +49,11 @@ export function useCouncilApproval() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const batches = useMemo(() => batchesQuery.data || [], [batchesQuery.data]);
+  const defaultBatchFilter = useMemo(
+    () => getActiveOpenBatch(batches)?.id ?? 'all',
+    [batches],
+  );
+  const batchFilter = batchFilterOverride ?? defaultBatchFilter;
 
   const selectedBatch = useMemo(
     () => (batchFilter === 'all' ? null : batches.find((b) => b.id === batchFilter) || null),
@@ -253,7 +259,7 @@ export function useCouncilApproval() {
   );
 
   const setBatchFilter = useCallback((next: string) => {
-    setBatchFilterState(next);
+    setBatchFilterOverride(next);
     setPageNumber(1);
     setErrorMessage(null);
   }, []);
@@ -290,7 +296,7 @@ export function useCouncilApproval() {
   const handleResetFilter = useCallback(() => {
     setKeywordState('');
     setReadinessFilterState('all');
-    setBatchFilterState('all');
+    setBatchFilterOverride(null);
     setPageNumber(1);
     setErrorMessage(null);
   }, []);

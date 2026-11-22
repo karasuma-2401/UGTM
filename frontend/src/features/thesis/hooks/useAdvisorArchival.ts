@@ -4,7 +4,7 @@ import { advisingApi } from '@/features/topics/services/advisingApi';
 import {
   canSelectAcademicBatch,
   getActiveOpenBatch,
-  getCurrentBatches,
+  getPreferredDefaultBatch,
 } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
@@ -44,8 +44,7 @@ export function useAdvisorArchival() {
     if (!canSelectBatch) {
       return getActiveOpenBatch(batches)?.id ?? '';
     }
-    const current = getCurrentBatches(batches);
-    return current[0]?.id ?? batches[0]?.id ?? '';
+    return getPreferredDefaultBatch(batches)?.id ?? '';
   }, [batches, canSelectBatch]);
   const selectedBatchId = canSelectBatch ? (explicitBatchId ?? defaultBatchId) : defaultBatchId;
 

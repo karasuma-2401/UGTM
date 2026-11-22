@@ -3,6 +3,7 @@ import type {
   KltnBatchSummaryDto,
   ScoreConfigurationDto,
 } from '../../types/scoreConfig.types';
+import { getPreferredDefaultBatch } from '@/shared/academic-periods/currentBatches';
 import { scoreConfigApi, getScoreConfigErrorMessage } from '../../services/scoreConfigApi';
 
 export function useScoreConfigData(onError: (msg: string) => void) {
@@ -43,8 +44,9 @@ export function useScoreConfigData(onError: (msg: string) => void) {
         const result = await scoreConfigApi.getBatches({ pageSize: 50 });
         if (isMounted) {
           setBatches(result.items);
-          if (result.items.length > 0) {
-            setSelectedBatchId(result.items[0].id);
+          const defaultBatch = getPreferredDefaultBatch(result.items);
+          if (defaultBatch) {
+            setSelectedBatchId(defaultBatch.id);
           }
         }
       } catch (err) {

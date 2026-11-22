@@ -147,7 +147,7 @@ function RenameReviewView({
 
   const [scope, setScope] = useState<RenameQueueScope>('pending');
   const [keyword, setKeyword] = useState('');
-  const [batchId, setBatchId] = useState('');
+  const [batchIdOverride, setBatchIdOverride] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<RenameSortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
@@ -161,6 +161,9 @@ function RenameReviewView({
     () => getActiveOpenBatch(batchesQuery.data ?? []),
     [batchesQuery.data],
   );
+  const effectiveBatchId = canSelectBatch
+    ? (batchIdOverride ?? openBatch?.id ?? '')
+    : '';
 
   const query = useQuery({
     queryKey: ['rename-requests-review', user?.id],
@@ -191,11 +194,14 @@ function RenameReviewView({
         seen.set(item.batchId, item.batchName);
       }
     }
+    if (openBatch && !seen.has(openBatch.id)) {
+      seen.set(openBatch.id, openBatch.batchName);
+    }
     return [
       { value: '', label: 'Tất cả đợt KLTN' },
       ...Array.from(seen.entries()).map(([id, name]) => ({ value: id, label: name })),
     ];
-  }, [scopedItems]);
+  }, [openBatch, scopedItems]);
 
   const filteredItems = useMemo(
     () =>
@@ -203,11 +209,11 @@ function RenameReviewView({
         activeStatus: config.status,
         scope,
         keyword,
-        batchId: canSelectBatch ? batchId : '',
+        batchId: effectiveBatchId,
         sortBy,
         sortOrder,
       }),
-    [batchId, canSelectBatch, config.status, keyword, scope, scopedItems, sortBy, sortOrder],
+    [config.status, effectiveBatchId, keyword, scope, scopedItems, sortBy, sortOrder],
   );
 
   const totalCount = filteredItems.length;
@@ -283,7 +289,7 @@ function RenameReviewView({
   function handleResetFilters() {
     setScope('pending');
     setKeyword('');
-    setBatchId('');
+    setBatchIdOverride('');
     setPage(1);
     setSelectedRowId(null);
   }
@@ -314,7 +320,7 @@ function RenameReviewView({
   ) : undefined;
 
   const hasCustomFilters = Boolean(
-    keyword.trim() || (canSelectBatch && batchId) || scope !== 'pending',
+    keyword.trim() || (canSelectBatch && effectiveBatchId) || scope !== 'pending',
   );
   const scopeDescription =
     scope === 'pending'
@@ -590,9 +596,9 @@ function RenameReviewView({
             <Select<string>
               aria-label="Lọc theo đợt KLTN"
               options={batchOptions}
-              value={batchId}
+              value={effectiveBatchId}
               onChange={(nextBatchId) => {
-                setBatchId(String(nextBatchId ?? ''));
+                setBatchIdOverride(String(nextBatchId ?? ''));
                 setPage(1);
                 setSelectedRowId(null);
               }}
@@ -640,13 +646,13 @@ function RenameReviewView({
             title:
               !canSelectBatch && !batchesQuery.isPending && !openBatch
                 ? 'Hiện chưa có đợt KLTN nào đang mở'
-                : scope === 'pending' && !keyword.trim() && !(canSelectBatch && batchId)
+                : scope === 'pending' && !keyword.trim() && !effectiveBatchId
                   ? `Chưa có đơn chờ duyệt ở ${config.tabLabel}`
                   : 'Không tìm thấy yêu cầu phù hợp',
             description:
               !canSelectBatch && !batchesQuery.isPending && !openBatch
                 ? 'Danh sách yêu cầu đổi tên chỉ hiển thị cho đợt KLTN đang mở hiện tại.'
-                : scope === 'pending' && !keyword.trim() && !(canSelectBatch && batchId)
+                : scope === 'pending' && !keyword.trim() && !effectiveBatchId
                   ? 'Khi sinh viên gửi đơn mới hoặc cấp trước hoàn tất xác nhận, yêu cầu sẽ tự động xuất hiện tại đây.'
                   : 'Thử thay đổi từ khóa tìm kiếm hoặc chọn phạm vi trạng thái khác để xem thêm đơn.',
             action: hasCustomFilters ? (

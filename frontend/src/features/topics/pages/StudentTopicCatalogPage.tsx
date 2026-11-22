@@ -81,6 +81,7 @@ export function StudentTopicCatalogContent() {
     draft: CatalogFilters;
     filters: CatalogFilters;
   }>({ draft: EMPTY_FILTERS, filters: EMPTY_FILTERS });
+  const [hasExplicitBatchChoice, setHasExplicitBatchChoice] = useState(false);
   const { draft, filters } = filterState;
   const [sortBy, setSortBy] = useState<CatalogSortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -97,7 +98,16 @@ export function StudentTopicCatalogContent() {
   const batchesQuery = useAcademicBatches();
   const batches = batchesQuery.data ?? [];
   const openBatch = getActiveOpenBatch(batches);
-  const effectiveBatchId = canSelectBatch ? filters.batchId : (openBatch?.id ?? '');
+  const effectiveBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? filters.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
+  const effectiveDraftBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? draft.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
   const effectiveFilters: CatalogFilters = {
     ...filters,
     batchId: effectiveBatchId,
@@ -210,6 +220,7 @@ export function StudentTopicCatalogContent() {
   }
 
   function reset() {
+    setHasExplicitBatchChoice(true);
     applyFilters(EMPTY_FILTERS);
   }
 
@@ -243,7 +254,7 @@ export function StudentTopicCatalogContent() {
   if (!canBrowse) return <p role="alert">Bạn không có quyền xem danh mục đề tài này.</p>;
 
   const hasFilters = Boolean(
-    filters.keyword || (canSelectBatch && filters.batchId) || filters.availability,
+    filters.keyword || (canSelectBatch && effectiveBatchId) || filters.availability,
   );
   const selectedBatchName =
     batches.find((batch) => batch.id === effectiveBatchId)?.batchName ?? 'Đợt đã chọn';
@@ -505,7 +516,7 @@ export function StudentTopicCatalogContent() {
             <Select<string>
               aria-label="Lọc theo đợt KLTN"
               placeholder="Tất cả đợt KLTN"
-              value={draft.batchId}
+              value={effectiveDraftBatchId}
               containerClassName="w-full sm:w-64"
               triggerClassName="h-10 rounded-xl shadow-none"
               disabled={!canReadBatches || batchesQuery.isPending}
@@ -514,7 +525,10 @@ export function StudentTopicCatalogContent() {
                 { value: '', label: 'Tất cả đợt KLTN' },
                 ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
               ]}
-              onChange={(batchId) => updateFilters((prev) => ({ ...prev, batchId }))}
+              onChange={(batchId) => {
+                setHasExplicitBatchChoice(true);
+                updateFilters((prev) => ({ ...prev, batchId }));
+              }}
             />
           )}
           <Select<CatalogAvailabilityFilter>
@@ -582,13 +596,16 @@ export function StudentTopicCatalogContent() {
                   },
                 ]
               : []),
-            ...(canSelectBatch && filters.batchId
+            ...(canSelectBatch && effectiveBatchId
               ? [
                   {
                     key: 'batchId',
                     label: 'Đợt KLTN',
                     value: selectedBatchName,
-                    onRemove: () => applyFilters({ ...filters, batchId: '' }),
+                    onRemove: () => {
+                      setHasExplicitBatchChoice(true);
+                      applyFilters({ ...filters, batchId: '' });
+                    },
                   },
                 ]
               : []),

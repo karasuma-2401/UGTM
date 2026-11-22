@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   canSelectAcademicBatch,
   getActiveOpenBatch,
-  getCurrentBatches,
+  getPreferredDefaultBatch,
 } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
@@ -130,8 +130,7 @@ export function useCouncilMinutes() {
   // Default active batch selection (management roles only)
   useEffect(() => {
     if (!canSelectBatch || batches.length === 0 || selectedBatchId) return;
-    const current = getCurrentBatches(batches);
-    const defaultBatch = current[0] ?? batches[0];
+    const defaultBatch = getPreferredDefaultBatch(batches);
     if (defaultBatch) {
       setSelectedBatchId(defaultBatch.id);
     }

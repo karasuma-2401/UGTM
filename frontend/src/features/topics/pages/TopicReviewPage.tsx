@@ -25,6 +25,7 @@ import { TableFloatingBar } from '@/components/ui/table-floating-bar';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { cn } from '@/lib/utils';
+import { getActiveOpenBatch } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
 import { OperationToast } from '@/shared/notifications';
@@ -63,6 +64,7 @@ export function TopicReviewPage() {
 
   const [draftFilters, setDraftFilters] = useState<TopicFilters>(INITIAL_FILTERS);
   const [filters, setFilters] = useState<TopicFilters>(INITIAL_FILTERS);
+  const [hasExplicitBatchChoice, setHasExplicitBatchChoice] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [selected, setSelected] = useState<Topic[]>([]);
@@ -73,18 +75,25 @@ export function TopicReviewPage() {
 
   const batchesQuery = useAcademicBatches();
   const batches = batchesQuery.data ?? [];
+  const openBatch = getActiveOpenBatch(batches);
+  const effectiveBatchId = hasExplicitBatchChoice ? filters.batchId : (openBatch?.id ?? '');
+  const effectiveDraftBatchId = hasExplicitBatchChoice
+    ? draftFilters.batchId
+    : (openBatch?.id ?? '');
+  const effectiveFilters: TopicFilters = { ...filters, batchId: effectiveBatchId };
 
   const topicsQuery = useQuery({
-    queryKey: ['topic-review', user?.id, 'list', filters, pageNumber, pageSize],
-    queryFn: ({ signal }) => topicReviewApi.getTopics({ ...filters, pageNumber, pageSize }, signal),
+    queryKey: ['topic-review', user?.id, 'list', effectiveFilters, pageNumber, pageSize],
+    queryFn: ({ signal }) =>
+      topicReviewApi.getTopics({ ...effectiveFilters, pageNumber, pageSize }, signal),
     enabled: canReview && Boolean(user?.id),
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
   });
 
   const statisticsQuery = useQuery({
-    queryKey: ['topic-review', user?.id, 'statistics', filters.batchId],
-    queryFn: ({ signal }) => topicReviewApi.getStatistics(filters.batchId, signal),
+    queryKey: ['topic-review', user?.id, 'statistics', effectiveBatchId],
+    queryFn: ({ signal }) => topicReviewApi.getStatistics(effectiveBatchId, signal),
     enabled: canReview && Boolean(user?.id),
   });
 
@@ -149,13 +158,18 @@ export function TopicReviewPage() {
   const isRefreshing = topicsQuery.isFetching && !topicsQuery.isPending;
   const statistics = statisticsQuery.isError ? undefined : statisticsQuery.data;
   const hasFilters = Boolean(
-    Object.values(filters).some(Boolean) || Object.values(draftFilters).some(Boolean),
+    effectiveFilters.keyword ||
+    effectiveFilters.batchId ||
+    effectiveFilters.status ||
+    draftFilters.keyword ||
+    effectiveDraftBatchId ||
+    draftFilters.status,
   );
   const formatCount = (count: number | undefined) =>
     count === undefined ? '—' : count.toLocaleString('vi-VN');
 
-  const activeBatchName = filters.batchId
-    ? batches.find((batch) => batch.id === filters.batchId)?.batchName || 'Đợt đã chọn'
+  const activeBatchName = effectiveBatchId
+    ? batches.find((batch) => batch.id === effectiveBatchId)?.batchName || 'Đợt đã chọn'
     : 'Tất cả đợt KLTN';
   const activeStatusLabel = filters.status
     ? filters.status === 'Approved'
@@ -193,20 +207,30 @@ export function TopicReviewPage() {
   }
 
   function quickFilter(status: TopicStatus | '') {
-    applyFilters({ keyword: filters.keyword, batchId: filters.batchId, status });
+    applyFilters({ keyword: filters.keyword, batchId: effectiveBatchId, status });
   }
 
   function handleApply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    applyFilters({ ...draftFilters, keyword: draftFilters.keyword.trim() });
+    applyFilters({
+      ...draftFilters,
+      batchId: effectiveDraftBatchId,
+      keyword: draftFilters.keyword.trim(),
+    });
   }
 
   function handleBatchChange(batchId: string) {
+    setHasExplicitBatchChoice(true);
     applyFilters({
       ...draftFilters,
       keyword: draftFilters.keyword.trim(),
       batchId,
     });
+  }
+
+  function handleResetFilters() {
+    setHasExplicitBatchChoice(true);
+    applyFilters({ ...EMPTY_FILTERS });
   }
 
   function executeAction(action: PageReviewAction) {
@@ -375,7 +399,7 @@ export function TopicReviewPage() {
               <Select<string>
                 aria-label="Lọc theo đợt KLTN"
                 triggerClassName="h-9 rounded-lg border-line-input bg-surface-card shadow-2xs"
-                value={draftFilters.batchId}
+                value={effectiveDraftBatchId}
                 disabled={!batches.length}
                 options={[
                   { value: '', label: 'Tất cả đợt KLTN' },
@@ -392,7 +416,7 @@ export function TopicReviewPage() {
                   variant="outline"
                   size="sm"
                   leftIcon={<FunnelX className="size-3.5" />}
-                  onClick={() => applyFilters({ ...EMPTY_FILTERS })}
+                  onClick={handleResetFilters}
                   className="h-9 rounded-lg border-line-input bg-surface-card px-3.5"
                 >
                   Bỏ lọc
@@ -429,9 +453,9 @@ export function TopicReviewPage() {
           </div>
         </div>
 
-        {filters.batchId && (
+        {effectiveBatchId && (
           <div className="border-b border-line-subtle bg-surface-card px-5 py-3">
-            <TopicProposalSchedule batchId={filters.batchId} />
+            <TopicProposalSchedule batchId={effectiveBatchId} />
           </div>
         )}
 

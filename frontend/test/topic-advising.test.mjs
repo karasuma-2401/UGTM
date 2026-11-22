@@ -354,7 +354,7 @@ test('guidance page consumes server totals and exposes no duplicated tab list or
   const signal = new AbortController().signal;
   await query.queryFn({ signal });
   assert.deepEqual(ui.calls[0], [
-    { ...base, pageNumber: 1, pageSize: 10, sortBy: 'createdAt', sortOrder: 'desc' },
+    { ...base, batchId: 'batch', pageNumber: 1, pageSize: 10, sortBy: 'createdAt', sortOrder: 'desc' },
     signal,
   ]);
   assert.equal(component(tree, 'TablePagination').props.totalCount, 42);
@@ -422,6 +422,7 @@ test('history and pending quick filters select disjoint scopes with truthful lab
   ui.render();
   assert.deepEqual(ui.queries()[0].queryKey[2], {
     ...base,
+    batchId: 'batch',
     scope: 'active',
     confirmation: 'pending',
   });

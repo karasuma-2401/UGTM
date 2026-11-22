@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
-import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
+import { getPreferredDefaultBatch } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { notify } from '@/shared/notifications';
 import { academicResultsApi, extractApiError } from '../services/academicResultsApi';
@@ -53,9 +53,7 @@ export function useAcademicResults() {
     if (selectedBatchId && batches.some((batch) => batch.id === selectedBatchId)) {
       return selectedBatchId;
     }
-    const current = getCurrentBatches(batches)[0];
-    const open = batches.find((batch) => batch.status === 'Open');
-    return (current ?? open ?? batches[0])?.id ?? '';
+    return getPreferredDefaultBatch(batches)?.id ?? '';
   }, [batches, selectedBatchId]);
 
   const selectedBatch = useMemo(

@@ -30,7 +30,7 @@ import { TableFloatingBar } from '@/components/ui/table-floating-bar';
 import {
   canSelectAcademicBatch,
   getActiveOpenBatch,
-  getCurrentBatches,
+  getPreferredDefaultBatch,
 } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
@@ -193,8 +193,7 @@ export function LecturerGradingPage() {
     if (!canSelectBatch) {
       return getActiveOpenBatch(batches);
     }
-    const current = getCurrentBatches(batches);
-    return current[0] ?? batches[0] ?? null;
+    return getPreferredDefaultBatch(batches);
   }, [batches, canSelectBatch]);
   const activeBatch = useMemo(() => {
     if (!canSelectBatch) {

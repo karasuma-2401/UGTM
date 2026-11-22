@@ -922,6 +922,9 @@ function pageFixture(roles = ['Faculty'], queryState = {}) {
         hasPermission: () => false,
       }),
     },
+    '@/shared/academic-periods/currentBatches': loadModule(
+      'shared/academic-periods/currentBatches.ts',
+    ),
     '@/shared/academic-periods/useAcademicBatches': {
       useAcademicBatches: () => ({ data: [{ id: 'batch-1', batchName: 'Đợt 1' }] }),
     },

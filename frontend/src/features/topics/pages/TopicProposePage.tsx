@@ -124,12 +124,18 @@ export function TopicProposePage({
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [draftFilters, setDraftFilters] = useState<TopicFilters>(initialFilters);
   const [filters, setFilters] = useState<TopicFilters>(initialFilters);
+  const [hasExplicitBatchChoice, setHasExplicitBatchChoice] = useState<boolean>(
+    Boolean(initialFilters.batchId),
+  );
   const initialFiltersKey = `${initialFilters.batchId}|${initialFilters.status}|${initialFilters.keyword}`;
   const [syncedInitialFiltersKey, setSyncedInitialFiltersKey] = useState(initialFiltersKey);
   if (initialFiltersKey !== syncedInitialFiltersKey) {
     setSyncedInitialFiltersKey(initialFiltersKey);
     setFilters(initialFilters);
     setDraftFilters(initialFilters);
+    if (initialFilters.batchId) {
+      setHasExplicitBatchChoice(true);
+    }
     setPageNumber(1);
     setSelectedRowId(null);
   }
@@ -277,9 +283,6 @@ export function TopicProposePage({
     };
   }, [isFormOpen, editable, recovery, studentCodesKey, knownStudentCodesKey]);
 
-  const hasFilters = [filters, draftFilters].some((value) =>
-    Boolean(value.keyword || (canSelectBatch && value.batchId) || value.status),
-  );
   const checklist = [
     { label: 'Đã chọn đợt khóa luận', complete: Boolean(values.batchId) },
     {
@@ -309,11 +312,27 @@ export function TopicProposePage({
   const batchesQuery = useAcademicBatches();
   const batches = batchesQuery.data ?? [];
   const openBatch = getActiveOpenBatch(batches);
-  const effectiveBatchId = canSelectBatch ? filters.batchId : (openBatch?.id ?? '');
+  const effectiveBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? filters.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
+  const effectiveDraftBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? draftFilters.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
   const effectiveFilters: TopicFilters = {
     ...filters,
     batchId: effectiveBatchId,
   };
+  const hasFilters = Boolean(
+    filters.keyword ||
+      draftFilters.keyword ||
+      filters.status ||
+      draftFilters.status ||
+      (canSelectBatch && (effectiveBatchId || effectiveDraftBatchId)),
+  );
   const hasActiveBatchScope = canSelectBatch || Boolean(openBatch?.id);
   const topicsQuery = useQuery({
     queryKey: [
@@ -587,7 +606,7 @@ export function TopicProposePage({
     else saveMutation.mutate(action.proposal);
   }
   function quickFilter(status: TopicStatus | '') {
-    const next = { keyword: '', batchId: filters.batchId, status };
+    const next = { keyword: '', batchId: effectiveBatchId, status };
     setFilters(next);
     setDraftFilters(next);
     setPageNumber(1);
@@ -604,9 +623,10 @@ export function TopicProposePage({
   }
   function handleApplyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    applyFiltersNow(draftFilters);
+    applyFiltersNow({ ...draftFilters, batchId: effectiveDraftBatchId });
   }
   function clearFilters() {
+    setHasExplicitBatchChoice(true);
     setDraftFilters({ ...INITIAL_FILTERS });
     setFilters({ ...INITIAL_FILTERS });
     setPageNumber(1);
@@ -614,7 +634,10 @@ export function TopicProposePage({
     onFiltersChange?.({ ...INITIAL_FILTERS });
   }
   function removeFilter(key: keyof TopicFilters) {
-    const next = { ...filters, [key]: '' };
+    if (key === 'batchId') {
+      setHasExplicitBatchChoice(true);
+    }
+    const next = { ...effectiveFilters, [key]: '' };
     setDraftFilters(next);
     setFilters(next);
     setPageNumber(1);
@@ -1446,12 +1469,15 @@ export function TopicProposePage({
             <Select<string>
               aria-label="Lọc theo đợt KLTN"
               placeholder="Tất cả đợt khóa luận"
-              value={draftFilters.batchId}
+              value={effectiveDraftBatchId}
               options={[
                 { value: '', label: 'Tất cả đợt khóa luận' },
                 ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
               ]}
-              onChange={(batchId) => applyFiltersNow({ ...draftFilters, batchId })}
+              onChange={(batchId) => {
+                setHasExplicitBatchChoice(true);
+                applyFiltersNow({ ...draftFilters, batchId });
+              }}
               searchable
               disabled={!canReadBatches || batchesQuery.isPending || batchesQuery.isError}
             />
@@ -1536,7 +1562,7 @@ export function TopicProposePage({
               Danh sách đề tài đã đề xuất
             </CardTitle>
             <p className="text-xs text-ink-muted">
-              {canSelectBatch && filters.batchId
+              {canSelectBatch && effectiveBatchId
                 ? 'Đang lọc theo đợt khóa luận đã chọn'
                 : 'Theo dõi tiến trình thẩm định và kết quả duyệt đề tài'}
             </p>
@@ -1560,7 +1586,7 @@ export function TopicProposePage({
                   },
                 ]
               : []),
-            ...(canSelectBatch && filters.batchId
+            ...(canSelectBatch && effectiveBatchId
               ? [
                   {
                     key: 'batchId',

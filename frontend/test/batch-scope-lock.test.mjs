@@ -259,16 +259,30 @@ test('RenameReviewPage hides batch dropdown and scopes requests to the open batc
   assert.deepEqual(lecturerNoOpenTable.props.data, []);
 
   const facultyTree = renderRename(['Faculty']);
-  assert.equal(
-    walk(facultyTree, (n) => n.type === 'Select' && n.props['aria-label'] === 'Lọc theo đợt KLTN')
-      .length,
-    1,
-  );
+  const facultyBatchSelect = walk(
+    facultyTree,
+    (n) => n.type === 'Select' && n.props['aria-label'] === 'Lọc theo đợt KLTN',
+  )[0];
+  assert.ok(facultyBatchSelect);
+  // Management roles default to the currently Open batch when one exists.
+  assert.equal(facultyBatchSelect.props.value, openBatch.id);
   const facultyTable = walk(facultyTree, (n) => n.type === DataTable)[0];
   assert.deepEqual(
     facultyTable.props.data.map((r) => r.id),
-    ['req-open', 'req-closed'],
+    ['req-open'],
   );
+});
+
+test('getPreferredDefaultBatch prefers Open batch over Draft/Closed and falls back to first batch when none is Open', () => {
+  assert.equal(
+    currentBatches.getPreferredDefaultBatch([draftBatch, closedBatch, openBatch])?.id,
+    openBatch.id,
+  );
+  assert.equal(
+    currentBatches.getPreferredDefaultBatch([draftBatch, closedBatch])?.id,
+    draftBatch.id,
+  );
+  assert.equal(currentBatches.getPreferredDefaultBatch([]), null);
 });
 
 test('AdvisorMilestoneSetupPage hides batch selector for non-management roles and shows it when canSelectBatch is true', () => {

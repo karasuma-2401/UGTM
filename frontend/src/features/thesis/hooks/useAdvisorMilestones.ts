@@ -5,6 +5,7 @@ import type { AcademicBatch } from '@/shared/academic-periods/types';
 import {
   canSelectAcademicBatch,
   getActiveOpenBatch,
+  getPreferredDefaultBatch,
 } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
@@ -44,7 +45,7 @@ const LOCKED_FINAL_GROUP_STATUSES = new Set([
 ]);
 
 export function resolveDefaultBatchId(batches: readonly AcademicBatch[]): string {
-  return batches.find((batch) => batch.status === 'Open')?.id ?? batches[0]?.id ?? '';
+  return getPreferredDefaultBatch(batches)?.id ?? '';
 }
 
 export function computeMilestoneEligibility(

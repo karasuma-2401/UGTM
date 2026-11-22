@@ -95,6 +95,9 @@ export function TopicAdvisingPage({
   const canSelectBatch = canSelectAcademicBatch(hasRole);
   const [filters, setFilters] = useState(initialFilters);
   const [draft, setDraft] = useState(initialFilters);
+  const [hasExplicitBatchChoice, setHasExplicitBatchChoice] = useState<boolean>(
+    Boolean(initialFilters.batchId),
+  );
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortBy, setSortBy] = useState<'createdAt' | 'title' | 'studentCount'>('createdAt');
@@ -107,6 +110,9 @@ export function TopicAdvisingPage({
     setSyncedInitialFiltersKey(initialFiltersKey);
     setFilters(initialFilters);
     setDraft(initialFilters);
+    if (initialFilters.batchId) {
+      setHasExplicitBatchChoice(true);
+    }
     setPageNumber(1);
     setSelectedRowId(null);
   }
@@ -114,7 +120,16 @@ export function TopicAdvisingPage({
   const canReadBatches = hasPermission('academic.batches.read');
   const batches = batchesQuery.data ?? [];
   const openBatch = getActiveOpenBatch(batches);
-  const effectiveBatchId = canSelectBatch ? filters.batchId : (openBatch?.id ?? '');
+  const effectiveBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? filters.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
+  const effectiveDraftBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? draft.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
   const effectiveFilters: AdvisingFilters = {
     ...filters,
     batchId: effectiveBatchId,
@@ -150,9 +165,10 @@ export function TopicAdvisingPage({
   }
   function submit(event: FormEvent) {
     event.preventDefault();
-    apply(draft);
+    apply({ ...draft, batchId: effectiveDraftBatchId });
   }
   function clear() {
+    setHasExplicitBatchChoice(true);
     apply({ ...DEFAULT_ADVISING_FILTERS });
   }
   function sort(field: typeof sortBy) {
@@ -168,7 +184,7 @@ export function TopicAdvisingPage({
   }
   const hasFilters = Boolean(
     filters.keyword ||
-    (canSelectBatch && filters.batchId) ||
+    (canSelectBatch && effectiveBatchId) ||
     filters.status ||
     filters.confirmation ||
     filters.scope !== 'active',
@@ -285,12 +301,15 @@ export function TopicAdvisingPage({
               <Select<string>
                 aria-label="Đợt khóa luận"
                 placeholder="Tất cả đợt khóa luận"
-                value={draft.batchId}
+                value={effectiveDraftBatchId}
                 options={[
                   { value: '', label: 'Tất cả đợt khóa luận' },
                   ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
                 ]}
-                onChange={(batchId) => apply({ ...draft, batchId })}
+                onChange={(batchId) => {
+                  setHasExplicitBatchChoice(true);
+                  apply({ ...draft, batchId });
+                }}
                 searchable
                 disabled={!canReadBatches || batchesQuery.isPending || batchesQuery.isError}
               />
@@ -389,13 +408,16 @@ export function TopicAdvisingPage({
                   },
                 ]
               : []),
-            ...(canSelectBatch && filters.batchId
+            ...(canSelectBatch && effectiveBatchId
               ? [
                   {
                     key: 'batch',
                     label: 'Đợt',
                     value: batchName,
-                    onRemove: () => apply({ ...filters, batchId: '' }),
+                    onRemove: () => {
+                      setHasExplicitBatchChoice(true);
+                      apply({ ...filters, batchId: '' });
+                    },
                   },
                 ]
               : []),

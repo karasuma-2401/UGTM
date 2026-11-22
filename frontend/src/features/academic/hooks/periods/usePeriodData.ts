@@ -4,6 +4,7 @@ import type {
   KltnBatchDetailDto,
   ReviewGateConfigurationDto,
 } from '../../types/period.types';
+import { getPreferredDefaultBatch } from '@/shared/academic-periods/currentBatches';
 import { periodApi, getPeriodErrorMessage } from '../../services/periodApi';
 
 export function usePeriodData(onError: (msg: string) => void) {
@@ -50,9 +51,7 @@ export function usePeriodData(onError: (msg: string) => void) {
 
       const nextSelectedId = selectId
         ? selectId
-        : result.items.length > 0
-          ? result.items[0].id
-          : 'new';
+        : (getPreferredDefaultBatch(result.items)?.id ?? 'new');
       setSelectedBatchId(nextSelectedId);
       return result.items;
     } catch (err) {

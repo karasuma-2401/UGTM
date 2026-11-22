@@ -31,7 +31,7 @@ import { TableFloatingBar } from '@/components/ui/table-floating-bar';
 import {
   canSelectAcademicBatch,
   getActiveOpenBatch,
-  getCurrentBatches,
+  getPreferredDefaultBatch,
 } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
@@ -154,8 +154,7 @@ export function CouncilGradingPage() {
     if (!canSelectBatch) {
       return getActiveOpenBatch(batches);
     }
-    const current = getCurrentBatches(batches);
-    return current[0] ?? batches[0] ?? null;
+    return getPreferredDefaultBatch(batches);
   }, [batchesQuery.data, canSelectBatch]);
 
   const sections = useMemo(() => buildRubricSections(apiCriteria), [apiCriteria]);
