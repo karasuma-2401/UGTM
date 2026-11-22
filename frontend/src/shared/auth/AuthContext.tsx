@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useEffect, useRef, useState } from '
 import { queryClient } from '@/app/queryClient';
 import { authEvents, clearCsrfToken, tokenStorage } from '../api';
 import type { UserProfile } from '@/features/auth/types/auth.types';
-import { logoutApi } from '@/features/auth/services/authApi';
+import { getCurrentUserApi, logoutApi } from '@/features/auth/services/authApi';
 import { allowSessionRefresh, isInvalidSession, stopSessionRefresh } from '../api/sessionRefresh';
 import { restoreSession } from './restoreSession';
 import { notify } from '../notifications/notify';
@@ -23,6 +23,9 @@ export interface AuthContextType {
     optionalUser?: UserProfile,
   ) => void;
   logout: () => Promise<void>;
+  completeServerLogout: () => Promise<void>;
+  updateUserProfile: (profile: UserProfile) => void;
+  refreshProfile: () => Promise<UserProfile>;
   hasRole: (roles: string | string[]) => boolean;
   hasPermission: (permissions: string | string[]) => boolean;
 }
@@ -110,6 +113,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     [],
   );
 
+  const updateUserProfile = useCallback((profile: UserProfile) => {
+    localStorage.setItem(USER_PROFILE_KEY, JSON.stringify(profile));
+    setUser(profile);
+  }, []);
+
+  const refreshProfile = useCallback(async (): Promise<UserProfile> => {
+    const response = await getCurrentUserApi();
+    if (!response.success || !response.data) {
+      throw new Error(response.error?.message || 'Không thể tải thông tin hồ sơ.');
+    }
+    updateUserProfile(response.data);
+    return response.data;
+  }, [updateUserProfile]);
+
+  const completeServerLogout = useCallback(async (): Promise<void> => {
+    generation.current += 1;
+    await stopSessionRefresh();
+    clearLocalSession();
+    setIsLoading(false);
+  }, [clearLocalSession]);
+
   const hasRole = useCallback(
     (roles: string | string[]): boolean => {
       if (!user || !user.roles || user.roles.length === 0) return false;
@@ -179,6 +203,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     retrySession,
     login,
     logout,
+    completeServerLogout,
+    updateUserProfile,
+    refreshProfile,
     hasRole,
     hasPermission,
   };

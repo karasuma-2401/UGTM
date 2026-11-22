@@ -4,12 +4,18 @@ import { API_BASE_URL } from '@/shared/api/config';
 import { clearCsrfToken, CSRF_HEADER_NAME, getCsrfToken } from '@/shared/api/csrf';
 import { httpClient } from '@/shared/api/httpClient';
 import { refreshSession } from '@/shared/api/sessionRefresh';
-import type { ApiResponse } from '@/shared/api/types';
+import type { ApiResponse, PagedResult } from '@/shared/api/types';
+import type { AuditLogItem } from '@/features/audit/types/auditLog.types';
 
 import type {
+  ActivityCategory,
   ChangePasswordRequest,
   LoginData,
   LoginRequest,
+  RevokeSessionsResult,
+  SessionItem,
+  UpdateMyProfileRequest,
+  UserActivitySummary,
   UserProfile,
 } from '../types/auth.types';
 
@@ -65,6 +71,68 @@ export async function getCurrentUserApi(): Promise<ApiResponse<UserProfile>> {
   const response = await httpClient.get<ApiResponse<UserProfile>>(`${AUTH_BASE_PATH}/me`, {
     timeout: 15_000,
   });
+  return response.data;
+}
+
+export async function updateMyProfileApi(
+  payload: UpdateMyProfileRequest,
+): Promise<ApiResponse<UserProfile>> {
+  const response = await httpClient.patch<ApiResponse<UserProfile>>(
+    `${AUTH_BASE_PATH}/me`,
+    payload,
+  );
+  return response.data;
+}
+
+export async function getMySessionsApi(): Promise<ApiResponse<SessionItem[]>> {
+  const response = await httpClient.get<ApiResponse<SessionItem[]>>(`${AUTH_BASE_PATH}/sessions`);
+  return response.data;
+}
+
+export async function revokeMySessionApi(
+  sessionId: string,
+): Promise<ApiResponse<RevokeSessionsResult>> {
+  const response = await httpClient.delete<ApiResponse<RevokeSessionsResult>>(
+    `${AUTH_BASE_PATH}/sessions/${sessionId}`,
+  );
+  return response.data;
+}
+
+export async function revokeAllMySessionsApi(): Promise<ApiResponse<RevokeSessionsResult>> {
+  const response = await httpClient.delete<ApiResponse<RevokeSessionsResult>>(
+    `${AUTH_BASE_PATH}/sessions`,
+  );
+  return response.data;
+}
+
+export async function getMyActivityApi(options?: {
+  pageNumber?: number;
+  pageSize?: number;
+  category?: ActivityCategory;
+  date?: string | null;
+}): Promise<ApiResponse<PagedResult<AuditLogItem>>> {
+  const { pageNumber = 1, pageSize = 15, category = 'all', date = null } = options ?? {};
+  const response = await httpClient.get<ApiResponse<PagedResult<AuditLogItem>>>(
+    `${AUTH_BASE_PATH}/activity`,
+    {
+      params: {
+        pageNumber,
+        pageSize,
+        ...(category !== 'all' ? { category } : {}),
+        ...(date ? { date } : {}),
+      },
+    },
+  );
+  return response.data;
+}
+
+export async function getMyActivitySummaryApi(
+  days = 112,
+): Promise<ApiResponse<UserActivitySummary>> {
+  const response = await httpClient.get<ApiResponse<UserActivitySummary>>(
+    `${AUTH_BASE_PATH}/activity/summary`,
+    { params: { days } },
+  );
   return response.data;
 }
 

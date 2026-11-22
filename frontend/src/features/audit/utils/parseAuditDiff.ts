@@ -3,6 +3,7 @@ import type { AuditLogItem, AuditLogDiffData } from '../types/auditLog.types';
 export const ACTION_LABELS: Record<string, string> = {
   'Identity.User.Created': 'Tạo tài khoản',
   'Identity.User.Updated': 'Cập nhật tài khoản',
+  'Identity.Profile.Updated': 'Cập nhật hồ sơ cá nhân',
   'Identity.User.StatusChanged': 'Đổi trạng thái tài khoản',
   'Identity.User.RolesChanged': 'Thay đổi vai trò người dùng',
   'Identity.Users.Imported': 'Nhập danh sách người dùng',

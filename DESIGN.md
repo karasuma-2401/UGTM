@@ -200,6 +200,19 @@ Khi thiết kế màn hình mới hoặc nâng cấp giao diện hiện có tron
     - *Đã khóa / Đã nghiệm thu (`AdvisorConfirmed`, `ArchiveConfirmed`)*: Chuyển sang chế độ hồ sơ đã lưu chỉ đọc với `InlineAlert` xác nhận, cặp thẻ tệp dùng `ThesisFileTypeIcon` + `PdfPreviewDialog` (`Xem trước`) + `Tải xuống`, và bản tóm tắt + thẻ từ khóa song ngữ có thu gọn/mở rộng.
   - **Cột phải (`ArchivalDossierSidebar`)**: Dock ghim cố định `340px` chia `divide-y divide-line-subtle` gom kiểm tra điều kiện (`x/4`), hạn nộp GĐ 7, góp ý sau bảo vệ, GVHD + `AvatarGroup` thành viên nhóm, và nút mở `ArchivalHistoryDialog` (đã kích hoạt `onPreviewPdf` đồng bộ với GVHD/Khoa).
 
+## Hồ sơ cá nhân (`/profile`)
+
+- `ProfilePage` áp dụng bố cục **State-Driven Identity Hub + Sticky 340px Security Dock** (`lg:grid-cols-[minmax(0,1fr)_340px]`) đồng bộ hoàn toàn với `StudentArchivalPage` và `StudentResultsPage`:
+  - `PageHeader` dùng `compact` + `accent` (không gắn icon trang trí), hiển thị họ tên, email, mã định danh (`tabular-nums`), `StatusBadge` trạng thái tài khoản, huy hiệu `Cần đổi mật khẩu` (khi `mustChangePassword = true`) và `NavigationTabs` (`SelectionIndicator` trượt 360ms, chỉ dùng chữ không gắn icon tab) chuyển giữa 3 tab: `Hồ sơ và Quyền hạn`, `Mật khẩu và Bảo mật`, `Phiên và Nhật ký`.
+  - **Tab `Hồ sơ và Quyền hạn`**: Gộp trong một `Card divide-y divide-line-subtle` gồm:
+    - *Thông tin định danh và Liên hệ*: Giữ cố định họ tên, email, MSSV/MCB (kèm nút sao chép 1 chạm phản hồi 2 giây) và cho phép tự cập nhật **Số điện thoại liên hệ** qua `PATCH /api/identity/auth/me` (thanh action xuất hiện khi có thay đổi + bảo vệ dữ liệu chưa lưu bằng `useBlocker` và `beforeunload`).
+    - *Dải 4 mốc hoạt động tài khoản hairline*: `Ngày tạo tài khoản` → `Kích hoạt email` → `Đổi mật khẩu cuối` → `Đăng nhập gần nhất` (`divide-x`).
+    - *Phân hệ và Quyền truy cập (Chỉ đọc)*: Ô lọc tìm kiếm nhanh và lưới 2 cột hiển thị quyền thực tế của tài khoản gom nhóm theo phân hệ kèm `ProgressBar` tỷ trọng.
+  - **Tab `Mật khẩu và Bảo mật`**: Cảnh báo `InlineAlert` ưu tiên khi `mustChangePassword = true`, tái sử dụng `PasswordField`, `PasswordFields` và `PasswordStrength` (`showRules`), ghi chú gọn việc thu hồi toàn bộ phiên và nút `Đổi mật khẩu`.
+  - **Tab `Phiên và Nhật ký`**: Gộp danh sách phiên đăng nhập (tự phân tích User-Agent thành icon thiết bị + trình duyệt/OS, nhãn `Phiên hiện tại` có chấm emerald pulse, 2 thanh `ProgressBar` hạn nhàn rỗi 7 ngày / hạn tối đa 30 ngày, nút làm mới/thu hồi/đăng xuất tất cả căn phải qua `ConfirmDialog`) và khu vực **Nhật ký hoạt động bảo mật** gồm biểu đồ mật độ 36 tuần (`ActivityContributionGrid` co giãn đầy chiều rộng thẻ — bấm vào ô ngày để lọc, có viền cảnh báo cho ngày có đăng nhập lỗi/từ chối), cảnh báo 7 ngày gần nhất, chip lọc nhóm sự kiện (`Tất cả`, `Đăng nhập`, `Mật khẩu`, `Phiên`, `Hồ sơ`), dòng thời gian gom nhóm theo tháng và hành động kiểu GitHub (`ActivityTimelineFeed`, có thể mở rộng xem từng mốc giờ/kết quả) và nút `Xem thêm sự kiện` từ `GET /api/identity/auth/activity` + `/activity/summary`.
+  - **Cột phải (`ProfileSecuritySidebar`)**: Dock ghim cố định `340px` chia `divide-y divide-line-subtle` gồm **Sức khỏe bảo mật** tính từ trạng thái thật (`X/4 tiêu chí`), **Vai trò được cấp** (`SYSTEM_ROLES`) và **Ngữ cảnh khóa luận theo vai trò** (`ProfileThesisContextSection` hiển thị đề tài/nhóm cho Sinh viên hoặc số đề tài/nhóm hướng dẫn cho Giảng viên).
+- Truy cập từ vùng tài khoản ở đáy Sidebar (`AppLayout.tsx`, tách riêng khỏi nút Đăng xuất) hoặc phím tắt `Ctrl+K` (*Hồ sơ cá nhân*); tự động hiển thị `InlineAlert` nhắc đổi mật khẩu ở đầu `<main>` trên các trang khác khi `mustChangePassword = true`.
+
 ## Kết quả khóa luận (`/councils/results`)
 
 - `StudentResultsPage` áp dụng bố cục **Official Score Transcript + Adaptive Gate Tracker** (`lg:grid-cols-[minmax(0,1fr)_340px]`):

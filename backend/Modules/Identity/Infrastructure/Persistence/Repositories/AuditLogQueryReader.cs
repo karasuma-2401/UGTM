@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.Identity.Application.AuditLogs.Dtos;
 using UGTM.Modules.Identity.Application.AuditLogs.GetAuditLogs;
+using UGTM.Modules.Identity.Application.Profiles.GetMyActivity;
 using UGTM.Modules.Identity.Domain.Entities;
 
 namespace UGTM.Modules.Identity.Infrastructure.Persistence.Repositories;
@@ -16,6 +17,7 @@ public sealed class AuditLogQueryReader(IdentityDbContext db) : IAuditLogQueryRe
         if (query.ActorUserId.HasValue) source = source.Where(x => x.ActorUserId == query.ActorUserId);
         if (query.ActorSessionId.HasValue) source = source.Where(x => x.ActorSessionId == query.ActorSessionId);
         if (query.Action is not null) source = source.Where(x => x.Action == query.Action);
+        if (query.Actions is { Count: > 0 }) source = source.Where(x => query.Actions.Contains(x.Action));
         if (query.TargetType is not null) source = source.Where(x => x.TargetType == query.TargetType);
         if (query.TargetId is not null) source = source.Where(x => x.TargetId == query.TargetId);
         if (query.RequestId is not null) source = source.Where(x => x.RequestId == query.RequestId);
@@ -85,6 +87,42 @@ public sealed class AuditLogQueryReader(IdentityDbContext db) : IAuditLogQueryRe
         var rows = await Project(ApplySorting(source, query)
             .Skip((int)offset).Take(query.PageSize)).ToListAsync(cancellationToken);
         return new PagedResult<AuditLogDto>(rows.Select(ToDto).ToList(), total, query.PageNumber, query.PageSize);
+    }
+
+    public async Task<UserActivitySummaryDto> GetUserActivitySummaryAsync(
+        Guid userId,
+        DateTime fromUtc,
+        TimeSpan utcOffset,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        var entries = await db.AuditLogs
+            .AsNoTracking()
+            .Where(x => x.ActorUserId == userId && x.Timestamp >= fromUtc)
+            .Select(x => new { x.Timestamp, x.Outcome })
+            .ToListAsync(cancellationToken);
+
+        var sevenDaysAgoUtc = utcNow.AddDays(-7);
+        var recentAlerts = entries.Count(x =>
+            x.Timestamp >= sevenDaysAgoUtc && (x.Outcome == "Denied" || x.Outcome == "Failed"));
+
+        var days = entries
+            .GroupBy(x => DateOnly.FromDateTime(x.Timestamp.Add(utcOffset)))
+            .OrderBy(g => g.Key)
+            .Select(g =>
+            {
+                var totalCount = g.Count();
+                var successCount = g.Count(x => x.Outcome is "Success" or "Succeeded");
+                var alertCount = g.Count(x => x.Outcome is "Denied" or "Failed");
+                return new UserActivityDayDto(
+                    g.Key.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                    totalCount,
+                    successCount,
+                    alertCount);
+            })
+            .ToList();
+
+        return new UserActivitySummaryDto(days, entries.Count, days.Count, recentAlerts);
     }
 
     public async Task<AuditLogStatistics> GetStatisticsAsync(GetAuditLogsQuery query, CancellationToken cancellationToken)

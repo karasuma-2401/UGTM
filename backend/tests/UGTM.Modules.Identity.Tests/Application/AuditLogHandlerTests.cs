@@ -3,6 +3,7 @@ using UGTM.Modules.Identity.Application.AuditLogs;
 using UGTM.Modules.Identity.Application.AuditLogs.Dtos;
 using UGTM.Modules.Identity.Application.AuditLogs.GetAuditLogs;
 using UGTM.Modules.Identity.Application.Common;
+using UGTM.Modules.Identity.Application.Profiles.GetMyActivity;
 using UGTM.Modules.Identity.Contracts.Auditing;
 
 namespace UGTM.Modules.Identity.Tests.Application;
@@ -161,6 +162,7 @@ public sealed class AuditLogHandlerTests
         public GetAuditLogsQuery? Query { get; private set; }
 
         public Task<AuditLogStatistics> GetStatisticsAsync(GetAuditLogsQuery query, CancellationToken cancellationToken) => throw new NotImplementedException();
+        public Task<UserActivitySummaryDto> GetUserActivitySummaryAsync(Guid userId, DateTime fromUtc, TimeSpan utcOffset, DateTime utcNow, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<AuditLogDto?> GetByIdAsync(long id, CancellationToken cancellationToken) => throw new NotImplementedException();
         public Task<List<string>> GetActionsAsync(CancellationToken cancellationToken) => throw new NotImplementedException();
         public IAsyncEnumerable<AuditLogDto> ExportAsync(GetAuditLogsQuery query, CancellationToken cancellationToken) => throw new NotImplementedException();

@@ -72,6 +72,9 @@ Cookie CSRF là `HttpOnly`; client lấy request token từ body của `/csrf`, 
 | POST | `/activation/complete` | — | — | 5 yêu cầu/10 phút/IP |
 | POST | `/activation/resend` | — | — | 5 yêu cầu/10 phút/IP |
 | GET | `/me` | Có | — | — |
+| PATCH | `/me` | Có | — | — |
+| GET | `/activity` | Có | — | — |
+| GET | `/activity/summary` | Có | — | — |
 | GET | `/sessions` | Có | — | — |
 | DELETE | `/sessions/{sessionId}` | Có | — | — |
 | DELETE | `/sessions` | Có | — | — |
@@ -111,6 +114,12 @@ export interface ApiResponse<T> {
   error: ApiError | null;
 }
 
+export interface UserPermissionDetail {
+  permissionCode: string;
+  permissionName: string | null;
+  module: string | null;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -118,6 +127,14 @@ export interface UserProfile {
   userCode: string | null;
   roles: string[];
   permissions: string[];
+  mustChangePassword?: boolean;
+  phoneNumber?: string | null;
+  status?: string;
+  createdAt?: string | null;
+  activatedAt?: string | null;
+  lastLoginAt?: string | null;
+  passwordChangedAt?: string | null;
+  permissionDetails?: UserPermissionDetail[] | null;
 }
 
 export interface AuthenticatedSession {
@@ -277,7 +294,31 @@ Các lỗi riêng của luồng kích hoạt:
 
 Header: `Authorization: Bearer <access-token>`
 
-**200 OK:** `ApiResponse<UserProfile>` với cùng cấu trúc `user` của login (bao gồm `mustChangePassword`). Dữ liệu roles, permissions và `mustChangePassword` được đọc lại từ database. Backend cũng kiểm tra phiên, trạng thái tài khoản và security stamp trước khi chạy endpoint. Endpoint này luôn được phép gọi kể cả khi `mustChangePassword = true`.
+**200 OK:** `ApiResponse<UserProfile>` với thông tin hồ sơ hiện tại (bao gồm `mustChangePassword`, `phoneNumber`, `status`, `createdAt`, `activatedAt`, `lastLoginAt`, `passwordChangedAt` và `permissionDetails`). Dữ liệu roles, permissions và `mustChangePassword` được đọc lại từ database. Backend cũng kiểm tra phiên, trạng thái tài khoản và security stamp trước khi chạy endpoint. Endpoint này luôn được phép gọi kể cả khi `mustChangePassword = true`.
+
+### `PATCH /me`
+
+Header: `Authorization: Bearer <access-token>`
+
+```json
+{
+  "phoneNumber": "0901234567"
+}
+```
+
+Cho phép người dùng tự cập nhật `phoneNumber` (định dạng 10 chữ số Việt Nam hoặc `null`/rỗng để xóa). Họ tên, email và mã định danh do nhà trường quản lý nên không thay đổi qua endpoint này. Trả `200 OK` kèm `ApiResponse<UserProfile>` mới nhất, hoặc `400 Identity.InvalidPhoneNumber` nếu số điện thoại sai định dạng.
+
+### `GET /activity`
+
+Header: `Authorization: Bearer <access-token>`. Query params: `pageNumber` (mặc định `1`), `pageSize` (tối đa `30`, mặc định `15`), `category` (`all` | `auth` | `password` | `session` | `profile`), `date` (`yyyy-MM-dd` theo UTC+7).
+
+**200 OK:** `ApiResponse<PagedResult<AuditLogDto>>` gồm các sự kiện bảo mật mới nhất của chính người dùng đang đăng nhập.
+
+### `GET /activity/summary`
+
+Header: `Authorization: Bearer <access-token>`. Query params: `days` (mặc định `112`, từ `7` đến `365`).
+
+**200 OK:** `ApiResponse<UserActivitySummaryDto>` gồm mật độ sự kiện theo từng ngày (`date`, `totalCount`, `successCount`, `alertCount`), `totalEvents`, `activeDaysCount` và `recentAlertCount7d`.
 
 > [!IMPORTANT]
 > **Cơ chế ép đổi mật khẩu (`mustChangePassword = true`):**

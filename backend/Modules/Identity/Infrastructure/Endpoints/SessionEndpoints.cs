@@ -1,13 +1,18 @@
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.Identity.Application.AuditLogs.Dtos;
 using UGTM.Modules.Identity.Application.Authentication.Logout;
 using UGTM.Modules.Identity.Application.Authentication.GetCurrentUser;
 using UGTM.Modules.Identity.Application.Authentication.RefreshSession;
 using UGTM.Modules.Identity.Application.Common;
+using UGTM.Modules.Identity.Application.Profiles;
+using UGTM.Modules.Identity.Application.Profiles.GetMyActivity;
+using UGTM.Modules.Identity.Application.Profiles.UpdateMyProfile;
 using UGTM.Modules.Identity.Application.Sessions;
 using UGTM.Modules.Identity.Infrastructure.Authentication;
 using UGTM.Modules.Identity.Infrastructure.Authorization;
@@ -16,6 +21,8 @@ namespace UGTM.Modules.Identity.Infrastructure.Endpoints;
 
 public static class SessionEndpoints
 {
+    public sealed record UpdateMyProfileRequest(string? PhoneNumber);
+
     public static RouteGroupBuilder MapSessionEndpoints(this RouteGroupBuilder group)
     {
         group.MapGet("/me", GetCurrentUserAsync)
@@ -25,15 +32,49 @@ public static class SessionEndpoints
                 Request không có body và không yêu cầu CSRF token.
 
                 Yêu cầu header `Authorization: Bearer <accessToken>` nhận từ endpoint login hoặc refresh.
-                Dữ liệu `roles`, `permissions` và `mustChangePassword` được đọc theo trạng thái hiện tại của hệ thống.
+                Dữ liệu `roles`, `permissions`, `permissionDetails` và `mustChangePassword` được đọc theo trạng thái hiện tại của hệ thống.
                 Endpoint này vẫn được phép gọi khi tài khoản đang ở trạng thái bắt buộc đổi mật khẩu (`mustChangePassword = true`).
-                - Thành công: 200 OK kèm `id`, `email`, `fullName`, `userCode`, `roles`, `permissions` và `mustChangePassword` trong `data`.
+                - Thành công: 200 OK kèm thông tin hồ sơ người dùng trong `data`.
                 - Thiếu token, token sai hoặc hết hạn: 401 Unauthorized.
                 - Phiên đã bị thu hồi do logout, đổi/reset mật khẩu, đổi quyền hoặc thay đổi trạng thái tài khoản: 401 Unauthorized,
                   kể cả khi thời hạn JWT chưa kết thúc.
                 """)
             .RequireAuthorization()
             .AllowWhenPasswordChangeRequired();
+        group.MapPatch("/me", UpdateMyProfileAsync)
+            .WithSummary("Cập nhật số điện thoại liên hệ của người dùng đang đăng nhập")
+            .WithDescription("""
+                Cho phép người dùng tự cập nhật số điện thoại liên hệ (`phoneNumber`).
+                Họ tên, email và mã định danh do nhà trường quản lý nên không thể thay đổi qua endpoint này.
+                - Thành công: 200 OK kèm `UserProfileDto` mới nhất.
+                - Số điện thoại sai định dạng: 400 Bad Request (`Identity.InvalidPhoneNumber`).
+                - Thiếu token hoặc phiên không hợp lệ: 401 Unauthorized.
+                """)
+            .RequireAuthorization()
+            .Produces<ApiResponse<UserProfileDto>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized);
+        group.MapGet("/activity", GetMyActivityAsync)
+            .WithSummary("Lấy nhật ký hoạt động bảo mật gần đây của người dùng hiện tại")
+            .WithDescription("""
+                Trả danh sách sự kiện bảo mật gần nhất phát sinh bởi tài khoản đang đăng nhập
+                (đăng nhập, đổi mật khẩu, thu hồi phiên, cập nhật liên hệ), sắp xếp mới nhất trước.
+                Hỗ trợ lọc theo nhóm hành động (`category`: `auth`, `password`, `session`, `profile`)
+                và theo ngày (`date`: `yyyy-MM-dd` theo giờ Việt Nam UTC+7).
+                """)
+            .RequireAuthorization()
+            .Produces<ApiResponse<PagedResult<AuditLogDto>>>(StatusCodes.Status200OK)
+            .Produces<ApiResponse<object>>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status401Unauthorized);
+        group.MapGet("/activity/summary", GetMyActivitySummaryAsync)
+            .WithSummary("Tổng hợp mật độ hoạt động bảo mật theo ngày (heatmap)")
+            .WithDescription("""
+                Trả dữ liệu tổng hợp số sự kiện theo từng ngày (UTC+7) trong khoảng `days` ngày gần nhất
+                (mặc định 112 ngày = 16 tuần) cùng số cảnh báo đăng nhập/từ chối trong 7 ngày gần nhất.
+                """)
+            .RequireAuthorization()
+            .Produces<ApiResponse<UserActivitySummaryDto>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized);
         group.MapGet("/sessions", GetMySessionsAsync)
             .WithSummary("Liệt kê các phiên đăng nhập đang hoạt động")
             .WithDescription("""
@@ -114,6 +155,29 @@ public static class SessionEndpoints
         GetCurrentUserHandler handler,
         CancellationToken cancellationToken)
         => (await handler.HandleAsync(cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> UpdateMyProfileAsync(
+        [FromBody] UpdateMyProfileRequest? request,
+        UpdateMyProfileHandler handler,
+        CancellationToken cancellationToken)
+        => (await handler.HandleAsync(
+            new UpdateMyProfileCommand(request?.PhoneNumber),
+            cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> GetMyActivityAsync(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 15,
+        [FromQuery] string? category = null,
+        [FromQuery] string? date = null,
+        GetMyActivityHandler handler = null!,
+        CancellationToken cancellationToken = default)
+        => (await handler.HandleAsync(pageNumber, pageSize, category, date, cancellationToken)).ToHttpResult();
+
+    private static async Task<IResult> GetMyActivitySummaryAsync(
+        [FromQuery] int days = 112,
+        GetMyActivitySummaryHandler handler = null!,
+        CancellationToken cancellationToken = default)
+        => (await handler.HandleAsync(days, cancellationToken)).ToHttpResult();
 
     private static async Task<IResult> GetMySessionsAsync(
         GetMySessionsHandler handler,
