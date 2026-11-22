@@ -36,6 +36,10 @@ public static class AcademicBatchErrors
         "AcademicBatch.ScoreConfigurationRequired",
         "Cần công bố một cấu hình điểm đang hoạt động trước khi mở đợt.");
 
+    public static readonly Error AnotherBatchAlreadyOpen = Error.Conflict(
+        "AcademicBatch.AnotherBatchAlreadyOpen",
+        "Hiện đã có một đợt khóa luận đang mở. Vui lòng đóng đợt hiện tại trước khi mở đợt mới.");
+
     public static readonly Error ConcurrencyConflict = Error.Conflict(
         "AcademicBatch.ConcurrencyConflict",
         "Đợt khóa luận đã được cập nhật bởi một yêu cầu khác. Vui lòng tải lại dữ liệu và thử lại.");

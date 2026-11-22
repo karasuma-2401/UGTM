@@ -118,16 +118,16 @@ public static class AcademicBatchEndpoints
             .RequireAuthorization(ManagePolicy)
             .WithSummary("Mở đợt KLTN để bắt đầu vận hành")
             .WithDescription("""
-                Chuyển batch từ `Draft` sang `Open`. Batch chỉ được mở khi có lịch đầy đủ đúng 7 stage
-                và đã có một score configuration `Active` thuộc chính batch đó. Thao tác thành công
-                được ghi audit outbox trong cùng transaction.
+                Chuyển batch từ `Draft` sang `Open`. Batch chỉ được mở khi có lịch đầy đủ đúng 7 stage,
+                đã có một score configuration `Active` thuộc chính batch đó và hiện chưa có đợt KLTN nào khác
+                đang ở trạng thái `Open`. Thao tác thành công được ghi audit outbox trong cùng transaction.
 
                 Yêu cầu Bearer token và permission `academic.batches.manage` (`Admin`/`AcademicAffairs`).
                 - 200 OK: Batch được mở thành công.
                 - 401 Unauthorized: Chưa xác thực.
                 - 403 Forbidden: Không có quyền quản lý đợt KLTN.
                 - 404 Not Found: Không tìm thấy batch.
-                - 409 Conflict: Batch không ở trạng thái Draft hoặc chưa có cấu hình điểm Active.
+                - 409 Conflict: Batch không ở trạng thái Draft, chưa có cấu hình điểm Active hoặc đã có một đợt khác đang Open.
                 """)
             .Produces<ApiResponse<KltnBatchDetailDto>>()
             .Produces<ApiResponse<object>>(StatusCodes.Status404NotFound)

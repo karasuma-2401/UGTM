@@ -8,6 +8,8 @@ public interface IKltnBatchRepository
     Task ReloadAsync(KltnBatch batch, CancellationToken cancellationToken = default);
     Task<bool> ExistsAsync(string academicYear, int semester, CancellationToken cancellationToken = default);
     Task<bool> ExistsAsync(string academicYear, int semester, Guid excludeBatchId, CancellationToken cancellationToken = default);
+    Task AcquireOpenBatchLockAsync(CancellationToken cancellationToken = default);
+    Task<bool> ExistsOpenBatchAsync(Guid excludeBatchId, CancellationToken cancellationToken = default);
     void Add(KltnBatch batch);
     void AddStages(IEnumerable<Stage> stages);
 }

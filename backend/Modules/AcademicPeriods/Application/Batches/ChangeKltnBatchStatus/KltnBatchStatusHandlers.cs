@@ -27,38 +27,55 @@ public sealed class OpenKltnBatchHandler(
             return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.AccessDenied);
         }
 
-        var batch = await GetBatchAsync(command.BatchId, batchRepository, cancellationToken);
-        if (batch is null)
+        if (command.BatchId == Guid.Empty)
         {
             return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.NotFound);
         }
 
-        var activeConfiguration = await scoreConfigurationRepository.GetActiveByBatchAsync(batch.Id, cancellationToken);
-        if (activeConfiguration is null)
-        {
-            return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.ScoreConfigurationRequired);
-        }
-
-        var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
         try
         {
-            batch.Open(activeConfiguration, currentUser.UserId!.Value, occurredAt);
-        }
-        catch (InvalidOperationException)
-        {
-            return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.InvalidStatusTransition);
-        }
+            return await unitOfWork.ExecuteInTransactionAsync(async transactionCancellationToken =>
+            {
+                await batchRepository.AcquireOpenBatchLockAsync(transactionCancellationToken);
 
-        AddAudit(auditOutbox, batch, IntegrationAuditActions.BatchOpened, occurredAt);
-        var saveError = await unitOfWork.TrySaveChangesAsync(
-            AcademicBatchErrors.ConcurrencyConflict,
-            cancellationToken: cancellationToken);
-        if (saveError is not null)
-        {
-            return Result.Failure<KltnBatchDetailDto>(saveError);
-        }
+                var batch = await GetBatchAsync(command.BatchId, batchRepository, transactionCancellationToken);
+                if (batch is null)
+                {
+                    return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.NotFound);
+                }
 
-        return Result.Success(AcademicBatchMapper.ToDetail(batch));
+                if (await batchRepository.ExistsOpenBatchAsync(batch.Id, transactionCancellationToken))
+                {
+                    return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.AnotherBatchAlreadyOpen);
+                }
+
+                var activeConfiguration = await scoreConfigurationRepository.GetActiveByBatchAsync(
+                    batch.Id,
+                    transactionCancellationToken);
+                if (activeConfiguration is null)
+                {
+                    return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.ScoreConfigurationRequired);
+                }
+
+                var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
+                try
+                {
+                    batch.Open(activeConfiguration, currentUser.UserId!.Value, occurredAt);
+                }
+                catch (InvalidOperationException)
+                {
+                    return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.InvalidStatusTransition);
+                }
+
+                AddAudit(auditOutbox, batch, IntegrationAuditActions.BatchOpened, occurredAt);
+                await unitOfWork.SaveChangesAsync(transactionCancellationToken);
+                return Result.Success(AcademicBatchMapper.ToDetail(batch));
+            }, cancellationToken);
+        }
+        catch (AcademicPeriodsPersistenceException)
+        {
+            return Result.Failure<KltnBatchDetailDto>(AcademicBatchErrors.ConcurrencyConflict);
+        }
     }
 
     internal static Task<KltnBatch?> GetBatchAsync(

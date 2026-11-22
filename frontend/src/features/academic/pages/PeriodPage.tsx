@@ -19,6 +19,14 @@ import { usePeriod } from '../hooks/periods';
 export const PeriodPage: React.FC = () => {
   const { data, form, modals, actions, permissions } = usePeriod();
 
+  const otherOpenBatch = useMemo(
+    () =>
+      data.batches.find(
+        (b) => b.status === 'Open' && b.id !== data.currentBatch?.id,
+      ) ?? null,
+    [data.batches, data.currentBatch?.id],
+  );
+
   const batchOptions = useMemo(
     () => [
       { value: 'new', label: '+ Khởi tạo đợt mới' },
@@ -140,6 +148,7 @@ export const PeriodPage: React.FC = () => {
             canEdit={permissions.canEdit}
             onOpenBatch={actions.handleOpenBatch}
             isOpenLoading={actions.isOpenLoading}
+            activeOpenBatchName={otherOpenBatch?.batchName ?? null}
           />
         </div>
       </div>

@@ -1,4 +1,5 @@
 using UGTM.Modules.AcademicPeriods.Domain.Entities;
+using UGTM.Modules.AcademicPeriods.Domain.Enums;
 using UGTM.Modules.AcademicPeriods.Domain.Repositories;
 
 namespace UGTM.Modules.AcademicPeriods.Infrastructure.Persistence.Repositories;
@@ -33,6 +34,21 @@ public sealed class KltnBatchRepository(AcademicPeriodsDbContext db) : IKltnBatc
             x => x.AcademicYear == normalizedYear && x.Semester == semester && x.Id != excludeBatchId,
             cancellationToken);
     }
+
+    public async Task AcquireOpenBatchLockAsync(CancellationToken cancellationToken = default)
+    {
+        if (db.Database.IsRelational())
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "SELECT pg_advisory_xact_lock(hashtext('academic.kltn_batch.single_open'));",
+                cancellationToken);
+        }
+    }
+
+    public Task<bool> ExistsOpenBatchAsync(Guid excludeBatchId, CancellationToken cancellationToken = default)
+        => db.KltnBatches.AnyAsync(
+            x => x.Status == BatchStatus.Open && x.Id != excludeBatchId,
+            cancellationToken);
 
     public void Add(KltnBatch batch) => db.KltnBatches.Add(batch);
 
