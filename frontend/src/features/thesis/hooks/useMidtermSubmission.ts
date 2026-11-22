@@ -8,6 +8,7 @@ import { midtermApi } from '../services/midtermApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
 import { triggerBrowserDownload } from '../utils/archival';
 import { evaluateSubmissionStageWindow } from '../utils/submissionStageWindow';
+import { getThesisErrorMessage } from '../utils/thesisErrors';
 import type { MidtermReportStatus } from '../types/midterm.types';
 
 export function useMidtermSubmission() {
@@ -149,9 +150,9 @@ export function useMidtermSubmission() {
       void queryClient.invalidateQueries({ queryKey: ['midterm-history', user?.id, groupId] });
       void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
     },
-    onError: (err: Error) => {
+    onError: (err: unknown) => {
       setUploadProgress(null);
-      setActionError(err.message || 'Nộp báo cáo giữa kỳ thất bại. Vui lòng thử lại.');
+      setActionError(getThesisErrorMessage(err, 'Nộp báo cáo giữa kỳ thất bại. Vui lòng thử lại.'));
     },
   });
 
@@ -163,9 +164,7 @@ export function useMidtermSubmission() {
         triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : 'Không thể lấy liên kết tải tệp.';
-      setActionError(errorMsg);
+      setActionError(getThesisErrorMessage(err, 'Không thể lấy liên kết tải tệp.'));
     }
   };
 

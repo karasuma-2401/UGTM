@@ -223,6 +223,49 @@ test('a delayed 401 uses the token already refreshed by another request', async 
   assert.equal(fixture.requests[1]._retry, true);
 });
 
+test('httpClient response interceptor replaces raw Axios status text with backend error.message while preserving response metadata', async () => {
+  const fixture = interceptorFixture();
+  const conflictError = Object.assign(new Error('Request failed with status code 409'), {
+    isAxiosError: true,
+    response: {
+      status: 409,
+      data: {
+        success: false,
+        data: null,
+        error: {
+          code: 'Syllabus.InitialSubmissionDeadlinePassed',
+          message: 'Đã qua hạn nộp đề cương lần đầu.',
+          errors: null,
+        },
+      },
+    },
+    config: { headers: {} },
+  });
+
+  await assert.rejects(
+    fixture.handler(conflictError),
+    (rejected) => {
+      assert.equal(rejected, conflictError);
+      assert.equal(rejected.isAxiosError, true);
+      assert.equal(rejected.response.status, 409);
+      assert.equal(rejected.message, 'Đã qua hạn nộp đề cương lần đầu.');
+      return true;
+    },
+  );
+
+  const canceledError = Object.assign(new Error('canceled'), {
+    isAxiosError: true,
+    code: 'ERR_CANCELED',
+  });
+  await assert.rejects(
+    fixture.handler(canceledError),
+    (rejected) => {
+      assert.equal(rejected.message, 'canceled');
+      return true;
+    },
+  );
+});
+
 test('activation sends the token/password/identifier to the actual backend routes', async () => {
   const requests = [];
   const fixture = loadModule('features/auth/services/authApi.ts', {

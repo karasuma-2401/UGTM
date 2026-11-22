@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getApiErrorMessage } from '@/shared/api';
 import { useAuth } from '@/shared/auth';
 import { getPreferredDefaultBatch } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
@@ -157,8 +158,10 @@ export function useReviewerAssignment() {
       setSelectedReviewerId('');
       void queryClient.invalidateQueries({ queryKey: ['reviewer-eligibility'] });
     },
-    onError: (err: Error) => {
-      setErrorMessage(err.message || 'Phân công phản biện thất bại. Vui lòng thử lại.');
+    onError: (err: unknown) => {
+      setErrorMessage(
+        getApiErrorMessage(err, 'Phân công phản biện thất bại. Vui lòng thử lại.'),
+      );
     },
   });
 

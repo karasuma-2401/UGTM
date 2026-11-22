@@ -202,6 +202,7 @@ test('[P1 #2] useSyllabusSubmission scopes query keys by user.id and disables qu
     },
     '../utils/archival': loadTsModule('features/thesis/utils/archival.ts'),
     '../utils/submissionStageWindow': loadTsModule('features/thesis/utils/submissionStageWindow.ts'),
+    '../utils/thesisErrors': loadTsModule('features/thesis/utils/thesisErrors.ts'),
   });
 
   useSyllabusSubmission();

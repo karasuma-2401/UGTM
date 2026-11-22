@@ -7,6 +7,7 @@ import { syllabusApi } from '../services/syllabusApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
 import { triggerBrowserDownload } from '../utils/archival';
 import { evaluateSubmissionStageWindow } from '../utils/submissionStageWindow';
+import { getThesisErrorMessage } from '../utils/thesisErrors';
 import type { SyllabusStatus } from '../types/syllabus.types';
 
 export function useSyllabusSubmission() {
@@ -110,9 +111,9 @@ export function useSyllabusSubmission() {
       void queryClient.invalidateQueries({ queryKey: ['student-group-detail', user?.id, groupId] });
       void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
     },
-    onError: (err: Error) => {
+    onError: (err: unknown) => {
       setUploadProgress(null);
-      setActionError(err.message || 'Nộp đề cương thất bại. Vui lòng thử lại.');
+      setActionError(getThesisErrorMessage(err, 'Nộp đề cương thất bại. Vui lòng thử lại.'));
     },
   });
 
@@ -124,9 +125,7 @@ export function useSyllabusSubmission() {
         triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : 'Không thể lấy liên kết tải tệp.';
-      setActionError(errorMsg);
+      setActionError(getThesisErrorMessage(err, 'Không thể lấy liên kết tải tệp.'));
     }
   };
 

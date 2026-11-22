@@ -6,6 +6,7 @@ import { syllabusApi } from '../services/syllabusApi';
 import { milestoneApi } from '../services/milestoneApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
 import { triggerBrowserDownload } from '../utils/archival';
+import { getThesisErrorMessage } from '../utils/thesisErrors';
 import {
   validateProductLinksDraft,
   type ProductLinkDraft,
@@ -141,9 +142,9 @@ export function useStudentMilestones() {
         queryKey: ['student-milestones', user?.id, groupId],
       });
     },
-    onError: (err: Error) => {
+    onError: (err: unknown) => {
       setUploadProgress(null);
-      setActionError(err.message || 'Nộp sản phẩm thất bại. Vui lòng thử lại.');
+      setActionError(getThesisErrorMessage(err, 'Nộp sản phẩm thất bại. Vui lòng thử lại.'));
     },
   });
 
@@ -155,9 +156,7 @@ export function useStudentMilestones() {
         triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : 'Không thể lấy liên kết tải tệp.';
-      setActionError(errorMsg);
+      setActionError(getThesisErrorMessage(err, 'Không thể lấy liên kết tải tệp.'));
     }
   };
 

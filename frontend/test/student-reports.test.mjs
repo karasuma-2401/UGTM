@@ -736,6 +736,7 @@ test('evaluateSubmissionStageWindow gates Syllabus (Stage 2), Midterm (Stage 4),
 test('useSyllabusSubmission blocks submission outside Stage 2 unless allowSyllabusResubmission is true', () => {
   const stageHelper = loadModule('features/thesis/utils/submissionStageWindow.ts');
   const archival = loadModule('features/thesis/utils/archival.ts');
+  const thesisErrors = loadModule('features/thesis/utils/thesisErrors.ts');
 
   const closedStage2Timeline = {
     batchId: 'b-1',
@@ -797,6 +798,7 @@ test('useSyllabusSubmission blocks submission outside Stage 2 unless allowSyllab
       '../services/submissionUploadHelper': { validateReportFile: () => null },
       '../utils/archival': archival,
       '../utils/submissionStageWindow': stageHelper,
+      '../utils/thesisErrors': thesisErrors,
     });
     return mod.useSyllabusSubmission();
   }
@@ -809,4 +811,35 @@ test('useSyllabusSubmission blocks submission outside Stage 2 unless allowSyllab
   assert.equal(renameAllowed.canSubmit, true);
   assert.equal(renameAllowed.stageBlockedReason, null);
   assert.equal(renameAllowed.isRenameResubmission, true);
+});
+
+test('getThesisErrorMessage extracts backend error.message from 409 Axios errors instead of raw status text', () => {
+  const { getThesisErrorMessage } = loadModule('features/thesis/utils/thesisErrors.ts');
+
+  const axios409 = Object.assign(new Error('Request failed with status code 409'), {
+    isAxiosError: true,
+    response: {
+      status: 409,
+      data: {
+        success: false,
+        data: null,
+        error: {
+          code: 'Syllabus.InitialSubmissionDeadlinePassed',
+          message: 'Đã qua hạn nộp đề cương lần đầu.',
+          errors: null,
+        },
+      },
+    },
+  });
+
+  assert.equal(
+    getThesisErrorMessage(axios409, 'Nộp đề cương thất bại.'),
+    'Đã qua hạn nộp đề cương lần đầu.',
+  );
+
+  const empty409 = Object.assign(new Error('Request failed with status code 409'), {
+    isAxiosError: true,
+    response: { status: 409, data: null },
+  });
+  assert.equal(getThesisErrorMessage(empty409, 'Nộp đề cương thất bại.'), 'Nộp đề cương thất bại.');
 });

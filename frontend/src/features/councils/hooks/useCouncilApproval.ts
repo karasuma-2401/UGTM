@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getApiErrorMessage } from '@/shared/api';
 import { useAuth } from '@/shared/auth';
 import { getActiveOpenBatch } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
@@ -336,9 +337,9 @@ export function useCouncilApproval() {
       void queryClient.invalidateQueries({ queryKey: ['council-drafts'] });
       void queryClient.invalidateQueries({ queryKey: ['council-schedule', user?.id, res.id] });
     },
-    onError: (err: Error) => {
+    onError: (err: unknown) => {
       setConfirmOpen(false);
-      const message = err.message || 'Phê duyệt Hội đồng thất bại. Vui lòng thử lại.';
+      const message = getApiErrorMessage(err, 'Phê duyệt Hội đồng thất bại. Vui lòng thử lại.');
       setErrorMessage(message);
       notify.error(message);
     },
@@ -356,9 +357,7 @@ export function useCouncilApproval() {
   }, [selectedCouncil, customDecisionNumber, fileError]);
 
   const loadErrorMessage = draftsQuery.isError
-    ? draftsQuery.error instanceof Error
-      ? draftsQuery.error.message
-      : 'Không thể tải danh sách Hội đồng.'
+    ? getApiErrorMessage(draftsQuery.error, 'Không thể tải danh sách Hội đồng.')
     : null;
 
   return {
