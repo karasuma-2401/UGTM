@@ -38,6 +38,7 @@ import {
 import { CouncilSimilarityReportsPage } from '../features/thesis/pages/CouncilSimilarityReportsPage';
 import { LecturerGradingPage } from '../features/thesis/pages/LecturerGradingPage';
 import { CouncilGradingPage } from '../features/councils/pages/CouncilGradingPage';
+import { CouncilMembersPage } from '../features/councils/pages/CouncilMembersPage';
 import { IdentityLayout, IdentityIndexRedirect } from '../features/identity';
 
 import { ProtectedRoute } from '../shared/auth';
@@ -47,6 +48,7 @@ import { LibraryPage } from '../features/library/LibraryPage';
 import { ThesisDetailPage } from '../features/library/ThesisDetailPage';
 import { RolePermissionPage } from '../features/identity';
 import { ProfilePage } from '../features/profile';
+import { RoleManagementPage } from '../features/identity/pages/RoleManagementPage';
 import { AuditLogPage } from '../features/audit';
 import { ScoreConfigPage, PeriodPage, SchoolRosterPage } from '../features/academic';
 
@@ -206,6 +208,10 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'councils/members',
+        element: <ProtectedRoute allowedRoles={['Faculty', 'Admin']}><CouncilMembersPage /></ProtectedRoute>,
+      },
+      {
         path: 'councils/approval',
         element: (
           <ProtectedRoute allowedRoles={['AcademicAffairs', 'Admin']}>
@@ -345,6 +351,10 @@ export const router = createBrowserRouter([
                 <UsersPage key="staff" accountGroup="Staff" />
               </ProtectedRoute>
             ),
+          },
+          {
+            path: 'roles',
+            element: <ProtectedRoute requiredPermissions={['identity.roles.manage']}><RoleManagementPage /></ProtectedRoute>,
           },
           {
             path: 'permissions',

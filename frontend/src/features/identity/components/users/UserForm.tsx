@@ -9,6 +9,9 @@ import { Save, UserPlus } from 'lucide-react';
 
 import type { AccountGroup, SystemRole, UserFormValues, UserSummary } from '../../types/user.types';
 import { defaultRolesForGroup, rolesBelongToGroup } from '../../utils/accountGroups';
+import { useRoles, roleDisplay } from '../../hooks/useRoles';
+import { useAuth } from '@/shared/auth';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface UserFormProps {
   accountGroup: AccountGroup;
@@ -30,6 +33,10 @@ export function UserForm({
   onDirtyChange,
 }: UserFormProps) {
   const isStudent = accountGroup === 'Student';
+  const { hasPermission } = useAuth();
+  const canManageRoles = hasPermission('identity.roles.manage');
+  const roleCatalog = useRoles(false, canManageRoles && !isStudent);
+  const availableRoles = canManageRoles ? (roleCatalog.data ?? []).map(roleDisplay) : SYSTEM_ROLES;
   const [values, setValues] = useState<UserFormValues>(() => ({
     email: user?.email ?? '',
     fullName: user?.fullName ?? '',
@@ -197,11 +204,11 @@ export function UserForm({
           ) : (
             <fieldset aria-describedby="account-role-help">
               <legend className="mb-2 text-sm font-medium text-ink-heading">
-                Vai trò hệ thống
+                Vai trò
               </legend>
 
               <div className={`grid gap-2.5 ${user ? '' : 'sm:grid-cols-2'}`}>
-                {SYSTEM_ROLES.filter((role) => role.roleName !== 'Student').map((role) => {
+                {roleCatalog.isLoading && canManageRoles ? <Skeleton className="h-12 w-full" /> : availableRoles.filter((role) => role.roleName !== 'Student').map((role) => {
                   const roleName = role.roleName;
                   const checked = values.roles.includes(roleName);
 
@@ -217,6 +224,7 @@ export function UserForm({
                   );
                 })}
               </div>
+              {roleCatalog.isError && <p role="alert" className="mt-2 text-sm text-tone-danger-text">Không thể tải vai trò. <Button type="button" variant="outline" size="sm" onClick={() => void roleCatalog.refetch()}>Thử lại</Button></p>}
               <p
                 id="account-role-help"
                 className="mt-3 text-xs leading-relaxed text-muted-foreground"

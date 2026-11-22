@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { SelectionIndicator } from '@/components/ui/selection-indicator';
-import { SYSTEM_ROLES } from '../../constants/systemRoles';
 import type { SystemRoleInfo } from '../../types/rolePermission.types';
 
 export interface RoleListCardProps {
+  roles: SystemRoleInfo[];
   selectedRoleId: number;
   disabled?: boolean;
   failedRoleIds?: number[];
@@ -17,6 +17,7 @@ export interface RoleListCardProps {
 }
 
 export function RoleListCard({
+  roles,
   selectedRoleId,
   disabled = false,
   failedRoleIds = [],
@@ -26,7 +27,7 @@ export function RoleListCard({
 }: RoleListCardProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredRoles = SYSTEM_ROLES.filter((role) => {
+  const filteredRoles = roles.filter((role) => {
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
     return (
@@ -42,7 +43,7 @@ export function RoleListCard({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base font-bold text-ink-heading">
-              Vai trò hệ thống
+              Vai trò
             </CardTitle>
             <CardDescription className="text-xs text-ink-muted mt-0.5">
               Chọn vai trò để xem và cấu hình danh mục quyền

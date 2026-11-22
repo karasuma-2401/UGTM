@@ -26,6 +26,7 @@ using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.GetRoles;
 using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.UpdateRoleVisibility;
+using UGTM.Modules.Identity.Application.Roles.UpdateRoleDescription;
 using UGTM.Modules.Identity.Application.Security;
 using UGTM.Modules.Identity.Application.Users.CreateUser;
 using UGTM.Modules.Identity.Application.Users.Dtos;
@@ -88,6 +89,7 @@ public sealed class RoleManagementEndpointsQaTests : IAsyncLifetime
         builder.Services.AddScoped<GetRolePermissionsHandler>();
         builder.Services.AddScoped<UpdateRolePermissionsHandler>();
         builder.Services.AddScoped<UpdateRoleVisibilityHandler>();
+        builder.Services.AddScoped<UpdateRoleDescriptionHandler>();
         builder.Services.AddScoped<GetUsersHandler>();
         builder.Services.AddScoped<CreateUserHandler>();
         builder.Services.AddScoped<UpdateUserHandler>();
@@ -179,6 +181,7 @@ public sealed class RoleManagementEndpointsQaTests : IAsyncLifetime
     [InlineData("POST", "/api/roles")]
     [InlineData("GET", "/api/roles/1/permissions")]
     [InlineData("PUT", "/api/roles/4/permissions")]
+    [InlineData("PUT", "/api/roles/4/description")]
     [InlineData("PATCH", "/api/roles/7/hide")]
     [InlineData("PATCH", "/api/roles/7/unhide")]
     [InlineData("PATCH", "/api/roles/7/visibility")]
@@ -200,6 +203,7 @@ public sealed class RoleManagementEndpointsQaTests : IAsyncLifetime
     [InlineData("POST", "/api/roles", "Lecturer")]
     [InlineData("GET", "/api/roles/4/permissions", "Faculty")]
     [InlineData("PUT", "/api/roles/4/permissions", "AcademicAffairs")]
+    [InlineData("PUT", "/api/roles/4/description", "AcademicAffairs")]
     [InlineData("PATCH", "/api/roles/7/hide", "Lecturer")]
     [InlineData("PATCH", "/api/roles/7/unhide", "Faculty")]
     [InlineData("PATCH", "/api/roles/7/visibility", "Student")]
@@ -225,6 +229,19 @@ public sealed class RoleManagementEndpointsQaTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var data = await ReadDataAsync(response);
         Assert.Equal(6, data.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task UpdateDescription_returns_updated_value_and_rejects_invalid_length()
+    {
+        AuthenticateAsAdmin();
+        var updated = await _client.PutAsJsonAsync("/api/roles/4/description", new { description = "  Mô tả mới  " });
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        Assert.Equal("Mô tả mới", (await ReadDataAsync(updated)).GetProperty("description").GetString());
+        var invalid = await _client.PutAsJsonAsync("/api/roles/4/description", new { description = new string('x', 256) });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        var missing = await _client.PutAsJsonAsync("/api/roles/99999/description", new { description = "test" });
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
     }
 
     [Fact]

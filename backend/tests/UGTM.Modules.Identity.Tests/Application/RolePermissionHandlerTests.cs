@@ -7,6 +7,7 @@ using UGTM.Modules.Identity.Application.Roles.GetRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.GetRoles;
 using UGTM.Modules.Identity.Application.Roles.UpdateRolePermissions;
 using UGTM.Modules.Identity.Application.Roles.UpdateRoleVisibility;
+using UGTM.Modules.Identity.Application.Roles.UpdateRoleDescription;
 using UGTM.Modules.Identity.Domain.Entities;
 using UGTM.Modules.Identity.Domain.Enums;
 using UGTM.Modules.Identity.Domain.Repositories;
@@ -603,6 +604,39 @@ public sealed class RolePermissionHandlerTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal(IdentityErrors.RoleIsHidden.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task UpdateDescription_normalizes_and_audits_changes_including_system_roles()
+    {
+        var repo = new FakeRolePermissionRepository();
+        repo.Roles.Add(new Role { Id = 4, RoleName = "Lecturer", Description = "Old" });
+        var audit = new FakeAuditLogWriter();
+        var handler = new UpdateRoleDescriptionHandler(repo, new DirectUnitOfWork(), audit);
+        var result = await handler.HandleAsync(4, "  Mô tả mới  ", CancellationToken.None);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Mô tả mới", result.Value.Description);
+        Assert.Equal(AuditActions.RoleDescriptionChanged, Assert.Single(audit.Entries).Action);
+        var unchanged = await handler.HandleAsync(4, "Mô tả mới", CancellationToken.None);
+        Assert.True(unchanged.IsSuccess);
+        Assert.Single(audit.Entries);
+        var cleared = await handler.HandleAsync(4, "   ", CancellationToken.None);
+        Assert.Null(cleared.Value.Description);
+        Assert.Equal(2, audit.Entries.Count);
+    }
+
+    [Fact]
+    public async Task UpdateDescription_rejects_too_long_and_unknown_role()
+    {
+        var repo = new FakeRolePermissionRepository();
+        repo.Roles.Add(new Role { Id = 7, RoleName = "Reviewer", Description = "Old" });
+        var handler = new UpdateRoleDescriptionHandler(repo, new DirectUnitOfWork(), new FakeAuditLogWriter());
+        var tooLong = await handler.HandleAsync(7, new string('x', 256), CancellationToken.None);
+        Assert.Equal(IdentityErrors.InvalidInput.Code, tooLong.Error.Code);
+        Assert.Equal("Old", repo.Roles[0].Description);
+        var missing = await handler.HandleAsync(99, "new", CancellationToken.None);
+        Assert.Equal(IdentityErrors.RoleNotFound.Code, missing.Error.Code);
+        Assert.True((await handler.HandleAsync(7, new string('x', 255), CancellationToken.None)).IsSuccess);
     }
 
     private sealed class FakeRolePermissionRepository : IRolePermissionRepository

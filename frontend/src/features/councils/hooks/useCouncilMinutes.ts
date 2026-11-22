@@ -203,17 +203,18 @@ export function useCouncilMinutes() {
   }, [requestedAssignmentId, selectedBatchId, isLoadingList, overviewRows]);
 
   // Assignments accessible to current user
+  const currentUserId = user?.id;
   const accessibleAssignments = useMemo(() => {
     const withAssignment = overviewRows.filter((row) => Boolean(row.assignmentId));
     if (isCouncilStaff) return withAssignment;
-    if (!user?.id) return [];
+    if (!currentUserId) return [];
     return withAssignment.filter(
       (row) =>
-        row.chairman?.userId === user.id ||
-        row.secretary?.userId === user.id ||
-        row.members.some((m) => m.userId === user.id),
+        row.chairman?.userId === currentUserId ||
+        row.secretary?.userId === currentUserId ||
+        row.members.some((m) => m.userId === currentUserId),
     );
-  }, [overviewRows, isCouncilStaff, user?.id]);
+  }, [overviewRows, isCouncilStaff, currentUserId]);
 
   // Auto-select first accessible assignment if none selected or current not in list
   useEffect(() => {
@@ -316,12 +317,12 @@ export function useCouncilMinutes() {
   const isCouncilActive = councilStatus === 'Active';
 
   const isCurrentUserSecretary = useMemo(() => {
-    if (!user?.id) return false;
-    if (activeOverviewRow?.secretary?.userId === user.id) return true;
+    if (!currentUserId) return false;
+    if (activeOverviewRow?.secretary?.userId === currentUserId) return true;
     return Boolean(
-      schedule?.members.some((m) => m.userId === user.id && m.role === 'Secretary'),
+      schedule?.members.some((m) => m.userId === currentUserId && m.role === 'Secretary'),
     );
-  }, [user?.id, activeOverviewRow?.secretary?.userId, schedule?.members]);
+  }, [currentUserId, activeOverviewRow?.secretary?.userId, schedule?.members]);
 
   const canEditMinute =
     Boolean(workspace) &&
@@ -548,7 +549,7 @@ export function useCouncilMinutes() {
     exclusionReason,
     changesExclusion,
     studentFeedback,
-    effectiveDiscrepancy?.chairmanConclusion,
+    effectiveDiscrepancy,
   ]);
 
   const handleConfirmLock = useCallback(

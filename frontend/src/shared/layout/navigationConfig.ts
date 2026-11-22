@@ -9,6 +9,7 @@ import {
   BookMarked,
   CalendarRange,
   UsersRound,
+  Presentation,
   FileText,
   FileSearch,
   CalendarCheck,
@@ -182,6 +183,12 @@ export const navigationSections: NavSectionConfig[] = [
         roles: ['CouncilMember', 'Lecturer', 'Faculty', 'AcademicAffairs', 'Admin'],
       },
       {
+        label: 'Lập hội đồng bảo vệ',
+        path: '/councils/members',
+        icon: Presentation,
+        roles: ['Faculty', 'Admin'],
+      },
+      {
         label: 'Phê duyệt hội đồng',
         path: '/councils/approval',
         icon: Stamp,
@@ -221,7 +228,7 @@ export const navigationSections: NavSectionConfig[] = [
       {
         label: 'Tài khoản',
         path: '/modules/identity/students',
-        activePaths: ['/modules/identity/staff'],
+        activePaths: ['/modules/identity/staff', '/modules/identity/roles'],
         icon: UserCog,
         permission: 'identity.users.read',
       },

@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { RoleListCard } from '../components/role-permissions/RoleListCard';
 import { RolePermissionEditor } from '../components/role-permissions/RolePermissionEditor';
-import { SYSTEM_ROLES } from '../constants/systemRoles';
+import { useRoles, roleDisplay } from '../hooks/useRoles';
+import { Skeleton } from '@/components/ui/skeleton';
 import { rolePermissionApi } from '../services/rolePermissionApi';
 import type { RolePermissionsDto } from '../types/rolePermission.types';
 
@@ -22,6 +23,8 @@ export function RolePermissionPage() {
     initial: Set<number>;
   } | null>(null);
   const [notice, setNotice] = useState('');
+  const roleCatalog = useRoles();
+  const roleList = (roleCatalog.data ?? []).map(roleDisplay);
   const catalog = useQuery({
     queryKey: ['identity-permissions'],
     queryFn: async () => {
@@ -32,7 +35,7 @@ export function RolePermissionPage() {
   });
   // Separate cache entries prevent a late response from replacing another role's permissions.
   const roles = useQueries({
-    queries: SYSTEM_ROLES.map((role) => ({
+    queries: roleList.map((role) => ({
       queryKey: ['identity-role-permissions', role.id],
       queryFn: async () => {
         const res = await rolePermissionApi.getRolePermissions(role.id);
@@ -42,16 +45,16 @@ export function RolePermissionPage() {
       },
     })),
   });
-  const selectedIndex = SYSTEM_ROLES.findIndex((role) => role.id === selectedRoleId);
-  const selectedRole = SYSTEM_ROLES[selectedIndex];
+  const selectedIndex = roleList.findIndex((role) => role.id === selectedRoleId);
+  const selectedRole = roleList[selectedIndex];
   const roleQuery = roles[selectedIndex];
-  const serverIds = new Set(roleQuery.data?.permissions.map((permission) => permission.id) ?? []);
+  const serverIds = new Set(roleQuery?.data?.permissions.map((permission) => permission.id) ?? []);
   const activeEdits = edits?.roleId === selectedRoleId ? edits : null;
   const selectedIds = activeEdits?.ids ?? serverIds;
   const initialIds = activeEdits?.initial ?? serverIds;
   const dirty =
     selectedIds.size !== initialIds.size || [...selectedIds].some((id) => !initialIds.has(id));
-  const ready = catalog.isSuccess && roleQuery.isSuccess && !roleQuery.isFetching;
+  const ready = catalog.isSuccess && !!roleQuery?.isSuccess && !roleQuery.isFetching;
   const save = useMutation({
     mutationFn: async ({ roleId, ids }: { roleId: number; ids: number[] }) => {
       const res = await rolePermissionApi.updateRolePermissions(roleId, ids);
@@ -89,7 +92,7 @@ export function RolePermissionPage() {
   };
   const allIds =
     catalog.data?.flatMap((module) => module.permissions.map((permission) => permission.id)) ?? [];
-  const loadError = catalog.isError || roleQuery.isError;
+  const loadError = catalog.isError || roleQuery?.isError;
 
   return (
     <div className="min-w-0 space-y-4">
@@ -100,8 +103,9 @@ export function RolePermissionPage() {
           {save.error.message} Thay đổi của bạn vẫn được giữ lại.
         </p>
       )}
-      <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+      {roleCatalog.isPending ? <div className="space-y-3" aria-label="Đang tải vai trò"><Skeleton className="h-12 w-full" /><Skeleton className="h-64 w-full" /></div> : roleCatalog.isError ? <div role="alert" className="p-4 text-tone-danger-text">{roleCatalog.error.message} <Button variant="outline" onClick={() => void roleCatalog.refetch()}>Thử lại</Button></div> : !selectedRole ? <p>Không có vai trò để phân quyền.</p> : <div className="grid min-w-0 grid-cols-1 items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <RoleListCard
+          roles={roleList}
           selectedRoleId={selectedRoleId}
           disabled={save.isPending}
           onSelectRole={(role) => {
@@ -116,11 +120,11 @@ export function RolePermissionPage() {
             save.reset();
           }}
           rolePermissionCounts={Object.fromEntries(
-            SYSTEM_ROLES.flatMap((role, index) =>
+            roleList.flatMap((role, index) =>
               roles[index].isSuccess ? [[role.id, roles[index].data.permissions.length]] : [],
             ),
           )}
-          failedRoleIds={SYSTEM_ROLES.filter((_, index) => roles[index].isError).map(
+          failedRoleIds={roleList.filter((_, index) => roles[index].isError).map(
             (role) => role.id,
           )}
           totalPermissionsCount={allIds.length}
@@ -129,14 +133,14 @@ export function RolePermissionPage() {
           {loadError ? (
             <div role="alert" className="rounded-xl border border-tone-danger-border bg-surface-card p-6 text-sm">
               <p className="mb-3 text-tone-danger-text">
-                {catalog.error?.message || roleQuery.error?.message} Chưa thể chỉnh sửa phân quyền.
+                {catalog.error?.message || roleQuery?.error?.message} Chưa thể chỉnh sửa phân quyền.
               </p>
               <Button
                 variant="outline"
-                disabled={catalog.isFetching || roleQuery.isFetching}
+                disabled={catalog.isFetching || roleQuery?.isFetching}
                 onClick={() => {
                   if (catalog.isError) void catalog.refetch();
-                  if (roleQuery.isError) void roleQuery.refetch();
+                  if (roleQuery?.isError) void roleQuery.refetch();
                 }}
               >
                 Thử lại
@@ -167,7 +171,7 @@ export function RolePermissionPage() {
             />
           )}
         </div>
-      </div>
+      </div>}
       <ConfirmDialog
         open={pendingRoleId !== null || blocker.state === 'blocked'}
         title="Bạn có thay đổi chưa lưu"

@@ -84,7 +84,7 @@ public static class OpenApiConfiguration
 
             var allTags = (document.Paths?.Values.AsEnumerable() ?? Enumerable.Empty<IOpenApiPathItem>())
                 .Where(p => p.Operations != null)
-                .SelectMany(p => p.Operations.Values)
+                .SelectMany(p => p.Operations!.Values)
                 .SelectMany(op => (IEnumerable<OpenApiTagReference>?)op.Tags ?? [])
                 .Select(t => t.Name)
                 .Where(name => !string.IsNullOrWhiteSpace(name))

@@ -17,6 +17,10 @@ export interface CouncilReadinessResult {
   checks: CouncilReadinessCheck[];
 }
 
+export function isCouncilVisibleForApproval(council: CouncilDraftItemDto): boolean {
+  return council.status !== 'Draft' || council.isSubmittedToAcademicAffairs;
+}
+
 export function formatViDate(isoDate?: string | null): string {
   if (!isoDate) return '—';
   const normalized = isoDate.slice(0, 10);

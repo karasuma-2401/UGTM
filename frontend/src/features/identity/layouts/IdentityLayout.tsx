@@ -5,10 +5,10 @@ import { getIdentityAccess } from '@/shared/auth/identityAccess';
 
 export function IdentityIndexRedirect() {
   const { hasPermission } = useAuth();
-  const { canReadUsers, canManageRoles } = getIdentityAccess(hasPermission);
+  const { canReadUsers, canManageRoleCatalog } = getIdentityAccess(hasPermission);
 
   return (
-    <Navigate to={canReadUsers ? 'students' : canManageRoles ? 'permissions' : '/403'} replace />
+    <Navigate to={canReadUsers ? 'students' : canManageRoleCatalog ? 'roles' : '/403'} replace />
   );
 }
 

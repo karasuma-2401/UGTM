@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { SelectionIndicator } from '@/components/ui/selection-indicator';
-import { GraduationCap, UsersRound } from 'lucide-react';
+import { GraduationCap, ShieldCheck, UsersRound, KeyRound } from 'lucide-react';
 import { useAuth } from '@/shared/auth';
 import { getIdentityAccess } from '@/shared/auth/identityAccess';
 import { cn } from '@/lib/utils';
@@ -9,10 +9,12 @@ export function IdentityNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
-  const { canReadUsers } = getIdentityAccess(hasPermission);
+  const { canReadUsers, canManageRoles, canManageRoleCatalog } = getIdentityAccess(hasPermission);
   const tabs = [
     { path: 'students', label: 'Sinh viên', icon: GraduationCap, visible: canReadUsers },
     { path: 'staff', label: 'Giảng viên và cán bộ', icon: UsersRound, visible: canReadUsers },
+    { path: 'roles', label: 'Vai trò', icon: KeyRound, visible: canManageRoleCatalog },
+    { path: 'permissions', label: 'Phân quyền', icon: ShieldCheck, visible: canManageRoles },
   ];
 
   return (
