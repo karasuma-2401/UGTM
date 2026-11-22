@@ -355,6 +355,9 @@ function renderSidebar(roles) {
     'react-router-dom': { NavLink: ({ end: _end, ...props }) => React.createElement(Link, props) },
     'lucide-react': icons,
     '@/lib/utils': { cn: (...parts) => parts.filter(Boolean).join(' ') },
+    '@/components/ui/avatar': {
+      Avatar: ({ name }) => React.createElement('span', null, name?.trim().charAt(0) ?? 'U'),
+    },
     '@/components/ui/badge': {
       Badge: ({ children }) => React.createElement('span', null, children),
     },
@@ -371,6 +374,9 @@ function renderSidebar(roles) {
     '../../../assets/logo_UGTM.svg': { default: '/logo.svg' },
     'lucide-react': icons,
     '@/lib/utils': { cn: (...parts) => parts.filter(Boolean).join(' ') },
+    '@/components/ui/avatar': {
+      Avatar: ({ name }) => React.createElement('span', null, name?.trim().charAt(0) ?? 'U'),
+    },
     '@/components/ui/badge': {
       Badge: ({ children }) => React.createElement('span', null, children),
     },

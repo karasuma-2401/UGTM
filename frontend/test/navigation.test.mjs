@@ -73,11 +73,17 @@ function renderLayout(
     '../../../assets/logo_UGTM.svg': { default: '/logo.svg' },
     'lucide-react': icons,
     '@/lib/utils': { cn: (...parts) => parts.filter(Boolean).join(' ') },
+    '@/components/ui/avatar': {
+      Avatar: ({ name }) => React.createElement('span', null, name?.trim().charAt(0) ?? 'U'),
+    },
     '@/components/ui/badge': {
       Badge: ({ children }) => React.createElement('span', null, children),
     },
     '@/components/ui/button': {
       Button: ({ children }) => React.createElement('button', null, children),
+    },
+    '@/components/ui/inline-alert': {
+      InlineAlert: ({ title, children, action }) => React.createElement('div', null, title, children, action),
     },
     '@/components/ui/input': { Input: () => React.createElement('input') },
     '@/shared/auth': {
