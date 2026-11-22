@@ -13,9 +13,13 @@ import {
   ChevronLeft,
   Sun,
   Moon,
+  UserRound,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { InlineAlert } from '@/components/ui/inline-alert';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/shared/auth';
 import { ThemeToggle, useTheme } from '@/shared/theme';
@@ -187,15 +191,25 @@ export function AppLayout() {
     return () => document.removeEventListener('mousedown', handlePointerDown);
   }, [sectionMenuOpen]);
 
-  const flatNavItems = useMemo(
-    () =>
-      visibleSections.flatMap((section) =>
+  const flatNavItems = useMemo<
+    Array<NavItemConfig & { sectionId: string; sectionTitle: string }>
+  >(
+    () => [
+      ...visibleSections.flatMap((section) =>
         section.items.map((item) => ({
           ...item,
           sectionId: section.id,
           sectionTitle: section.title || 'Tổng quan',
         })),
       ),
+      {
+        label: 'Hồ sơ cá nhân',
+        path: '/profile',
+        icon: UserRound,
+        sectionId: 'account',
+        sectionTitle: 'Tài khoản và Bảo mật',
+      },
+    ],
     [visibleSections],
   );
 
@@ -236,11 +250,11 @@ export function AppLayout() {
     );
   }, [visibleSections, activeNavEntry]);
 
-  const userInitial = user?.fullName ? user.fullName.trim().charAt(0).toUpperCase() : 'U';
   const primaryRoleLabel = useMemo(() => {
     if (!user?.roles || user.roles.length === 0) return user?.email || 'Thành viên';
     return user.roles.map((r) => ROLE_DISPLAY_LABELS[r] || r).join(', ');
   }, [user]);
+  const isProfilePage = location.pathname === '/profile';
 
   return (
     <div className="min-h-screen bg-surface-canvas flex text-ink-primary">
@@ -342,44 +356,66 @@ export function AppLayout() {
         {/* Sidebar Footer User profile */}
         <div
           className={cn(
-            'shrink-0 border-t border-line px-4 py-3',
+            'shrink-0 border-t border-line px-3 py-2.5',
             sidebarCollapsed && 'lg:p-2',
           )}
         >
           <div
-            className={cn('flex items-center gap-2.5', sidebarCollapsed && 'lg:flex-col lg:gap-1')}
+            className={cn('flex items-center gap-2', sidebarCollapsed && 'lg:flex-col lg:gap-1.5')}
           >
-            <div
-              title={sidebarCollapsed ? user?.fullName || 'Người dùng' : undefined}
-              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-strong text-xs font-semibold text-ink-secondary"
-            >
-              {userInitial}
-            </div>
-            <div
+            <Link
+              to="/profile"
+              onClick={() => setSidebarOpen(false)}
+              aria-current={isProfilePage ? 'page' : undefined}
+              title={
+                sidebarCollapsed
+                  ? `${user?.fullName || 'Người dùng'} · Hồ sơ cá nhân`
+                  : 'Mở hồ sơ cá nhân'
+              }
               className={cn(
-                'flex min-w-0 flex-1 items-center gap-2',
-                sidebarCollapsed && 'lg:contents',
+                'group flex min-w-0 flex-1 items-center gap-2.5 rounded-xl p-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary',
+                sidebarCollapsed && 'lg:flex-none lg:justify-center',
+                isProfilePage
+                  ? 'bg-primary/10 text-primary dark:bg-primary/15'
+                  : 'hover:bg-surface-muted/80',
               )}
             >
+              <div className="relative shrink-0">
+                <Avatar
+                  name={user?.fullName || 'Người dùng'}
+                  className="size-8 text-[11px] ring-0"
+                />
+                {user?.mustChangePassword && (
+                  <span
+                    title="Cần đổi mật khẩu"
+                    className="absolute -right-0.5 -top-0.5 flex size-2.5 rounded-full bg-amber-500 ring-2 ring-surface-subtle"
+                  />
+                )}
+              </div>
               <div className={cn('min-w-0 flex-1', sidebarCollapsed && 'lg:hidden')}>
-                <div className="truncate text-[length:var(--font-size-md)] font-medium text-ink-heading">
+                <div
+                  className={cn(
+                    'truncate text-[length:var(--font-size-md)] font-medium',
+                    isProfilePage ? 'text-primary font-semibold' : 'text-ink-heading group-hover:text-ink-primary',
+                  )}
+                >
                   {user?.fullName || 'Người dùng'}
                 </div>
                 <div className="truncate text-xs text-ink-body" title={primaryRoleLabel}>
                   {primaryRoleLabel}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => void logout()}
-                disabled={isLoggingOut}
-                title="Đăng xuất khỏi hệ thống"
-                aria-label="Đăng xuất khỏi hệ thống"
-                className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-tone-danger-bg hover:text-tone-danger-icon focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50 lg:size-8"
-              >
-                <LogOut className="size-4" />
-              </button>
-            </div>
+            </Link>
+            <button
+              type="button"
+              onClick={() => void logout()}
+              disabled={isLoggingOut}
+              title="Đăng xuất khỏi hệ thống"
+              aria-label="Đăng xuất khỏi hệ thống"
+              className="flex size-11 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-tone-danger-bg hover:text-tone-danger-icon focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50 lg:size-8"
+            >
+              <LogOut className="size-4" />
+            </button>
           </div>
         </div>
       </aside>
@@ -484,6 +520,20 @@ export function AppLayout() {
                   </Link>
                 </>
               )}
+              {!activeNavEntry && isProfilePage && (
+                <>
+                  <span className="hidden md:inline text-sm font-medium text-ink-muted">
+                    Tài khoản và Bảo mật
+                  </span>
+                  <ChevronRight className="size-4 text-ink-faint shrink-0 hidden md:inline" />
+                  <Link
+                    to="/profile"
+                    className="min-w-0 truncate rounded-md px-1.5 py-1 -mx-1.5 font-semibold text-ink-primary transition-colors hover:bg-surface-muted hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    Hồ sơ cá nhân
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
 
@@ -529,6 +579,23 @@ export function AppLayout() {
           ref={pageContent}
           className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto print:p-0 print:max-w-none"
         >
+          {user?.mustChangePassword && !isProfilePage && (
+            <InlineAlert
+              tone="warning"
+              className="mb-5 print:hidden"
+              title="Tài khoản đang được yêu cầu đổi mật khẩu"
+              action={
+                <Button asChild size="sm">
+                  <Link to="/profile?tab=security">
+                    <ShieldAlert className="size-3.5" />
+                    Đổi mật khẩu ngay
+                  </Link>
+                </Button>
+              }
+            >
+              Mật khẩu hiện tại là mật khẩu tạm do Quản trị viên đặt lại. Vui lòng thiết lập mật khẩu mới để tiếp tục sử dụng đầy đủ các tính năng của hệ thống.
+            </InlineAlert>
+          )}
           <Outlet />
         </main>
       </div>

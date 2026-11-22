@@ -25,6 +25,8 @@ using UGTM.Modules.Identity.Application.Common;
 using UGTM.Modules.Identity.Application.Notifications;
 using UGTM.Modules.Identity.Application.Persistence;
 using UGTM.Modules.Identity.Application.Profiles;
+using UGTM.Modules.Identity.Application.Profiles.GetMyActivity;
+using UGTM.Modules.Identity.Application.Profiles.UpdateMyProfile;
 using UGTM.Modules.Identity.Application.Permissions.GetPermissions;
 using UGTM.Modules.Identity.Application.Provisioning;
 using UGTM.Modules.Identity.Application.Recovery;
@@ -181,6 +183,9 @@ public sealed class IdentityModule : IModule
         services.AddScoped<RefreshSessionHandler>();
         services.AddScoped<LogoutHandler>();
         services.AddScoped<GetCurrentUserHandler>();
+        services.AddScoped<UpdateMyProfileHandler>();
+        services.AddScoped<GetMyActivityHandler>();
+        services.AddScoped<GetMyActivitySummaryHandler>();
         services.AddScoped<GetMySessionsHandler>();
         services.AddScoped<RevokeMySessionHandler>();
         services.AddScoped<RevokeAllMySessionsHandler>();

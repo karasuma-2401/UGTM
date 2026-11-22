@@ -14,4 +14,5 @@ public sealed record GetAuditLogsQuery(
     string? TargetId = null,
     Guid? ActorSessionId = null,
     string? SortBy = null,
-    string? SortOrder = null);
+    string? SortOrder = null,
+    IReadOnlyCollection<string>? Actions = null);

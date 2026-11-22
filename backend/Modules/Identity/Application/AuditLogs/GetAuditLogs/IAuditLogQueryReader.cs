@@ -1,5 +1,6 @@
 using UGTM.BuildingBlocks.Application.Responses;
 using UGTM.Modules.Identity.Application.AuditLogs.Dtos;
+using UGTM.Modules.Identity.Application.Profiles.GetMyActivity;
 
 namespace UGTM.Modules.Identity.Application.AuditLogs.GetAuditLogs;
 
@@ -7,6 +8,13 @@ public interface IAuditLogQueryReader
 {
     Task<PagedResult<AuditLogDto>> GetAuditLogsAsync(
         GetAuditLogsQuery query,
+        CancellationToken cancellationToken);
+
+    Task<UserActivitySummaryDto> GetUserActivitySummaryAsync(
+        Guid userId,
+        DateTime fromUtc,
+        TimeSpan utcOffset,
+        DateTime utcNow,
         CancellationToken cancellationToken);
 
     Task<AuditLogStatistics> GetStatisticsAsync(GetAuditLogsQuery query, CancellationToken cancellationToken);

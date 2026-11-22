@@ -46,6 +46,7 @@ import { HomeEntry, LandingPage } from '../features/landing/LandingPage';
 import { LibraryPage } from '../features/library/LibraryPage';
 import { ThesisDetailPage } from '../features/library/ThesisDetailPage';
 import { RolePermissionPage } from '../features/identity';
+import { ProfilePage } from '../features/profile';
 import { AuditLogPage } from '../features/audit';
 import { ScoreConfigPage, PeriodPage, SchoolRosterPage } from '../features/academic';
 
@@ -78,6 +79,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: 'dashboard', element: <DashboardPage /> },
+      { path: 'profile', element: <ProfilePage /> },
       { path: 'ui-test', element: <UiTestPage /> },
       {
         path: 'topics/catalog',
