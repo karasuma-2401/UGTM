@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
+import { academicBatchApi } from '@/shared/academic-periods/academicBatchApi';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { syllabusApi } from '../services/syllabusApi';
 import { midtermApi } from '../services/midtermApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
 import { triggerBrowserDownload } from '../utils/archival';
+import { evaluateSubmissionStageWindow } from '../utils/submissionStageWindow';
+import { getThesisErrorMessage } from '../utils/thesisErrors';
 import type { MidtermReportStatus } from '../types/midterm.types';
 
 export function useMidtermSubmission() {
@@ -61,54 +64,28 @@ export function useMidtermSubmission() {
     retry: false,
   });
 
-  const submitMutation = useMutation({
-    mutationFn: async (file: File) => {
-      setActionError(null);
-      setActionSuccess(null);
+  const resolvedBatchId =
+    statusQuery.data?.batchId ?? groupDetailQuery.data?.batchId ?? currentBatch?.id;
 
-      if (!groupId) {
-        throw new Error('Không tìm thấy thông tin nhóm của bạn.');
-      }
-
-      const fileError = validateReportFile(file);
-      if (fileError) {
-        throw new Error(fileError);
-      }
-
-      setUploadProgress(1);
-      return await midtermApi.submitMidtermReport(groupId, file, (percent) =>
-        setUploadProgress(percent),
-      );
-    },
-    onSuccess: (data) => {
-      setSelectedFile(null);
-      setUploadProgress(null);
-      setActionSuccess(`Nộp báo cáo giữa kỳ phiên bản v${data.versionNo} thành công!`);
-      void queryClient.invalidateQueries({ queryKey: ['midterm-history', user?.id, groupId] });
-      void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
-    },
-    onError: (err: Error) => {
-      setUploadProgress(null);
-      setActionError(err.message || 'Nộp báo cáo giữa kỳ thất bại. Vui lòng thử lại.');
-    },
+  const timelineQuery = useQuery({
+    queryKey: ['academic-batch-timeline', user?.id, resolvedBatchId],
+    queryFn: ({ signal }) => academicBatchApi.getTimeline(resolvedBatchId!, signal),
+    enabled: Boolean(user?.id && resolvedBatchId),
+    retry: false,
   });
-
-  const handleDownload = async (fileId: string) => {
-    try {
-      setActionError(null);
-      const downloadInfo = await midtermApi.getDownloadUrl(fileId);
-      if (downloadInfo?.downloadUrl) {
-        triggerBrowserDownload(downloadInfo.downloadUrl);
-      }
-    } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : 'Không thể lấy liên kết tải tệp.';
-      setActionError(errorMsg);
-    }
-  };
 
   const syllabusStatus = syllabusHistoryQuery.data?.currentStatus;
   const isSyllabusApproved = syllabusStatus === 'Approved';
+
+  const currentStatus: MidtermReportStatus =
+    historyQuery.data?.currentStatus || 'Draft';
+
+  const stageWindow = evaluateSubmissionStageWindow(
+    timelineQuery.isError ? undefined : timelineQuery.data,
+    'midterm',
+  );
+  const isStageBlocked = stageWindow.state === 'closed';
+  const stageBlockedReason = isStageBlocked ? stageWindow.message : null;
 
   let notEligibleReason: string | null = null;
   if (!syllabusHistoryQuery.isLoading && !syllabusHistoryQuery.isError && !isSyllabusApproved) {
@@ -128,22 +105,75 @@ export function useMidtermSubmission() {
       notEligibleReason =
         'Nhóm chưa hoàn thành Đề cương chi tiết (Cổng 1). Cần có phê duyệt Đề cương từ Khoa để mở Cổng 2.';
     }
+  } else if (
+    isSyllabusApproved &&
+    isStageBlocked &&
+    (currentStatus === 'Draft' || currentStatus === 'NeedRevision')
+  ) {
+    notEligibleReason = stageBlockedReason;
   }
 
   const isEligibleForMidterm = Boolean(isSyllabusApproved);
 
-  const currentStatus: MidtermReportStatus =
-    historyQuery.data?.currentStatus || 'Draft';
-
   const canSubmit =
     isEligibleForMidterm &&
+    !isStageBlocked &&
     (currentStatus === 'Draft' || currentStatus === 'NeedRevision');
+
+  const submitMutation = useMutation({
+    mutationFn: async (file: File) => {
+      setActionError(null);
+      setActionSuccess(null);
+
+      if (!groupId) {
+        throw new Error('Không tìm thấy thông tin nhóm của bạn.');
+      }
+
+      if (isStageBlocked && stageBlockedReason) {
+        throw new Error(stageBlockedReason);
+      }
+
+      const fileError = validateReportFile(file);
+      if (fileError) {
+        throw new Error(fileError);
+      }
+
+      setUploadProgress(1);
+      return await midtermApi.submitMidtermReport(groupId, file, (percent) =>
+        setUploadProgress(percent),
+      );
+    },
+    onSuccess: (data) => {
+      setSelectedFile(null);
+      setUploadProgress(null);
+      setActionSuccess(`Nộp báo cáo giữa kỳ phiên bản v${data.versionNo} thành công!`);
+      void queryClient.invalidateQueries({ queryKey: ['midterm-history', user?.id, groupId] });
+      void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
+    },
+    onError: (err: unknown) => {
+      setUploadProgress(null);
+      setActionError(getThesisErrorMessage(err, 'Nộp báo cáo giữa kỳ thất bại. Vui lòng thử lại.'));
+    },
+  });
+
+  const handleDownload = async (fileId: string) => {
+    try {
+      setActionError(null);
+      const downloadInfo = await midtermApi.getDownloadUrl(fileId);
+      if (downloadInfo?.downloadUrl) {
+        triggerBrowserDownload(downloadInfo.downloadUrl);
+      }
+    } catch (err: unknown) {
+      setActionError(getThesisErrorMessage(err, 'Không thể lấy liên kết tải tệp.'));
+    }
+  };
 
   return {
     statusQuery,
     groupDetailQuery,
     syllabusHistoryQuery,
     historyQuery,
+    timelineQuery,
     selectedFile,
     setSelectedFile,
     uploadProgress,
@@ -157,5 +187,7 @@ export function useMidtermSubmission() {
     canSubmit,
     isEligibleForMidterm,
     notEligibleReason,
+    stageWindow,
+    stageBlockedReason,
   };
 }

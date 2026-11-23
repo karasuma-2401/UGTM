@@ -25,6 +25,10 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { TableActiveFilters } from '@/components/ui/table';
 import { TableFloatingBar } from '@/components/ui/table-floating-bar';
 import { useAuth } from '@/shared/auth';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+} from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { studentTopicApi } from '../services/studentTopicApi';
 import { getTopicErrorMessage } from '../services/topicApi';
@@ -70,12 +74,14 @@ export function StudentTopicCatalogContent() {
   const { user, hasRole, hasPermission } = useAuth();
   const student = hasRole('Student');
   const canBrowse = student || hasRole('Admin');
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
   const canReadBatches = hasPermission('academic.batches.read');
   const queryClient = useQueryClient();
   const [filterState, setFilterState] = useState<{
     draft: CatalogFilters;
     filters: CatalogFilters;
   }>({ draft: EMPTY_FILTERS, filters: EMPTY_FILTERS });
+  const [hasExplicitBatchChoice, setHasExplicitBatchChoice] = useState(false);
   const { draft, filters } = filterState;
   const [sortBy, setSortBy] = useState<CatalogSortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -91,29 +97,45 @@ export function StudentTopicCatalogContent() {
   const [notice, setNotice] = useState('');
   const batchesQuery = useAcademicBatches();
   const batches = batchesQuery.data ?? [];
+  const openBatch = getActiveOpenBatch(batches);
+  const effectiveBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? filters.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
+  const effectiveDraftBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? draft.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
+  const effectiveFilters: CatalogFilters = {
+    ...filters,
+    batchId: effectiveBatchId,
+  };
+  const hasActiveBatchScope = canSelectBatch || Boolean(openBatch?.id);
 
   const isDefaultSort = sortBy === 'createdAt' && sortOrder === 'desc';
 
   const topicsQuery = useQuery({
-    queryKey: ['student-topics', user?.id, filters, page, pageSize, sortBy, sortOrder],
+    queryKey: ['student-topics', user?.id, effectiveFilters, page, pageSize, sortBy, sortOrder],
     queryFn: ({ signal }) =>
       studentTopicApi.getTopics(
         {
-          keyword: filters.keyword,
-          batchId: filters.batchId,
-          ...(filters.availability ? { availability: filters.availability } : {}),
+          keyword: effectiveFilters.keyword,
+          batchId: effectiveFilters.batchId,
+          ...(effectiveFilters.availability ? { availability: effectiveFilters.availability } : {}),
           ...(!isDefaultSort ? { sortBy, sortOrder } : {}),
           pageNumber: page,
           pageSize,
         },
         signal,
       ),
-    enabled: Boolean(user?.id) && canBrowse,
+    enabled: Boolean(user?.id) && canBrowse && hasActiveBatchScope,
     refetchInterval: 60_000,
     placeholderData: (previousData, previousQuery) =>
       previousQuery &&
       previousQuery.queryKey[1] === user?.id &&
-      JSON.stringify(previousQuery.queryKey[2]) === JSON.stringify(filters) &&
+      JSON.stringify(previousQuery.queryKey[2]) === JSON.stringify(effectiveFilters) &&
       previousQuery.queryKey[5] === sortBy &&
       previousQuery.queryKey[6] === sortOrder
         ? previousData
@@ -121,13 +143,13 @@ export function StudentTopicCatalogContent() {
   });
 
   const totalQuery = useQuery({
-    queryKey: ['student-topics-total', user?.id, filters.batchId],
+    queryKey: ['student-topics-total', user?.id, effectiveBatchId],
     queryFn: ({ signal }) =>
       studentTopicApi.getTopics(
-        { keyword: '', batchId: filters.batchId, pageNumber: 1, pageSize: 1 },
+        { keyword: '', batchId: effectiveBatchId, pageNumber: 1, pageSize: 1 },
         signal,
       ),
-    enabled: Boolean(user?.id) && canBrowse,
+    enabled: Boolean(user?.id) && canBrowse && hasActiveBatchScope,
     refetchInterval: 60_000,
   });
 
@@ -149,9 +171,12 @@ export function StudentTopicCatalogContent() {
   const data = topicsQuery.isError ? undefined : topicsQuery.data;
   const status = statusQuery.isError
     ? undefined
-    : statusQuery.data && registeredGroupQuery.data
-      ? { ...statusQuery.data, batchId: registeredGroupQuery.data.batchId }
-      : statusQuery.data;
+    : statusQuery.data
+      ? {
+          ...statusQuery.data,
+          batchId: statusQuery.data.batchId ?? registeredGroupQuery.data?.batchId,
+        }
+      : undefined;
   const total = totalQuery.isError ? undefined : totalQuery.data?.totalCount;
   const refreshing = topicsQuery.isFetching;
 
@@ -198,6 +223,7 @@ export function StudentTopicCatalogContent() {
   }
 
   function reset() {
+    setHasExplicitBatchChoice(true);
     applyFilters(EMPTY_FILTERS);
   }
 
@@ -230,8 +256,11 @@ export function StudentTopicCatalogContent() {
 
   if (!canBrowse) return <p role="alert">Bạn không có quyền xem danh mục đề tài này.</p>;
 
-  const hasFilters = Boolean(filters.keyword || filters.batchId || filters.availability);
-  const selectedBatchName = batches.find((batch) => batch.id === filters.batchId)?.batchName ?? 'Đợt đã chọn';
+  const hasFilters = Boolean(
+    filters.keyword || (canSelectBatch && effectiveBatchId) || filters.availability,
+  );
+  const selectedBatchName =
+    batches.find((batch) => batch.id === effectiveBatchId)?.batchName ?? 'Đợt đã chọn';
   const selectedTopic = data?.items.find((topic) => topic.id === selectedRowId) ?? null;
   const canQuickRegister = Boolean(
     student && selectedTopic && !validateStudentRegistration(selectedTopic, '', user?.userCode, status),
@@ -486,20 +515,25 @@ export function StudentTopicCatalogContent() {
               className="h-10 rounded-xl shadow-none"
             />
           </div>
-          <Select<string>
-            aria-label="Lọc theo đợt KLTN"
-            placeholder="Tất cả đợt KLTN"
-            value={draft.batchId}
-            containerClassName="w-full sm:w-64"
-            triggerClassName="h-10 rounded-xl shadow-none"
-            disabled={!canReadBatches || batchesQuery.isPending}
-            searchable
-            options={[
-              { value: '', label: 'Tất cả đợt KLTN' },
-              ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
-            ]}
-            onChange={(batchId) => updateFilters((prev) => ({ ...prev, batchId }))}
-          />
+          {canSelectBatch && (
+            <Select<string>
+              aria-label="Lọc theo đợt KLTN"
+              placeholder="Tất cả đợt KLTN"
+              value={effectiveDraftBatchId}
+              containerClassName="w-full sm:w-64"
+              triggerClassName="h-10 rounded-xl shadow-none"
+              disabled={!canReadBatches || batchesQuery.isPending}
+              searchable
+              options={[
+                { value: '', label: 'Tất cả đợt KLTN' },
+                ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
+              ]}
+              onChange={(batchId) => {
+                setHasExplicitBatchChoice(true);
+                updateFilters((prev) => ({ ...prev, batchId }));
+              }}
+            />
+          )}
           <Select<CatalogAvailabilityFilter>
             aria-label="Lọc theo tình trạng chỗ trống"
             placeholder="Tất cả tình trạng chỗ"
@@ -525,6 +559,15 @@ export function StudentTopicCatalogContent() {
             </Button>
           </div>
         </form>
+
+        {!canSelectBatch && !batchesQuery.isPending && !batchesQuery.isError && !openBatch && (
+          <p
+            role="status"
+            className="border-b border-tone-info-border bg-tone-info-bg px-5 py-2.5 text-xs text-tone-info-text sm:px-6"
+          >
+            Hiện chưa có đợt KLTN nào đang mở. Danh mục đề tài chỉ hiển thị trong đợt KLTN đang mở hiện tại.
+          </p>
+        )}
 
         {batchesQuery.isError && (
           <p
@@ -556,13 +599,16 @@ export function StudentTopicCatalogContent() {
                   },
                 ]
               : []),
-            ...(filters.batchId
+            ...(canSelectBatch && effectiveBatchId
               ? [
                   {
                     key: 'batchId',
                     label: 'Đợt KLTN',
                     value: selectedBatchName,
-                    onRemove: () => applyFilters({ ...filters, batchId: '' }),
+                    onRemove: () => {
+                      setHasExplicitBatchChoice(true);
+                      applyFilters({ ...filters, batchId: '' });
+                    },
                   },
                 ]
               : []),
@@ -582,7 +628,7 @@ export function StudentTopicCatalogContent() {
 
         <DataTable<PublishedTopic, CatalogSortField>
           ariaLabel="Danh mục đề tài đã công bố"
-          data={data?.items ?? []}
+          data={hasActiveBatchScope ? (data?.items ?? []) : []}
           columns={columns}
           getRowId={(topic) => topic.id}
           selectedRowId={selectedRowId}
@@ -590,7 +636,7 @@ export function StudentTopicCatalogContent() {
           onRowOpen={openTopic}
           sort={{ field: sortBy, direction: sortOrder }}
           onSortChange={handleSort}
-          loading={topicsQuery.isPending}
+          loading={hasActiveBatchScope ? topicsQuery.isPending : batchesQuery.isPending}
           busy={refreshing}
           error={
             topicsQuery.isError

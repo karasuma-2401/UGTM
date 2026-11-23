@@ -121,6 +121,9 @@ test('[P1 #1] useRosterData does not loop when onError callback identity changes
 
   const { useRosterData } = loadTsModule('features/academic/hooks/roster/useRosterData.ts', {
     react: reactMock,
+    '@/shared/academic-periods/currentBatches': loadTsModule(
+      'shared/academic-periods/currentBatches.ts',
+    ),
     '../../services/periodApi': {
       periodApi: {
         getBatches: async () => {
@@ -183,6 +186,9 @@ test('[P1 #2] useSyllabusSubmission scopes query keys by user.id and disables qu
     '@/shared/auth': {
       useAuth: () => ({ user: { id: 'student-42' } }),
     },
+    '@/shared/academic-periods/academicBatchApi': {
+      academicBatchApi: { getTimeline: async () => null },
+    },
     '@/shared/academic-periods/useAcademicBatches': {
       useAcademicBatches: () => ({
         data: [{ id: 'b-1', batchName: 'Đợt 1', status: 'Open' }],
@@ -195,6 +201,8 @@ test('[P1 #2] useSyllabusSubmission scopes query keys by user.id and disables qu
       validateReportFile: () => null,
     },
     '../utils/archival': loadTsModule('features/thesis/utils/archival.ts'),
+    '../utils/submissionStageWindow': loadTsModule('features/thesis/utils/submissionStageWindow.ts'),
+    '../utils/thesisErrors': loadTsModule('features/thesis/utils/thesisErrors.ts'),
   });
 
   useSyllabusSubmission();
@@ -212,6 +220,9 @@ test('[P1 #3] usePeriodData ignores stale batch detail response when switching b
 
   const { usePeriodData } = loadTsModule('features/academic/hooks/periods/usePeriodData.ts', {
     react: reactMock,
+    '@/shared/academic-periods/currentBatches': loadTsModule(
+      'shared/academic-periods/currentBatches.ts',
+    ),
     '../../services/periodApi': {
       periodApi: {
         getBatches: async () => ({
@@ -230,41 +241,25 @@ test('[P1 #3] usePeriodData ignores stale batch detail response when switching b
     },
   });
 
-  // Mount & load batch list -> selects batch-a
+  // Mount & load batch list -> defaults to the Open batch (batch-b)
   render(() => usePeriodData(() => {}));
   await new Promise((r) => setTimeout(r, 10));
   let state = render(() => usePeriodData(() => {}));
-  assert.equal(state.selectedBatchId, 'batch-a');
-
-  // Start loading batch-a detail
-  const loadAPromise = state.loadBatchDetail('batch-a');
-
-  // Switch quickly to batch-b before batch-a resolves
-  state.setSelectedBatchId('batch-b');
-  state = render(() => usePeriodData(() => {}));
   assert.equal(state.selectedBatchId, 'batch-b');
 
-  // Start loading batch-b detail and resolve batch-b first
+  // Start loading batch-b detail
   const loadBPromise = state.loadBatchDetail('batch-b');
-  resolvers['batch-b']({
-    id: 'batch-b',
-    batchName: 'Batch B Detail',
-    academicYear: '2026-2027',
-    semester: 2,
-    status: 'Open',
-    startDate: '2026-09-01',
-    endDate: '2026-12-31',
-    stages: [],
-  });
-  await loadBPromise;
-  state = render(() => usePeriodData(() => {}));
-  assert.equal(state.currentBatch?.id, 'batch-b');
-  assert.equal(state.isSelectionSynced, true);
 
-  // Late response for batch-a arrives afterwards — must be ignored!
+  // Switch quickly to batch-a before batch-b resolves
+  state.setSelectedBatchId('batch-a');
+  state = render(() => usePeriodData(() => {}));
+  assert.equal(state.selectedBatchId, 'batch-a');
+
+  // Start loading batch-a detail and resolve batch-a first
+  const loadAPromise = state.loadBatchDetail('batch-a');
   resolvers['batch-a']({
     id: 'batch-a',
-    batchName: 'Batch A Stale Detail',
+    batchName: 'Batch A Detail',
     academicYear: '2025-2026',
     semester: 1,
     status: 'Upcoming',
@@ -274,8 +269,24 @@ test('[P1 #3] usePeriodData ignores stale batch detail response when switching b
   });
   await loadAPromise;
   state = render(() => usePeriodData(() => {}));
-  assert.equal(state.currentBatch?.id, 'batch-b');
-  assert.equal(state.currentBatch?.batchName, 'Batch B Detail');
+  assert.equal(state.currentBatch?.id, 'batch-a');
+  assert.equal(state.isSelectionSynced, true);
+
+  // Late response for batch-b arrives afterwards — must be ignored!
+  resolvers['batch-b']({
+    id: 'batch-b',
+    batchName: 'Batch B Stale Detail',
+    academicYear: '2026-2027',
+    semester: 2,
+    status: 'Open',
+    startDate: '2026-09-01',
+    endDate: '2026-12-31',
+    stages: [],
+  });
+  await loadBPromise;
+  state = render(() => usePeriodData(() => {}));
+  assert.equal(state.currentBatch?.id, 'batch-a');
+  assert.equal(state.currentBatch?.batchName, 'Batch A Detail');
 });
 
 test('[P1 #3 & #5] usePeriodActions blocks mismatched batch save, saves batch + both review gates on executeSave, and retries partial gate failures', async () => {

@@ -1,6 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getApiErrorMessage } from '@/shared/api';
 import { useAuth } from '@/shared/auth';
+import { getActiveOpenBatch } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { notify } from '@/shared/notifications';
 import { councilApprovalApi } from '../services/councilApprovalApi';
@@ -28,7 +30,7 @@ export function useCouncilApproval() {
   const { user, hasRole } = useAuth();
   const batchesQuery = useAcademicBatches();
 
-  const [batchFilter, setBatchFilterState] = useState<string>('all');
+  const [batchFilterOverride, setBatchFilterOverride] = useState<string | null>(null);
   const [keyword, setKeywordState] = useState<string>('');
   const [readinessFilter, setReadinessFilterState] = useState<CouncilReadinessFilter>('all');
   const [sort, setSort] = useState<{
@@ -48,6 +50,11 @@ export function useCouncilApproval() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const batches = useMemo(() => batchesQuery.data || [], [batchesQuery.data]);
+  const defaultBatchFilter = useMemo(
+    () => getActiveOpenBatch(batches)?.id ?? 'all',
+    [batches],
+  );
+  const batchFilter = batchFilterOverride ?? defaultBatchFilter;
 
   const selectedBatch = useMemo(
     () => (batchFilter === 'all' ? null : batches.find((b) => b.id === batchFilter) || null),
@@ -253,7 +260,7 @@ export function useCouncilApproval() {
   );
 
   const setBatchFilter = useCallback((next: string) => {
-    setBatchFilterState(next);
+    setBatchFilterOverride(next);
     setPageNumber(1);
     setErrorMessage(null);
   }, []);
@@ -290,7 +297,7 @@ export function useCouncilApproval() {
   const handleResetFilter = useCallback(() => {
     setKeywordState('');
     setReadinessFilterState('all');
-    setBatchFilterState('all');
+    setBatchFilterOverride(null);
     setPageNumber(1);
     setErrorMessage(null);
   }, []);
@@ -330,9 +337,9 @@ export function useCouncilApproval() {
       void queryClient.invalidateQueries({ queryKey: ['council-drafts'] });
       void queryClient.invalidateQueries({ queryKey: ['council-schedule', user?.id, res.id] });
     },
-    onError: (err: Error) => {
+    onError: (err: unknown) => {
       setConfirmOpen(false);
-      const message = err.message || 'Phê duyệt Hội đồng thất bại. Vui lòng thử lại.';
+      const message = getApiErrorMessage(err, 'Phê duyệt Hội đồng thất bại. Vui lòng thử lại.');
       setErrorMessage(message);
       notify.error(message);
     },
@@ -350,9 +357,7 @@ export function useCouncilApproval() {
   }, [selectedCouncil, customDecisionNumber, fileError]);
 
   const loadErrorMessage = draftsQuery.isError
-    ? draftsQuery.error instanceof Error
-      ? draftsQuery.error.message
-      : 'Không thể tải danh sách Hội đồng.'
+    ? getApiErrorMessage(draftsQuery.error, 'Không thể tải danh sách Hội đồng.')
     : null;
 
   return {

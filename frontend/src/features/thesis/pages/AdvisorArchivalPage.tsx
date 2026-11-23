@@ -27,6 +27,7 @@ import { getThesisErrorMessage } from '../utils/thesisErrors';
 export const AdvisorArchivalPage: React.FC = () => {
   const {
     canAccess,
+    canSelectBatch,
     batches,
     selectedBatchId,
     isLoadingBatches,
@@ -251,19 +252,21 @@ export const AdvisorArchivalPage: React.FC = () => {
         description="Kiểm tra PDF/DOCX và Metadata Việt/Anh trước khi chuyển Khoa nghiệm thu."
         actionsClassName="w-full lg:w-auto flex-nowrap justify-between sm:justify-end items-center shrink-0"
       >
-        <div className="min-w-0 flex-1 sm:flex-none sm:w-72">
-          <Select
-            aria-label="Chọn đợt KLTN"
-            value={selectedBatchId}
-            disabled={isLoadingBatches || batchOptions.length === 0}
-            placeholder={isLoadingBatches ? 'Đang tải đợt KLTN...' : 'Chọn đợt KLTN'}
-            options={batchOptions}
-            onChange={(value) => actions.selectBatch(value)}
-            triggerClassName="h-10 rounded-xl border-line/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong"
-            contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-line/90 shadow-lg"
-            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover"
-          />
-        </div>
+        {canSelectBatch && (
+          <div className="min-w-0 flex-1 sm:flex-none sm:w-72">
+            <Select
+              aria-label="Chọn đợt KLTN"
+              value={selectedBatchId}
+              disabled={isLoadingBatches || batchOptions.length === 0}
+              placeholder={isLoadingBatches ? 'Đang tải đợt KLTN...' : 'Chọn đợt KLTN'}
+              options={batchOptions}
+              onChange={(value) => actions.selectBatch(value)}
+              triggerClassName="h-10 rounded-xl border-line/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong"
+              contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-line/90 shadow-lg"
+              optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover"
+            />
+          </div>
+        )}
 
         <Button
           type="button"
@@ -278,6 +281,12 @@ export const AdvisorArchivalPage: React.FC = () => {
           <RefreshCw className={cn('size-4', isFetchingList && 'animate-spin')} />
         </Button>
       </PageHeader>
+
+      {!canSelectBatch && !isLoadingBatches && !selectedBatchId && (
+        <InlineAlert tone="info" title="Chưa có đợt KLTN nào đang mở">
+          Danh sách hồ sơ lưu chiểu chỉ hiển thị cho đợt KLTN đang mở hiện tại.
+        </InlineAlert>
+      )}
 
       <StatisticsBar
         items={statItems}

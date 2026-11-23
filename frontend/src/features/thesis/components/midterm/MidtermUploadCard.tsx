@@ -36,6 +36,9 @@ export function MidtermUploadCard({
 }: MidtermUploadCardProps) {
   const lockedTitle = (() => {
     if (!isEligibleForMidterm) return 'Chưa mở khóa Cổng 2 · Báo cáo giữa kỳ';
+    if (disabledReason && (currentStatus === 'Draft' || currentStatus === 'NeedRevision')) {
+      return 'Ngoài thời gian nộp Báo cáo giữa kỳ';
+    }
     if (currentStatus === 'Approved') return 'Báo cáo giữa kỳ đã đạt Cổng 2';
     if (currentStatus === 'Submitted') return 'Báo cáo giữa kỳ đang chờ thẩm định';
     if (currentStatus === 'Rejected') return 'Báo cáo giữa kỳ không đạt';

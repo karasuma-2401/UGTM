@@ -5,7 +5,12 @@ import type { TopicStudent } from '../types/topic.types';
 
 export type StudentCodeLookupState =
   | { status: 'loading' }
-  | { status: 'found'; fullName: string }
+  | {
+      status: 'found';
+      fullName: string;
+      isAlreadyRegisteredInBatch?: boolean;
+      isRegistrationBlocked?: boolean;
+    }
   | { status: 'not_found' }
   | { status: 'error' };
 
@@ -128,6 +133,20 @@ export function TopicStudentAssignmentField({
                   <CheckCircle2 className="size-3.5 shrink-0 text-tone-success-icon" aria-hidden="true" />
                   <span className="truncate" title={currentMatch.fullName}>
                     {currentMatch.fullName}
+                  </span>
+                </p>
+              ) : lookup?.status === 'found' && lookup.isAlreadyRegisteredInBatch ? (
+                <p role="alert" className="flex items-start gap-1.5 text-xs font-medium text-tone-danger-text">
+                  <AlertCircle className="mt-0.5 size-3.5 shrink-0 text-tone-danger-icon" aria-hidden="true" />
+                  <span>
+                    {lookup.fullName} — Sinh viên này đã đăng ký hoặc được gán vào đề tài khác trong đợt này.
+                  </span>
+                </p>
+              ) : lookup?.status === 'found' && lookup.isRegistrationBlocked ? (
+                <p role="alert" className="flex items-start gap-1.5 text-xs font-medium text-tone-danger-text">
+                  <AlertCircle className="mt-0.5 size-3.5 shrink-0 text-tone-danger-icon" aria-hidden="true" />
+                  <span>
+                    {lookup.fullName} — Sinh viên này đang bị khóa quyền đăng ký đề tài.
                   </span>
                 </p>
               ) : lookup?.status === 'found' ? (

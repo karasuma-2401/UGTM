@@ -54,6 +54,10 @@ import {
 } from '../components/TopicStudentAssignmentField';
 import { PageHeader } from '@/components/ui/page-header';
 import { useAuth } from '@/shared/auth';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+} from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 
 import {
@@ -97,7 +101,8 @@ export function TopicProposePage({
   initialFilters?: TopicFilters;
   onFiltersChange?: (filters: TopicFilters) => void;
 } = {}) {
-  const { user, hasPermission } = useAuth();
+  const { user, hasRole, hasPermission } = useAuth();
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
   const canReadBatches = hasPermission('academic.batches.read');
   const queryClient = useQueryClient();
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
@@ -119,12 +124,18 @@ export function TopicProposePage({
   const [pendingConfirmation, setPendingConfirmation] = useState<PendingConfirmation | null>(null);
   const [draftFilters, setDraftFilters] = useState<TopicFilters>(initialFilters);
   const [filters, setFilters] = useState<TopicFilters>(initialFilters);
+  const [hasExplicitBatchChoice, setHasExplicitBatchChoice] = useState<boolean>(
+    Boolean(initialFilters.batchId),
+  );
   const initialFiltersKey = `${initialFilters.batchId}|${initialFilters.status}|${initialFilters.keyword}`;
   const [syncedInitialFiltersKey, setSyncedInitialFiltersKey] = useState(initialFiltersKey);
   if (initialFiltersKey !== syncedInitialFiltersKey) {
     setSyncedInitialFiltersKey(initialFiltersKey);
     setFilters(initialFilters);
     setDraftFilters(initialFilters);
+    if (initialFilters.batchId) {
+      setHasExplicitBatchChoice(true);
+    }
     setPageNumber(1);
     setSelectedRowId(null);
   }
@@ -210,6 +221,9 @@ export function TopicProposePage({
     .filter((code): code is string => Boolean(code))
     .join('|');
 
+  const lookupBatchId = selectedTopic?.batchId ?? values.batchId;
+  const lookupExcludeTopicId = selectedTopic?.id;
+
   useEffect(() => {
     if (
       !isFormOpen ||
@@ -222,9 +236,11 @@ export function TopicProposePage({
     }
 
     const knownCodes = new Set(knownStudentCodesKey ? knownStudentCodesKey.split('|') : []);
+    const cacheKeyFor = (code: string) =>
+      `${lookupBatchId || ''}|${lookupExcludeTopicId || ''}|${code}`;
     const pendingCodes = studentCodesKey
       .split('|')
-      .filter((code) => !knownCodes.has(code) && !studentLookupCache.has(code));
+      .filter((code) => !knownCodes.has(code) && !studentLookupCache.has(cacheKeyFor(code)));
 
     if (pendingCodes.length === 0) return;
 
@@ -234,7 +250,7 @@ export function TopicProposePage({
       setStudentLookups((prev) => {
         const next = { ...prev };
         for (const code of pendingCodes) {
-          if (!studentLookupCache.has(code)) {
+          if (!studentLookupCache.has(cacheKeyFor(code))) {
             next[code] = { status: 'loading' };
           }
         }
@@ -244,12 +260,21 @@ export function TopicProposePage({
       void Promise.all(
         pendingCodes.map(async (code) => {
           try {
-            const match = await topicApi.lookupStudentByCode(code, controller?.signal);
+            const match = await topicApi.lookupStudentByCode(code, {
+              batchId: lookupBatchId || undefined,
+              excludeTopicId: lookupExcludeTopicId,
+              signal: controller?.signal,
+            });
             if (cancelled || controller?.signal.aborted) return;
             const resolved: StudentCodeLookupState = match
-              ? { status: 'found', fullName: match.fullName }
+              ? {
+                  status: 'found',
+                  fullName: match.fullName,
+                  isAlreadyRegisteredInBatch: Boolean(match.isAlreadyRegisteredInBatch),
+                  isRegistrationBlocked: Boolean(match.isRegistrationBlocked),
+                }
               : { status: 'not_found' };
-            studentLookupCache.set(code, resolved);
+            studentLookupCache.set(cacheKeyFor(code), resolved);
             setStudentLookups((prev) => ({
               ...prev,
               [code]: resolved,
@@ -270,11 +295,16 @@ export function TopicProposePage({
       controller?.abort();
       window.clearTimeout(timer);
     };
-  }, [isFormOpen, editable, recovery, studentCodesKey, knownStudentCodesKey]);
+  }, [
+    isFormOpen,
+    editable,
+    recovery,
+    studentCodesKey,
+    knownStudentCodesKey,
+    lookupBatchId,
+    lookupExcludeTopicId,
+  ]);
 
-  const hasFilters = [filters, draftFilters].some((value) =>
-    Boolean(value.keyword || value.batchId || value.status),
-  );
   const checklist = [
     { label: 'Đã chọn đợt khóa luận', complete: Boolean(values.batchId) },
     {
@@ -302,25 +332,58 @@ export function TopicProposePage({
     (values.studentCodes?.filter((code) => code.trim()).length || 0);
 
   const batchesQuery = useAcademicBatches();
+  const batches = batchesQuery.data ?? [];
+  const openBatch = getActiveOpenBatch(batches);
+  const effectiveBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? filters.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
+  const effectiveDraftBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? draftFilters.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
+  const effectiveFilters: TopicFilters = {
+    ...filters,
+    batchId: effectiveBatchId,
+  };
+  const hasFilters = Boolean(
+    filters.keyword ||
+      draftFilters.keyword ||
+      filters.status ||
+      draftFilters.status ||
+      (canSelectBatch && (effectiveBatchId || effectiveDraftBatchId)),
+  );
+  const hasActiveBatchScope = canSelectBatch || Boolean(openBatch?.id);
   const topicsQuery = useQuery({
-    queryKey: ['my-proposed-topics', user?.id, filters, pageNumber, pageSize, sortBy, sortOrder],
-    enabled: Boolean(user?.id),
+    queryKey: [
+      'my-proposed-topics',
+      user?.id,
+      effectiveFilters,
+      pageNumber,
+      pageSize,
+      sortBy,
+      sortOrder,
+    ],
+    enabled: Boolean(user?.id) && hasActiveBatchScope,
     queryFn: ({ signal }) =>
       topicApi.getMyTopics(
-        { ...filters, advisorId: user!.id, pageNumber, pageSize, sortBy, sortOrder },
+        { ...effectiveFilters, advisorId: user!.id, pageNumber, pageSize, sortBy, sortOrder },
         signal,
       ),
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
   });
   const statisticsQuery = useQuery({
-    queryKey: ['my-proposed-topics', user?.id, 'statistics', filters.batchId],
-    enabled: Boolean(user?.id),
-    queryFn: ({ signal }) => topicApi.getStatistics(user!.id, filters.batchId || undefined, signal),
+    queryKey: ['my-proposed-topics', user?.id, 'statistics', effectiveBatchId],
+    enabled: Boolean(user?.id) && hasActiveBatchScope,
+    queryFn: ({ signal }) => topicApi.getStatistics(user!.id, effectiveBatchId || undefined, signal),
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
   });
-  const statistics = statisticsQuery.isError ? undefined : statisticsQuery.data;
+  const statistics =
+    !hasActiveBatchScope || statisticsQuery.isError ? undefined : statisticsQuery.data;
   const formatCount = (count: number | undefined) =>
     count === undefined ? '—' : count.toLocaleString('vi-VN');
 
@@ -330,8 +393,17 @@ export function TopicProposePage({
     onSuccess: async (topic, { intent }) => {
       const fresh = toFormValues(topic);
       if (intent === 'copy') {
-        beginEditor(null, copyProposal(topic), { ...INITIAL_VALUES });
-        setNotice('Đã nhân bản nội dung. Chọn đợt và kiểm tra tên trước khi lưu đề xuất mới.');
+        const nextBatchId = canSelectBatch ? '' : (openBatch?.id ?? '');
+        beginEditor(
+          null,
+          { ...copyProposal(topic), batchId: nextBatchId },
+          { ...INITIAL_VALUES, batchId: nextBatchId },
+        );
+        setNotice(
+          canSelectBatch
+            ? 'Đã nhân bản nội dung. Chọn đợt và kiểm tra tên trước khi lưu đề xuất mới.'
+            : 'Đã nhân bản nội dung cho đợt KLTN đang mở hiện tại. Kiểm tra tên trước khi lưu đề xuất mới.',
+        );
       } else if (intent === 'submit') {
         if (!canEditTopic(topic.status)) {
           setNotice('Trạng thái đề tài đã thay đổi. Đề tài hiện không thể gửi duyệt.');
@@ -404,10 +476,11 @@ export function TopicProposePage({
   });
 
   const busy = saveMutation.isPending || detailMutation.isPending;
-  const batches = batchesQuery.data ?? [];
   const selectedBatch = batches.find((batch) => batch.id === values.batchId);
-  const filterBatch = batches.find((batch) => batch.id === filters.batchId);
+  const filterBatch = batches.find((batch) => batch.id === effectiveBatchId);
   const batchesLoading = canReadBatches && (batchesQuery.isPending || batchesQuery.isFetching);
+  const editorBatches =
+    !canSelectBatch && !selectedTopic ? (openBatch ? [openBatch] : []) : batches;
 
   function clearCachedDraft(id: string | null) {
     if (!user?.id) return;
@@ -451,7 +524,9 @@ export function TopicProposePage({
     if (!recovery) return;
     setValues({
       ...recovery.values,
-      batchId: selectedTopic?.batchId ?? recovery.values.batchId,
+      batchId:
+        selectedTopic?.batchId ??
+        (canSelectBatch ? recovery.values.batchId : (openBatch?.id ?? '')),
       // Drafts saved before assignment support must not clear the server roster.
       studentCodes: recovery.values.studentCodes ?? baseline.studentCodes ?? [],
     });
@@ -462,7 +537,12 @@ export function TopicProposePage({
   }
   function restoreNewDraft() {
     if (!user?.id || !availableLocalDraft || busy) return;
-    beginEditor(null, { ...availableLocalDraft.values }, { ...INITIAL_VALUES });
+    const lockedBatchId = canSelectBatch ? availableLocalDraft.values.batchId : (openBatch?.id ?? '');
+    beginEditor(
+      null,
+      { ...availableLocalDraft.values, batchId: lockedBatchId },
+      { ...INITIAL_VALUES, batchId: canSelectBatch ? '' : (openBatch?.id ?? '') },
+    );
     setRecovery(null);
     setLocalSavedAt(availableLocalDraft.savedAt);
   }
@@ -504,7 +584,7 @@ export function TopicProposePage({
     saveMutation.reset();
     detailMutation.reset();
     if (topic) detailMutation.mutate({ id: topic.id, intent });
-    else beginEditor(null, { ...INITIAL_VALUES, batchId: filters.batchId });
+    else beginEditor(null, { ...INITIAL_VALUES, batchId: effectiveBatchId });
   }
   function closeForm() {
     if (busy) return;
@@ -548,7 +628,7 @@ export function TopicProposePage({
     else saveMutation.mutate(action.proposal);
   }
   function quickFilter(status: TopicStatus | '') {
-    const next = { keyword: '', batchId: filters.batchId, status };
+    const next = { keyword: '', batchId: effectiveBatchId, status };
     setFilters(next);
     setDraftFilters(next);
     setPageNumber(1);
@@ -565,9 +645,10 @@ export function TopicProposePage({
   }
   function handleApplyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    applyFiltersNow(draftFilters);
+    applyFiltersNow({ ...draftFilters, batchId: effectiveDraftBatchId });
   }
   function clearFilters() {
+    setHasExplicitBatchChoice(true);
     setDraftFilters({ ...INITIAL_FILTERS });
     setFilters({ ...INITIAL_FILTERS });
     setPageNumber(1);
@@ -575,7 +656,10 @@ export function TopicProposePage({
     onFiltersChange?.({ ...INITIAL_FILTERS });
   }
   function removeFilter(key: keyof TopicFilters) {
-    const next = { ...filters, [key]: '' };
+    if (key === 'batchId') {
+      setHasExplicitBatchChoice(true);
+    }
+    const next = { ...effectiveFilters, [key]: '' };
     setDraftFilters(next);
     setFilters(next);
     setPageNumber(1);
@@ -606,6 +690,27 @@ export function TopicProposePage({
       values.studentNumber > selectedTopic.studentNumber
     ) {
       errors.studentCodes = 'Hãy lưu chỉ tiêu mới trước, sau đó chỉ định thêm sinh viên.';
+    }
+    if (!errors.studentCodes && (!selectedTopic || updateAssignedStudents)) {
+      const knownCodes = new Set(knownStudentCodesKey ? knownStudentCodesKey.split('|') : []);
+      const normalizedCodes = (values.studentCodes ?? [])
+        .map((code) => code.trim().toUpperCase())
+        .filter((code) => Boolean(code) && !knownCodes.has(code));
+      const conflictCode = normalizedCodes.find((code) => {
+        const lookup = studentLookups[code];
+        return lookup?.status === 'found' && lookup.isAlreadyRegisteredInBatch;
+      });
+      if (conflictCode) {
+        errors.studentCodes = `Sinh viên ${conflictCode} đã đăng ký hoặc được gán vào đề tài khác trong đợt KLTN này.`;
+      } else {
+        const blockedCode = normalizedCodes.find((code) => {
+          const lookup = studentLookups[code];
+          return lookup?.status === 'found' && lookup.isRegistrationBlocked;
+        });
+        if (blockedCode) {
+          errors.studentCodes = `Sinh viên ${blockedCode} đang bị khóa quyền đăng ký đề tài.`;
+        }
+      }
     }
     if (Object.keys(errors).length) {
       showValidation(errors);
@@ -815,7 +920,7 @@ export function TopicProposePage({
                           triggerClassName="h-10 rounded-xl bg-surface-subtle/60 shadow-none focus-visible:bg-surface-card"
                           aria-labelledby="topic-batch-label"
                           value={values.batchId}
-                          options={batches.map((batch) => ({
+                          options={editorBatches.map((batch) => ({
                             value: batch.id,
                             label: batch.batchName,
                             description: `${batch.academicYear} - HK${batch.semester}`,
@@ -826,7 +931,9 @@ export function TopicProposePage({
                               ? 'Chưa có quyền xem đợt KLTN'
                               : batchesQuery.isPending
                                 ? 'Đang tải danh sách đợt...'
-                                : 'Chọn đợt KLTN'
+                                : !canSelectBatch && !selectedTopic && !openBatch
+                                  ? 'Hiện chưa có đợt KLTN nào đang mở'
+                                  : 'Chọn đợt KLTN'
                           }
                           searchable
                           disabled={
@@ -835,6 +942,7 @@ export function TopicProposePage({
                             Boolean(recovery) ||
                             !editable ||
                             Boolean(selectedTopic) ||
+                            (!canSelectBatch && !selectedTopic) ||
                             batchesQuery.isPending ||
                             batchesQuery.isError
                           }
@@ -845,6 +953,21 @@ export function TopicProposePage({
                             cấp quyền.
                           </p>
                         )}
+                        {!canSelectBatch && !selectedTopic && openBatch && (
+                          <p className="text-xs text-ink-muted">
+                            Đề tài mới luôn thuộc đợt KLTN đang mở hiện tại.
+                          </p>
+                        )}
+                        {!canSelectBatch &&
+                          !selectedTopic &&
+                          canReadBatches &&
+                          !batchesQuery.isPending &&
+                          !batchesQuery.isError &&
+                          !openBatch && (
+                            <p role="alert" className="text-xs text-tone-warning-text">
+                              Hiện chưa có đợt KLTN nào đang mở để tạo đề tài mới.
+                            </p>
+                          )}
                         {selectedTopic && (
                           <p className="text-xs text-ink-muted">
                             Đợt KLTN được giữ nguyên sau khi tạo đề tài.
@@ -1318,12 +1441,16 @@ export function TopicProposePage({
 
       <section aria-label="Thống kê đề tài" className="space-y-2">
         <p className="text-sm text-ink-body">
-          {filters.batchId ? (filterBatch?.batchName ?? 'Đợt đã chọn') : 'Tất cả đợt khóa luận'}
+          {effectiveBatchId
+            ? (filterBatch?.batchName ?? 'Đợt đã chọn')
+            : canSelectBatch
+              ? 'Tất cả đợt khóa luận'
+              : 'Chưa có đợt KLTN đang mở'}
         </p>
         <StatisticsBar
           layout="card"
           className="grid-cols-3"
-          loading={statisticsQuery.isPending && !statistics}
+          loading={hasActiveBatchScope && statisticsQuery.isPending && !statistics}
           items={[
             {
               key: 'total',
@@ -1366,7 +1493,7 @@ export function TopicProposePage({
         <form
           onSubmit={handleApplyFilters}
           aria-label="Bộ lọc đề tài"
-          className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${canSelectBatch ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}
         >
         <label className="block space-y-1.5 sm:col-span-2">
           <span className="text-xs font-medium text-ink-secondary">Tìm kiếm đề tài</span>
@@ -1379,21 +1506,26 @@ export function TopicProposePage({
             }
           />
         </label>
-        <div className="space-y-1.5">
-          <span className="text-xs font-medium text-ink-secondary">Đợt khóa luận</span>
-          <Select<string>
-            aria-label="Lọc theo đợt KLTN"
-            placeholder="Tất cả đợt khóa luận"
-            value={draftFilters.batchId}
-            options={[
-              { value: '', label: 'Tất cả đợt khóa luận' },
-              ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
-            ]}
-            onChange={(batchId) => applyFiltersNow({ ...draftFilters, batchId })}
-            searchable
-            disabled={!canReadBatches || batchesQuery.isPending || batchesQuery.isError}
-          />
-        </div>
+        {canSelectBatch && (
+          <div className="space-y-1.5">
+            <span className="text-xs font-medium text-ink-secondary">Đợt khóa luận</span>
+            <Select<string>
+              aria-label="Lọc theo đợt KLTN"
+              placeholder="Tất cả đợt khóa luận"
+              value={effectiveDraftBatchId}
+              options={[
+                { value: '', label: 'Tất cả đợt khóa luận' },
+                ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
+              ]}
+              onChange={(batchId) => {
+                setHasExplicitBatchChoice(true);
+                applyFiltersNow({ ...draftFilters, batchId });
+              }}
+              searchable
+              disabled={!canReadBatches || batchesQuery.isPending || batchesQuery.isError}
+            />
+          </div>
+        )}
         <div className="space-y-1.5">
           <span className="text-xs font-medium text-ink-secondary">Trạng thái thẩm định</span>
           <Select<TopicStatus | ''>
@@ -1410,7 +1542,9 @@ export function TopicProposePage({
             onChange={(status) => applyFiltersNow({ ...draftFilters, status })}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-4">
+        <div
+          className={`flex flex-wrap items-center gap-2 sm:col-span-2 ${canSelectBatch ? 'lg:col-span-4' : 'lg:col-span-3'}`}
+        >
           <Button type="button" variant="outline" disabled={!hasFilters} onClick={clearFilters}>
             Bỏ lọc
           </Button>
@@ -1425,7 +1559,19 @@ export function TopicProposePage({
         </form>
       </Card>
 
-      {filters.batchId && <TopicProposalSchedule batchId={filters.batchId} />}
+      {effectiveBatchId && <TopicProposalSchedule batchId={effectiveBatchId} />}
+
+      {!canSelectBatch &&
+        canReadBatches &&
+        !batchesQuery.isPending &&
+        !batchesQuery.isError &&
+        !openBatch &&
+        !isFormOpen && (
+          <InlineAlert tone="info">
+            Hiện chưa có đợt KLTN nào đang mở. Danh sách đề tài của đợt hiện tại sẽ hiển thị khi có
+            đợt KLTN được mở.
+          </InlineAlert>
+        )}
 
       {!canReadBatches && !isFormOpen && (
         <InlineAlert tone="warning">
@@ -1459,14 +1605,15 @@ export function TopicProposePage({
               Danh sách đề tài đã đề xuất
             </CardTitle>
             <p className="text-xs text-ink-muted">
-              {filters.batchId
+              {canSelectBatch && effectiveBatchId
                 ? 'Đang lọc theo đợt khóa luận đã chọn'
                 : 'Theo dõi tiến trình thẩm định và kết quả duyệt đề tài'}
             </p>
           </div>
 
           <span className="rounded-full border border-line-input bg-surface-muted px-2.5 py-1 text-xs font-semibold tabular-nums text-ink-secondary shadow-2xs">
-            {topicsQuery.isError ? '—' : (topicsQuery.data?.totalCount ?? '—')} đề tài
+            {!hasActiveBatchScope || topicsQuery.isError ? '—' : (topicsQuery.data?.totalCount ?? '—')}{' '}
+            đề tài
           </span>
         </CardHeader>
 
@@ -1482,7 +1629,7 @@ export function TopicProposePage({
                   },
                 ]
               : []),
-            ...(filters.batchId
+            ...(canSelectBatch && effectiveBatchId
               ? [
                   {
                     key: 'batchId',
@@ -1507,13 +1654,13 @@ export function TopicProposePage({
         />
 
         <TopicsTable
-          topics={topicsQuery.data?.items ?? []}
+          topics={hasActiveBatchScope ? (topicsQuery.data?.items ?? []) : []}
           batches={batches}
           batchesLoading={batchesLoading}
           pageNumber={topicsQuery.data?.pageNumber ?? pageNumber}
           pageSize={topicsQuery.data?.pageSize ?? pageSize}
           busy={busy || topicsQuery.isFetching}
-          loading={topicsQuery.isPending}
+          loading={hasActiveBatchScope ? topicsQuery.isPending : batchesQuery.isPending}
           error={
             topicsQuery.isError
               ? {
@@ -1542,15 +1689,17 @@ export function TopicProposePage({
                 ? 'Trang này không còn đề tài'
                 : 'Không có đề tài',
             description:
-              filters.keyword || filters.status || filters.batchId
+              filters.keyword || filters.status || (canSelectBatch && filters.batchId)
                 ? 'Không có đề tài phù hợp với bộ lọc.'
-                : 'Chưa có đề tài. Tạo đề xuất đầu tiên để bắt đầu.',
+                : !canSelectBatch && !openBatch
+                  ? 'Hiện chưa có đợt KLTN nào đang mở.'
+                  : 'Chưa có đề tài. Tạo đề xuất đầu tiên để bắt đầu.',
             action:
               pageNumber > 1 ? (
                 <Button variant="outline" onClick={() => setPageNumber(1)}>
                   Về trang đầu
                 </Button>
-              ) : filters.keyword || filters.status || filters.batchId ? (
+              ) : filters.keyword || filters.status || (canSelectBatch && filters.batchId) ? (
                 <Button variant="outline" leftIcon={<FunnelX />} onClick={clearFilters}>
                   Bỏ lọc
                 </Button>

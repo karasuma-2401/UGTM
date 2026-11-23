@@ -160,9 +160,13 @@ export function usePeriod() {
   const handleOpenBatch = async () => {
     modals.setNotice(null);
     modals.setErrorMessage(null);
+    const otherOpenBatch = data.batches?.find(
+      (b) => b.status === 'Open' && b.id !== data.currentBatch?.id,
+    );
     await actions.handleOpenBatch({
       selectedBatchId: data.selectedBatchId,
       currentBatch: data.currentBatch,
+      otherOpenBatchName: otherOpenBatch?.batchName ?? null,
       isLoadingDetail: data.isLoadingDetail,
       onSuccess: async (opened) => {
         data.setCurrentBatch(opened);

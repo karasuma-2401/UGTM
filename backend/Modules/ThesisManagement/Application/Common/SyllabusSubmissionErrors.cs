@@ -28,6 +28,10 @@ public static class SyllabusSubmissionErrors
         "Syllabus.GateConfigurationNotFound",
         "Cổng thẩm định đề cương chưa được cấu hình deadline cho đợt khóa luận này.");
 
+    public static readonly Error StageWindowClosed = Error.Conflict(
+        "Syllabus.StageWindowClosed",
+        "Hiện chưa đến hoặc đã hết giai đoạn nộp Đề cương chi tiết (Giai đoạn 2) của đợt khóa luận.");
+
     public static readonly Error InitialSubmissionDeadlinePassed = Error.Conflict(
         "Syllabus.InitialSubmissionDeadlinePassed",
         "Đã qua hạn nộp đề cương lần đầu.");

@@ -1,4 +1,5 @@
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
@@ -25,7 +26,8 @@ public sealed class SubmitMidtermReportHandler(
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     TimeProvider timeProvider,
-    IThesisUploadLifecycle uploadLifecycle)
+    IThesisUploadLifecycle uploadLifecycle,
+    IKltnBatchReader batchReader)
 {
     public async Task<Result<MidtermReportSubmissionDto>> HandleAsync(
         SubmitMidtermReportCommand command,
@@ -56,6 +58,30 @@ public sealed class SubmitMidtermReportHandler(
             return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.AccessDenied);
         }
 
+        var report = await midtermReportRepository.GetByGroupIdAsync(command.GroupId, cancellationToken);
+        var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
+        if (report is null)
+        {
+            if (group.Status != StudentGroupStatus.InProgress)
+            {
+                return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.InvalidSubmissionState);
+            }
+        }
+        else if (report.Status != MidtermReportStatus.NeedRevision
+            || group.Status != StudentGroupStatus.InProgress)
+        {
+            return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.InvalidSubmissionState);
+        }
+
+        var stageWindow = await batchReader.GetMidtermSubmissionWindowAsync(
+            membership.BatchId,
+            occurredAt,
+            cancellationToken);
+        if (stageWindow is null || !stageWindow.IsStageWindowOpen)
+        {
+            return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.StageWindowClosed);
+        }
+
         var gateConfiguration = await gateConfigurationRepository.GetByBatchAndGateAsync(
             membership.BatchId,
             ReviewGateType.Midterm,
@@ -65,32 +91,16 @@ public sealed class SubmitMidtermReportHandler(
             return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.GateConfigurationNotFound);
         }
 
-        var report = await midtermReportRepository.GetByGroupIdAsync(command.GroupId, cancellationToken);
-        var occurredAt = timeProvider.GetUtcNow().UtcDateTime;
         if (report is null)
         {
-            if (group.Status != StudentGroupStatus.InProgress)
-            {
-                return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.InvalidSubmissionState);
-            }
-
             if (occurredAt > gateConfiguration.InitialSubmissionDeadlineUtc)
             {
                 return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.InitialSubmissionDeadlinePassed);
             }
         }
-        else
+        else if (occurredAt > gateConfiguration.FinalClosureDeadlineUtc)
         {
-            if (report.Status != MidtermReportStatus.NeedRevision
-                || group.Status != StudentGroupStatus.InProgress)
-            {
-                return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.InvalidSubmissionState);
-            }
-
-            if (occurredAt > gateConfiguration.FinalClosureDeadlineUtc)
-            {
-                return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.FinalClosureDeadlinePassed);
-            }
+            return Result.Failure<MidtermReportSubmissionDto>(MidtermReportSubmissionErrors.FinalClosureDeadlinePassed);
         }
 
         ValidatedThesisSubmissionFile validatedFile;

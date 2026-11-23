@@ -82,9 +82,17 @@ public sealed class TopicRegistrationStore(
 
                     if (invitation is not null)
                         EnqueueInvitation(regResult.Value.GroupId, studentBId!.Value, invitation, confirmationWindow, nowUtc);
-                    await db.SaveChangesAsync(cancellationToken);
-                    await transaction.CommitAsync(cancellationToken);
-                    return regResult;
+                    try
+                    {
+                        await db.SaveChangesAsync(cancellationToken);
+                        await transaction.CommitAsync(cancellationToken);
+                        return regResult;
+                    }
+                    catch (ThesisManagementUniqueConstraintException ex)
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return await MapRegistrationUniqueConflictAsync(ex, topic.BatchId, studentBId, cancellationToken);
+                    }
                 });
             }
             else
@@ -111,8 +119,15 @@ public sealed class TopicRegistrationStore(
 
                 if (invitation is not null)
                     EnqueueInvitation(regResult.Value.GroupId, studentBId!.Value, invitation, confirmationWindow, nowUtc);
-                await db.SaveChangesAsync(cancellationToken);
-                return regResult;
+                try
+                {
+                    await db.SaveChangesAsync(cancellationToken);
+                    return regResult;
+                }
+                catch (ThesisManagementUniqueConstraintException ex)
+                {
+                    return await MapRegistrationUniqueConflictAsync(ex, topic.BatchId, studentBId, cancellationToken);
+                }
             }
         }
         finally
@@ -204,13 +219,25 @@ public sealed class TopicRegistrationStore(
             }
         }
 
-        var alreadyRegistered = await db.StudentGroupMembers.AnyAsync(m =>
-            (m.StudentId == studentAId || (studentBId.HasValue && m.StudentId == studentBId.Value))
-            && m.BatchId == topic.BatchId, cancellationToken);
+        var studentARegistered = await db.StudentGroupMembers.AnyAsync(
+            m => m.StudentId == studentAId && m.BatchId == topic.BatchId,
+            cancellationToken);
 
-        if (alreadyRegistered)
+        if (studentARegistered)
         {
             return Result.Failure<TopicRegistrationResultDto>(TopicRegistrationErrors.StudentAlreadyRegisteredInBatch);
+        }
+
+        if (studentBId.HasValue)
+        {
+            var partnerRegistered = await db.StudentGroupMembers.AnyAsync(
+                m => m.StudentId == studentBId.Value && m.BatchId == topic.BatchId,
+                cancellationToken);
+
+            if (partnerRegistered)
+            {
+                return Result.Failure<TopicRegistrationResultDto>(TopicRegistrationErrors.PartnerAlreadyRegisteredInBatch);
+            }
         }
 
         var group = await db.StudentGroups
@@ -409,11 +436,24 @@ public sealed class TopicRegistrationStore(
         Guid studentId,
         CancellationToken cancellationToken = default)
     {
-        var member = await db.StudentGroupMembers
-            .Include(m => m.Group)
-            .Where(m => m.StudentId == studentId)
-            .OrderByDescending(m => m.JoinedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+        var activeOpenBatchId = await batchReader.GetActiveOpenBatchIdAsync(cancellationToken);
+        StudentGroupMember? member;
+        if (activeOpenBatchId.HasValue)
+        {
+            member = await db.StudentGroupMembers
+                .Include(m => m.Group)
+                .Where(m => m.StudentId == studentId && m.BatchId == activeOpenBatchId.Value)
+                .OrderByDescending(m => m.JoinedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
+        else
+        {
+            member = await db.StudentGroupMembers
+                .Include(m => m.Group)
+                .Where(m => m.StudentId == studentId)
+                .OrderByDescending(m => m.JoinedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+        }
 
         var penalty = await db.StudentRegistrationPenalties
             .FirstOrDefaultAsync(p => p.StudentId == studentId, cancellationToken);
@@ -452,7 +492,44 @@ public sealed class TopicRegistrationStore(
             ConfirmationExpiresAtUtc: member?.ConfirmationExpiresAtUtc,
             ViolationCount: penalty?.ViolationCount ?? 0,
             IsRegistrationBlocked: penalty?.IsRegistrationBlocked ?? false,
-            BlockedAtUtc: penalty?.BlockedAtUtc);
+            BlockedAtUtc: penalty?.BlockedAtUtc,
+            BatchId: member?.BatchId);
+    }
+
+    private async Task<Result<TopicRegistrationResultDto>> MapRegistrationUniqueConflictAsync(
+        ThesisManagementUniqueConstraintException ex,
+        Guid batchId,
+        Guid? studentBId,
+        CancellationToken cancellationToken)
+    {
+        if (string.Equals(ex.ConstraintName, "ix_student_group_member_student_id_batch_id", StringComparison.OrdinalIgnoreCase))
+        {
+            if (studentBId.HasValue)
+            {
+                var partnerAlreadyInBatch = await db.StudentGroupMembers
+                    .AsNoTracking()
+                    .AnyAsync(m => m.StudentId == studentBId.Value && m.BatchId == batchId, cancellationToken);
+                if (partnerAlreadyInBatch)
+                {
+                    return Result.Failure<TopicRegistrationResultDto>(TopicRegistrationErrors.PartnerAlreadyRegisteredInBatch);
+                }
+            }
+
+            return Result.Failure<TopicRegistrationResultDto>(TopicRegistrationErrors.StudentAlreadyRegisteredInBatch);
+        }
+
+        return Result.Failure<TopicRegistrationResultDto>(TopicRegistrationErrors.ConcurrencyConflict);
+    }
+
+    private static Result<AdvisorTopicRegistrationResultDto> MapAdvisorAssignUniqueConflict(
+        ThesisManagementUniqueConstraintException ex)
+    {
+        if (string.Equals(ex.ConstraintName, "ix_student_group_member_student_id_batch_id", StringComparison.OrdinalIgnoreCase))
+        {
+            return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.StudentAlreadyRegisteredInBatch);
+        }
+
+        return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.ConcurrencyConflict);
     }
 
     public async Task<Result<AdvisorTopicRegistrationResultDto>> AssignTopicStudentsByAdvisorAsync(
@@ -472,7 +549,17 @@ public sealed class TopicRegistrationStore(
                 var topic = await QueryTopicForUpdateAsync(topicId, existingTransaction.GetDbTransaction(), cancellationToken);
                 if (topic is null) return Result.Failure<AdvisorTopicRegistrationResultDto>(TopicRegistrationErrors.TopicNotFound);
                 var result = await ExecuteAdvisorAssignLogicAsync(topic, advisorId, isAdmin, studentIds, nowUtc, cancellationToken);
-                if (result.IsSuccess) await db.SaveChangesAsync(cancellationToken);
+                if (result.IsSuccess)
+                {
+                    try
+                    {
+                        await db.SaveChangesAsync(cancellationToken);
+                    }
+                    catch (ThesisManagementUniqueConstraintException ex)
+                    {
+                        return MapAdvisorAssignUniqueConflict(ex);
+                    }
+                }
                 return result;
             }
 
@@ -503,9 +590,17 @@ public sealed class TopicRegistrationStore(
                         return assignResult;
                     }
 
-                    await db.SaveChangesAsync(cancellationToken);
-                    await transaction.CommitAsync(cancellationToken);
-                    return assignResult;
+                    try
+                    {
+                        await db.SaveChangesAsync(cancellationToken);
+                        await transaction.CommitAsync(cancellationToken);
+                        return assignResult;
+                    }
+                    catch (ThesisManagementUniqueConstraintException ex)
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return MapAdvisorAssignUniqueConflict(ex);
+                    }
                 });
             }
             else
@@ -529,8 +624,15 @@ public sealed class TopicRegistrationStore(
                     return assignResult;
                 }
 
-                await db.SaveChangesAsync(cancellationToken);
-                return assignResult;
+                try
+                {
+                    await db.SaveChangesAsync(cancellationToken);
+                    return assignResult;
+                }
+                catch (ThesisManagementUniqueConstraintException ex)
+                {
+                    return MapAdvisorAssignUniqueConflict(ex);
+                }
             }
         }
         finally
@@ -677,8 +779,7 @@ public sealed class TopicRegistrationStore(
             .Include(m => m.Group)
             .Where(m => studentIds.Contains(m.StudentId)
                         && m.BatchId == topic.BatchId
-                        && m.Group.TopicId != topic.Id
-                        && m.Group.Status != StudentGroupStatus.Stopped)
+                        && m.Group.TopicId != topic.Id)
             .AnyAsync(cancellationToken);
 
         if (otherRegistrations)

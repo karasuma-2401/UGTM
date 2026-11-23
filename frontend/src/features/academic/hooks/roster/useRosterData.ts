@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { KltnBatchSummaryDto } from '../../types/period.types';
 import type { UserSummary } from '@/features/identity/types/user.types';
+import { getPreferredDefaultBatch } from '@/shared/academic-periods/currentBatches';
 import { periodApi, getPeriodErrorMessage } from '../../services/periodApi';
 import { userApi, getUserErrorMessage } from '@/features/identity/services/userApi';
 
@@ -35,7 +36,7 @@ export function useRosterData(onError?: (msg: string) => void) {
         if (prev && batchesRes.items.some((b) => b.id === prev)) {
           return prev;
         }
-        return batchesRes.items.length > 0 ? batchesRes.items[0].id : '';
+        return getPreferredDefaultBatch(batchesRes.items)?.id ?? '';
       });
       setExistingUsers(usersRes.items);
     } catch (err) {

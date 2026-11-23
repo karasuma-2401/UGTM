@@ -11,6 +11,10 @@ import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { TableActiveFilters } from '@/components/ui/table';
 import { DataTable } from '@/components/ui/data-table';
 import { useAuth } from '@/shared/auth';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+} from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { advisingApi } from '../services/advisingApi';
 import { getTopicErrorMessage } from '../services/topicApi';
@@ -87,9 +91,13 @@ export function TopicAdvisingPage({
   initialFilters?: AdvisingFilters;
   onFiltersChange?: (filters: AdvisingFilters) => void;
 }) {
-  const { user, hasPermission } = useAuth();
+  const { user, hasRole, hasPermission } = useAuth();
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
   const [filters, setFilters] = useState(initialFilters);
   const [draft, setDraft] = useState(initialFilters);
+  const [hasExplicitBatchChoice, setHasExplicitBatchChoice] = useState<boolean>(
+    Boolean(initialFilters.batchId),
+  );
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortBy, setSortBy] = useState<'createdAt' | 'title' | 'studentCount'>('createdAt');
@@ -102,28 +110,47 @@ export function TopicAdvisingPage({
     setSyncedInitialFiltersKey(initialFiltersKey);
     setFilters(initialFilters);
     setDraft(initialFilters);
+    if (initialFilters.batchId) {
+      setHasExplicitBatchChoice(true);
+    }
     setPageNumber(1);
     setSelectedRowId(null);
   }
   const batchesQuery = useAcademicBatches();
   const canReadBatches = hasPermission('academic.batches.read');
+  const batches = batchesQuery.data ?? [];
+  const openBatch = getActiveOpenBatch(batches);
+  const effectiveBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? filters.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
+  const effectiveDraftBatchId = canSelectBatch
+    ? hasExplicitBatchChoice
+      ? draft.batchId
+      : (openBatch?.id ?? '')
+    : (openBatch?.id ?? '');
+  const effectiveFilters: AdvisingFilters = {
+    ...filters,
+    batchId: effectiveBatchId,
+  };
+  const hasActiveBatchScope = canSelectBatch || Boolean(openBatch?.id);
   const query = useQuery({
-    queryKey: ['topic-advising', user?.id, filters, pageNumber, pageSize, sortBy, sortOrder],
+    queryKey: ['topic-advising', user?.id, effectiveFilters, pageNumber, pageSize, sortBy, sortOrder],
     queryFn: ({ signal }) =>
-      advisingApi.getGroups({ ...filters, pageNumber, pageSize, sortBy, sortOrder }, signal),
-    enabled: Boolean(user?.id),
+      advisingApi.getGroups({ ...effectiveFilters, pageNumber, pageSize, sortBy, sortOrder }, signal),
+    enabled: Boolean(user?.id) && hasActiveBatchScope,
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
     refetchInterval: 60_000,
   });
   const data = query.isError ? undefined : query.data;
-  const page = data?.page;
-  const statistics = data?.statistics;
+  const page = hasActiveBatchScope ? data?.page : undefined;
+  const statistics = hasActiveBatchScope ? data?.statistics : undefined;
   const busy = query.isFetching;
-  const batches = batchesQuery.data ?? [];
   const batchName =
-    batches.find((batch) => batch.id === filters.batchId)?.batchName ??
-    page?.items.find((group) => group.batchId === filters.batchId)?.batchName ??
+    batches.find((batch) => batch.id === effectiveBatchId)?.batchName ??
+    page?.items.find((group) => group.batchId === effectiveBatchId)?.batchName ??
     'Đợt đã chọn';
   const count = (value: number | undefined) =>
     value === undefined ? '—' : value.toLocaleString('vi-VN');
@@ -138,9 +165,10 @@ export function TopicAdvisingPage({
   }
   function submit(event: FormEvent) {
     event.preventDefault();
-    apply(draft);
+    apply({ ...draft, batchId: effectiveDraftBatchId });
   }
   function clear() {
+    setHasExplicitBatchChoice(true);
     apply({ ...DEFAULT_ADVISING_FILTERS });
   }
   function sort(field: typeof sortBy) {
@@ -156,7 +184,7 @@ export function TopicAdvisingPage({
   }
   const hasFilters = Boolean(
     filters.keyword ||
-    filters.batchId ||
+    (canSelectBatch && effectiveBatchId) ||
     filters.status ||
     filters.confirmation ||
     filters.scope !== 'active',
@@ -176,7 +204,12 @@ export function TopicAdvisingPage({
       <section aria-label="Thống kê nhóm theo đợt" className="space-y-2">
         <div className="flex flex-wrap justify-between gap-2 text-sm text-ink-body">
           <p>
-            {count(statistics?.total)} nhóm · {filters.batchId ? batchName : 'Tất cả đợt khóa luận'}
+            {count(statistics?.total)} nhóm ·{' '}
+            {effectiveBatchId
+              ? batchName
+              : canSelectBatch
+                ? 'Tất cả đợt khóa luận'
+                : 'Chưa có đợt KLTN đang mở'}
           </p>
           <p>
             {count(statistics?.activeConfirmedStudents)} sinh viên đã xác nhận trong nhóm đang thực
@@ -262,21 +295,26 @@ export function TopicAdvisingPage({
               onChange={(event) => apply({ ...draft, keyword: event.target.value })}
             />
           </label>
-          <div className="space-y-1.5">
-            <span className="text-xs font-medium text-ink-secondary">Đợt khóa luận</span>
-            <Select<string>
-              aria-label="Đợt khóa luận"
-              placeholder="Tất cả đợt khóa luận"
-              value={draft.batchId}
-              options={[
-                { value: '', label: 'Tất cả đợt khóa luận' },
-                ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
-              ]}
-              onChange={(batchId) => apply({ ...draft, batchId })}
-              searchable
-              disabled={!canReadBatches || batchesQuery.isPending || batchesQuery.isError}
-            />
-          </div>
+          {canSelectBatch && (
+            <div className="space-y-1.5">
+              <span className="text-xs font-medium text-ink-secondary">Đợt khóa luận</span>
+              <Select<string>
+                aria-label="Đợt khóa luận"
+                placeholder="Tất cả đợt khóa luận"
+                value={effectiveDraftBatchId}
+                options={[
+                  { value: '', label: 'Tất cả đợt khóa luận' },
+                  ...batches.map((batch) => ({ value: batch.id, label: batch.batchName })),
+                ]}
+                onChange={(batchId) => {
+                  setHasExplicitBatchChoice(true);
+                  apply({ ...draft, batchId });
+                }}
+                searchable
+                disabled={!canReadBatches || batchesQuery.isPending || batchesQuery.isError}
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-ink-secondary">Phạm vi nhóm</span>
             <Select<GroupScope>
@@ -344,6 +382,13 @@ export function TopicAdvisingPage({
             </InlineAlert>
           </div>
         )}
+        {!canSelectBatch && !batchesQuery.isPending && !batchesQuery.isError && !openBatch && (
+          <div className="px-4 pb-3">
+            <InlineAlert tone="info">
+              Hiện chưa có đợt KLTN nào đang mở. Danh sách nhóm hướng dẫn chỉ hiển thị trong đợt KLTN đang mở hiện tại.
+            </InlineAlert>
+          </div>
+        )}
         {!canReadBatches && (
           <div className="px-4 pb-3">
             <InlineAlert tone="info">
@@ -363,13 +408,16 @@ export function TopicAdvisingPage({
                   },
                 ]
               : []),
-            ...(filters.batchId
+            ...(canSelectBatch && effectiveBatchId
               ? [
                   {
                     key: 'batch',
                     label: 'Đợt',
                     value: batchName,
-                    onRemove: () => apply({ ...filters, batchId: '' }),
+                    onRemove: () => {
+                      setHasExplicitBatchChoice(true);
+                      apply({ ...filters, batchId: '' });
+                    },
                   },
                 ]
               : []),
@@ -415,7 +463,7 @@ export function TopicAdvisingPage({
           onRowSelect={setSelectedRowId}
           onRowOpen={open}
           busy={busy}
-          loading={query.isPending}
+          loading={hasActiveBatchScope ? query.isPending : batchesQuery.isPending}
           error={
             query.isError
               ? { message: getTopicErrorMessage(query.error), onRetry: () => void query.refetch() }

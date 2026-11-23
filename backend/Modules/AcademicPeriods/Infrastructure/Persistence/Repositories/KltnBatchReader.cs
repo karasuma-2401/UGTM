@@ -66,6 +66,15 @@ public sealed class KltnBatchReader(AcademicPeriodsDbContext db) : IKltnBatchRea
             .AsNoTracking()
             .AnyAsync(b => b.Id == batchId, cancellationToken);
 
+    public Task<Guid?> GetActiveOpenBatchIdAsync(CancellationToken cancellationToken = default)
+        => db.KltnBatches
+            .AsNoTracking()
+            .Where(b => b.Status == BatchStatus.Open)
+            .OrderByDescending(b => b.StartDate)
+            .ThenBy(b => b.Id)
+            .Select(b => (Guid?)b.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<BatchRegistrationWindowContractDto?> GetRegistrationWindowAsync(
         Guid batchId,
         DateTime nowUtc,
@@ -213,5 +222,80 @@ public sealed class KltnBatchReader(AcademicPeriodsDbContext db) : IKltnBatchRea
             isRenameOpen,
             stage3.StartDate,
             stage4.DeadlineAtUtc);
+    }
+
+    public Task<BatchReviewGateStageWindowContractDto?> GetSyllabusSubmissionWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+        => GetReviewGateStageWindowAsync(
+            batchId,
+            nowUtc,
+            "REGISTRATION_AND_SYLLABUS",
+            2,
+            cancellationToken);
+
+    public Task<BatchReviewGateStageWindowContractDto?> GetMidtermSubmissionWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+        => GetReviewGateStageWindowAsync(
+            batchId,
+            nowUtc,
+            "MIDTERM_GATE",
+            4,
+            cancellationToken);
+
+    private async Task<BatchReviewGateStageWindowContractDto?> GetReviewGateStageWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        string stageCode,
+        int orderIndex,
+        CancellationToken cancellationToken)
+    {
+        var batch = await db.KltnBatches
+            .AsNoTracking()
+            .Include(b => b.Stages)
+            .FirstOrDefaultAsync(b => b.Id == batchId, cancellationToken);
+
+        if (batch is null)
+        {
+            return null;
+        }
+
+        var stage = batch.Stages
+            .FirstOrDefault(s => s.StageCode == stageCode || s.OrderIndex == orderIndex);
+
+        if (stage is null)
+        {
+            return new BatchReviewGateStageWindowContractDto(
+                batch.Id,
+                batch.Status.ToString(),
+                false,
+                null,
+                null);
+        }
+
+        TimeZoneInfo tz;
+        try
+        {
+            tz = TimeZoneInfo.FindSystemTimeZoneById(
+                string.IsNullOrWhiteSpace(batch.TimeZoneId) ? "Asia/Ho_Chi_Minh" : batch.TimeZoneId);
+        }
+        catch
+        {
+            tz = TimeZoneInfo.Utc;
+        }
+
+        var localDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tz));
+        var isStageActive = stage.StartDate <= localDate && nowUtc <= stage.DeadlineAtUtc;
+        var isStageWindowOpen = batch.Status == BatchStatus.Open && isStageActive;
+
+        return new BatchReviewGateStageWindowContractDto(
+            batch.Id,
+            batch.Status.ToString(),
+            isStageWindowOpen,
+            stage.StartDate,
+            stage.DeadlineAtUtc);
     }
 }

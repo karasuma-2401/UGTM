@@ -26,6 +26,13 @@ public sealed record BatchFinalReportSubmissionWindowContractDto(
     DateTime? WindowOpensAtUtc,
     DateTime? WindowDeadlineAtUtc);
 
+public sealed record BatchReviewGateStageWindowContractDto(
+    Guid BatchId,
+    string BatchStatus,
+    bool IsStageWindowOpen,
+    DateOnly? StageStartDate,
+    DateTime? StageDeadlineAtUtc);
+
 public interface IKltnBatchReader
 {
     Task<bool> ExistsAsync(Guid batchId, CancellationToken cancellationToken = default);
@@ -49,4 +56,19 @@ public interface IKltnBatchReader
         Guid batchId,
         DateTime nowUtc,
         CancellationToken cancellationToken = default);
+
+    Task<BatchReviewGateStageWindowContractDto?> GetSyllabusSubmissionWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<BatchReviewGateStageWindowContractDto?>(null);
+
+    Task<BatchReviewGateStageWindowContractDto?> GetMidtermSubmissionWindowAsync(
+        Guid batchId,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult<BatchReviewGateStageWindowContractDto?>(null);
+
+    Task<Guid?> GetActiveOpenBatchIdAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult<Guid?>(null);
 }

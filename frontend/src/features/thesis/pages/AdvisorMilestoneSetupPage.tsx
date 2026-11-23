@@ -31,6 +31,7 @@ export function AdvisorMilestoneSetupPage() {
     selectedBatchId,
     setSelectedBatchId,
     batchesLoading,
+    canSelectBatch = false,
 
     advisedGroups,
     selectedGroup,
@@ -189,34 +190,41 @@ export function AdvisorMilestoneSetupPage() {
         </div>
       </PageHeader>
 
-      {/* Fluent context toolbar: Batch + Advised group selector */}
+      {/* Fluent context toolbar: Batch (management only) + Advised group selector */}
       <section
-        aria-label="Bộ lọc đợt và nhóm hướng dẫn"
+        aria-label={canSelectBatch ? 'Bộ lọc đợt và nhóm hướng dẫn' : 'Chọn nhóm hướng dẫn'}
         className="rounded-2xl border border-line/80 bg-surface-card p-4 shadow-2xs"
       >
-        <div className="grid gap-4 lg:grid-cols-[minmax(240px,1fr)_minmax(320px,1.5fr)]">
-          <div className="space-y-1.5">
-            <label
-              htmlFor="advisor-milestone-batch-select"
-              className="flex items-center gap-1.5 text-xs font-semibold text-ink-secondary select-none"
-            >
-              <Layers className="size-3.5 text-ink-muted" aria-hidden="true" />
-              <span>Đợt khóa luận</span>
-            </label>
-            <Select
-              id="advisor-milestone-batch-select"
-              options={batchOptions}
-              value={selectedBatchId}
-              disabled={batchesLoading || batches.length === 0}
-              placeholder={batchesLoading ? 'Đang tải đợt khóa luận...' : 'Chọn đợt khóa luận'}
-              noOptionsMessage="Chưa có đợt khóa luận nào"
-              onChange={(value) => {
-                if (typeof value === 'string' && value) {
-                  setSelectedBatchId(value);
-                }
-              }}
-            />
-          </div>
+        <div
+          className={cn(
+            'grid gap-4',
+            canSelectBatch && 'lg:grid-cols-[minmax(240px,1fr)_minmax(320px,1.5fr)]',
+          )}
+        >
+          {canSelectBatch && (
+            <div className="space-y-1.5">
+              <label
+                htmlFor="advisor-milestone-batch-select"
+                className="flex items-center gap-1.5 text-xs font-semibold text-ink-secondary select-none"
+              >
+                <Layers className="size-3.5 text-ink-muted" aria-hidden="true" />
+                <span>Đợt khóa luận</span>
+              </label>
+              <Select
+                id="advisor-milestone-batch-select"
+                options={batchOptions}
+                value={selectedBatchId}
+                disabled={batchesLoading || batches.length === 0}
+                placeholder={batchesLoading ? 'Đang tải đợt khóa luận...' : 'Chọn đợt khóa luận'}
+                noOptionsMessage="Chưa có đợt khóa luận nào"
+                onChange={(value) => {
+                  if (typeof value === 'string' && value) {
+                    setSelectedBatchId(value);
+                  }
+                }}
+              />
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label
@@ -234,9 +242,11 @@ export function AdvisorMilestoneSetupPage() {
               placeholder={
                 groupsLoading
                   ? 'Đang tải danh sách nhóm...'
-                  : advisedGroups.length === 0
-                    ? 'Không có nhóm nào trong đợt này'
-                    : 'Chọn nhóm hướng dẫn'
+                  : !canSelectBatch && !batchesLoading && !selectedBatchId
+                    ? 'Hiện chưa có đợt KLTN nào đang mở'
+                    : advisedGroups.length === 0
+                      ? 'Không có nhóm nào trong đợt này'
+                      : 'Chọn nhóm hướng dẫn'
               }
               noOptionsMessage="Không tìm thấy nhóm hướng dẫn"
               onChange={(value) => {
@@ -248,6 +258,12 @@ export function AdvisorMilestoneSetupPage() {
           </div>
         </div>
       </section>
+
+      {!canSelectBatch && !batchesLoading && !selectedBatchId && (
+        <InlineAlert tone="info" title="Chưa có đợt KLTN nào đang mở">
+          Danh sách nhóm và mốc tiến độ chỉ hiển thị cho đợt KLTN đang mở hiện tại.
+        </InlineAlert>
+      )}
 
       {topicsError && (
         <InlineAlert

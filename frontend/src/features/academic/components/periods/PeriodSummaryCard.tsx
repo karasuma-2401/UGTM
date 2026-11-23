@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play } from 'lucide-react';
+import { AlertTriangle, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface PeriodSummaryCardProps {
@@ -11,6 +11,7 @@ interface PeriodSummaryCardProps {
   canEdit: boolean;
   onOpenBatch?: () => void;
   isOpenLoading?: boolean;
+  activeOpenBatchName?: string | null;
 }
 
 const STATUS_MAP: Record<
@@ -56,9 +57,11 @@ export const PeriodSummaryCard: React.FC<PeriodSummaryCardProps> = ({
   canEdit,
   onOpenBatch,
   isOpenLoading = false,
+  activeOpenBatchName = null,
 }) => {
   const currentStatus = STATUS_MAP[status] || STATUS_MAP.Draft;
   const isStandard21Weeks = totalWeeks === 21;
+  const isBlockedByOtherOpenBatch = Boolean(activeOpenBatchName);
 
   return (
     <div className="rounded-2xl border border-line bg-surface-card p-6 shadow-xs transition-all hover:border-line-strong">
@@ -139,18 +142,31 @@ export const PeriodSummaryCard: React.FC<PeriodSummaryCardProps> = ({
 
         {/* Nút Mở đợt vận hành */}
         {canEdit && status === 'Draft' && onOpenBatch && (
-          <div className="pt-1">
+          <div className="pt-1 space-y-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={isOpenLoading}
+              disabled={isOpenLoading || isBlockedByOtherOpenBatch}
               onClick={onOpenBatch}
-              className="w-full h-10 gap-2 rounded-xl border border-tone-success-border bg-tone-success-bg text-tone-success-strong hover:bg-tone-success-bg hover:border-emerald-400 hover:text-tone-success-strong font-semibold text-xs shadow-2xs transition-all active:scale-[0.98]"
+              className="w-full h-10 gap-2 rounded-xl border border-tone-success-border bg-tone-success-bg text-tone-success-strong hover:bg-tone-success-bg hover:border-emerald-400 hover:text-tone-success-strong font-semibold text-xs shadow-2xs transition-all active:scale-[0.98] disabled:opacity-55 disabled:cursor-not-allowed"
             >
               <Play className="size-3.5 fill-current" />
               {isOpenLoading ? 'Đang mở đợt...' : 'Mở đợt vận hành'}
             </Button>
+            {isBlockedByOtherOpenBatch && (
+              <p
+                role="status"
+                className="flex items-start gap-2 rounded-xl border border-tone-warning-border bg-tone-warning-bg px-3 py-2 text-[11px] leading-relaxed text-tone-warning-strong"
+              >
+                <AlertTriangle className="size-3.5 shrink-0 mt-0.5" aria-hidden="true" />
+                <span>
+                  Hệ thống chỉ cho phép mở 1 đợt KLTN tại một thời điểm. Đợt{' '}
+                  <strong className="font-semibold">{activeOpenBatchName}</strong> hiện đang hoạt
+                  động — vui lòng đóng đợt đó trước khi mở đợt mới.
+                </span>
+              </p>
+            )}
           </div>
         )}
       </div>

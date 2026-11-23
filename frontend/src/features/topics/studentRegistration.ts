@@ -59,10 +59,11 @@ export function validateStudentRegistration(
     return 'Tài khoản đang bị khóa quyền đăng ký đề tài. Vui lòng liên hệ Khoa.';
   if (status?.hasRegistered && status.topicId === topic.id)
     return 'Bạn đã được ghi nhận vào đề tài này. Không cần đăng ký lại.';
-  // my-status currently has no batchId. Do not guess that an older registration
-  // belongs to the selected batch and block all other academic periods.
-  if (status?.hasRegistered && status.batchId && status.batchId === topic.batchId)
-    return 'Bạn đã có đăng ký trong đợt KLTN này.';
+  if (status?.hasRegistered && status.batchId && status.batchId === topic.batchId) {
+    return status.confirmationStatus === 'Pending'
+      ? 'Bạn đang có lời mời chờ xác nhận ở một đề tài khác trong đợt KLTN này.'
+      : 'Bạn đã đăng ký đề tài khác trong đợt KLTN này.';
+  }
   if (typeof topic.availableSlots !== 'number')
     return 'Chưa có số liệu chỗ trống. Vui lòng cập nhật danh mục trước khi đăng ký.';
   if (topic.availableSlots < (partner ? 2 : 1))

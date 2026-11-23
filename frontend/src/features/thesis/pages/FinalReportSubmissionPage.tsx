@@ -50,6 +50,7 @@ export function FinalReportSubmissionPage() {
     latestVersion,
     canSubmit,
     notEligibleReason,
+    stageBlockedReason,
     submitMutation,
     handleDownload,
     handleFileSelect,
@@ -183,6 +184,14 @@ export function FinalReportSubmissionPage() {
           Hệ thống chưa thể đồng bộ góp ý đã phát hành. Bạn vẫn có thể xem lịch sử báo cáo.
         </InlineAlert>
       )}
+
+      {midtermApproved &&
+        stageBlockedReason &&
+        (currentStatus === 'Draft' || currentStatus === 'Submitted') && (
+          <InlineAlert tone="warning" title="Ngoài giai đoạn nộp Báo cáo cuối kỳ">
+            {stageBlockedReason}
+          </InlineAlert>
+        )}
 
       {currentStatus === 'UnderEvaluation' && !feedbackComment && (
         <InlineAlert tone="warning" title="Báo cáo cuối kỳ đang trong quá trình đánh giá">

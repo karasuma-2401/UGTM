@@ -22,6 +22,11 @@ import { Select } from '@/components/ui/select';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { TableFloatingBar } from '@/components/ui/table-floating-bar';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+} from '@/shared/academic-periods/currentBatches';
+import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
 import { OperationToast } from '@/shared/notifications';
 import {
@@ -136,12 +141,13 @@ function RenameReviewView({
   useRouteLinks = false,
 }: RenameReviewViewProps) {
   const config = RENAME_LEVEL_CONFIGS[level];
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
   const queryClient = useQueryClient();
 
   const [scope, setScope] = useState<RenameQueueScope>('pending');
   const [keyword, setKeyword] = useState('');
-  const [batchId, setBatchId] = useState('');
+  const [batchIdOverride, setBatchIdOverride] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<RenameSortField>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
@@ -149,6 +155,15 @@ function RenameReviewView({
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [openRequestId, setOpenRequestId] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+
+  const batchesQuery = useAcademicBatches();
+  const openBatch = useMemo(
+    () => getActiveOpenBatch(batchesQuery.data ?? []),
+    [batchesQuery.data],
+  );
+  const effectiveBatchId = canSelectBatch
+    ? (batchIdOverride ?? openBatch?.id ?? '')
+    : '';
 
   const query = useQuery({
     queryKey: ['rename-requests-review', user?.id],
@@ -158,35 +173,47 @@ function RenameReviewView({
   });
 
   const allItems = useMemo(() => query.data ?? [], [query.data]);
+  const scopedItems = useMemo(
+    () =>
+      canSelectBatch
+        ? allItems
+        : openBatch
+          ? allItems.filter((item) => item.batchId === openBatch.id)
+          : [],
+    [allItems, canSelectBatch, openBatch],
+  );
   const stats = useMemo(
-    () => computeRenameQueueStats(allItems, config.status),
-    [allItems, config.status],
+    () => computeRenameQueueStats(scopedItems, config.status),
+    [scopedItems, config.status],
   );
 
   const batchOptions = useMemo(() => {
     const seen = new Map<string, string>();
-    for (const item of allItems) {
+    for (const item of scopedItems) {
       if (item.batchId && item.batchName && !seen.has(item.batchId)) {
         seen.set(item.batchId, item.batchName);
       }
+    }
+    if (openBatch && !seen.has(openBatch.id)) {
+      seen.set(openBatch.id, openBatch.batchName);
     }
     return [
       { value: '', label: 'Tất cả đợt KLTN' },
       ...Array.from(seen.entries()).map(([id, name]) => ({ value: id, label: name })),
     ];
-  }, [allItems]);
+  }, [openBatch, scopedItems]);
 
   const filteredItems = useMemo(
     () =>
-      filterAndSortRenameRequests(allItems, {
+      filterAndSortRenameRequests(scopedItems, {
         activeStatus: config.status,
         scope,
         keyword,
-        batchId,
+        batchId: effectiveBatchId,
         sortBy,
         sortOrder,
       }),
-    [allItems, batchId, config.status, keyword, scope, sortBy, sortOrder],
+    [config.status, effectiveBatchId, keyword, scope, scopedItems, sortBy, sortOrder],
   );
 
   const totalCount = filteredItems.length;
@@ -262,7 +289,7 @@ function RenameReviewView({
   function handleResetFilters() {
     setScope('pending');
     setKeyword('');
-    setBatchId('');
+    setBatchIdOverride('');
     setPage(1);
     setSelectedRowId(null);
   }
@@ -292,7 +319,9 @@ function RenameReviewView({
     />
   ) : undefined;
 
-  const hasCustomFilters = Boolean(keyword.trim() || batchId || scope !== 'pending');
+  const hasCustomFilters = Boolean(
+    keyword.trim() || (canSelectBatch && effectiveBatchId) || scope !== 'pending',
+  );
   const scopeDescription =
     scope === 'pending'
       ? `Đơn chờ xử lý ở ${config.tabLabel} (${config.priorHint})`
@@ -563,13 +592,13 @@ function RenameReviewView({
             triggerClassName="h-10 w-max rounded-xl"
           />
 
-          {batchOptions.length > 1 && (
+          {canSelectBatch && batchOptions.length > 1 && (
             <Select<string>
               aria-label="Lọc theo đợt KLTN"
               options={batchOptions}
-              value={batchId}
+              value={effectiveBatchId}
               onChange={(nextBatchId) => {
-                setBatchId(String(nextBatchId ?? ''));
+                setBatchIdOverride(String(nextBatchId ?? ''));
                 setPage(1);
                 setSelectedRowId(null);
               }}
@@ -615,13 +644,17 @@ function RenameReviewView({
           }
           empty={{
             title:
-              scope === 'pending' && !keyword.trim() && !batchId
-                ? `Chưa có đơn chờ duyệt ở ${config.tabLabel}`
-                : 'Không tìm thấy yêu cầu phù hợp',
+              !canSelectBatch && !batchesQuery.isPending && !openBatch
+                ? 'Hiện chưa có đợt KLTN nào đang mở'
+                : scope === 'pending' && !keyword.trim() && !effectiveBatchId
+                  ? `Chưa có đơn chờ duyệt ở ${config.tabLabel}`
+                  : 'Không tìm thấy yêu cầu phù hợp',
             description:
-              scope === 'pending' && !keyword.trim() && !batchId
-                ? 'Khi sinh viên gửi đơn mới hoặc cấp trước hoàn tất xác nhận, yêu cầu sẽ tự động xuất hiện tại đây.'
-                : 'Thử thay đổi từ khóa tìm kiếm hoặc chọn phạm vi trạng thái khác để xem thêm đơn.',
+              !canSelectBatch && !batchesQuery.isPending && !openBatch
+                ? 'Danh sách yêu cầu đổi tên chỉ hiển thị cho đợt KLTN đang mở hiện tại.'
+                : scope === 'pending' && !keyword.trim() && !effectiveBatchId
+                  ? 'Khi sinh viên gửi đơn mới hoặc cấp trước hoàn tất xác nhận, yêu cầu sẽ tự động xuất hiện tại đây.'
+                  : 'Thử thay đổi từ khóa tìm kiếm hoặc chọn phạm vi trạng thái khác để xem thêm đơn.',
             action: hasCustomFilters ? (
               <Button type="button" variant="outline" size="sm" onClick={handleResetFilters}>
                 Xem hàng chờ cấp {config.number}

@@ -23,6 +23,8 @@ import {
 
 export const CouncilSimilarityReportsPage: React.FC = () => {
   const {
+    canSelectBatch,
+    hasOpenBatch,
     batches,
     isLoadingBatches,
     selectedBatchId,
@@ -253,7 +255,8 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
     [actions],
   );
 
-  const hasCustomFilter = selectedBatchId !== 'ALL' || filterKey !== 'ALL' || keyword.trim() !== '';
+  const hasCustomFilter =
+    (canSelectBatch && selectedBatchId !== 'ALL') || filterKey !== 'ALL' || keyword.trim() !== '';
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6">
@@ -263,19 +266,21 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
         description="Kiểm tra mức độ trùng lặp văn bản và đối chiếu bằng chứng trích dẫn cho các nhóm thuộc hội đồng của bạn."
         actionsClassName="w-full lg:w-auto flex-nowrap justify-between sm:justify-end items-center shrink-0"
       >
-        <div className="min-w-0 flex-1 sm:flex-none sm:w-72">
-          <Select
-            aria-label="Chọn đợt khóa luận"
-            value={selectedBatchId}
-            onChange={(value) => actions.selectBatch(value)}
-            options={batchOptions}
-            disabled={isLoadingBatches}
-            placeholder="Chọn đợt khóa luận..."
-            triggerClassName="h-10 rounded-xl border-line/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong"
-            contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-line/90 shadow-lg"
-            optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover"
-          />
-        </div>
+        {canSelectBatch && (
+          <div className="min-w-0 flex-1 sm:flex-none sm:w-72">
+            <Select
+              aria-label="Chọn đợt khóa luận"
+              value={selectedBatchId}
+              onChange={(value) => actions.selectBatch(value)}
+              options={batchOptions}
+              disabled={isLoadingBatches}
+              placeholder="Chọn đợt khóa luận..."
+              triggerClassName="h-10 rounded-xl border-line/90 bg-surface-card text-xs font-semibold text-ink-heading shadow-2xs hover:border-line-strong"
+              contentClassName="w-max min-w-full sm:min-w-[380px] max-w-[90vw] sm:right-0 sm:left-auto p-1.5 rounded-xl border-line/90 shadow-lg"
+              optionClassName="text-xs py-2 px-3 rounded-lg font-medium text-ink-secondary hover:bg-surface-hover"
+            />
+          </div>
+        )}
         <Button
           type="button"
           variant="outline"
@@ -288,6 +293,12 @@ export const CouncilSimilarityReportsPage: React.FC = () => {
           Làm mới
         </Button>
       </PageHeader>
+
+      {!canSelectBatch && !isLoadingBatches && !hasOpenBatch && (
+        <InlineAlert tone="info" title="Chưa có đợt KLTN nào đang mở">
+          Báo cáo tương đồng chỉ hiển thị cho các nhóm thuộc đợt KLTN đang mở hiện tại.
+        </InlineAlert>
+      )}
 
       <StatisticsBar
         items={statItems}

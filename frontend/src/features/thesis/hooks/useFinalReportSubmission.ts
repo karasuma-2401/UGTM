@@ -1,12 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/shared/auth';
+import { academicBatchApi } from '@/shared/academic-periods/academicBatchApi';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { syllabusApi } from '../services/syllabusApi';
 import { midtermApi } from '../services/midtermApi';
 import { finalReportApi } from '../services/finalReportApi';
 import { validateReportFile } from '../services/submissionUploadHelper';
 import { triggerBrowserDownload } from '../utils/archival';
+import { evaluateSubmissionStageWindow } from '../utils/submissionStageWindow';
+import { getThesisErrorMessage } from '../utils/thesisErrors';
 import {
   validateProductLinksDraft,
   type ProductLinkDraft,
@@ -94,6 +97,16 @@ export function useFinalReportSubmission() {
     retry: false,
   });
 
+  const resolvedBatchId =
+    statusQuery.data?.batchId ?? groupDetailQuery.data?.batchId ?? currentBatch?.id;
+
+  const timelineQuery = useQuery({
+    queryKey: ['academic-batch-timeline', user?.id, resolvedBatchId],
+    queryFn: ({ signal }) => academicBatchApi.getTimeline(resolvedBatchId!, signal),
+    enabled: Boolean(user?.id && resolvedBatchId),
+    retry: false,
+  });
+
   const currentStatus = historyQuery.data?.currentStatus || 'Draft';
   const versions = useMemo(
     () => historyQuery.data?.versions || [],
@@ -105,6 +118,12 @@ export function useFinalReportSubmission() {
   );
 
   const midtermApproved = midtermHistoryQuery.data?.currentStatus === 'Approved';
+  const stageWindow = evaluateSubmissionStageWindow(
+    timelineQuery.isError ? undefined : timelineQuery.data,
+    'final-report',
+  );
+  const isStageBlocked = stageWindow.state === 'closed';
+  const stageBlockedReason = isStageBlocked ? stageWindow.message : null;
 
   const notEligibleReason = useMemo(() => {
     if (midtermHistoryQuery.isLoading) return null;
@@ -118,13 +137,32 @@ export function useFinalReportSubmission() {
     if (currentStatus === 'Approved' || currentStatus === 'Rejected') {
       return 'Báo cáo đã chuyển sang giai đoạn đánh giá và không thể nộp lại qua cổng báo cáo cuối kỳ.';
     }
+    if (isStageBlocked) {
+      return stageBlockedReason;
+    }
     return null;
-  }, [midtermHistoryQuery.isLoading, midtermHistoryQuery.isError, midtermApproved, currentStatus]);
+  }, [
+    midtermHistoryQuery.isLoading,
+    midtermHistoryQuery.isError,
+    midtermApproved,
+    currentStatus,
+    isStageBlocked,
+    stageBlockedReason,
+  ]);
 
-  const canSubmit = Boolean(groupId && midtermApproved && historyQuery.isSuccess &&
-    (currentStatus === 'Draft' || currentStatus === 'Submitted'));
-  const canSubmitRevision = Boolean(groupId && feedbackQuery.data?.comment &&
-    revisedEligibilityQuery.data?.canSubmit && revisedHistoryQuery.isSuccess);
+  const canSubmit = Boolean(
+    groupId &&
+      midtermApproved &&
+      !isStageBlocked &&
+      historyQuery.isSuccess &&
+      (currentStatus === 'Draft' || currentStatus === 'Submitted'),
+  );
+  const canSubmitRevision = Boolean(
+    groupId &&
+      feedbackQuery.data?.comment &&
+      revisedEligibilityQuery.data?.canSubmit &&
+      revisedHistoryQuery.isSuccess,
+  );
 
   const submitRevisedMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -143,7 +181,8 @@ export function useFinalReportSubmission() {
       void queryClient.invalidateQueries({ queryKey: ['revised-final-report-history', user?.id, groupId] });
       void queryClient.invalidateQueries({ queryKey: ['revised-final-report-eligibility', user?.id, groupId] });
     },
-    onError: (err: Error) => setActionError(err.message || 'Không thể nộp bản chỉnh sửa.'),
+    onError: (err: unknown) =>
+      setActionError(getThesisErrorMessage(err, 'Không thể nộp bản chỉnh sửa.')),
   });
 
   const submitMutation = useMutation({
@@ -157,6 +196,10 @@ export function useFinalReportSubmission() {
 
       if (!midtermApproved) {
         throw new Error('Bạn cần được GVHD duyệt đạt báo cáo giữa kỳ trước khi nộp báo cáo cuối kỳ.');
+      }
+
+      if (isStageBlocked && stageBlockedReason) {
+        throw new Error(stageBlockedReason);
       }
 
       if (!canSubmit) {
@@ -189,9 +232,9 @@ export function useFinalReportSubmission() {
       void queryClient.invalidateQueries({ queryKey: ['final-report-history', user?.id, groupId] });
       void queryClient.invalidateQueries({ queryKey: ['student-registration-status', user?.id] });
     },
-    onError: (err: Error) => {
+    onError: (err: unknown) => {
       setUploadProgress(null);
-      setActionError(err.message || 'Nộp báo cáo cuối kỳ thất bại. Vui lòng thử lại.');
+      setActionError(getThesisErrorMessage(err, 'Nộp báo cáo cuối kỳ thất bại. Vui lòng thử lại.'));
     },
   });
 
@@ -203,9 +246,7 @@ export function useFinalReportSubmission() {
         triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : 'Không thể lấy liên kết tải tệp.';
-      setActionError(errorMsg);
+      setActionError(getThesisErrorMessage(err, 'Không thể lấy liên kết tải tệp.'));
     }
   };
 
@@ -252,6 +293,9 @@ export function useFinalReportSubmission() {
     latestVersion,
     canSubmit,
     notEligibleReason,
+    stageWindow,
+    stageBlockedReason,
+    timelineQuery,
     submitMutation,
     handleDownload,
     handleFileSelect,

@@ -60,9 +60,11 @@ export function FinalReportUploadCard({
 
   const lockedTitle = !midtermApproved
     ? 'Chưa mở khóa nộp Báo cáo cuối kỳ'
-    : currentStatus === 'UnderEvaluation'
-      ? 'Báo cáo cuối kỳ đang trong quá trình đánh giá'
-      : 'Khu vực nộp báo cáo cuối kỳ tạm khóa';
+    : disabledReason && (currentStatus === 'Draft' || currentStatus === 'Submitted')
+      ? 'Ngoài thời gian nộp Báo cáo cuối kỳ'
+      : currentStatus === 'UnderEvaluation'
+        ? 'Báo cáo cuối kỳ đang trong quá trình đánh giá'
+        : 'Khu vực nộp báo cáo cuối kỳ tạm khóa';
 
   return (
     <SubmissionDropzoneCard

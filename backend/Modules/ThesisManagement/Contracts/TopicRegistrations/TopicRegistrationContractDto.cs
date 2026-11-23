@@ -50,6 +50,12 @@ public sealed record AdvisorUnassignStudentsContractResultDto(
         => new(false, errorCode, errorMessage);
 }
 
+public sealed record StudentBatchRegistrationCheckDto(
+    bool IsRegisteredInBatch,
+    Guid? TopicId,
+    string? ConfirmationStatus,
+    bool IsRegistrationBlocked);
+
 public interface IThesisRegistrationContract
 {
     Task<IReadOnlyDictionary<Guid, TopicRegistrationContractDto>> GetRegistrationsByTopicIdsAsync(
@@ -59,6 +65,13 @@ public interface IThesisRegistrationContract
     Task<TopicRegistrationContractDto?> GetRegistrationByTopicIdAsync(
         Guid topicId,
         CancellationToken cancellationToken = default);
+
+    Task<StudentBatchRegistrationCheckDto> GetStudentBatchRegistrationAsync(
+        Guid studentId,
+        Guid batchId,
+        Guid? excludeTopicId = null,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(new StudentBatchRegistrationCheckDto(false, null, null, false));
 
     Task<AdvisorAssignStudentsContractResultDto> AssignStudentsByAdvisorAsync(
         Guid topicId,

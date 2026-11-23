@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+  getPreferredDefaultBatch,
+} from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
 import { notify } from '@/shared/notifications';
@@ -118,17 +122,19 @@ export function useCouncilMinutes() {
   const isFaculty = hasRole('Faculty');
   const isLecturer = hasRole('Lecturer');
   const isCouncilStaff = isAdmin || isAcademicAffairs || isFaculty;
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
   const hasUnlockPermission = hasPermission('councils.minutes.unlock');
+  const openBatchId = useMemo(() => getActiveOpenBatch(batches)?.id ?? '', [batches]);
+  const effectiveBatchId = canSelectBatch ? selectedBatchId : openBatchId;
 
-  // Default active batch selection
+  // Default active batch selection (management roles only)
   useEffect(() => {
-    if (batches.length === 0 || selectedBatchId) return;
-    const current = getCurrentBatches(batches);
-    const defaultBatch = current[0] ?? batches[0];
+    if (!canSelectBatch || batches.length === 0 || selectedBatchId) return;
+    const defaultBatch = getPreferredDefaultBatch(batches);
     if (defaultBatch) {
       setSelectedBatchId(defaultBatch.id);
     }
-  }, [batches, selectedBatchId]);
+  }, [batches, canSelectBatch, selectedBatchId]);
 
   // Sync URL query -> state when user navigates via link (depend only on URL param to avoid state bounce)
   useEffect(() => {
@@ -140,7 +146,11 @@ export function useCouncilMinutes() {
 
   // Load council overview assignments for selected batch (do not refetch when switching groups within same batch)
   useEffect(() => {
-    if (!selectedBatchId) return;
+    if (!effectiveBatchId) {
+      setOverviewRows([]);
+      setIsLoadingList(false);
+      return;
+    }
     const controller = new AbortController();
 
     async function loadList() {
@@ -148,7 +158,7 @@ export function useCouncilMinutes() {
       setListError(null);
       try {
         const rows = await councilGradingApi.getCouncilOverviewRows(
-          selectedBatchId,
+          effectiveBatchId,
           controller.signal,
         );
 
@@ -171,11 +181,11 @@ export function useCouncilMinutes() {
 
     void loadList();
     return () => controller.abort();
-  }, [selectedBatchId, listReloadNonce]);
+  }, [effectiveBatchId, listReloadNonce]);
 
-  // Fallback cross-batch lookup only when deep-linked assignmentId is missing from loaded overviewRows
+  // Fallback cross-batch lookup only for management roles when deep-linked assignmentId is missing from loaded overviewRows
   useEffect(() => {
-    if (!requestedAssignmentId || !selectedBatchId || isLoadingList) return;
+    if (!canSelectBatch || !requestedAssignmentId || !effectiveBatchId || isLoadingList) return;
     if (overviewRows.some((r) => r.assignmentId === requestedAssignmentId)) {
       checkedCrossBatchAssignmentIdRef.current = requestedAssignmentId;
       return;
@@ -191,7 +201,7 @@ export function useCouncilMinutes() {
         const matched = allRows.find((r) => r.assignmentId === requestedAssignmentId);
         if (!matched) return;
         setOverviewRows(allRows.filter((r) => r.batchId === matched.batchId));
-        if (matched.batchId !== selectedBatchId) {
+        if (matched.batchId !== effectiveBatchId) {
           setSelectedBatchId(matched.batchId);
         }
       })
@@ -200,7 +210,7 @@ export function useCouncilMinutes() {
       });
 
     return () => controller.abort();
-  }, [requestedAssignmentId, selectedBatchId, isLoadingList, overviewRows]);
+  }, [canSelectBatch, requestedAssignmentId, effectiveBatchId, isLoadingList, overviewRows]);
 
   // Assignments accessible to current user
   const currentUserId = user?.id;
@@ -702,15 +712,19 @@ export function useCouncilMinutes() {
   }, [accessibleAssignments, activeOverviewRow]);
 
   const activeBatch = useMemo(
-    () => batches.find((b) => b.id === selectedBatchId) ?? null,
-    [batches, selectedBatchId],
+    () => batches.find((b) => b.id === effectiveBatchId) ?? null,
+    [batches, effectiveBatchId],
   );
 
   return {
+    canSelectBatch,
     batches,
     activeBatch,
-    selectedBatchId,
-    setSelectedBatchId,
+    selectedBatchId: effectiveBatchId,
+    setSelectedBatchId: (nextBatchId: string) => {
+      if (!canSelectBatch) return;
+      setSelectedBatchId(nextBatchId);
+    },
     isLoadingBatches: batchesQuery.isLoading,
 
     accessibleAssignments,

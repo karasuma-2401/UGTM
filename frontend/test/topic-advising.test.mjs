@@ -194,6 +194,17 @@ function fixture({
   queryState = {},
   userId = 'me',
   canReadBatches = true,
+  roles = ['Admin'],
+  batches = [
+    {
+      id: 'batch',
+      batchName: 'Đợt thực tế',
+      status: 'Open',
+      startDate: '2026-01-01',
+      endDate: '2099-12-31',
+      timeZoneId: 'Asia/Ho_Chi_Minh',
+    },
+  ],
 } = {}) {
   const state = [];
   let cursor = 0;
@@ -243,12 +254,15 @@ function fixture({
     '@/shared/auth': {
       useAuth: () => ({
         user: userId ? { id: userId } : null,
+        hasRole: (required) =>
+          (Array.isArray(required) ? required : [required]).some((role) => roles.includes(role)),
         hasPermission: () => canReadBatches,
       }),
     },
+    '@/shared/academic-periods/currentBatches': load('../../shared/academic-periods/currentBatches.ts'),
     '@/shared/academic-periods/useAcademicBatches': {
       useAcademicBatches: () => ({
-        data: [{ id: 'batch', batchName: 'Đợt thực tế' }],
+        data: batches,
         isPending: false,
         isError: false,
       }),
@@ -340,7 +354,7 @@ test('guidance page consumes server totals and exposes no duplicated tab list or
   const signal = new AbortController().signal;
   await query.queryFn({ signal });
   assert.deepEqual(ui.calls[0], [
-    { ...base, pageNumber: 1, pageSize: 10, sortBy: 'createdAt', sortOrder: 'desc' },
+    { ...base, batchId: 'batch', pageNumber: 1, pageSize: 10, sortBy: 'createdAt', sortOrder: 'desc' },
     signal,
   ]);
   assert.equal(component(tree, 'TablePagination').props.totalCount, 42);
@@ -408,6 +422,7 @@ test('history and pending quick filters select disjoint scopes with truthful lab
   ui.render();
   assert.deepEqual(ui.queries()[0].queryKey[2], {
     ...base,
+    batchId: 'batch',
     scope: 'active',
     confirmation: 'pending',
   });

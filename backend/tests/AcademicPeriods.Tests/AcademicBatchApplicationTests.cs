@@ -245,6 +245,55 @@ public sealed class AcademicBatchApplicationTests
     }
 
     [Fact]
+    public async Task Open_batch_rejects_when_another_batch_is_already_open()
+    {
+        var batch = AcademicPeriodTestData.DraftBatch();
+        var batchRepository = new FakeBatchRepository(batch) { AnotherOpenBatchExists = true };
+        var unitOfWork = new FakeUnitOfWork();
+        var audit = new FakeAuditOutbox();
+        var handler = new OpenKltnBatchHandler(
+            batchRepository,
+            new FakeScoreConfigurationRepository(ActiveScoreConfiguration(batch.Id)),
+            audit,
+            unitOfWork,
+            AuthorizedUser(PermissionCodes.AcademicBatchesManage),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
+
+        var result = await handler.HandleAsync(new OpenKltnBatchCommand(batch.Id));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(AcademicBatchErrors.AnotherBatchAlreadyOpen.Code, result.Error.Code);
+        Assert.Equal(BatchStatus.Draft, batch.Status);
+        Assert.Equal(1, batchRepository.OpenLockCount);
+        Assert.Equal(0, unitOfWork.SaveCount);
+        Assert.Empty(audit.Entries);
+    }
+
+    [Fact]
+    public async Task Open_batch_succeeds_when_no_other_batch_is_open()
+    {
+        var batch = AcademicPeriodTestData.DraftBatch();
+        var batchRepository = new FakeBatchRepository(batch) { AnotherOpenBatchExists = false };
+        var unitOfWork = new FakeUnitOfWork();
+        var audit = new FakeAuditOutbox();
+        var handler = new OpenKltnBatchHandler(
+            batchRepository,
+            new FakeScoreConfigurationRepository(ActiveScoreConfiguration(batch.Id)),
+            audit,
+            unitOfWork,
+            AuthorizedUser(PermissionCodes.AcademicBatchesManage),
+            new FixedTimeProvider(AcademicPeriodTestData.OccurredAtUtc.AddMinutes(2)));
+
+        var result = await handler.HandleAsync(new OpenKltnBatchCommand(batch.Id));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(BatchStatus.Open, batch.Status);
+        Assert.Equal(1, batchRepository.OpenLockCount);
+        Assert.Equal(1, unitOfWork.SaveCount);
+        Assert.Single(audit.Entries);
+    }
+
+    [Fact]
     public async Task Update_open_batch_metadata_returns_active_batch_cannot_be_modified()
     {
         var batch = AcademicPeriodTestData.DraftBatch();
@@ -371,6 +420,8 @@ public sealed class AcademicBatchApplicationTests
         public KltnBatch? Added { get; private set; }
         public IReadOnlyList<Stage> AddedStages { get; private set; } = [];
         public bool Exists { get; init; }
+        public bool AnotherOpenBatchExists { get; init; }
+        public int OpenLockCount { get; private set; }
         public Task<KltnBatch?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
             => Task.FromResult(batch?.Id == id ? batch : null);
         public Task ReloadAsync(KltnBatch value, CancellationToken cancellationToken = default)
@@ -379,6 +430,13 @@ public sealed class AcademicBatchApplicationTests
             => Task.FromResult(Exists);
         public Task<bool> ExistsAsync(string academicYear, int semester, Guid excludeBatchId, CancellationToken cancellationToken = default)
             => Task.FromResult(Exists);
+        public Task AcquireOpenBatchLockAsync(CancellationToken cancellationToken = default)
+        {
+            OpenLockCount++;
+            return Task.CompletedTask;
+        }
+        public Task<bool> ExistsOpenBatchAsync(Guid excludeBatchId, CancellationToken cancellationToken = default)
+            => Task.FromResult(AnotherOpenBatchExists);
         public void Add(KltnBatch value) => Added = value;
         public void AddStages(IEnumerable<Stage> stages) => AddedStages = stages.ToArray();
     }

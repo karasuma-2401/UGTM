@@ -52,6 +52,7 @@ interface SavePeriodParams {
 interface OpenBatchParams {
   selectedBatchId?: string;
   currentBatch: KltnBatchDetailDto | null;
+  otherOpenBatchName?: string | null;
   isLoadingDetail?: boolean;
   onSuccess: (opened: KltnBatchDetailDto) => Promise<void>;
   onError: (msg: string) => void;
@@ -337,6 +338,7 @@ export function usePeriodActions() {
   const handleOpenBatch = async ({
     selectedBatchId,
     currentBatch,
+    otherOpenBatchName = null,
     isLoadingDetail = false,
     onSuccess,
     onError,
@@ -348,6 +350,13 @@ export function usePeriodActions() {
     ) {
       onError(
         'Dữ liệu đợt khóa luận đang chọn chưa tải xong hoặc không khớp. Vui lòng đợi tải hoàn tất rồi thử lại.',
+      );
+      return;
+    }
+
+    if (otherOpenBatchName) {
+      onError(
+        `Hiện đã có đợt "${otherOpenBatchName}" đang mở. Vui lòng đóng đợt hiện tại trước khi mở đợt mới.`,
       );
       return;
     }

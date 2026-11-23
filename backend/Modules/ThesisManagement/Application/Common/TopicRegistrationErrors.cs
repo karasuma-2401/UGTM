@@ -22,7 +22,11 @@ public static class TopicRegistrationErrors
 
     public static readonly Error StudentAlreadyRegisteredInBatch = Error.Conflict(
         "TopicRegistration.StudentAlreadyRegisteredInBatch",
-        "Sinh viên hoặc thành viên cùng nhóm đã đăng ký đề tài trong đợt khóa luận này.");
+        "Sinh viên đã đăng ký hoặc đang chờ xác nhận tham gia một đề tài khác trong đợt khóa luận này.");
+
+    public static readonly Error PartnerAlreadyRegisteredInBatch = Error.Conflict(
+        "TopicRegistration.PartnerAlreadyRegisteredInBatch",
+        "Sinh viên được mời đã đăng ký hoặc đang chờ xác nhận tham gia một đề tài khác trong đợt khóa luận này.");
 
     public static readonly Error StudentRegistrationBlocked = Error.Forbidden(
         "TopicRegistration.StudentRegistrationBlocked",

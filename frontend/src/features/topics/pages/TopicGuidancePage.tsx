@@ -4,6 +4,8 @@ import { NavigationTabs, type TabItem } from '@/components/ui/navigation-tabs';
 import { TopicProposePage } from './TopicProposePage';
 import { TopicAdvisingPage } from './TopicAdvisingPage';
 import { PageHeader } from '@/components/ui/page-header';
+import { canSelectAcademicBatch } from '@/shared/academic-periods/currentBatches';
+import { useAuth } from '@/shared/auth';
 import {
   GROUP_STATUS_LABELS,
   type AdvisingFilters,
@@ -12,11 +14,13 @@ import {
 import { TOPIC_STATUS_LABELS, type TopicFilters } from '../types/topic.types';
 
 export function TopicGuidancePage() {
+  const { hasRole } = useAuth();
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
   const [params, setParams] = useSearchParams();
   const selected = params.get('tab');
   // Existing bookmarks continue to resolve to the unified group view.
   const isGroups = ['groups', 'registrations', 'advising'].includes(selected ?? '');
-  const batchId = params.get('batchId') ?? '';
+  const batchId = canSelectBatch ? (params.get('batchId') ?? '') : '';
   const href = (tab: 'topics' | 'groups') => {
     const query = new URLSearchParams();
     if (tab === 'groups') query.set('tab', 'groups');
@@ -40,7 +44,7 @@ export function TopicGuidancePage() {
   function changeTopicFilters(filters: TopicFilters) {
     setParams(
       {
-        ...(filters.batchId ? { batchId: filters.batchId } : {}),
+        ...(canSelectBatch && filters.batchId ? { batchId: filters.batchId } : {}),
         ...(filters.status ? { status: filters.status } : {}),
         ...(filters.keyword ? { keyword: filters.keyword } : {}),
       },
@@ -94,7 +98,7 @@ export function TopicGuidancePage() {
           setParams(
             {
               tab: 'groups',
-              ...(next.batchId ? { batchId: next.batchId } : {}),
+              ...(canSelectBatch && next.batchId ? { batchId: next.batchId } : {}),
               ...(next.scope !== 'active' ? { scope: next.scope } : {}),
               ...(next.status ? { status: next.status } : {}),
               ...(next.confirmation ? { confirmation: next.confirmation } : {}),

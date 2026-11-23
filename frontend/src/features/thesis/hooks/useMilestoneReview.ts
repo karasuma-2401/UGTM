@@ -6,6 +6,7 @@ import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches
 import { milestoneApi } from '../services/milestoneApi';
 import { syllabusApi } from '../services/syllabusApi';
 import { triggerBrowserDownload } from '../utils/archival';
+import { getThesisErrorMessage } from '../utils/thesisErrors';
 import type { ProgressReportStatus } from '../types/milestone.types';
 
 export function useMilestoneReview() {
@@ -123,9 +124,9 @@ export function useMilestoneReview() {
         });
       }
     },
-    onError: (err: Error) => {
+    onError: (err: unknown) => {
       setActionError(
-        err.message || 'Đánh giá báo cáo tiến độ thất bại. Vui lòng thử lại.'
+        getThesisErrorMessage(err, 'Đánh giá báo cáo tiến độ thất bại. Vui lòng thử lại.'),
       );
     },
   });
@@ -139,9 +140,7 @@ export function useMilestoneReview() {
         triggerBrowserDownload(downloadInfo.downloadUrl);
       }
     } catch (err: unknown) {
-      const errorMsg =
-        err instanceof Error ? err.message : 'Không thể lấy liên kết tải tệp.';
-      setActionError(errorMsg);
+      setActionError(getThesisErrorMessage(err, 'Không thể lấy liên kết tải tệp.'));
     } finally {
       setIsDownloading(false);
     }

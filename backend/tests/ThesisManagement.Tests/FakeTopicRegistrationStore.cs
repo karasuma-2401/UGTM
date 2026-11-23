@@ -80,14 +80,24 @@ public sealed class FakeTopicRegistrationStore : ITopicRegistrationStore
                 return Task.FromResult(Result.Failure<TopicRegistrationResultDto>(TopicRegistrationErrors.PartnerRegistrationBlocked));
             }
 
-            // Check already registered in batch
-            var alreadyRegistered = _groups.SelectMany(g => g.Members).Any(m =>
-                (m.StudentId == studentAId || (studentBId.HasValue && m.StudentId == studentBId.Value))
-                && m.BatchId == topic.BatchId);
+            // Check already registered in batch (distinguish registrant vs invited partner)
+            var studentARegistered = _groups.SelectMany(g => g.Members)
+                .Any(m => m.StudentId == studentAId && m.BatchId == topic.BatchId);
 
-            if (alreadyRegistered)
+            if (studentARegistered)
             {
                 return Task.FromResult(Result.Failure<TopicRegistrationResultDto>(TopicRegistrationErrors.StudentAlreadyRegisteredInBatch));
+            }
+
+            if (studentBId.HasValue)
+            {
+                var partnerRegistered = _groups.SelectMany(g => g.Members)
+                    .Any(m => m.StudentId == studentBId.Value && m.BatchId == topic.BatchId);
+
+                if (partnerRegistered)
+                {
+                    return Task.FromResult(Result.Failure<TopicRegistrationResultDto>(TopicRegistrationErrors.PartnerAlreadyRegisteredInBatch));
+                }
             }
 
             var group = _groups.FirstOrDefault(g => g.TopicId == topicId);
@@ -250,7 +260,8 @@ public sealed class FakeTopicRegistrationStore : ITopicRegistrationStore
                 ConfirmationExpiresAtUtc: member?.ConfirmationExpiresAtUtc,
                 ViolationCount: penalty?.ViolationCount ?? 0,
                 IsRegistrationBlocked: penalty?.IsRegistrationBlocked ?? false,
-                BlockedAtUtc: penalty?.BlockedAtUtc));
+                BlockedAtUtc: penalty?.BlockedAtUtc,
+                BatchId: member?.BatchId));
         }
     }
 

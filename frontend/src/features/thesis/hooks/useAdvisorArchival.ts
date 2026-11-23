@@ -1,7 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { advisingApi } from '@/features/topics/services/advisingApi';
-import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
+import {
+  canSelectAcademicBatch,
+  getActiveOpenBatch,
+  getPreferredDefaultBatch,
+} from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
 import { notify } from '@/shared/notifications';
@@ -30,16 +34,19 @@ export function useAdvisorArchival() {
   const { user, hasRole } = useAuth();
 
   const canAccess = hasRole(['Lecturer', 'Admin']);
+  const canSelectBatch = canSelectAcademicBatch(hasRole);
 
   const batchesQuery = useAcademicBatches();
   const batches = useMemo(() => batchesQuery.data ?? [], [batchesQuery.data]);
 
   const [explicitBatchId, setExplicitBatchId] = useState<string | null>(null);
   const defaultBatchId = useMemo(() => {
-    const current = getCurrentBatches(batches);
-    return current[0]?.id ?? batches[0]?.id ?? '';
-  }, [batches]);
-  const selectedBatchId = explicitBatchId ?? defaultBatchId;
+    if (!canSelectBatch) {
+      return getActiveOpenBatch(batches)?.id ?? '';
+    }
+    return getPreferredDefaultBatch(batches)?.id ?? '';
+  }, [batches, canSelectBatch]);
+  const selectedBatchId = canSelectBatch ? (explicitBatchId ?? defaultBatchId) : defaultBatchId;
 
   const selectedBatchName = useMemo(() => {
     const batch = batches.find((b) => b.id === selectedBatchId);
@@ -344,6 +351,7 @@ export function useAdvisorArchival() {
 
   return {
     canAccess,
+    canSelectBatch,
     batches,
     selectedBatchId,
     isLoadingBatches: batchesQuery.isLoading,

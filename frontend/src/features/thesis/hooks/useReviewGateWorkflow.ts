@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PagedResult } from '@/shared/api/types';
-import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
+import { getPreferredDefaultBatch } from '@/shared/academic-periods/currentBatches';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
 import { useAuth } from '@/shared/auth';
 import { notify } from '@/shared/notifications';
@@ -79,10 +79,10 @@ export function useReviewGateWorkflow<TItem extends ReviewGateItem>({
   const batches = useMemo(() => batchesQuery.data ?? [], [batchesQuery.data]);
 
   const [explicitBatchId, setExplicitBatchId] = useState<string | null>(null);
-  const defaultBatchId = useMemo(() => {
-    const current = getCurrentBatches(batches);
-    return current[0]?.id ?? batches[0]?.id ?? '';
-  }, [batches]);
+  const defaultBatchId = useMemo(
+    () => getPreferredDefaultBatch(batches)?.id ?? '',
+    [batches],
+  );
   const selectedBatchId = explicitBatchId ?? defaultBatchId;
 
   const [filterKey, setFilterKey] = useState<ReviewGateFilterKey>('ALL');

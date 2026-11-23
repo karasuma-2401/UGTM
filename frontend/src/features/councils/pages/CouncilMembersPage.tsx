@@ -1,4 +1,4 @@
-﻿import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches';
-import { getCurrentBatches } from '@/shared/academic-periods/currentBatches';
+import { getActiveOpenBatch } from '@/shared/academic-periods/currentBatches';
 import { useAuth } from '@/shared/auth';
 import { CouncilCandidatePicker } from '../components/council-members/CouncilCandidatePicker';
 import { CouncilCreateCard } from '../components/council-members/CouncilCreateCard';
@@ -46,8 +46,8 @@ export function CouncilMembersPage() {
   const rosterHeadingRef = useRef<HTMLHeadingElement>(null);
 
   const batches = batchesQuery.data;
-  // Mặc định lọc theo đợt đang diễn ra: tránh tải mọi hội đồng của mọi đợt.
-  const defaultBatchId = useMemo(() => getCurrentBatches(batches ?? [])[0]?.id ?? 'all', [batches]);
+  // Mặc định lọc theo đợt đang mở: tránh tải mọi hội đồng của mọi đợt.
+  const defaultBatchId = useMemo(() => getActiveOpenBatch(batches ?? [])?.id ?? 'all', [batches]);
   const batchId = batchOverride ?? defaultBatchId;
   const batchesLoading = batchesQuery.isPending && batchesQuery.fetchStatus === 'fetching';
   const batchOptions = useMemo(

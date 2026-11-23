@@ -27,6 +27,8 @@ export function SyllabusSubmissionPage() {
     handleDownload,
     currentStatus,
     canSubmit,
+    isRenameResubmission,
+    stageBlockedReason,
   } = useSyllabusSubmission();
 
   const groupDetail = groupDetailQuery.data;
@@ -37,8 +39,14 @@ export function SyllabusSubmissionPage() {
     .reverse()
     .find((version) => version.review != null)?.review;
 
+  const showStageAlert = Boolean(
+    stageBlockedReason && (currentStatus === 'Draft' || currentStatus === 'NeedRevision'),
+  );
+
   const showUploadCard =
-    canSubmit || (!historyQuery.isLoading && versions.length === 0 && currentStatus !== 'Approved');
+    canSubmit ||
+    showStageAlert ||
+    (!historyQuery.isLoading && versions.length === 0 && currentStatus !== 'Approved');
 
   const uploadCard = showUploadCard ? (
     <SyllabusUploadCard
@@ -60,6 +68,7 @@ export function SyllabusSubmissionPage() {
       nextVersionNo={nextVersionNo}
       existingFileName={latestVersion?.file.fileName ?? null}
       disabled={!canSubmit || submitMutation.isPending}
+      disabledReason={stageBlockedReason}
     />
   ) : null;
 
@@ -111,6 +120,18 @@ export function SyllabusSubmissionPage() {
           }
         >
           Đã xảy ra lỗi khi đồng bộ trạng thái Cổng 1. Vui lòng thử lại sau.
+        </InlineAlert>
+      )}
+
+      {isRenameResubmission && (
+        <InlineAlert tone="info" title="Được phép nộp lại Đề cương sau khi đổi tên đề tài">
+          Yêu cầu đổi tên đề tài của nhóm đã được phê duyệt. Nhóm có thể nộp phiên bản Đề cương cập nhật để lưu hồ sơ.
+        </InlineAlert>
+      )}
+
+      {showStageAlert && (
+        <InlineAlert tone="warning" title="Ngoài giai đoạn nộp Đề cương chi tiết">
+          {stageBlockedReason}
         </InlineAlert>
       )}
 
