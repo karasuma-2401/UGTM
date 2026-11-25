@@ -6,6 +6,8 @@ import { useAcademicBatches } from '@/shared/academic-periods/useAcademicBatches
 import { syllabusApi } from '../services/syllabusApi';
 import { midtermApi } from '../services/midtermApi';
 import { finalReportApi } from '../services/finalReportApi';
+import { archivalApi } from '../services/archivalApi';
+import { getPostDefenseProgress } from '../utils/postDefenseProgress';
 import { validateReportFile } from '../services/submissionUploadHelper';
 import { triggerBrowserDownload } from '../utils/archival';
 import { evaluateSubmissionStageWindow } from '../utils/submissionStageWindow';
@@ -35,6 +37,15 @@ export function useFinalReportSubmission() {
   });
 
   const groupId = statusQuery.data?.groupId;
+  const defenseProgressQuery = useQuery({
+    queryKey: ['final-report-defense-progress', user?.id, groupId],
+    queryFn: ({ signal }) => archivalApi.getEligibility(groupId!, signal),
+    enabled: Boolean(user?.id && groupId),
+    retry: false,
+    refetchInterval: 30_000,
+  });
+  const postDefenseProgress = defenseProgressQuery.isError
+    ? null : getPostDefenseProgress(defenseProgressQuery.data);
   const topicId = statusQuery.data?.topicId;
   const topicTitleVi = statusQuery.data?.topicTitleVi;
 
@@ -151,14 +162,14 @@ export function useFinalReportSubmission() {
   ]);
 
   const canSubmit = Boolean(
-    groupId &&
+    groupId && !postDefenseProgress &&
       midtermApproved &&
       !isStageBlocked &&
       historyQuery.isSuccess &&
       (currentStatus === 'Draft' || currentStatus === 'Submitted'),
   );
   const canSubmitRevision = Boolean(
-    groupId &&
+    groupId && !postDefenseProgress &&
       feedbackQuery.data?.comment &&
       revisedEligibilityQuery.data?.canSubmit &&
       revisedHistoryQuery.isSuccess,
@@ -267,6 +278,8 @@ export function useFinalReportSubmission() {
   };
 
   return {
+    defenseProgressQuery,
+    postDefenseProgress,
     statusQuery,
     groupDetailQuery,
     midtermHistoryQuery,

@@ -329,3 +329,20 @@ Trạng thái xử lý / ngày retest:
 
 Một số contract ghi phạm vi tại checkpoint cũ, chưa mô tả đầy đủ UI/tiêu chí/từng SV hiện tại. Khi có khác biệt, đối chiếu source và response thực tế; không lấy câu “ngoài phạm vi” của checkpoint cũ làm kết luận tính năng hiện chưa có.
 
+## 10. Bổ sung: trang sinh viên sau bảo vệ (26/11/2026)
+
+Nguồn trạng thái: `GET /api/thesis/final-submissions/submission-eligibility?groupId=...`.
+Chỉ xác nhận hoàn tất bảo vệ khi `isCouncilDefenseCompleted=true` và `councilMinuteLockStatus=Locked`; không suy ra từ ngày bảo vệ hoặc góp ý GVPB. Chưa khóa biên bản thì chưa hiển thị mốc hoàn tất này.
+
+| Ca bổ sung | Thao tác / điều kiện | Kết quả mong đợi |
+| --- | --- | --- |
+| PD-01 | Biên bản chưa khóa | Không hiện thông báo hoàn tất bảo vệ; giữ luồng phản biện hiện tại. |
+| PD-02 | Khóa biên bản, chưa nộp lưu chiểu | Hiện mốc hoàn tất bảo vệ và hướng dẫn PDF + DOCX; nút sang Lưu chiểu. Không còn cảnh báo hết hạn sửa sau phản biện hoặc form nộp bản sửa cũ. |
+| PD-03 | Đã nộp lưu chiểu / cần bổ sung / GVHD xác nhận | Hiển thị đúng bước chờ GVHD, cần bổ sung hoặc chờ Khoa. |
+| PD-04 | Khoa xác nhận lưu chiểu | Hiện hoàn tất lưu chiểu và liên kết Theo dõi kết quả; không tự coi điểm đã được công bố. |
+| PD-05 | API lỗi, sau đó thử lại thành công | Hiện cảnh báo và nút Thử lại; phục hồi đúng trạng thái, không giữ khẳng định hoàn tất từ dữ liệu cũ khi truy vấn lỗi. |
+| PD-06 | Đổi trạng thái khi trang đang mở | Đồng bộ mỗi 30 giây hoặc khi bấm Làm mới trạng thái; nếu biên bản không còn khóa thì bỏ thông báo hoàn tất. |
+| PD-07 | Desktop 1440px / mobile 390px | Nội dung và nút xuống dòng, không tràn ngang; giữ lịch sử báo cáo, bản sửa và góp ý phản biện. |
+
+Xác minh: 14/14 tests trong `frontend/test/student-reports.test.mjs` đạt, bao gồm 2 tests bổ sung cho điều kiện hoàn tất và render trước/sau bảo vệ. Lint/build đạt, còn warnings sẵn có. Đã kiểm tra các trạng thái trên trình duyệt với API giả lập, gồm thao tác làm mới, lỗi/thử lại và viewport desktop/mobile. Chưa thao tác thay đổi biên bản hoặc hồ sơ thật của nhóm người dùng; không coi lượt kiểm tra giả lập là E2E dữ liệu thật.
+

@@ -8,6 +8,7 @@ import { useFinalReportSubmission } from '../hooks/useFinalReportSubmission';
 import { FINAL_REPORT_STATUS_LABELS, type FinalReportStatus } from '../types/finalReport.types';
 import { SubmissionDropzoneCard, ThesisSubmissionWorkspace, VersionHistoryTimeline } from '../components/shared';
 import { SimilarityReportPanel } from '../components/SimilarityReportPanel';
+import { PostDefenseProgressCard } from '../components/finalReport/PostDefenseProgressCard';
 import {
   FinalReportSummaryCard,
   FinalReportUploadCard,
@@ -24,6 +25,8 @@ const headerToneMap: Record<string, StatusTone> = {
 
 export function FinalReportSubmissionPage() {
   const {
+    defenseProgressQuery,
+    postDefenseProgress,
     statusQuery,
     groupDetailQuery,
     midtermHistoryQuery,
@@ -61,20 +64,20 @@ export function FinalReportSubmissionPage() {
   const midtermApproved = midtermHistoryQuery.data?.currentStatus === 'Approved';
   const nextVersionNo = (historyQuery.data?.currentVersionNo || 0) + 1;
   const headerStatusLabel =
-    revisedEligibilityQuery.data?.canSubmit
+    postDefenseProgress?.label ?? (revisedEligibilityQuery.data?.canSubmit
       ? 'Được nộp bản sửa'
       : feedbackQuery.data?.comment
         ? 'Đã có góp ý phản biện'
-        : FINAL_REPORT_STATUS_LABELS[currentStatus as FinalReportStatus] || 'Chưa nộp';
-  const headerStatusTone = revisedEligibilityQuery.data?.canSubmit || feedbackQuery.data?.comment
+        : FINAL_REPORT_STATUS_LABELS[currentStatus as FinalReportStatus] || 'Chưa nộp');
+  const headerStatusTone = postDefenseProgress?.tone ?? (revisedEligibilityQuery.data?.canSubmit || feedbackQuery.data?.comment
     ? 'info'
-    : headerToneMap[currentStatus] || 'neutral';
+    : headerToneMap[currentStatus] || 'neutral');
   const feedbackComment = feedbackQuery.data?.comment?.trim() || '';
   const revisedCurrentVersionNo = revisedHistoryQuery.data?.currentVersionNo ?? 0;
 
   const isLockedOrDone = !canSubmit || currentStatus === 'Approved';
-  const showUploadCard = canSubmit ||
-    (historyQuery.isSuccess && !historyQuery.data);
+  const showUploadCard = !postDefenseProgress && (canSubmit ||
+    (historyQuery.isSuccess && !historyQuery.data));
 
   const uploadCard = showUploadCard ? (
       <FinalReportUploadCard
@@ -138,6 +141,7 @@ export function FinalReportSubmissionPage() {
       onDismissSuccess={() => setActionSuccess(null)}
       sidebar={
         <FinalReportSummaryCard
+          postDefense={Boolean(postDefenseProgress)}
           groupDetail={groupDetail}
           isLoading={groupDetailQuery.isLoading}
           isError={groupDetailQuery.isError}
@@ -145,6 +149,19 @@ export function FinalReportSubmissionPage() {
         />
       }
     >
+      {postDefenseProgress && (
+        <PostDefenseProgressCard
+          progress={postDefenseProgress}
+          isRefreshing={defenseProgressQuery.isFetching}
+          onRefresh={() => void defenseProgressQuery.refetch()}
+        />
+      )}
+      {defenseProgressQuery.isError && (
+        <InlineAlert tone="warning" title="Chưa thể đồng bộ tiến độ sau bảo vệ"
+          action={<Button type="button" variant="outline" size="sm" onClick={() => void defenseProgressQuery.refetch()}>Thử lại</Button>}>
+          Chưa xác định được trạng thái biên bản Hội đồng và hồ sơ lưu chiểu. Vui lòng thử lại để xem bước tiếp theo.
+        </InlineAlert>
+      )}
       {historyQuery.isError && (
         <InlineAlert
           tone="error"
@@ -185,7 +202,7 @@ export function FinalReportSubmissionPage() {
         </InlineAlert>
       )}
 
-      {midtermApproved &&
+      {!postDefenseProgress && midtermApproved &&
         stageBlockedReason &&
         (currentStatus === 'Draft' || currentStatus === 'Submitted') && (
           <InlineAlert tone="warning" title="Ngoài giai đoạn nộp Báo cáo cuối kỳ">
@@ -193,19 +210,19 @@ export function FinalReportSubmissionPage() {
           </InlineAlert>
         )}
 
-      {currentStatus === 'UnderEvaluation' && !feedbackComment && (
+      {!postDefenseProgress && currentStatus === 'UnderEvaluation' && !feedbackComment && (
         <InlineAlert tone="warning" title="Báo cáo cuối kỳ đang trong quá trình đánh giá">
           Hồ sơ đã khóa chỉnh sửa từ khi bắt đầu đánh giá. Bạn có thể xem góp ý phản biện khi được phát hành.
         </InlineAlert>
       )}
 
-      {currentStatus === 'Approved' && (
+      {!postDefenseProgress && currentStatus === 'Approved' && (
         <InlineAlert tone="success" title="GVHD đã đồng ý chuyển phản biện">
           Báo cáo toàn văn đã được chuyển sang giai đoạn phản biện. Góp ý GVPB sẽ hiển thị tại đây khi được phát hành.
         </InlineAlert>
       )}
 
-      {currentStatus === 'Rejected' && (
+      {!postDefenseProgress && currentStatus === 'Rejected' && (
         <InlineAlert tone="error" title="Báo cáo chưa được thông qua">
           Phiên bản này đã khóa. Vui lòng liên hệ GVHD để biết hướng xử lý tiếp theo; cổng nộp báo cáo cuối kỳ không nhận phiên bản mới sau khi bắt đầu đánh giá.
         </InlineAlert>
@@ -225,7 +242,7 @@ export function FinalReportSubmissionPage() {
           <div className="px-5 py-5 sm:px-6">
             <RichTextContent content={feedbackComment} className="break-words text-sm leading-7 text-ink-heading" />
           </div>
-          {!revisedEligibilityQuery.data?.canSubmit && (
+          {!postDefenseProgress && !revisedEligibilityQuery.data?.canSubmit && (
             <div className="flex flex-wrap items-start justify-between gap-3 border-t border-line-subtle bg-surface-subtle/70 px-5 py-4 sm:px-6">
               <div className="flex min-w-0 items-start gap-2.5 text-sm leading-6 text-ink-secondary">
                 <Info className="mt-1 size-4 shrink-0 text-tone-info-icon" aria-hidden="true" />
