@@ -11,6 +11,7 @@ public sealed class ThesisManagementDbContext(DbContextOptions<ThesisManagementD
     public override string Schema => "thesis";
 
     public DbSet<AuditOutboxMessage> AuditOutboxMessages => Set<AuditOutboxMessage>();
+    public DbSet<NotificationEventOutboxMessage> NotificationEventOutboxMessages => Set<NotificationEventOutboxMessage>();
     public DbSet<FinalReport> FinalReports => Set<FinalReport>();
     public DbSet<FinalReportPlagiarismScan> FinalReportPlagiarismScans => Set<FinalReportPlagiarismScan>();
     public DbSet<FinalSubmission> FinalSubmissions => Set<FinalSubmission>();

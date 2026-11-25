@@ -12,6 +12,7 @@ public sealed class DefenseCouncilDbContext(DbContextOptions<DefenseCouncilDbCon
     public override string Schema => "councils";
 
     public DbSet<AuditOutboxMessage> AuditOutboxMessages => Set<AuditOutboxMessage>();
+    public DbSet<NotificationEventOutboxMessage> NotificationEventOutboxMessages => Set<NotificationEventOutboxMessage>();
     public DbSet<AdvisorEvaluation> AdvisorEvaluations => Set<AdvisorEvaluation>();
     public DbSet<AdvisorEvaluationIdempotencyRecord> AdvisorEvaluationIdempotencyRecords => Set<AdvisorEvaluationIdempotencyRecord>();
     public DbSet<Council> Councils => Set<Council>();

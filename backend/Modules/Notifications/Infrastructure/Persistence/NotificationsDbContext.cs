@@ -9,6 +9,9 @@ public sealed class NotificationsDbContext(DbContextOptions<NotificationsDbConte
     public override string Schema => "notifications";
 
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<DeviceRegistration> DeviceRegistrations => Set<DeviceRegistration>();
+    public DbSet<NotificationDelivery> NotificationDeliveries => Set<NotificationDelivery>();
+    public DbSet<NotificationPreference> NotificationPreferences => Set<NotificationPreference>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/shared/auth';
+import { NotificationBell } from '@/shared/notifications';
 import { ThemeToggle, useTheme } from '@/shared/theme';
 import { navigationSections, type NavItemConfig } from './navigationConfig';
 import { CurrentAcademicBatch } from './CurrentAcademicBatch';
@@ -557,6 +558,8 @@ export function AppLayout() {
                 Ctrl K
               </kbd>
             </button>
+
+            <NotificationBell />
 
             <ThemeToggle />
 

@@ -84,6 +84,18 @@ internal static class CrossModuleForeignKeys
             .WithMany().HasForeignKey(x => x.RecipientId)
             .HasConstraintName("fk_notification_user_recipient_id")
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Notification>().HasOne<KltnBatch>()
+            .WithMany().HasForeignKey(x => x.AcademicBatchId)
+            .HasConstraintName("fk_notification_kltn_batch_academic_batch_id")
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<DeviceRegistration>().HasOne<User>()
+            .WithMany().HasForeignKey(x => x.UserId)
+            .HasConstraintName("fk_device_registration_user_user_id")
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<NotificationPreference>().HasOne<User>()
+            .WithMany().HasForeignKey(x => x.UserId)
+            .HasConstraintName("fk_notification_preference_user_user_id")
+            .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<FinalSubmission>().HasOne<User>()
             .WithMany().HasForeignKey(x => x.AdvisorConfirmedBy)
             .HasConstraintName("fk_final_submission_user_advisor_confirmed_by")
