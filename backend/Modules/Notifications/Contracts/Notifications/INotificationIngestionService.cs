@@ -1,5 +1,15 @@
 namespace UGTM.Modules.Notifications.Contracts.Notifications;
 
+public sealed record NotificationEmailMetaItem(
+    string Label,
+    string Value);
+
+public sealed record NotificationEmailDigestSection(
+    string Title,
+    string Summary,
+    string? ActionPath = null,
+    IReadOnlyList<string>? Items = null);
+
 public sealed record NotificationIngestionRequest(
     Guid RecipientId,
     string Title,
@@ -19,7 +29,13 @@ public sealed record NotificationIngestionRequest(
     string? RecipientEmail = null,
     string? EmailSubject = null,
     string? EmailHtmlBody = null,
-    string? EmailTextBody = null);
+    string? EmailTextBody = null,
+    string? RecipientFullName = null,
+    string? EmailCategoryLabel = null,
+    string? EmailCtaLabel = null,
+    string? EmailNotice = null,
+    IReadOnlyList<NotificationEmailMetaItem>? EmailMetadata = null,
+    IReadOnlyList<NotificationEmailDigestSection>? EmailDigestSections = null);
 
 public sealed record NotificationIngestionResult(
     Guid? NotificationId,

@@ -44,9 +44,12 @@ using UGTM.Modules.DefenseCouncil.Domain.Grading;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Auditing;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Endpoints;
+using UGTM.Modules.DefenseCouncil.Infrastructure.Notifications;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
 using UGTM.Modules.DefenseCouncil.Infrastructure.Persistence.Repositories;
+using UGTM.Modules.DefenseCouncil.Application.Notifications;
 using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure;
 
@@ -99,6 +102,8 @@ public sealed class DefenseCouncilModule : IModule
         services.AddScoped<IDefenseCouncilUnitOfWork>(provider => provider.GetRequiredService<DefenseCouncilDbContext>());
         services.AddScoped<IDefenseCouncilAuditOutbox, DefenseCouncilAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, DefenseCouncilAuditEventSource>();
+        services.AddScoped<IDefenseCouncilNotificationOutbox, DefenseCouncilNotificationOutbox>();
+        services.AddScoped<INotificationIntegrationEventSource, DefenseCouncilNotificationEventSource>();
 
         // Council Use Cases
         services.AddScoped<CreateCouncilHandler>();

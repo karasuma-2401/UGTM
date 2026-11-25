@@ -10,7 +10,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Infrastructure.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Infrastructure.Storage;
@@ -157,6 +159,8 @@ public sealed class ThesisManagementModule : IModule
         services.AddScoped<UGTM.Modules.ThesisManagement.Contracts.DefenseCouncils.IAcademicResultsThesisReader, AcademicResultsThesisReader>();
         services.AddScoped<IThesisManagementAuditOutbox, ThesisManagementAuditOutbox>();
         services.AddScoped<IAuditIntegrationEventSource, ThesisManagementAuditEventSource>();
+        services.AddScoped<IThesisNotificationOutbox, ThesisNotificationOutbox>();
+        services.AddScoped<INotificationIntegrationEventSource, ThesisNotificationEventSource>();
         services.Configure<S3StorageOptions>(configuration.GetSection(S3StorageOptions.SectionName));
         services.AddOptions<ReviewGateDeadlineEnforcementOptions>()
             .Bind(configuration.GetSection(ReviewGateDeadlineEnforcementOptions.SectionName))

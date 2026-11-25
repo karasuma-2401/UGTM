@@ -97,8 +97,14 @@ public sealed class NotificationIngestionService(
                     ? notification.Title
                     : request.EmailSubject.Trim(),
                 htmlBody = request.EmailHtmlBody,
-                textBody = request.EmailTextBody ?? notification.Content,
-                actionPath = notification.ActionPath
+                textBody = request.EmailTextBody,
+                actionPath = notification.ActionPath,
+                recipientFullName = request.RecipientFullName,
+                categoryLabel = request.EmailCategoryLabel,
+                ctaLabel = request.EmailCtaLabel,
+                notice = request.EmailNotice,
+                metadata = request.EmailMetadata,
+                digestSections = request.EmailDigestSections
             });
 
             db.NotificationDeliveries.Add(new NotificationDelivery
