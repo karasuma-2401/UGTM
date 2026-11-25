@@ -213,6 +213,12 @@ Khi thiết kế màn hình mới hoặc nâng cấp giao diện hiện có tron
   - **Cột phải (`ProfileSecuritySidebar`)**: Dock ghim cố định `340px` chia `divide-y divide-line-subtle` gồm **Sức khỏe bảo mật** tính từ trạng thái thật (`X/4 tiêu chí`), **Vai trò được cấp** (`SYSTEM_ROLES`) và **Ngữ cảnh khóa luận theo vai trò** (`ProfileThesisContextSection` hiển thị đề tài/nhóm cho Sinh viên hoặc số đề tài/nhóm hướng dẫn cho Giảng viên).
 - Truy cập từ vùng tài khoản ở đáy Sidebar (`AppLayout.tsx`, tách riêng khỏi nút Đăng xuất) hoặc phím tắt `Ctrl+K` (*Hồ sơ cá nhân*); tự động hiển thị `InlineAlert` nhắc đổi mật khẩu ở đầu `<main>` trên các trang khác khi `mustChangePassword = true`.
 
+## Phân công phản biện (`/councils/reviewer-assignments`)
+
+- Dùng `PageHeader compact accent` cùng bộ chọn đợt và nút làm mới. Danh sách dùng `DataTable` chung, bộ lọc tích hợp trong cùng thẻ, `SelectionIndicator` chọn một hàng, `StatusBadge` và nút `Xem`; định danh nhóm lấy UUID rút gọn ổn định.
+- Desktop lớn dùng danh sách bên trái và dock 340px bên phải, gộp thông tin hồ sơ, `Avatar` thành viên và form phân công trong một `Card divide-y`. Chọn giảng viên bằng `Select searchable` chung, tìm theo tên/mã, không dùng native select.
+- Màn hình nhỏ chuyển bảng thành danh sách, đặt hồ sơ và form ngay sau danh sách, trước phần kiểm tra tương đồng. Lỗi danh sách/giảng viên có nút thử lại; khóa thao tác liên quan khi đang phân công.
+
 ## Kết quả khóa luận (`/councils/results`)
 
 - `StudentResultsPage` áp dụng bố cục **Official Score Transcript + Adaptive Gate Tracker** (`lg:grid-cols-[minmax(0,1fr)_340px]`):
