@@ -35,7 +35,7 @@ interface GroupSwitcherDrawerProps {
 const FILTER_TABS: Array<{ key: MinuteQueueFilter; label: string }> = [
   { key: 'all', label: 'Tất cả' },
   { key: 'discrepancy', label: 'Chưa khóa / Chờ xử lý' },
-  { key: 'ready', label: 'Đã đủ điểm' },
+  { key: 'ready', label: 'Đủ phiếu Hội đồng' },
   { key: 'locked', label: 'Đã khóa' },
   { key: 'unlocked', label: 'Mở khóa đặc biệt' },
 ];

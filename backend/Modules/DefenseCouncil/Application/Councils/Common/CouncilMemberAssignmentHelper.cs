@@ -92,7 +92,8 @@ internal static class CouncilMemberAssignmentHelper
         ICouncilUserInfoReader userInfoReader,
         IDefenseGroupContract defenseGroupContract,
         ITopicDefenseContract topicDefenseContract,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyCollection<CouncilAssignment>? assignmentOverride = null)
     {
         if (council.Status != CouncilStatus.Draft)
         {
@@ -148,10 +149,11 @@ internal static class CouncilMemberAssignmentHelper
             }
         }
 
-        if (council.Assignments.Count > 0)
+        var assignments = assignmentOverride ?? council.Assignments.ToList();
+        if (assignments.Count > 0)
         {
             var rolesInfo = await ResolveAssignmentRolesAsync(
-                council.Assignments.ToList(),
+                assignments,
                 councilRepository,
                 defenseGroupContract,
                 topicDefenseContract,

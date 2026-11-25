@@ -101,8 +101,8 @@ export function CouncilSummaryCard({
         <CheckRow state={secretary ? 'ok' : 'missing'} label="Thư ký">
           {secretary ? secretary.fullName : 'Chưa phân công. Cần đúng 1 Thư ký.'}
         </CheckRow>
-        <CheckRow state="optional" label="Ủy viên">
-          {memberCount > 0 ? `${memberCount} người` : 'Chưa có. Không bắt buộc.'}
+        <CheckRow state={memberCount > 0 ? 'ok' : 'missing'} label="Ủy viên">
+          {memberCount > 0 ? `${memberCount} người` : 'Chưa có. Thêm GVPB kiêm nhiệm hoặc chọn giảng viên khác.'}
         </CheckRow>
         <CheckRow state={council.groupCodes.length > 0 ? 'ok' : 'missing'} label="Nhóm bảo vệ">
           {council.groupCodes.length > 0

@@ -4,6 +4,7 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
+using UGTM.Modules.DefenseCouncil.Domain.Grading;
 using UGTM.Modules.Identity.Contracts.Authorization;
 
 namespace UGTM.Modules.DefenseCouncil.Infrastructure.Persistence;
@@ -51,7 +52,7 @@ public sealed class GradingRubricManager(
             var globalVer = await cache.GetVersionAsync(DefenseCouncilCacheKeys.GlobalScope, token);
             cacheKey = DefenseCouncilCacheKeys.GradingRubric(batchId, batchVer, globalVer);
             var cached = await cache.GetAsync<GradingRubricDto>(cacheKey, token);
-            if (cached is not null)
+            if (cached is { Criteria.Count: > 0 })
             {
                 return Result.Success(cached);
             }
@@ -60,10 +61,23 @@ public sealed class GradingRubricManager(
         // Read both the lock flag and criteria under the same lock as writers.
         await using var transaction = await db.Database.BeginTransactionAsync(token);
         await GradingRubricLock.AcquireAsync(db, batchId, token);
+        // A new/existing empty batch uses the same fixed rubric automatically. Keep stored IDs
+        // and all existing evaluations unchanged; concurrent readers share this transaction lock.
+        var initialized = !await db.GradingCriterias.AnyAsync(c => c.BatchId == batchId, token);
+        if (initialized)
+        {
+            if (await IsUsedAsync(batchId, token)) return Result.Failure<GradingRubricDto>(Locked);
+            db.GradingCriterias.AddRange(StandardGradingRubric.CreateCriteria(batchId));
+            await db.SaveChangesAsync(token);
+        }
         var result = await ReadAsync(batchId, token);
         await transaction.CommitAsync(token);
 
-        if (cache is not null && cacheKey is not null)
+        if (initialized)
+        {
+            await DefenseCouncilCacheKeys.InvalidateBatchAsync(cache, batchId, token);
+        }
+        else if (cache is not null && cacheKey is not null)
         {
             await cache.SetAsync(cacheKey, result, DefenseCouncilCacheKeys.GradingRubricTtl, token);
         }

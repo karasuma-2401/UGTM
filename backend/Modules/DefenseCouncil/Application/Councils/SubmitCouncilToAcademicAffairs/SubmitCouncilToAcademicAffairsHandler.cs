@@ -78,6 +78,7 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
             return Result.Failure<CouncilSubmissionResponseDto>(CouncilErrors.NoAssignedGroups);
         }
 
+
         // 3. Kiểm tra chống trùng phòng thi
         var roomConflict = await councilRepository.HasRoomScheduleConflictAsync(
             council.DefenseDate,
@@ -161,6 +162,8 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
         }
 
         // 8. Cập nhật trạng thái gửi thẩm định
+        if (!council.Members.Any(member => member.RoleInCouncil == CouncilMemberRole.Member))
+            return Result.Failure<CouncilSubmissionResponseDto>(CouncilErrors.MissingMember);
         var nowUtc = DateTime.UtcNow;
         var actorId = currentUser.UserId!.Value;
 

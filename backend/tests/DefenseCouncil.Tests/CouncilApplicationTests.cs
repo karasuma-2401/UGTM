@@ -14,7 +14,7 @@ using UGTM.Modules.TopicCatalog.Contracts.DefenseCouncils;
 
 namespace UGTM.Modules.DefenseCouncil.Tests;
 
-public sealed class CouncilApplicationTests
+public sealed partial class CouncilApplicationTests
 {
     private readonly FakeCouncilRepository _councilRepo = new();
     private readonly FakeDefenseCouncilUnitOfWork _uow = new();
@@ -429,6 +429,9 @@ public sealed class CouncilApplicationTests
 
         _defenseGroupContract.Groups[g1] = new DefenseGroupSnapshotContractDto(g1, t1, _batchId, "InProgress", DateTime.UtcNow, []);
         _topicDefenseContract.Topics[t1] = new TopicDefenseDetailsContractDto(t1, _batchId, adv1, "Tiêu đề 1", "Title 1");
+        var reviewer = Guid.NewGuid();
+        _councilRepo.ActiveReviewers[g1] = reviewer;
+        _userInfoReader.Users[reviewer] = new(reviewer, "Giảng viên phản biện", "reviewer@example.test", "GV01", true);
 
         var handler = new AssignCouncilGroupsHandler(
             _councilRepo, _uow, _defenseGroupContract, _topicDefenseContract, _userInfoReader, _currentUser, new FakeCouncilSchedulingGuard());
@@ -708,7 +711,7 @@ public sealed class CouncilApplicationTests
     #region 4. ApproveCouncilHandler Tests
 
     [Fact]
-    public async Task ApproveCouncil_Succeeds_WithChairmanAndSecretary_ZeroMembers()
+    public async Task ApproveCouncil_Fails_WithChairmanAndSecretary_ZeroMembers()
     {
         _currentUser.Roles = new HashSet<string> { "AcademicAffairs" };
 
@@ -741,12 +744,11 @@ public sealed class CouncilApplicationTests
         var command = new ApproveCouncilCommand(council.Id, "QD-1234/QĐ-ĐHCNTT", new DateOnly(2026, 12, 1), "https://storage.uit.edu.vn/qd-1234.pdf");
         var result = await handler.HandleAsync(command);
 
-        Assert.True(result.IsSuccess);
-        Assert.Equal("Active", result.Value.Status);
-        Assert.Equal("QD-1234/QĐ-ĐHCNTT", result.Value.DecisionNumber);
-        Assert.Equal(1, _uow.SaveCount);
-        Assert.Single(_auditOutbox.Entries);
-        Assert.Equal("DefenseCouncil.Council.Approved", _auditOutbox.Entries[0].Entry.Action);
+        Assert.True(result.IsFailure);
+        Assert.Equal(CouncilErrors.MissingMember.Code, result.Error.Code);
+        Assert.Equal(CouncilStatus.Draft, council.Status);
+        Assert.Equal(0, _uow.SaveCount);
+        Assert.Empty(_auditOutbox.Entries);
     }
 
     [Fact]

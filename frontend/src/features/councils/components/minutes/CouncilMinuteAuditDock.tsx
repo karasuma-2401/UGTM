@@ -65,7 +65,15 @@ export function CouncilMinuteAuditDock({
   onTogglePrintPreview,
   onPrint,
 }: CouncilMinuteAuditDockProps) {
-  const calcErrorText = formatCalculationErrorMessage(calculationPreview.calculationErrorCode);
+  const sourceLabels: Record<string, string> = {
+    Advisor: 'Giảng viên hướng dẫn', Reviewer: 'Giảng viên phản biện',
+    CouncilChairman: 'Chủ tịch Hội đồng', CouncilSecretary: 'Thư ký Hội đồng',
+    CouncilMember: 'Ủy viên Hội đồng', CouncilAverage: 'Điểm Hội đồng',
+  };
+  const calcErrorText = calculationPreview.calculationErrorCode === 'ScoreSummary.MissingRequiredSource'
+    && calculationPreview.missingSources?.length
+    ? `Thiếu đầu điểm: ${calculationPreview.missingSources.map((source) => sourceLabels[source] || source).join(', ')}. Kiểm tra thành viên và phiếu chấm theo cấu hình của đợt.`
+    : formatCalculationErrorMessage(calculationPreview.calculationErrorCode);
   const roundAwayFromZero = (value: number): number => {
     const scaled = Math.abs(value) * 100 + 1e-9;
     const rounded = Math.round(scaled) / 100;
@@ -150,7 +158,7 @@ export function CouncilMinuteAuditDock({
                 {rawScoreDisplay !== null ? rawScoreDisplay.toFixed(2) : '—'}
               </p>
               <p className="mt-1 text-[11px] text-ink-muted tabular-nums">
-                Mẫu số: {calculationPreview.rawDivisor}
+                Mẫu số: {calculationPreview.rawDivisor > 0 ? calculationPreview.rawDivisor : 'Chưa xác định'}
               </p>
             </div>
 
@@ -172,7 +180,7 @@ export function CouncilMinuteAuditDock({
                 )}
               </div>
               <p className="mt-1 text-[11px] text-ink-body tabular-nums">
-                Mẫu số: {calculationPreview.adjustedDivisor}
+                Mẫu số: {calculationPreview.adjustedDivisor > 0 ? calculationPreview.adjustedDivisor : 'Chưa xác định'}
               </p>
             </div>
           </div>

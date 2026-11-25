@@ -164,6 +164,13 @@ public static class CouncilMinuteWorkspaceCalculator
         var adjusted = ConfiguredGradeComponents.Resolve(configuration, inside, sources);
         var raw = ConfiguredGradeComponents.Resolve(configuration, inside, sources, includeExcluded: true);
         var allRequiredScoresPresent = sources.Length > 0 && sources.All(source => source.Score.HasValue);
+        var missingSources = configuration?.Components
+            .Where(component => ConfiguredGradeComponents.Applies(component, inside) && (component.Weight > 0 || component.IsRequired))
+            .Where(component => component.Source == "CouncilAverage"
+                ? !sources.Any(source => source.Source.StartsWith("Council", StringComparison.Ordinal))
+                    || sources.Any(source => source.Source.StartsWith("Council", StringComparison.Ordinal) && !source.Score.HasValue)
+                : !sources.Any(source => source.Source == component.Source && source.Score.HasValue))
+            .Select(component => component.Source).Distinct().ToArray() ?? [];
         string? errorCode = adjusted.IsFailure ? adjusted.Error.Code : raw.IsFailure ? raw.Error.Code :
             !allRequiredScoresPresent ? "ScoreSummary.MissingRequiredSource" : null;
         decimal rawTotal = 0m, rawDivisor = 0m, rawAverage = 0m;
@@ -198,7 +205,7 @@ public static class CouncilMinuteWorkspaceCalculator
         var calculationPreview = new MinuteCalculationPreviewDto(rawTotal, rawDivisor, rawAverage,
             adjustedTotal, adjustedDivisor, adjustedAverage, finalRoundedScore, formulaExplanation,
             errorCode is null && discrepancyResolved && adjustedDivisor > 0,
-            configuration?.Id, configuration?.VersionNo, errorCode);
+            configuration?.Id, configuration?.VersionNo, errorCode, missingSources);
 
         return (processedItems, discrepancySummary, calculationPreview);
     }

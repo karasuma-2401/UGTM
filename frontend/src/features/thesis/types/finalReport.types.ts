@@ -49,6 +49,17 @@ export interface FinalReportHistoryDto {
   versions: FinalReportHistoryItemDto[];
 }
 
+export interface FinalReportEvaluationStartedDto {
+  finalReportId: string;
+  groupId: string;
+  versionType: string;
+  versionNo: number;
+  status: string;
+  startedBy: string;
+  startedAtUtc: string;
+  file: SubmissionFileDto;
+}
+
 export interface ReviewerFeedbackDto {
   comment: string | null;
 }
