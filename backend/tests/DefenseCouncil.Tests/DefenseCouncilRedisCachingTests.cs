@@ -334,6 +334,9 @@ public sealed class DefenseCouncilRedisCachingTests
         userInfoReader.Users[chairmanId] = new CouncilUserInfoContractDto(chairmanId, "PGS. Chủ Tịch", "ct@uit.edu.vn", "GV01", true);
         userInfoReader.Users[secretaryId] = new CouncilUserInfoContractDto(secretaryId, "ThS. Thư Ký", "tk@uit.edu.vn", "GV02", true);
         userInfoReader.Users[advisorId] = new CouncilUserInfoContractDto(advisorId, "TS. GVHD", "hd@uit.edu.vn", "GV03", true);
+        var defaultReviewerId = Guid.NewGuid();
+        innerRepo.ActiveReviewers[groupId] = defaultReviewerId;
+        userInfoReader.Users[defaultReviewerId] = new(defaultReviewerId, "GVPB", "pb@example.test", "GV04", true);
 
         var studentInfoReader = new FakeStudentInfoReader();
         studentInfoReader.Students[studentId] = new StudentInfoContractDto(studentId, "an@uit.edu.vn", "Nguyễn Văn An", "22520001", null);

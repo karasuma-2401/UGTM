@@ -52,6 +52,7 @@ export interface MinuteCalculationPreviewDto {
   configurationId?: string | null;
   configurationVersion?: number | null;
   calculationErrorCode?: string | null;
+  missingSources?: string[] | null;
 }
 
 export interface CouncilMinuteWorkspaceResponseDto {

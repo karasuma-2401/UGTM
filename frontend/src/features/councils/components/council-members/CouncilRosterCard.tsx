@@ -44,7 +44,7 @@ export const CouncilRosterCard = forwardRef<
         {editable && <Button type="button" size="sm" disabled={busy} onClick={onAdd}><Plus aria-hidden="true" /> Thêm thành viên</Button>}
       </div>
       <p className="mt-1 text-sm text-ink-muted">
-        Mỗi hội đồng cần đúng 1 Chủ tịch và 1 Thư ký. Ủy viên không bắt buộc.
+        Mỗi hội đồng cần 1 Chủ tịch, 1 Thư ký và Ủy viên. Khi gán nhóm mà chưa có Ủy viên, hệ thống mặc định thêm GVPB kiêm nhiệm. Bạn có thể gỡ và chọn giảng viên khác trước khi gửi PĐT.
       </p>
 
       {!editable && (
@@ -91,14 +91,14 @@ export const CouncilRosterCard = forwardRef<
                     <p className="text-sm font-medium text-ink-heading [overflow-wrap:anywhere]">
                       {member.fullName}
                     </p>
-                    <p className="text-sm text-ink-muted [overflow-wrap:anywhere]">
+                    <div className="text-sm text-ink-muted [overflow-wrap:anywhere]">
                       {candidate?.userCode || candidate?.email || ''}
                       {member.isReviewer && (
-                        <StatusBadge tone="info" className="ml-1.5">
-                          Giảng viên phản biện của nhóm
+                        <StatusBadge tone="info" className="mt-1 whitespace-normal text-left">
+                          GVPB kiêm Ủy viên · dùng điểm phản biện đã chốt
                         </StatusBadge>
                       )}
-                    </p>
+                    </div>
                   </div>
                 </div>
                 {editable ? (

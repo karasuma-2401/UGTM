@@ -63,6 +63,11 @@ export const finalReportApi = {
     const response = await httpClient.post<ApiResponse<FinalReportSubmissionDto>>(
       '/api/thesis/revised-final-reports',
       formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
     );
     return unwrap(response.data);
   },

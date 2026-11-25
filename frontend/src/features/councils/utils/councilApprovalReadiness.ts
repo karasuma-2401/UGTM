@@ -48,11 +48,12 @@ export function evaluateCouncilReadiness(council: CouncilDraftItemDto): CouncilR
 
   const hasChairman = Boolean(council.chairman);
   const hasSecretary = Boolean(council.secretary);
-  const structurePassed = hasChairman && hasSecretary;
+  const structurePassed = hasChairman && hasSecretary && council.members.length > 0;
 
   const missingRoles: string[] = [];
   if (!hasChairman) missingRoles.push('Chủ tịch');
   if (!hasSecretary) missingRoles.push('Thư ký');
+  if (council.members.length === 0) missingRoles.push('Ủy viên');
 
   const hasGroups = council.groupCodes.length > 0;
   const eligibilityPassed = hasGroups && !council.hasIneligibleGroups;

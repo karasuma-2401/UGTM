@@ -29,7 +29,7 @@ import {
 } from '../components/minutes';
 import {
   formatDefenseDateVi,
-  getMinuteLockStatusMeta,
+  getMinuteReadinessMeta,
 } from '../utils/councilMinuteFormatting';
 
 function WorkspaceLoadingSkeleton() {
@@ -290,7 +290,7 @@ export function CouncilMinutesPage() {
                 {sameCouncilAssignments.map((row) => {
                   const rowAssignmentId = row.assignmentId ?? '';
                   const active = rowAssignmentId === selectedAssignmentId;
-                  const statusMeta = getMinuteLockStatusMeta(row.minuteLockStatus);
+                  const statusMeta = getMinuteReadinessMeta(row.minuteLockStatus, row.assignmentId === selectedAssignmentId ? effectiveCalculation : null);
                   const dotClass = active
                     ? 'bg-surface-card/90'
                     : statusMeta.tone === 'success'
@@ -340,15 +340,15 @@ export function CouncilMinutesPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-3 sm:w-auto sm:shrink-0">
               {isDirty ? (
                 <span className="inline-flex items-center rounded-full border border-tone-warning-border bg-tone-warning-bg px-2.5 py-0.5 text-[11px] font-semibold text-tone-warning-strong">
                   Có thay đổi chưa lưu
                 </span>
               ) : (
-                <StatusBadge tone={getMinuteLockStatusMeta(activeOverviewRow.minuteLockStatus).tone}>
+                <StatusBadge tone={getMinuteReadinessMeta(activeOverviewRow.minuteLockStatus, effectiveCalculation).tone}>
                   {activeOverviewRow.groupCode}:{' '}
-                  {getMinuteLockStatusMeta(activeOverviewRow.minuteLockStatus).label}
+                  {getMinuteReadinessMeta(activeOverviewRow.minuteLockStatus, effectiveCalculation).label}
                 </StatusBadge>
               )}
               <span className="hidden sm:inline-block h-4 w-px bg-surface-strong" aria-hidden="true" />

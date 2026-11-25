@@ -350,6 +350,9 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         _userInfoReader.Users[advisorId] = new CouncilUserInfoContractDto(advisorId, "TS. Trần Hướng Dẫn", "hd@uit.edu.vn", "CB010", true);
         _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
         _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, advisorId, "Đề tài AI", null);
+        var defaultReviewerId = Guid.NewGuid();
+        _councilRepo.ActiveReviewers[groupId] = defaultReviewerId;
+        _userInfoReader.Users[defaultReviewerId] = new(defaultReviewerId, "GVPB", "reviewer@example.test", "GV02", true);
 
         Authenticate(facultyId, "Faculty");
 
@@ -359,8 +362,9 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         var councilId = (await ReadDataAsync(createResponse)).GetProperty("id").GetGuid();
 
         // 2. Assign group
-        await _client.PostAsJsonAsync($"/api/councils/{councilId}/assignments",
+        var assignedResponse = await _client.PostAsJsonAsync($"/api/councils/{councilId}/assignments",
             new AssignCouncilGroupsInputDto(Assignments: [new(groupId, 1)]));
+        Assert.Equal(HttpStatusCode.OK, assignedResponse.StatusCode);
 
         // 3. Attempt to add the Advisor as Chairman
         var addMemberResponse = await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
@@ -924,6 +928,7 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         _userInfoReader.Users[newId] = new CouncilUserInfoContractDto(newId, "Giảng viên Mới", "new@uit.edu.vn", "GV13", true, true);
         _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
         _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài Active", "Active");
+        SeedDefaultReviewerForGroup(groupId);
 
         Authenticate(facultyId, "Faculty");
         var createRes = await _client.PostAsJsonAsync("/api/councils",
@@ -991,6 +996,13 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
     #endregion
 
     #region QA Boundary, Negative & Malformed Input Tests — Council Member Assignment
+
+    private void SeedDefaultReviewerForGroup(Guid groupId)
+    {
+        var reviewerId = Guid.NewGuid();
+        _councilRepo.ActiveReviewers[groupId] = reviewerId;
+        _userInfoReader.Users[reviewerId] = new(reviewerId, "GVPB mặc định", "reviewer@example.test", "GV99", true);
+    }
 
     private async Task<Guid> CreateDraftCouncilForQaAsync(string code, DateOnly? date = null, string? slot = null, string? room = null)
     {
@@ -1367,7 +1379,7 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
 
         // Verify extraNewValidId was NOT added or granted role, and lecA/lecB remain untouched
         var currentMembers = _councilRepo.Members.Where(m => m.CouncilId == councilId).ToList();
-        Assert.Equal(2, currentMembers.Count);
+        Assert.Equal(3, currentMembers.Count);
         Assert.Contains(currentMembers, m => m.UserId == lecA && m.RoleInCouncil == CouncilMemberRole.Chairman);
         Assert.Contains(currentMembers, m => m.UserId == lecB && m.RoleInCouncil == CouncilMemberRole.Secretary);
         Assert.DoesNotContain(extraNewValidId, _userInfoReader.GrantedCouncilMemberUserIds);
@@ -1405,6 +1417,7 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         _userInfoReader.Users[sId] = new CouncilUserInfoContractDto(sId, "Thư ký Active", "sa@uit.edu.vn", "GV802", true, true);
         _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
         _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài Lock DEL", "Lock DEL");
+        SeedDefaultReviewerForGroup(groupId);
 
         var councilId = await CreateDraftCouncilForQaAsync("HD-QA-DELLOCK");
         await _client.PostAsJsonAsync($"/api/councils/{councilId}/members",
@@ -1442,6 +1455,7 @@ public sealed class CouncilEndpointsE2ETests : IAsyncLifetime
         _userInfoReader.Users[mId2] = new CouncilUserInfoContractDto(mId2, "Ủy viên 2 Reset", "m2r@uit.edu.vn", "GV813", true, true);
         _defenseGroupContract.Groups[groupId] = new DefenseGroupSnapshotContractDto(groupId, topicId, _batchId, "InProgress", DateTime.UtcNow, []);
         _topicDefenseContract.Topics[topicId] = new TopicDefenseDetailsContractDto(topicId, _batchId, Guid.NewGuid(), "Đề tài Reset Test", "Reset Test");
+        SeedDefaultReviewerForGroup(groupId);
 
         var councilId = await CreateDraftCouncilForQaAsync("HD-QA-RESET-FLAG");
         var council = _councilRepo.Councils.First(c => c.Id == councilId);

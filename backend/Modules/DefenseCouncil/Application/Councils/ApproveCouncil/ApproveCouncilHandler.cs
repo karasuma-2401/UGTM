@@ -189,6 +189,9 @@ public sealed class ApproveCouncilHandler(
         var nowUtc = DateTime.UtcNow;
         var approvedBy = currentUser.UserId ?? Guid.Empty;
 
+        if (!council.Members.Any(member => member.RoleInCouncil == CouncilMemberRole.Member))
+            return Result.Failure<CouncilResponseDto>(CouncilErrors.MissingMember);
+
         council.Approve(
             command.DecisionNumber,
             command.SignedDate,

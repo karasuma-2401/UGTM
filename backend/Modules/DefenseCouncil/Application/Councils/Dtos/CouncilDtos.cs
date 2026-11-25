@@ -234,7 +234,8 @@ public sealed record MinuteCalculationPreviewDto(
     bool IsReadyToLock,
     Guid? ConfigurationId = null,
     int? ConfigurationVersion = null,
-    string? CalculationErrorCode = null);
+    string? CalculationErrorCode = null,
+    IReadOnlyList<string>? MissingSources = null);
 
 public sealed record CouncilMinuteWorkspaceResponseDto(
     MinuteWorkspaceAssignmentInfoDto AssignmentInfo,

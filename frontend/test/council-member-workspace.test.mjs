@@ -203,3 +203,10 @@ test('member mutations return the roster payload so the UI can update without re
   assert.deepEqual(await real.replace('c1', [{ userId: 'u1', role: 'Chairman' }]), members);
   assert.deepEqual(await real.remove('c1', 'u1'), members);
 });
+
+test('dossier without a member must select a reviewer as member or an independent lecturer before submission', () => {
+  const emptyMemberCouncil = council({ members: [] });
+  const readiness = ws.evaluateSubmitReadiness(emptyMemberCouncil, ws.rosterFromCouncil(emptyMemberCouncil));
+  assert.equal(readiness.canSubmit, false);
+  assert.ok(readiness.missing.some((message) => message.includes('Chưa có Ủy viên')));
+});
