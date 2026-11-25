@@ -5,6 +5,7 @@ import { buildUploadProgressHandler } from './submissionUploadHelper';
 import type {
   FinalReportSubmissionDto,
   FinalReportHistoryDto,
+  FinalReportEvaluationStartedDto,
   ReviewerFeedbackDto,
   RevisedFinalReportEligibilityDto,
   SubmissionFileDownloadDto,
@@ -19,6 +20,14 @@ function unwrap<T>(response: ApiResponse<T>): T {
 }
 
 export const finalReportApi = {
+  async beginEvaluation(finalReportId: string, expectedVersionNo: number): Promise<FinalReportEvaluationStartedDto> {
+    const response = await httpClient.post<ApiResponse<FinalReportEvaluationStartedDto>>(
+      `/api/thesis/final-reports/${finalReportId}/begin-evaluation`,
+      { expectedVersionNo },
+    );
+    return unwrap(response.data);
+  },
+
   async getRevisedFinalReportEligibility(
     groupId: string,
     signal?: AbortSignal,

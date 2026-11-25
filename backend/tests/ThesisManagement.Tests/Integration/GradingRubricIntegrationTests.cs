@@ -10,6 +10,37 @@ namespace UGTM.Modules.ThesisManagement.Tests.Integration;
 public sealed partial class ReviewerAssignmentTransactionIntegrationTests
 {
     [Fact]
+    public async Task Rubric_reads_automatically_supply_the_fixed_UIT_form_with_stable_ids()
+    {
+        await using var db = Db<DefenseCouncilDbContext>();
+        Assert.Empty(await db.GradingCriterias.Where(c => c.BatchId == _batch).ToListAsync());
+        var manager = new GradingRubricManager(db, new OpenRegistrationBatchReader(), new Actor(_actor));
+        var first = await manager.GetAsync(_batch);
+        Assert.True(first.IsSuccess);
+        Assert.Equal(10, first.Value.Criteria.Count);
+        Assert.Equal(10m, first.Value.Criteria.Sum(c => c.MaxScore));
+        Assert.Equal(new[] { "1.1", "1.2", "2.1", "2.2", "2.3", "3.1", "3.2", "3.3", "4.1", "4.2" },
+            first.Value.Criteria.Select(c => c.Code));
+        Assert.All(first.Value.Criteria, c => Assert.NotEqual(Guid.Empty, c.Id));
+        var second = await manager.GetAsync(_batch);
+        Assert.Equal(first.Value.Criteria.Select(c => c.Id), second.Value.Criteria.Select(c => c.Id));
+        Assert.Equal(10, await db.GradingCriterias.CountAsync(c => c.BatchId == _batch));
+    }
+
+    [Fact]
+    public async Task Rubric_concurrent_initial_reads_do_not_create_duplicate_criteria()
+    {
+        await using var firstDb = Db<DefenseCouncilDbContext>();
+        await using var secondDb = Db<DefenseCouncilDbContext>();
+        var first = new GradingRubricManager(firstDb, new OpenRegistrationBatchReader(), new Actor(_actor));
+        var second = new GradingRubricManager(secondDb, new OpenRegistrationBatchReader(), new Actor(_actor));
+        var results = await Task.WhenAll(first.GetAsync(_batch), second.GetAsync(_batch));
+        Assert.All(results, result => Assert.True(result.IsSuccess));
+        Assert.Equal(results[0].Value.Criteria.Select(c => c.Id), results[1].Value.Criteria.Select(c => c.Id));
+        Assert.Equal(10, await firstDb.GradingCriterias.CountAsync(c => c.BatchId == _batch));
+    }
+
+    [Fact]
     public async Task Rubric_can_be_replaced_before_use_and_requires_valid_total_and_role()
     {
         await using var db = Db<DefenseCouncilDbContext>();
