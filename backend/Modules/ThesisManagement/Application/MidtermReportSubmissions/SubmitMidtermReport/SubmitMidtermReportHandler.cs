@@ -2,15 +2,19 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.Dtos;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
+using UGTM.Modules.TopicCatalog.Contracts.Topics;
 
 namespace UGTM.Modules.ThesisManagement.Application.MidtermReportSubmissions.SubmitMidtermReport;
 
@@ -27,7 +31,10 @@ public sealed class SubmitMidtermReportHandler(
     ICurrentUser currentUser,
     TimeProvider timeProvider,
     IThesisUploadLifecycle uploadLifecycle,
-    IKltnBatchReader batchReader)
+    IKltnBatchReader batchReader,
+    IThesisNotificationOutbox? notificationOutbox = null,
+    ITopicSummaryReader? topicSummaryReader = null,
+    IStudentInfoReader? studentInfoReader = null)
 {
     public async Task<Result<MidtermReportSubmissionDto>> HandleAsync(
         SubmitMidtermReportCommand command,
@@ -181,6 +188,21 @@ public sealed class SubmitMidtermReportHandler(
                     }),
                 occurredAt);
 
+            if (notificationOutbox is not null)
+            {
+                await EnqueueSubmissionNotificationsAsync(
+                    notificationOutbox,
+                    topicSummaryReader,
+                    studentInfoReader,
+                    group,
+                    membership.BatchId,
+                    report,
+                    submissionFile,
+                    currentUser.UserId.Value,
+                    occurredAt,
+                    cancellationToken);
+            }
+
             var saveError = await uploadLifecycle.SaveAsync(uploadAttempt,
                 token => unitOfWork.TrySaveChangesAsync(MidtermReportSubmissionErrors.ConcurrencyConflict,
                     MidtermReportSubmissionErrors.ConcurrencyConflict, token),
@@ -197,6 +219,120 @@ public sealed class SubmitMidtermReportHandler(
         finally
         {
             await uploadLifecycle.FinishAsync(uploadAttempt);
+        }
+    }
+
+    private static async Task EnqueueSubmissionNotificationsAsync(
+        IThesisNotificationOutbox notificationOutbox,
+        ITopicSummaryReader? topicSummaryReader,
+        IStudentInfoReader? studentInfoReader,
+        StudentGroup group,
+        Guid batchId,
+        MidtermReport report,
+        SubmissionFile submissionFile,
+        Guid uploaderId,
+        DateTime occurredAtUtc,
+        CancellationToken cancellationToken)
+    {
+        Guid? advisorId = null;
+        string? topicTitle = null;
+        if (topicSummaryReader is not null)
+        {
+            var topics = await topicSummaryReader.GetByIdsAsync([group.TopicId], cancellationToken);
+            if (topics.TryGetValue(group.TopicId, out var topicSummary))
+            {
+                advisorId = topicSummary.AdvisorId;
+                topicTitle = topicSummary.TitleVi;
+            }
+        }
+
+        string? uploaderName = null;
+        if (studentInfoReader is not null)
+        {
+            var studentInfo = await studentInfoReader.GetStudentByIdOrCodeAsync(uploaderId, null, cancellationToken);
+            uploaderName = studentInfo?.FullName;
+        }
+
+        var confirmedStudents = ThesisNotificationFormatting.GetConfirmedStudentIds(group);
+        var versionLabel = $"v{report.CurrentVersionNo}";
+        var shortTopic = ThesisNotificationFormatting.Shorten(topicTitle, 65);
+
+        if (confirmedStudents.Count > 0)
+        {
+            var metadata = new List<NotificationEmailMetaItem>
+            {
+                new("Mốc nộp", "Báo cáo giữa kỳ (Cổng 2)")
+            };
+            if (!string.IsNullOrWhiteSpace(topicTitle))
+            {
+                metadata.Add(new NotificationEmailMetaItem("Đề tài", topicTitle.Trim()));
+            }
+            metadata.Add(new NotificationEmailMetaItem("Phiên bản", versionLabel));
+            if (!string.IsNullOrWhiteSpace(uploaderName))
+            {
+                metadata.Add(new NotificationEmailMetaItem("Người nộp", uploaderName.Trim()));
+            }
+            metadata.Add(new NotificationEmailMetaItem(
+                "Tệp ghi nhận",
+                $"{submissionFile.FileName} ({ThesisNotificationFormatting.FormatFileSize(submissionFile.FileSize)})"));
+            metadata.Add(new NotificationEmailMetaItem(
+                "Thời gian nộp (VN)",
+                ThesisNotificationFormatting.FormatVietnamTime(occurredAtUtc)));
+
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "SUBMISSION_CONFIRMED",
+                    Title: $"Xác nhận nộp Báo cáo giữa kỳ ({versionLabel})",
+                    Content: $"Ghi nhận tệp Báo cáo giữa kỳ {versionLabel} của nhóm. Khoa sẽ thẩm định và phản hồi sớm theo kế hoạch.",
+                    RecipientUserIds: confirmedStudents,
+                    ResourceType: "MidtermReport",
+                    ResourceId: report.Id,
+                    AcademicBatchId: batchId,
+                    ActionPath: "/thesis/midterm",
+                    Priority: "Critical",
+                    EnqueuePush: true,
+                    EnqueueEmail: true,
+                    EmailSubject: $"[UGTM] Xác nhận nộp Báo cáo giữa kỳ KLTN ({versionLabel})",
+                    EmailCategoryLabel: "Xác nhận nộp bài",
+                    EmailCtaLabel: "Xem trang Giữa kỳ",
+                    EmailNotice: "Vui lòng theo dõi kết quả thẩm định của Khoa trên hệ thống.",
+                    EmailMetadata: metadata),
+                occurredAtUtc);
+        }
+
+        notificationOutbox.Enqueue(
+            new NotificationOutboxEntry(
+                NotificationType: "MIDTERM_REPORT_SUBMITTED",
+                Title: $"Báo cáo giữa kỳ {versionLabel} chờ thẩm định",
+                Content: $"Nhóm đề tài \"{shortTopic}\" vừa nộp Báo cáo giữa kỳ {versionLabel} chờ Khoa thẩm định.",
+                RecipientRoles: ["Faculty"],
+                RecipientPermissions: [PermissionCodes.ThesisReviewGatesReview],
+                ExcludeUserIds: [uploaderId],
+                ResourceType: "MidtermReport",
+                ResourceId: report.Id,
+                AcademicBatchId: batchId,
+                ActionPath: "/thesis/review/midterm",
+                Priority: "Normal",
+                EnqueuePush: true,
+                EnqueueEmail: false),
+            occurredAtUtc);
+
+        if (advisorId.HasValue && advisorId.Value != Guid.Empty)
+        {
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "MIDTERM_REPORT_SUBMITTED",
+                    Title: $"Nhóm hướng dẫn đã nộp Giữa kỳ {versionLabel}",
+                    Content: $"Nhóm đề tài \"{shortTopic}\" vừa nộp tệp Báo cáo giữa kỳ phiên bản {versionLabel}.",
+                    RecipientUserIds: [advisorId.Value],
+                    ResourceType: "MidtermReport",
+                    ResourceId: report.Id,
+                    AcademicBatchId: batchId,
+                    ActionPath: "/topics/advising",
+                    Priority: "Normal",
+                    EnqueuePush: true,
+                    EnqueueEmail: false),
+                occurredAtUtc);
         }
     }
 }
