@@ -2,11 +2,13 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Application.Auditing;
 using UGTM.Modules.AcademicPeriods.Application.Batches.Dtos;
 using UGTM.Modules.AcademicPeriods.Application.Common;
+using UGTM.Modules.AcademicPeriods.Application.Notifications;
 using UGTM.Modules.AcademicPeriods.Application.Persistence;
 using UGTM.Modules.AcademicPeriods.Domain.Entities;
 using UGTM.Modules.AcademicPeriods.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 
 namespace UGTM.Modules.AcademicPeriods.Application.Batches.ChangeKltnBatchStatus;
 
@@ -16,7 +18,8 @@ public sealed class OpenKltnBatchHandler(
     IAcademicPeriodsAuditOutbox auditOutbox,
     IAcademicPeriodsUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IAcademicPeriodsNotificationOutbox? notificationOutbox = null)
 {
     public async Task<Result<KltnBatchDetailDto>> HandleAsync(
         OpenKltnBatchCommand command,
@@ -68,6 +71,21 @@ public sealed class OpenKltnBatchHandler(
                 }
 
                 AddAudit(auditOutbox, batch, IntegrationAuditActions.BatchOpened, occurredAt);
+                notificationOutbox?.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "BATCH_OPENED",
+                        Title: $"Đợt KLTN {batch.BatchName} đã mở",
+                        Content: $"Đợt {batch.BatchName} (HK{batch.Semester}, {batch.AcademicYear}) đã mở chính thức. Vui lòng theo dõi lịch trình các giai đoạn.",
+                        RecipientRoles: ["Student", "Lecturer", "Faculty", "AcademicAffairs"],
+                        ExcludeUserIds: currentUser.UserId.HasValue ? [currentUser.UserId.Value] : null,
+                        ResourceType: "KltnBatch",
+                        ResourceId: batch.Id,
+                        AcademicBatchId: batch.Id,
+                        ActionPath: "/dashboard",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    occurredAt);
                 await unitOfWork.SaveChangesAsync(transactionCancellationToken);
                 return Result.Success(AcademicBatchMapper.ToDetail(batch));
             }, cancellationToken);

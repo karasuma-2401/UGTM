@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
 using UGTM.Modules.TopicCatalog.Contracts.RenameRequests;
@@ -36,6 +37,7 @@ public sealed class TopicCatalogModule : IModule
     public void RegisterModule(IServiceCollection services, IConfiguration configuration)
     {
         services.AddModuleDbContext<TopicCatalogDbContext>(configuration);
+        services.TryAddSingleton(TimeProvider.System);
 
         // Repositories, Unit of Work & Query Readers
         services.AddScoped<ITopicRepository, TopicRepository>();

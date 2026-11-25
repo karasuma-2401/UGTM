@@ -2,12 +2,14 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Application.Auditing;
 using UGTM.Modules.AcademicPeriods.Application.Batches.Dtos;
 using UGTM.Modules.AcademicPeriods.Application.Common;
+using UGTM.Modules.AcademicPeriods.Application.Notifications;
 using UGTM.Modules.AcademicPeriods.Application.Persistence;
 using UGTM.Modules.AcademicPeriods.Domain.Enums;
 using UGTM.Modules.AcademicPeriods.Domain.Repositories;
 using UGTM.Modules.AcademicPeriods.Domain.Scheduling;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 
 namespace UGTM.Modules.AcademicPeriods.Application.Batches.UpdateKltnBatchSchedule;
 
@@ -16,7 +18,8 @@ public sealed class UpdateKltnBatchScheduleHandler(
     IAcademicPeriodsAuditOutbox auditOutbox,
     IAcademicPeriodsUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IAcademicPeriodsNotificationOutbox? notificationOutbox = null)
 {
     public async Task<Result<KltnBatchDetailDto>> HandleAsync(
         UpdateKltnBatchScheduleCommand command,
@@ -152,6 +155,25 @@ public sealed class UpdateKltnBatchScheduleHandler(
                             })
                         }),
                     occurredAt);
+
+                if (batch.Status == BatchStatus.Open)
+                {
+                    notificationOutbox?.Enqueue(
+                        new NotificationOutboxEntry(
+                            NotificationType: "BATCH_SCHEDULE_UPDATED",
+                            Title: $"Cập nhật lịch trình đợt {batch.BatchName}",
+                            Content: $"Lịch các giai đoạn đợt {batch.BatchName} vừa được điều chỉnh. Vui lòng kiểm tra lại các mốc hạn chót.",
+                            RecipientRoles: ["Student", "Lecturer", "Faculty", "AcademicAffairs"],
+                            ExcludeUserIds: currentUser.UserId.HasValue ? [currentUser.UserId.Value] : null,
+                            ResourceType: "KltnBatch",
+                            ResourceId: batch.Id,
+                            AcademicBatchId: batch.Id,
+                            ActionPath: "/dashboard",
+                            Priority: "Normal",
+                            EnqueuePush: true,
+                            EnqueueEmail: false),
+                        occurredAt);
+                }
 
                 await unitOfWork.SaveChangesAsync(transactionCancellationToken);
                 return Result.Success(AcademicBatchMapper.ToDetail(batch));
