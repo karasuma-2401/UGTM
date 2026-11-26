@@ -100,6 +100,21 @@ public sealed class ReviewProgressReportHandler(
                         "Yêu cầu chỉnh sửa mốc tiến độ",
                         $"GVHD yêu cầu cập nhật lại mốc \"{shortMilestone}\". Vui lòng xem nhận xét và nộp lại sớm.");
 
+                var isRevisionRequired = decision != ProgressReportStatus.Accepted;
+                List<NotificationEmailMetaItem>? revisionMetadata = null;
+                if (isRevisionRequired)
+                {
+                    revisionMetadata =
+                    [
+                        new("Mốc tiến độ", milestone.Title),
+                        new("Phiên bản", $"v{version.VersionNo}")
+                    ];
+                    if (!string.IsNullOrWhiteSpace(version.AdvisorFeedback))
+                    {
+                        revisionMetadata.Add(new NotificationEmailMetaItem("Nhận xét của GVHD", version.AdvisorFeedback.Trim()));
+                    }
+                }
+
                 notificationOutbox.Enqueue(
                     new NotificationOutboxEntry(
                         NotificationType: notifType,
@@ -110,9 +125,14 @@ public sealed class ReviewProgressReportHandler(
                         ResourceId: report.Id,
                         AcademicBatchId: batchId,
                         ActionPath: "/thesis/milestones",
-                        Priority: "Normal",
+                        Priority: isRevisionRequired ? "High" : "Normal",
                         EnqueuePush: true,
-                        EnqueueEmail: false),
+                        EnqueueEmail: isRevisionRequired,
+                        EmailSubject: isRevisionRequired ? $"[UGTM] Yêu cầu chỉnh sửa mốc tiến độ: {shortMilestone}" : null,
+                        EmailCategoryLabel: isRevisionRequired ? "Tiến độ thực hiện" : null,
+                        EmailCtaLabel: isRevisionRequired ? "Xem nhận xét & nộp lại" : null,
+                        EmailNotice: isRevisionRequired ? "Vui lòng chỉnh sửa theo góp ý của GVHD và nộp lại báo cáo." : null,
+                        EmailMetadata: revisionMetadata),
                     version.ReviewedAt!.Value);
             }
         }

@@ -282,6 +282,20 @@ public sealed class ConfirmFinalSubmissionHandler(IFinalSubmissionStore store, F
 
             if (confirmedStudents.Count > 0)
             {
+                var revisionMetadata = new List<NotificationEmailMetaItem>
+                {
+                    new("Người yêu cầu", reviewerLabel),
+                    new("Phiên bản", versionLabel)
+                };
+                if (!string.IsNullOrWhiteSpace(context.Topic.TitleVi))
+                {
+                    revisionMetadata.Add(new NotificationEmailMetaItem("Đề tài", context.Topic.TitleVi.Trim()));
+                }
+                if (!string.IsNullOrWhiteSpace(reason))
+                {
+                    revisionMetadata.Add(new NotificationEmailMetaItem("Lý do / Yêu cầu", reason.Trim()));
+                }
+
                 notificationOutbox.Enqueue(
                     new NotificationOutboxEntry(
                         NotificationType: "FINAL_SUBMISSION_REVISION_REQUIRED",
@@ -292,9 +306,14 @@ public sealed class ConfirmFinalSubmissionHandler(IFinalSubmissionStore store, F
                         ResourceId: submission.Id,
                         AcademicBatchId: context.Topic.BatchId,
                         ActionPath: "/thesis/archival",
-                        Priority: "Normal",
+                        Priority: "High",
                         EnqueuePush: true,
-                        EnqueueEmail: false),
+                        EnqueueEmail: true,
+                        EmailSubject: $"[UGTM] Yêu cầu chỉnh sửa Hồ sơ lưu chiểu ({versionLabel})",
+                        EmailCategoryLabel: "Hồ sơ lưu chiểu",
+                        EmailCtaLabel: "Cập nhật hồ sơ lưu chiểu",
+                        EmailNotice: "Vui lòng chỉnh sửa và nộp lại gói lưu chiểu trước khi kết thúc đợt.",
+                        EmailMetadata: revisionMetadata),
                     occurredAtUtc);
             }
 

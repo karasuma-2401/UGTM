@@ -130,7 +130,8 @@ public sealed class NotificationPhase4Group4Tests
         Assert.True(reviewed.IsSuccess);
         var reviewEntry = Assert.Single(outbox.Entries);
         Assert.Equal("PROGRESS_REPORT_REVISION_REQUIRED", reviewEntry.NotificationType);
-        Assert.False(reviewEntry.EnqueueEmail);
+        Assert.True(reviewEntry.EnqueueEmail);
+        Assert.NotNull(reviewEntry.EmailSubject);
         Assert.Equal("/thesis/milestones", reviewEntry.ActionPath);
     }
 

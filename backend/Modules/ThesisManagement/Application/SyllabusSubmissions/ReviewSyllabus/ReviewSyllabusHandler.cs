@@ -273,6 +273,25 @@ public sealed class ReviewSyllabusHandler(
 
         if (confirmedStudents.Count > 0)
         {
+            var isRevisionRequired = decision == ReviewDecision.NeedRevision;
+            List<NotificationEmailMetaItem>? revisionMetadata = null;
+            if (isRevisionRequired)
+            {
+                revisionMetadata =
+                [
+                    new("Cổng thẩm định", "Cổng 1 — Đề cương KLTN"),
+                    new("Phiên bản", $"v{syllabus.CurrentVersionNo}")
+                ];
+                if (!string.IsNullOrWhiteSpace(topicTitle))
+                {
+                    revisionMetadata.Add(new NotificationEmailMetaItem("Đề tài", topicTitle.Trim()));
+                }
+                if (!string.IsNullOrWhiteSpace(feedback))
+                {
+                    revisionMetadata.Add(new NotificationEmailMetaItem("Nhận xét của Khoa", feedback.Trim()));
+                }
+            }
+
             notificationOutbox.Enqueue(
                 new NotificationOutboxEntry(
                     NotificationType: notifType,
@@ -283,9 +302,14 @@ public sealed class ReviewSyllabusHandler(
                     ResourceId: syllabus.Id,
                     AcademicBatchId: batchId,
                     ActionPath: "/thesis/proposal",
-                    Priority: "Normal",
+                    Priority: isRevisionRequired ? "High" : "Normal",
                     EnqueuePush: true,
-                    EnqueueEmail: false),
+                    EnqueueEmail: isRevisionRequired,
+                    EmailSubject: isRevisionRequired ? $"[UGTM] Yêu cầu chỉnh sửa Đề cương KLTN (v{syllabus.CurrentVersionNo})" : null,
+                    EmailCategoryLabel: isRevisionRequired ? "Cổng thẩm định 1" : null,
+                    EmailCtaLabel: isRevisionRequired ? "Xem nhận xét & nộp lại" : null,
+                    EmailNotice: isRevisionRequired ? "Vui lòng chỉnh sửa và nộp lại Đề cương trước hạn đóng Cổng 1." : null,
+                    EmailMetadata: revisionMetadata),
                 occurredAtUtc);
         }
 

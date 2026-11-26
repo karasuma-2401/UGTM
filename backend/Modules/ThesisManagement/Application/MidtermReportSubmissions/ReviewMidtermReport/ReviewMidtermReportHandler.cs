@@ -273,6 +273,25 @@ public sealed class ReviewMidtermReportHandler(
 
         if (confirmedStudents.Count > 0)
         {
+            var isRevisionRequired = decision == ReviewDecision.NeedRevision;
+            List<NotificationEmailMetaItem>? revisionMetadata = null;
+            if (isRevisionRequired)
+            {
+                revisionMetadata =
+                [
+                    new("Cổng thẩm định", "Cổng 2 — Báo cáo giữa kỳ"),
+                    new("Phiên bản", $"v{report.CurrentVersionNo}")
+                ];
+                if (!string.IsNullOrWhiteSpace(topicTitle))
+                {
+                    revisionMetadata.Add(new NotificationEmailMetaItem("Đề tài", topicTitle.Trim()));
+                }
+                if (!string.IsNullOrWhiteSpace(feedback))
+                {
+                    revisionMetadata.Add(new NotificationEmailMetaItem("Nhận xét của Khoa", feedback.Trim()));
+                }
+            }
+
             notificationOutbox.Enqueue(
                 new NotificationOutboxEntry(
                     NotificationType: notifType,
@@ -283,9 +302,14 @@ public sealed class ReviewMidtermReportHandler(
                     ResourceId: report.Id,
                     AcademicBatchId: batchId,
                     ActionPath: "/thesis/midterm",
-                    Priority: "Normal",
+                    Priority: isRevisionRequired ? "High" : "Normal",
                     EnqueuePush: true,
-                    EnqueueEmail: false),
+                    EnqueueEmail: isRevisionRequired,
+                    EmailSubject: isRevisionRequired ? $"[UGTM] Yêu cầu chỉnh sửa Báo cáo giữa kỳ (v{report.CurrentVersionNo})" : null,
+                    EmailCategoryLabel: isRevisionRequired ? "Cổng thẩm định 2" : null,
+                    EmailCtaLabel: isRevisionRequired ? "Xem nhận xét & nộp lại" : null,
+                    EmailNotice: isRevisionRequired ? "Vui lòng chỉnh sửa và nộp lại Báo cáo giữa kỳ trước hạn đóng Cổng 2." : null,
+                    EmailMetadata: revisionMetadata),
                 occurredAtUtc);
         }
 
