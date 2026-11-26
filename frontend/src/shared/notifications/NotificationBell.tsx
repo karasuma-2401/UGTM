@@ -32,14 +32,19 @@ export function formatNotificationRelativeTime(
   }).format(new Date(parsed));
 }
 
-const CONTENT_PREVIEW_LIMIT = 20;
+const CONTENT_PREVIEW_WORD_LIMIT = 20;
 
 function formatNotificationPreviewContent(content: string, expanded: boolean): {
   text: string;
   canExpand: boolean;
 } {
   const normalized = content.trim();
-  if (normalized.length <= CONTENT_PREVIEW_LIMIT) {
+  if (!normalized) {
+    return { text: '', canExpand: false };
+  }
+
+  const words = normalized.split(/\s+/);
+  if (words.length <= CONTENT_PREVIEW_WORD_LIMIT) {
     return { text: normalized, canExpand: false };
   }
 
@@ -48,7 +53,7 @@ function formatNotificationPreviewContent(content: string, expanded: boolean): {
   }
 
   return {
-    text: `${normalized.slice(0, CONTENT_PREVIEW_LIMIT).trimEnd()}...`,
+    text: `${words.slice(0, CONTENT_PREVIEW_WORD_LIMIT).join(' ')}...`,
     canExpand: true,
   };
 }
