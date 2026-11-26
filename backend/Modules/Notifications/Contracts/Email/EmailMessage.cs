@@ -12,3 +12,14 @@ public sealed record EmailMessage(
     string HtmlBody,
     string? TextBody = null,
     IReadOnlyCollection<EmailInlineImage>? InlineImages = null);
+
+public sealed record EmailBatchItem(
+    Guid Id,
+    EmailMessage Message);
+
+public sealed record EmailBatchItemResult(
+    Guid Id,
+    bool Succeeded,
+    bool IsPermanentFailure = false,
+    string? ErrorCode = null,
+    string? ErrorMessage = null);

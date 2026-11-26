@@ -3,10 +3,12 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Notifications;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Contracts.DefenseCouncils;
 using UGTM.Modules.TopicCatalog.Contracts.DefenseCouncils;
 
@@ -23,7 +25,9 @@ public sealed class AddCouncilMembersHandler(
     IDefenseGroupContract defenseGroupContract,
     ITopicDefenseContract topicDefenseContract,
     ICurrentUser currentUser,
-    ICacheService? cache = null)
+    ICacheService? cache = null,
+    IDefenseCouncilNotificationOutbox? notificationOutbox = null,
+    TimeProvider? timeProvider = null)
 {
     public async Task<Result<IReadOnlyList<CouncilMemberResponseDto>>> HandleAsync(
         AddCouncilMembersCommand command,
@@ -64,6 +68,43 @@ public sealed class AddCouncilMembersHandler(
         var validated = validation.Value;
         council.ResetSubmission();
         await councilRepository.AddMembersAsync(validated.NewMembers, cancellationToken);
+
+        if (notificationOutbox is not null)
+        {
+            var nowUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+            var scheduleText = DefenseCouncilNotificationFormatting.FormatSchedule(
+                council.DefenseDate, council.TimeSlot, council.Room);
+
+            foreach (var member in validated.NewMembers)
+            {
+                var roleLabel = DefenseCouncilNotificationFormatting.FormatCouncilRole(member.RoleInCouncil);
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "COUNCIL_MEMBER_ASSIGNED",
+                        Title: $"Phân công tham gia Hội đồng {council.CouncilCode}",
+                        Content: $"Thầy/cô được phân công làm {roleLabel} tại Hội đồng {council.CouncilCode} ({scheduleText}).",
+                        RecipientUserIds: [member.UserId],
+                        ResourceType: "Council",
+                        ResourceId: council.Id,
+                        AcademicBatchId: council.BatchId,
+                        ActionPath: "/councils/grading",
+                        Priority: "Critical",
+                        EnqueuePush: true,
+                        EnqueueEmail: true,
+                        EmailSubject: $"[UGTM] Phân công Hội đồng {council.CouncilCode} ({roleLabel})",
+                        EmailCategoryLabel: "Phân công Hội đồng",
+                        EmailCtaLabel: "Xem không gian Hội đồng",
+                        EmailNotice: "Lịch dự kiến có thể được điều chỉnh trước khi PĐT ban hành quyết định chính thức.",
+                        EmailMetadata:
+                        [
+                            new("Mã hội đồng", council.CouncilCode),
+                            new("Vai trò", roleLabel),
+                            new("Lịch bảo vệ", scheduleText)
+                        ]),
+                    nowUtc);
+            }
+        }
+
         try
         {
             await unitOfWork.SaveChangesAsync(cancellationToken);

@@ -4,12 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations;
 using UGTM.Modules.ThesisManagement.Application.TopicRegistrations.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
+using UGTM.Modules.TopicCatalog.Contracts.Topics;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.Persistence.Repositories;
 
@@ -24,7 +27,9 @@ public sealed record TopicRegistrationDetailsDto(
 public sealed class TopicRegistrationStore(
     ThesisManagementDbContext db,
     IKltnBatchReader batchReader,
-    ITopicRegistrationInvitationOutbox invitationOutbox) : ITopicRegistrationStore
+    ITopicRegistrationInvitationOutbox invitationOutbox,
+    IThesisNotificationOutbox? notificationOutbox = null,
+    ITopicSummaryReader? topicSummaryReader = null) : ITopicRegistrationStore
 {
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> TopicLocks = new();
     private static readonly ConcurrentDictionary<Guid, TopicRegistrationDetailsDto> InProcessTestTopics = new();
@@ -319,6 +324,45 @@ public sealed class TopicRegistrationStore(
             ? "Đăng ký đề tài thành công; thư mời đang chờ gửi tới thành viên cùng nhóm."
             : "Đăng ký đề tài thành công.";
 
+        if (notificationOutbox is not null)
+        {
+            var shortTitle = ThesisNotificationFormatting.Shorten(topic.TitleVi, 65);
+            if (studentBId.HasValue)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "TOPIC_REGISTRATION_INVITED",
+                        Title: "Lời mời tham gia nhóm KLTN",
+                        Content: $"Bạn được mời cùng đăng ký đề tài \"{shortTitle}\". Vui lòng kiểm tra email để xác nhận.",
+                        RecipientUserIds: [studentBId.Value],
+                        ResourceType: "StudentGroup",
+                        ResourceId: group.Id,
+                        AcademicBatchId: topic.BatchId,
+                        ActionPath: "/topics/catalog",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    nowUtc);
+            }
+            else if (topic.AdvisorId != Guid.Empty)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "TOPIC_REGISTRATION_COMPLETED",
+                        Title: "Nhóm mới đăng ký đề tài hướng dẫn",
+                        Content: $"Có nhóm sinh viên vừa đăng ký thành công đề tài \"{shortTitle}\".",
+                        RecipientUserIds: [topic.AdvisorId],
+                        ResourceType: "StudentGroup",
+                        ResourceId: group.Id,
+                        AcademicBatchId: topic.BatchId,
+                        ActionPath: "/topics/advising",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    nowUtc);
+            }
+        }
+
         return Result.Success(new TopicRegistrationResultDto(
             group.Id,
             topic.Id,
@@ -360,6 +404,63 @@ public sealed class TopicRegistrationStore(
         }
 
         member.Confirm(nowUtc);
+        if (notificationOutbox is not null)
+        {
+            Guid? advisorId = null;
+            string? topicTitle = null;
+            if (topicSummaryReader is not null)
+            {
+                var topics = await topicSummaryReader.GetByIdsAsync([member.Group.TopicId], cancellationToken);
+                if (topics.TryGetValue(member.Group.TopicId, out var topicSummary))
+                {
+                    advisorId = topicSummary.AdvisorId;
+                    topicTitle = topicSummary.TitleVi;
+                }
+            }
+            else if (InProcessTestTopics.TryGetValue(member.Group.TopicId, out var seeded))
+            {
+                advisorId = seeded.AdvisorId;
+                topicTitle = seeded.TitleVi;
+            }
+
+            var shortTitle = ThesisNotificationFormatting.Shorten(topicTitle, 65);
+            if (member.InvitedByStudentId.HasValue && member.InvitedByStudentId.Value != Guid.Empty)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "TOPIC_REGISTRATION_CONFIRMED",
+                        Title: "Bạn cùng nhóm đã xác nhận đăng ký",
+                        Content: $"Thành viên cùng nhóm đã xác nhận đề tài \"{shortTitle}\". Nhóm có thể chuẩn bị nộp đề cương.",
+                        RecipientUserIds: [member.InvitedByStudentId.Value],
+                        ResourceType: "StudentGroup",
+                        ResourceId: member.GroupId,
+                        AcademicBatchId: member.BatchId,
+                        ActionPath: "/thesis/proposal",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    nowUtc);
+            }
+
+            if (advisorId.HasValue && advisorId.Value != Guid.Empty)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "TOPIC_REGISTRATION_COMPLETED",
+                        Title: "Nhóm hoàn tất đăng ký đề tài hướng dẫn",
+                        Content: $"Nhóm sinh viên đã xác nhận đủ thành viên cho đề tài \"{shortTitle}\".",
+                        RecipientUserIds: [advisorId.Value],
+                        ResourceType: "StudentGroup",
+                        ResourceId: member.GroupId,
+                        AcademicBatchId: member.BatchId,
+                        ActionPath: "/topics/advising",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    nowUtc);
+            }
+        }
+
         try
         {
             await db.SaveChangesAsync(cancellationToken);

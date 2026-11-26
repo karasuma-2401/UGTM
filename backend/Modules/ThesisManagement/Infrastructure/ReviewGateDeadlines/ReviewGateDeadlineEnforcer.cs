@@ -1,12 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.ReviewGateDeadlines;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Infrastructure.Auditing;
 using UGTM.Modules.ThesisManagement.Infrastructure.Persistence;
+using UGTM.Modules.TopicCatalog.Contracts.Topics;
 
 namespace UGTM.Modules.ThesisManagement.Infrastructure.ReviewGateDeadlines;
 
@@ -14,7 +17,9 @@ public sealed class ReviewGateDeadlineEnforcer(
     ThesisManagementDbContext db,
     IThesisManagementAuditOutbox auditOutbox,
     IOptions<ReviewGateDeadlineEnforcementOptions> options,
-    TimeProvider timeProvider) : IReviewGateDeadlineEnforcer
+    TimeProvider timeProvider,
+    IThesisNotificationOutbox? notificationOutbox = null,
+    ITopicSummaryReader? topicSummaryReader = null) : IReviewGateDeadlineEnforcer
 {
     private readonly int _batchSize = options.Value.BatchSize;
 
@@ -48,7 +53,7 @@ public sealed class ReviewGateDeadlineEnforcer(
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var groups = await GetExpiredPendingGroupsAsync(configuration, cancellationToken);
-        var closedGroupCount = 0;
+        var stoppedGroups = new List<StudentGroup>();
         foreach (var group in groups)
         {
             var previousGroupStatus = group.Status.ToString();
@@ -57,7 +62,7 @@ public sealed class ReviewGateDeadlineEnforcer(
                 continue;
             }
 
-            closedGroupCount++;
+            stoppedGroups.Add(group);
 
             auditOutbox.Add(
                 new AuditIntegrationEntry(
@@ -76,13 +81,119 @@ public sealed class ReviewGateDeadlineEnforcer(
                 nowUtc);
         }
 
-        if (closedGroupCount > 0)
+        if (stoppedGroups.Count > 0)
         {
+            if (notificationOutbox is not null)
+            {
+                await EnqueueDeadlineStoppedNotificationsAsync(
+                    notificationOutbox,
+                    stoppedGroups,
+                    configuration,
+                    nowUtc,
+                    cancellationToken);
+            }
+
             await db.SaveChangesAsync(cancellationToken);
         }
 
         await transaction.CommitAsync(cancellationToken);
-        return closedGroupCount;
+        return stoppedGroups.Count;
+    }
+
+    private async Task EnqueueDeadlineStoppedNotificationsAsync(
+        IThesisNotificationOutbox notificationOutbox,
+        IReadOnlyCollection<StudentGroup> stoppedGroups,
+        ReviewGateConfiguration configuration,
+        DateTime nowUtc,
+        CancellationToken cancellationToken)
+    {
+        var groupIds = stoppedGroups.Select(g => g.Id).ToArray();
+        var membersByGroup = (await db.StudentGroupMembers
+                .AsNoTracking()
+                .Where(m => groupIds.Contains(m.GroupId) && m.ConfirmationStatus == MemberConfirmationStatus.Confirmed)
+                .Select(m => new { m.GroupId, m.StudentId })
+                .ToListAsync(cancellationToken))
+            .GroupBy(x => x.GroupId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)g.Select(x => x.StudentId).Distinct().ToArray());
+
+        IReadOnlyDictionary<Guid, TopicSummaryContractDto>? topicsById = null;
+        if (topicSummaryReader is not null)
+        {
+            topicsById = await topicSummaryReader.GetByIdsAsync(
+                stoppedGroups.Select(g => g.TopicId).Distinct(),
+                cancellationToken);
+        }
+
+        var isSyllabusGate = configuration.GateType == ReviewGateType.Syllabus;
+        var gateLabel = isSyllabusGate ? "Cổng thẩm định 1 (Đề cương)" : "Cổng thẩm định 2 (Giữa kỳ)";
+        var studentActionPath = isSyllabusGate ? "/thesis/proposal" : "/thesis/midterm";
+
+        foreach (var group in stoppedGroups)
+        {
+            TopicSummaryContractDto? topicSummary = null;
+            topicsById?.TryGetValue(group.TopicId, out topicSummary);
+            var shortTopic = ThesisNotificationFormatting.Shorten(topicSummary?.TitleVi, 65);
+
+            var metadata = new List<NotificationEmailMetaItem>
+            {
+                new("Giai đoạn dừng", gateLabel)
+            };
+            if (!string.IsNullOrWhiteSpace(topicSummary?.TitleVi))
+            {
+                metadata.Add(new NotificationEmailMetaItem("Đề tài", topicSummary.TitleVi.Trim()));
+            }
+            metadata.Add(new NotificationEmailMetaItem(
+                "Hạn chót đóng cổng (VN)",
+                ThesisNotificationFormatting.FormatVietnamTime(configuration.FinalClosureDeadlineUtc)));
+            metadata.Add(new NotificationEmailMetaItem("Lý do", "Quá hạn chót hoàn tất cổng thẩm định."));
+
+            if (membersByGroup.TryGetValue(group.Id, out var studentIds) && studentIds.Count > 0)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "GROUP_STOPPED",
+                        Title: "Thông báo dừng thực hiện đề tài KLTN",
+                        Content: $"Nhóm quá hạn chót hoàn tất {gateLabel} và bị dừng thực hiện đề tài theo quy định.",
+                        RecipientUserIds: studentIds,
+                        DeduplicationKeyPrefix: $"GROUP_STOPPED:GATE:{configuration.GateType}:{group.Id:N}",
+                        ResourceType: "StudentGroup",
+                        ResourceId: group.Id,
+                        AcademicBatchId: configuration.BatchId,
+                        ActionPath: studentActionPath,
+                        Priority: "Critical",
+                        EnqueuePush: true,
+                        EnqueueEmail: true,
+                        EmailSubject: $"[UGTM] Thông báo dừng thực hiện đề tài KLTN ({gateLabel})",
+                        EmailCategoryLabel: gateLabel,
+                        EmailCtaLabel: "Xem trạng thái hồ sơ",
+                        EmailNotice: "Vui lòng liên hệ Văn phòng Khoa hoặc GVHD nếu cần giải đáp quy chế học vụ.",
+                        EmailMetadata: metadata),
+                    nowUtc);
+            }
+
+            if (topicSummary is { AdvisorId: var advisorId } && advisorId != Guid.Empty)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "GROUP_STOPPED",
+                        Title: $"Nhóm hướng dẫn bị dừng tại {gateLabel}",
+                        Content: $"Nhóm đề tài \"{shortTopic}\" quá hạn {gateLabel} và đã dừng thực hiện đề tài.",
+                        RecipientUserIds: [advisorId],
+                        DeduplicationKeyPrefix: $"GROUP_STOPPED:GATE:{configuration.GateType}:{group.Id:N}:ADV",
+                        ResourceType: "StudentGroup",
+                        ResourceId: group.Id,
+                        AcademicBatchId: configuration.BatchId,
+                        ActionPath: "/topics/advising",
+                        Priority: "Critical",
+                        EnqueuePush: true,
+                        EnqueueEmail: true,
+                        EmailSubject: $"[UGTM] Dừng đề tài hướng dẫn do quá hạn: {shortTopic}",
+                        EmailCategoryLabel: gateLabel,
+                        EmailCtaLabel: "Xem nhóm hướng dẫn",
+                        EmailMetadata: metadata),
+                    nowUtc);
+            }
+        }
     }
 
     private Task<List<StudentGroup>> GetExpiredPendingGroupsAsync(

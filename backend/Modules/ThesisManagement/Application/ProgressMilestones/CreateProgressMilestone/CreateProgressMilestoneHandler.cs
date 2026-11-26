@@ -1,8 +1,10 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.ProgressMilestones.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
@@ -20,7 +22,8 @@ public sealed class CreateProgressMilestoneHandler(
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     TimeProvider timeProvider,
-    ISyllabusRepository? syllabusRepository = null)
+    ISyllabusRepository? syllabusRepository = null,
+    IThesisNotificationOutbox? notificationOutbox = null)
 {
     public async Task<Result<ProgressMilestoneDto>> HandleAsync(
         CreateProgressMilestoneCommand command,
@@ -106,6 +109,32 @@ public sealed class CreateProgressMilestoneHandler(
                     milestone.CreatedBy
                 }),
             occurredAt);
+
+        if (notificationOutbox is not null)
+        {
+            var confirmedStudents = ThesisNotificationFormatting.GetConfirmedStudentIds(group);
+            if (confirmedStudents.Count > 0)
+            {
+                var batchId = group.Members.Select(m => (Guid?)m.BatchId).FirstOrDefault();
+                var shortMilestone = ThesisNotificationFormatting.Shorten(milestone.Title, 55);
+                var deadlineVn = ThesisNotificationFormatting.FormatVietnamTime(milestone.Deadline);
+
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "MILESTONE_CREATED",
+                        Title: "Mốc tiến độ mới từ GVHD",
+                        Content: $"GVHD vừa tạo mốc tiến độ \"{shortMilestone}\" (hạn {deadlineVn}).",
+                        RecipientUserIds: confirmedStudents,
+                        ResourceType: "ProgressMilestone",
+                        ResourceId: milestone.Id,
+                        AcademicBatchId: batchId,
+                        ActionPath: "/thesis/milestones",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    occurredAt);
+            }
+        }
 
         var saveError = await unitOfWork.TrySaveChangesAsync(
             ProgressMilestoneErrors.ConcurrencyConflict,

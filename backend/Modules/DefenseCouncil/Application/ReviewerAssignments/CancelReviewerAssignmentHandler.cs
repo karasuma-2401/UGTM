@@ -3,12 +3,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Notifications;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Contracts.ReviewerAssignments;
 using UGTM.Modules.TopicCatalog.Contracts.ReviewerAssignments;
 
@@ -26,7 +28,8 @@ public sealed class CancelReviewerAssignmentHandler(
     IAdvisorNameReader names,
     ReviewerAssignmentAudit audit,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IDefenseCouncilNotificationOutbox? notificationOutbox = null)
 {
     private const string Operation = "ReviewerAssignment.Cancel";
 
@@ -100,11 +103,47 @@ public sealed class CancelReviewerAssignmentHandler(
             Topic: topic, ReviewerName: reviewerNames.GetValueOrDefault(assignment.ReviewerId)));
     }
 
-    private static Task<CancellationResult> CompleteReceiptAsync(CancellationResult result, CancellationToken token)
+    private Task<CancellationResult> CompleteReceiptAsync(CancellationResult result, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         var response = ReviewerAssignmentDtoMapper.ToDto(result.Assignment!, result.Topic!, result.ReviewerName);
         result.Receipt!.SetResponsePayload(JsonSerializer.Serialize(response));
+
+        if (notificationOutbox is not null)
+        {
+            var assignment = result.Assignment!;
+            var topic = result.Topic!;
+            var shortTopic = DefenseCouncilNotificationFormatting.Shorten(topic.TitleVi, 60);
+            var metadata = new List<NotificationEmailMetaItem>
+            {
+                new("Loại phân công", "Giảng viên phản biện (GVPB)"),
+                new("Đề tài", topic.TitleVi.Trim())
+            };
+            if (!string.IsNullOrWhiteSpace(assignment.CancellationReason))
+            {
+                metadata.Add(new NotificationEmailMetaItem("Lý do hủy", assignment.CancellationReason));
+            }
+
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "ASSIGNMENT_CANCELLED",
+                    Title: "Thông báo hủy phân công phản biện KLTN",
+                    Content: $"Phân công phản biện đề tài \"{shortTopic}\" của thầy/cô đã được Khoa hủy.",
+                    RecipientUserIds: [assignment.ReviewerId],
+                    ResourceType: "ReviewerAssignment",
+                    ResourceId: assignment.Id,
+                    AcademicBatchId: topic.BatchId,
+                    ActionPath: "/thesis/lecturer-grading",
+                    Priority: "Critical",
+                    EnqueuePush: true,
+                    EnqueueEmail: true,
+                    EmailSubject: $"[UGTM] Hủy phân công phản biện: {shortTopic}",
+                    EmailCategoryLabel: "Thay đổi phân công",
+                    EmailCtaLabel: "Xem danh sách phân công",
+                    EmailMetadata: metadata),
+                assignment.CancelledAt ?? timeProvider.GetUtcNow().UtcDateTime);
+        }
+
         return Task.FromResult(result with { Response = response });
     }
 

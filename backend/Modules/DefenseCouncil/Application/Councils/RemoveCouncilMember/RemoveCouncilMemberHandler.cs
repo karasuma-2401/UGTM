@@ -3,11 +3,13 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Notifications;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 
 namespace UGTM.Modules.DefenseCouncil.Application.Councils.RemoveCouncilMember;
 
@@ -20,7 +22,9 @@ public sealed class RemoveCouncilMemberHandler(
     IDefenseCouncilUnitOfWork unitOfWork,
     ICouncilUserInfoReader userInfoReader,
     ICurrentUser currentUser,
-    ICacheService? cache = null)
+    ICacheService? cache = null,
+    IDefenseCouncilNotificationOutbox? notificationOutbox = null,
+    TimeProvider? timeProvider = null)
 {
     public async Task<Result<IReadOnlyList<CouncilMemberResponseDto>>> HandleAsync(
         RemoveCouncilMemberCommand command,
@@ -48,8 +52,41 @@ public sealed class RemoveCouncilMemberHandler(
             return Result.Failure<IReadOnlyList<CouncilMemberResponseDto>>(CouncilErrors.MemberNotInCouncil(command.UserId));
         }
 
+        var removedRoleLabel = DefenseCouncilNotificationFormatting.FormatCouncilRole(memberToRemove.RoleInCouncil);
+        var scheduleText = DefenseCouncilNotificationFormatting.FormatSchedule(
+            council.DefenseDate, council.TimeSlot, council.Room);
+
         council.ResetSubmission();
         await councilRepository.RemoveMemberAsync(memberToRemove, cancellationToken);
+
+        if (notificationOutbox is not null)
+        {
+            var nowUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "ASSIGNMENT_CANCELLED",
+                    Title: $"Rút tên khỏi Hội đồng {council.CouncilCode}",
+                    Content: $"Phân công {removedRoleLabel} tại Hội đồng {council.CouncilCode} của thầy/cô đã được gỡ.",
+                    RecipientUserIds: [command.UserId],
+                    ResourceType: "Council",
+                    ResourceId: council.Id,
+                    AcademicBatchId: council.BatchId,
+                    ActionPath: "/councils/grading",
+                    Priority: "Critical",
+                    EnqueuePush: true,
+                    EnqueueEmail: true,
+                    EmailSubject: $"[UGTM] Gỡ phân công Hội đồng {council.CouncilCode}",
+                    EmailCategoryLabel: "Thay đổi phân công",
+                    EmailCtaLabel: "Xem danh sách Hội đồng",
+                    EmailMetadata:
+                    [
+                        new("Loại phân công", $"Thành viên Hội đồng ({removedRoleLabel})"),
+                        new("Mã hội đồng", council.CouncilCode),
+                        new("Lịch bảo vệ", scheduleText)
+                    ]),
+                nowUtc);
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var stillInOtherCouncils = await councilRepository.GetUserIdsWithAnyCouncilMembershipAsync(

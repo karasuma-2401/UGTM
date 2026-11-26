@@ -1,8 +1,10 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
@@ -19,7 +21,8 @@ public sealed class ReviewProgressReportHandler(
     IThesisManagementAuditOutbox auditOutbox,
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IThesisNotificationOutbox? notificationOutbox = null)
 {
     public async Task<Result<ProgressReportReviewDto>> HandleAsync(
         ReviewProgressReportCommand command,
@@ -79,6 +82,60 @@ public sealed class ReviewProgressReportHandler(
                     version.IsLate
                 }),
             version.ReviewedAt!.Value);
+
+        if (notificationOutbox is not null)
+        {
+            var confirmedStudents = ThesisNotificationFormatting.GetConfirmedStudentIds(group);
+            if (confirmedStudents.Count > 0)
+            {
+                var batchId = group.Members.Select(m => (Guid?)m.BatchId).FirstOrDefault();
+                var shortMilestone = ThesisNotificationFormatting.Shorten(milestone.Title, 55);
+                var (notifType, title, content) = decision == ProgressReportStatus.Accepted
+                    ? (
+                        "PROGRESS_REPORT_ACCEPTED",
+                        "Mốc tiến độ đã được thông qua",
+                        $"GVHD đã chấp nhận báo cáo mốc \"{shortMilestone}\" (v{version.VersionNo}) của nhóm.")
+                    : (
+                        "PROGRESS_REPORT_REVISION_REQUIRED",
+                        "Yêu cầu chỉnh sửa mốc tiến độ",
+                        $"GVHD yêu cầu cập nhật lại mốc \"{shortMilestone}\". Vui lòng xem nhận xét và nộp lại sớm.");
+
+                var isRevisionRequired = decision != ProgressReportStatus.Accepted;
+                List<NotificationEmailMetaItem>? revisionMetadata = null;
+                if (isRevisionRequired)
+                {
+                    revisionMetadata =
+                    [
+                        new("Mốc tiến độ", milestone.Title),
+                        new("Phiên bản", $"v{version.VersionNo}")
+                    ];
+                    if (!string.IsNullOrWhiteSpace(version.AdvisorFeedback))
+                    {
+                        revisionMetadata.Add(new NotificationEmailMetaItem("Nhận xét của GVHD", version.AdvisorFeedback.Trim()));
+                    }
+                }
+
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: notifType,
+                        Title: title,
+                        Content: content,
+                        RecipientUserIds: confirmedStudents,
+                        ResourceType: "ProgressReport",
+                        ResourceId: report.Id,
+                        AcademicBatchId: batchId,
+                        ActionPath: "/thesis/milestones",
+                        Priority: isRevisionRequired ? "High" : "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: isRevisionRequired,
+                        EmailSubject: isRevisionRequired ? $"[UGTM] Yêu cầu chỉnh sửa mốc tiến độ: {shortMilestone}" : null,
+                        EmailCategoryLabel: isRevisionRequired ? "Tiến độ thực hiện" : null,
+                        EmailCtaLabel: isRevisionRequired ? "Xem nhận xét & nộp lại" : null,
+                        EmailNotice: isRevisionRequired ? "Vui lòng chỉnh sửa theo góp ý của GVHD và nộp lại báo cáo." : null,
+                        EmailMetadata: revisionMetadata),
+                    version.ReviewedAt!.Value);
+            }
+        }
 
         var saveError = await unitOfWork.TrySaveChangesAsync(
             ProgressReportErrors.ConcurrencyConflict,

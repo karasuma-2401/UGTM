@@ -1,7 +1,9 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.RenameRequests.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
@@ -18,7 +20,8 @@ public sealed class CreateRenameRequestHandler(
     ITopicRenameContract topicRenameContract,
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IThesisNotificationOutbox? notificationOutbox = null)
 {
     public async Task<Result<RenameRequestDto>> HandleAsync(
         CreateRenameRequestCommand command,
@@ -97,6 +100,25 @@ public sealed class CreateRenameRequestHandler(
             nowUtc);
 
         renameRequestRepository.Add(request);
+
+        if (notificationOutbox is not null && topicSnapshot.AdvisorId != Guid.Empty)
+        {
+            var shortNewTitle = ThesisNotificationFormatting.Shorten(trimmedNewTitleVi, 60);
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "RENAME_REQUEST_CREATED",
+                    Title: "Yêu cầu đổi tên đề tài mới",
+                    Content: $"Nhóm sinh viên đề nghị đổi tên đề tài sang \"{shortNewTitle}\" chờ thầy/cô xác nhận.",
+                    RecipientUserIds: [topicSnapshot.AdvisorId],
+                    ResourceType: "RenameRequest",
+                    ResourceId: request.Id,
+                    AcademicBatchId: membership.BatchId,
+                    ActionPath: "/topics/rename/review/advisor",
+                    Priority: "Normal",
+                    EnqueuePush: true,
+                    EnqueueEmail: false),
+                nowUtc);
+        }
 
         var saveError = await unitOfWork.TrySaveChangesAsync(
             RenameRequestErrors.ConcurrencyConflict,

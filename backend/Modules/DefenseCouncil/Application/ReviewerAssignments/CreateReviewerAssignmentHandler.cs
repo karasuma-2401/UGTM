@@ -3,12 +3,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.DefenseCouncil.Application.Notifications;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.TopicCatalog.Contracts.ReviewerAssignments;
 
 namespace UGTM.Modules.DefenseCouncil.Application.ReviewerAssignments;
@@ -25,7 +27,8 @@ public sealed class CreateReviewerAssignmentHandler(
     IAdvisorNameReader names,
     ReviewerAssignmentAudit audit,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IDefenseCouncilNotificationOutbox? notificationOutbox = null)
 {
     private const string Operation = "ReviewerAssignment.Create";
 
@@ -98,11 +101,43 @@ public sealed class CreateReviewerAssignmentHandler(
             Topic: topic, ReviewerName: reviewerNames.GetValueOrDefault(command.ReviewerId)));
     }
 
-    private static Task<CreationResult> CompleteReceiptAsync(CreationResult result, CancellationToken token)
+    private Task<CreationResult> CompleteReceiptAsync(CreationResult result, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         var response = ReviewerAssignmentDtoMapper.ToDto(result.Assignment!, result.Topic!, result.ReviewerName);
         result.Receipt!.SetResponsePayload(JsonSerializer.Serialize(response));
+
+        if (notificationOutbox is not null)
+        {
+            var assignment = result.Assignment!;
+            var topic = result.Topic!;
+            var shortTopic = DefenseCouncilNotificationFormatting.Shorten(topic.TitleVi, 60);
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "REVIEWER_ASSIGNED",
+                    Title: "Phân công phản biện đề tài KLTN",
+                    Content: $"Thầy/cô được phân công phản biện đề tài \"{shortTopic}\". Vui lòng kiểm tra và chấm đúng hạn.",
+                    RecipientUserIds: [assignment.ReviewerId],
+                    ResourceType: "ReviewerAssignment",
+                    ResourceId: assignment.Id,
+                    AcademicBatchId: topic.BatchId,
+                    ActionPath: "/thesis/lecturer-grading",
+                    Priority: "Critical",
+                    EnqueuePush: true,
+                    EnqueueEmail: true,
+                    EmailSubject: $"[UGTM] Phân công phản biện đề tài: {shortTopic}",
+                    EmailCategoryLabel: "Phân công phản biện",
+                    EmailCtaLabel: "Mở trang chấm phản biện",
+                    EmailNotice: "Vui lòng đọc báo cáo và hoàn tất đánh giá phản biện theo lịch đợt KLTN.",
+                    EmailMetadata:
+                    [
+                        new("Đề tài", topic.TitleVi.Trim()),
+                        new("Phiên bản báo cáo", $"v{assignment.ReportVersionNo}"),
+                        new("Vai trò", "Giảng viên phản biện (GVPB)")
+                    ]),
+                assignment.AssignedAt);
+        }
+
         return Task.FromResult(result with { Response = response });
     }
 

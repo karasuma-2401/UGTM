@@ -2,7 +2,10 @@ using System.Text.Json;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Contracts.FinalSubmissions;
 using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Contracts.FinalSubmissions;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
@@ -15,7 +18,8 @@ public sealed record ConfirmFinalSubmissionCommand(Guid SubmissionId, FinalSubmi
 
 public sealed class ConfirmFinalSubmissionHandler(IFinalSubmissionStore store, FinalSubmissionAccess access,
     ILockedDefenseProofReader defense, IFinalSubmissionWorkflowTransactionCoordinator coordinator,
-    IThesisManagementAuditOutbox audit, TimeProvider clock)
+    IThesisManagementAuditOutbox audit, TimeProvider clock,
+    IThesisNotificationOutbox? notificationOutbox = null)
 {
     private const string Operation = "FinalSubmission.Confirm";
     public async Task<bool> CanReviewAsync(CancellationToken token = default)
@@ -37,6 +41,8 @@ public sealed class ConfirmFinalSubmissionHandler(IFinalSubmissionStore store, F
         FinalSubmission? saved = null;
         string? manifest = null;
         DateTime now = default;
+        ArchivalContext? committedContext = null;
+        string? committedStage = null;
         try
         {
             return await coordinator.ExecuteWithPostSaveAsync(async ct =>
@@ -82,6 +88,7 @@ public sealed class ConfirmFinalSubmissionHandler(IFinalSubmissionStore store, F
                         return Abort(FinalSubmissionErrors.ContextInvalid);
                 }
                 var previous = saved.Status;
+                var reviewStage = Stage(command.Action, previous, context.Value);
                 saved.RecordReview(command.Action, access.ActorId, now, reason);
                 store.Add(new FinalSubmissionReview
                 {
@@ -90,7 +97,7 @@ public sealed class ConfirmFinalSubmissionHandler(IFinalSubmissionStore store, F
                     PackageId = verified!.Package.Id,
                     PackageVersionNo = saved.CurrentVersionNo,
                     Action = command.Action.ToString(),
-                    Stage = Stage(command.Action, previous, context.Value),
+                    Stage = reviewStage,
                     ActorId = access.ActorId,
                     AssignedAdvisorId = context.Value.Topic.AdvisorId,
                     DecidedAtUtc = now,
@@ -101,6 +108,8 @@ public sealed class ConfirmFinalSubmissionHandler(IFinalSubmissionStore store, F
                     PreviousStatus = previous.ToString(),
                     ResultStatus = saved.Status.ToString()
                 });
+                committedContext = context.Value;
+                committedStage = reviewStage;
                 return FinalSubmissionTransactionResult<Result<FinalSubmissionConfirmationDto>>.Commit(Result.Success(Dto(saved, now)));
             }, (result, ct) =>
             {
@@ -124,6 +133,20 @@ public sealed class ConfirmFinalSubmissionHandler(IFinalSubmissionStore store, F
                 };
                 audit.Add(new AuditIntegrationEntry("FinalSubmission", saved!.Id.ToString(), $"ThesisManagement.FinalSubmission.{auditAction}", "Succeeded", null,
                     new { saved.GroupId, saved.CurrentVersionNo, saved.Version, saved.CurrentPackageId, ManifestSha256 = manifest, ActorId = access.ActorId, HasReason = reason is not null }), now);
+
+                if (notificationOutbox is not null && committedContext is not null)
+                {
+                    EnqueueConfirmationNotifications(
+                        notificationOutbox,
+                        committedContext,
+                        saved,
+                        command.Action,
+                        committedStage ?? "Faculty",
+                        reason,
+                        access.ActorId,
+                        now);
+                }
+
                 return Task.FromResult(Result.Success(response));
             }, token);
         }
@@ -161,4 +184,157 @@ public sealed class ConfirmFinalSubmissionHandler(IFinalSubmissionStore store, F
     private static Result<FinalSubmissionConfirmationDto> Fail(Error e) => Result.Failure<FinalSubmissionConfirmationDto>(e);
     private static FinalSubmissionTransactionResult<Result<FinalSubmissionConfirmationDto>> Abort(Error e)
         => FinalSubmissionTransactionResult<Result<FinalSubmissionConfirmationDto>>.Abort(Fail(e));
+
+    private static void EnqueueConfirmationNotifications(
+        IThesisNotificationOutbox notificationOutbox,
+        ArchivalContext context,
+        FinalSubmission submission,
+        FinalSubmissionReviewAction action,
+        string reviewStage,
+        string? reason,
+        Guid actorId,
+        DateTime occurredAtUtc)
+    {
+        var confirmedStudents = ThesisNotificationFormatting.GetConfirmedStudentIds(context.Group);
+        var shortTopic = ThesisNotificationFormatting.Shorten(context.Topic.TitleVi, 60);
+        var versionLabel = $"v{submission.CurrentVersionNo}";
+
+        if (action == FinalSubmissionReviewAction.AdvisorConfirm)
+        {
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "FINAL_SUBMISSION_ADVISOR_CONFIRMED",
+                    Title: $"Hồ sơ lưu chiểu {versionLabel} chờ Khoa duyệt",
+                    Content: $"GVHD đã xác nhận gói lưu chiểu đề tài \"{shortTopic}\". Khoa vui lòng kiểm tra chốt lưu chiểu.",
+                    RecipientRoles: ["Faculty"],
+                    RecipientPermissions: [PermissionCodes.ThesisFinalSubmissionsManage],
+                    ExcludeUserIds: [actorId],
+                    ResourceType: "FinalSubmission",
+                    ResourceId: submission.Id,
+                    AcademicBatchId: context.Topic.BatchId,
+                    ActionPath: "/thesis/review/archival",
+                    Priority: "Normal",
+                    EnqueuePush: true,
+                    EnqueueEmail: false),
+                occurredAtUtc);
+
+            if (confirmedStudents.Count > 0)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "FINAL_SUBMISSION_ADVISOR_CONFIRMED",
+                        Title: "GVHD đã xác nhận hồ sơ lưu chiểu",
+                        Content: "GVHD đã xác nhận gói lưu chiểu của nhóm, hồ sơ đang chờ Khoa kiểm tra hoàn tất.",
+                        RecipientUserIds: confirmedStudents,
+                        ResourceType: "FinalSubmission",
+                        ResourceId: submission.Id,
+                        AcademicBatchId: context.Topic.BatchId,
+                        ActionPath: "/thesis/archival",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    occurredAtUtc);
+            }
+        }
+        else if (action == FinalSubmissionReviewAction.FacultyConfirm)
+        {
+            if (confirmedStudents.Count > 0)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "FINAL_SUBMISSION_ARCHIVED",
+                        Title: "Hoàn tất xác nhận Hồ sơ lưu chiểu KLTN",
+                        Content: "Hồ sơ lưu chiểu KLTN của nhóm đã được Khoa xác nhận hoàn tất chính thức.",
+                        RecipientUserIds: confirmedStudents,
+                        ResourceType: "FinalSubmission",
+                        ResourceId: submission.Id,
+                        AcademicBatchId: context.Topic.BatchId,
+                        ActionPath: "/thesis/archival",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    occurredAtUtc);
+            }
+
+            if (context.Topic.AdvisorId != Guid.Empty)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "FINAL_SUBMISSION_ARCHIVED",
+                        Title: "Nhóm hướng dẫn đã hoàn tất lưu chiểu",
+                        Content: $"Khoa đã chốt xác nhận hoàn tất lưu chiểu cho đề tài \"{shortTopic}\".",
+                        RecipientUserIds: [context.Topic.AdvisorId],
+                        ResourceType: "FinalSubmission",
+                        ResourceId: submission.Id,
+                        AcademicBatchId: context.Topic.BatchId,
+                        ActionPath: "/advisor/archival",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    occurredAtUtc);
+            }
+        }
+        else if (action == FinalSubmissionReviewAction.RequestRevision)
+        {
+            var reviewerLabel = string.Equals(reviewStage, "Advisor", StringComparison.OrdinalIgnoreCase)
+                ? "GVHD"
+                : "Khoa";
+
+            if (confirmedStudents.Count > 0)
+            {
+                var revisionMetadata = new List<NotificationEmailMetaItem>
+                {
+                    new("Người yêu cầu", reviewerLabel),
+                    new("Phiên bản", versionLabel)
+                };
+                if (!string.IsNullOrWhiteSpace(context.Topic.TitleVi))
+                {
+                    revisionMetadata.Add(new NotificationEmailMetaItem("Đề tài", context.Topic.TitleVi.Trim()));
+                }
+                if (!string.IsNullOrWhiteSpace(reason))
+                {
+                    revisionMetadata.Add(new NotificationEmailMetaItem("Lý do / Yêu cầu", reason.Trim()));
+                }
+
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "FINAL_SUBMISSION_REVISION_REQUIRED",
+                        Title: "Yêu cầu chỉnh sửa Hồ sơ lưu chiểu",
+                        Content: $"{reviewerLabel} yêu cầu cập nhật lại gói lưu chiểu. Lý do: {ThesisNotificationFormatting.Shorten(reason, 75)}",
+                        RecipientUserIds: confirmedStudents,
+                        ResourceType: "FinalSubmission",
+                        ResourceId: submission.Id,
+                        AcademicBatchId: context.Topic.BatchId,
+                        ActionPath: "/thesis/archival",
+                        Priority: "High",
+                        EnqueuePush: true,
+                        EnqueueEmail: true,
+                        EmailSubject: $"[UGTM] Yêu cầu chỉnh sửa Hồ sơ lưu chiểu ({versionLabel})",
+                        EmailCategoryLabel: "Hồ sơ lưu chiểu",
+                        EmailCtaLabel: "Cập nhật hồ sơ lưu chiểu",
+                        EmailNotice: "Vui lòng chỉnh sửa và nộp lại gói lưu chiểu trước khi kết thúc đợt.",
+                        EmailMetadata: revisionMetadata),
+                    occurredAtUtc);
+            }
+
+            if (!string.Equals(reviewStage, "Advisor", StringComparison.OrdinalIgnoreCase)
+                && context.Topic.AdvisorId != Guid.Empty)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "FINAL_SUBMISSION_REVISION_REQUIRED",
+                        Title: "Khoa yêu cầu nhóm sửa lại lưu chiểu",
+                        Content: $"Khoa yêu cầu nhóm đề tài \"{shortTopic}\" chỉnh sửa gói lưu chiểu.",
+                        RecipientUserIds: [context.Topic.AdvisorId],
+                        ResourceType: "FinalSubmission",
+                        ResourceId: submission.Id,
+                        AcademicBatchId: context.Topic.BatchId,
+                        ActionPath: "/advisor/archival",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    occurredAtUtc);
+            }
+        }
+    }
 }

@@ -1,6 +1,8 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.RenameRequests.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
@@ -15,7 +17,8 @@ public sealed class ReviewRenameRequestByAdvisorHandler(
     ITopicRenameContract topicRenameContract,
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IThesisNotificationOutbox? notificationOutbox = null)
 {
     public async Task<Result<RenameRequestDto>> HandleAsync(
         ReviewRenameRequestByAdvisorCommand command,
@@ -75,6 +78,68 @@ public sealed class ReviewRenameRequestByAdvisorHandler(
         else
         {
             request.RejectByAdvisor(command.RejectionReason!.Trim(), currentUser.UserId.Value, nowUtc);
+        }
+
+        if (notificationOutbox is not null)
+        {
+            var batchId = group.Members.Select(m => (Guid?)m.BatchId).FirstOrDefault();
+            var confirmedStudents = ThesisNotificationFormatting.GetConfirmedStudentIds(group);
+            var shortNewTitle = ThesisNotificationFormatting.Shorten(request.NewTitleVi, 60);
+
+            if (isApprove)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "RENAME_REQUEST_ADVISOR_APPROVED",
+                        Title: "Yêu cầu đổi tên đề tài chờ Khoa duyệt",
+                        Content: $"GVHD đã đồng ý đổi tên đề tài sang \"{shortNewTitle}\". Khoa vui lòng thẩm định.",
+                        RecipientRoles: ["Faculty"],
+                        RecipientPermissions: [PermissionCodes.ThesisReviewGatesReview],
+                        ExcludeUserIds: [currentUser.UserId.Value],
+                        ResourceType: "RenameRequest",
+                        ResourceId: request.Id,
+                        AcademicBatchId: batchId,
+                        ActionPath: "/topics/rename/review/faculty",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    nowUtc);
+
+                if (confirmedStudents.Count > 0)
+                {
+                    notificationOutbox.Enqueue(
+                        new NotificationOutboxEntry(
+                            NotificationType: "RENAME_REQUEST_ADVISOR_APPROVED",
+                            Title: "GVHD đã đồng ý đổi tên đề tài",
+                            Content: "GVHD đã xác nhận yêu cầu đổi tên đề tài của nhóm, hồ sơ đã chuyển Khoa thẩm định.",
+                            RecipientUserIds: confirmedStudents,
+                            ResourceType: "RenameRequest",
+                            ResourceId: request.Id,
+                            AcademicBatchId: batchId,
+                            ActionPath: "/topics/rename",
+                            Priority: "Normal",
+                            EnqueuePush: true,
+                            EnqueueEmail: false),
+                        nowUtc);
+                }
+            }
+            else if (confirmedStudents.Count > 0)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "RENAME_REQUEST_REJECTED",
+                        Title: "Yêu cầu đổi tên đề tài bị từ chối",
+                        Content: $"GVHD từ chối yêu cầu đổi tên đề tài. Lý do: {ThesisNotificationFormatting.Shorten(command.RejectionReason, 80)}",
+                        RecipientUserIds: confirmedStudents,
+                        ResourceType: "RenameRequest",
+                        ResourceId: request.Id,
+                        AcademicBatchId: batchId,
+                        ActionPath: "/topics/rename",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    nowUtc);
+            }
         }
 
         var saveError = await unitOfWork.TrySaveChangesAsync(

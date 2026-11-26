@@ -10,6 +10,7 @@ public sealed class TopicCatalogDbContext(DbContextOptions<TopicCatalogDbContext
     public override string Schema => "topics";
 
     public DbSet<Topic> Topics => Set<Topic>();
+    public DbSet<NotificationEventOutboxMessage> NotificationEventOutboxMessages => Set<NotificationEventOutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

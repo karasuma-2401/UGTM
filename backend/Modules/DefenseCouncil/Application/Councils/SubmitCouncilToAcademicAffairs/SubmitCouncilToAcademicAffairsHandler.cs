@@ -4,12 +4,14 @@ using UGTM.Modules.DefenseCouncil.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Notifications;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Contracts.DefenseCouncils;
 using UGTM.Modules.TopicCatalog.Contracts.DefenseCouncils;
 
@@ -24,7 +26,9 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
     IDefenseCouncilAuditOutbox auditOutbox,
     ICurrentUser currentUser,
     ICouncilSchedulingGuard schedulingGuard,
-    ICacheService? cache = null)
+    ICacheService? cache = null,
+    IDefenseCouncilNotificationOutbox? notificationOutbox = null,
+    TimeProvider? timeProvider = null)
 {
     public async Task<Result<CouncilSubmissionResponseDto>> HandleAsync(
         SubmitCouncilToAcademicAffairsCommand command,
@@ -47,7 +51,6 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
     private async Task<Result<CouncilSubmissionResponseDto>> HandleCoreAsync(
         SubmitCouncilToAcademicAffairsCommand command, CancellationToken cancellationToken)
     {
-
         var council = await councilRepository.GetByIdWithDetailsAsync(command.CouncilId, cancellationToken);
         if (council is null)
         {
@@ -59,7 +62,6 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
             return Result.Failure<CouncilSubmissionResponseDto>(CouncilErrors.NotInDraftStatus);
         }
 
-        // 1. Kiểm tra cơ cấu thành viên chuẩn: đúng 01 Chủ tịch, đúng 01 Thư ký
         var hasChairman = council.Members.Count(m => m.RoleInCouncil == CouncilMemberRole.Chairman) == 1;
         if (!hasChairman)
         {
@@ -72,14 +74,11 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
             return Result.Failure<CouncilSubmissionResponseDto>(CouncilErrors.MissingSecretary);
         }
 
-        // 2. Kiểm tra phân công đề tài: ít nhất 01 nhóm
         if (council.Assignments.Count == 0)
         {
             return Result.Failure<CouncilSubmissionResponseDto>(CouncilErrors.NoAssignedGroups);
         }
 
-
-        // 3. Kiểm tra chống trùng phòng thi
         var roomConflict = await councilRepository.HasRoomScheduleConflictAsync(
             council.DefenseDate,
             council.TimeSlot,
@@ -92,7 +91,6 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
             return Result.Failure<CouncilSubmissionResponseDto>(CouncilErrors.RoomScheduleConflict);
         }
 
-        // 4. Kiểm tra chống trùng lịch thành viên
         var memberUserIds = council.Members.Select(m => m.UserId).Distinct().ToList();
         var conflictingMemberIds = await councilRepository.GetConflictingMemberUserIdsAsync(
             council.DefenseDate,
@@ -109,7 +107,6 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
             return Result.Failure<CouncilSubmissionResponseDto>(CouncilErrors.MemberScheduleConflict(names));
         }
 
-        // 5. Kiểm tra điều kiện bảo vệ của các nhóm đề tài
         var assignedGroupIds = council.Assignments.Select(a => a.GroupId).ToList();
 
         var rejectedGroupIds = await councilRepository.GetRejectedDefenseGroupIdsAsync(assignedGroupIds, cancellationToken);
@@ -127,7 +124,6 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
                 CouncilErrors.GroupNotEligibleForDefense(ineligibleGroupId));
         }
 
-        // 6. Kiểm tra chống xung đột lợi ích (GVHD không được ngồi trong hội đồng)
         var groups = await defenseGroupContract.GetGroupsByIdsAsync(assignedGroupIds, cancellationToken);
         var topicIds = groups.Values.Select(g => g.TopicId).Distinct().ToList();
         var topics = await topicDefenseContract.GetTopicsDetailsAsync(topicIds, cancellationToken);
@@ -143,7 +139,6 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
             }
         }
 
-        // 7. Kiểm tra vai trò GVPB: Nếu ngồi trong hội đồng thì chỉ được làm Member
         var activeReviewers = await councilRepository.GetActiveReviewerIdsByGroupIdsAsync(assignedGroupIds, cancellationToken);
         foreach (var (grpId, revId) in activeReviewers)
         {
@@ -161,10 +156,10 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
             }
         }
 
-        // 8. Cập nhật trạng thái gửi thẩm định
         if (!council.Members.Any(member => member.RoleInCouncil == CouncilMemberRole.Member))
             return Result.Failure<CouncilSubmissionResponseDto>(CouncilErrors.MissingMember);
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+
         var actorId = currentUser.UserId!.Value;
 
         council.SubmitToAcademicAffairs(actorId, command.Notes, nowUtc);
@@ -186,6 +181,22 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
                     SubmittedAt = nowUtc,
                     Notes = command.Notes
                 }),
+            nowUtc);
+
+        notificationOutbox?.Enqueue(
+            new NotificationOutboxEntry(
+                NotificationType: "COUNCIL_SUBMITTED_FOR_APPROVAL",
+                Title: $"Hội đồng {council.CouncilCode} chờ PĐT phê duyệt",
+                Content: $"Khoa đã trình hồ sơ Hội đồng {council.CouncilCode} ({council.Assignments.Count} nhóm) chờ PĐT phê duyệt.",
+                RecipientRoles: ["AcademicAffairs"],
+                ExcludeUserIds: [actorId],
+                ResourceType: "Council",
+                ResourceId: council.Id,
+                AcademicBatchId: council.BatchId,
+                ActionPath: "/councils/approval",
+                Priority: "Normal",
+                EnqueuePush: true,
+                EnqueueEmail: false),
             nowUtc);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);

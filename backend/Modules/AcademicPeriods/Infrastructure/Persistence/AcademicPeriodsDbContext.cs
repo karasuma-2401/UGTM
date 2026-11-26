@@ -10,6 +10,7 @@ public sealed class AcademicPeriodsDbContext(DbContextOptions<AcademicPeriodsDbC
     public override string Schema => "academic";
 
     public DbSet<AuditOutboxMessage> AuditOutboxMessages => Set<AuditOutboxMessage>();
+    public DbSet<NotificationEventOutboxMessage> NotificationEventOutboxMessages => Set<NotificationEventOutboxMessage>();
     public DbSet<KltnBatch> KltnBatches => Set<KltnBatch>();
     public DbSet<ScheduleTemplateVersion> ScheduleTemplateVersions => Set<ScheduleTemplateVersion>();
     public DbSet<StageTemplateDefinition> StageTemplateDefinitions => Set<StageTemplateDefinition>();

@@ -99,6 +99,7 @@ function renderLayout(
       }),
     },
     '@/shared/auth/identityAccess': { getIdentityAccess },
+    '@/shared/notifications': { NotificationBell: () => null },
     '@/shared/theme': {
       ThemeToggle: () => null,
       useTheme: () => ({ theme: 'system', resolvedTheme: 'light', setTheme: () => {}, toggleTheme: () => {} }),

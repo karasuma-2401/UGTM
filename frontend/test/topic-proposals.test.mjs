@@ -397,6 +397,7 @@ function renderSidebar(roles) {
       }),
     },
     '@/shared/auth/identityAccess': { getIdentityAccess: () => ({ canAccess: false }) },
+    '@/shared/notifications': { NotificationBell: () => null },
     '@/shared/theme': {
       ThemeToggle: () => null,
       useTheme: () => ({ theme: 'system', resolvedTheme: 'light', setTheme: () => {}, toggleTheme: () => {} }),

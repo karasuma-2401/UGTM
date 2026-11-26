@@ -1,6 +1,9 @@
 using UGTM.BuildingBlocks.Domain;
+using UGTM.Modules.AcademicPeriods.Contracts.Batches;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.TopicCatalog.Application.Common;
+using UGTM.Modules.TopicCatalog.Application.Notifications;
 using UGTM.Modules.TopicCatalog.Application.Persistence;
 using UGTM.Modules.TopicCatalog.Application.Topics.Dtos;
 using UGTM.Modules.TopicCatalog.Domain.Enums;
@@ -11,7 +14,10 @@ namespace UGTM.Modules.TopicCatalog.Application.Topics.ReviewTopic;
 public sealed class ReviewTopicHandler(
     ITopicRepository topicRepository,
     ITopicUnitOfWork unitOfWork,
-    ICurrentUser currentUser)
+    ICurrentUser currentUser,
+    ITopicCatalogNotificationOutbox? notificationOutbox = null,
+    IBatchSummaryReader? batchSummaryReader = null,
+    TimeProvider? timeProvider = null)
 {
     private const int MaxReviewNoteLength = 2000;
 
@@ -74,6 +80,90 @@ public sealed class ReviewTopicHandler(
             return Result.Failure<TopicSummaryDto>(TopicErrors.InvalidStatusTransition);
         }
 
+        if (notificationOutbox is not null)
+        {
+            var occurredAtUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
+            var shortTitle = Shorten(topic.TitleVi, 70);
+
+            if (decisionEnum == TopicStatus.NeedRevision)
+            {
+                string? batchName = null;
+                if (batchSummaryReader is not null)
+                {
+                    var batches = await batchSummaryReader.GetByIdsAsync([topic.BatchId], cancellationToken);
+                    if (batches.TryGetValue(topic.BatchId, out var summary))
+                    {
+                        batchName = summary.BatchName;
+                    }
+                }
+
+                var metadata = new List<NotificationEmailMetaItem>
+                {
+                    new("Tên đề tài", topic.TitleVi.Trim())
+                };
+                if (!string.IsNullOrWhiteSpace(batchName))
+                {
+                    metadata.Add(new NotificationEmailMetaItem("Đợt KLTN", batchName));
+                }
+                metadata.Add(new NotificationEmailMetaItem("Kết quả thẩm định", "Yêu cầu chỉnh sửa"));
+                metadata.Add(new NotificationEmailMetaItem("Góp ý từ Khoa", trimmedNote!));
+
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "TOPIC_REVISION_REQUESTED",
+                        Title: "Yêu cầu chỉnh sửa đề tài KLTN",
+                        Content: $"Khoa yêu cầu chỉnh sửa đề tài \"{shortTitle}\". Vui lòng xem góp ý và cập nhật lại sớm.",
+                        RecipientUserIds: [topic.AdvisorId],
+                        ResourceType: "Topic",
+                        ResourceId: topic.Id,
+                        AcademicBatchId: topic.BatchId,
+                        ActionPath: "/topics/propose",
+                        Priority: "Critical",
+                        EnqueuePush: true,
+                        EnqueueEmail: true,
+                        EmailSubject: $"[UGTM] Yêu cầu chỉnh sửa đề tài: {shortTitle}",
+                        EmailCategoryLabel: "Thẩm định đề tài",
+                        EmailCtaLabel: "Mở trang chỉnh sửa đề tài",
+                        EmailNotice: "Vui lòng cập nhật nội dung và gửi duyệt lại theo kế hoạch đợt KLTN.",
+                        EmailMetadata: metadata),
+                    occurredAtUtc);
+            }
+            else if (decisionEnum == TopicStatus.Approved)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "TOPIC_APPROVED",
+                        Title: "Đề tài KLTN đã được duyệt",
+                        Content: $"Đề tài \"{shortTitle}\" đã được Khoa phê duyệt và chờ công bố đăng ký.",
+                        RecipientUserIds: [topic.AdvisorId],
+                        ResourceType: "Topic",
+                        ResourceId: topic.Id,
+                        AcademicBatchId: topic.BatchId,
+                        ActionPath: "/topics/advising",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    occurredAtUtc);
+            }
+            else if (decisionEnum == TopicStatus.Rejected)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "TOPIC_REJECTED",
+                        Title: "Đề tài KLTN không được duyệt",
+                        Content: $"Đề tài \"{Shorten(topic.TitleVi, 60)}\" bị từ chối thẩm định. Lý do: {Shorten(trimmedNote!, 80)}",
+                        RecipientUserIds: [topic.AdvisorId],
+                        ResourceType: "Topic",
+                        ResourceId: topic.Id,
+                        AcademicBatchId: topic.BatchId,
+                        ActionPath: "/topics/advising",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    occurredAtUtc);
+            }
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(new TopicSummaryDto(
@@ -93,4 +183,10 @@ public sealed class ReviewTopicHandler(
 
     private static bool HasRole(ICurrentUser user, string role)
         => user.Roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
+
+    private static string Shorten(string value, int maxLength)
+    {
+        var trimmed = value.Trim();
+        return trimmed.Length <= maxLength ? trimmed : $"{trimmed[..(maxLength - 1)].TrimEnd()}…";
+    }
 }

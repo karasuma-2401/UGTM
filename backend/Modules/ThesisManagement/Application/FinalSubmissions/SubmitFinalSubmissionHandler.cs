@@ -3,7 +3,10 @@ using Microsoft.Extensions.Logging;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Contracts.FinalSubmissions;
 using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.Storage;
 using UGTM.Modules.ThesisManagement.Contracts.FinalSubmissions;
@@ -20,7 +23,9 @@ public sealed class SubmitFinalSubmissionHandler(IFinalSubmissionStore store, Fi
     ILockedDefenseProofReader defense, IFinalSubmissionWorkflowTransactionCoordinator coordinator,
     IThesisSubmissionFileValidator validator, IThesisSubmissionObjectKeyFactory keys, IThesisSubmissionObjectStorage storage,
     IFinalSubmissionUploadCleanup cleanup, IThesisManagementAuditOutbox audit, TimeProvider clock,
-    ILogger<SubmitFinalSubmissionHandler> logger)
+    ILogger<SubmitFinalSubmissionHandler> logger,
+    IThesisNotificationOutbox? notificationOutbox = null,
+    IStudentInfoReader? studentInfoReader = null)
 {
     private const string Operation = "FinalSubmission.Submit";
     public async Task<Result<FinalSubmissionWriteResult>> HandleAsync(SubmitFinalSubmissionCommand command, CancellationToken token = default)
@@ -81,6 +86,7 @@ public sealed class SubmitFinalSubmissionHandler(IFinalSubmissionStore store, Fi
         FinalSubmissionPackage? package = null;
         SubmissionFile[] files = [];
         FinalSubmissionPackageFile[] links = [];
+        ArchivalContext? committedContext = null;
         try
         {
             await store.CreateAttemptAsync(attempt, token);
@@ -151,9 +157,10 @@ public sealed class SubmitFinalSubmissionHandler(IFinalSubmissionStore store, Fi
                 store.Add(package, files, links);
                 durable.State = "Committed";
                 durable.CommittedPackageId = package.Id;
+                committedContext = fresh.Value;
                 return FinalSubmissionTransactionResult<Result<FinalSubmissionWriteResult>>.Commit(Result.Success(
                     new FinalSubmissionWriteResult(FinalSubmissionMapping.Dto(saved, new([package], links, files, [])), version == 1 ? 201 : 200)));
-            }, (result, ct) =>
+            }, async (result, ct) =>
             {
                 // First SaveChanges has materialized the real PostgreSQL xmin.
                 var response = new FinalSubmissionWriteResult(FinalSubmissionMapping.Dto(saved!, new([package!], links, files, [])), result.Value.StatusCode);
@@ -170,7 +177,23 @@ public sealed class SubmitFinalSubmissionHandler(IFinalSubmissionStore store, Fi
                 });
                 audit.Add(new AuditIntegrationEntry("FinalSubmission", saved!.Id.ToString(), "ThesisManagement.FinalSubmission.Submitted", "Succeeded", null,
                     new { saved.GroupId, saved.CurrentVersionNo, saved.Version, PackageId = package!.Id, package.ManifestSha256, ActorId = access.ActorId }), now);
-                return Task.FromResult(Result.Success(response));
+
+                if (notificationOutbox is not null && committedContext is not null)
+                {
+                    await EnqueueArchivalSubmissionNotificationsAsync(
+                        notificationOutbox,
+                        studentInfoReader,
+                        committedContext,
+                        saved,
+                        version,
+                        pdf,
+                        docx,
+                        access.ActorId,
+                        now,
+                        ct);
+                }
+
+                return Result.Success(response);
             }, token);
         }
         catch (ThesisManagementPersistenceException) { return Result.Failure<FinalSubmissionWriteResult>(FinalSubmissionErrors.ConcurrencyConflict); }
@@ -226,4 +249,89 @@ public sealed class SubmitFinalSubmissionHandler(IFinalSubmissionStore store, Fi
             UploadedBy = access.ActorId,
             UploadedAt = now
         };
+
+    private static async Task EnqueueArchivalSubmissionNotificationsAsync(
+        IThesisNotificationOutbox notificationOutbox,
+        IStudentInfoReader? studentInfoReader,
+        ArchivalContext context,
+        FinalSubmission submission,
+        int versionNo,
+        ValidatedThesisSubmissionFile pdf,
+        ValidatedThesisSubmissionFile docx,
+        Guid uploaderId,
+        DateTime occurredAtUtc,
+        CancellationToken cancellationToken)
+    {
+        string? uploaderName = null;
+        if (studentInfoReader is not null)
+        {
+            var studentInfo = await studentInfoReader.GetStudentByIdOrCodeAsync(uploaderId, null, cancellationToken);
+            uploaderName = studentInfo?.FullName;
+        }
+
+        var confirmedStudents = ThesisNotificationFormatting.GetConfirmedStudentIds(context.Group);
+        var versionLabel = $"v{versionNo}";
+        var shortTopic = ThesisNotificationFormatting.Shorten(context.Topic.TitleVi, 60);
+
+        if (confirmedStudents.Count > 0)
+        {
+            var metadata = new List<NotificationEmailMetaItem>
+            {
+                new("Mốc nộp", "Hồ sơ lưu chiểu KLTN (Giai đoạn 7)"),
+                new("Đề tài", context.Topic.TitleVi.Trim()),
+                new("Phiên bản gói", versionLabel)
+            };
+            if (!string.IsNullOrWhiteSpace(uploaderName))
+            {
+                metadata.Add(new NotificationEmailMetaItem("Người nộp", uploaderName.Trim()));
+            }
+            metadata.Add(new NotificationEmailMetaItem(
+                "Tệp PDF",
+                $"{pdf.FileName} ({ThesisNotificationFormatting.FormatFileSize(pdf.FileSize)})"));
+            metadata.Add(new NotificationEmailMetaItem(
+                "Tệp DOCX",
+                $"{docx.FileName} ({ThesisNotificationFormatting.FormatFileSize(docx.FileSize)})"));
+            metadata.Add(new NotificationEmailMetaItem(
+                "Thời gian nộp (VN)",
+                ThesisNotificationFormatting.FormatVietnamTime(occurredAtUtc)));
+
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "SUBMISSION_CONFIRMED",
+                    Title: $"Xác nhận nộp Hồ sơ lưu chiểu ({versionLabel})",
+                    Content: $"Ghi nhận gói Hồ sơ lưu chiểu {versionLabel} (PDF & DOCX). GVHD sẽ kiểm tra và xác nhận sớm.",
+                    RecipientUserIds: confirmedStudents,
+                    ResourceType: "FinalSubmission",
+                    ResourceId: submission.Id,
+                    AcademicBatchId: context.Topic.BatchId,
+                    ActionPath: "/thesis/archival",
+                    Priority: "Critical",
+                    EnqueuePush: true,
+                    EnqueueEmail: true,
+                    EmailSubject: $"[UGTM] Xác nhận nộp Hồ sơ lưu chiểu KLTN ({versionLabel})",
+                    EmailCategoryLabel: "Xác nhận nộp bài",
+                    EmailCtaLabel: "Xem trang Lưu chiểu",
+                    EmailNotice: "Vui lòng theo dõi trạng thái xác nhận lưu chiểu của GVHD và Khoa.",
+                    EmailMetadata: metadata),
+                occurredAtUtc);
+        }
+
+        if (context.Topic.AdvisorId != Guid.Empty)
+        {
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "FINAL_SUBMISSION_SUBMITTED",
+                    Title: $"Hồ sơ lưu chiểu {versionLabel} chờ GVHD xác nhận",
+                    Content: $"Nhóm đề tài \"{shortTopic}\" vừa nộp gói lưu chiểu {versionLabel}. Thầy/cô vui lòng kiểm tra xác nhận.",
+                    RecipientUserIds: [context.Topic.AdvisorId],
+                    ResourceType: "FinalSubmission",
+                    ResourceId: submission.Id,
+                    AcademicBatchId: context.Topic.BatchId,
+                    ActionPath: "/advisor/archival",
+                    Priority: "Normal",
+                    EnqueuePush: true,
+                    EnqueueEmail: false),
+                occurredAtUtc);
+        }
+    }
 }
