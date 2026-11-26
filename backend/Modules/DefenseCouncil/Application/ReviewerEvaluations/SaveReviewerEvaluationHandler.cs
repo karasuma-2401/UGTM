@@ -4,11 +4,16 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.AcademicPeriods.Contracts.ReviewerAssignments;
 using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Notifications;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.ReviewerAssignments;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
+using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
+using UGTM.Modules.ThesisManagement.Contracts.DefenseCouncils;
+using UGTM.Modules.TopicCatalog.Contracts.Topics;
 
 namespace UGTM.Modules.DefenseCouncil.Application.ReviewerEvaluations;
 
@@ -17,7 +22,10 @@ public sealed class SaveReviewerEvaluationHandler(
     IReviewerAssignmentRepository assignments, IReviewerEvaluationRepository evaluations,
     IReviewerEvaluationIdempotencyRepository receipts, IReviewerAssignmentBatchReader batches,
     ReviewerEvaluationAuthorization authorization, ReviewerEvaluationAudit audit, ICurrentUser currentUser, TimeProvider timeProvider,
-    ICacheService? cache = null)
+    ICacheService? cache = null,
+    IDefenseCouncilNotificationOutbox? notificationOutbox = null,
+    IDefenseGroupContract? defenseGroupContract = null,
+    ITopicSummaryReader? topicSummaryReader = null)
 {
     private const string Operation = "ReviewerEvaluation.Save";
 
@@ -186,13 +194,143 @@ public sealed class SaveReviewerEvaluationHandler(
             Receipt: receipt, TopicId: access.Binding.TopicId, BatchId: access.Binding.BatchId, StatusCode: status, Details: detailDtos, TotalCriteriaCount: totalCriteriaCount));
     }
 
-    private Task<SaveResult> CompleteReceiptAsync(SaveResult result, CancellationToken token)
+    private async Task<SaveResult> CompleteReceiptAsync(SaveResult result, CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
         audit.AddSaved(result.Evaluation!, result.Assignment!);
         var response = ReviewerEvaluationDtoMapper.ToDto(result.Evaluation!, result.Assignment!, result.TopicId, result.BatchId, result.Details, result.TotalCriteriaCount);
         result.Receipt!.SetResponsePayload(JsonSerializer.Serialize(response));
-        return Task.FromResult(result with { Response = response });
+
+        var evaluation = result.Evaluation!;
+        var assignment = result.Assignment!;
+        if (notificationOutbox is not null
+            && evaluation.Status == ReviewerEvaluationStatus.Submitted
+            && defenseGroupContract is not null)
+        {
+            var groupSnapshot = await defenseGroupContract.GetGroupByIdAsync(assignment.GroupId, token);
+            if (groupSnapshot is not null)
+            {
+                var studentIds = groupSnapshot.Members
+                    .Where(m => string.Equals(m.ConfirmationStatus, "Confirmed", StringComparison.OrdinalIgnoreCase))
+                    .Select(m => m.StudentId)
+                    .Distinct()
+                    .ToArray();
+
+                string? topicTitle = null;
+                if (topicSummaryReader is not null)
+                {
+                    var topics = await topicSummaryReader.GetByIdsAsync([result.TopicId], token);
+                    if (topics.TryGetValue(result.TopicId, out var topicSummary))
+                    {
+                        topicTitle = topicSummary.TitleVi;
+                    }
+                }
+
+                var shortTopic = DefenseCouncilNotificationFormatting.Shorten(topicTitle, 55);
+                var occurredAtUtc = evaluation.SubmittedAtUtc ?? evaluation.EvaluatedAt;
+
+                if (evaluation.DefenseApproval == DefenseApprovalStatus.Rejected)
+                {
+                    var metadata = new List<NotificationEmailMetaItem>
+                    {
+                        new("Giai đoạn dừng", "Đánh giá của GVPB — Không đạt ra Hội đồng")
+                    };
+                    if (!string.IsNullOrWhiteSpace(topicTitle))
+                    {
+                        metadata.Add(new NotificationEmailMetaItem("Đề tài", topicTitle.Trim()));
+                    }
+                    if (!string.IsNullOrWhiteSpace(evaluation.Comment))
+                    {
+                        metadata.Add(new NotificationEmailMetaItem("Nhận xét GVPB", evaluation.Comment.Trim()));
+                    }
+
+                    if (studentIds.Length > 0)
+                    {
+                        notificationOutbox.Enqueue(
+                            new NotificationOutboxEntry(
+                                NotificationType: "GROUP_STOPPED",
+                                Title: "Thông báo không đạt điều kiện ra Hội đồng",
+                                Content: "GVPB đánh giá không đạt ra Hội đồng, nhóm bị dừng bảo vệ KLTN trong đợt này.",
+                                RecipientUserIds: studentIds,
+                                ResourceType: "StudentGroup",
+                                ResourceId: assignment.GroupId,
+                                AcademicBatchId: result.BatchId,
+                                ActionPath: "/thesis/final-report",
+                                Priority: "Critical",
+                                EnqueuePush: true,
+                                EnqueueEmail: true,
+                                EmailSubject: "[UGTM] Thông báo kết quả phản biện (Không đạt ra Hội đồng)",
+                                EmailCategoryLabel: "Đánh giá phản biện",
+                                EmailCtaLabel: "Xem nhận xét phản biện",
+                                EmailNotice: "Vui lòng liên hệ Văn phòng Khoa hoặc GVHD để được giải đáp chi tiết.",
+                                EmailMetadata: metadata),
+                            occurredAtUtc);
+                    }
+
+                    if (assignment.AdvisorIdAtAssignment is { } advisorStoppedId && advisorStoppedId != Guid.Empty)
+                    {
+                        notificationOutbox.Enqueue(
+                            new NotificationOutboxEntry(
+                                NotificationType: "GROUP_STOPPED",
+                                Title: "Nhóm hướng dẫn không đạt ra Hội đồng",
+                                Content: $"GVPB đánh giá đề tài \"{shortTopic}\" không đạt điều kiện ra Hội đồng.",
+                                RecipientUserIds: [advisorStoppedId],
+                                ResourceType: "StudentGroup",
+                                ResourceId: assignment.GroupId,
+                                AcademicBatchId: result.BatchId,
+                                ActionPath: "/topics/advising",
+                                Priority: "Critical",
+                                EnqueuePush: true,
+                                EnqueueEmail: true,
+                                EmailSubject: $"[UGTM] Nhóm không đạt ra Hội đồng: {shortTopic}",
+                                EmailCategoryLabel: "Đánh giá phản biện",
+                                EmailCtaLabel: "Xem nhóm hướng dẫn",
+                                EmailMetadata: metadata),
+                            occurredAtUtc);
+                    }
+                }
+                else
+                {
+                    if (studentIds.Length > 0)
+                    {
+                        notificationOutbox.Enqueue(
+                            new NotificationOutboxEntry(
+                                NotificationType: "REVIEWER_EVALUATION_SUBMITTED",
+                                Title: "Đã có kết quả đánh giá phản biện",
+                                Content: "GVPB đã phát hành nhận xét. Nhóm vui lòng xem góp ý và nộp bản sửa nếu cần.",
+                                RecipientUserIds: studentIds,
+                                ResourceType: "ReviewerEvaluation",
+                                ResourceId: evaluation.Id,
+                                AcademicBatchId: result.BatchId,
+                                ActionPath: "/thesis/final-report",
+                                Priority: "Normal",
+                                EnqueuePush: true,
+                                EnqueueEmail: false),
+                            occurredAtUtc);
+                    }
+
+                    if (assignment.AdvisorIdAtAssignment is { } advisorId && advisorId != Guid.Empty)
+                    {
+                        notificationOutbox.Enqueue(
+                            new NotificationOutboxEntry(
+                                NotificationType: "REVIEWER_EVALUATION_SUBMITTED",
+                                Title: "GVPB đã phát hành nhận xét nhóm hướng dẫn",
+                                Content: $"GVPB đã hoàn tất đánh giá đề tài \"{shortTopic}\". Thầy/cô có thể theo dõi trên hệ thống.",
+                                RecipientUserIds: [advisorId],
+                                ResourceType: "ReviewerEvaluation",
+                                ResourceId: evaluation.Id,
+                                AcademicBatchId: result.BatchId,
+                                ActionPath: "/topics/advising",
+                                Priority: "Normal",
+                                EnqueuePush: true,
+                                EnqueueEmail: false),
+                            occurredAtUtc);
+                    }
+                }
+            }
+        }
+
+        return result with { Response = response };
     }
     private static ReviewerAssignmentTransactionResult<SaveResult> Abort(Error error)
         => ReviewerAssignmentTransactionResult<SaveResult>.Abort(new(Error: error));

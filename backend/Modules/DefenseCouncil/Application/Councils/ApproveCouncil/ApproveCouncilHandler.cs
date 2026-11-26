@@ -4,12 +4,14 @@ using UGTM.Modules.DefenseCouncil.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Notifications;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Contracts.DefenseCouncils;
 using UGTM.Modules.TopicCatalog.Contracts.DefenseCouncils;
 
@@ -30,7 +32,9 @@ public sealed class ApproveCouncilHandler(
     IDefenseCouncilAuditOutbox auditOutbox,
     ICurrentUser currentUser,
     ICouncilSchedulingGuard schedulingGuard,
-    ICacheService? cache = null)
+    ICacheService? cache = null,
+    IDefenseCouncilNotificationOutbox? notificationOutbox = null,
+    TimeProvider? timeProvider = null)
 {
     public async Task<Result<CouncilResponseDto>> HandleAsync(
         ApproveCouncilCommand command,
@@ -70,7 +74,6 @@ public sealed class ApproveCouncilHandler(
         Action<IReadOnlyList<Guid>> onMembersLoaded,
         CancellationToken cancellationToken)
     {
-
         var council = await councilRepository.GetByIdWithDetailsAsync(command.CouncilId, cancellationToken);
         if (council is null)
         {
@@ -82,7 +85,6 @@ public sealed class ApproveCouncilHandler(
             return Result.Failure<CouncilResponseDto>(CouncilErrors.AlreadyApproved);
         }
 
-        // Structure check: 1 Chairman, 1 Secretary, Assignments >= 1
         var hasChairman = council.Members.Any(m => m.RoleInCouncil == CouncilMemberRole.Chairman);
         if (!hasChairman)
         {
@@ -100,7 +102,6 @@ public sealed class ApproveCouncilHandler(
             return Result.Failure<CouncilResponseDto>(CouncilErrors.NoAssignedGroups);
         }
 
-        // Re-check room conflict
         var roomConflict = await councilRepository.HasRoomScheduleConflictAsync(
             council.DefenseDate,
             council.TimeSlot,
@@ -113,7 +114,6 @@ public sealed class ApproveCouncilHandler(
             return Result.Failure<CouncilResponseDto>(CouncilErrors.RoomScheduleConflict);
         }
 
-        // Re-check member schedule conflict
         var memberUserIds = council.Members.Select(m => m.UserId).Distinct().ToList();
         var conflictingMemberIds = await councilRepository.GetConflictingMemberUserIdsAsync(
             council.DefenseDate,
@@ -130,7 +130,6 @@ public sealed class ApproveCouncilHandler(
             return Result.Failure<CouncilResponseDto>(CouncilErrors.MemberScheduleConflict(names));
         }
 
-        // Re-check conflict of interest & defense eligibility
         var assignedGroupIds = council.Assignments.Select(a => a.GroupId).ToList();
 
         var rejectedGroupIds = await councilRepository.GetRejectedDefenseGroupIdsAsync(assignedGroupIds, cancellationToken);
@@ -163,7 +162,6 @@ public sealed class ApproveCouncilHandler(
             }
         }
 
-        // Re-check Reviewer role in Council
         var activeReviewers = await councilRepository.GetActiveReviewerIdsByGroupIdsAsync(assignedGroupIds, cancellationToken);
         foreach (var (grpId, revId) in activeReviewers)
         {
@@ -186,7 +184,7 @@ public sealed class ApproveCouncilHandler(
             return Result.Failure<CouncilResponseDto>(CouncilErrors.NotSubmittedToAcademicAffairs);
         }
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
         var approvedBy = currentUser.UserId ?? Guid.Empty;
 
         council.Approve(
@@ -212,6 +210,67 @@ public sealed class ApproveCouncilHandler(
                     GroupCount = council.Assignments.Count
                 }),
             nowUtc);
+
+        if (notificationOutbox is not null)
+        {
+            var scheduleText = DefenseCouncilNotificationFormatting.FormatSchedule(
+                council.DefenseDate, council.TimeSlot, council.Room);
+
+            foreach (var member in council.Members)
+            {
+                var roleLabel = DefenseCouncilNotificationFormatting.FormatCouncilRole(member.RoleInCouncil);
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "COUNCIL_MEMBER_ASSIGNED",
+                        Title: $"Quyết định thành lập Hội đồng {council.CouncilCode}",
+                        Content: $"PĐT đã phê duyệt Hội đồng {council.CouncilCode} ({scheduleText}). Vai trò của thầy/cô: {roleLabel}.",
+                        RecipientUserIds: [member.UserId],
+                        ResourceType: "Council",
+                        ResourceId: council.Id,
+                        AcademicBatchId: council.BatchId,
+                        ActionPath: "/councils/grading",
+                        Priority: "Critical",
+                        EnqueuePush: true,
+                        EnqueueEmail: true,
+                        EmailSubject: $"[UGTM] Quyết định Hội đồng bảo vệ {council.CouncilCode} ({roleLabel})",
+                        EmailCategoryLabel: "Quyết định Hội đồng",
+                        EmailCtaLabel: "Mở không gian Hội đồng",
+                        EmailMetadata:
+                        [
+                            new("Mã hội đồng", council.CouncilCode),
+                            new("Số quyết định", council.DecisionNumber ?? command.DecisionNumber.Trim()),
+                            new("Vai trò", roleLabel),
+                            new("Lịch bảo vệ", scheduleText),
+                            new("Số nhóm bảo vệ", $"{council.Assignments.Count} nhóm")
+                        ]),
+                    nowUtc);
+            }
+
+            var studentIds = groups.Values
+                .SelectMany(g => g.Members
+                    .Where(m => string.Equals(m.ConfirmationStatus, "Confirmed", StringComparison.OrdinalIgnoreCase))
+                    .Select(m => m.StudentId))
+                .Distinct()
+                .ToArray();
+
+            if (studentIds.Length > 0)
+            {
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "COUNCIL_APPROVED",
+                        Title: $"Đã có lịch bảo vệ tại Hội đồng {council.CouncilCode}",
+                        Content: $"Nhóm được xếp bảo vệ tại Hội đồng {council.CouncilCode} ({scheduleText}). Vui lòng chuẩn bị đúng giờ.",
+                        RecipientUserIds: studentIds,
+                        ResourceType: "Council",
+                        ResourceId: council.Id,
+                        AcademicBatchId: council.BatchId,
+                        ActionPath: "/dashboard",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    nowUtc);
+            }
+        }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await DefenseCouncilCacheKeys.InvalidateCouncilAsync(cache, council.Id, council.BatchId, cancellationToken);

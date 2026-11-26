@@ -7,14 +7,18 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.SaveAdvisorEvaluation;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Application.Common;
+using UGTM.Modules.DefenseCouncil.Application.Notifications;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Contracts.AdvisorEvaluations;
 using UGTM.Modules.DefenseCouncil.Domain.Entities;
 using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Contracts.AdvisorEvaluations;
+using UGTM.Modules.ThesisManagement.Contracts.DefenseCouncils;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
+using UGTM.Modules.TopicCatalog.Contracts.Topics;
 
 namespace UGTM.Modules.DefenseCouncil.Application.AdvisorEvaluations.DecideAdvisorEvaluation;
 
@@ -32,7 +36,10 @@ public sealed class DecideAdvisorEvaluationHandler(
     IDefenseCouncilAuditOutbox auditOutbox,
     ICurrentUser currentUser,
     TimeProvider timeProvider,
-    ICacheService? cache = null)
+    ICacheService? cache = null,
+    IDefenseCouncilNotificationOutbox? notificationOutbox = null,
+    IDefenseGroupContract? defenseGroupContract = null,
+    ITopicSummaryReader? topicSummaryReader = null)
 {
     private const string Operation = "AdvisorEvaluation.Decide";
 
@@ -198,13 +205,13 @@ public sealed class DecideAdvisorEvaluationHandler(
         return DecisionWorkflowResult.Changed(evaluation, idempotencyRecord);
     }
 
-    private Task<DecisionWorkflowResult> CompleteIdempotencyAndAuditsAsync(
+    private async Task<DecisionWorkflowResult> CompleteIdempotencyAndAuditsAsync(
         DecisionWorkflowResult workflowResult,
         CancellationToken cancellationToken)
     {
         if (workflowResult.Error is not null || workflowResult.IdempotencyRecord is null)
         {
-            return Task.FromResult(workflowResult);
+            return workflowResult;
         }
 
         var evaluation = workflowResult.Evaluation!;
@@ -241,7 +248,112 @@ public sealed class DecideAdvisorEvaluationHandler(
             !string.IsNullOrWhiteSpace(evaluation.RejectionReason),
             evaluation.DecisionBy!.Value,
             evaluation.DecisionAt!.Value));
-        return Task.FromResult(workflowResult with { Response = response });
+
+        if (notificationOutbox is not null && defenseGroupContract is not null)
+        {
+            var groupSnapshot = await defenseGroupContract.GetGroupByIdAsync(evaluation.GroupId, cancellationToken);
+            if (groupSnapshot is not null)
+            {
+                var studentIds = groupSnapshot.Members
+                    .Where(m => string.Equals(m.ConfirmationStatus, "Confirmed", StringComparison.OrdinalIgnoreCase))
+                    .Select(m => m.StudentId)
+                    .Distinct()
+                    .ToArray();
+
+                string? topicTitle = null;
+                Guid? advisorId = null;
+                if (topicSummaryReader is not null)
+                {
+                    var topics = await topicSummaryReader.GetByIdsAsync([groupSnapshot.TopicId], cancellationToken);
+                    if (topics.TryGetValue(groupSnapshot.TopicId, out var topicSummary))
+                    {
+                        topicTitle = topicSummary.TitleVi;
+                        advisorId = topicSummary.AdvisorId;
+                    }
+                }
+
+                var occurredAtUtc = evaluation.DecisionAt!.Value;
+                if (evaluation.AllowsReviewerAssignment == true && studentIds.Length > 0)
+                {
+                    notificationOutbox.Enqueue(
+                        new NotificationOutboxEntry(
+                            NotificationType: "ADVISOR_EVALUATION_APPROVED",
+                            Title: "GVHD đã duyệt chuyển phản biện",
+                            Content: "GVHD đã đánh giá đạt và chuyển hồ sơ của nhóm sang bước phân công phản biện.",
+                            RecipientUserIds: studentIds,
+                            ResourceType: "AdvisorEvaluation",
+                            ResourceId: evaluation.Id,
+                            AcademicBatchId: groupSnapshot.BatchId,
+                            ActionPath: "/thesis/final-report",
+                            Priority: "Normal",
+                            EnqueuePush: true,
+                            EnqueueEmail: false),
+                        occurredAtUtc);
+                }
+                else if (evaluation.AllowsReviewerAssignment == false)
+                {
+                    var metadata = new List<NotificationEmailMetaItem>
+                    {
+                        new("Giai đoạn dừng", "Đánh giá của GVHD — Không đạt chuyển phản biện")
+                    };
+                    if (!string.IsNullOrWhiteSpace(topicTitle))
+                    {
+                        metadata.Add(new NotificationEmailMetaItem("Đề tài", topicTitle.Trim()));
+                    }
+                    if (!string.IsNullOrWhiteSpace(evaluation.RejectionReason))
+                    {
+                        metadata.Add(new NotificationEmailMetaItem("Lý do / Nhận xét", evaluation.RejectionReason.Trim()));
+                    }
+
+                    if (studentIds.Length > 0)
+                    {
+                        notificationOutbox.Enqueue(
+                            new NotificationOutboxEntry(
+                                NotificationType: "GROUP_STOPPED",
+                                Title: "Thông báo không đạt điều kiện ra phản biện",
+                                Content: "GVHD đánh giá không đạt chuyển phản biện, nhóm tạm dừng tiến trình ra Hội đồng.",
+                                RecipientUserIds: studentIds,
+                                ResourceType: "StudentGroup",
+                                ResourceId: evaluation.GroupId,
+                                AcademicBatchId: groupSnapshot.BatchId,
+                                ActionPath: "/thesis/final-report",
+                                Priority: "Critical",
+                                EnqueuePush: true,
+                                EnqueueEmail: true,
+                                EmailSubject: "[UGTM] Thông báo kết quả đánh giá của GVHD (Không đạt phản biện)",
+                                EmailCategoryLabel: "Đánh giá GVHD",
+                                EmailCtaLabel: "Xem kết quả đánh giá",
+                                EmailNotice: "Vui lòng trao đổi với GVHD hoặc Văn phòng Khoa để được hướng dẫn cụ thể.",
+                                EmailMetadata: metadata),
+                            occurredAtUtc);
+                    }
+
+                    if (advisorId.HasValue && advisorId.Value != Guid.Empty && advisorId.Value != evaluation.DecisionBy)
+                    {
+                        notificationOutbox.Enqueue(
+                            new NotificationOutboxEntry(
+                                NotificationType: "GROUP_STOPPED",
+                                Title: "Nhóm hướng dẫn không đạt chuyển phản biện",
+                                Content: $"Nhóm đề tài \"{DefenseCouncilNotificationFormatting.Shorten(topicTitle, 55)}\" không đạt điều kiện ra phản biện.",
+                                RecipientUserIds: [advisorId.Value],
+                                ResourceType: "StudentGroup",
+                                ResourceId: evaluation.GroupId,
+                                AcademicBatchId: groupSnapshot.BatchId,
+                                ActionPath: "/topics/advising",
+                                Priority: "Critical",
+                                EnqueuePush: true,
+                                EnqueueEmail: true,
+                                EmailSubject: $"[UGTM] Nhóm không đạt chuyển phản biện: {DefenseCouncilNotificationFormatting.Shorten(topicTitle, 55)}",
+                                EmailCategoryLabel: "Đánh giá GVHD",
+                                EmailCtaLabel: "Xem nhóm hướng dẫn",
+                                EmailMetadata: metadata),
+                            occurredAtUtc);
+                    }
+                }
+            }
+        }
+
+        return workflowResult with { Response = response };
     }
 
     private static Error? ValidateEvaluation(

@@ -3,6 +3,7 @@ using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.DefenseCouncil.Application.Auditing;
 using UGTM.Modules.DefenseCouncil.Application.Common;
 using UGTM.Modules.DefenseCouncil.Application.Councils.Dtos;
+using UGTM.Modules.DefenseCouncil.Application.Notifications;
 using UGTM.Modules.DefenseCouncil.Application.Persistence;
 using UGTM.Modules.DefenseCouncil.Application.ScoreSummaries;
 using UGTM.Modules.DefenseCouncil.Domain.Enums;
@@ -10,6 +11,7 @@ using UGTM.Modules.DefenseCouncil.Domain.Repositories;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
 using UGTM.Modules.Identity.Contracts.FinalSubmissions;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 
 namespace UGTM.Modules.DefenseCouncil.Application.Councils.UnlockCouncilMinute;
 
@@ -21,7 +23,8 @@ public sealed class UnlockCouncilMinuteHandler(
     ICurrentUser currentUser,
     ICouncilMinuteWriteGuard writeGuard,
     TimeProvider? clock = null,
-    ICacheService? cache = null)
+    ICacheService? cache = null,
+    IDefenseCouncilNotificationOutbox? notificationOutbox = null)
 {
     private readonly TimeProvider _clock = clock ?? TimeProvider.System;
 
@@ -47,7 +50,6 @@ public sealed class UnlockCouncilMinuteHandler(
 
         var userId = currentUser.UserId.Value;
 
-        // 1. Kiểm tra phân quyền: Lãnh đạo Khoa (Faculty + councils.minutes.unlock) hoặc Admin
         var authorityDto = await authorityReader.GetAsync(userId, ct);
         var isAdmin = ScoreSummaryAccess.Role(authorityDto, "Admin");
         var isFaculty = ScoreSummaryAccess.Role(authorityDto, "Faculty");
@@ -58,35 +60,30 @@ public sealed class UnlockCouncilMinuteHandler(
             return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.UnlockForbidden);
         }
 
-        // 2. Load Assignment
         var assignment = await councilRepository.GetAssignmentWithCouncilAndMembersAsync(command.AssignmentId, ct);
         if (assignment == null)
         {
             return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.AssignmentNotFound);
         }
 
-        // 3. Load Minute và kiểm tra trạng thái: Bắt buộc phải đang Locked
         var minute = assignment.Minute ?? await councilRepository.GetMinuteByAssignmentIdAsync(assignment.Id, ct);
         if (minute == null || minute.LockStatus != CouncilMinuteLockStatus.Locked)
         {
             return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.MinuteNotLocked);
         }
 
-        // 4. Kiểm tra ScoreSummary: Nếu đã PublishedToStudent thì cấm mở khóa
         var scoreSummary = await councilRepository.GetScoreSummaryByGroupIdAsync(assignment.GroupId, ct);
         if (scoreSummary != null && scoreSummary.Status == ScoreSummaryStatus.PublishedToStudent)
         {
             return Result.Failure<CouncilMinuteLockResponseDto>(CouncilErrors.ScoresAlreadyPublished);
         }
 
-        // 5. Thực hiện mở khóa đặc biệt (Override Unlock)
         var previousLockedBy = minute.LockedBy;
         var previousLockedAt = minute.LockedAt;
         var nowUtc = _clock.GetUtcNow().UtcDateTime;
 
         minute.TryUnlock(userId, reason, nowUtc);
 
-        // 6. Ghi vết kiểm toán nhạy cảm (Audit Outbox)
         auditOutbox.Add(new AuditIntegrationEntry(
             TargetType: "CouncilMinute",
             TargetId: minute.Id.ToString(),
@@ -104,6 +101,35 @@ public sealed class UnlockCouncilMinuteHandler(
                 UnlockedBy = userId,
                 UnlockedAt = nowUtc
             }), nowUtc);
+
+        if (notificationOutbox is not null)
+        {
+            var council = assignment.Council;
+            var memberIds = council.Members
+                .Select(m => m.UserId)
+                .Where(id => id != userId)
+                .Distinct()
+                .ToArray();
+
+            if (memberIds.Length > 0)
+            {
+                var shortReason = DefenseCouncilNotificationFormatting.Shorten(reason, 75);
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: "COUNCIL_MINUTE_UNLOCKED",
+                        Title: $"Đã mở khóa biên bản Hội đồng {council.CouncilCode}",
+                        Content: $"Khoa đã mở khóa biên bản Hội đồng {council.CouncilCode} để cập nhật. Lý do: {shortReason}",
+                        RecipientUserIds: memberIds,
+                        ResourceType: "CouncilMinute",
+                        ResourceId: minute.Id,
+                        AcademicBatchId: council.BatchId,
+                        ActionPath: "/councils/minutes",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    nowUtc);
+            }
+        }
 
         await unitOfWork.SaveChangesAsync(ct);
         await DefenseCouncilCacheKeys.InvalidateAssignmentAsync(
