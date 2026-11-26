@@ -1,8 +1,10 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
@@ -19,7 +21,8 @@ public sealed class ReviewProgressReportHandler(
     IThesisManagementAuditOutbox auditOutbox,
     IThesisUnitOfWork unitOfWork,
     ICurrentUser currentUser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IThesisNotificationOutbox? notificationOutbox = null)
 {
     public async Task<Result<ProgressReportReviewDto>> HandleAsync(
         ReviewProgressReportCommand command,
@@ -79,6 +82,40 @@ public sealed class ReviewProgressReportHandler(
                     version.IsLate
                 }),
             version.ReviewedAt!.Value);
+
+        if (notificationOutbox is not null)
+        {
+            var confirmedStudents = ThesisNotificationFormatting.GetConfirmedStudentIds(group);
+            if (confirmedStudents.Count > 0)
+            {
+                var batchId = group.Members.Select(m => (Guid?)m.BatchId).FirstOrDefault();
+                var shortMilestone = ThesisNotificationFormatting.Shorten(milestone.Title, 55);
+                var (notifType, title, content) = decision == ProgressReportStatus.Accepted
+                    ? (
+                        "PROGRESS_REPORT_ACCEPTED",
+                        "Mốc tiến độ đã được thông qua",
+                        $"GVHD đã chấp nhận báo cáo mốc \"{shortMilestone}\" (v{version.VersionNo}) của nhóm.")
+                    : (
+                        "PROGRESS_REPORT_REVISION_REQUIRED",
+                        "Yêu cầu chỉnh sửa mốc tiến độ",
+                        $"GVHD yêu cầu cập nhật lại mốc \"{shortMilestone}\". Vui lòng xem nhận xét và nộp lại sớm.");
+
+                notificationOutbox.Enqueue(
+                    new NotificationOutboxEntry(
+                        NotificationType: notifType,
+                        Title: title,
+                        Content: content,
+                        RecipientUserIds: confirmedStudents,
+                        ResourceType: "ProgressReport",
+                        ResourceId: report.Id,
+                        AcademicBatchId: batchId,
+                        ActionPath: "/thesis/milestones",
+                        Priority: "Normal",
+                        EnqueuePush: true,
+                        EnqueueEmail: false),
+                    version.ReviewedAt!.Value);
+            }
+        }
 
         var saveError = await unitOfWork.TrySaveChangesAsync(
             ProgressReportErrors.ConcurrencyConflict,

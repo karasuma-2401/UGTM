@@ -1,8 +1,11 @@
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Identity.Contracts.Authorization;
+using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Common;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Application.Storage;
@@ -10,6 +13,7 @@ using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
+using UGTM.Modules.TopicCatalog.Contracts.Topics;
 
 namespace UGTM.Modules.ThesisManagement.Application.ProgressReportSubmissions.SubmitProgressReport;
 
@@ -29,7 +33,10 @@ public sealed class SubmitProgressReportHandler(
     ISyllabusRepository? syllabusRepository = null,
     ISubmissionProductLinkRepository? productLinkRepository = null,
     ISubmissionAttachmentRepository? attachmentRepository = null,
-    IThesisSubmissionImageValidator? imageValidator = null)
+    IThesisSubmissionImageValidator? imageValidator = null,
+    IThesisNotificationOutbox? notificationOutbox = null,
+    ITopicSummaryReader? topicSummaryReader = null,
+    IStudentInfoReader? studentInfoReader = null)
 {
     public async Task<Result<ProgressReportSubmissionDto>> HandleAsync(
         SubmitProgressReportCommand command,
@@ -228,6 +235,22 @@ public sealed class SubmitProgressReportHandler(
                     }),
                 occurredAt);
 
+            if (notificationOutbox is not null)
+            {
+                await EnqueueProgressSubmissionNotificationsAsync(
+                    notificationOutbox,
+                    topicSummaryReader,
+                    studentInfoReader,
+                    group,
+                    milestone,
+                    report,
+                    version,
+                    submissionFile,
+                    currentUser.UserId.Value,
+                    occurredAt,
+                    cancellationToken);
+            }
+
             var saveError = await uploadLifecycle.SaveAsync(uploadAttempt,
                 token => unitOfWork.TrySaveChangesAsync(ProgressReportErrors.ConcurrencyConflict,
                     ProgressReportErrors.ConcurrencyConflict, token),
@@ -260,6 +283,107 @@ public sealed class SubmitProgressReportHandler(
         finally
         {
             await uploadLifecycle.FinishAsync(uploadAttempt);
+        }
+    }
+
+    private static async Task EnqueueProgressSubmissionNotificationsAsync(
+        IThesisNotificationOutbox notificationOutbox,
+        ITopicSummaryReader? topicSummaryReader,
+        IStudentInfoReader? studentInfoReader,
+        StudentGroup group,
+        ProgressMilestone milestone,
+        ProgressReport report,
+        ProgressReportVersion version,
+        SubmissionFile submissionFile,
+        Guid uploaderId,
+        DateTime occurredAtUtc,
+        CancellationToken cancellationToken)
+    {
+        Guid? advisorId = milestone.CreatedBy != Guid.Empty ? milestone.CreatedBy : null;
+        string? topicTitle = null;
+        if (topicSummaryReader is not null)
+        {
+            var topics = await topicSummaryReader.GetByIdsAsync([group.TopicId], cancellationToken);
+            if (topics.TryGetValue(group.TopicId, out var topicSummary))
+            {
+                advisorId = topicSummary.AdvisorId;
+                topicTitle = topicSummary.TitleVi;
+            }
+        }
+
+        string? uploaderName = null;
+        if (studentInfoReader is not null)
+        {
+            var studentInfo = await studentInfoReader.GetStudentByIdOrCodeAsync(uploaderId, null, cancellationToken);
+            uploaderName = studentInfo?.FullName;
+        }
+
+        var batchId = group.Members.Select(m => (Guid?)m.BatchId).FirstOrDefault();
+        var confirmedStudents = ThesisNotificationFormatting.GetConfirmedStudentIds(group);
+        var versionLabel = $"v{version.VersionNo}";
+        var shortMilestone = ThesisNotificationFormatting.Shorten(milestone.Title, 55);
+        var shortTopic = ThesisNotificationFormatting.Shorten(topicTitle, 55);
+
+        if (confirmedStudents.Count > 0)
+        {
+            var metadata = new List<NotificationEmailMetaItem>
+            {
+                new("Mốc nộp", $"Mốc tiến độ: {milestone.Title}")
+            };
+            if (!string.IsNullOrWhiteSpace(topicTitle))
+            {
+                metadata.Add(new NotificationEmailMetaItem("Đề tài", topicTitle.Trim()));
+            }
+            metadata.Add(new NotificationEmailMetaItem("Phiên bản", versionLabel));
+            if (!string.IsNullOrWhiteSpace(uploaderName))
+            {
+                metadata.Add(new NotificationEmailMetaItem("Người nộp", uploaderName.Trim()));
+            }
+            metadata.Add(new NotificationEmailMetaItem(
+                "Tệp ghi nhận",
+                $"{submissionFile.FileName} ({ThesisNotificationFormatting.FormatFileSize(submissionFile.FileSize)})"));
+            var timeDisplay = ThesisNotificationFormatting.FormatVietnamTime(occurredAtUtc);
+            metadata.Add(new NotificationEmailMetaItem(
+                "Thời gian nộp (VN)",
+                version.IsLate ? $"{timeDisplay} (Nộp trễ hạn)" : timeDisplay));
+
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "SUBMISSION_CONFIRMED",
+                    Title: $"Xác nhận nộp Mốc tiến độ ({versionLabel})",
+                    Content: $"Ghi nhận báo cáo mốc \"{shortMilestone}\" ({versionLabel}). GVHD sẽ xem xét và phản hồi trên hệ thống.",
+                    RecipientUserIds: confirmedStudents,
+                    ResourceType: "ProgressReport",
+                    ResourceId: report.Id,
+                    AcademicBatchId: batchId,
+                    ActionPath: "/thesis/milestones",
+                    Priority: "Critical",
+                    EnqueuePush: true,
+                    EnqueueEmail: true,
+                    EmailSubject: $"[UGTM] Xác nhận nộp báo cáo mốc tiến độ: {shortMilestone} ({versionLabel})",
+                    EmailCategoryLabel: "Xác nhận nộp bài",
+                    EmailCtaLabel: "Xem mốc tiến độ",
+                    EmailNotice: "Vui lòng theo dõi nhận xét của GVHD tại trang Mốc tiến độ.",
+                    EmailMetadata: metadata),
+                occurredAtUtc);
+        }
+
+        if (advisorId.HasValue && advisorId.Value != Guid.Empty)
+        {
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "PROGRESS_REPORT_SUBMITTED",
+                    Title: $"Nhóm đã nộp mốc tiến độ {versionLabel}",
+                    Content: $"Nhóm đề tài \"{shortTopic}\" vừa nộp mốc \"{shortMilestone}\" ({versionLabel}) chờ thầy/cô đánh giá.",
+                    RecipientUserIds: [advisorId.Value],
+                    ResourceType: "ProgressReport",
+                    ResourceId: report.Id,
+                    AcademicBatchId: batchId,
+                    ActionPath: $"/advisor/milestones/{milestone.Id}/review",
+                    Priority: "Normal",
+                    EnqueuePush: true,
+                    EnqueueEmail: false),
+                occurredAtUtc);
         }
     }
 

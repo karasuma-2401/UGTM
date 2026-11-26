@@ -3,9 +3,12 @@ using Microsoft.Extensions.Options;
 using UGTM.Modules.DefenseCouncil.Contracts.ReviewerEvaluations;
 using UGTM.BuildingBlocks.Domain;
 using UGTM.Modules.Identity.Contracts.Auditing;
+using UGTM.Modules.Identity.Contracts.Users;
+using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Auditing;
 using UGTM.Modules.ThesisManagement.Application.Common;
 using UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.Dtos;
+using UGTM.Modules.ThesisManagement.Application.Notifications;
 using UGTM.Modules.ThesisManagement.Application.Persistence;
 using UGTM.Modules.ThesisManagement.Application.PlagiarismAI;
 using UGTM.Modules.ThesisManagement.Application.Storage;
@@ -13,6 +16,7 @@ using UGTM.Modules.ThesisManagement.Application.SyllabusSubmissions.Dtos;
 using UGTM.Modules.ThesisManagement.Domain.Entities;
 using UGTM.Modules.ThesisManagement.Domain.Enums;
 using UGTM.Modules.ThesisManagement.Domain.Repositories;
+using UGTM.Modules.TopicCatalog.Contracts.Topics;
 
 namespace UGTM.Modules.ThesisManagement.Application.FinalReportSubmissions.SubmitFinalReport;
 
@@ -31,7 +35,10 @@ public sealed class SubmitFinalReportHandler(
     ISubmissionProductLinkRepository? productLinkRepository = null,
     ISubmissionAttachmentRepository? attachmentRepository = null,
     IThesisSubmissionImageValidator? imageValidator = null,
-    IReviewerDefenseEligibilityContract? reviewerEligibility = null)
+    IReviewerDefenseEligibilityContract? reviewerEligibility = null,
+    IThesisNotificationOutbox? notificationOutbox = null,
+    ITopicSummaryReader? topicSummaryReader = null,
+    IStudentInfoReader? studentInfoReader = null)
 {
     public async Task<Result<FinalReportSubmissionDto>> HandleAsync(
         SubmitFinalReportCommand command,
@@ -238,6 +245,20 @@ public sealed class SubmitFinalReportHandler(
                     IsResubmission = !isFirstSubmission
                 }), context.SubmittedAtUtc);
 
+            if (notificationOutbox is not null)
+            {
+                await EnqueueFinalReportNotificationsAsync(
+                    notificationOutbox,
+                    topicSummaryReader,
+                    studentInfoReader,
+                    context,
+                    report,
+                    submissionFile,
+                    versionNo,
+                    isReviewerRevision,
+                    cancellationToken);
+            }
+
             saveAttempted = true;
             var saveError = await unitOfWork.TrySaveChangesAsync(
                 FinalReportSubmissionErrors.ConcurrencyConflict,
@@ -256,6 +277,104 @@ public sealed class SubmitFinalReportHandler(
         }
 
         return Result.Success(response);
+    }
+
+    private static async Task EnqueueFinalReportNotificationsAsync(
+        IThesisNotificationOutbox notificationOutbox,
+        ITopicSummaryReader? topicSummaryReader,
+        IStudentInfoReader? studentInfoReader,
+        FinalReportSubmissionContext context,
+        FinalReport report,
+        SubmissionFile submissionFile,
+        int versionNo,
+        bool isReviewerRevision,
+        CancellationToken cancellationToken)
+    {
+        Guid? advisorId = null;
+        string? topicTitle = null;
+        if (topicSummaryReader is not null)
+        {
+            var topics = await topicSummaryReader.GetByIdsAsync([context.Group.TopicId], cancellationToken);
+            if (topics.TryGetValue(context.Group.TopicId, out var topicSummary))
+            {
+                advisorId = topicSummary.AdvisorId;
+                topicTitle = topicSummary.TitleVi;
+            }
+        }
+
+        string? uploaderName = null;
+        if (studentInfoReader is not null)
+        {
+            var studentInfo = await studentInfoReader.GetStudentByIdOrCodeAsync(context.StudentId, null, cancellationToken);
+            uploaderName = studentInfo?.FullName;
+        }
+
+        var confirmedStudents = ThesisNotificationFormatting.GetConfirmedStudentIds(context.Group);
+        var versionLabel = $"v{versionNo}";
+        var shortLabel = isReviewerRevision ? "Báo cáo sửa sau phản biện" : "Báo cáo cuối kỳ";
+        var fullLabel = isReviewerRevision ? "Báo cáo cuối kỳ (Chỉnh sửa sau phản biện)" : "Báo cáo cuối kỳ KLTN";
+        var shortTopic = ThesisNotificationFormatting.Shorten(topicTitle, 60);
+
+        if (confirmedStudents.Count > 0)
+        {
+            var metadata = new List<NotificationEmailMetaItem>
+            {
+                new("Mốc nộp", fullLabel)
+            };
+            if (!string.IsNullOrWhiteSpace(topicTitle))
+            {
+                metadata.Add(new NotificationEmailMetaItem("Đề tài", topicTitle.Trim()));
+            }
+            metadata.Add(new NotificationEmailMetaItem("Phiên bản", versionLabel));
+            if (!string.IsNullOrWhiteSpace(uploaderName))
+            {
+                metadata.Add(new NotificationEmailMetaItem("Người nộp", uploaderName.Trim()));
+            }
+            metadata.Add(new NotificationEmailMetaItem(
+                "Tệp ghi nhận",
+                $"{submissionFile.FileName} ({ThesisNotificationFormatting.FormatFileSize(submissionFile.FileSize)})"));
+            metadata.Add(new NotificationEmailMetaItem(
+                "Thời gian nộp (VN)",
+                ThesisNotificationFormatting.FormatVietnamTime(context.SubmittedAtUtc)));
+
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "SUBMISSION_CONFIRMED",
+                    Title: $"Xác nhận nộp {shortLabel} ({versionLabel})",
+                    Content: $"Ghi nhận tệp {shortLabel} {versionLabel} của nhóm. Vui lòng theo dõi tiến độ chấm duyệt trên hệ thống.",
+                    RecipientUserIds: confirmedStudents,
+                    ResourceType: "FinalReport",
+                    ResourceId: report.Id,
+                    AcademicBatchId: context.BatchId,
+                    ActionPath: "/thesis/final-report",
+                    Priority: "Critical",
+                    EnqueuePush: true,
+                    EnqueueEmail: true,
+                    EmailSubject: $"[UGTM] Xác nhận nộp {shortLabel} ({versionLabel})",
+                    EmailCategoryLabel: "Xác nhận nộp bài",
+                    EmailCtaLabel: "Xem Báo cáo cuối kỳ",
+                    EmailNotice: "Vui lòng theo dõi trạng thái đánh giá từ GVHD và Hội đồng trên hệ thống.",
+                    EmailMetadata: metadata),
+                context.SubmittedAtUtc);
+        }
+
+        if (advisorId.HasValue && advisorId.Value != Guid.Empty)
+        {
+            notificationOutbox.Enqueue(
+                new NotificationOutboxEntry(
+                    NotificationType: "FINAL_REPORT_SUBMITTED",
+                    Title: $"Nhóm hướng dẫn đã nộp {shortLabel} {versionLabel}",
+                    Content: $"Nhóm đề tài \"{shortTopic}\" vừa nộp {shortLabel} {versionLabel}. Thầy/cô có thể kiểm tra và đánh giá.",
+                    RecipientUserIds: [advisorId.Value],
+                    ResourceType: "FinalReport",
+                    ResourceId: report.Id,
+                    AcademicBatchId: context.BatchId,
+                    ActionPath: isReviewerRevision ? "/topics/advising" : "/thesis/lecturer-grading",
+                    Priority: "Normal",
+                    EnqueuePush: true,
+                    EnqueueEmail: false),
+                context.SubmittedAtUtc);
+        }
     }
 
     private async Task CompensateFailedSubmissionAsync(SubmissionFile file, IReadOnlyCollection<string> uploadedKeys, bool saveAttempted)
