@@ -185,6 +185,26 @@ public sealed class AssignCouncilGroupsHandler(
             OrderNumber = a.OrderNumber
         }).ToList();
 
+        // Persist the default roster before the dossier is submitted, never when reading a minute.
+        // A common reviewer is unambiguous; different reviewers require an explicit faculty choice.
+        if (!council.Members.Any(member => member.RoleInCouncil == CouncilMemberRole.Member))
+        {
+            var allAssignments = council.Assignments.Concat(newAssignments).ToList();
+            var reviewers = await councilRepository.GetActiveReviewerIdsByGroupIdsAsync(
+                allAssignments.Select(assignment => assignment.GroupId).Distinct().ToList(), cancellationToken);
+            var reviewerIds = reviewers.Values.Distinct().ToArray();
+            if (reviewerIds.Length != 1 || allAssignments.Any(assignment => !reviewers.ContainsKey(assignment.GroupId)))
+                return Result.Failure<IReadOnlyList<CouncilAssignmentResponseDto>>(CouncilErrors.DefaultReviewerMemberAmbiguous);
+
+            var defaultMember = new CouncilMemberInputDto(reviewerIds[0], CouncilMemberRole.Member);
+            var validated = await CouncilMemberAssignmentHelper.ValidateForCouncilAsync(
+                council, [defaultMember], false, councilRepository, userInfoReader,
+                defenseGroupContract, topicDefenseContract, cancellationToken, allAssignments);
+            if (validated.IsFailure)
+                return Result.Failure<IReadOnlyList<CouncilAssignmentResponseDto>>(validated.Error);
+            await councilRepository.AddMembersAsync(validated.Value.NewMembers, cancellationToken);
+        }
+
         await councilRepository.AddAssignmentsAsync(newAssignments, cancellationToken);
         // A changed group list changes the dossier PĐT reviews, just like a roster or schedule change.
         council.ResetSubmission();
@@ -193,7 +213,8 @@ public sealed class AssignCouncilGroupsHandler(
             await unitOfWork.SaveChangesAsync(cancellationToken);
         }
         catch (DefenseCouncilUniqueConstraintException error) when (error.ConstraintName is
-            "ux_council_assignment_council_order" or "ix_council_assignment_group_id")
+            "ux_council_assignment_council_order" or "ix_council_assignment_group_id"
+            or "ix_council_member_council_id_user_id")
         {
             return Result.Failure<IReadOnlyList<CouncilAssignmentResponseDto>>(CouncilErrors.ConcurrentModification);
         }

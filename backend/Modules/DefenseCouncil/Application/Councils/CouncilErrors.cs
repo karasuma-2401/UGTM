@@ -4,6 +4,10 @@ namespace UGTM.Modules.DefenseCouncil.Application.Councils;
 
 public static class CouncilErrors
 {
+    public static Error DefaultReviewerMemberAmbiguous => Error.Conflict("Council.DefaultReviewerMemberAmbiguous",
+        "Chưa xác định được một GVPB chung để kiêm Ủy viên. Vui lòng chọn rõ Ủy viên trước khi gán các nhóm.");
+    public static Error MissingMember => Error.Conflict("Council.MissingMember",
+        "Chưa có Ủy viên Hội đồng. Hãy thêm GVPB làm Ủy viên hoặc chọn một giảng viên khác trước khi gửi phê duyệt.");
     public static Error InvalidSecretaryMarking => Error.Validation("Council.InvalidSecretaryMarking", "Kết luận thư ký không hợp lệ.");
     public static Error ExclusionReasonRequired => Error.Validation("Council.ExclusionReasonRequired", "Khi thay đổi việc công nhận điểm, cần lý do từ 10 đến 1000 ký tự.");
     public static Error ConcurrentModification => Error.Conflict("Council.ConcurrentModification", "Dữ liệu hội đồng vừa thay đổi. Vui lòng tải lại và thử lại.");

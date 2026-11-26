@@ -53,7 +53,9 @@ export function useReviewerAssignment() {
       ),
     enabled: Boolean(user?.id && selectedBatch?.id),
     placeholderData: (previousData, previousQuery) =>
-      previousQuery?.queryKey[1] === user?.id ? previousData : undefined,
+      previousQuery?.queryKey[1] === user?.id && previousQuery?.queryKey[2] === selectedBatch?.id
+        ? previousData
+        : undefined,
   });
 
   const rawItems = useMemo(
@@ -112,7 +114,8 @@ export function useReviewerAssignment() {
 
   const candidatesQuery = useQuery({
     queryKey: ['reviewer-candidates', user?.id, selectedGroupId],
-    queryFn: ({ signal }) => reviewerAssignmentApi.getCandidates(selectedGroupId!, undefined, signal),
+    queryFn: ({ signal }) =>
+      reviewerAssignmentApi.getCandidates(selectedGroupId!, undefined, signal),
     enabled: Boolean(user?.id && selectedGroupId),
   });
 
@@ -129,7 +132,9 @@ export function useReviewerAssignment() {
   const canManage = useMemo(() => {
     const roles = user?.roles || [];
     const isPrivileged = roles.some((r) =>
-      ['Admin', 'Faculty', 'AcademicAffairs'].some((role) => role.toLowerCase() === r.toLowerCase()),
+      ['Admin', 'Faculty', 'AcademicAffairs'].some(
+        (role) => role.toLowerCase() === r.toLowerCase(),
+      ),
     );
     return isPrivileged || hasPermission('thesis.reviewer-assignments.manage');
   }, [user?.roles, hasPermission]);
@@ -159,17 +164,19 @@ export function useReviewerAssignment() {
       void queryClient.invalidateQueries({ queryKey: ['reviewer-eligibility'] });
     },
     onError: (err: unknown) => {
-      setErrorMessage(
-        getApiErrorMessage(err, 'Phân công phản biện thất bại. Vui lòng thử lại.'),
-      );
+      setErrorMessage(getApiErrorMessage(err, 'Phân công phản biện thất bại. Vui lòng thử lại.'));
     },
   });
 
   return {
     batches,
+    batchesQuery,
     selectedBatch,
     selectedBatchId,
-    setSelectedBatchId: setUserSelectedBatchId,
+    setSelectedBatchId: (batchId: string) => {
+      setUserSelectedBatchId(batchId);
+      handleSelectGroup(null);
+    },
     keyword,
     setKeyword,
     statusFilter,

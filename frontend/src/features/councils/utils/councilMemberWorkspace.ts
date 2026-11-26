@@ -316,6 +316,7 @@ export function evaluateSubmitReadiness(
   const missing: string[] = [];
   if (!hasChairman) missing.push('Chưa có Chủ tịch.');
   if (!hasSecretary) missing.push('Chưa có Thư ký.');
+  if (!roster.some((member) => member.role === 'Member')) missing.push('Chưa có Ủy viên. Thêm GVPB kiêm nhiệm hoặc chọn giảng viên khác.');
   if (council.groupCodes.length === 0) {
     missing.push('Chưa có nhóm bảo vệ nào được gán vào hội đồng.');
   }

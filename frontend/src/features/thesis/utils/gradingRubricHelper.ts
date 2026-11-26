@@ -4,6 +4,7 @@ import type {
   StudentCriterionScoresInputDto,
   StudentEvaluationScoreDto,
 } from '../services/lecturerGradingApi';
+import { isGradingCriterionId } from './gradingRubricValidation';
 
 export interface RubricCriterionView {
   id: string;
@@ -102,70 +103,18 @@ export const DEFAULT_UIT_SECTIONS: RubricSectionView[] = [
   },
 ];
 
-const DEFAULT_SECTION_BY_PREFIX: Record<string, { name: string; order: number }> = {
-  '1': { name: 'Ý nghĩa khoa học, giá trị thực tiễn', order: 1 },
-  '2': { name: 'Vận dụng kiến thức nền tảng và chuyên sâu ngành KTPM', order: 2 },
-  '3': { name: 'Trình bày kết quả', order: 3 },
-  '4': { name: 'Kỹ năng mềm', order: 4 },
-};
-
-const DEFAULT_ELO_BY_CODE: Record<string, string> = {
-  '1.1': 'LO2',
-  '1.2': 'LO3',
-  '2.1': 'LO3',
-  '2.2': 'LO4',
-  '2.3': 'LO3',
-  '3.1': 'LO6, LO8',
-  '3.2': 'LO6',
-  '3.3': 'LO8',
-  '4.1': 'LO5, LO7',
-  '4.2': 'LO4, LO6',
-};
-
+// Keep the fixed UIT form; API data only supplies persistent criterion IDs.
 export function buildRubricSections(
   apiCriteria: GradingCriterionDto[] | null | undefined,
 ): RubricSectionView[] {
-  if (!apiCriteria || apiCriteria.length === 0) {
-    return DEFAULT_UIT_SECTIONS;
-  }
-
-  const sectionMap = new Map<string, RubricSectionView>();
-  const sortedCriteria = [...apiCriteria].sort((a, b) => a.order - b.order);
-
-  for (const item of sortedCriteria) {
-    const prefix = item.code.split('.')[0] ?? '1';
-    const fallbackSection = DEFAULT_SECTION_BY_PREFIX[prefix];
-    const sectionCode = item.sectionCode?.trim() || prefix;
-    const sectionName =
-      item.sectionName?.trim() || fallbackSection?.name || 'Tiêu chí đánh giá khóa luận';
-    const sectionOrder =
-      item.sectionOrder && item.sectionOrder > 0
-        ? item.sectionOrder
-        : (fallbackSection?.order ?? 1);
-
-    let section = sectionMap.get(sectionCode);
-    if (!section) {
-      section = {
-        code: sectionCode,
-        name: sectionName,
-        order: sectionOrder,
-        max: 0,
-        criteria: [],
-      };
-      sectionMap.set(sectionCode, section);
-    }
-
-    section.max = Math.round((section.max + item.maxScore) * 100) / 100;
-    section.criteria.push({
-      id: item.id,
-      code: item.code,
-      name: item.name,
-      max: item.maxScore,
-      elo: item.elo?.trim() || DEFAULT_ELO_BY_CODE[item.code] || 'ELO',
-    });
-  }
-
-  return Array.from(sectionMap.values()).sort((a, b) => a.order - b.order);
+  const idsByCode = new Map(apiCriteria?.map((criterion) => [criterion.code, criterion.id]));
+  return DEFAULT_UIT_SECTIONS.map((section) => ({
+    ...section,
+    criteria: section.criteria.map((criterion) => ({
+      ...criterion,
+      id: idsByCode.get(criterion.code) ?? criterion.id,
+    })),
+  }));
 }
 
 export function getStudentInitials(fullName: string): string {
@@ -192,6 +141,9 @@ export function buildStudentScoresPayload(
   criteria: RubricCriterionView[],
   scoresForGroup: Record<string, Record<string, string>> | undefined,
 ): StudentCriterionScoresInputDto[] {
+  if (criteria.some((criterion) => !isGradingCriterionId(criterion.id))) {
+    throw new Error('Chưa tải xong dữ liệu barem chuẩn. Vui lòng tải lại trước khi lưu điểm.');
+  }
   const result: StudentCriterionScoresInputDto[] = [];
 
   for (const studentId of studentIds) {

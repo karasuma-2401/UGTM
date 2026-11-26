@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { StatusTone } from '@/components/ui/status-badge';
 import { formatScoreReason } from './scoreSummaryFormatting';
+import type { MinuteCalculationPreviewDto } from '../types/councilMinute.types';
 
 const COUNCIL_MINUTE_ERROR_MESSAGES: Record<string, string> = {
   'Council.Forbidden': 'Bạn không có quyền truy cập biên bản của hội đồng này.',
@@ -40,6 +41,13 @@ export interface LockStatusPresentation {
   description: string;
 }
 
+export function getMinuteReadinessMeta(lockStatus: string | null | undefined, calculation?: MinuteCalculationPreviewDto | null): LockStatusPresentation {
+  if (lockStatus === 'Locked' || lockStatus === 'UnlockedByOverride' || !calculation) return getMinuteLockStatusMeta(lockStatus);
+  if (calculation.calculationErrorCode) return { label: 'Chưa đủ điều kiện tính điểm', tone: 'warning', description: formatCalculationErrorMessage(calculation.calculationErrorCode) || 'Kiểm tra các nguồn điểm và cấu hình.' };
+  if (calculation.isReadyToLock) return { label: 'Sẵn sàng khóa biên bản', tone: 'info', description: 'Đã đủ nguồn điểm theo cấu hình và hoàn tất đối soát sai biệt.' };
+  return { label: 'Cần đối soát biên bản', tone: 'warning', description: 'Hoàn tất xử lý sai biệt trước khi khóa.' };
+}
+
 export function getMinuteLockStatusMeta(lockStatus: string | null | undefined): LockStatusPresentation {
   switch (lockStatus) {
     case 'Locked':
@@ -57,9 +65,9 @@ export function getMinuteLockStatusMeta(lockStatus: string | null | undefined): 
       };
     case 'AllScoresEntered':
       return {
-        label: 'Đã đủ điểm',
+        label: 'Đủ phiếu Hội đồng',
         tone: 'info',
-        description: 'Các thành viên bắt buộc đã hoàn tất nhập điểm, sẵn sàng rà soát và khóa biên bản.',
+        description: 'Đã nhập các phiếu Hội đồng. Cần đối chiếu thêm nguồn điểm và cấu hình trước khi khóa.',
       };
     default:
       return {

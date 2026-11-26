@@ -1,4 +1,9 @@
+﻿import type { ReactNode } from 'react';
+import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
+import { StatusBadge } from '@/components/ui/status-badge';
 import type { ReviewerAssignmentEligibilityItemDto } from '../../types/reviewerAssignment.types';
 
 interface ReviewerAssignmentTableProps {
@@ -6,109 +11,143 @@ interface ReviewerAssignmentTableProps {
   selectedGroupId: string | null;
   onSelectGroupId: (groupId: string) => void;
   isLoading?: boolean;
+  isBusy?: boolean;
+  error?: { message: string; onRetry: () => void } | null;
+  filters?: ReactNode;
+  pendingCount: number;
 }
 
 export function ReviewerAssignmentTable({
   items,
   selectedGroupId,
   onSelectGroupId,
-  isLoading = false,
+  isLoading,
+  isBusy,
+  error,
+  filters,
+  pendingCount,
 }: ReviewerAssignmentTableProps) {
+  const status = (item: ReviewerAssignmentEligibilityItemDto) => (
+    <StatusBadge tone={item.hasActiveAssignment ? 'success' : 'warning'}>
+      {item.hasActiveAssignment ? 'Đã phân công' : 'Chờ phân công'}
+    </StatusBadge>
+  );
+  const action = (item: ReviewerAssignmentEligibilityItemDto) => (
+    <Button
+      variant="outline"
+      size="sm"
+      className="rounded-md"
+      disabled={isBusy}
+      aria-label={`Xem hồ sơ nhóm ${item.groupId.slice(0, 8).toUpperCase()}`}
+      onClick={() => onSelectGroupId(item.groupId)}
+    >
+      Xem
+    </Button>
+  );
+  const columns: DataTableColumn<ReviewerAssignmentEligibilityItemDto>[] = [
+    {
+      id: 'topic',
+      header: 'Nhóm / đề tài',
+      skeleton: { variant: 'topic' },
+      cell: (item) => (
+        <div className="space-y-1">
+          <p className="line-clamp-2 font-semibold text-ink-primary" title={item.topicTitleVi}>
+            {item.topicTitleVi}
+          </p>
+          <p className="flex flex-wrap gap-x-1 text-xs text-ink-muted" title={item.groupId}>
+            <span className="whitespace-nowrap">Nhóm {item.groupId.slice(0, 8).toUpperCase()}</span>
+            <span className="whitespace-nowrap">· Báo cáo v{item.reportVersionNo}</span>
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: 'advisor',
+      header: 'GV hướng dẫn',
+      widthClassName: 'w-[150px] 2xl:w-[180px]',
+      skeleton: { variant: 'person' },
+      cell: (item) => (
+        <div className="flex items-center gap-2.5">
+          <Avatar
+            name={item.advisorFullName || '?'}
+            className="hidden size-8 text-[10px] 2xl:flex"
+          />
+          <span className="break-words text-ink-body">
+            {item.advisorFullName || 'Chưa có thông tin'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      id: 'status',
+      header: 'Trạng thái',
+      widthClassName: 'w-[146px]',
+      headerClassName: 'whitespace-nowrap',
+      skeleton: { variant: 'badge' },
+      cell: status,
+    },
+    {
+      id: 'actions',
+      header: 'Thao tác',
+      widthClassName: 'w-[76px]',
+      align: 'right',
+      headerClassName: 'whitespace-nowrap',
+      skeleton: { variant: 'actions' },
+      cell: action,
+    },
+  ];
+
   return (
-    <Card className="p-6 bg-surface-card border-line shadow-xs rounded-xl space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold text-ink-primary">Hồ sơ</h2>
+    <Card className="min-w-0 overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line-subtle px-5 py-4">
+        <h2 className="text-base font-semibold text-ink-primary">Danh sách hồ sơ</h2>
+        <StatusBadge tone="warning">{pendingCount} chờ phân công</StatusBadge>
       </div>
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="border-b border-line-subtle text-ink-subtle font-medium">
-              <th className="pb-3 font-medium">Nhóm / đề tài</th>
-              <th className="pb-3 font-medium">GVHD</th>
-              <th className="pb-3 font-medium">Trạng thái</th>
-              <th className="pb-3 font-medium text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line-subtle">
-            {isLoading ? (
-              <tr>
-                <td colSpan={4} className="py-8 text-center text-ink-subtle">
-                  Đang tải danh sách hồ sơ...
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-8 text-center text-ink-subtle">
-                  Không có hồ sơ nào phù hợp với bộ lọc.
-                </td>
-              </tr>
-            ) : (
-              items.map((item, index) => {
-                const isSelected = item.groupId === selectedGroupId;
-                const groupLabel = `N${String(index + 1).padStart(2, '0')}`;
-
-                return (
-                  <tr
-                    key={item.groupId}
-                    onClick={() => onSelectGroupId(item.groupId)}
-                    className={`cursor-pointer transition-colors ${
-                      isSelected
-                        ? 'bg-tone-info-bg'
-                        : 'hover:bg-surface-hover/60'
-                    }`}
-                  >
-                    <td className="py-3.5 pr-4">
-                      <div className="font-semibold text-ink-heading">
-                        {groupLabel} · {item.topicTitleVi}
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 pr-4 text-ink-body">
-                      {item.advisorFullName || 'Chưa xác định'}
-                    </td>
-
-                    <td className="py-3.5 pr-4">
-                      {item.hasActiveAssignment ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-tone-success-text bg-tone-success-bg border border-tone-success-border">
-                          Đã phân công
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-ink-secondary bg-surface-muted border border-line-input">
-                          Chờ phân công
-                        </span>
-                      )}
-                    </td>
-
-                    <td className="py-3.5 pl-4 text-right">
-                      {isSelected ? (
-                        <span className="text-xs font-semibold text-tone-info-icon">
-                          Đang chọn
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectGroupId(item.groupId);
-                          }}
-                          className="text-xs text-ink-body hover:text-tone-info-icon font-medium cursor-pointer"
-                        >
-                          {item.hasActiveAssignment ? 'Xem phân công' : 'Xem hồ sơ'}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
+      {filters}
+      <DataTable
+        tableClassName="[&_th]:px-3 [&_td]:px-3"
+        data={items}
+        columns={columns}
+        getRowId={(item) => item.groupId}
+        ariaLabel="Hồ sơ phân công phản biện"
+        selectedRowId={selectedGroupId}
+        onRowSelect={onSelectGroupId}
+        loading={isLoading}
+        busy={isBusy}
+        error={error}
+        empty={{
+          title: 'Không có hồ sơ phù hợp',
+          description: 'Thử đổi bộ lọc hoặc kiểm tra hồ sơ đã được GVHD đồng ý chuyển phản biện.',
+        }}
+        renderMobileItem={(item) => (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-medium text-ink-muted">
+                Nhóm {item.groupId.slice(0, 8).toUpperCase()}
+              </span>
+              {status(item)}
+            </div>
+            <p className="font-semibold text-ink-primary">{item.topicTitleVi}</p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-ink-muted">
+                GVHD: {item.advisorFullName || 'Chưa có thông tin'}
+              </p>
+              {action(item)}
+            </div>
+            {selectedGroupId === item.groupId && (
+              <p className="text-xs font-medium text-brand-ink">Đang chọn · Phân công ở bên dưới</p>
             )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="pt-2 text-xs text-ink-subtle">
-        {items.length} hồ sơ hiển thị
-      </div>
+          </div>
+        )}
+      />
+      {!isLoading && !error && (
+        <div
+          className="border-t border-line-subtle px-5 py-3 text-xs text-ink-muted"
+          aria-live="polite"
+        >
+          {items.length} hồ sơ hiển thị
+        </div>
+      )}
     </Card>
   );
 }

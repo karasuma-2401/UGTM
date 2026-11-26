@@ -59,3 +59,11 @@ Các regression test trên không chứng minh toàn bộ hệ thống đã sẵ
 | `git diff --check` | Đạt |
 
 Build integration vẫn ghi nhận cảnh báo nullable CS8602 tại `OpenApiConfiguration.cs:87`; build architecture còn cảnh báo MSB3277 do phiên bản EF Core khác nhau. Build API cuối chạy incremental đạt 0 warning/0 error; không dùng kết quả này để kết luận các cảnh báo trước đó đã được sửa. Chưa chạy lại toàn bộ integration suite ThesisManagement hoặc xác nhận hạ tầng production trong lượt này.
+
+## Mặc định GVPB kiêm Ủy viên — 26/11/2026
+
+- Gán nhóm vào Hội đồng Draft chưa có Ủy viên: backend tìm GVPB chung cho các nhóm, kiểm tra tài khoản Active/Lecturer, xung đột GVHD và trùng lịch, sau đó lưu thành viên Member cùng phân công nhóm trong transaction scheduling hiện có. Nếu có nhiều GVPB khác nhau hoặc thiếu phân công, trả `Council.DefaultReviewerMemberAmbiguous` và không ghi một phần.
+- Ủy viên đã được Khoa chọn được giữ nguyên. Khoa có thể thay danh sách trước khi gửi PĐT. Gửi/phê duyệt thiếu Ủy viên bị chặn bởi `Council.MissingMember`. Hội đồng Active/Completed không bị tự thêm thành viên.
+- GVPB kiêm Ủy viên sử dụng phiếu phản biện đã chốt, không có phiếu Hội đồng thứ hai. Trường hợp Ủy viên riêng vẫn yêu cầu điểm riêng theo cấu hình.
+- `calculationPreview.missingSources` bổ sung tên nguồn còn thiếu. Nhãn trên biên bản đang xem lấy từ calculationPreview; `AllScoresEntered` chỉ chứng minh đủ phiếu Hội đồng. Mẫu số chưa tính được hiển thị “Chưa xác định”.
+- Kiểm tra: 603 tests DefenseCouncil đạt; 19 tests frontend liên quan đạt. Browser dùng API giả lập cho mặc định trước khi gán, roster sau lưu và cảnh báo thiếu nguồn. Không thay thành viên Hội đồng thật đã được phê duyệt.

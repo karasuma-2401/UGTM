@@ -24,6 +24,7 @@ import { ListCardHeader } from '@/components/ui/list-card-header';
 import { StatisticsBar } from '@/components/ui/statistics-bar';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
+import { InlineAlert } from '@/components/ui/inline-alert';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Select } from '@/components/ui/select';
 import { TableFloatingBar } from '@/components/ui/table-floating-bar';
@@ -63,6 +64,8 @@ import {
   hydrateGroupScoresFromDto,
 } from '../utils/gradingRubricHelper';
 import { getThesisErrorMessage } from '../utils/thesisErrors';
+import { requireGradingRubric } from '../utils/gradingRubricValidation';
+import { prepareAdvisorReport } from '../utils/prepareAdvisorReport';
 
 type Role = 'advisor' | 'reviewer';
 type Scores = GradingStudentScoresMap;
@@ -85,6 +88,8 @@ interface GradingGroupItem {
   students: GradingStudentInfo[];
   finalReportId?: string | null;
   reportVersionNo?: number | null;
+  reportVersionType?: string | null;
+  reportStatus?: string | null;
   submissionFileId?: string | null;
   submissionFileName?: string | null;
   submissionFileSize?: number;
@@ -138,6 +143,7 @@ export function LecturerGradingPage() {
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
 
   const [apiCriteria, setApiCriteria] = useState<GradingCriterionDto[] | null>(null);
+  const [rubricError, setRubricError] = useState<string | null>(null);
   const [apiGroupsByRole, setApiGroupsByRole] = useState<{
     advisor: GradingGroupItem[];
     reviewer: GradingGroupItem[];
@@ -166,6 +172,7 @@ export function LecturerGradingPage() {
       string,
       {
         evaluationVersion?: number | null;
+        reportStatus?: string | null;
         evaluationStatus?: string | null;
         isLocked?: boolean;
       }
@@ -236,14 +243,15 @@ export function LecturerGradingPage() {
     async function loadGradingWorkspace() {
       let advisorError: string | null = null;
       let reviewerError: string | null = null;
+      let resolvedCriteria: GradingCriterionDto[] = [];
+      let nextRubricError: string | null = null;
 
       try {
-        const rubric = await lecturerGradingApi
-          .getGradingRubric(activeBatch!.id, controller.signal)
-          .catch(() => null);
-        const resolvedCriteria = rubric?.criteria?.length ? rubric.criteria : null;
-        if (resolvedCriteria) {
-          setApiCriteria(resolvedCriteria);
+        try {
+          const rubric = await lecturerGradingApi.getGradingRubric(activeBatch!.id, controller.signal);
+          resolvedCriteria = requireGradingRubric(rubric, activeBatch!.id);
+        } catch (error) {
+          nextRubricError = getThesisErrorMessage(error, 'Không thể tải barem chấm điểm. Vui lòng thử lại.');
         }
         const rubricViewCriteria = buildRubricSections(resolvedCriteria).flatMap((s) => s.criteria);
 
@@ -342,7 +350,9 @@ export function LecturerGradingPage() {
                 batchName: item.batchName || activeBatch!.batchName,
                 students,
                 finalReportId: evaluation?.finalReportId ?? report?.finalReportId ?? null,
-                reportVersionNo: report?.currentVersionNo ?? 1,
+                reportVersionNo: report?.currentVersionNo ?? null,
+                reportVersionType: report?.versionType ?? null,
+                reportStatus: report?.currentStatus ?? null,
                 submissionFileId: latestReportFile?.id ?? null,
                 submissionFileName: latestReportFile?.fileName ?? null,
                 submissionFileSize: latestReportFile?.fileSize,
@@ -434,6 +444,8 @@ export function LecturerGradingPage() {
         }
 
         if (!controller.signal.aborted) {
+          setApiCriteria(resolvedCriteria);
+          setRubricError(nextRubricError);
           setApiGroupsByRole({
             advisor: loadedAdvisorGroups,
             reviewer: loadedReviewerGroups,
@@ -452,6 +464,8 @@ export function LecturerGradingPage() {
         }
       } catch (err) {
         if (!controller.signal.aborted) {
+          setApiCriteria([]);
+          setRubricError(nextRubricError);
           const message = getThesisErrorMessage(err, 'Không thể tải dữ liệu chấm điểm khóa luận.');
           setRoleLoadErrors({ advisor: message, reviewer: message });
         }
@@ -495,6 +509,7 @@ export function LecturerGradingPage() {
       : null;
   const isLoading =
     batchesQuery.isLoading || Boolean(currentRequestKey && loadedRequestKey !== currentRequestKey);
+  const canGrade = Boolean(activeBatch?.id && !isLoading && !rubricError && apiCriteria?.length);
 
   function handleRetryLoad() {
     if (batchesQuery.isError) {
@@ -659,7 +674,7 @@ export function LecturerGradingPage() {
 
   const progress = computeStudentProgressList(students, criteria, scores);
   const allStudentsComplete =
-    students.length > 0 && progress.every((item) => item.count === criteria.length);
+    canGrade && students.length > 0 && progress.every((item) => item.count === criteria.length);
   const anyStudentBelowFive = progress.some((item) => item.total < 5);
 
   const advisorDecision = group ? (advisorDecisionByGroup[group.id] ?? 'Approve') : 'Approve';
@@ -722,7 +737,7 @@ export function LecturerGradingPage() {
   }
 
   function updateScore(studentId: string, criterionId: string, value: string) {
-    if (!group || isLocked) return;
+    if (!group || isLocked || !canGrade) return;
     setScoresByGroup((previous) => ({
       ...previous,
       [group.id]: {
@@ -736,7 +751,7 @@ export function LecturerGradingPage() {
   }
 
   async function handleSaveEvaluation(action: 'SaveDraft' | 'Submit'): Promise<boolean> {
-    if (!group || isLocked) return false;
+    if (!group || isLocked || !canGrade) return false;
 
     const studentScoresPayload = buildStudentScoresPayload(
       students.map((s) => s.id),
@@ -764,9 +779,13 @@ export function LecturerGradingPage() {
           notify.warning('Nhóm sinh viên chưa nộp báo cáo cuối kỳ nên chưa thể lưu phiếu lên máy chủ.');
           return false;
         }
+        const prepared = await prepareAdvisorReport(group, finalReportApi.beginEvaluation);
+        setGroupMetaOverrides((prev) => ({
+          ...prev, [group.id]: { ...prev[group.id], reportStatus: prepared.reportStatus },
+        }));
         const saved = await lecturerGradingApi.saveAdvisorEvaluation({
-          finalReportId: group.finalReportId,
-          expectedReportVersionNo: group.reportVersionNo ?? 1,
+          finalReportId: prepared.finalReportId,
+          expectedReportVersionNo: prepared.reportVersionNo,
           expectedEvaluationVersion: group.evaluationVersion ?? null,
           comment: commentText || null,
           studentScores: studentScoresPayload,
@@ -775,6 +794,7 @@ export function LecturerGradingPage() {
         setGroupMetaOverrides((prev) => ({
           ...prev,
           [group.id]: {
+            ...prev[group.id],
             evaluationVersion: saved.evaluationVersion,
             evaluationStatus: saved.status,
             isLocked: saved.isLocked,
@@ -802,6 +822,7 @@ export function LecturerGradingPage() {
         setGroupMetaOverrides((prev) => ({
           ...prev,
           [group.id]: {
+            ...prev[group.id],
             evaluationVersion: saved.evaluationVersion,
             evaluationStatus: saved.status,
             isLocked: saved.isLocked,
@@ -829,7 +850,7 @@ export function LecturerGradingPage() {
   }
 
   async function handleConfirmAdvisorTransferDecision() {
-    if (!group || isLocked) return;
+    if (!group || isLocked || !canGrade) return;
     const allowsReviewerAssignment = advisorDecision === 'Approve';
     const trimmedReason = advisorRejectionReason.trim();
 
@@ -856,11 +877,15 @@ export function LecturerGradingPage() {
         scoresByGroup[group.id],
       );
       let currentEvalVersion = group.evaluationVersion ?? null;
+      const prepared = await prepareAdvisorReport(group, finalReportApi.beginEvaluation);
+      setGroupMetaOverrides((prev) => ({
+        ...prev, [group.id]: { ...prev[group.id], reportStatus: prepared.reportStatus },
+      }));
 
-      if (allowsReviewerAssignment || studentScoresPayload.length > 0) {
+      if (allowsReviewerAssignment || studentScoresPayload.length > 0 || currentEvalVersion === null) {
         const savedEval = await lecturerGradingApi.saveAdvisorEvaluation({
-          finalReportId: group.finalReportId,
-          expectedReportVersionNo: group.reportVersionNo ?? 1,
+          finalReportId: prepared.finalReportId,
+          expectedReportVersionNo: prepared.reportVersionNo,
           expectedEvaluationVersion: currentEvalVersion,
           comment: (comments[group.id] ?? '').trim() || null,
           studentScores: studentScoresPayload,
@@ -869,8 +894,8 @@ export function LecturerGradingPage() {
         currentEvalVersion = savedEval.evaluationVersion;
       }
 
-      const decided = await lecturerGradingApi.decideAdvisorEvaluation(group.finalReportId, {
-        expectedReportVersionNo: group.reportVersionNo ?? 1,
+      const decided = await lecturerGradingApi.decideAdvisorEvaluation(prepared.finalReportId, {
+        expectedReportVersionNo: prepared.reportVersionNo,
         expectedEvaluationVersion: currentEvalVersion,
         allowsReviewerAssignment,
         rejectionReason: allowsReviewerAssignment ? null : trimmedReason,
@@ -879,6 +904,7 @@ export function LecturerGradingPage() {
       setGroupMetaOverrides((prev) => ({
         ...prev,
         [group.id]: {
+          ...prev[group.id],
           evaluationVersion: decided.evaluationVersion,
           evaluationStatus: decided.status,
           isLocked: decided.isLocked,
@@ -970,6 +996,21 @@ export function LecturerGradingPage() {
           </Button>
         )}
       </PageHeader>
+
+      {rubricError && !isLoading && (
+        <InlineAlert
+          title="Chưa thể chấm điểm"
+          action={<Button variant="outline" size="sm" onClick={handleRetryLoad}>Tải lại barem</Button>}
+        >
+          {rubricError}
+        </InlineAlert>
+      )}
+
+      {activeGroupId && group && role === 'advisor' && group.reportStatus === 'Submitted' && (
+        <InlineAlert tone="info">
+          Lần lưu đầu tiên sẽ bắt đầu chấm và khóa phiên bản báo cáo hiện tại. Sinh viên sẽ không thể nộp lại bản báo cáo này.
+        </InlineAlert>
+      )}
 
       {!activeGroupId && (
         <section
@@ -1341,7 +1382,7 @@ export function LecturerGradingPage() {
               criteriaCount={criteria.length}
               students={progress}
               scores={scores}
-              isLocked={isLocked}
+              isLocked={isLocked || !canGrade}
               onUpdateScore={updateScore}
             >
               <div className="border-t border-line-subtle p-5 sm:p-6">
@@ -1359,8 +1400,8 @@ export function LecturerGradingPage() {
                 <RichTextEditor
                   id="grading-comment"
                   ariaLabelledBy="grading-comment-label"
-                  disabled={isLocked}
-                  readOnly={isLocked}
+                  disabled={isLocked || !canGrade}
+                  readOnly={isLocked || !canGrade}
                   value={comments[group.id] ?? ''}
                   onChange={(nextValue) =>
                     setComments((prev) => ({ ...prev, [group.id]: nextValue }))
@@ -1386,7 +1427,7 @@ export function LecturerGradingPage() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <button
                       type="button"
-                      disabled={isLocked}
+                      disabled={isLocked || !canGrade}
                       onClick={() =>
                         setAdvisorDecisionByGroup((prev) => ({ ...prev, [group.id]: 'Approve' }))
                       }
@@ -1413,7 +1454,7 @@ export function LecturerGradingPage() {
 
                     <button
                       type="button"
-                      disabled={isLocked}
+                      disabled={isLocked || !canGrade}
                       onClick={() =>
                         setAdvisorDecisionByGroup((prev) => ({ ...prev, [group.id]: 'Reject' }))
                       }
@@ -1449,7 +1490,7 @@ export function LecturerGradingPage() {
                       </label>
                       <textarea
                         id="advisor-rejection-reason"
-                        disabled={isLocked}
+                        disabled={isLocked || !canGrade}
                         value={advisorRejectionReason}
                         onChange={(event) =>
                           setAdvisorRejectionReasonByGroup((prev) => ({
@@ -1479,7 +1520,7 @@ export function LecturerGradingPage() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <button
                       type="button"
-                      disabled={isLocked}
+                      disabled={isLocked || !canGrade}
                       onClick={() =>
                         setReviewerDecisionByGroup((prev) => ({
                           ...prev,
@@ -1509,7 +1550,7 @@ export function LecturerGradingPage() {
 
                     <button
                       type="button"
-                      disabled={isLocked}
+                      disabled={isLocked || !canGrade}
                       onClick={() =>
                         setReviewerDecisionByGroup((prev) => ({
                           ...prev,
@@ -1566,7 +1607,7 @@ export function LecturerGradingPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={isSavingDraft || isSubmittingScore || isDecidingTransfer}
+                        disabled={!canGrade || isSavingDraft || isSubmittingScore || isDecidingTransfer}
                         isLoading={isSavingDraft}
                         loadingText="Đang lưu..."
                         onClick={() => void handleSaveEvaluation('SaveDraft')}
@@ -1598,6 +1639,7 @@ export function LecturerGradingPage() {
                           type="button"
                           variant="default"
                           disabled={
+                            !canGrade ||
                             (advisorDecision === 'Approve' && !allStudentsComplete) ||
                             isSavingDraft ||
                             isSubmittingScore ||
@@ -1623,7 +1665,7 @@ export function LecturerGradingPage() {
           </div>
 
           <GradingMobileDock
-            visible={!isLocked}
+            visible={canGrade && !isLocked}
             students={progress}
             actions={
               <>
@@ -1631,7 +1673,7 @@ export function LecturerGradingPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={isSavingDraft || isSubmittingScore || isDecidingTransfer}
+                  disabled={!canGrade || isSavingDraft || isSubmittingScore || isDecidingTransfer}
                   isLoading={isSavingDraft}
                   loadingText="Đang lưu..."
                   onClick={() => void handleSaveEvaluation('SaveDraft')}

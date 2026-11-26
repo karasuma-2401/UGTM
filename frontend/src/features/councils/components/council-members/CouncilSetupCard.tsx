@@ -126,6 +126,7 @@ export function CouncilSetupCard({ council, batch, onUpdated }: {
       }
       await councilPlanningApi.addGroup(council.id, groupId, order);
       await queryClient.invalidateQueries({ queryKey: councilScheduleKey(council.id) });
+      await queryClient.invalidateQueries({ queryKey: ['council-member-candidates', council.id] });
       await onUpdated();
       setGroupId('');
       setOrderText('');
@@ -279,6 +280,11 @@ export function CouncilSetupCard({ council, batch, onUpdated }: {
         <form onSubmit={(event) => void addGroup(event)} className="mt-4 space-y-3 rounded-xl bg-surface-subtle p-3 sm:p-4">
           <h3 className="text-sm font-semibold text-ink-heading">Chọn nhóm và thứ tự bảo vệ</h3>
           <p className="text-sm text-ink-muted">Danh sách gồm các nhóm đã có giảng viên phản biện trong đợt này. Hệ thống kiểm tra kết quả phản biện trước khi gán.</p>
+          {chosen && council.members.length === 0 && (
+            <InlineAlert tone="info" title="Ủy viên mặc định">
+              {chosen.reviewerFullName || 'Giảng viên phản biện của nhóm'} sẽ được thêm làm Ủy viên, sử dụng điểm phản biện đã chốt và không chấm thêm phiếu Hội đồng. Muốn chọn Ủy viên khác, hãy thêm người đó vào danh sách thành viên trước khi gán nhóm.
+            </InlineAlert>
+          )}
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]">
             <div className="min-w-0 space-y-1.5">
               <p id="council-group-label" className="text-sm font-medium text-ink-secondary">Nhóm / đề tài *</p>

@@ -18,7 +18,7 @@ export interface ReviewerAssignmentEligibilityItemDto {
 }
 
 export interface ReviewerCandidateContractDto {
-  id: string;
+  userId: string;
   fullName: string;
   userCode?: string | null;
 }

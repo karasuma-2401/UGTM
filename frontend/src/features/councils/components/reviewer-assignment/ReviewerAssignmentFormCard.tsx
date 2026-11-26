@@ -1,6 +1,8 @@
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { UserCheck, AlertCircle } from 'lucide-react';
+﻿import { Button } from '@/components/ui/button';
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { Select } from '@/components/ui/select';
+import { Avatar } from '@/components/ui/avatar';
+import { UserCheck } from 'lucide-react';
 import type {
   ReviewerAssignmentEligibilityItemDto,
   ReviewerCandidateContractDto,
@@ -15,6 +17,8 @@ interface ReviewerAssignmentFormCardProps {
   isSubmitting: boolean;
   canManage: boolean;
   isLoadingCandidates?: boolean;
+  candidatesError?: string | null;
+  onRetryCandidates?: () => void;
 }
 
 export function ReviewerAssignmentFormCard({
@@ -26,87 +30,94 @@ export function ReviewerAssignmentFormCard({
   isSubmitting,
   canManage,
   isLoadingCandidates = false,
+  candidatesError,
+  onRetryCandidates,
 }: ReviewerAssignmentFormCardProps) {
-  const isAlreadyAssigned = Boolean(selectedItem?.hasActiveAssignment);
-  const advisorName = selectedItem?.advisorFullName || 'Chưa xác định';
+  if (!selectedItem) return null;
+  const isAlreadyAssigned = selectedItem.hasActiveAssignment;
+  const eligibleCandidates = candidates.filter(
+    (candidate) => Boolean(candidate.userId) && candidate.userId !== selectedItem.advisorId,
+  );
+  const reviewer = selectedReviewerId
+    ? eligibleCandidates.find((candidate) => candidate.userId === selectedReviewerId)
+    : undefined;
   const canSubmit =
-    Boolean(selectedItem) &&
+    selectedItem.canAssign &&
     !isAlreadyAssigned &&
-    Boolean(selectedReviewerId) &&
+    Boolean(reviewer) &&
     canManage &&
-    !isSubmitting;
+    !isSubmitting &&
+    !isLoadingCandidates &&
+    !candidatesError;
 
   return (
-    <Card className="p-6 bg-surface-card border-line shadow-xs rounded-xl flex flex-col justify-between space-y-6">
-      <div className="space-y-4">
-        <h2 className="text-base font-bold text-ink-primary">Giảng viên</h2>
-
-        {!selectedItem ? (
-          <div className="py-8 text-center text-xs text-ink-subtle">
-            Vui lòng chọn một hồ sơ từ danh sách bên trên để phân công.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div>
-              <label
-                htmlFor="reviewer-select"
-                className="block text-xs font-semibold text-ink-secondary mb-1.5"
-              >
-                GVPB
-              </label>
-
-              {isLoadingCandidates ? (
-                <div className="w-full h-10 px-3 py-2 bg-surface-subtle border border-line rounded-lg text-xs text-ink-subtle flex items-center">
-                  Đang tải danh sách giảng viên...
-                </div>
-              ) : isAlreadyAssigned ? (
-                <div className="w-full p-3 bg-surface-subtle border border-line rounded-lg text-xs text-ink-body flex items-center gap-2">
-                  <UserCheck className="size-4 text-tone-success-icon shrink-0" />
-                  <span>Hồ sơ này đã có Giảng viên phản biện được phân công.</span>
-                </div>
-              ) : (
-                <select
-                  id="reviewer-select"
-                  value={selectedReviewerId}
-                  onChange={(e) => onSelectReviewerId(e.target.value)}
-                  disabled={!canManage || isSubmitting}
-                  className="w-full h-10 px-3 py-2 bg-surface-card border border-line-input rounded-lg text-sm text-ink-secondary focus:outline-hidden focus:ring-2 focus:ring-blue-500 transition-all cursor-pointer disabled:bg-surface-subtle disabled:cursor-not-allowed"
-                >
-                  <option value="">-- Chọn Giảng viên phản biện --</option>
-                  {candidates.map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {candidate.fullName} {candidate.userCode ? `(${candidate.userCode})` : ''}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <p className="mt-1.5 text-xs text-ink-muted">
-                Phải khác GVHD: {advisorName}
-              </p>
-            </div>
-
-            {!canManage && (
-              <div className="p-3 rounded-lg bg-tone-warning-bg border border-tone-warning-border text-tone-warning-strong text-xs flex items-center gap-2">
-                <AlertCircle className="size-4 text-tone-warning-icon shrink-0" />
-                <span>Bạn không có quyền phân công Giảng viên phản biện.</span>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
+    <section aria-labelledby="reviewer-form-title" className="space-y-4 p-5">
       <div>
-        <Button
-          type="button"
-          onClick={onSubmitAssignment}
-          disabled={!canSubmit}
-          isLoading={isSubmitting}
-          className="w-auto px-6 h-10 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition-colors shadow-xs"
-        >
-          Xác nhận phân công
-        </Button>
+        <h2 id="reviewer-form-title" className="text-base font-semibold text-ink-primary">
+          Giảng viên phản biện
+        </h2>
+        <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+          Giảng viên phản biện phải khác giảng viên hướng dẫn của nhóm.
+        </p>
       </div>
-    </Card>
+      {isAlreadyAssigned ? (
+        <InlineAlert tone="success" title="Đã phân công">
+          Hồ sơ này đã có giảng viên phản biện.
+        </InlineAlert>
+      ) : !canManage ? (
+        <InlineAlert tone="warning">Bạn không có quyền phân công giảng viên phản biện.</InlineAlert>
+      ) : candidatesError ? (
+        <InlineAlert
+          title="Không tải được giảng viên"
+          action={
+            <Button variant="outline" size="sm" onClick={onRetryCandidates}>
+              Thử lại
+            </Button>
+          }
+        >
+          {candidatesError}
+        </InlineAlert>
+      ) : (
+        <>
+          <Select
+            value={selectedReviewerId}
+            onChange={onSelectReviewerId}
+            searchable
+            aria-label="Chọn giảng viên phản biện"
+            size="lg"
+            placeholder={isLoadingCandidates ? 'Đang tải giảng viên…' : 'Chọn giảng viên phản biện'}
+            searchPlaceholder="Tìm tên hoặc mã giảng viên"
+            noOptionsMessage="Không tìm thấy giảng viên phù hợp"
+            disabled={isLoadingCandidates || isSubmitting || !selectedItem.canAssign}
+            options={eligibleCandidates.map((candidate) => ({
+              value: candidate.userId,
+              label: candidate.fullName,
+              description: candidate.userCode || undefined,
+              icon: <Avatar name={candidate.fullName} className="size-8 text-[10px]" />,
+            }))}
+          />
+          {!isLoadingCandidates && eligibleCandidates.length === 0 && (
+            <p className="text-sm text-ink-muted">Chưa có giảng viên phù hợp để phân công.</p>
+          )}
+          {reviewer && (
+            <p className="text-sm text-ink-body">
+              Phân công{' '}
+              <strong className="font-semibold text-ink-primary">{reviewer.fullName}</strong> phản
+              biện báo cáo v{selectedItem.reportVersionNo} của nhóm này.
+            </p>
+          )}
+          <Button
+            type="button"
+            onClick={onSubmitAssignment}
+            disabled={!canSubmit}
+            isLoading={isSubmitting}
+            leftIcon={<UserCheck className="size-4" />}
+            className="w-full"
+          >
+            Xác nhận phân công
+          </Button>
+        </>
+      )}
+    </section>
   );
 }

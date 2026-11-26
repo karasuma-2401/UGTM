@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
+import { InlineAlert } from '@/components/ui/inline-alert';
+import { requireGradingRubric } from '@/features/thesis/utils/gradingRubricValidation';
 import { ListCardHeader } from '@/components/ui/list-card-header';
 import { PageHeader } from '@/components/ui/page-header';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
@@ -138,6 +140,7 @@ export function CouncilGradingPage() {
   const [savedSnapshotByGroup, setSavedSnapshotByGroup] = useState<Record<string, string>>({});
 
   const [apiCriteria, setApiCriteria] = useState<GradingCriterionDto[] | null>(null);
+  const [rubricError, setRubricError] = useState<string | null>(null);
   const [apiGroups, setApiGroups] = useState<CouncilGroup[]>([]);
   const [loadedRequestKey, setLoadedRequestKey] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -168,15 +171,17 @@ export function CouncilGradingPage() {
     const requestKey = currentRequestKey;
 
     async function loadCouncilWorkspace() {
+      let nextRubricError: string | null = null;
       try {
         const [rubric, overviewRows] = await Promise.all([
-          councilGradingApi.getGradingRubric(activeBatch!.id, controller.signal).catch(() => null),
+          councilGradingApi.getGradingRubric(activeBatch!.id, controller.signal)
+            .then((value) => requireGradingRubric(value, activeBatch!.id))
+            .catch((error) => {
+              nextRubricError = getThesisErrorMessage(error, 'Không thể tải barem chấm điểm. Vui lòng thử lại.');
+              return [];
+            }),
           councilGradingApi.getCouncilOverviewRows(activeBatch!.id, controller.signal),
         ]);
-
-        if (rubric?.criteria?.length) {
-          setApiCriteria(rubric.criteria);
-        }
 
         const uniqueCouncilIds = Array.from(
           new Set(overviewRows.filter((r) => r.status === 'Active' || r.status === 'Draft').map((r) => r.id)),
@@ -237,11 +242,15 @@ export function CouncilGradingPage() {
         }
 
         if (!controller.signal.aborted) {
+          setApiCriteria(rubric);
+          setRubricError(nextRubricError);
           setApiGroups(builtGroups);
           setLoadError(null);
         }
       } catch (err) {
         if (!controller.signal.aborted) {
+          setApiCriteria([]);
+          setRubricError(nextRubricError);
           setLoadError(getThesisErrorMessage(err, 'Không thể tải danh sách lịch chấm điểm Hội đồng.'));
         }
       } finally {
@@ -264,6 +273,7 @@ export function CouncilGradingPage() {
 
   const isLoading =
     batchesQuery.isLoading || Boolean(currentRequestKey && loadedRequestKey !== currentRequestKey);
+  const canGrade = Boolean(activeBatch?.id && !isLoading && !rubricError && apiCriteria?.length);
   const resolvedError = batchesQuery.isError
     ? getThesisErrorMessage(batchesQuery.error, 'Không thể tải danh sách đợt khóa luận.')
     : activeBatch?.id
@@ -446,7 +456,7 @@ export function CouncilGradingPage() {
     : [];
 
   const allStudentsComplete =
-    progress.length > 0 && progress.every((student) => student.count === criteria.length);
+    canGrade && progress.length > 0 && progress.every((student) => student.count === criteria.length);
 
   const currentGroupSnapshot = activeGroup
     ? serializeCouncilSnapshot(scoresByGroup[activeGroup.id], comments[activeGroup.id] ?? '')
@@ -497,7 +507,7 @@ export function CouncilGradingPage() {
   }
 
   const updateScore = (studentId: string, criterionId: string, value: string) => {
-    if (!activeGroup || isLocked) return;
+    if (!activeGroup || isLocked || !canGrade) return;
     setScoresByGroup((previous) => ({
       ...previous,
       [activeGroup.id]: {
@@ -508,7 +518,7 @@ export function CouncilGradingPage() {
   };
 
   function handleSaveTempDraft() {
-    if (!activeGroup || isLocked) return;
+    if (!activeGroup || isLocked || !canGrade) return;
     setSavedSnapshotByGroup((prev) => ({
       ...prev,
       [activeGroup.id]: currentGroupSnapshot,
@@ -517,7 +527,7 @@ export function CouncilGradingPage() {
   }
 
   async function handleSubmitCouncilScore() {
-    if (!activeGroup || isLocked) return;
+    if (!activeGroup || isLocked || !canGrade) return;
     if (!allStudentsComplete) {
       notify.error('Vui lòng nhập đầy đủ tất cả tiêu chí cho từng sinh viên trước khi gửi điểm.');
       return;
@@ -567,6 +577,15 @@ export function CouncilGradingPage() {
             : 'Chọn nhóm được phân công trong phiên bảo vệ để bắt đầu chấm điểm.'
         }
       />
+
+      {rubricError && !isLoading && (
+        <InlineAlert
+          title="Chưa thể chấm điểm"
+          action={<Button variant="outline" size="sm" onClick={handleRetryLoad}>Tải lại barem</Button>}
+        >
+          {rubricError}
+        </InlineAlert>
+      )}
 
       {!activeGroup && (
         <section
@@ -926,7 +945,7 @@ export function CouncilGradingPage() {
               criteriaCount={criteria.length}
               students={progress}
               scores={scores}
-              isLocked={isLocked}
+              isLocked={isLocked || !canGrade}
               onUpdateScore={updateScore}
             >
               <div className="border-t border-line-subtle p-5 sm:p-6">
@@ -943,8 +962,8 @@ export function CouncilGradingPage() {
                 <RichTextEditor
                   id="council-comment"
                   ariaLabelledBy="council-comment-label"
-                  disabled={isLocked}
-                  readOnly={isLocked}
+                  disabled={isLocked || !canGrade}
+                  readOnly={isLocked || !canGrade}
                   value={comments[activeGroup.id] ?? ''}
                   onChange={(nextValue) =>
                     setComments((previous) => ({
@@ -976,7 +995,7 @@ export function CouncilGradingPage() {
                     <Button
                       type="button"
                       variant="outline"
-                      disabled={isSubmitting}
+                      disabled={!canGrade || isSubmitting}
                       onClick={handleSaveTempDraft}
                       className="w-full gap-1.5 rounded-xl text-xs font-semibold"
                     >
@@ -1000,7 +1019,7 @@ export function CouncilGradingPage() {
           </div>
 
           <GradingMobileDock
-            visible={!isLocked}
+            visible={canGrade && !isLocked}
             students={progress}
             actions={
               <>
@@ -1008,7 +1027,7 @@ export function CouncilGradingPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={isSubmitting}
+                  disabled={!canGrade || isSubmitting}
                   onClick={handleSaveTempDraft}
                   className="gap-1.5 rounded-xl text-xs font-semibold"
                 >

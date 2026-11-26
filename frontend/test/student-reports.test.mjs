@@ -7,6 +7,65 @@ import * as jsxRuntime from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as icons from 'lucide-react';
 
+test('post-defense progress requires a locked minute and follows the archival workflow', () => {
+  const { getPostDefenseProgress } = loadModule('features/thesis/utils/postDefenseProgress.ts');
+  assert.equal(getPostDefenseProgress(), null);
+  assert.equal(getPostDefenseProgress({ isCouncilDefenseCompleted: false, councilMinuteLockStatus: 'NotLocked' }), null);
+  assert.equal(getPostDefenseProgress({ isCouncilDefenseCompleted: true, councilMinuteLockStatus: 'NotLocked' }), null);
+  const progress = (status, canSubmit = false) => getPostDefenseProgress({
+    isCouncilDefenseCompleted: true, councilMinuteLockStatus: 'Locked', currentSubmissionStatus: status, canSubmit,
+  });
+  assert.match(progress('NotSubmitted', true).description, /PDF và DOCX/);
+  assert.equal(progress('NotSubmitted', true).actionTo, '/thesis/archival');
+  assert.match(progress('NotSubmitted').description, /chưa khả dụng/);
+  assert.match(progress('Submitted').description, /chờ GVHD/);
+  assert.equal(progress('NeedRevision').tone, 'warning');
+  assert.match(progress('AdvisorConfirmed').description, /chờ Khoa/);
+  assert.equal(progress('ArchiveConfirmed').actionTo, '/councils/results');
+  assert.match(progress('ArchiveConfirmed').description, /khi được công bố/);
+});
+
+test('completed-defense page replaces obsolete revision notices and retains report history', () => {
+  const { getPostDefenseProgress } = loadModule('features/thesis/utils/postDefenseProgress.ts');
+  let completed = true;
+  const query = (data) => ({ data, isSuccess: true, refetch() {} });
+  const { FinalReportSubmissionPage } = loadModule('features/thesis/pages/FinalReportSubmissionPage.tsx', {
+    ...commonUiDeps,
+    '../hooks/useFinalReportSubmission': { useFinalReportSubmission: () => ({
+      statusQuery: query({ groupId: 'group' }), groupDetailQuery: query({}), midtermHistoryQuery: query({ currentStatus: 'Approved' }),
+      historyQuery: query({ currentStatus: 'Approved', currentVersionNo: 2 }), feedbackQuery: query({ comment: 'Góp ý cần giữ lại' }),
+      revisedEligibilityQuery: query({ canSubmit: false, reasonCode: 'OutsideAllowedWindow' }),
+      revisedHistoryQuery: query({ currentVersionNo: 1, versions: [{ versionNo: 1, file: { id: 'revised', fileName: 'revision.pdf' } }] }),
+      defenseProgressQuery: query({}), postDefenseProgress: completed ? getPostDefenseProgress({ isCouncilDefenseCompleted: true, councilMinuteLockStatus: 'Locked', currentSubmissionStatus: 'NotSubmitted', canSubmit: true }) : null,
+      currentStatus: 'Approved', versions: [], canSubmit: false, canSubmitRevision: false,
+      submitMutation: {}, submitRevisedMutation: {},
+    }) },
+    '../types/finalReport.types': { FINAL_REPORT_STATUS_LABELS: {} },
+    '../components/shared': {
+      ThesisSubmissionWorkspace: ({ children, headerBadge, sidebar }) => React.createElement('main', null, headerBadge, children, sidebar),
+      VersionHistoryTimeline: () => React.createElement('div', null, 'Lịch sử bản sửa'),
+      SubmissionDropzoneCard: () => React.createElement('div', null, 'Form nộp bản sửa'),
+    },
+    '../components/SimilarityReportPanel': { SimilarityReportPanel: () => null },
+    '../components/finalReport/PostDefenseProgressCard': loadModule('features/thesis/components/finalReport/PostDefenseProgressCard.tsx', commonUiDeps),
+    '../components/finalReport': {
+      FinalReportSummaryCard: () => null, FinalReportUploadCard: () => null,
+      FinalReportVersionCard: () => React.createElement('div', null, 'Lịch sử báo cáo'),
+    },
+  });
+  const after = renderToStaticMarkup(React.createElement(FinalReportSubmissionPage));
+  assert.match(after, /Đã hoàn tất bảo vệ trước Hội đồng/);
+  assert.match(after, /href="\/thesis\/archival"/);
+  assert.match(after, /Góp ý cần giữ lại/);
+  assert.match(after, /Lịch sử bản sửa/);
+  assert.match(after, /Lịch sử báo cáo/);
+  assert.doesNotMatch(after, /Đã ngoài thời gian|GVHD đã đồng ý chuyển phản biện|Form nộp bản sửa/);
+  completed = false;
+  const before = renderToStaticMarkup(React.createElement(FinalReportSubmissionPage));
+  assert.doesNotMatch(before, /Đã hoàn tất bảo vệ trước Hội đồng/);
+  assert.match(before, /Đã ngoài thời gian/);
+});
+
 function loadModule(path, dependencies = {}) {
   const source = readFileSync(new URL(`../src/${path}`, import.meta.url), 'utf8');
   const { outputText } = ts.transpileModule(source, {
