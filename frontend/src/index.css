@@ -147,6 +147,41 @@
     transform: translateX(0);
     opacity: 0.35;
   }
+
+  .notification-bell-ring {
+    animation: none;
+  }
+}
+
+@keyframes notification-bell-ring {
+  0%,
+  28%,
+  100% {
+    transform: rotate(0deg);
+  }
+  4% {
+    transform: rotate(14deg);
+  }
+  8% {
+    transform: rotate(-12deg);
+  }
+  12% {
+    transform: rotate(10deg);
+  }
+  16% {
+    transform: rotate(-8deg);
+  }
+  20% {
+    transform: rotate(5deg);
+  }
+  24% {
+    transform: rotate(-3deg);
+  }
+}
+
+.notification-bell-ring {
+  transform-origin: 50% 18%;
+  animation: notification-bell-ring 3.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
 }
 
 @keyframes access-check-scan {

@@ -32,9 +32,31 @@ export function formatNotificationRelativeTime(
   }).format(new Date(parsed));
 }
 
+const CONTENT_PREVIEW_LIMIT = 20;
+
+function formatNotificationPreviewContent(content: string, expanded: boolean): {
+  text: string;
+  canExpand: boolean;
+} {
+  const normalized = content.trim();
+  if (normalized.length <= CONTENT_PREVIEW_LIMIT) {
+    return { text: normalized, canExpand: false };
+  }
+
+  if (expanded) {
+    return { text: normalized, canExpand: true };
+  }
+
+  return {
+    text: `${normalized.slice(0, CONTENT_PREVIEW_LIMIT).trimEnd()}...`,
+    canExpand: true,
+  };
+}
+
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<NotificationInboxFilter>('all');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
@@ -78,6 +100,18 @@ export function NotificationBell() {
     }
   }
 
+  function toggleExpanded(id: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
   const badgeLabel = unreadCount > 99 ? '99+' : String(unreadCount);
 
   return (
@@ -98,7 +132,13 @@ export function NotificationBell() {
           open && 'bg-surface-hover text-ink-primary border-line-strong',
         )}
       >
-        <Bell className="size-4" aria-hidden="true" />
+        <Bell
+          className={cn(
+            'size-4',
+            unreadCount > 0 && !open && 'notification-bell-ring',
+          )}
+          aria-hidden="true"
+        />
         {unreadCount > 0 && (
           <span
             aria-hidden="true"
@@ -212,11 +252,23 @@ export function NotificationBell() {
               !listQuery.isError &&
               items.map((item) => {
                 const isCritical = item.priority === 'Critical';
+                const isExpanded = expandedIds.has(item.id);
+                const { text: displayContent, canExpand } = formatNotificationPreviewContent(
+                  item.content,
+                  isExpanded,
+                );
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleSelectItem(item)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleSelectItem(item);
+                      }
+                    }}
                     className={cn(
                       'w-full px-4 py-3 text-left transition-colors hover:bg-surface-hover/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-primary cursor-pointer',
                       !item.isRead && 'bg-primary/[0.04] dark:bg-primary/[0.08]',
@@ -252,15 +304,40 @@ export function NotificationBell() {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs leading-relaxed text-ink-muted line-clamp-2">
-                          {item.content}
+                        <p
+                          className={cn(
+                            'text-xs leading-relaxed text-ink-muted',
+                            isExpanded ? 'whitespace-pre-line break-words' : 'break-words',
+                          )}
+                        >
+                          {displayContent}
                         </p>
-                        <p className="text-[11px] text-ink-subtle">
-                          {formatNotificationRelativeTime(item.createdAt)}
-                        </p>
+                        <div className="flex items-center justify-between gap-2 pt-0.5">
+                          <p className="text-[11px] text-ink-subtle">
+                            {formatNotificationRelativeTime(item.createdAt)}
+                          </p>
+                          {canExpand && (
+                            <button
+                              type="button"
+                              aria-expanded={isExpanded}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toggleExpanded(item.id);
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.stopPropagation();
+                                }
+                              }}
+                              className="ml-auto shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer"
+                            >
+                              {isExpanded ? 'Ẩn bớt' : 'Chi tiết'}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
           </div>
