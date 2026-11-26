@@ -159,7 +159,7 @@ public sealed class SubmitCouncilToAcademicAffairsHandler(
         if (!council.Members.Any(member => member.RoleInCouncil == CouncilMemberRole.Member))
             return Result.Failure<CouncilSubmissionResponseDto>(CouncilErrors.MissingMember);
         var nowUtc = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime;
-      
+
         var actorId = currentUser.UserId!.Value;
 
         council.SubmitToAcademicAffairs(actorId, command.Notes, nowUtc);
