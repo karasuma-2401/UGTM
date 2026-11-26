@@ -10,8 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.AcademicPeriods.Application.Auditing;
 using UGTM.Modules.AcademicPeriods.Application.Notifications;
+using UGTM.Modules.AcademicPeriods.Contracts.Reminders;
 using UGTM.Modules.AcademicPeriods.Infrastructure.Auditing;
 using UGTM.Modules.AcademicPeriods.Infrastructure.Notifications;
+using UGTM.Modules.AcademicPeriods.Infrastructure.Reminders;
 using UGTM.Modules.Identity.Contracts.Auditing;
 using UGTM.Modules.Notifications.Contracts.Notifications;
 using UGTM.Modules.AcademicPeriods.Application.Persistence;
@@ -54,6 +56,7 @@ public sealed class AcademicPeriodsModule : IModule
         services.AddScoped<IAuditIntegrationEventSource, AcademicPeriodsAuditEventSource>();
         services.AddScoped<IAcademicPeriodsNotificationOutbox, AcademicPeriodsNotificationOutbox>();
         services.AddScoped<INotificationIntegrationEventSource, AcademicPeriodsNotificationEventSource>();
+        services.AddScoped<IAcademicDeadlineSnapshotReader, AcademicDeadlineSnapshotReader>();
         services.AddSingleton<TimeProvider>(TimeProvider.System);
         services.AddScoped<CreateKltnBatchHandler>();
         services.AddScoped<UpdateKltnBatchScheduleHandler>();

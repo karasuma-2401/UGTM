@@ -22,10 +22,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UGTM.BuildingBlocks.Application;
 using UGTM.Modules.TopicCatalog.Contracts.AdvisorAssignments;
+using UGTM.Modules.TopicCatalog.Contracts.Reminders;
 using UGTM.Modules.TopicCatalog.Contracts.RenameRequests;
 using UGTM.Modules.TopicCatalog.Contracts.Topics;
 using UGTM.Modules.TopicCatalog.Application.Notifications;
 using UGTM.Modules.TopicCatalog.Infrastructure.Notifications;
+using UGTM.Modules.TopicCatalog.Infrastructure.Reminders;
 using UGTM.Modules.Notifications.Contracts.Notifications;
 
 namespace UGTM.Modules.TopicCatalog.Infrastructure;
@@ -44,6 +46,7 @@ public sealed class TopicCatalogModule : IModule
         services.AddScoped<ITopicUnitOfWork>(provider => provider.GetRequiredService<TopicCatalogDbContext>());
         services.AddScoped<ITopicCatalogNotificationOutbox, TopicCatalogNotificationOutbox>();
         services.AddScoped<INotificationIntegrationEventSource, TopicCatalogNotificationEventSource>();
+        services.AddScoped<ITopicDeadlineSnapshotReader, TopicDeadlineSnapshotReader>();
         services.AddScoped<ITopicQueryReader, TopicQueryReader>();
         services.AddScoped<ITopicAdvisorAssignmentContract, TopicAdvisorAssignmentContract>();
         services.AddScoped<UGTM.Modules.TopicCatalog.Contracts.ReviewerAssignments.IReviewerAssignmentTopicReader,

@@ -17,6 +17,7 @@ using UGTM.Modules.Notifications.Infrastructure.Email;
 using UGTM.Modules.Notifications.Infrastructure.Endpoints;
 using UGTM.Modules.Notifications.Infrastructure.Persistence;
 using UGTM.Modules.Notifications.Infrastructure.Relay;
+using UGTM.Modules.Notifications.Infrastructure.Reminders;
 using UGTM.Modules.Notifications.Infrastructure.Security;
 
 namespace UGTM.Modules.Notifications.Infrastructure;
@@ -65,6 +66,11 @@ public sealed class NotificationsModule : IModule
             .Bind(configuration.GetSection(NotificationRelayOptions.SectionName));
         services.AddScoped<INotificationEventRelayConsumer, NotificationEventRelayConsumer>();
         services.AddHostedService<NotificationEventRelayWorker>();
+
+        services.AddOptions<DeadlineReminderOptions>()
+            .Bind(configuration.GetSection(DeadlineReminderOptions.SectionName));
+        services.AddScoped<IDeadlineReminderCoordinator, DeadlineReminderCoordinator>();
+        services.AddHostedService<DeadlineReminderBackgroundService>();
 
         services.AddSingleton<IDeviceTokenProtector, DataProtectionDeviceTokenProtector>();
         services.AddScoped<INotificationStore, NotificationStore>();
